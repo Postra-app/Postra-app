@@ -61,6 +61,16 @@ export const TemplatesPanel: FC<TemplatesPanelProps> = ({ canvas }) => {
   );
   const [category, setCategory] = useState<TemplateCategory>('promo');
   const [query, setQuery] = useState('');
+  const { pendingTemplateQuery, setPendingTemplateQuery } = useEditorStore();
+
+  // Consume a query handed over by another panel (occasion chips on the free
+  // plan) exactly once, then clear it — otherwise re-opening Templates later
+  // would silently re-apply a search the user has already moved on from.
+  useEffect(() => {
+    if (!pendingTemplateQuery) return;
+    setQuery(pendingTemplateQuery);
+    setPendingTemplateQuery(null);
+  }, [pendingTemplateQuery, setPendingTemplateQuery]);
   const [searchHits, setSearchHits] = useState<string[] | null>(null);
   const [searching, setSearching] = useState(false);
   const searchAbort = useRef<AbortController | null>(null);

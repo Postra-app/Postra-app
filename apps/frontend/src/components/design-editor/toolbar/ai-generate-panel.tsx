@@ -28,6 +28,7 @@ export const AiGeneratePanel: FC<Props> = ({ canvas }) => {
     setGenerating,
     platform,
     setTool,
+    setPendingTemplateQuery,
   } = useEditorStore();
   const fetch = useFetch();
   const toaster = useToaster();
@@ -194,6 +195,43 @@ export const AiGeneratePanel: FC<Props> = ({ canvas }) => {
             'AI design is available on the Starter plan and above.'
           )}
         </p>
+        {/* The occasion calendar is free information that happened to live
+            inside a paid panel, so the free plan saw none of it. The chips stay
+            — they just open Templates on that occasion instead of generating,
+            which is the thing this plan can actually do. */}
+        {upcoming.length > 0 && (
+          <div className="flex flex-col gap-1.5 pt-1">
+            <span className="text-[10px] uppercase tracking-wide text-textColor/50">
+              🗓 {t('holiday_suggestions', 'Upcoming occasions')}
+            </span>
+            {upcoming.map((entry) => (
+              <button
+                key={entry.holiday.date}
+                onClick={() => {
+                  setPendingTemplateQuery(entry.holiday.localName);
+                  setTool('templates');
+                }}
+                title={t(
+                  'holiday_browse_templates',
+                  'Find a template for this occasion'
+                )}
+                className="text-left text-[11px] px-2 py-1.5 rounded bg-newColColor/60 hover:bg-newColColor border border-newBorder/50 text-textColor/80 hover:text-textColor transition-colors"
+              >
+                {t('holiday_upcoming', 'In')} {entry.days}{' '}
+                {entry.days === 1
+                  ? t('holiday_day', 'day')
+                  : t('holiday_days', 'days')}
+                : <strong>{entry.holiday.localName}</strong>
+              </button>
+            ))}
+            <p className="text-[10px] text-textColor/40 leading-snug">
+              {t(
+                'holiday_templates_hint',
+                'Opens Templates filtered for the occasion — free on every plan.'
+              )}
+            </p>
+          </div>
+        )}
       </div>
     );
   }

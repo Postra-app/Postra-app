@@ -34,6 +34,12 @@ export const PLATFORM_SIZES: PlatformSize[] = [
 
 interface EditorState {
   activeTool: EditorTool;
+  /**
+   * Set when something outside the Templates panel wants it opened on a
+   * particular search — the occasion chips on the free plan, which have no AI
+   * to fall back on. The panel consumes it once and clears it.
+   */
+  pendingTemplateQuery: string | null;
   platform: PlatformSize;
   history: string[];
   historyIndex: number;
@@ -43,6 +49,7 @@ interface EditorState {
   aiPrompt: string;
 
   setTool: (tool: EditorTool) => void;
+  setPendingTemplateQuery: (query: string | null) => void;
   setPlatform: (platform: PlatformSize) => void;
   setGenerating: (val: boolean) => void;
   setCanvasReady: (val: boolean) => void;
@@ -57,6 +64,7 @@ interface EditorState {
 
 export const useEditorStore = create<EditorState>((set, get) => ({
   activeTool: 'select',
+  pendingTemplateQuery: null,
   platform: PLATFORM_SIZES[0],
   history: [],
   historyIndex: -1,
@@ -66,6 +74,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   aiPrompt: '',
 
   setTool: (tool) => set({ activeTool: tool }),
+  setPendingTemplateQuery: (query) => set({ pendingTemplateQuery: query }),
   setPlatform: (platform) => set({ platform }),
   setGenerating: (val) => set({ isGenerating: val }),
   setCanvasReady: (val) => set({ canvasReady: val }),
