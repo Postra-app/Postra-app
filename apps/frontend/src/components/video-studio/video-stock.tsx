@@ -1,6 +1,6 @@
 'use client';
 
-import { FC, useCallback, useState } from 'react';
+import { FC, useCallback, useEffect, useRef, useState } from 'react';
 import { useFetch } from '@gitroom/helpers/utils/custom.fetch';
 import { useToaster } from '@gitroom/react/toaster/toaster';
 import { useT } from '@gitroom/react/translation/get.transation.service.client';
@@ -57,6 +57,12 @@ export const VideoStock: FC<VideoStockProps> = ({ onImported }) => {
   const [importingId, setImportingId] = useState<number | null>(null);
   const [notConfigured, setNotConfigured] = useState(false);
   const [previewId, setPreviewId] = useState<number | null>(null);
+
+  // The images panel got this in D-01 and the video one did not, so B-roll
+  // still opened on "No results. Type a phrase and press Search." with the
+  // phrase already typed — a Search click that only exists to confirm what the
+  // box already says. That is the fourth click the phase DoD does not allow.
+  const autoRan = useRef(false);
 
   const handleSearch = useCallback(async () => {
     setIsSearching(true);
@@ -139,6 +145,12 @@ export const VideoStock: FC<VideoStockProps> = ({ onImported }) => {
       </div>
     );
   }
+
+  useEffect(() => {
+    if (autoRan.current) return;
+    autoRan.current = true;
+    handleSearch();
+  }, [handleSearch]);
 
   return (
     <div className="flex flex-col gap-3 p-3">
