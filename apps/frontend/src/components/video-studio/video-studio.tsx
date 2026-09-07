@@ -549,7 +549,7 @@ export const VideoStudio: FC<VideoStudioProps> = ({
     { key: 'captions', label: t('video_tab_captions', 'AI Captions'), icon: '💬', needsClip: true, onClick: handleSwitchToCaptions },
     { key: 'stock', label: t('video_tab_stock', 'Stock B-roll'), icon: '🎞', needsClip: false },
     { key: 'text', label: t('video_tab_text', 'Text'), icon: '✍️', needsClip: false },
-    { key: 'slideshow', label: t('video_tab_slideshow', 'Photos→video'), icon: '🖼', needsClip: false },
+    { key: 'slideshow', label: t('video_tab_slideshow', 'Photos → video'), icon: '🖼', needsClip: false },
   ];
 
   return (

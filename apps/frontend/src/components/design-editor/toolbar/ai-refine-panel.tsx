@@ -30,7 +30,7 @@ interface ChatMessage {
 
 const QUICK_INSTRUCTIONS = [
   { key: 'refine_quick_shorter', fallback: 'Shorter headline' },
-  { key: 'refine_quick_warmer', fallback: 'Warmer colors' },
+  { key: 'refine_quick_warmer', fallback: 'Warmer colours' },
   { key: 'refine_quick_bolder', fallback: 'Stronger CTA' },
   { key: 'refine_quick_minimal', fallback: 'More minimal' },
 ];

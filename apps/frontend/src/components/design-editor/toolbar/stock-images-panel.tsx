@@ -200,7 +200,7 @@ export const StockImagesPanel: FC<Props> = ({ canvas, defaultQuery }) => {
               />
               {importingId === hit.id && (
                 <span className="absolute inset-0 flex items-center justify-center bg-black/60 text-[10px] text-white">
-                  {t('video_stock_importing', 'Downloading...')}
+                  {t('video_stock_importing', 'Downloading…')}
                 </span>
               )}
             </button>

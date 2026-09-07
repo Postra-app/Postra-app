@@ -347,7 +347,7 @@ export const STUDIO_GRAPHICS_TOOLS: StudioToolGuide[] = [
   {
     name: 'AI Generate',
     description:
-      'Describe your idea — or click an upcoming occasion chip (✎ copies it into the prompt for editing) — and AI builds the whole design in one step: a background image plus an editable headline, subtext and call-to-action in your Brand Kit colours. Takes about 5–10 seconds and uses one AI credit. Set SLIDES to 2–5 to get a multi-slide carousel instead of a single graphic.',
+      'Describe your idea — or click an upcoming occasion chip (✎ copies it into the prompt for editing) — and AI builds the whole design in one step: a background image plus an editable headline, subtext and call-to-action in your Brand Kit colours. Takes about 5–10 seconds and uses one AI credit. Set SLIDES to 2–5 to get a multi-slide carousel instead of a single graphic. Needs the Starter plan or above — on the free plan the upcoming-occasion list is still there, and the chips open matching templates instead.',
   },
   {
     name: 'AI Refine',
@@ -385,14 +385,19 @@ export const STUDIO_GRAPHICS_TOOLS: StudioToolGuide[] = [
       'A built-in icon library with categories and search — click an icon to drop it onto the design.',
   },
   {
+    name: 'Stock photos',
+    description:
+      'Free Pixabay photos, on its own tool on the toolbar — it opens with results already showing, so a photo is two clicks from opening Studio. Click one and it lands on the canvas and in your media library at the same time. Pixabay License: commercial use is fine and no credit is required. Costs nothing and uses no AI credit, on every plan.',
+  },
+  {
     name: 'Images',
     description:
-      'Upload your own photos or search free Pixabay stock (imported straight into your media library). With a photo on the canvas you also get filters (brightness, contrast, saturation, blur and black-and-white presets), background removal and a smart crop to the current format.',
+      'Upload your own photos, and work on whatever photo is on the canvas: filters (brightness, contrast, saturation, blur and black-and-white presets), background removal and a smart crop to the current format. Free stock photos have their own tool next to Templates.',
   },
   {
     name: 'Saving & export',
     description:
-      '"Save to library" stores the finished graphic in Media, ready for any post; "Save as template" adds it to your templates; "Download PNG" saves a lossless file; "All formats" renders a variant for every platform size at once; "Use in Post" attaches the design to a post. The format bar at the bottom switches between platform sizes and repositions your layout, and Carousel mode edits multi-slide posts. Studio also keeps a draft automatically — leave and come back, and your design is restored.',
+      '"Save to library" stores the finished graphic in Media, ready for any post; "Save as template" adds it to your templates; "Download PNG" saves a lossless file; "All formats" renders a variant for every platform size at once; "Use in Post" attaches the design to a post. The format bar at the bottom switches between platform sizes and repositions your layout, and Carousel mode edits multi-slide posts. Studio also keeps a draft automatically — leave and come back, and your design is restored. You can get back into an image later from Media: hover a file and pick "Edit in Studio". Studio needs a desktop or laptop — the canvas and its panels do not fit a phone screen.',
   },
 ];
 
@@ -402,7 +407,7 @@ export const STUDIO_VIDEO_TOOLS: StudioToolGuide[] = [
   {
     name: 'Start screen & loading a clip',
     description:
-      'Pick what you came to do — the cards map to the editor tabs and Studio remembers your last choice. Load footage from disk or from your media library; editing happens in your browser, so clips are capped at 200 MB (use a shorter cut for anything bigger).',
+      'Pick what you came to do — six cards, one per editor tab, and Studio remembers your last choice. Load footage from disk or from your media library; editing happens in your browser, so clips are capped at 200 MB (use a shorter cut for anything bigger). Every video tool is included on all plans. When something finishes rendering it is saved to your media library and you choose whether to use it in a post or carry on editing — nothing navigates away on its own.',
   },
   {
     name: 'Trim',
