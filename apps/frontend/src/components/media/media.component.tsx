@@ -232,6 +232,7 @@ export const MediaBox: FC<{
   type?: 'image' | 'video';
   closeModal: () => void;
 }> = ({ type, standalone, setMedia }) => {
+  const router = useRouter();
   const [page, setPage] = useState(0);
   const [search, setSearch] = useState('');
   const [debouncedSearch] = useDebounce(search, 300);
@@ -610,6 +611,22 @@ export const MediaBox: FC<{
                         className="cursor-pointer hidden z-[100] group-hover:block phone:block absolute -top-[5px] -end-[5px]"
                         onClick={deleteImage(media)}
                       />
+                    )}
+                    {/* /studio?mediaId= already loads a library file onto the
+                        canvas; the library just never linked to it. Images
+                        only — Studio's graphic editor cannot open an mp4. */}
+                    {standalone && media.path.indexOf('mp4') === -1 && (
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          router.push(`/studio?mediaId=${media.id}`);
+                        }}
+                        className="absolute z-[100] bottom-[4px] left-[4px] hidden group-hover:flex items-center gap-[4px] px-[6px] py-[3px] rounded-[4px] bg-black/70 text-white text-[10px] hover:bg-black/90 transition-colors"
+                      >
+                        <StudioIcon size={11} />
+                        {t('edit_in_studio', 'Edit in Studio')}
+                      </button>
                     )}
                     <div className="w-full h-full rounded-[6px] overflow-hidden relative">
                       <div className="absolute z-[20] left-[50%] top-[50%] -translate-x-[50%] -translate-y-[50%]">

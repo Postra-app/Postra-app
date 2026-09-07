@@ -626,6 +626,10 @@ export const VideoStudio: FC<VideoStudioProps> = ({
                   { goal: 'captions' as Tab, icon: '💬', label: t('video_goal_captions', 'Add captions'), desc: t('video_goal_captions_desc', 'AI transcribes and burns in subtitles') },
                   { goal: 'text' as Tab, icon: '🅰', label: t('video_goal_text', 'Text on video'), desc: t('video_goal_text_desc', 'Overlay your message in brand style') },
                   { goal: 'stock' as Tab, icon: '🎞', label: t('video_goal_stock', 'Find stock B-roll'), desc: t('video_goal_stock_desc', 'Free clips to post or mix in') },
+                  // Formats had a tab but no card, so the one job people arrive
+                  // with — "I have a clip, I need it in the shape this platform
+                  // wants" — was the only one this screen never offered.
+                  { goal: 'formats' as Tab, icon: '📐', label: t('video_goal_formats', 'Resize for platforms'), desc: t('video_goal_formats_desc', 'One clip, re-framed for Reels, TikTok, Feed') },
                 ]
               ).map((g) => (
                 <button
@@ -647,8 +651,10 @@ export const VideoStudio: FC<VideoStudioProps> = ({
                 </button>
               ))}
             </div>
-            <div className="text-[10px] text-textColor/40">
+            <div className="text-[10px] text-textColor/40 text-center">
               {t('video_goals_hint', 'Same tools as the tabs above — this is just the quickest way in.')}
+              <br />
+              {t('video_goals_free', 'Every tool here is included on all plans.')}
             </div>
           </div>
         )}
