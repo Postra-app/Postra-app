@@ -542,7 +542,16 @@ export const MediaBox: FC<{
                       )}
                 </div>
                 <div className="whitespace-pre-line text-newTextColor/[0.6] text-center">
-                  {standalone
+                  {/* The three routes are advice for an empty library. A search
+                      that found nothing is a different situation — the files
+                      may well be there under another name — so don't answer it
+                      with "upload one". */}
+                  {debouncedSearch
+                    ? t(
+                        'no_media_match_search_hint',
+                        'Try a different name, or clear the search to see everything.'
+                      )
+                    : standalone
                     ? t(
                         'no_media_three_ways',
                         'Upload a file, drag & drop one, or create a branded graphic in Studio — templates and free stock photos are included.'

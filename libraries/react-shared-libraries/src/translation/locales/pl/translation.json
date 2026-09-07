@@ -667,6 +667,7 @@
   "autopost_added_successfully": "Autopost dodano pomyślnie",
   "write_your_post_placeholder": "Napisz swój post...",
   "select_or_upload_pictures_max_5": "Wybierz lub prześlij zdjęcia (maksymalnie 5 na raz).",
+  "no_media_match_search_hint": "Spróbuj innej nazwy albo wyczyść wyszukiwanie, żeby zobaczyć wszystko.",
   "no_media_three_ways": "Wgraj plik, przeciągnij go tutaj albo zrób grafikę w Studio — szablony i darmowe zdjęcia są w cenie.",
   "you_can_drag_drop_pictures": "Możesz także przeciągać i upuszczać zdjęcia.",
   "you_dont_have_any_media_yet": "Nie masz jeszcze żadnych multimediów",
