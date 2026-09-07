@@ -93,6 +93,19 @@ export const StudioWorkspace: FC<StudioWorkspaceProps> = ({
             {tab.label}
           </button>
         ))}
+        {/* Studio had no way out to its own documentation, so a user who got
+            stuck had to guess that Help even covers it. Opens in a new tab —
+            leaving mid-design to read a page would lose the canvas. */}
+        <a
+          href="/help#studio"
+          target="_blank"
+          rel="noopener noreferrer"
+          title={t('studio_help_hint', 'How Studio works')}
+          className="h-9 w-9 flex items-center justify-center text-sm rounded-lg border border-newBorder bg-newColColor text-textColor/70 hover:bg-forth/40 hover:text-textColor transition-colors ms-auto"
+          aria-label={t('studio_help_hint', 'How Studio works')}
+        >
+          ?
+        </a>
       </div>
       <div className="flex-1 min-h-0 w-full rounded-lg overflow-hidden border border-newBorder">
         <div className={clsx('h-full', mode !== 'graphic' && 'hidden')}>
