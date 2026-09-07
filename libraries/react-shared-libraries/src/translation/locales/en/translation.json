@@ -806,6 +806,8 @@
   "holiday_day": "day",
   "holiday_days": "days",
   "holiday_post_prefix": "Post about",
+  "holiday_templates_hint": "Opens Templates filtered for the occasion — free on every plan.",
+  "holiday_browse_templates": "Find a template for this occasion",
   "holiday_suggestions": "Upcoming occasions",
   "holiday_or_custom": "Click an occasion to generate instantly (✎ fills the prompt for editing) — or type your own idea below.",
   "ai_replace_confirm": "This will replace the design currently on the canvas. Save it to the library first if you want to keep it.",

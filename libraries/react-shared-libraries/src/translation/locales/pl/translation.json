@@ -806,6 +806,8 @@
   "holiday_day": "dzień",
   "holiday_days": "dni",
   "holiday_post_prefix": "Post na",
+  "holiday_templates_hint": "Otwiera Szablony przefiltrowane pod okazję — za darmo w każdym planie.",
+  "holiday_browse_templates": "Znajdź szablon na tę okazję",
   "holiday_suggestions": "Nadchodzące okazje",
   "holiday_or_custom": "Kliknij okazję, by od razu wygenerować projekt (✎ wstawia prompt do edycji) — albo wpisz własny pomysł niżej.",
   "ai_replace_confirm": "To zastąpi projekt, który jest teraz na canvasie. Najpierw zapisz go do biblioteki, jeśli chcesz go zachować.",
