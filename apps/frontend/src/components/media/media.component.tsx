@@ -25,6 +25,7 @@ import clsx from 'clsx';
 import { VideoFrame } from '@gitroom/react/helpers/video.frame';
 import { useUppyUploader } from '@gitroom/frontend/components/media/new.uploader';
 import dynamic from 'next/dynamic';
+import { useRouter } from 'next/navigation';
 import { useUser } from '@gitroom/frontend/components/layout/user.context';
 import { AiImage } from '@gitroom/frontend/components/launches/ai.image';
 import { DropFiles } from '@gitroom/frontend/components/layout/drop.files';
@@ -207,6 +208,24 @@ export const showMediaBox = (
 };
 const CHUNK_SIZE = 1024 * 1024;
 const MAX_UPLOAD_SIZE = 1024 * 1024 * 1024; // 1 GB
+// The library is where a user lands when they have nothing to post with, so
+// it has to name the way out of that. Kept as its own component because the
+// empty state and the header both need it.
+const CreateInStudioButton: FC = () => {
+  const t = useT();
+  const router = useRouter();
+  return (
+    <button
+      type="button"
+      onClick={() => router.push('/studio')}
+      className="h-[44px] px-[14px] rounded-[8px] bg-newColColor hover:bg-forth transition-colors text-[14px] flex items-center gap-[6px] whitespace-nowrap"
+    >
+      <StudioIcon />
+      {t('create_in_studio', 'Create in Studio')}
+    </button>
+  );
+};
+
 export const MediaBox: FC<{
   setMedia: (params: { id: string; path: string }[]) => void;
   standalone?: boolean;
@@ -466,6 +485,11 @@ export const MediaBox: FC<{
             multiple={true}
           />
           <div className="flex gap-[8px]">
+            {/* The library offered upload and third-party import and nothing
+                else: no way to reach the tool that makes the files. Only on
+                the standalone page — inside the composer's picker modal this
+                would navigate away from a half-written post. */}
+            {standalone && <CreateInStudioButton />}
             {btn}
             <ThirdPartyMediaLibrary onImported={() => mutate()} />
           </div>
@@ -517,17 +541,21 @@ export const MediaBox: FC<{
                       )}
                 </div>
                 <div className="whitespace-pre-line text-newTextColor/[0.6] text-center">
-                  {t(
-                    'select_or_upload_pictures_max_1gb',
-                    'Select or upload pictures (maximum 1 GB per upload).'
-                  )}{' '}
-                  {'\n'}
-                  {t(
-                    'you_can_drag_drop_pictures',
-                    'You can also drag & drop pictures.'
-                  )}
+                  {standalone
+                    ? t(
+                        'no_media_three_ways',
+                        'Upload a file, drag & drop one, or create a branded graphic in Studio — templates and free stock photos are included.'
+                      )
+                    : `${t(
+                        'select_or_upload_pictures_max_1gb',
+                        'Select or upload pictures (maximum 1 GB per upload).'
+                      )} \n${t(
+                        'you_can_drag_drop_pictures',
+                        'You can also drag & drop pictures.'
+                      )}`}
                 </div>
                 <div className="forceChange flex gap-[8px]">
+                  {standalone && <CreateInStudioButton />}
                   {btn}
                   <ThirdPartyMediaLibrary onImported={() => mutate()} />
                 </div>
