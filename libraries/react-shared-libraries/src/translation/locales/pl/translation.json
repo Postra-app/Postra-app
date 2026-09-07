@@ -1203,6 +1203,7 @@
   "cancel_subscription_confirm": "Spowoduje to natychmiastowe anulowanie subskrypcji. Użytkownik zostanie przeniesiony na plan FREE. Tej operacji nie można cofnąć.",
   "announcement_description_placeholder": "Opis ogłoszenia",
   "design_media_edit_hint": "Edytuj projekt — otwórz w Studio",
+  "studio_empty_hint": "Nie masz jeszcze grafiki? Zrób ją w Studio — albo weź darmowe zdjęcie",
   "studio_hint": "Twórz grafiki i klipy wideo — prosto do posta",
   "studio_desktop_hint": "🎨 Studio dostępne na komputerze",
   "voice_failed": "Nie udało się sprawdzić tonu — spróbuj później.",

@@ -1203,6 +1203,7 @@
   "cancel_subscription_confirm": "This will immediately cancel the subscription. The user will be moved to the FREE plan. This action cannot be undone.",
   "announcement_description_placeholder": "Announcement description",
   "design_media_edit_hint": "Edit design — open in Studio",
+  "studio_empty_hint": "No visual yet? Create one in Studio — or pick a free stock photo",
   "studio_hint": "Create graphics and video clips — straight into your post",
   "studio_desktop_hint": "🎨 Studio is available on desktop",
   "voice_failed": "Could not check the tone — try again later.",

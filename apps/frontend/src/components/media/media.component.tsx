@@ -48,6 +48,7 @@ import {
   MediaSettingsIcon,
   InsertMediaIcon,
   DesignMediaIcon,
+  StudioIcon,
   VerticalDividerIcon,
   NoMediaIcon,
 } from '@gitroom/frontend/components/ui/icons';
@@ -807,6 +808,22 @@ export const MultiMediaComponent: FC<{
     <>
       <div className="b1 flex flex-col gap-[8px] rounded-bl-[8px] select-none w-full">
         <div className="flex gap-[10px] px-[12px]">
+          {/* An empty attachment strip is the moment a user needs to be told
+              the two free ways to fill it. Without this the area is silent and
+              the only visible verb is "Insert Media", which implies they must
+              already own a file. */}
+          {!dummy && !mediaNotAvailable && !currentMedia?.length && (
+            <div
+              onClick={openStudio}
+              className="cursor-pointer py-[6px] text-[11px] text-textColor/50 hover:text-textColor transition-colors phone:hidden"
+            >
+              {t(
+                'studio_empty_hint',
+                'No visual yet? Create one in Studio — or pick a free stock photo'
+              )}{' '}
+              →
+            </div>
+          )}
           {!!currentMedia && (
             <ReactSortable
               list={currentMedia}
@@ -914,6 +931,30 @@ export const MultiMediaComponent: FC<{
         <div className="flex gap-[8px] px-[12px] border-t border-newColColor w-full b1 text-textColor">
           {!mediaNotAvailable && (
             <div className="flex py-[10px] b2 items-center gap-[4px]">
+              {/* Studio goes first: "make one" is the step before "attach one",
+                  and the label stays visible at every width. It used to sit
+                  last in the row wearing Polotno's icon with the label hidden
+                  below 1560px, which is a good way to own a feature nobody
+                  finds. Hidden in dummy previews, where clicking does nothing. */}
+              {!dummy && (
+                <div
+                  onClick={openStudio}
+                  className="cursor-pointer h-[30px] rounded-[6px] justify-center items-center flex bg-newColColor px-[8px] hover:bg-forth transition-colors phone:hidden"
+                  title={t(
+                    'studio_hint',
+                    'Create graphics and video clips — straight into your post'
+                  )}
+                >
+                  <div className="flex gap-[5px] items-center">
+                    <div>
+                      <StudioIcon />
+                    </div>
+                    <div className="text-[10px] font-[600] block">
+                      {t('studio', 'Studio')}
+                    </div>
+                  </div>
+                </div>
+              )}
               <div
                 onClick={showModal}
                 className="cursor-pointer h-[30px] rounded-[6px] justify-center items-center flex bg-newColColor px-[8px]"
@@ -942,21 +983,6 @@ export const MultiMediaComponent: FC<{
                   </div>
                 </div>
               )}
-              <div
-                onClick={openStudio}
-                className="cursor-pointer h-[30px] rounded-[6px] justify-center items-center flex bg-newColColor px-[8px] hover:bg-forth transition-colors phone:hidden"
-                title={t('studio_hint', 'Create graphics and video clips — straight into your post')}
-              >
-                <div className="flex gap-[5px] items-center">
-                  <div>
-                    <DesignMediaIcon />
-                  </div>
-                  <div className="text-[10px] font-[600] iconBreak:hidden block">
-                    {t('studio', 'Studio')}
-                  </div>
-                </div>
-              </div>
-
               {/* The Studio button above is phone:hidden — say why instead of
                   hiding the feature without a trace. */}
               <div className="hidden phone:flex items-center text-[10px] text-textColor/50">
