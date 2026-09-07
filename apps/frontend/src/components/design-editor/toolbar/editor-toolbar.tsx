@@ -86,6 +86,11 @@ const TOOLS: { key: EditorTool; icon: string; labelKey: string; fallback: string
   { key: 'ai', icon: '✨', labelKey: 'tool_ai', fallback: 'AI Generate' },
   { key: 'refine', icon: '🪄', labelKey: 'tool_refine', fallback: 'AI Refine' },
   { key: 'templates', icon: '📐', labelKey: 'tool_templates', fallback: 'Templates' },
+  // Stock sat at the bottom of the Images panel: four clicks and a typed query
+  // before a user saw a single photo, for the one feature here that costs
+  // nothing and needs no AI credit. It is a source of content like Templates,
+  // so it belongs next to it on the bar.
+  { key: 'stock', icon: '🏞', labelKey: 'tool_stock', fallback: 'Stock photos' },
   { key: 'brand', icon: '🎨', labelKey: 'tool_brand', fallback: 'Brand Kit' },
   { key: 'select', icon: '↖', labelKey: 'tool_select', fallback: 'Select' },
   { key: 'text', icon: 'T', labelKey: 'tool_text', fallback: 'Text' },
@@ -721,8 +726,17 @@ export const EditorToolbar: FC<ToolbarProps> = ({ canvas }) => {
 
             <ImageFiltersPanel canvas={canvas} />
 
-            <StockImagesPanel canvas={canvas} />
+            <button
+              onClick={() => setTool('stock')}
+              className="text-xs px-3 py-2 rounded bg-newColColor hover:bg-forth text-textColor transition-colors text-left"
+            >
+              🏞 {t('image_stock_jump', 'Browse free stock photos')} →
+            </button>
           </div>
+        )}
+
+        {activeTool === 'stock' && (
+          <StockImagesPanel canvas={canvas} defaultQuery="business" />
         )}
 
         {(activeTool === 'shapes' ||
