@@ -65,19 +65,38 @@ export const VideoStudio: FC<VideoStudioProps> = ({
   // Every export path funnels through here. In the composer the media lands
   // in the open post; standalone /studio has no post to attach to, so carry
   // it into a fresh post on /launches instead of dead-ending at Download.
+  /**
+   * What standalone Studio produced, waiting for the user to say where it goes.
+   *
+   * Every output used to navigate straight to the calendar the moment it was
+   * ready — no preview, no choice, and no way back to the clip you were still
+   * working on. On an organisation with no channels connected that landed you
+   * on an empty calendar whose only response is "Add channel", with the file
+   * apparently gone. It is already saved to the library by this point, so the
+   * honest options are "use it now" or "carry on".
+   */
+  const [delivered, setDelivered] = useState<
+    { id: string; path: string }[] | null
+  >(null);
+
   const deliver = useCallback(
     (uploaded: { id: string; path: string }[]) => {
       if (mode === 'studio') {
-        router.push(
-          `/launches?newPostMedia=${encodeURIComponent(JSON.stringify(uploaded))}`
-        );
+        setDelivered(uploaded);
         return;
       }
       setMedia(uploaded);
       closeModal();
     },
-    [mode, router, setMedia, closeModal]
+    [mode, setMedia, closeModal]
   );
+
+  const useDeliveredInPost = useCallback(() => {
+    if (!delivered) return;
+    router.push(
+      `/launches?newPostMedia=${encodeURIComponent(JSON.stringify(delivered))}`
+    );
+  }, [delivered, router]);
   const fileInputRef = useRef<HTMLInputElement>(null);
   /** In-flight upload, shared so a double click can't start a second one. */
   const uploadPromiseRef = useRef<Promise<{ id: string; path: string } | null> | null>(null);
@@ -600,6 +619,30 @@ export const VideoStudio: FC<VideoStudioProps> = ({
             : isConverting
             ? t('video_converting_clip', 'Converting the clip to MP4 — keep this page open…')
             : t('video_uploading_clip', 'Uploading the clip — keep this page open…')}
+        </div>
+      )}
+
+      {delivered && (
+        <div className="flex items-center gap-2 flex-wrap px-3 py-2 rounded-lg bg-forth/15 border border-forth/40 text-xs text-textColor">
+          <span className="flex-1 min-w-[180px]">
+            ✅{' '}
+            {t(
+              'video_result_saved',
+              'Saved to your media library — use it now or keep working.'
+            )}
+          </span>
+          <button
+            onClick={useDeliveredInPost}
+            className="px-3 py-1 rounded bg-newAccent text-white hover:opacity-90 transition-opacity"
+          >
+            {t('video_result_use', 'Use in post')} →
+          </button>
+          <button
+            onClick={() => setDelivered(null)}
+            className="px-3 py-1 rounded bg-newColColor text-textColor hover:bg-forth transition-colors"
+          >
+            {t('video_result_stay', 'Keep working')}
+          </button>
         </div>
       )}
 
