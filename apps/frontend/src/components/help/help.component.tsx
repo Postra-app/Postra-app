@@ -1,6 +1,6 @@
 'use client';
 
-import { FC, ReactNode } from 'react';
+import { FC, ReactNode, useMemo, useState } from 'react';
 import { useT } from '@gitroom/react/translation/get.transation.service.client';
 import {
   APP_TABS,
@@ -37,6 +37,7 @@ const Section: FC<{ id: string; title: string; children: ReactNode }> = ({
 
 export const HelpComponent = () => {
   const t = useT();
+  const [filter, setFilter] = useState('');
 
   const toc = [
     { id: 'getting-started', label: t('help_getting_started', 'Getting started') },
@@ -49,12 +50,47 @@ export const HelpComponent = () => {
     { id: 'contact', label: t('help_contact', 'Contact') },
   ];
 
+  // Filtering the contents list, not the page body: the sections are static
+  // JSX and the browser's own find already searches those. What the list could
+  // not do is answer "is there anything here about captions / Pinterest" for
+  // someone who does not know which section owns the topic.
+  const query = filter.trim().toLowerCase();
+  const matchingChannels = useMemo(
+    () =>
+      query
+        ? CHANNEL_GUIDES.filter((c) => c.name.toLowerCase().includes(query))
+        : CHANNEL_GUIDES,
+    [query]
+  );
+  const visibleToc = useMemo(
+    () =>
+      query
+        ? toc.filter(
+            (item) =>
+              item.label.toLowerCase().includes(query) ||
+              (item.id === 'channels' && matchingChannels.length > 0)
+          )
+        : toc,
+    [query, toc, matchingChannels]
+  );
+
   return (
     <>
       <div className="bg-white/[0.03] p-[20px] flex flex-col gap-[12px] w-[260px] phone:w-full">
         <h2 className="text-[20px] font-[500]">{t('help', 'Help')}</h2>
+        <input
+          value={filter}
+          onChange={(e) => setFilter(e.target.value)}
+          placeholder={t('help_filter_ph', 'Filter topics…')}
+          className="h-[36px] px-[10px] rounded-[8px] bg-white/[0.03] border border-newColColor text-[13px] outline-none focus:border-[#38bdf8]"
+        />
         <div className="flex flex-col gap-[4px]">
-          {toc.map((item) => (
+          {visibleToc.length === 0 && (
+            <div className="text-[13px] text-newTextColor/50 px-[8px] py-[6px]">
+              {t('help_filter_none', 'Nothing matches — scroll the page or ask us.')}
+            </div>
+          )}
+          {visibleToc.map((item) => (
             <div key={item.id} className="flex flex-col">
               <a
                 href={`#${item.id}`}
@@ -64,7 +100,7 @@ export const HelpComponent = () => {
               </a>
               {item.id === 'channels' && (
                 <div className="flex flex-col ps-[16px]">
-                  {CHANNEL_GUIDES.map((channel) => (
+                  {matchingChannels.map((channel) => (
                     <a
                       key={channel.identifier}
                       href={`#channel-${channel.identifier}`}
