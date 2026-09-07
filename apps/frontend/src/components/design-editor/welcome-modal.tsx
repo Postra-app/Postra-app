@@ -2,6 +2,7 @@
 
 import { FC, useEffect, useRef, useState } from 'react';
 import { useT } from '@gitroom/react/translation/get.transation.service.client';
+import { useUser } from '@gitroom/frontend/components/layout/user.context';
 import { useEditorStore } from './editor.store';
 
 const WELCOME_KEY = 'postra:studio-welcomed';
@@ -26,6 +27,8 @@ const markWelcomed = () => {
 
 export const WelcomeModal: FC = () => {
   const t = useT();
+  const user = useUser();
+  const aiAllowed = !!user?.tier?.image_generator;
   const { setTool } = useEditorStore();
   const [open, setOpen] = useState(false);
   const firstButtonRef = useRef<HTMLButtonElement>(null);
@@ -56,7 +59,7 @@ export const WelcomeModal: FC = () => {
     };
   }, [open]);
 
-  const startWithTool = (tool: 'templates' | 'ai') => {
+  const startWithTool = (tool: 'templates' | 'ai' | 'stock') => {
     setTool(tool);
     close();
   };
@@ -104,7 +107,25 @@ export const WelcomeModal: FC = () => {
             <div className="text-xs text-textColor/60 group-hover:text-white/70 mt-1">
               {t(
                 'welcome_desc_templates',
-                'Pick a ready-made design and customize it'
+                'Pick a ready-made design and customise it'
+              )}
+            </div>
+          </button>
+
+          {/* The free, no-credit route was missing from the one screen whose
+              whole job is answering "where do I start". */}
+          <button
+            onClick={() => startWithTool('stock')}
+            className="text-left p-4 rounded-md bg-newColColor hover:bg-forth hover:text-white text-textColor transition-colors group"
+          >
+            <div className="text-base font-semibold flex items-center gap-2">
+              <span>🏞</span>
+              <span>{t('welcome_cta_stock', 'Free stock photo')}</span>
+            </div>
+            <div className="text-xs text-textColor/60 group-hover:text-white/70 mt-1">
+              {t(
+                'welcome_desc_stock',
+                'Thousands of photos you can post commercially — no credit needed'
               )}
             </div>
           </button>
@@ -118,10 +139,15 @@ export const WelcomeModal: FC = () => {
               <span>{t('welcome_cta_ai', 'Generate with AI')}</span>
             </div>
             <div className="text-xs text-textColor/60 group-hover:text-white/70 mt-1">
-              {t(
-                'welcome_desc_ai',
-                'Describe your idea — AI will create a design with background and text'
-              )}
+              {aiAllowed
+                ? t(
+                    'welcome_desc_ai',
+                    'Describe your idea — AI will create a design with background and text'
+                  )
+                : t(
+                    'welcome_desc_ai_locked',
+                    'Describe your idea and AI designs it — on the Starter plan and above'
+                  )}
             </div>
           </button>
 
@@ -138,6 +164,13 @@ export const WelcomeModal: FC = () => {
             </div>
           </button>
         </div>
+
+        <p className="text-[11px] text-textColor/50 text-center mt-4 leading-snug">
+          {t(
+            'welcome_brand_tip',
+            'Tip: set your Brand Kit once — templates, AI designs and video captions all pick up your colours and font.'
+          )}
+        </p>
 
         <button
           onClick={close}

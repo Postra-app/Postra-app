@@ -237,7 +237,7 @@ export const VideoStock: FC<VideoStockProps> = ({ onImported }) => {
                   className="!h-[24px] !text-[10px] !px-2"
                 >
                   {isImporting
-                    ? t('video_stock_importing', 'Downloading...')
+                    ? t('video_stock_importing', 'Downloading…')
                     : t('video_stock_import', 'Import')}
                 </Button>
               </div>

@@ -263,7 +263,7 @@ export const BrandKitPanel: FC = () => {
       <p className="text-[10px] text-textColor/40 leading-snug">
         {t(
           'brand_kit_hint',
-          'Saved automatically. AI generates designs using these colors, font and tone.'
+          'Saved automatically. AI generates designs using these colours, font and tone.'
         )}
       </p>
     </div>
