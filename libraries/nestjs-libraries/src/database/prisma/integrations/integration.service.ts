@@ -257,7 +257,15 @@ export class IntegrationService {
         }
 
         row.granted = granted;
-        row.canComment = granted.includes('pages_manage_engagement');
+        // Ask the provider which scope carries first comment instead of naming
+        // Facebook's: this loop also walks Instagram channels, whose scope is
+        // instagram_manage_comments, and hard-coding one of them reported every
+        // working Instagram channel as "not granted". The report is what we read
+        // to decide which channels need a reconnect, so it has to be per-provider.
+        const commentScope = this._integrationManager.getSocialIntegration(
+          integration.providerIdentifier
+        )?.commentScope;
+        row.canComment = !commentScope || granted.includes(commentScope);
 
         if (apply) {
           await this._integrationRepository.setGrantedScopes(

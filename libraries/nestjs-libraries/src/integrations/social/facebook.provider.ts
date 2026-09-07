@@ -35,12 +35,20 @@ export class FacebookProvider extends SocialAbstract implements SocialProvider {
     'pages_read_engagement',
     'read_insights',
   ];
-  // pages_manage_engagement (first comment) is still on Standard access, which
-  // Meta grants only to accounts holding a role in the app. Asking for it is
-  // free — role accounts get it and their first comment works — but requiring
-  // it fails connect for every external user, which is what #188 hit. Channels
-  // that weren't granted it simply don't offer the feature; once its mini App
-  // Review lands it becomes Advanced and this entry can go.
+  // pages_manage_engagement (first comment) reached Advanced access when its
+  // mini App Review was approved on 2026-09-07, so Meta now grants it to every
+  // user rather than only to accounts holding a role in the app.
+  //
+  // It stays asked-not-required anyway, for the same reason instagram.provider
+  // spells out: requiring a scope is exactly what broke connect for every
+  // external user in #188, and Meta can move a permission back to Standard
+  // without warning. Asked-not-required degrades to "the feature hides itself
+  // on that channel"; required degrades to "nobody can connect at all".
+  //
+  // Channels authorised before the approval keep the scope set they were granted
+  // at the time — an approval does not reach back into an existing token — so
+  // they show no comment button until they are reconnected. That is what the
+  // help text tells users, and what backfill-granted-scopes reports.
   optionalScopes = ['pages_manage_engagement'];
   commentScope = 'pages_manage_engagement';
   override maxConcurrentJob = 500; // Facebook has reasonable rate limits
