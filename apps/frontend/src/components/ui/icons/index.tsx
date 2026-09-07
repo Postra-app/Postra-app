@@ -749,6 +749,33 @@ export const DesignMediaIcon: FC<IconProps> = ({
   </svg>
 );
 
+// Studio Icon — a wand, deliberately NOT the picture-with-a-brush used by
+// DesignMediaIcon. Studio and Polotno sat side by side wearing the same glyph,
+// so the row read as one feature drawn twice.
+export const StudioIcon: FC<IconProps> = ({
+  size = 16,
+  className,
+  ...props
+}) => (
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    width={size}
+    height={size}
+    viewBox="0 0 16 16"
+    fill="none"
+    className={className}
+    {...props}
+  >
+    <path
+      d="M11.2 2.1l.62 1.58 1.58.62-1.58.62-.62 1.58-.62-1.58-1.58-.62 1.58-.62.62-1.58ZM4.1 6.4l.44 1.1 1.1.44-1.1.44-.44 1.1-.44-1.1-1.1-.44 1.1-.44.44-1.1ZM13.4 8.9l.35.88.88.35-.88.35-.35.88-.35-.88-.88-.35.88-.35.35-.88ZM9.55 6.02l.85.85a.9.9 0 0 1 0 1.27l-5.4 5.4a.9.9 0 0 1-1.27 0l-.85-.85a.9.9 0 0 1 0-1.27l5.4-5.4a.9.9 0 0 1 1.27 0Z"
+      stroke="currentColor"
+      strokeWidth="1.2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+  </svg>
+);
+
 // Vertical Divider Icon
 export const VerticalDividerIcon: FC<IconProps> = ({ className, ...props }) => (
   <svg
