@@ -303,7 +303,7 @@ export const APP_TABS: AppTabGuide[] = [
     id: 'studio',
     name: 'Studio',
     description:
-      'Design graphics and short videos for your posts — templates, your Brand Kit and AI image generation.',
+      'Design graphics and short videos for your posts — templates, free stock photos, your Brand Kit, AI image generation, and video tools including automatic captions. Desktop only.',
   },
   {
     id: 'autopost',
