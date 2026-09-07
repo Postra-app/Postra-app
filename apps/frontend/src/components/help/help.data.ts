@@ -141,7 +141,7 @@ export const CHANNEL_GUIDES: ChannelGuide[] = [
     composer: [
       'Post Type: Post or Story (a Story needs at least one image or video).',
       'Embedded URL: attach a link preview to a text-only post.',
-      'First comments: available on Pages where Meta granted the permission — it is still on limited access, so on most Pages the "Add comment" button stays hidden for now. Where it shows up, it works.',
+      'First comments: supported. Meta approved the permission in September 2026, so any Page you connect from now on gets the "Add comment" button. A Page connected before that keeps the permissions it was granted at the time — reconnect it once and the button appears.',
       "Character limit: 63,206 — effectively you won't hit it.",
     ],
   },
@@ -514,6 +514,6 @@ export const FAQ_ITEMS: FaqItem[] = [
   {
     question: 'How do first comments and threads work?',
     answer:
-      'Depending on the channel, the composer shows an extra button below your post. "Add comment" publishes a first comment right under the post on the platform — supported on LinkedIn and LinkedIn Page (text only), Telegram, Discord and Instagram, and on Facebook Pages where Meta granted us the permission. "Add post" chains additional posts into a thread — that\'s how X, Threads, Bluesky and Mastodon work. In both cases you can add several entries, reorder them, and give each one a Delay (1 min – 2 h presets or a custom number of minutes) so it publishes that long after the previous one. TikTok and YouTube don\'t support first comments. Where a channel supports them but the button is missing, reconnect that channel — the feature follows the permissions the platform granted at connect time. Separately, the comments you see when opening a post on the Calendar are internal team notes — they are never published anywhere.',
+      'Depending on the channel, the composer shows an extra button below your post. "Add comment" publishes a first comment right under the post on the platform — supported on LinkedIn and LinkedIn Page (text only), Telegram, Discord, Instagram and Facebook Pages. "Add post" chains additional posts into a thread — that\'s how X, Threads, Bluesky and Mastodon work. In both cases you can add several entries, reorder them, and give each one a Delay (1 min – 2 h presets or a custom number of minutes) so it publishes that long after the previous one. TikTok and YouTube don\'t support first comments. Where a channel supports them but the button is missing, reconnect that channel — the feature follows the permissions the platform granted at connect time. Separately, the comments you see when opening a post on the Calendar are internal team notes — they are never published anywhere.',
   },
 ];

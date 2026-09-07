@@ -29,8 +29,12 @@ describe('Meta provider scopes', () => {
   });
 
   it('facebook asks for the first-comment scope without requiring it', () => {
-    // Asking is free: accounts with a role in the app get pages_manage_engagement
-    // and their first comment works. Requiring it is what broke connect (#188).
+    // pages_manage_engagement holds Advanced access since the mini App Review was
+    // approved on 2026-09-07, so Meta grants it to everyone — and it still must
+    // not move into the required list. Requiring a scope is what broke connect
+    // for every external user in #188, and Meta can demote a permission back to
+    // Standard without warning. This assertion is the guard against someone
+    // "tidying up" the optional entry now that the permission is granted.
     const facebook = new FacebookProvider();
 
     expect(facebook.scopes).toContain('pages_manage_engagement');
