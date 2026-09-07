@@ -11,7 +11,8 @@ export type EditorTool =
   | 'refine'
   | 'brand'
   | 'icons'
-  | 'templates';
+  | 'templates'
+  | 'stock';
 
 export interface PlatformSize {
   key: string;

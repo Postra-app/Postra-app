@@ -1,6 +1,13 @@
 'use client';
 
-import { FC, MutableRefObject, useCallback, useState } from 'react';
+import {
+  FC,
+  MutableRefObject,
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+} from 'react';
 import * as fabric from 'fabric';
 import { useFetch } from '@gitroom/helpers/utils/custom.fetch';
 import { useToaster } from '@gitroom/react/toaster/toaster';
@@ -17,12 +24,18 @@ interface PixabayImageHit {
 
 interface Props {
   canvas: MutableRefObject<fabric.Canvas | null>;
+  /**
+   * Run this search once on mount so the panel opens with photos in it. An
+   * empty grid asking for a query is the reason nobody found stock: the user
+   * has to guess that anything is behind it before they see a single result.
+   */
+  defaultQuery?: string;
 }
 
 // Free stock photos from Pixabay, imported to the media library on click
 // (Pixabay TOS forbids hotlinking) and dropped onto the canvas. Saves an AI
 // credit every time a stock photo does the job instead of generating one.
-export const StockImagesPanel: FC<Props> = ({ canvas }) => {
+export const StockImagesPanel: FC<Props> = ({ canvas, defaultQuery }) => {
   const fetch = useFetch();
   const toaster = useToaster();
   const t = useT();
@@ -32,12 +45,14 @@ export const StockImagesPanel: FC<Props> = ({ canvas }) => {
   const [searched, setSearched] = useState(false);
   const [importingId, setImportingId] = useState<number | null>(null);
 
-  const search = useCallback(async () => {
-    if (!query.trim() || searching) return;
+  const search = useCallback(
+    async (term?: string) => {
+    const q = (term ?? query).trim();
+    if (!q || searching) return;
     setSearching(true);
     try {
       const res = await fetch(
-        `/media/pixabay-images?q=${encodeURIComponent(query.trim())}`
+        `/media/pixabay-images?q=${encodeURIComponent(q)}`
       );
       if (!res.ok) throw new Error(`search ${res.status}`);
       const data = await res.json();
@@ -51,7 +66,20 @@ export const StockImagesPanel: FC<Props> = ({ canvas }) => {
     } finally {
       setSearching(false);
     }
-  }, [query, searching, fetch, toaster, t]);
+    },
+    [query, searching, fetch, toaster, t]
+  );
+
+  // Fire the default search once, not on every re-render and not twice under
+  // StrictMode's double mount — a wasted Pixabay call per keystroke elsewhere
+  // in the panel would be easy to introduce here.
+  const autoRan = useRef(false);
+  useEffect(() => {
+    if (!defaultQuery || autoRan.current) return;
+    autoRan.current = true;
+    setQuery(defaultQuery);
+    search(defaultQuery);
+  }, [defaultQuery, search]);
 
   const addToCanvas = useCallback(
     (path: string) => {
@@ -145,7 +173,7 @@ export const StockImagesPanel: FC<Props> = ({ canvas }) => {
           className="flex-1 min-w-0 text-xs px-2 py-1.5 rounded bg-newColColor border border-newBorder text-textColor placeholder-textColor/40 focus:outline-none focus:border-forth"
         />
         <button
-          onClick={search}
+          onClick={() => search()}
           disabled={searching || !query.trim()}
           className="text-xs px-2.5 py-1.5 rounded bg-newColColor hover:bg-forth text-textColor transition-colors disabled:opacity-50"
         >
