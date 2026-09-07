@@ -217,7 +217,7 @@ export const HelpComponent = () => {
           <div className="text-[13px] text-newTextColor/70">
             {t(
               'help_studio_intro',
-              'Studio designs branded graphics for your posts — AI does the first draft, you stay in control of every element. Tool by tool:'
+              'Studio designs branded graphics for your posts. Start from a ready-made template or a free stock photo — both included on every plan — or let AI draft one for you; either way every element stays editable. Tool by tool:'
             )}
           </div>
           <div className="flex flex-col gap-[12px]">
