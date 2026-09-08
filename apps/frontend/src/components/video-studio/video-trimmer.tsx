@@ -12,6 +12,7 @@ import {
 } from 'mediabunny';
 import WaveSurfer from 'wavesurfer.js';
 import { useT } from '@gitroom/react/translation/get.transation.service.client';
+import { Button } from '@gitroom/frontend/components/ui/button';
 import { useToaster } from '@gitroom/react/toaster/toaster';
 import { safeMediaUrl } from '@gitroom/helpers/utils/safe.media.url';
 import { assertVideoSurvives } from './mp4-source';
@@ -245,15 +246,15 @@ export const VideoTrimmer: FC<VideoTrimmerProps> = ({ file, onTrimmed }) => {
               .replace('{sec}', (trimEnd - trimStart).toFixed(2))
               .replace('{total}', duration.toFixed(2))}
       </div>
-      <button
+      <Button
         onClick={handleExport}
         disabled={isExporting || undecodable || trimEnd <= trimStart}
-        className="px-3 py-2 text-sm rounded bg-newAccent text-white hover:bg-forth disabled:opacity-50 transition-colors"
+        className="self-start"
       >
         {isExporting
           ? `${t('video_exporting', 'Exporting')} ${progress}%`
           : `✂ ${t('video_export_trimmed', 'Export trimmed clip')}`}
-      </button>
+      </Button>
     </div>
   );
 };

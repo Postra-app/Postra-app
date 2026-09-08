@@ -297,7 +297,7 @@ export const VideoTextOverlay: FC<VideoTextOverlayProps> = ({ onReady }) => {
               disabled={busy}
               className={`flex-1 text-xs px-2 py-1.5 rounded transition-colors disabled:opacity-50 ${
                 position === p.key
-                  ? 'bg-newAccent text-white'
+                  ? 'bg-newAccent text-[#06222e] font-[600]'
                   : 'bg-newColColor text-textColor hover:bg-forth'
               }`}
             >
@@ -347,7 +347,7 @@ export const VideoTextOverlay: FC<VideoTextOverlayProps> = ({ onReady }) => {
                 disabled={busy}
                 className={`flex-1 text-xs px-2 py-1.5 rounded transition-colors disabled:opacity-50 ${
                   scale === s.scale
-                    ? 'bg-newAccent text-white'
+                    ? 'bg-newAccent text-[#06222e] font-[600]'
                     : 'bg-newColColor text-textColor hover:bg-forth'
                 }`}
               >
@@ -375,15 +375,15 @@ export const VideoTextOverlay: FC<VideoTextOverlayProps> = ({ onReady }) => {
         </select>
       </div>
 
-      <button
+      <Button
         onClick={compose}
         disabled={!file || busy}
-        className="px-3 py-2 text-sm rounded bg-newAccent text-white hover:bg-forth disabled:opacity-50 transition-colors"
+        className="self-start"
       >
         {busy
           ? `${t('clip_text_running', 'Rendering…')} ${progress}%`
           : t('clip_text_run', '🎬 Burn text into video')}
-      </button>
+      </Button>
 
       {resultUrl && (
         <div className="flex flex-col gap-2">

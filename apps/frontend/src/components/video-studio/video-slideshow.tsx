@@ -419,15 +419,15 @@ export const VideoSlideshow: FC<VideoSlideshowProps> = ({ onReady }) => {
         })}
       </div>
 
-      <button
+      <Button
         onClick={compose}
         disabled={!images.length || busy}
-        className="px-3 py-2 text-sm rounded bg-newAccent text-white hover:bg-forth disabled:opacity-50 transition-colors"
+        className="self-start"
       >
         {busy
           ? `${t('slideshow_running', 'Building video…')} ${progress}%`
           : t('slideshow_run', '🎬 Build video from photos')}
-      </button>
+      </Button>
 
       {resultUrl && (
         <div className="flex flex-col gap-2">

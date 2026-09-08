@@ -966,7 +966,7 @@ export const MultiMediaComponent: FC<{
                             ),
                           });
                         }}
-                        className="absolute -end-[4px] -bottom-[4px] z-[20] w-[16px] h-[16px] rounded-full bg-newAccent text-white text-[9px] flex items-center justify-center hover:bg-forth"
+                        className="absolute -end-[4px] -bottom-[4px] z-[20] w-[16px] h-[16px] rounded-full bg-newAccent text-[#06222e] text-[9px] flex items-center justify-center hover:bg-forth"
                         title={t('design_media_edit_hint', 'Edit design — open in Studio')}
                       >
                         ✏

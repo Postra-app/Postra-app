@@ -569,7 +569,7 @@ export const VideoStudio: FC<VideoStudioProps> = ({
             title={t('video_goals_back', 'What do you want to make? — back to goals')}
             className={`text-xs px-2 py-1 rounded transition-colors ${
               showGoals
-                ? 'bg-newAccent text-white'
+                ? 'bg-newAccent text-[#06222e] font-[600]'
                 : 'bg-newColColor text-textColor hover:bg-forth'
             }`}
           >
@@ -586,7 +586,7 @@ export const VideoStudio: FC<VideoStudioProps> = ({
               disabled={(tDef.needsClip && !hasClip) || isUploading || isConverting}
               className={`text-xs px-3 py-1 rounded transition-colors ${
                 tab === tDef.key && !showGoals
-                  ? 'bg-newAccent text-white'
+                  ? 'bg-newAccent text-[#06222e] font-[600]'
                   : 'bg-newColColor text-textColor hover:bg-forth'
               } disabled:opacity-40`}
             >
@@ -639,12 +639,9 @@ export const VideoStudio: FC<VideoStudioProps> = ({
               'Saved to your media library — use it now or keep working.'
             )}
           </span>
-          <button
-            onClick={useDeliveredInPost}
-            className="px-3 py-1 rounded bg-newAccent text-white hover:opacity-90 transition-opacity"
-          >
+          <Button size="sm" onClick={useDeliveredInPost}>
             {t('video_result_use', 'Use in post')} →
-          </button>
+          </Button>
           <button
             onClick={() => setDelivered(null)}
             className="px-3 py-1 rounded bg-newColColor text-textColor hover:bg-forth transition-colors"

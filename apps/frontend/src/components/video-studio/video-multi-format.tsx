@@ -11,6 +11,7 @@ import {
   Mp4OutputFormat,
 } from 'mediabunny';
 import { useT } from '@gitroom/react/translation/get.transation.service.client';
+import { Button } from '@gitroom/frontend/components/ui/button';
 import { useToaster } from '@gitroom/react/toaster/toaster';
 import { VIDEO_FORMATS, VideoFormat } from './video-formats';
 import { assertVideoSurvives } from './mp4-source';
@@ -145,10 +146,10 @@ export const VideoMultiFormat: FC<VideoMultiFormatProps> = ({ source, onExported
           );
         })}
       </div>
-      <button
+      <Button
         onClick={handleExport}
         disabled={isExporting || selected.size === 0}
-        className="px-3 py-2 text-sm rounded bg-newAccent text-white hover:bg-forth disabled:opacity-50 transition-colors"
+        className="self-start"
       >
         {isExporting
           ? t('video_format_exporting', 'Exporting {n} formats...').replace(
@@ -159,7 +160,7 @@ export const VideoMultiFormat: FC<VideoMultiFormatProps> = ({ source, onExported
               '{n}',
               String(selected.size)
             )}
-      </button>
+      </Button>
     </div>
   );
 };
