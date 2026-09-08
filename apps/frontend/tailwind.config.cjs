@@ -95,7 +95,7 @@ module.exports = {
         newTableText: 'var(--new-table-text)',
         newTableTextFocused: 'var(--new-table-text-focused)',
         newColColor: 'var(--new-col-color)',
-        newAccent: 'var(--new-btn-primary)',
+        newAccent: 'rgb(var(--new-btn-primary-rgb) / <alpha-value>)',
         newSettings: 'var(--new-settings)',
         menuDots: 'var(--new-menu-dots)',
         menuDotsHover: 'var(--new-menu-hover)',
