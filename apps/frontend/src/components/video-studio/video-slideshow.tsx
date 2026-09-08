@@ -26,6 +26,9 @@ interface Picked {
 }
 
 const MAX_IMAGES = 10;
+// Extensions worth trying even when the browser hands us a useless MIME
+// type. HEIC is the one that matters - it is the iPhone default.
+const IMAGE_EXTENSION = /\.(heic|heif|jpe?g|png|webp|gif|bmp|avif|tiff?)$/i;
 const PRESETS: { key: string; label: string }[] = [
   { key: 'video_slideshow_preset_new', label: 'New arrival' },
   { key: 'video_slideshow_preset_sale', label: 'Sale' },
@@ -101,8 +104,25 @@ export const VideoSlideshow: FC<VideoSlideshowProps> = ({ onReady }) => {
 
   const addFiles = useCallback(
     async (files: FileList) => {
-      const picked = Array.from(files).filter((f) => f.type.startsWith('image/'));
-      if (!picked.length) return;
+      // A .heic straight off an iPhone frequently arrives as
+      // application/octet-stream, and filtering on MIME alone dropped it here -
+      // before the probe below could name it - so the picker simply did
+      // nothing and the "Add photos (n/10)" counter never moved. Take anything
+      // that reads as an image by type OR by extension and let
+      // createImageBitmap be the judge; the unreadable ones still get named.
+      const picked = Array.from(files).filter(
+        (f) => f.type.startsWith('image/') || IMAGE_EXTENSION.test(f.name)
+      );
+      if (!picked.length) {
+        toaster.show(
+          t(
+            'slideshow_not_photos',
+            'Those files are not photos. Pick JPEG or PNG images.'
+          ),
+          'warning'
+        );
+        return;
+      }
 
       // Probe each photo now rather than failing minutes later, mid-render.
       // HEIC is why: it's the iPhone default, Safari reads it and Chrome does
@@ -280,7 +300,9 @@ export const VideoSlideshow: FC<VideoSlideshowProps> = ({ onReady }) => {
       <input
         ref={fileRef}
         type="file"
-        accept="image/*"
+        // image/* alone can hide .heic in the OS picker on some platforms,
+        // and the file arrives with a generic MIME type anyway.
+        accept="image/*,.heic,.heif"
         multiple
         className="hidden"
         onChange={(e) => {

@@ -23,6 +23,9 @@ import {
 import { ensureMp4, isMp4 } from './mp4-source';
 import { UnsupportedCodecError } from './compositor-pipeline';
 
+// Extensions worth trying when the browser hands us a useless MIME type.
+const VIDEO_EXTENSION = /\.(mp4|m4v|mov|webm|mkv|avi|qt)$/i;
+
 interface VideoStudioProps {
   setMedia: (params: { id: string; path: string }[]) => void;
   closeModal: () => void;
@@ -231,7 +234,12 @@ export const VideoStudio: FC<VideoStudioProps> = ({
     // after a failed step fires no change event and looks like a dead button.
     e.target.value = '';
     if (!f) return;
-    if (!f.type.startsWith('video/')) {
+    // Same trap as the photo picker: a .mov or .mp4 can arrive with a generic
+    // application/octet-stream, and judging on MIME alone told the user to
+    // "choose a video file (MP4, WebM, MOV)" about the MOV they had just
+    // chosen. Accept it by extension too and let the decoder be the judge -
+    // an undecodable clip is reported properly further down the line.
+    if (!f.type.startsWith('video/') && !VIDEO_EXTENSION.test(f.name)) {
       toaster.show(t('video_bad_type', 'Choose a video file (MP4, WebM, MOV).'), 'warning');
       return;
     }

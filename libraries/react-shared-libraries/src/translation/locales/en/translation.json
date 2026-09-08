@@ -1353,5 +1353,7 @@
   "video_captions_rate_limited": "Too many caption requests. Wait a few minutes and try again.",
   "video_captions_too_long": "That clip's audio is too long to transcribe. Trim it and try again.",
   "slideshow_unreadable": "Your browser can't read {files} (iPhone HEIC photos usually). Export them as JPEG and add them again.",
-  "image_stock_source": "Free photos from Pixabay — commercial use, no credit needed."
+  "image_stock_source": "Free photos from Pixabay — commercial use, no credit needed.",
+  "video_trim_undecodable": "Your browser can't read this clip, so there is nothing to trim.",
+  "slideshow_not_photos": "Those files are not photos. Pick JPEG or PNG images."
 }
