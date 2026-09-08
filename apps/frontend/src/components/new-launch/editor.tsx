@@ -31,7 +31,6 @@ import { MultiMediaComponent } from '@gitroom/frontend/components/media/media.co
 import { UpDownArrow } from '@gitroom/frontend/components/launches/up.down.arrow';
 import { deleteDialog } from '@gitroom/react/helpers/delete.dialog';
 import { useExistingData } from '@gitroom/frontend/components/launches/helpers/use.existing.data';
-import { useCopilotAction, useCopilotReadable } from '@copilotkit/react-core';
 import { useDropzone } from 'react-dropzone';
 import { useUppyUploader } from '@gitroom/frontend/components/media/new.uploader';
 import { Dashboard } from '@uppy/react';
@@ -224,27 +223,6 @@ export const EditorWrapper: FC<{
     },
     [internal, items]
   );
-
-  useCopilotReadable({
-    description: 'Current content of posts',
-    value: (items ?? []).map((p) => p.content),
-  });
-
-  useCopilotAction({
-    name: 'setPosts',
-    description: 'a thread of posts',
-    parameters: [
-      {
-        name: 'content',
-        type: 'string[]',
-        description: 'a thread of posts',
-      },
-    ],
-    handler: async ({ content }) => {
-      if (!Array.isArray(content) || content.length === 0) return;
-      setValue(content);
-    },
-  });
 
   const changeValue = useCallback(
     (index: number) => (value: string) => {
@@ -551,7 +529,14 @@ export const EditorWrapper: FC<{
                 )}
               </div>
             )}
-            {canEdit && (
+          </div>
+
+          {/* The row above lays its children out horizontally, so sitting in it
+              squeezed the editor to about half its width and scattered the
+              chips down the right-hand side. These belong under the post they
+              act on, on one line. */}
+          {canEdit && (
+            <div className="flex flex-wrap items-start gap-x-4 gap-y-1 px-[12px] -mt-[12px]">
               <AiAssistRibbon
                 content={g.content}
                 platform={
@@ -562,9 +547,9 @@ export const EditorWrapper: FC<{
                 }
                 onReplace={(html) => changeValue(index)(html)}
               />
-            )}
-            {index === 0 && canEdit && <BrandVoiceRibbon content={g.content} />}
-          </div>
+              {index === 0 && <BrandVoiceRibbon content={g.content} />}
+            </div>
+          )}
         </div>
       ))}
     </div>
