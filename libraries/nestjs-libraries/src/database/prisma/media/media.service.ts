@@ -30,6 +30,7 @@ import { platformDesignSize } from '@gitroom/nestjs-libraries/studio/post-design
 import {
   BrandVoiceCheckDto,
   AiEditTextDto,
+  SuggestHashtagsDto,
   RefineDesignDto,
   TemplateSearchDto,
 } from '@gitroom/nestjs-libraries/studio/studio.dto';
@@ -578,6 +579,22 @@ export class MediaService {
 
   // Inline composer AI: rewrite/shorten/expand/adapt/fix-tone the caption in the
   // user's brand voice.
+  async suggestHashtags(
+    org: Organization,
+    body: SuggestHashtagsDto
+  ): Promise<{ hashtags: string[] }> {
+    const brandKit = await this._brandKitService.getNormalized(org.id);
+
+    return this._studioAi.suggestHashtags(
+      {
+        text: body.text,
+        platform: body.platform,
+        tone: brandKit?.tone,
+      },
+      org.id
+    );
+  }
+
   async aiEditText(
     org: Organization,
     body: AiEditTextDto

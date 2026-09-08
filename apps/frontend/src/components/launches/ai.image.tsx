@@ -7,6 +7,7 @@ import { useT } from '@gitroom/react/translation/get.transation.service.client';
 import { useLaunchStore } from '@gitroom/frontend/components/new-launch/store';
 import { useModals } from '@gitroom/frontend/components/layout/new-modal';
 import { useToaster } from '@gitroom/react/toaster/toaster';
+import useSWR from 'swr';
 const list = [
   'Realistic',
   'Cartoon',
@@ -36,6 +37,15 @@ const AiImageModal: FC<{
   const setLocked = useLaunchStore((p) => p.setLocked);
   const [prompt, setPrompt] = useState('');
   const [style, setStyle] = useState(list[0]);
+
+  // The number only matters at the moment you decide to spend one, so it
+  // lives in this modal rather than as permanent chrome in the composer.
+  const loadCredits = useCallback(
+    async () => (await fetch('/copilot/credits?type=ai_images')).json(),
+    [fetch]
+  );
+  const { data: credits } = useSWR('copilot-credits-images', loadCredits);
+  const left = credits?.credits;
 
   const generate = useCallback(async () => {
     if (!prompt.trim()) {
@@ -134,7 +144,26 @@ ${style}
   return (
     <div className="flex flex-col gap-[16px]">
       <div className="flex flex-col gap-[6px]">
-        <div className="text-[14px]">{t('prompt', 'Prompt')}</div>
+        <div className="flex items-center justify-between gap-[12px]">
+          <div className="text-[14px]">{t('prompt', 'Prompt')}</div>
+          {typeof left === 'number' && (
+            <div
+              className={clsx(
+                'text-[12px]',
+                left <= 0
+                  ? 'text-[#ef4444]'
+                  : left <= 5
+                  ? 'text-[#fbbf24]'
+                  : 'text-newTextColor/60'
+              )}
+            >
+              {t('ai_images_left', '{n} image credits left').replace(
+                '{n}',
+                String(Math.max(0, left))
+              )}
+            </div>
+          )}
+        </div>
         <textarea
           value={prompt}
           onChange={(e) => setPrompt(e.target.value)}

@@ -1370,5 +1370,12 @@
   "agent_limit_upgrade": "See plans",
   "video_generation_failed": "Could not generate the video, please try again.",
   "output_voice": "Output voice",
-  "add_pictures_cost": "One image credit per post — a thread costs one per part."
+  "add_pictures_cost": "One image credit per post — a thread costs one per part.",
+  "ai_images_left": "{n} image credits left",
+  "ai_edit_hashtags": "# Hashtags",
+  "ai_hashtags_running": "Finding hashtags…",
+  "ai_hashtags_failed": "Could not suggest hashtags — try again later.",
+  "ai_hashtags_none": "No hashtags worth adding to this one.",
+  "ai_hashtags_add": "Add to post",
+  "dismiss": "Dismiss"
 }

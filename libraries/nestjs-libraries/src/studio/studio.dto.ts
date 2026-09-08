@@ -43,6 +43,19 @@ const AI_EDIT_ACTIONS = [
   'fix_tone',
 ] as const;
 
+export class SuggestHashtagsDto {
+  @IsString()
+  @IsDefined()
+  @MinLength(3)
+  @MaxLength(3000)
+  text: string;
+
+  @IsString()
+  @IsOptional()
+  @MaxLength(50)
+  platform?: string;
+}
+
 export class AiEditTextDto {
   @IsString()
   @IsDefined()

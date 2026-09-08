@@ -39,6 +39,7 @@ import { ioRedis } from '@gitroom/nestjs-libraries/redis/redis.service';
 import {
   BrandVoiceCheckDto,
   AiEditTextDto,
+  SuggestHashtagsDto,
   RefineDesignDto,
   SaveCanvasJsonDto,
   SaveDesignSpecDto,
@@ -346,6 +347,16 @@ export class MediaController {
     @Body() body: BrandVoiceCheckDto
   ) {
     return this._mediaService.checkBrandVoice(org, body);
+  }
+
+  @Post('/suggest-hashtags')
+  @Throttle({ default: { ttl: 300000, limit: 30 } })
+  @UseGuards(AccountAgeGuard)
+  suggestHashtags(
+    @GetOrgFromRequest() org: Organization,
+    @Body() body: SuggestHashtagsDto
+  ) {
+    return this._mediaService.suggestHashtags(org, body);
   }
 
   @Post('/ai-edit')

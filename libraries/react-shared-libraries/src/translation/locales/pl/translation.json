@@ -1370,5 +1370,12 @@
   "agent_limit_upgrade": "Zobacz plany",
   "video_generation_failed": "Nie udało się wygenerować wideo, spróbuj ponownie.",
   "output_voice": "Głos wypowiedzi",
-  "add_pictures_cost": "Jeden kredyt obrazkowy na post — wątek kosztuje po jednym za każdą część."
+  "add_pictures_cost": "Jeden kredyt obrazkowy na post — wątek kosztuje po jednym za każdą część.",
+  "ai_images_left": "zostało {n} kredytów na obrazy",
+  "ai_edit_hashtags": "# Hashtagi",
+  "ai_hashtags_running": "Szukam hashtagów…",
+  "ai_hashtags_failed": "Nie udało się zaproponować hashtagów — spróbuj później.",
+  "ai_hashtags_none": "Do tego posta nie ma sensownych hashtagów.",
+  "ai_hashtags_add": "Dodaj do posta",
+  "dismiss": "Odrzuć"
 }
