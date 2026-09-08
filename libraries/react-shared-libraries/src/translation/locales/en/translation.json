@@ -1382,5 +1382,13 @@
   "alt_text_generate": "Describe it for me",
   "alt_text_running": "Looking at the image…",
   "alt_text_failed": "Could not describe the image — write the alt text yourself.",
-  "alt_text_placeholder": "Describe the image/video content..."
+  "alt_text_placeholder": "Describe the image/video content...",
+  "ai_adapt_all": "Adapt to each channel",
+  "ai_adapt_all_running": "Adapting each channel…",
+  "ai_adapt_all_hint": "Writes a separate version per channel. Channels you already edited stay untouched.",
+  "ai_adapt_all_nothing": "Every channel already has its own version.",
+  "ai_adapt_all_done": "Adapted {{adapted}} channel(s). Kept {{kept}} as they were.",
+  "ai_adapt_all_failed": "Could not adapt the post — try again later.",
+  "ai_adapt_all_rate_limited": "Too many AI requests for now. Wait a few minutes and run it again.",
+  "ai_adapt_all_too_big": "Too many channels and posts to adapt in one go. Adapt them from each channel tab instead."
 }

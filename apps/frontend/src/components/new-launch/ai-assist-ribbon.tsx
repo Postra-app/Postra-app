@@ -4,14 +4,17 @@ import { FC, useCallback, useRef, useState } from 'react';
 import { useFetch } from '@gitroom/helpers/utils/custom.fetch';
 import { useToaster } from '@gitroom/react/toaster/toaster';
 import { useT } from '@gitroom/react/translation/get.transation.service.client';
+import {
+  AI_MIN_CONTENT_LEN,
+  aiPlainText,
+  aiTextToHtml,
+} from '@gitroom/frontend/components/new-launch/ai-text.utils';
 
 interface Props {
   content: string;
   platform?: string;
   onReplace: (html: string) => void;
 }
-
-const MIN_CONTENT_LEN = 10;
 
 const ACTIONS: {
   key: string;
@@ -31,19 +34,6 @@ const ACTIONS: {
   { key: 'fix_tone', labelKey: 'ai_edit_fix_tone', fallback: 'Fix tone' },
 ];
 
-// The AI returns plain text; the editor stores <p>-per-line HTML, so wrap it.
-const toHtml = (text: string) =>
-  text
-    .split('\n')
-    .map((line) => {
-      const escaped = line
-        .replace(/&/g, '&amp;')
-        .replace(/</g, '&lt;')
-        .replace(/>/g, '&gt;');
-      return `<p>${escaped || '<br>'}</p>`;
-    })
-    .join('');
-
 export const AiAssistRibbon: FC<Props> = ({ content, platform, onReplace }) => {
   const fetch = useFetch();
   const toaster = useToaster();
@@ -53,11 +43,8 @@ export const AiAssistRibbon: FC<Props> = ({ content, platform, onReplace }) => {
   const [picked, setPicked] = useState<Set<string>>(new Set());
   const abortRef = useRef<AbortController | null>(null);
 
-  const plainText = content
-    .replace(/<[^>]+>/g, ' ')
-    .replace(/\s+/g, ' ')
-    .trim();
-  const ready = plainText.length >= MIN_CONTENT_LEN;
+  const plainText = aiPlainText(content);
+  const ready = plainText.length >= AI_MIN_CONTENT_LEN;
 
   const run = useCallback(
     async (action: string) => {
@@ -88,11 +75,14 @@ export const AiAssistRibbon: FC<Props> = ({ content, platform, onReplace }) => {
         }
 
         const data = (await res.json()) as { text: string };
-        if (data?.text) onReplace(toHtml(data.text));
+        if (data?.text) onReplace(aiTextToHtml(data.text));
       } catch (err) {
         if ((err as { name?: string })?.name !== 'AbortError') {
           toaster.show(
-            t('ai_edit_failed', 'Could not rewrite the text — try again later.'),
+            t(
+              'ai_edit_failed',
+              'Could not rewrite the text — try again later.'
+            ),
             'warning'
           );
         }
@@ -116,7 +106,10 @@ export const AiAssistRibbon: FC<Props> = ({ content, platform, onReplace }) => {
         toaster.show(
           res.status === 402
             ? t('ai_no_credits', 'You ran out of AI credits.')
-            : t('ai_hashtags_failed', 'Could not suggest hashtags — try again later.'),
+            : t(
+                'ai_hashtags_failed',
+                'Could not suggest hashtags — try again later.'
+              ),
           'warning'
         );
         return;
@@ -127,7 +120,10 @@ export const AiAssistRibbon: FC<Props> = ({ content, platform, onReplace }) => {
       setPicked(new Set(list));
     } catch {
       toaster.show(
-        t('ai_hashtags_failed', 'Could not suggest hashtags — try again later.'),
+        t(
+          'ai_hashtags_failed',
+          'Could not suggest hashtags — try again later.'
+        ),
         'warning'
       );
     } finally {

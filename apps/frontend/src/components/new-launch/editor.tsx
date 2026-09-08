@@ -27,6 +27,7 @@ import { useShallow } from 'zustand/react/shallow';
 import { AddPostButton } from '@gitroom/frontend/components/new-launch/add.post.button';
 import { BrandVoiceRibbon } from '@gitroom/frontend/components/new-launch/brand-voice-ribbon';
 import { AiAssistRibbon } from '@gitroom/frontend/components/new-launch/ai-assist-ribbon';
+import { AdaptAllChannels } from '@gitroom/frontend/components/new-launch/adapt-all-channels';
 import { MultiMediaComponent } from '@gitroom/frontend/components/media/media.component';
 import { UpDownArrow } from '@gitroom/frontend/components/launches/up.down.arrow';
 import { deleteDialog } from '@gitroom/react/helpers/delete.dialog';
@@ -425,7 +426,6 @@ export const EditorWrapper: FC<{
           <div className="absolute w-full h-full left-0 top-0 bg-newBackdrop opacity-60 z-[100] rounded-[12px]" />
         </>
       )}
-      {(() : null => { if (!items) console.warn('[Postra:editor] items is undefined! current:', current, 'internal:', !!internal); return null; })()}
       {(items ?? []).map((g, index) => (
         <div
           key={g.id}
@@ -548,6 +548,7 @@ export const EditorWrapper: FC<{
                 onReplace={(html) => changeValue(index)(html)}
               />
               {index === 0 && <BrandVoiceRibbon content={g.content} />}
+              {index === 0 && <AdaptAllChannels />}
             </div>
           )}
         </div>

@@ -1382,5 +1382,13 @@
   "alt_text_generate": "Opisz za mnie",
   "alt_text_running": "Oglądam obraz…",
   "alt_text_failed": "Nie udało się opisać obrazu — wpisz tekst samodzielnie.",
-  "alt_text_placeholder": "Opisz zawartość obrazu lub wideo..."
+  "alt_text_placeholder": "Opisz zawartość obrazu lub wideo...",
+  "ai_adapt_all": "Dopasuj do każdego kanału",
+  "ai_adapt_all_running": "Dopasowuję kanały…",
+  "ai_adapt_all_hint": "Tworzy osobną wersję dla każdego kanału. Kanały, które już edytowałeś, zostają bez zmian.",
+  "ai_adapt_all_nothing": "Każdy kanał ma już własną wersję.",
+  "ai_adapt_all_done": "Dopasowano kanały: {{adapted}}. Bez zmian: {{kept}}.",
+  "ai_adapt_all_failed": "Nie udało się dopasować posta — spróbuj później.",
+  "ai_adapt_all_rate_limited": "Za dużo zapytań do AI. Odczekaj kilka minut i spróbuj ponownie.",
+  "ai_adapt_all_too_big": "Za dużo kanałów i postów naraz. Dopasuj je z zakładki każdego kanału."
 }
