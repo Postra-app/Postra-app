@@ -1071,8 +1071,8 @@ export const OnlyEditor = forwardRef<
 
   useEffect(() => {
     if (!editor) return;
-    // Sync external content changes (AI-assist ribbon replace, copilot
-    // setPosts, loading a draft) into the editor. During normal typing the
+    // Sync external content changes (AI-assist ribbon replace, adapt-to-all
+    // rewrite, loading a draft) into the editor. During normal typing the
     // value already equals the editor HTML so this is a no-op and the cursor
     // never jumps; emitUpdate:false avoids echoing the change back out.
     if (value === editor.getHTML()) return;
