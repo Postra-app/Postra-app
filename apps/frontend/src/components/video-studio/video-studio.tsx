@@ -698,14 +698,14 @@ export const VideoStudio: FC<VideoStudioProps> = ({
                     {g.desc}
                   </div>
                   {lastGoal === g.goal && (
-                    <span className="absolute top-1.5 right-2 text-[9px] uppercase tracking-wide text-textColor/40 group-hover:text-white/60">
+                    <span className="absolute top-1.5 right-2 text-[11px] uppercase tracking-wide text-textColor/65 group-hover:text-white/60">
                       {t('video_goal_last', 'last used')}
                     </span>
                   )}
                 </button>
               ))}
             </div>
-            <div className="text-[10px] text-textColor/40 text-center">
+            <div className="text-[11px] text-textColor/65 text-center">
               {t('video_goals_hint', 'Same tools as the tabs above — this is just the quickest way in.')}
               <br />
               {t('video_goals_free', 'Every tool here is included on all plans.')}

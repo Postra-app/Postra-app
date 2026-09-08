@@ -143,7 +143,7 @@ export const AiRefinePanel: FC<Props> = ({ canvas }) => {
   return (
     <div className="flex flex-col gap-2">
       <div>
-        <div className="text-[10px] uppercase tracking-wide text-textColor/60 mb-1">
+        <div className="text-[11px] uppercase tracking-wide text-textColor/60 mb-1">
           {t('refine_title', 'AI Refine')}
         </div>
         <p className="text-[11px] text-textColor/60 leading-snug">
@@ -152,7 +152,7 @@ export const AiRefinePanel: FC<Props> = ({ canvas }) => {
             'Describe what to change in the current design. AI will edit the relevant elements instead of starting from scratch.'
           )}
         </p>
-        <p className="text-[10px] text-textColor/40 leading-snug mt-1">
+        <p className="text-[11px] text-textColor/65 leading-snug mt-1">
           {t(
             'refine_scope_hint',
             'It edits the design — text, colours, layout. It does not retouch photos (e.g. it can’t add a person to an image).'
@@ -166,7 +166,7 @@ export const AiRefinePanel: FC<Props> = ({ canvas }) => {
             key={q.key}
             disabled={busy}
             onClick={() => run(t(q.key, q.fallback))}
-            className="text-[10px] px-2 py-1 rounded bg-newColColor hover:bg-white/[0.08] text-textColor/80 transition-colors disabled:opacity-40"
+            className="text-[11px] px-2 py-1 rounded bg-newColColor hover:bg-white/[0.08] text-textColor/80 transition-colors disabled:opacity-40"
           >
             {t(q.key, q.fallback)}
           </button>
@@ -215,7 +215,7 @@ export const AiRefinePanel: FC<Props> = ({ canvas }) => {
         </div>
       )}
 
-      <p className="text-[10px] text-textColor/40 leading-snug">
+      <p className="text-[11px] text-textColor/65 leading-snug">
         {t(
           'refine_undo_hint',
           'Each iteration is saved in history — undo with Ctrl+Z.'

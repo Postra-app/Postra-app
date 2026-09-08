@@ -602,7 +602,7 @@ export const EditorToolbar: FC<ToolbarProps> = ({ canvas }) => {
         <div className="w-[280px] shrink-0 p-3 flex flex-col gap-3 min-h-0 overflow-y-auto">
         {activeTool === 'select' && (
           <div className="flex flex-col gap-2">
-            <span className="text-[10px] text-textColor/60 uppercase tracking-wide">
+            <span className="text-[11px] text-textColor/60 uppercase tracking-wide">
               {t('tool_select', 'Select')}
             </span>
             <p className="text-[11px] leading-relaxed text-textColor/70">
@@ -626,7 +626,7 @@ export const EditorToolbar: FC<ToolbarProps> = ({ canvas }) => {
 
         {activeTool === 'text' && (
           <div className="flex flex-col gap-2">
-            <span className="text-[10px] text-textColor/60 uppercase tracking-wide">
+            <span className="text-[11px] text-textColor/60 uppercase tracking-wide">
               {t('font_label', 'Font')}
             </span>
             <select
@@ -650,7 +650,7 @@ export const EditorToolbar: FC<ToolbarProps> = ({ canvas }) => {
             >
               + {t('text_add', 'Add text')}
             </button>
-            <p className="text-[10px] text-textColor/40 leading-snug">
+            <p className="text-[11px] text-textColor/65 leading-snug">
               {t(
                 'text_font_hint',
                 'Choose a font for new text. To change existing text — select it and pick a font.'
@@ -661,7 +661,7 @@ export const EditorToolbar: FC<ToolbarProps> = ({ canvas }) => {
 
         {activeTool === 'shapes' && (
           <div className="flex flex-col gap-2">
-            <span className="text-[10px] text-textColor/60 uppercase tracking-wide">
+            <span className="text-[11px] text-textColor/60 uppercase tracking-wide">
               {t('add_shape', 'Add shape')}
             </span>
             <div className="grid grid-cols-4 gap-1.5">
@@ -682,7 +682,7 @@ export const EditorToolbar: FC<ToolbarProps> = ({ canvas }) => {
 
         {activeTool === 'images' && (
           <div className="flex flex-col gap-2">
-            <span className="text-[10px] text-textColor/60 uppercase tracking-wide">
+            <span className="text-[11px] text-textColor/60 uppercase tracking-wide">
               {t('add_image', 'Add Image')}
             </span>
             <button
@@ -726,7 +726,7 @@ export const EditorToolbar: FC<ToolbarProps> = ({ canvas }) => {
             >
               ✂ {t('crop_smart', 'Smart crop to platform')}
             </button>
-            <p className="text-[10px] text-textColor/40 leading-snug">
+            <p className="text-[11px] text-textColor/65 leading-snug">
               {t(
                 'image_tools_hint',
                 'Both work on the selected image (or the last one added). Remove background downloads an AI model (~30MB) on first run; Smart crop trims the photo to the current post format.'
@@ -754,13 +754,13 @@ export const EditorToolbar: FC<ToolbarProps> = ({ canvas }) => {
           activeTool === 'text') && (
           <>
           <div className="flex flex-col gap-2">
-            <span className="text-[10px] text-textColor/60 uppercase tracking-wide">
+            <span className="text-[11px] text-textColor/60 uppercase tracking-wide">
               {hasSelection
                 ? t('fill_selected', 'Colour of selected object')
                 : t('background', 'Background')}
             </span>
             {!hasSelection && (
-              <p className="text-[10px] text-textColor/45 leading-snug">
+              <p className="text-[11px] text-textColor/65 leading-snug">
                 {t(
                   'fill_hint',
                   'Nothing selected — these colours set the canvas background. Select an object to recolour it.'

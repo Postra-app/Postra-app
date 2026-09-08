@@ -111,9 +111,9 @@ export const IconsPanel: FC<IconsPanelProps> = ({ canvas }) => {
               key={c.key}
               onClick={() => setCategory(c.key)}
               className={clsx(
-                'text-[10px] px-2 py-1 rounded transition-colors',
+                'text-[11px] px-2 py-1 rounded transition-colors',
                 category === c.key
-                  ? 'bg-forth text-white'
+                  ? 'bg-newAccent text-[#06222e] font-[600]'
                   : 'bg-newColColor text-textColor/70 hover:text-textColor'
               )}
             >
@@ -138,7 +138,7 @@ export const IconsPanel: FC<IconsPanelProps> = ({ canvas }) => {
           );
         })}
         {filtered.length === 0 && (
-          <div className="col-span-4 text-center text-[11px] text-textColor/50 py-4">
+          <div className="col-span-4 text-center text-[11px] text-textColor/65 py-4">
             {t('icon_no_results', 'No results')}
           </div>
         )}

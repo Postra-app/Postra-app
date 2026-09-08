@@ -7,7 +7,10 @@ module.exports = {
       colors: {
         primary: 'var(--color-primary)',
         secondary: 'var(--color-secondary)',
-        textColor: 'var(--new-btn-text)',
+        // channel form of the same colour (--new-btn-text is the hex twin):
+        // a hex behind a var cannot take a Tailwind opacity modifier, so
+        // every text-textColor/NN in the app emitted no rule at all
+        textColor: 'rgb(var(--new-textColor) / <alpha-value>)',
         third: 'var(--color-third)',
         forth: 'var(--color-forth)',
         fifth: 'var(--color-fifth)',

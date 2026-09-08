@@ -165,7 +165,7 @@ export const WelcomeModal: FC = () => {
           </button>
         </div>
 
-        <p className="text-[11px] text-textColor/50 text-center mt-4 leading-snug">
+        <p className="text-[11px] text-textColor/65 text-center mt-4 leading-snug">
           {t(
             'welcome_brand_tip',
             'Tip: set your Brand Kit once — templates, AI designs and video captions all pick up your colours and font.'
@@ -174,7 +174,7 @@ export const WelcomeModal: FC = () => {
 
         <button
           onClick={close}
-          className="absolute top-3 right-3 text-textColor/40 hover:text-textColor text-xl leading-none"
+          className="absolute top-3 right-3 text-textColor/65 hover:text-textColor text-xl leading-none"
           aria-label={t('welcome_close', 'Close')}
         >
           ×

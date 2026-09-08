@@ -274,7 +274,7 @@ export const VideoTextOverlay: FC<VideoTextOverlayProps> = ({ onReady }) => {
         </button>
       </div>
       {file && (
-        <div className="text-[10px] text-textColor/60 truncate">✓ {file.name}</div>
+        <div className="text-[11px] text-textColor/60 truncate">✓ {file.name}</div>
       )}
 
       <textarea
@@ -288,7 +288,7 @@ export const VideoTextOverlay: FC<VideoTextOverlayProps> = ({ onReady }) => {
 
       {/* Position */}
       <div className="flex flex-col gap-1">
-        <label className="text-[10px] text-textColor/60">{t('clip_text_position', 'Position')}</label>
+        <label className="text-[11px] text-textColor/60">{t('clip_text_position', 'Position')}</label>
         <div className="flex gap-2">
           {POSITIONS.map((p) => (
             <button
@@ -310,7 +310,7 @@ export const VideoTextOverlay: FC<VideoTextOverlayProps> = ({ onReady }) => {
       {/* Colour + size, defaulting to the Brand Kit */}
       <div className="flex gap-3">
         <div className="flex flex-col gap-1">
-          <label className="text-[10px] text-textColor/60">{t('clip_text_color', 'Colour')}</label>
+          <label className="text-[11px] text-textColor/60">{t('clip_text_color', 'Colour')}</label>
           <div className="flex items-center gap-2">
             <div className="relative w-8 h-8 shrink-0">
               <div
@@ -330,7 +330,7 @@ export const VideoTextOverlay: FC<VideoTextOverlayProps> = ({ onReady }) => {
               <button
                 onClick={() => setColor(kit.primaryColor)}
                 disabled={busy}
-                className="text-[10px] text-newAccent underline disabled:opacity-50"
+                className="text-[11px] text-newAccent underline disabled:opacity-50"
               >
                 {t('clip_text_brand_color', 'Brand')}
               </button>
@@ -338,7 +338,7 @@ export const VideoTextOverlay: FC<VideoTextOverlayProps> = ({ onReady }) => {
           </div>
         </div>
         <div className="flex flex-col gap-1 flex-1">
-          <label className="text-[10px] text-textColor/60">{t('clip_text_size', 'Size')}</label>
+          <label className="text-[11px] text-textColor/60">{t('clip_text_size', 'Size')}</label>
           <div className="flex gap-2">
             {SIZES.map((s) => (
               <button
@@ -360,7 +360,7 @@ export const VideoTextOverlay: FC<VideoTextOverlayProps> = ({ onReady }) => {
 
       {/* Font */}
       <div className="flex flex-col gap-1">
-        <label className="text-[10px] text-textColor/60">{t('font', 'Font')}</label>
+        <label className="text-[11px] text-textColor/60">{t('font', 'Font')}</label>
         <select
           value={effectiveFontLabel}
           onChange={(e) => setFontLabel(e.target.value)}
@@ -387,7 +387,7 @@ export const VideoTextOverlay: FC<VideoTextOverlayProps> = ({ onReady }) => {
 
       {resultUrl && (
         <div className="flex flex-col gap-2">
-          <div className="text-[10px] text-green-400">
+          <div className="text-[11px] text-green-400">
             ✓{' '}
             {hadAudio
               ? t('compositor_with_audio', 'with audio')
@@ -412,7 +412,7 @@ export const VideoTextOverlay: FC<VideoTextOverlayProps> = ({ onReady }) => {
             <a
               href={resultUrl}
               download="postra-clip.mp4"
-              className="text-[10px] text-newAccent underline"
+              className="text-[11px] text-newAccent underline"
             >
               {t('clip_text_download', 'Download')}
             </a>

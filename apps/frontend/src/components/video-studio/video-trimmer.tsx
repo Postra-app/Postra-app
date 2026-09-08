@@ -202,7 +202,7 @@ export const VideoTrimmer: FC<VideoTrimmerProps> = ({ file, onTrimmed }) => {
       <div ref={waveContainerRef} className="w-full bg-white/[0.03] rounded" />
       <div className="grid grid-cols-2 gap-3">
         <div className="flex flex-col gap-1">
-          <label className="text-[10px] uppercase tracking-wide text-textColor/60">
+          <label className="text-[11px] uppercase tracking-wide text-textColor/60">
             {t('video_trim_start', 'Start')}: {trimStart.toFixed(2)}s
           </label>
           <input
@@ -219,7 +219,7 @@ export const VideoTrimmer: FC<VideoTrimmerProps> = ({ file, onTrimmed }) => {
           />
         </div>
         <div className="flex flex-col gap-1">
-          <label className="text-[10px] uppercase tracking-wide text-textColor/60">
+          <label className="text-[11px] uppercase tracking-wide text-textColor/60">
             {t('video_trim_end', 'End')}: {trimEnd.toFixed(2)}s
           </label>
           <input

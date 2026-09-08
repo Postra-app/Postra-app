@@ -207,12 +207,12 @@ export const ImageFiltersPanel: FC<Props> = ({ canvas }) => {
 
   return (
     <div className="flex flex-col gap-2">
-      <span className="text-[10px] text-textColor/60 uppercase tracking-wide">
+      <span className="text-[11px] text-textColor/60 uppercase tracking-wide">
         {t('filter_section', 'Filters')}
       </span>
 
       {!hasImage ? (
-        <p className="text-[10px] text-textColor/40 leading-snug">
+        <p className="text-[11px] text-textColor/65 leading-snug">
           {t('crop_no_image', 'Select an image on the canvas')}
         </p>
       ) : (
@@ -223,9 +223,9 @@ export const ImageFiltersPanel: FC<Props> = ({ canvas }) => {
                 key={p.key}
                 onClick={() => applyPreset(p.key)}
                 className={clsx(
-                  'text-[10px] px-1.5 py-1.5 rounded transition-colors',
+                  'text-[11px] px-1.5 py-1.5 rounded transition-colors',
                   state.preset === p.key
-                    ? 'bg-forth text-white'
+                    ? 'bg-newAccent text-[#06222e] font-[600]'
                     : 'bg-newColColor hover:bg-white/[0.08] text-textColor'
                 )}
               >
@@ -236,7 +236,7 @@ export const ImageFiltersPanel: FC<Props> = ({ canvas }) => {
 
           {SLIDERS.map((s) => (
             <label key={s.key} className="flex flex-col gap-0.5">
-              <span className="flex justify-between text-[10px] text-textColor/60">
+              <span className="flex justify-between text-[11px] text-textColor/60">
                 <span>{t(s.labelKey, s.fallback)}</span>
                 <span className="tabular-nums">{state[s.key].toFixed(2)}</span>
               </span>

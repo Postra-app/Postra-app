@@ -197,7 +197,7 @@ export const CarouselStrip: FC<CarouselStripProps> = ({ fabricRef }) => {
                 sourceWidth={platform.width}
                 sourceHeight={platform.height}
               />
-              <div className="absolute top-0 left-0 bg-black/70 text-white text-[10px] px-1 rounded-br">
+              <div className="absolute top-0 left-0 bg-black/70 text-white text-[11px] px-1 rounded-br">
                 {i + 1}
               </div>
               {slides.length > 1 && (
@@ -206,7 +206,7 @@ export const CarouselStrip: FC<CarouselStripProps> = ({ fabricRef }) => {
                     e.stopPropagation();
                     deleteSlide(i);
                   }}
-                  className="absolute top-0 right-0 bg-black/70 text-white text-[10px] w-4 h-4 rounded-bl hover:bg-red-500 flex items-center justify-center"
+                  className="absolute top-0 right-0 bg-black/70 text-white text-[11px] w-4 h-4 rounded-bl hover:bg-red-500 flex items-center justify-center"
                   title={t('carousel_delete_slide', 'Delete this slide')}
                 >
                   ✕

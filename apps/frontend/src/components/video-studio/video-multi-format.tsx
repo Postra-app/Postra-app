@@ -133,15 +133,15 @@ export const VideoMultiFormat: FC<VideoMultiFormatProps> = ({ source, onExported
                 />
                 <div className="text-xs">
                   <div className="text-textColor">{fmt.label}</div>
-                  <div className="text-[10px] text-textColor/50">
+                  <div className="text-[11px] text-textColor/65">
                     {fmt.width}×{fmt.height}
                   </div>
                 </div>
               </div>
               {progress !== undefined && progress < 100 && (
-                <div className="text-[10px] text-textColor/70">{progress}%</div>
+                <div className="text-[11px] text-textColor/70">{progress}%</div>
               )}
-              {progress === 100 && <div className="text-[10px] text-green-400">✓</div>}
+              {progress === 100 && <div className="text-[11px] text-green-400">✓</div>}
             </label>
           );
         })}
