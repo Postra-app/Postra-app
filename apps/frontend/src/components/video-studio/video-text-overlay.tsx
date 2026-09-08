@@ -263,14 +263,14 @@ export const VideoTextOverlay: FC<VideoTextOverlayProps> = ({ onReady }) => {
           disabled={busy || importing}
           className="flex-1 text-xs px-3 py-2 rounded bg-newColColor hover:bg-white/[0.08] text-textColor transition-colors disabled:opacity-50"
         >
-          📁 {t('video_source_disk', 'From disk')}
+          {t('video_source_disk', 'From disk')}
         </button>
         <button
           onClick={() => setShowLibrary(true)}
           disabled={busy || importing}
           className="flex-1 text-xs px-3 py-2 rounded bg-newColColor hover:bg-white/[0.08] text-textColor transition-colors disabled:opacity-50"
         >
-          🗂 {t('video_source_library', 'From library')}
+          {t('video_source_library', 'From library')}
         </button>
       </div>
       {file && (
@@ -382,7 +382,7 @@ export const VideoTextOverlay: FC<VideoTextOverlayProps> = ({ onReady }) => {
       >
         {busy
           ? `${t('clip_text_running', 'Rendering…')} ${progress}%`
-          : t('clip_text_run', '🎬 Burn text into video')}
+          : t('clip_text_run', 'Burn text into video')}
       </Button>
 
       {resultUrl && (

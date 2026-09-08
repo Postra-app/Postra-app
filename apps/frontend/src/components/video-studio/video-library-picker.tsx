@@ -65,7 +65,7 @@ export const VideoLibraryPicker: FC<VideoLibraryPickerProps> = ({
     <div className="flex flex-col h-full bg-[rgba(10,14,26,0.97)] backdrop-blur-xl">
       <div className="flex items-center gap-2 px-4 py-2 border-b border-newBorder">
         <span className="text-sm text-textColor">
-          🗂 {t('video_library_title', 'Library videos')}
+          {t('video_library_title', 'Library videos')}
         </span>
         <input
           type="text"

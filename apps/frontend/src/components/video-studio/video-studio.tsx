@@ -7,6 +7,10 @@ import { useMediaDirectory } from '@gitroom/react/helpers/use.media.directory';
 import { useT } from '@gitroom/react/translation/get.transation.service.client';
 import { useToaster } from '@gitroom/react/toaster/toaster';
 import { Button } from '@gitroom/frontend/components/ui/button';
+import {
+  StudioIcon,
+  StudioIconName,
+} from '@gitroom/frontend/components/studio/studio-icons';
 import { useUser } from '@gitroom/frontend/components/layout/user.context';
 import { VideoTrimmer } from './video-trimmer';
 import { VideoMultiFormat, VideoFormat } from './video-multi-format';
@@ -551,13 +555,13 @@ export const VideoStudio: FC<VideoStudioProps> = ({
 
   // Formats/captions work on whatever clip is loaded — no forced trim first.
   const hasClip = !!(file || trimmedBlob);
-  const tabs: { key: Tab; label: string; icon: string; needsClip: boolean; onClick?: () => void }[] = [
-    { key: 'trim', label: t('video_tab_trim', 'Trim'), icon: '✂', needsClip: false },
-    { key: 'formats', label: t('video_tab_formats', 'Formats'), icon: '📐', needsClip: true },
-    { key: 'captions', label: t('video_tab_captions', 'AI Captions'), icon: '💬', needsClip: true, onClick: handleSwitchToCaptions },
-    { key: 'stock', label: t('video_tab_stock', 'Stock B-roll'), icon: '🎞', needsClip: false },
-    { key: 'text', label: t('video_tab_text', 'Text'), icon: '✍️', needsClip: false },
-    { key: 'slideshow', label: t('video_tab_slideshow', 'Photos → video'), icon: '🖼', needsClip: false },
+  const tabs: { key: Tab; label: string; icon: StudioIconName; needsClip: boolean; onClick?: () => void }[] = [
+    { key: 'trim', label: t('video_tab_trim', 'Trim'), icon: 'trim', needsClip: false },
+    { key: 'formats', label: t('video_tab_formats', 'Formats'), icon: 'formats', needsClip: true },
+    { key: 'captions', label: t('video_tab_captions', 'AI Captions'), icon: 'captions', needsClip: true, onClick: handleSwitchToCaptions },
+    { key: 'stock', label: t('video_tab_stock', 'Stock B-roll'), icon: 'brollStock', needsClip: false },
+    { key: 'text', label: t('video_tab_text', 'Text'), icon: 'textOnVideo', needsClip: false },
+    { key: 'slideshow', label: t('video_tab_slideshow', 'Photos → video'), icon: 'photosToVideo', needsClip: false },
   ];
 
   return (
@@ -573,7 +577,7 @@ export const VideoStudio: FC<VideoStudioProps> = ({
                 : 'bg-newColColor text-textColor hover:bg-white/[0.08]'
             }`}
           >
-            🎯
+            <StudioIcon name="goals" size={16} />
           </button>
           {tabs.map((tDef) => (
             <button
@@ -590,7 +594,8 @@ export const VideoStudio: FC<VideoStudioProps> = ({
                   : 'bg-newColColor text-textColor hover:bg-white/[0.08]'
               } disabled:opacity-40`}
             >
-              {tDef.icon} {tDef.label}
+              <StudioIcon name={tDef.icon} size={15} />
+              {tDef.label}
             </button>
           ))}
         </div>
@@ -606,13 +611,13 @@ export const VideoStudio: FC<VideoStudioProps> = ({
             onClick={() => fileInputRef.current?.click()}
             className="text-xs px-3 py-1 rounded bg-newColColor text-textColor hover:bg-white/[0.08] transition-colors"
           >
-            📁 {t('video_source_disk', 'From disk')}
+            {t('video_source_disk', 'From disk')}
           </button>
           <button
             onClick={() => setShowLibrary(true)}
             className="text-xs px-3 py-1 rounded bg-newColColor text-textColor hover:bg-white/[0.08] transition-colors"
           >
-            🗂 {t('video_source_library', 'From library')}
+            {t('video_source_library', 'From library')}
           </button>
         </div>
       </div>
@@ -669,15 +674,15 @@ export const VideoStudio: FC<VideoStudioProps> = ({
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 w-full max-w-[560px]">
               {(
                 [
-                  { goal: 'slideshow' as Tab, icon: '📸', label: t('video_goal_slideshow', 'Photos → Reels'), desc: t('video_goal_slideshow_desc', 'Turn a few photos into a video with motion') },
-                  { goal: 'trim' as Tab, icon: '✂', label: t('video_goal_trim', 'Trim a video'), desc: t('video_goal_trim_desc', 'Cut a clip to the right length') },
-                  { goal: 'captions' as Tab, icon: '💬', label: t('video_goal_captions', 'Add captions'), desc: t('video_goal_captions_desc', 'AI transcribes and burns in subtitles') },
-                  { goal: 'text' as Tab, icon: '🅰', label: t('video_goal_text', 'Text on video'), desc: t('video_goal_text_desc', 'Overlay your message in brand style') },
-                  { goal: 'stock' as Tab, icon: '🎞', label: t('video_goal_stock', 'Find stock B-roll'), desc: t('video_goal_stock_desc', 'Free clips to post or mix in') },
+                  { goal: 'slideshow' as Tab, icon: 'photosToVideo' as StudioIconName, label: t('video_goal_slideshow', 'Photos → Reels'), desc: t('video_goal_slideshow_desc', 'Turn a few photos into a video with motion') },
+                  { goal: 'trim' as Tab, icon: 'trim' as StudioIconName, label: t('video_goal_trim', 'Trim a video'), desc: t('video_goal_trim_desc', 'Cut a clip to the right length') },
+                  { goal: 'captions' as Tab, icon: 'captions' as StudioIconName, label: t('video_goal_captions', 'Add captions'), desc: t('video_goal_captions_desc', 'AI transcribes and burns in subtitles') },
+                  { goal: 'text' as Tab, icon: 'textOnVideo' as StudioIconName, label: t('video_goal_text', 'Text on video'), desc: t('video_goal_text_desc', 'Overlay your message in brand style') },
+                  { goal: 'stock' as Tab, icon: 'brollStock' as StudioIconName, label: t('video_goal_stock', 'Find stock B-roll'), desc: t('video_goal_stock_desc', 'Free clips to post or mix in') },
                   // Formats had a tab but no card, so the one job people arrive
                   // with — "I have a clip, I need it in the shape this platform
                   // wants" — was the only one this screen never offered.
-                  { goal: 'formats' as Tab, icon: '📐', label: t('video_goal_formats', 'Resize for platforms'), desc: t('video_goal_formats_desc', 'One clip, re-framed for Reels, TikTok, Feed') },
+                  { goal: 'formats' as Tab, icon: 'formats' as StudioIconName, label: t('video_goal_formats', 'Resize for platforms'), desc: t('video_goal_formats_desc', 'One clip, re-framed for Reels, TikTok, Feed') },
                 ]
               ).map((g) => (
                 <button
@@ -685,8 +690,9 @@ export const VideoStudio: FC<VideoStudioProps> = ({
                   onClick={() => pickGoal(g.goal)}
                   className="relative text-left p-3 rounded-lg bg-newColColor hover:bg-white/[0.08] text-textColor transition-colors group"
                 >
-                  <div className="text-sm font-semibold">
-                    {g.icon} {g.label}
+                  <div className="flex items-center gap-2 text-sm font-semibold">
+                    <StudioIcon name={g.icon} size={18} />
+                    {g.label}
                   </div>
                   <div className="text-[11px] text-textColor/60 group-hover:text-white/70 mt-0.5">
                     {g.desc}

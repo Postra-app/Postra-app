@@ -63,7 +63,7 @@ export const StudioComponent = () => {
           CSS-only so it survives server rendering — a width check in JS would
           flash the wrong branch on first paint. */}
       <div className="hidden phone:flex flex-col items-center justify-center gap-2 text-center px-6 py-16">
-        <div className="text-2xl">🎨</div>
+
         <div className="text-sm font-semibold text-textColor">
           {t('studio_desktop_only_title', 'Studio needs a bigger screen')}
         </div>

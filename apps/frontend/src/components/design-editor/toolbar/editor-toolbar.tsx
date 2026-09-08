@@ -21,6 +21,10 @@ import {
 } from '../utils/background-removal';
 import { smartCrop } from '../utils/smart-crop';
 import clsx from 'clsx';
+import {
+  StudioIcon,
+  StudioIconName,
+} from '@gitroom/frontend/components/studio/studio-icons';
 
 interface ToolbarProps {
   canvas: MutableRefObject<fabric.Canvas | null>;
@@ -82,21 +86,26 @@ const BG_COLORS = [
   '#000000',
 ];
 
-const TOOLS: { key: EditorTool; icon: string; labelKey: string; fallback: string }[] = [
-  { key: 'ai', icon: '✨', labelKey: 'tool_ai', fallback: 'AI Generate' },
-  { key: 'refine', icon: '🪄', labelKey: 'tool_refine', fallback: 'AI Refine' },
-  { key: 'templates', icon: '📐', labelKey: 'tool_templates', fallback: 'Templates' },
+const TOOLS: {
+  key: EditorTool;
+  icon: StudioIconName;
+  labelKey: string;
+  fallback: string;
+}[] = [
+  { key: 'ai', icon: 'aiGenerate', labelKey: 'tool_ai', fallback: 'AI Generate' },
+  { key: 'refine', icon: 'aiRefine', labelKey: 'tool_refine', fallback: 'AI Refine' },
+  { key: 'templates', icon: 'templates', labelKey: 'tool_templates', fallback: 'Templates' },
   // Stock sat at the bottom of the Images panel: four clicks and a typed query
   // before a user saw a single photo, for the one feature here that costs
   // nothing and needs no AI credit. It is a source of content like Templates,
   // so it belongs next to it on the bar.
-  { key: 'stock', icon: '🏞', labelKey: 'tool_stock', fallback: 'Stock photos' },
-  { key: 'brand', icon: '🎨', labelKey: 'tool_brand', fallback: 'Brand Kit' },
-  { key: 'select', icon: '↖', labelKey: 'tool_select', fallback: 'Select' },
-  { key: 'text', icon: 'T', labelKey: 'tool_text', fallback: 'Text' },
-  { key: 'shapes', icon: '◻', labelKey: 'tool_shapes', fallback: 'Shapes' },
-  { key: 'icons', icon: '🎯', labelKey: 'tool_icons', fallback: 'Icons' },
-  { key: 'images', icon: '🖼', labelKey: 'tool_images', fallback: 'Images' },
+  { key: 'stock', icon: 'stock', labelKey: 'tool_stock', fallback: 'Stock photos' },
+  { key: 'brand', icon: 'brand', labelKey: 'tool_brand', fallback: 'Brand Kit' },
+  { key: 'select', icon: 'select', labelKey: 'tool_select', fallback: 'Select' },
+  { key: 'text', icon: 'text', labelKey: 'tool_text', fallback: 'Text' },
+  { key: 'shapes', icon: 'shapes', labelKey: 'tool_shapes', fallback: 'Shapes' },
+  { key: 'icons', icon: 'icons', labelKey: 'tool_icons', fallback: 'Icons' },
+  { key: 'images', icon: 'images', labelKey: 'tool_images', fallback: 'Images' },
 ];
 
 export const EditorToolbar: FC<ToolbarProps> = ({ canvas }) => {
@@ -577,12 +586,12 @@ export const EditorToolbar: FC<ToolbarProps> = ({ canvas }) => {
             className={clsx(
               'flex flex-col items-center gap-1 px-1.5 py-2 rounded-md transition-colors',
               activeTool === tool.key
-                ? 'bg-forth text-white'
+                ? 'bg-newAccent text-[#06222e] font-[600]'
                 : 'text-textColor hover:bg-newColColor'
             )}
           >
-            <span className="text-lg leading-none">{tool.icon}</span>
-            <span className="text-[10px] leading-tight text-center">
+            <StudioIcon name={tool.icon} size={20} />
+            <span className="text-[11px] leading-tight text-center">
               {t(tool.labelKey, tool.fallback)}
             </span>
           </button>

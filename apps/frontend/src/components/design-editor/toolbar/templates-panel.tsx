@@ -25,6 +25,7 @@ import {
   BrandStyle,
 } from '../templates/template-types';
 import { withHistoryPaused } from '../utils/canvas-history';
+import { StudioIcon } from '@gitroom/frontend/components/studio/studio-icons';
 
 interface TemplatesPanelProps {
   canvas: MutableRefObject<fabric.Canvas | null>;
@@ -268,14 +269,15 @@ export const TemplatesPanel: FC<TemplatesPanelProps> = ({ canvas }) => {
         onChange={(e) => setQuery(e.target.value)}
         placeholder={t(
           'template_search_placeholder',
-          '🔍 Search templates (e.g. "holiday promo")'
+          'Search templates (e.g. "holiday promo")'
         )}
         className="text-xs px-2 py-1.5 rounded bg-newColColor border border-newBorder text-textColor placeholder-textColor/40 focus:outline-none focus:border-forth"
       />
       {!searchHits && myTemplates.length > 0 && (
         <div className="flex flex-col gap-1.5">
           <span className="text-[10px] uppercase tracking-wide text-textColor/50">
-            ⭐ {t('my_templates', 'Your templates')}
+            <StudioIcon name="saveTemplate" size={13} />
+          {t('my_templates', 'Your templates')}
           </span>
           <div className="grid grid-cols-2 gap-1.5">
             {myTemplates.map((m) => (

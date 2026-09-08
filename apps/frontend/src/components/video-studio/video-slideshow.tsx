@@ -315,7 +315,7 @@ export const VideoSlideshow: FC<VideoSlideshowProps> = ({ onReady }) => {
         disabled={busy || images.length >= MAX_IMAGES}
         className="text-xs px-3 py-2 rounded bg-newColColor hover:bg-white/[0.08] text-textColor transition-colors disabled:opacity-50"
       >
-        📁 {t('slideshow_add', 'Add photos')} ({images.length}/{MAX_IMAGES})
+        {t('slideshow_add', 'Add photos')} ({images.length}/{MAX_IMAGES})
       </button>
 
       {images.length > 0 && (
@@ -426,7 +426,7 @@ export const VideoSlideshow: FC<VideoSlideshowProps> = ({ onReady }) => {
       >
         {busy
           ? `${t('slideshow_running', 'Building video…')} ${progress}%`
-          : t('slideshow_run', '🎬 Build video from photos')}
+          : t('slideshow_run', 'Build video from photos')}
       </Button>
 
       {resultUrl && (

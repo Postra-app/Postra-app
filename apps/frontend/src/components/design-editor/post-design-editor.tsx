@@ -14,6 +14,7 @@ import {
   wireStudioIds,
 } from './utils/fabric-studio-metadata';
 import { installStudioFabricControls } from './utils/fabric-controls';
+import { StudioIcon } from '@gitroom/frontend/components/studio/studio-icons';
 import { renderDesignSpec, PostDesignSpec } from './utils/canvas-renderer';
 import { withHistoryPaused, isHistoryPaused } from './utils/canvas-history';
 import './fonts';
@@ -689,7 +690,7 @@ const PostDesignEditor: FC<PostDesignEditorProps> = ({
                 className="h-8 px-3 text-sm rounded bg-newColColor text-textColor hover:bg-white/[0.08] disabled:opacity-30 transition-colors"
                 title={t('undo_tooltip', 'Undo (Ctrl+Z)')}
               >
-                ↶
+                <StudioIcon name="undo" size={16} />
               </button>
               <button
                 onClick={handleRedo}
@@ -697,14 +698,14 @@ const PostDesignEditor: FC<PostDesignEditorProps> = ({
                 className="h-8 px-3 text-sm rounded bg-newColColor text-textColor hover:bg-white/[0.08] disabled:opacity-30 transition-colors"
                 title={t('redo_tooltip', 'Redo (Ctrl+Shift+Z)')}
               >
-                ↷
+                <StudioIcon name="redo" size={16} />
               </button>
               <button
                 onClick={handleDelete}
                 className="h-8 px-3 text-sm rounded bg-newColColor text-textColor hover:bg-red-500 hover:text-white transition-colors"
                 title={t('delete_tooltip', 'Delete selected object (Delete)')}
               >
-                🗑
+                <StudioIcon name="delete" size={16} />
               </button>
             </div>
             <div className="flex flex-wrap gap-2">
@@ -714,7 +715,8 @@ const PostDesignEditor: FC<PostDesignEditorProps> = ({
                 className="px-3 py-1 text-xs rounded bg-newColColor text-textColor hover:bg-white/[0.08] transition-colors disabled:opacity-50"
                 title={t('save_to_library_hint', 'Save to media library — use it in any post')}
               >
-                💾 {savingToLibrary ? t('saving', 'Saving…') : t('save_to_library_btn', 'Save to library')}
+                <StudioIcon name="save" size={15} />
+                {savingToLibrary ? t('saving', 'Saving…') : t('save_to_library_btn', 'Save to library')}
               </button>
               <button
                 onClick={handleSaveAsTemplate}
@@ -722,21 +724,24 @@ const PostDesignEditor: FC<PostDesignEditorProps> = ({
                 className="px-3 py-1 text-xs rounded bg-newColColor text-textColor hover:bg-white/[0.08] transition-colors disabled:opacity-50"
                 title={t('template_save_hint', 'Save this design as a reusable template for your team')}
               >
-                ⭐ {savingTemplate ? t('saving', 'Saving…') : t('template_save_btn', 'Save as template')}
+                <StudioIcon name="saveTemplate" size={15} />
+                {savingTemplate ? t('saving', 'Saving…') : t('template_save_btn', 'Save as template')}
               </button>
               <button
                 onClick={handleDownload}
                 className="px-3 py-1 text-xs rounded bg-newColColor text-textColor hover:bg-white/[0.08] transition-colors"
                 title={t('download_png_hint', 'Download the graphic as a PNG file')}
               >
-                ⬇ {t('download_png', 'Download PNG')}
+                <StudioIcon name="download" size={15} />
+                {t('download_png', 'Download PNG')}
               </button>
               <button
                 onClick={() => setMultiFormatOpen(true)}
                 className="px-3 py-1 text-xs rounded bg-newColColor text-textColor hover:bg-white/[0.08] transition-colors"
                 title={t('multi_format_hint', 'Generate 7 variants for all platforms')}
               >
-                📐 {t('multi_format_button', 'All formats')}
+                <StudioIcon name="formats" size={15} />
+                {t('multi_format_button', 'All formats')}
               </button>
               <Button
                 loading={exporting}

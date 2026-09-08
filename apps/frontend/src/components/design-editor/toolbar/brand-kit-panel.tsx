@@ -151,12 +151,12 @@ export const BrandKitPanel: FC = () => {
 
       <div className="rounded-md bg-forth/10 border border-forth/30 p-2.5 text-[11px] leading-relaxed text-textColor/85">
         <div className="font-semibold mb-1">
-          {t('brand_kit_intro_title', '💡 What does Brand Kit do?')}
+          {t('brand_kit_intro_title', 'What does Brand Kit do?')}
         </div>
         <p>
           {t(
             'brand_kit_intro_body',
-            'Set once — every ✨ AI Generate design, 📐 template and 🎬 video text comes out in these colours and font. The logo goes bottom-right on every AI graphic. Tone shapes the wording AI writes.'
+            'Set once — every AI Generate design, template and video text comes out in these colours and font. The logo goes bottom-right on every AI graphic. Tone shapes the wording AI writes.'
           )}
         </p>
       </div>

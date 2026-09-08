@@ -208,7 +208,7 @@ export const ImageFiltersPanel: FC<Props> = ({ canvas }) => {
   return (
     <div className="flex flex-col gap-2">
       <span className="text-[10px] text-textColor/60 uppercase tracking-wide">
-        🎛 {t('filter_section', 'Filters')}
+        {t('filter_section', 'Filters')}
       </span>
 
       {!hasImage ? (
@@ -261,7 +261,7 @@ export const ImageFiltersPanel: FC<Props> = ({ canvas }) => {
             onClick={() => applyPreset('original')}
             className="text-xs px-3 py-2 rounded bg-newColColor hover:bg-white/[0.08] text-textColor transition-colors"
           >
-            ↺ {t('filter_reset', 'Reset filters')}
+            {t('filter_reset', 'Reset filters')}
           </button>
         </>
       )}

@@ -253,7 +253,7 @@ export const VideoTrimmer: FC<VideoTrimmerProps> = ({ file, onTrimmed }) => {
       >
         {isExporting
           ? `${t('video_exporting', 'Exporting')} ${progress}%`
-          : `✂ ${t('video_export_trimmed', 'Export trimmed clip')}`}
+          : t('video_export_trimmed', 'Export trimmed clip')}
       </Button>
     </div>
   );

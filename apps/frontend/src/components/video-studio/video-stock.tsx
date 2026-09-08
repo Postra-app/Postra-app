@@ -182,7 +182,7 @@ export const VideoStock: FC<VideoStockProps> = ({ onImported }) => {
           onClick={handleSearch}
           className="!h-[28px] !text-xs"
         >
-          🔍 {t('video_stock_search', 'Search')}
+          {t('video_stock_search', 'Search')}
         </Button>
       </div>
       <div className="grid grid-cols-2 gap-2 max-h-[400px] overflow-y-auto">

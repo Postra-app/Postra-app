@@ -214,7 +214,7 @@ export const VideoCaptions: FC<VideoCaptionsProps> = ({ mediaId, source, onCapti
           disabled={!mediaId}
           className="!h-[28px] !text-xs"
         >
-          ✨ {t('video_captions_generate', 'Generate captions')}
+          {t('video_captions_generate', 'Generate captions')}
         </Button>
       </div>
       <textarea
@@ -240,7 +240,7 @@ export const VideoCaptions: FC<VideoCaptionsProps> = ({ mediaId, source, onCapti
           disabled={!srt.trim() || (!source && !mediaId)}
           className="!h-[28px] !text-xs"
         >
-          🎨 {isBurning && source
+          {isBurning && source
             ? `${t('video_captions_burning', 'Burning…')} ${burnProgress}%`
             : t('video_captions_burn', 'Burn into video')}
         </Button>

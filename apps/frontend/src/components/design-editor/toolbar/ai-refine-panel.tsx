@@ -192,7 +192,7 @@ export const AiRefinePanel: FC<Props> = ({ canvas }) => {
       >
         {busy
           ? t('refine_running', 'Refining…')
-          : t('refine_apply', '✨ Refine design')}
+          : t('refine_apply', 'Refine design')}
       </Button>
 
       {history.length > 0 && (

@@ -202,7 +202,7 @@ export const AiGeneratePanel: FC<Props> = ({ canvas }) => {
         {upcoming.length > 0 && (
           <div className="flex flex-col gap-1.5 pt-1">
             <span className="text-[10px] uppercase tracking-wide text-textColor/50">
-              🗓 {t('holiday_suggestions', 'Upcoming occasions')}
+              {t('holiday_suggestions', 'Upcoming occasions')}
             </span>
             {upcoming.map((entry) => (
               <button
@@ -261,7 +261,7 @@ export const AiGeneratePanel: FC<Props> = ({ canvas }) => {
       {upcoming.length > 0 && (
         <div className="flex flex-col gap-1.5">
           <span className="text-[10px] uppercase tracking-wide text-textColor/50">
-            🗓 {t('holiday_suggestions', 'Upcoming occasions')}
+            {t('holiday_suggestions', 'Upcoming occasions')}
           </span>
           <div className="flex flex-col gap-1">
             {upcoming.map((entry) => {
@@ -340,8 +340,8 @@ export const AiGeneratePanel: FC<Props> = ({ canvas }) => {
         {isGenerating
           ? t('ai_generating', 'Generating…')
           : slidesCount > 1
-            ? t('ai_generate_carousel_button', '🎴 Generate carousel ({n})').replace('{n}', String(slidesCount))
-            : t('ai_generate_button', '✨ Generate Design')}
+            ? t('ai_generate_carousel_button', 'Generate carousel ({n})').replace('{n}', String(slidesCount))
+            : t('ai_generate_button', 'Generate Design')}
       </Button>
       {confirmPrompt !== null && (
         <div className="rounded-md bg-yellow-500/10 border border-yellow-500/30 px-2 py-1.5 flex flex-col gap-1.5">
