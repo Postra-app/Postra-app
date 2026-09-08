@@ -23,7 +23,9 @@ type Geom = {
   originY?: string;
 };
 
-const obj = (o: Partial<Geom>): Geom & { set: (v: Partial<Geom>) => void } => {
+const obj = (
+  o: Partial<Geom>
+): Geom & { set: (v: Partial<Geom>) => void; setCoords: () => void } => {
   const base = {
     left: 0,
     top: 0,
@@ -32,8 +34,11 @@ const obj = (o: Partial<Geom>): Geom & { set: (v: Partial<Geom>) => void } => {
     scaleX: 1,
     scaleY: 1,
     ...o,
-  } as Geom & { set: (v: Partial<Geom>) => void };
+  } as Geom & { set: (v: Partial<Geom>) => void; setCoords: () => void };
   base.set = (v: Partial<Geom>) => Object.assign(base, v);
+  // Real Fabric objects must be told to refresh their cached corners after a
+  // move, or the renderer skips them as off-screen.
+  base.setCoords = () => undefined;
   return base;
 };
 
@@ -43,6 +48,7 @@ const move = (o: ReturnType<typeof obj>, from: [number, number], to: [number, nu
 const SQUARE: [number, number] = [1080, 1080];
 const STORY: [number, number] = [1080, 1920];
 const LANDSCAPE: [number, number] = [1600, 900];
+const PORTRAIT: [number, number] = [1080, 1350];
 
 describe('repositionObjectFromTo', () => {
   it('returns a layer to its original size after a round trip', () => {
@@ -56,8 +62,8 @@ describe('repositionObjectFromTo', () => {
   });
 
   it('returns a centred layer to its exact place after a round trip', () => {
-    // Position is only round-trippable for a layer that reads as centred or
-    // edge-anchored; anything in between is deliberately snapped to centre.
+    // Position is round-trippable because every branch maps a single measure
+    // through the same ratio: an edge gap, or the layer's own centre.
     const o = obj({ left: 340, top: 480, width: 400, height: 120 });
     move(o, SQUARE, STORY);
     move(o, STORY, SQUARE);
@@ -107,11 +113,71 @@ describe('repositionObjectFromTo', () => {
     expect(bottomGap / STORY[1]).toBeCloseTo(0.05, 3);
   });
 
-  it('re-centres a centred layer', () => {
+  it('re-centres a layer that really is centred', () => {
     const o = obj({ left: 340, top: 480, width: 400, height: 120 });
     move(o, SQUARE, STORY);
     const centreX = o.left + (o.width * o.scaleX) / 2;
     expect(centreX).toBeCloseTo(STORY[0] / 2, 3);
+  });
+
+  it('keeps two stacked middle layers apart instead of piling them up', () => {
+    // The reported bug (STU-G-34). Both layers sit in the middle band, so both
+    // were classed 'centre' and both were then placed at the exact centre of
+    // the destination — one printed on top of the other. Every mid-canvas
+    // layout is built like this: headline, then a line under it.
+    const headline = obj({ left: 54, top: 432, width: 972, height: 350 });
+    const subtitle = obj({ left: 81, top: 918, width: 918, height: 56 });
+    move(headline, PORTRAIT, SQUARE);
+    move(subtitle, PORTRAIT, SQUARE);
+
+    const headlineBottom = headline.top + headline.height * headline.scaleY;
+    expect(subtitle.top).toBeGreaterThan(headlineBottom);
+  });
+
+  it('keeps a middle layer at its own height in the frame, not at the middle', () => {
+    // 70% down a 4:5 frame is 70% down a square one too — not 50%.
+    const o = obj({ left: 81, top: 918, width: 918, height: 56 });
+    move(o, PORTRAIT, SQUARE);
+    const centreY = o.top + (o.height * o.scaleY) / 2;
+    expect(centreY / SQUARE[1]).toBeCloseTo(946 / 1350, 3);
+  });
+
+  it('leaves the whole promo template free of overlaps after a format change', () => {
+    // The six layers of the built-in "Modern Promo" at 4:5, in z-order.
+    const layers = [
+      obj({ left: 0, top: 0, width: 1080, height: 202.5 }),
+      obj({ left: 540, top: 60.75, width: 972, height: 56, originX: 'center' }),
+      obj({ left: 540, top: 432, width: 972, height: 350, originX: 'center' }),
+      obj({ left: 540, top: 918, width: 918, height: 56, originX: 'center' }),
+      obj({ left: 540, top: 1107, width: 432, height: 108, originX: 'center' }),
+      obj({ left: 540, top: 1134, width: 432, height: 50, originX: 'center' }),
+    ];
+    layers.forEach((o) => move(o, PORTRAIT, SQUARE));
+
+    // Bands that must not collide: headline vs the line under it, and that
+    // line vs the call to action. The text inside the bar and inside the
+    // button is meant to sit on top of them, so those pairs are skipped.
+    const band = (o: (typeof layers)[number]) => ({
+      top: o.top,
+      bottom: o.top + o.height * o.scaleY,
+    });
+    const headline = band(layers[2]);
+    const subtitle = band(layers[3]);
+    const cta = band(layers[4]);
+
+    expect(subtitle.top).toBeGreaterThan(headline.bottom);
+    expect(cta.top).toBeGreaterThan(subtitle.bottom);
+    expect(cta.bottom).toBeLessThanOrEqual(SQUARE[1]);
+  });
+
+  it('returns a mid-canvas layer to its place after a round trip', () => {
+    // Same reversibility promise as before, now that the centre branch moves
+    // the layer instead of snapping it.
+    const o = obj({ left: 81, top: 918, width: 918, height: 56 });
+    move(o, PORTRAIT, SQUARE);
+    move(o, SQUARE, PORTRAIT);
+    expect(o.top).toBeCloseTo(918, 3);
+    expect(o.left).toBeCloseTo(81, 3);
   });
 
   it('honours centre origins when reading and writing position', () => {
