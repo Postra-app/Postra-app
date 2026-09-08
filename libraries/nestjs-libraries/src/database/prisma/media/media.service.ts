@@ -146,7 +146,7 @@ export class MediaService {
             true
           );
           if (!dalleUrl) {
-            throw new HttpException('DALL-E generation failed', 502);
+            throw new HttpException('The image generator returned nothing. Try again in a moment.', 502);
           }
           return await this.storage.uploadSimple(dalleUrl);
         }
@@ -289,7 +289,7 @@ export class MediaService {
             async () => {
               const dalleUrl = await this._openAi.generateImage(prompt, true);
               if (!dalleUrl) {
-                throw new HttpException('DALL-E generation failed', 502);
+                throw new HttpException('The image generator returned nothing. Try again in a moment.', 502);
               }
               return await this.storage.uploadSimple(dalleUrl);
             }
@@ -308,7 +308,7 @@ export class MediaService {
 
     const firstBg = Object.values(bgByKey).find((u): u is string => !!u) ?? null;
     if (!firstBg) {
-      throw new HttpException('DALL-E generation failed', 502);
+      throw new HttpException('The image generator returned nothing. Try again in a moment.', 502);
     }
 
     return {
