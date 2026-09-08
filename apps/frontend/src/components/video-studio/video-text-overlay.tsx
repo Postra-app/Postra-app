@@ -261,20 +261,20 @@ export const VideoTextOverlay: FC<VideoTextOverlayProps> = ({ onReady }) => {
         <button
           onClick={() => fileRef.current?.click()}
           disabled={busy || importing}
-          className="flex-1 text-xs px-3 py-2 rounded bg-newColColor hover:bg-forth text-textColor transition-colors disabled:opacity-50"
+          className="flex-1 text-xs px-3 py-2 rounded bg-newColColor hover:bg-white/[0.08] text-textColor transition-colors disabled:opacity-50"
         >
-          📁 {t('video_source_disk', 'From disk')}
+          {t('video_source_disk', 'From disk')}
         </button>
         <button
           onClick={() => setShowLibrary(true)}
           disabled={busy || importing}
-          className="flex-1 text-xs px-3 py-2 rounded bg-newColColor hover:bg-forth text-textColor transition-colors disabled:opacity-50"
+          className="flex-1 text-xs px-3 py-2 rounded bg-newColColor hover:bg-white/[0.08] text-textColor transition-colors disabled:opacity-50"
         >
-          🗂 {t('video_source_library', 'From library')}
+          {t('video_source_library', 'From library')}
         </button>
       </div>
       {file && (
-        <div className="text-[10px] text-textColor/60 truncate">✓ {file.name}</div>
+        <div className="text-[11px] text-textColor/60 truncate">✓ {file.name}</div>
       )}
 
       <textarea
@@ -288,7 +288,7 @@ export const VideoTextOverlay: FC<VideoTextOverlayProps> = ({ onReady }) => {
 
       {/* Position */}
       <div className="flex flex-col gap-1">
-        <label className="text-[10px] text-textColor/60">{t('clip_text_position', 'Position')}</label>
+        <label className="text-[11px] text-textColor/60">{t('clip_text_position', 'Position')}</label>
         <div className="flex gap-2">
           {POSITIONS.map((p) => (
             <button
@@ -297,8 +297,8 @@ export const VideoTextOverlay: FC<VideoTextOverlayProps> = ({ onReady }) => {
               disabled={busy}
               className={`flex-1 text-xs px-2 py-1.5 rounded transition-colors disabled:opacity-50 ${
                 position === p.key
-                  ? 'bg-newAccent text-white'
-                  : 'bg-newColColor text-textColor hover:bg-forth'
+                  ? 'bg-newAccent text-[#06222e] font-[600]'
+                  : 'bg-newColColor text-textColor hover:bg-white/[0.08]'
               }`}
             >
               {p.icon} {t(`clip_text_pos_${p.key}`, p.label)}
@@ -310,7 +310,7 @@ export const VideoTextOverlay: FC<VideoTextOverlayProps> = ({ onReady }) => {
       {/* Colour + size, defaulting to the Brand Kit */}
       <div className="flex gap-3">
         <div className="flex flex-col gap-1">
-          <label className="text-[10px] text-textColor/60">{t('clip_text_color', 'Colour')}</label>
+          <label className="text-[11px] text-textColor/60">{t('clip_text_color', 'Colour')}</label>
           <div className="flex items-center gap-2">
             <div className="relative w-8 h-8 shrink-0">
               <div
@@ -330,7 +330,7 @@ export const VideoTextOverlay: FC<VideoTextOverlayProps> = ({ onReady }) => {
               <button
                 onClick={() => setColor(kit.primaryColor)}
                 disabled={busy}
-                className="text-[10px] text-newAccent underline disabled:opacity-50"
+                className="text-[11px] text-newAccent underline disabled:opacity-50"
               >
                 {t('clip_text_brand_color', 'Brand')}
               </button>
@@ -338,7 +338,7 @@ export const VideoTextOverlay: FC<VideoTextOverlayProps> = ({ onReady }) => {
           </div>
         </div>
         <div className="flex flex-col gap-1 flex-1">
-          <label className="text-[10px] text-textColor/60">{t('clip_text_size', 'Size')}</label>
+          <label className="text-[11px] text-textColor/60">{t('clip_text_size', 'Size')}</label>
           <div className="flex gap-2">
             {SIZES.map((s) => (
               <button
@@ -347,8 +347,8 @@ export const VideoTextOverlay: FC<VideoTextOverlayProps> = ({ onReady }) => {
                 disabled={busy}
                 className={`flex-1 text-xs px-2 py-1.5 rounded transition-colors disabled:opacity-50 ${
                   scale === s.scale
-                    ? 'bg-newAccent text-white'
-                    : 'bg-newColColor text-textColor hover:bg-forth'
+                    ? 'bg-newAccent text-[#06222e] font-[600]'
+                    : 'bg-newColColor text-textColor hover:bg-white/[0.08]'
                 }`}
               >
                 {s.label}
@@ -360,7 +360,7 @@ export const VideoTextOverlay: FC<VideoTextOverlayProps> = ({ onReady }) => {
 
       {/* Font */}
       <div className="flex flex-col gap-1">
-        <label className="text-[10px] text-textColor/60">{t('font', 'Font')}</label>
+        <label className="text-[11px] text-textColor/60">{t('font', 'Font')}</label>
         <select
           value={effectiveFontLabel}
           onChange={(e) => setFontLabel(e.target.value)}
@@ -375,19 +375,19 @@ export const VideoTextOverlay: FC<VideoTextOverlayProps> = ({ onReady }) => {
         </select>
       </div>
 
-      <button
+      <Button
         onClick={compose}
         disabled={!file || busy}
-        className="px-3 py-2 text-sm rounded bg-newAccent text-white hover:bg-forth disabled:opacity-50 transition-colors"
+        className="self-start"
       >
         {busy
           ? `${t('clip_text_running', 'Rendering…')} ${progress}%`
-          : t('clip_text_run', '🎬 Burn text into video')}
-      </button>
+          : t('clip_text_run', 'Burn text into video')}
+      </Button>
 
       {resultUrl && (
         <div className="flex flex-col gap-2">
-          <div className="text-[10px] text-green-400">
+          <div className="text-[11px] text-green-400">
             ✓{' '}
             {hadAudio
               ? t('compositor_with_audio', 'with audio')
@@ -405,14 +405,14 @@ export const VideoTextOverlay: FC<VideoTextOverlayProps> = ({ onReady }) => {
             <button
               onClick={saveToLibrary}
               disabled={uploading}
-              className="text-xs px-3 h-[30px] rounded bg-newColColor text-textColor hover:bg-forth transition-colors disabled:opacity-50"
+              className="text-xs px-3 h-[30px] rounded bg-newColColor text-textColor hover:bg-white/[0.08] transition-colors disabled:opacity-50"
             >
               💾 {t('save_to_library_btn', 'Save to library')}
             </button>
             <a
               href={resultUrl}
               download="postra-clip.mp4"
-              className="text-[10px] text-newAccent underline"
+              className="text-[11px] text-newAccent underline"
             >
               {t('clip_text_download', 'Download')}
             </a>

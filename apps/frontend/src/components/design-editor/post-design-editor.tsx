@@ -2,6 +2,7 @@
 
 import { FC, lazy, Suspense, useCallback, useEffect, useRef, useState } from 'react';
 import * as fabric from 'fabric';
+import clsx from 'clsx';
 import { useEditorStore, PLATFORM_SIZES, PlatformSize } from './editor.store';
 import { useCarouselStore } from './carousel.store';
 import { EditorToolbar } from './toolbar/editor-toolbar';
@@ -13,11 +14,16 @@ import {
   installStudioFabricMetadata,
   wireStudioIds,
 } from './utils/fabric-studio-metadata';
+import { installStudioFabricControls } from './utils/fabric-controls';
+import { computeSnap, edgesOf, SnapGuide } from './utils/canvas-snapping';
+import { ExportMenu } from './export-menu';
+import { StudioIcon } from '@gitroom/frontend/components/studio/studio-icons';
 import { renderDesignSpec, PostDesignSpec } from './utils/canvas-renderer';
 import { withHistoryPaused, isHistoryPaused } from './utils/canvas-history';
 import './fonts';
 
 installStudioFabricMetadata();
+installStudioFabricControls();
 
 // A generated post design (flat headline/subtext/cta) versus a semantic
 // StudioSpec (layer list) — they share the media `designSpec` column, told
@@ -56,7 +62,18 @@ interface PostDesignEditorProps {
   loadMediaId?: string;
 }
 
-const CANVAS_VIEWPORT_HEIGHT = 560;
+// How much of the canvas area the artboard is allowed to take when fitted, so
+// it never touches the edges of its container.
+const CANVAS_FIT_PADDING = 32;
+const MIN_ZOOM = 0.05;
+/** Snap tolerance in screen pixels, converted to canvas units at use. */
+const SNAP_THRESHOLD_PX = 7;
+/** Nudge steps in canvas units; Shift is the coarse one. */
+const NUDGE_SMALL = 1;
+const NUDGE_LARGE = 10;
+/** So a duplicate lands next to its original rather than exactly on it. */
+const DUPLICATE_OFFSET = 16;
+const MAX_ZOOM = 4;
 
 const PostDesignEditor: FC<PostDesignEditorProps> = ({
   setMedia,
@@ -86,19 +103,32 @@ const PostDesignEditor: FC<PostDesignEditorProps> = ({
 
   const { platform, setPlatform, pushHistory, setCanvasReady, setTool } =
     useEditorStore();
+  const canvasReady = useEditorStore((s) => s.canvasReady);
   const canUndo = useEditorStore((s) => s.historyIndex > 0);
   const canRedo = useEditorStore((s) => s.historyIndex < s.history.length - 1);
   const carouselSlideCount = useCarouselStore((s) =>
     s.isCarouselMode ? s.slides.length : 0
   );
 
+  /** The canvas area we have to draw into; measured, with a fallback for the
+   *  first paint before the ResizeObserver has run. */
+  const viewportRef = useRef<HTMLDivElement>(null);
+  const viewportSizeRef = useRef({ width: 760, height: 560 });
+  /** Zoom the user asked for. Null means "keep fitting me to the window". */
+  const [manualZoom, setManualZoom] = useState<number | null>(null);
+  const manualZoomRef = useRef<number | null>(null);
+  const [zoomLabel, setZoomLabel] = useState(1);
+
+  const fitScale = useCallback((p: PlatformSize) => {
+    const { width, height } = viewportSizeRef.current;
+    const usableW = Math.max(120, width - CANVAS_FIT_PADDING * 2);
+    const usableH = Math.max(120, height - CANVAS_FIT_PADDING * 2);
+    return Math.min(usableW / p.width, usableH / p.height);
+  }, []);
+
   const getScale = useCallback(
-    (p: PlatformSize) => {
-      const maxH = CANVAS_VIEWPORT_HEIGHT;
-      const maxW = 700;
-      return Math.min(maxW / p.width, maxH / p.height);
-    },
-    []
+    (p: PlatformSize) => manualZoomRef.current ?? fitScale(p),
+    [fitScale]
   );
 
   const isRestoringRef = useRef(false);
@@ -125,6 +155,67 @@ const PostDesignEditor: FC<PostDesignEditorProps> = ({
     });
 
     c.setZoom(scale);
+
+    // Without guides every layout in Studio is eyeballed. Snap the dragged
+    // object to the edges and centres of the others and of the artboard, and
+    // draw the line it matched on the overlay canvas.
+    let guides: SnapGuide[] = [];
+    c.on('object:moving', (e) => {
+      const target = e.target;
+      if (!target) return;
+      const others = c
+        .getObjects()
+        .filter((o) => o !== target && o.visible !== false)
+        .map((o) => {
+          const r = o.getBoundingRect();
+          return edgesOf(r.left, r.top, r.width, r.height);
+        });
+      const rect = target.getBoundingRect();
+      const moving = edgesOf(rect.left, rect.top, rect.width, rect.height);
+      // the tolerance is in screen pixels, so it must not stretch with zoom
+      const { dx, dy, next } = (() => {
+        const r = computeSnap(moving, others, {
+          width: useEditorStore.getState().platform.width,
+          height: useEditorStore.getState().platform.height,
+        }, SNAP_THRESHOLD_PX / c.getZoom());
+        return { ...r, next: r.guides };
+      })();
+      guides = next;
+      if (dx || dy) {
+        target.set({ left: (target.left ?? 0) + dx, top: (target.top ?? 0) + dy });
+        target.setCoords();
+      }
+    });
+
+    const clearGuides = () => {
+      guides = [];
+      c.requestRenderAll();
+    };
+    c.on('object:modified', clearGuides);
+    c.on('mouse:up', clearGuides);
+
+    c.on('after:render', () => {
+      if (!guides.length) return;
+      const ctx = c.getSelectionContext();
+      const zoom = c.getZoom();
+      ctx.save();
+      ctx.strokeStyle = '#a78bfa';
+      ctx.lineWidth = 1;
+      ctx.setLineDash([4, 4]);
+      for (const g of guides) {
+        ctx.beginPath();
+        if (g.axis === 'x') {
+          ctx.moveTo(g.at * zoom, 0);
+          ctx.lineTo(g.at * zoom, c.getHeight());
+        } else {
+          ctx.moveTo(0, g.at * zoom);
+          ctx.lineTo(c.getWidth(), g.at * zoom);
+        }
+        ctx.stroke();
+      }
+      ctx.restore();
+    });
+
     fabricRef.current = c;
     prevPlatformRef.current = p;
     wireStudioIds(c);
@@ -211,6 +302,82 @@ const PostDesignEditor: FC<PostDesignEditorProps> = ({
 
     saveStateRef.current?.();
   }, [platform, getScale]);
+
+  /** Resize the drawing surface to a scale and tell the canvas about it. */
+  const applyScale = useCallback((scale: number) => {
+    const c = fabricRef.current;
+    if (!c) return;
+    const p = useEditorStore.getState().platform;
+    c.setDimensions({ width: p.width * scale, height: p.height * scale });
+    c.setZoom(scale);
+    c.requestRenderAll();
+    setZoomLabel(scale);
+  }, []);
+
+  const refit = useCallback(() => {
+    const p = useEditorStore.getState().platform;
+    applyScale(manualZoomRef.current ?? fitScale(p));
+  }, [applyScale, fitScale]);
+
+  const zoomTo = useCallback(
+    (next: number | null) => {
+      manualZoomRef.current =
+        next === null ? null : Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, next));
+      setManualZoom(manualZoomRef.current);
+      refit();
+    },
+    [refit]
+  );
+
+  /** The canvas used to be a fixed 560px tall whatever the window was doing:
+   *  an Instagram story rendered 315px wide, and on a big screen a quarter of
+   *  the area sat empty. Measure the space instead, and re-fit when it or the
+   *  format changes - unless the user has picked their own zoom. */
+  useEffect(() => {
+    const host = viewportRef.current;
+    if (!host || !canvasReady) return;
+    const measure = () => {
+      const { width, height } = host.getBoundingClientRect();
+      if (!width || !height) return;
+      viewportSizeRef.current = { width, height };
+      if (manualZoomRef.current === null) refit();
+    };
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(host);
+    return () => observer.disconnect();
+  }, [canvasReady, refit]);
+
+  /** Ctrl/Cmd+wheel zooms around the pointer, like every other canvas tool.
+   *  The artboard is a real DOM element inside a scrolling box, so keeping the
+   *  point under the cursor is a scroll adjustment rather than a matrix. */
+  useEffect(() => {
+    const host = viewportRef.current;
+    if (!host || !canvasReady) return;
+    const onWheel = (e: WheelEvent) => {
+      if (!e.ctrlKey && !e.metaKey) return;
+      e.preventDefault();
+      const c = fabricRef.current;
+      if (!c) return;
+      const before = c.getZoom();
+      const next = Math.min(
+        MAX_ZOOM,
+        Math.max(MIN_ZOOM, before * (1 - e.deltaY / 400))
+      );
+      if (next === before) return;
+      const rect = host.getBoundingClientRect();
+      const px = e.clientX - rect.left + host.scrollLeft;
+      const py = e.clientY - rect.top + host.scrollTop;
+      manualZoomRef.current = next;
+      setManualZoom(next);
+      applyScale(next);
+      const ratio = next / before;
+      host.scrollLeft = px * ratio - (e.clientX - rect.left);
+      host.scrollTop = py * ratio - (e.clientY - rect.top);
+    };
+    host.addEventListener('wheel', onWheel, { passive: false });
+    return () => host.removeEventListener('wheel', onWheel);
+  }, [canvasReady, applyScale]);
 
   const restoreState = useCallback((json: string | null): Promise<void> => {
     if (!json || !fabricRef.current || !saveStateRef.current)
@@ -323,7 +490,6 @@ const PostDesignEditor: FC<PostDesignEditorProps> = ({
   // Auto-restore the last unsaved draft as soon as the canvas exists — coming
   // back to Studio (from /media, the Video tab, a refresh…) should show the
   // design where you left it, not an empty canvas behind a "Restore?" banner.
-  const canvasReady = useEditorStore((s) => s.canvasReady);
   useEffect(() => {
     const c = fabricRef.current;
     if (!canvasReady || loadMediaId || !c) return;
@@ -651,6 +817,67 @@ const PostDesignEditor: FC<PostDesignEditorProps> = ({
         e.preventDefault();
         handleRedo();
       }
+
+      const c = fabricRef.current;
+      if (!c) return;
+      const active = c.getActiveObject();
+
+      // Duplicate, in place with a small offset so the copy is visible and
+      // grabbable rather than hidden exactly under the original.
+      if ((e.metaKey || e.ctrlKey) && key === 'd') {
+        e.preventDefault();
+        if (!active) return;
+        active.clone().then((copy: fabric.FabricObject) => {
+          copy.set({
+            left: (active.left ?? 0) + DUPLICATE_OFFSET,
+            top: (active.top ?? 0) + DUPLICATE_OFFSET,
+          });
+          copy.setCoords();
+          c.add(copy);
+          c.setActiveObject(copy);
+          c.requestRenderAll();
+        });
+        return;
+      }
+
+      if ((e.metaKey || e.ctrlKey) && key === 'a') {
+        e.preventDefault();
+        const objects = c.getObjects().filter((o) => o.selectable !== false);
+        if (!objects.length) return;
+        c.discardActiveObject();
+        c.setActiveObject(
+          new fabric.ActiveSelection(objects, { canvas: c })
+        );
+        c.requestRenderAll();
+        return;
+      }
+
+      if (e.key === 'Escape') {
+        c.discardActiveObject();
+        c.requestRenderAll();
+        return;
+      }
+
+      // Arrow keys nudge; Shift moves in bigger steps, the way every editor does
+      const nudges: Record<string, [number, number]> = {
+        ArrowLeft: [-1, 0],
+        ArrowRight: [1, 0],
+        ArrowUp: [0, -1],
+        ArrowDown: [0, 1],
+      };
+      const nudge = nudges[e.key];
+      if (nudge && active) {
+        e.preventDefault();
+        const step = e.shiftKey ? NUDGE_LARGE : NUDGE_SMALL;
+        active.set({
+          left: (active.left ?? 0) + nudge[0] * step,
+          top: (active.top ?? 0) + nudge[1] * step,
+        });
+        active.setCoords();
+        c.requestRenderAll();
+        // one history entry per burst, not per key repeat
+        saveStateRef.current?.();
+      }
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
@@ -659,7 +886,7 @@ const PostDesignEditor: FC<PostDesignEditorProps> = ({
   return (
     <div
       ref={rootRef}
-      className="flex flex-col h-full min-h-[600px] bg-white/[0.03] rounded-lg overflow-hidden"
+      className="studio-root dark flex flex-col h-full min-h-0 bg-white/[0.03] rounded-lg overflow-hidden"
     >
       <div className="flex flex-1 min-h-0">
         <EditorToolbar canvas={fabricRef} />
@@ -667,9 +894,9 @@ const PostDesignEditor: FC<PostDesignEditorProps> = ({
         {/* min-w-0 keeps the 1080px canvas from expanding this column past the
             viewport (it scrolls inside overflow-auto instead) — without it the
             right side of the action bar ("Use in post") lands off-screen. */}
-        <div className="flex-1 min-w-0 flex flex-col">
+        <div className="flex-1 min-w-0 min-h-0 flex flex-col">
           {restoringDraft && (
-            <div className="flex items-center gap-2 px-4 py-2 bg-forth/10 border-b border-forth/30 text-xs text-textColor">
+            <div className="shrink-0 flex items-center gap-2 px-4 py-2 bg-forth/10 border-b border-forth/30 text-xs text-textColor">
               <span>
                 ⏳{' '}
                 {t(
@@ -679,63 +906,72 @@ const PostDesignEditor: FC<PostDesignEditorProps> = ({
               </span>
             </div>
           )}
-          <div className="flex flex-wrap items-center justify-between gap-2 px-4 py-2 border-b border-newBorder">
+          <div className="shrink-0 flex items-center justify-between gap-2 px-4 py-2 border-b border-newBorder">
             <div className="flex gap-2">
               <button
                 onClick={handleUndo}
                 disabled={!canUndo}
-                className="h-8 px-3 text-sm rounded bg-newColColor text-textColor hover:bg-forth disabled:opacity-30 transition-colors"
+                className="h-8 px-3 text-sm rounded bg-newColColor text-textColor hover:bg-white/[0.08] disabled:opacity-30 transition-colors"
                 title={t('undo_tooltip', 'Undo (Ctrl+Z)')}
               >
-                ↶
+                <StudioIcon name="undo" size={16} />
               </button>
               <button
                 onClick={handleRedo}
                 disabled={!canRedo}
-                className="h-8 px-3 text-sm rounded bg-newColColor text-textColor hover:bg-forth disabled:opacity-30 transition-colors"
+                className="h-8 px-3 text-sm rounded bg-newColColor text-textColor hover:bg-white/[0.08] disabled:opacity-30 transition-colors"
                 title={t('redo_tooltip', 'Redo (Ctrl+Shift+Z)')}
               >
-                ↷
+                <StudioIcon name="redo" size={16} />
               </button>
               <button
                 onClick={handleDelete}
                 className="h-8 px-3 text-sm rounded bg-newColColor text-textColor hover:bg-red-500 hover:text-white transition-colors"
                 title={t('delete_tooltip', 'Delete selected object (Delete)')}
               >
-                🗑
+                <StudioIcon name="delete" size={16} />
               </button>
             </div>
-            <div className="flex flex-wrap gap-2">
-              <button
-                onClick={handleSaveToLibrary}
-                disabled={savingToLibrary}
-                className="px-3 py-1 text-xs rounded bg-newColColor text-textColor hover:bg-forth transition-colors disabled:opacity-50"
-                title={t('save_to_library_hint', 'Save to media library — use it in any post')}
-              >
-                💾 {savingToLibrary ? t('saving', 'Saving…') : t('save_to_library_btn', 'Save to library')}
-              </button>
-              <button
-                onClick={handleSaveAsTemplate}
-                disabled={savingTemplate}
-                className="px-3 py-1 text-xs rounded bg-newColColor text-textColor hover:bg-forth transition-colors disabled:opacity-50"
-                title={t('template_save_hint', 'Save this design as a reusable template for your team')}
-              >
-                ⭐ {savingTemplate ? t('saving', 'Saving…') : t('template_save_btn', 'Save as template')}
-              </button>
-              <button
-                onClick={handleDownload}
-                className="px-3 py-1 text-xs rounded bg-newColColor text-textColor hover:bg-forth transition-colors"
-                title={t('download_png_hint', 'Download the graphic as a PNG file')}
-              >
-                ⬇ {t('download_png', 'Download PNG')}
-              </button>
-              <button
-                onClick={() => setMultiFormatOpen(true)}
-                className="px-3 py-1 text-xs rounded bg-newColColor text-textColor hover:bg-forth transition-colors"
-                title={t('multi_format_hint', 'Generate 7 variants for all platforms')}
-              >
-                📐 {t('multi_format_button', 'All formats')}
-              </button>
+            <div className="flex items-center gap-2">
+              <ExportMenu
+                label={t('export_menu', 'Export')}
+                items={[
+                  {
+                    key: 'library',
+                    icon: 'save',
+                    label: savingToLibrary
+                      ? t('saving', 'Saving…')
+                      : t('save_to_library_btn', 'Save to library'),
+                    hint: t('save_to_library_hint', 'Save to media library — use it in any post'),
+                    disabled: savingToLibrary,
+                    onSelect: handleSaveToLibrary,
+                  },
+                  {
+                    key: 'template',
+                    icon: 'saveTemplate',
+                    label: savingTemplate
+                      ? t('saving', 'Saving…')
+                      : t('template_save_btn', 'Save as template'),
+                    hint: t('template_save_hint', 'Save this design as a reusable template for your team'),
+                    disabled: savingTemplate,
+                    onSelect: handleSaveAsTemplate,
+                  },
+                  {
+                    key: 'download',
+                    icon: 'download',
+                    label: t('download_png', 'Download PNG'),
+                    hint: t('download_png_hint', 'Download the graphic as a PNG file'),
+                    onSelect: handleDownload,
+                  },
+                  {
+                    key: 'formats',
+                    icon: 'formats',
+                    label: t('multi_format_button', 'All formats'),
+                    hint: t('multi_format_hint', 'Generate 7 variants for all platforms'),
+                    onSelect: () => setMultiFormatOpen(true),
+                  },
+                ]}
+              />
               <Button
                 loading={exporting}
                 onClick={handleExport}
@@ -751,15 +987,63 @@ const PostDesignEditor: FC<PostDesignEditorProps> = ({
             </div>
           </div>
 
-          <div className="flex-1 flex items-center justify-center bg-black/30 overflow-auto p-4">
+          <div
+            ref={viewportRef}
+            className="flex-1 min-h-0 flex items-center justify-center bg-black/30 overflow-auto p-4"
+          >
             <div className="shadow-2xl rounded-sm shrink-0">
               <canvas ref={canvasRef} />
             </div>
           </div>
 
-          <CarouselStrip fabricRef={fabricRef} />
+          <div className="shrink-0 flex items-center justify-end gap-1 px-4 py-1.5 border-t border-newBorder">
+            <button
+              onClick={() => zoomTo((manualZoomRef.current ?? zoomLabel) / 1.2)}
+              className="h-7 w-7 rounded text-textColor/70 hover:bg-white/[0.08] hover:text-textColor transition-colors"
+              title={t('zoom_out', 'Zoom out')}
+              aria-label={t('zoom_out', 'Zoom out')}
+            >
+              −
+            </button>
+            <span className="min-w-[46px] text-center text-[11px] tabular-nums text-textColor/70">
+              {Math.round(zoomLabel * 100)}%
+            </span>
+            <button
+              onClick={() => zoomTo((manualZoomRef.current ?? zoomLabel) * 1.2)}
+              className="h-7 w-7 rounded text-textColor/70 hover:bg-white/[0.08] hover:text-textColor transition-colors"
+              title={t('zoom_in', 'Zoom in')}
+              aria-label={t('zoom_in', 'Zoom in')}
+            >
+              +
+            </button>
+            <button
+              onClick={() => zoomTo(null)}
+              className={clsx(
+                'h-7 px-2 rounded text-[11px] transition-colors',
+                manualZoom === null
+                  ? 'text-textColor/70'
+                  : 'text-textColor hover:bg-white/[0.08]'
+              )}
+              title={t('zoom_fit_hint', 'Fit the design to the window')}
+            >
+              {t('zoom_fit', 'Fit')}
+            </button>
+            <button
+              onClick={() => zoomTo(1)}
+              className="h-7 px-2 rounded text-[11px] text-textColor/70 hover:bg-white/[0.08] hover:text-textColor transition-colors"
+              title={t('zoom_100_hint', 'Show the design at its real size')}
+            >
+              100%
+            </button>
+          </div>
 
-          <FormatBar />
+          <div className="shrink-0">
+            <CarouselStrip fabricRef={fabricRef} />
+          </div>
+
+          <div className="shrink-0">
+            <FormatBar />
+          </div>
         </div>
       </div>
 

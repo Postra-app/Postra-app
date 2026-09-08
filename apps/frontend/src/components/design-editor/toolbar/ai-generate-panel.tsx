@@ -186,7 +186,7 @@ export const AiGeneratePanel: FC<Props> = ({ canvas }) => {
   if (!allowed) {
     return (
       <div className="flex flex-col gap-2 text-[11px] text-textColor/60 leading-relaxed">
-        <span className="text-[10px] uppercase tracking-wide text-textColor/60">
+        <span className="text-[11px] uppercase tracking-wide text-textColor/60">
           {t('ai_generate', 'AI Generate')}
         </span>
         <p>
@@ -201,8 +201,8 @@ export const AiGeneratePanel: FC<Props> = ({ canvas }) => {
             which is the thing this plan can actually do. */}
         {upcoming.length > 0 && (
           <div className="flex flex-col gap-1.5 pt-1">
-            <span className="text-[10px] uppercase tracking-wide text-textColor/50">
-              🗓 {t('holiday_suggestions', 'Upcoming occasions')}
+            <span className="text-[11px] uppercase tracking-wide text-textColor/65">
+              {t('holiday_suggestions', 'Upcoming occasions')}
             </span>
             {upcoming.map((entry) => (
               <button
@@ -224,7 +224,7 @@ export const AiGeneratePanel: FC<Props> = ({ canvas }) => {
                 : <strong>{entry.holiday.localName}</strong>
               </button>
             ))}
-            <p className="text-[10px] text-textColor/40 leading-snug">
+            <p className="text-[11px] text-textColor/65 leading-snug">
               {t(
                 'holiday_templates_hint',
                 'Opens Templates filtered for the occasion — free on every plan.'
@@ -238,12 +238,12 @@ export const AiGeneratePanel: FC<Props> = ({ canvas }) => {
 
   return (
     <div className="flex flex-col gap-2">
-      <span className="text-[10px] uppercase tracking-wide text-textColor/60">
+      <span className="text-[11px] uppercase tracking-wide text-textColor/60">
         {t('ai_generate', 'AI Generate')}
       </span>
       {!brandKit.loading && !brandKit.exists && (
         <div className="rounded-md bg-forth/10 border border-forth/30 px-2 py-1.5 flex flex-col gap-1.5">
-          <p className="text-[10px] leading-snug text-textColor/80">
+          <p className="text-[11px] leading-snug text-textColor/80">
             🎨{' '}
             {t(
               'brand_kit_nudge',
@@ -252,7 +252,7 @@ export const AiGeneratePanel: FC<Props> = ({ canvas }) => {
           </p>
           <button
             onClick={() => setTool('brand')}
-            className="self-start text-[10px] px-2 py-1 rounded bg-forth/20 hover:bg-forth/40 text-textColor transition-colors"
+            className="self-start text-[11px] px-2 py-1 rounded bg-forth/20 hover:bg-white/[0.08] text-textColor transition-colors"
           >
             {t('brand_kit_nudge_cta', 'Set up brand')}
           </button>
@@ -260,8 +260,8 @@ export const AiGeneratePanel: FC<Props> = ({ canvas }) => {
       )}
       {upcoming.length > 0 && (
         <div className="flex flex-col gap-1.5">
-          <span className="text-[10px] uppercase tracking-wide text-textColor/50">
-            🗓 {t('holiday_suggestions', 'Upcoming occasions')}
+          <span className="text-[11px] uppercase tracking-wide text-textColor/65">
+            {t('holiday_suggestions', 'Upcoming occasions')}
           </span>
           <div className="flex flex-col gap-1">
             {upcoming.map((entry) => {
@@ -295,7 +295,7 @@ export const AiGeneratePanel: FC<Props> = ({ canvas }) => {
               );
             })}
           </div>
-          <p className="text-[10px] text-textColor/40 leading-snug">
+          <p className="text-[11px] text-textColor/65 leading-snug">
             {t(
               'holiday_or_custom',
               'Click an occasion to generate instantly (✎ fills the prompt for editing) — or type your own idea below.'
@@ -315,7 +315,7 @@ export const AiGeneratePanel: FC<Props> = ({ canvas }) => {
         className="text-xs p-2 rounded bg-newColColor border border-newBorder text-textColor placeholder-textColor/40 resize-none focus:outline-none focus:border-forth disabled:opacity-50"
       />
       <div className="flex items-center gap-2">
-        <label className="text-[10px] uppercase tracking-wide text-textColor/60">
+        <label className="text-[11px] uppercase tracking-wide text-textColor/60">
           {t('ai_slides_count', 'Slides')}
         </label>
         <select
@@ -340,12 +340,12 @@ export const AiGeneratePanel: FC<Props> = ({ canvas }) => {
         {isGenerating
           ? t('ai_generating', 'Generating…')
           : slidesCount > 1
-            ? t('ai_generate_carousel_button', '🎴 Generate carousel ({n})').replace('{n}', String(slidesCount))
-            : t('ai_generate_button', '✨ Generate Design')}
+            ? t('ai_generate_carousel_button', 'Generate carousel ({n})').replace('{n}', String(slidesCount))
+            : t('ai_generate_button', 'Generate Design')}
       </Button>
       {confirmPrompt !== null && (
         <div className="rounded-md bg-yellow-500/10 border border-yellow-500/30 px-2 py-1.5 flex flex-col gap-1.5">
-          <p className="text-[10px] leading-snug text-textColor/80">
+          <p className="text-[11px] leading-snug text-textColor/80">
             ⚠️{' '}
             {t(
               'ai_replace_confirm',
@@ -355,20 +355,20 @@ export const AiGeneratePanel: FC<Props> = ({ canvas }) => {
           <div className="flex gap-2">
             <button
               onClick={() => generate(confirmPrompt, true)}
-              className="text-[10px] px-2 py-1 rounded bg-forth text-white hover:bg-forth/80 transition-colors"
+              className="text-[11px] px-2 py-1 rounded bg-newAccent text-[#06222e] font-[600] hover:brightness-110 transition-all"
             >
               {t('ai_replace_confirm_btn', 'Replace & generate')}
             </button>
             <button
               onClick={() => setConfirmPrompt(null)}
-              className="text-[10px] px-2 py-1 rounded bg-newColColor text-textColor hover:bg-forth/40 transition-colors"
+              className="text-[11px] px-2 py-1 rounded bg-newColColor text-textColor hover:bg-white/[0.08] transition-colors"
             >
               {t('ai_replace_cancel', 'Cancel')}
             </button>
           </div>
         </div>
       )}
-      <p className="text-[10px] text-textColor/40 leading-snug">
+      <p className="text-[11px] text-textColor/65 leading-snug">
         {t(
           'ai_generate_hint',
           'AI generates the background + text in one step. Takes about 5-10 seconds.'

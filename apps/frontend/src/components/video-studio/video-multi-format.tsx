@@ -11,6 +11,7 @@ import {
   Mp4OutputFormat,
 } from 'mediabunny';
 import { useT } from '@gitroom/react/translation/get.transation.service.client';
+import { Button } from '@gitroom/frontend/components/ui/button';
 import { useToaster } from '@gitroom/react/toaster/toaster';
 import { VIDEO_FORMATS, VideoFormat } from './video-formats';
 import { assertVideoSurvives } from './mp4-source';
@@ -132,23 +133,23 @@ export const VideoMultiFormat: FC<VideoMultiFormatProps> = ({ source, onExported
                 />
                 <div className="text-xs">
                   <div className="text-textColor">{fmt.label}</div>
-                  <div className="text-[10px] text-textColor/50">
+                  <div className="text-[11px] text-textColor/65">
                     {fmt.width}×{fmt.height}
                   </div>
                 </div>
               </div>
               {progress !== undefined && progress < 100 && (
-                <div className="text-[10px] text-textColor/70">{progress}%</div>
+                <div className="text-[11px] text-textColor/70">{progress}%</div>
               )}
-              {progress === 100 && <div className="text-[10px] text-green-400">✓</div>}
+              {progress === 100 && <div className="text-[11px] text-green-400">✓</div>}
             </label>
           );
         })}
       </div>
-      <button
+      <Button
         onClick={handleExport}
         disabled={isExporting || selected.size === 0}
-        className="px-3 py-2 text-sm rounded bg-newAccent text-white hover:bg-forth disabled:opacity-50 transition-colors"
+        className="self-start"
       >
         {isExporting
           ? t('video_format_exporting', 'Exporting {n} formats...').replace(
@@ -159,7 +160,7 @@ export const VideoMultiFormat: FC<VideoMultiFormatProps> = ({ source, onExported
               '{n}',
               String(selected.size)
             )}
-      </button>
+      </Button>
     </div>
   );
 };

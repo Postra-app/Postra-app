@@ -10,6 +10,7 @@ import { AiGeneratePanel } from './ai-generate-panel';
 import { AiRefinePanel } from './ai-refine-panel';
 import { BrandKitPanel } from './brand-kit-panel';
 import { IconsPanel } from './icons-panel';
+import { LayersPanel } from './layers-panel';
 import { TemplatesPanel } from './templates-panel';
 import { StockImagesPanel } from './stock-images-panel';
 import { ImageFiltersPanel } from './image-filters-panel';
@@ -21,6 +22,10 @@ import {
 } from '../utils/background-removal';
 import { smartCrop } from '../utils/smart-crop';
 import clsx from 'clsx';
+import {
+  StudioIcon,
+  StudioIconName,
+} from '@gitroom/frontend/components/studio/studio-icons';
 
 interface ToolbarProps {
   canvas: MutableRefObject<fabric.Canvas | null>;
@@ -82,21 +87,27 @@ const BG_COLORS = [
   '#000000',
 ];
 
-const TOOLS: { key: EditorTool; icon: string; labelKey: string; fallback: string }[] = [
-  { key: 'ai', icon: '✨', labelKey: 'tool_ai', fallback: 'AI Generate' },
-  { key: 'refine', icon: '🪄', labelKey: 'tool_refine', fallback: 'AI Refine' },
-  { key: 'templates', icon: '📐', labelKey: 'tool_templates', fallback: 'Templates' },
+const TOOLS: {
+  key: EditorTool;
+  icon: StudioIconName;
+  labelKey: string;
+  fallback: string;
+}[] = [
+  { key: 'ai', icon: 'aiGenerate', labelKey: 'tool_ai', fallback: 'AI Generate' },
+  { key: 'refine', icon: 'aiRefine', labelKey: 'tool_refine', fallback: 'AI Refine' },
+  { key: 'templates', icon: 'templates', labelKey: 'tool_templates', fallback: 'Templates' },
   // Stock sat at the bottom of the Images panel: four clicks and a typed query
   // before a user saw a single photo, for the one feature here that costs
   // nothing and needs no AI credit. It is a source of content like Templates,
   // so it belongs next to it on the bar.
-  { key: 'stock', icon: '🏞', labelKey: 'tool_stock', fallback: 'Stock photos' },
-  { key: 'brand', icon: '🎨', labelKey: 'tool_brand', fallback: 'Brand Kit' },
-  { key: 'select', icon: '↖', labelKey: 'tool_select', fallback: 'Select' },
-  { key: 'text', icon: 'T', labelKey: 'tool_text', fallback: 'Text' },
-  { key: 'shapes', icon: '◻', labelKey: 'tool_shapes', fallback: 'Shapes' },
-  { key: 'icons', icon: '🎯', labelKey: 'tool_icons', fallback: 'Icons' },
-  { key: 'images', icon: '🖼', labelKey: 'tool_images', fallback: 'Images' },
+  { key: 'stock', icon: 'stock', labelKey: 'tool_stock', fallback: 'Stock photos' },
+  { key: 'brand', icon: 'brand', labelKey: 'tool_brand', fallback: 'Brand Kit' },
+  { key: 'select', icon: 'select', labelKey: 'tool_select', fallback: 'Select' },
+  { key: 'text', icon: 'text', labelKey: 'tool_text', fallback: 'Text' },
+  { key: 'shapes', icon: 'shapes', labelKey: 'tool_shapes', fallback: 'Shapes' },
+  { key: 'icons', icon: 'icons', labelKey: 'tool_icons', fallback: 'Icons' },
+  { key: 'images', icon: 'images', labelKey: 'tool_images', fallback: 'Images' },
+  { key: 'layers', icon: 'layers', labelKey: 'tool_layers', fallback: 'Layers' },
 ];
 
 export const EditorToolbar: FC<ToolbarProps> = ({ canvas }) => {
@@ -577,12 +588,12 @@ export const EditorToolbar: FC<ToolbarProps> = ({ canvas }) => {
             className={clsx(
               'flex flex-col items-center gap-1 px-1.5 py-2 rounded-md transition-colors',
               activeTool === tool.key
-                ? 'bg-forth text-white'
+                ? 'bg-newAccent text-[#06222e] font-[600]'
                 : 'text-textColor hover:bg-newColColor'
             )}
           >
-            <span className="text-lg leading-none">{tool.icon}</span>
-            <span className="text-[10px] leading-tight text-center">
+            <StudioIcon name={tool.icon} size={20} />
+            <span className="text-[11px] leading-tight text-center">
               {t(tool.labelKey, tool.fallback)}
             </span>
           </button>
@@ -593,7 +604,7 @@ export const EditorToolbar: FC<ToolbarProps> = ({ canvas }) => {
         <div className="w-[280px] shrink-0 p-3 flex flex-col gap-3 min-h-0 overflow-y-auto">
         {activeTool === 'select' && (
           <div className="flex flex-col gap-2">
-            <span className="text-[10px] text-textColor/60 uppercase tracking-wide">
+            <span className="text-[11px] text-textColor/60 uppercase tracking-wide">
               {t('tool_select', 'Select')}
             </span>
             <p className="text-[11px] leading-relaxed text-textColor/70">
@@ -613,11 +624,13 @@ export const EditorToolbar: FC<ToolbarProps> = ({ canvas }) => {
 
         {activeTool === 'icons' && <IconsPanel canvas={canvas} />}
 
+        {activeTool === 'layers' && <LayersPanel canvas={canvas} />}
+
         {activeTool === 'templates' && <TemplatesPanel canvas={canvas} />}
 
         {activeTool === 'text' && (
           <div className="flex flex-col gap-2">
-            <span className="text-[10px] text-textColor/60 uppercase tracking-wide">
+            <span className="text-[11px] text-textColor/60 uppercase tracking-wide">
               {t('font_label', 'Font')}
             </span>
             <select
@@ -637,11 +650,11 @@ export const EditorToolbar: FC<ToolbarProps> = ({ canvas }) => {
             </select>
             <button
               onClick={addText}
-              className="text-xs px-3 py-2 rounded bg-newColColor hover:bg-forth text-textColor transition-colors"
+              className="text-xs px-3 py-2 rounded bg-newColColor hover:bg-white/[0.08] text-textColor transition-colors"
             >
               + {t('text_add', 'Add text')}
             </button>
-            <p className="text-[10px] text-textColor/40 leading-snug">
+            <p className="text-[11px] text-textColor/65 leading-snug">
               {t(
                 'text_font_hint',
                 'Choose a font for new text. To change existing text — select it and pick a font.'
@@ -652,7 +665,7 @@ export const EditorToolbar: FC<ToolbarProps> = ({ canvas }) => {
 
         {activeTool === 'shapes' && (
           <div className="flex flex-col gap-2">
-            <span className="text-[10px] text-textColor/60 uppercase tracking-wide">
+            <span className="text-[11px] text-textColor/60 uppercase tracking-wide">
               {t('add_shape', 'Add shape')}
             </span>
             <div className="grid grid-cols-4 gap-1.5">
@@ -660,7 +673,7 @@ export const EditorToolbar: FC<ToolbarProps> = ({ canvas }) => {
                 <button
                   key={shape.type}
                   onClick={() => addShape(shape.type)}
-                  className="aspect-square rounded bg-newColColor hover:bg-forth flex items-center justify-center text-textColor text-base transition-colors"
+                  className="aspect-square rounded bg-newColColor hover:bg-white/[0.08] flex items-center justify-center text-textColor text-base transition-colors"
                   title={t(shape.titleKey, shape.fallback)}
                   aria-label={t(shape.titleKey, shape.fallback)}
                 >
@@ -673,13 +686,13 @@ export const EditorToolbar: FC<ToolbarProps> = ({ canvas }) => {
 
         {activeTool === 'images' && (
           <div className="flex flex-col gap-2">
-            <span className="text-[10px] text-textColor/60 uppercase tracking-wide">
+            <span className="text-[11px] text-textColor/60 uppercase tracking-wide">
               {t('add_image', 'Add Image')}
             </span>
             <button
               onClick={() => fileRef.current?.click()}
               disabled={uploading}
-              className="text-xs px-3 py-2 rounded bg-newColColor hover:bg-forth text-textColor transition-colors disabled:opacity-50 disabled:cursor-wait"
+              className="text-xs px-3 py-2 rounded bg-newColColor hover:bg-white/[0.08] text-textColor transition-colors disabled:opacity-50 disabled:cursor-wait"
             >
               {uploading
                 ? t('uploading', 'Uploading…')
@@ -700,7 +713,7 @@ export const EditorToolbar: FC<ToolbarProps> = ({ canvas }) => {
             <button
               onClick={removeImageBackground}
               disabled={removingBg}
-              className="text-xs px-3 py-2 rounded bg-newColColor hover:bg-forth text-textColor transition-colors disabled:opacity-50 disabled:cursor-wait"
+              className="text-xs px-3 py-2 rounded bg-newColColor hover:bg-white/[0.08] text-textColor transition-colors disabled:opacity-50 disabled:cursor-wait"
             >
               {removingBg
                 ? `${t('bg_remove_loading', 'Removing…')} ${Math.round(bgProgress * 100)}%`
@@ -713,11 +726,11 @@ export const EditorToolbar: FC<ToolbarProps> = ({ canvas }) => {
                 'crop_smart_hint',
                 'Crops the photo to the current format (bottom bar), keeping the most detailed part of the picture in frame'
               )}
-              className="text-xs px-3 py-2 rounded bg-newColColor hover:bg-forth text-textColor transition-colors"
+              className="text-xs px-3 py-2 rounded bg-newColColor hover:bg-white/[0.08] text-textColor transition-colors"
             >
               ✂ {t('crop_smart', 'Smart crop to platform')}
             </button>
-            <p className="text-[10px] text-textColor/40 leading-snug">
+            <p className="text-[11px] text-textColor/65 leading-snug">
               {t(
                 'image_tools_hint',
                 'Both work on the selected image (or the last one added). Remove background downloads an AI model (~30MB) on first run; Smart crop trims the photo to the current post format.'
@@ -728,7 +741,7 @@ export const EditorToolbar: FC<ToolbarProps> = ({ canvas }) => {
 
             <button
               onClick={() => setTool('stock')}
-              className="text-xs px-3 py-2 rounded bg-newColColor hover:bg-forth text-textColor transition-colors text-left"
+              className="text-xs px-3 py-2 rounded bg-newColColor hover:bg-white/[0.08] text-textColor transition-colors text-left"
             >
               🏞 {t('image_stock_jump', 'Browse free stock photos')} →
             </button>
@@ -745,13 +758,13 @@ export const EditorToolbar: FC<ToolbarProps> = ({ canvas }) => {
           activeTool === 'text') && (
           <>
           <div className="flex flex-col gap-2">
-            <span className="text-[10px] text-textColor/60 uppercase tracking-wide">
+            <span className="text-[11px] text-textColor/60 uppercase tracking-wide">
               {hasSelection
                 ? t('fill_selected', 'Colour of selected object')
                 : t('background', 'Background')}
             </span>
             {!hasSelection && (
-              <p className="text-[10px] text-textColor/45 leading-snug">
+              <p className="text-[11px] text-textColor/65 leading-snug">
                 {t(
                   'fill_hint',
                   'Nothing selected — these colours set the canvas background. Select an object to recolour it.'

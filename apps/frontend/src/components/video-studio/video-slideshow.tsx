@@ -313,9 +313,9 @@ export const VideoSlideshow: FC<VideoSlideshowProps> = ({ onReady }) => {
       <button
         onClick={() => fileRef.current?.click()}
         disabled={busy || images.length >= MAX_IMAGES}
-        className="text-xs px-3 py-2 rounded bg-newColColor hover:bg-forth text-textColor transition-colors disabled:opacity-50"
+        className="text-xs px-3 py-2 rounded bg-newColColor hover:bg-white/[0.08] text-textColor transition-colors disabled:opacity-50"
       >
-        📁 {t('slideshow_add', 'Add photos')} ({images.length}/{MAX_IMAGES})
+        {t('slideshow_add', 'Add photos')} ({images.length}/{MAX_IMAGES})
       </button>
 
       {images.length > 0 && (
@@ -359,7 +359,7 @@ export const VideoSlideshow: FC<VideoSlideshowProps> = ({ onReady }) => {
       {/* Format + seconds per image */}
       <div className="flex gap-3">
         <div className="flex flex-col gap-1 flex-1">
-          <label className="text-[10px] text-textColor/60">{t('slideshow_format', 'Format')}</label>
+          <label className="text-[11px] text-textColor/60">{t('slideshow_format', 'Format')}</label>
           <select
             value={format.key}
             onChange={(e) =>
@@ -376,7 +376,7 @@ export const VideoSlideshow: FC<VideoSlideshowProps> = ({ onReady }) => {
           </select>
         </div>
         <div className="flex flex-col gap-1 w-28">
-          <label className="text-[10px] text-textColor/60">
+          <label className="text-[11px] text-textColor/60">
             {t('slideshow_seconds', 'Seconds/photo')}
           </label>
           <select
@@ -411,7 +411,7 @@ export const VideoSlideshow: FC<VideoSlideshowProps> = ({ onReady }) => {
               key={p.key}
               onClick={() => setText(label)}
               disabled={busy}
-              className="text-[10px] px-2 py-1 rounded bg-newColColor hover:bg-forth text-textColor/80 transition-colors disabled:opacity-50"
+              className="text-[11px] px-2 py-1 rounded bg-newColColor hover:bg-white/[0.08] text-textColor/80 transition-colors disabled:opacity-50"
             >
               {label}
             </button>
@@ -419,19 +419,19 @@ export const VideoSlideshow: FC<VideoSlideshowProps> = ({ onReady }) => {
         })}
       </div>
 
-      <button
+      <Button
         onClick={compose}
         disabled={!images.length || busy}
-        className="px-3 py-2 text-sm rounded bg-newAccent text-white hover:bg-forth disabled:opacity-50 transition-colors"
+        className="self-start"
       >
         {busy
           ? `${t('slideshow_running', 'Building video…')} ${progress}%`
-          : t('slideshow_run', '🎬 Build video from photos')}
-      </button>
+          : t('slideshow_run', 'Build video from photos')}
+      </Button>
 
       {resultUrl && (
         <div className="flex flex-col gap-2">
-          <div className="text-[10px] text-green-400">
+          <div className="text-[11px] text-green-400">
             ✓ {t('compositor_no_audio', 'no audio')}
           </div>
           <video src={resultUrl} controls className="w-full rounded border border-newBorder" />
@@ -442,14 +442,14 @@ export const VideoSlideshow: FC<VideoSlideshowProps> = ({ onReady }) => {
             <button
               onClick={saveToLibrary}
               disabled={uploading}
-              className="text-xs px-3 h-[30px] rounded bg-newColColor text-textColor hover:bg-forth transition-colors disabled:opacity-50"
+              className="text-xs px-3 h-[30px] rounded bg-newColColor text-textColor hover:bg-white/[0.08] transition-colors disabled:opacity-50"
             >
               💾 {t('save_to_library_btn', 'Save to library')}
             </button>
             <a
               href={resultUrl}
               download="postra-slideshow.mp4"
-              className="text-[10px] text-newAccent underline"
+              className="text-[11px] text-newAccent underline"
             >
               {t('clip_text_download', 'Download')}
             </a>

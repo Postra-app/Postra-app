@@ -192,7 +192,7 @@ export const MultiFormatModal: FC<MultiFormatModalProps> = ({
             id="multi-format-modal-title"
             className="text-lg font-semibold text-textColor"
           >
-            📐 {t('multi_format_title', 'Export to all platforms')}
+            {t('multi_format_title', 'Export to all platforms')}
           </h2>
           <button
             ref={closeButtonRef}
@@ -246,7 +246,7 @@ export const MultiFormatModal: FC<MultiFormatModalProps> = ({
                       disabled={uploading}
                       className="text-xs px-2 py-1 rounded bg-forth text-textColor hover:bg-newColColor disabled:opacity-30 whitespace-nowrap"
                     >
-                      ⬇ {t('multi_format_download_one', 'Download')}
+                      {t('multi_format_download_one', 'Download')}
                     </button>
                   </div>
                 </div>
@@ -260,7 +260,7 @@ export const MultiFormatModal: FC<MultiFormatModalProps> = ({
             <button
               onClick={onClose}
               disabled={uploading}
-              className="text-sm px-4 py-2 rounded bg-newColColor text-textColor hover:bg-forth disabled:opacity-30"
+              className="text-sm px-4 py-2 rounded bg-newColColor text-textColor hover:bg-white/[0.08] disabled:opacity-30"
             >
               {t('multi_format_cancel', 'Cancel')}
             </button>
@@ -273,9 +273,9 @@ export const MultiFormatModal: FC<MultiFormatModalProps> = ({
               <button
                 onClick={handleDownloadZip}
                 disabled={uploading}
-                className="text-sm px-4 py-2 rounded bg-newColColor text-textColor hover:bg-forth disabled:opacity-30"
+                className="text-sm px-4 py-2 rounded bg-newColColor text-textColor hover:bg-white/[0.08] disabled:opacity-30"
               >
-                ⬇ {t('multi_format_download_zip', 'Download all (ZIP)')}
+                {t('multi_format_download_zip', 'Download all (ZIP)')}
               </button>
               {mode === 'composer' && (
                 <Button

@@ -192,7 +192,7 @@ export const VideoCaptions: FC<VideoCaptionsProps> = ({ mediaId, source, onCapti
         )}
       </div>
       <div className="flex items-center gap-2">
-        <label className="text-[10px] uppercase tracking-wide text-textColor/60">
+        <label className="text-[11px] uppercase tracking-wide text-textColor/60">
           {t('video_captions_language', 'Language')}
         </label>
         <select
@@ -214,7 +214,7 @@ export const VideoCaptions: FC<VideoCaptionsProps> = ({ mediaId, source, onCapti
           disabled={!mediaId}
           className="!h-[28px] !text-xs"
         >
-          ✨ {t('video_captions_generate', 'Generate captions')}
+          {t('video_captions_generate', 'Generate captions')}
         </Button>
       </div>
       <textarea
@@ -229,7 +229,7 @@ export const VideoCaptions: FC<VideoCaptionsProps> = ({ mediaId, source, onCapti
         className="text-[11px] font-mono p-2 rounded bg-newColColor border border-newBorder text-textColor resize-none focus:outline-none focus:border-forth disabled:opacity-50 leading-relaxed"
       />
       <div className="flex justify-between items-center">
-        <div className="text-[10px] text-textColor/50">
+        <div className="text-[11px] text-textColor/65">
           {srt.trim().length > 0
             ? t('video_captions_lines', '{n} SRT characters').replace('{n}', String(srt.length))
             : t('video_captions_empty', 'No captions')}
@@ -240,12 +240,12 @@ export const VideoCaptions: FC<VideoCaptionsProps> = ({ mediaId, source, onCapti
           disabled={!srt.trim() || (!source && !mediaId)}
           className="!h-[28px] !text-xs"
         >
-          🎨 {isBurning && source
+          {isBurning && source
             ? `${t('video_captions_burning', 'Burning…')} ${burnProgress}%`
             : t('video_captions_burn', 'Burn into video')}
         </Button>
       </div>
-      <div className="text-[10px] text-textColor/40 leading-snug">
+      <div className="text-[11px] text-textColor/65 leading-snug">
         {source
           ? t(
               'video_captions_hint_browser',

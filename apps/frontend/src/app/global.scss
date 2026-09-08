@@ -1231,3 +1231,15 @@ body.light .agent {
   text-shadow: -1px -1px 0 black, 1px -1px 0 black, -1px 1px 0 black,
     1px 1px 0 black;
 }
+
+/* Studio strips the focus outline on every input (`focus:outline-none`) and
+   never puts one back, and its buttons never had one - so keyboard users have
+   no idea where they are in a screen made almost entirely of buttons.
+
+   One rule for the whole editor. `:focus-visible` keeps it off mouse clicks,
+   and the outline follows each element's own border-radius. WCAG 2.2 SC 2.4.11
+   asks for a 2px perimeter at 3:1 contrast; cyan on these dark panels is ~7:1. */
+.studio-root :is(button, a, input, select, textarea, [tabindex]):focus-visible {
+  outline: 2px solid var(--new-btn-primary);
+  outline-offset: 2px;
+}

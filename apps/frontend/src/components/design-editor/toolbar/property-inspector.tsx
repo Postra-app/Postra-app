@@ -214,8 +214,8 @@ export const PropertyInspector: FC<Props> = ({ canvas }) => {
       className={clsx(
         'flex-1 px-2 py-1.5 rounded text-xs transition-colors',
         active
-          ? 'bg-forth text-white'
-          : 'bg-newColColor hover:bg-forth text-textColor'
+          ? 'bg-newAccent text-[#06222e] font-[600]'
+          : 'bg-newColColor hover:bg-white/[0.08] text-textColor'
       )}
     >
       {content}
@@ -224,14 +224,14 @@ export const PropertyInspector: FC<Props> = ({ canvas }) => {
 
   return (
     <div className="flex flex-col gap-2 border-t border-newBorder pt-3">
-      <span className="text-[10px] text-textColor/60 uppercase tracking-wide">
+      <span className="text-[11px] text-textColor/60 uppercase tracking-wide">
         {t('props_section', 'Selected object')}
       </span>
 
       {text && (
         <>
           <label className="flex flex-col gap-0.5">
-            <span className="flex justify-between text-[10px] text-textColor/60">
+            <span className="flex justify-between text-[11px] text-textColor/60">
               <span>{t('props_font_size', 'Font size')}</span>
               <span className="tabular-nums">{fontSize}px</span>
             </span>
@@ -307,7 +307,7 @@ export const PropertyInspector: FC<Props> = ({ canvas }) => {
 
       {shape && (
         <label className="flex flex-col gap-0.5">
-          <span className="flex justify-between text-[10px] text-textColor/60">
+          <span className="flex justify-between text-[11px] text-textColor/60">
             <span>{t('props_stroke_width', 'Outline width')}</span>
             <span className="tabular-nums">{strokeWidth}px</span>
           </span>
@@ -337,7 +337,7 @@ export const PropertyInspector: FC<Props> = ({ canvas }) => {
       )}
 
       <label className="flex flex-col gap-0.5">
-        <span className="flex justify-between text-[10px] text-textColor/60">
+        <span className="flex justify-between text-[11px] text-textColor/60">
           <span>{t('props_opacity', 'Opacity')}</span>
           <span className="tabular-nums">{Math.round(opacity * 100)}%</span>
         </span>
@@ -356,7 +356,7 @@ export const PropertyInspector: FC<Props> = ({ canvas }) => {
       </label>
 
       <label className="flex flex-col gap-0.5">
-        <span className="flex justify-between text-[10px] text-textColor/60">
+        <span className="flex justify-between text-[11px] text-textColor/60">
           <span>{t('props_rotation', 'Rotation')}</span>
           <span className="tabular-nums">{angle}°</span>
         </span>

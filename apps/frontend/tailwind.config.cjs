@@ -7,7 +7,10 @@ module.exports = {
       colors: {
         primary: 'var(--color-primary)',
         secondary: 'var(--color-secondary)',
-        textColor: 'var(--new-btn-text)',
+        // channel form of the same colour (--new-btn-text is the hex twin):
+        // a hex behind a var cannot take a Tailwind opacity modifier, so
+        // every text-textColor/NN in the app emitted no rule at all
+        textColor: 'rgb(var(--new-textColor) / <alpha-value>)',
         third: 'var(--color-third)',
         forth: 'var(--color-forth)',
         fifth: 'var(--color-fifth)',
@@ -95,6 +98,7 @@ module.exports = {
         newTableText: 'var(--new-table-text)',
         newTableTextFocused: 'var(--new-table-text-focused)',
         newColColor: 'var(--new-col-color)',
+        newAccent: 'rgb(var(--new-btn-primary-rgb) / <alpha-value>)',
         newSettings: 'var(--new-settings)',
         menuDots: 'var(--new-menu-dots)',
         menuDotsHover: 'var(--new-menu-hover)',

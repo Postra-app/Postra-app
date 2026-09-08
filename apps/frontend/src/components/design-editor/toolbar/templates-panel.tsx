@@ -25,6 +25,7 @@ import {
   BrandStyle,
 } from '../templates/template-types';
 import { withHistoryPaused } from '../utils/canvas-history';
+import { StudioIcon } from '@gitroom/frontend/components/studio/studio-icons';
 
 interface TemplatesPanelProps {
   canvas: MutableRefObject<fabric.Canvas | null>;
@@ -268,14 +269,15 @@ export const TemplatesPanel: FC<TemplatesPanelProps> = ({ canvas }) => {
         onChange={(e) => setQuery(e.target.value)}
         placeholder={t(
           'template_search_placeholder',
-          '🔍 Search templates (e.g. "holiday promo")'
+          'Search templates (e.g. "holiday promo")'
         )}
         className="text-xs px-2 py-1.5 rounded bg-newColColor border border-newBorder text-textColor placeholder-textColor/40 focus:outline-none focus:border-forth"
       />
       {!searchHits && myTemplates.length > 0 && (
         <div className="flex flex-col gap-1.5">
-          <span className="text-[10px] uppercase tracking-wide text-textColor/50">
-            ⭐ {t('my_templates', 'Your templates')}
+          <span className="text-[11px] uppercase tracking-wide text-textColor/65">
+            <StudioIcon name="saveTemplate" size={13} />
+          {t('my_templates', 'Your templates')}
           </span>
           <div className="grid grid-cols-2 gap-1.5">
             {myTemplates.map((m) => (
@@ -294,14 +296,14 @@ export const TemplatesPanel: FC<TemplatesPanelProps> = ({ canvas }) => {
                   />
                 </button>
                 {applyingId === m.id && (
-                  <span className="absolute inset-0 flex items-center justify-center text-[10px] bg-black/50 text-white rounded">
+                  <span className="absolute inset-0 flex items-center justify-center text-[11px] bg-black/50 text-white rounded">
                     {t('template_applying', 'Applying…')}
                   </span>
                 )}
                 <button
                   onClick={() => removeMyTemplate(m.id)}
                   title={t('my_template_remove_hint', 'Remove from templates (the image stays in your library)')}
-                  className="absolute top-0.5 right-0.5 w-4 h-4 rounded-full bg-black/60 text-white text-[9px] leading-4 text-center opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-500"
+                  className="absolute top-0.5 right-0.5 w-4 h-4 rounded-full bg-black/60 text-white text-[11px] leading-4 text-center opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-500"
                 >
                   ×
                 </button>
@@ -317,9 +319,9 @@ export const TemplatesPanel: FC<TemplatesPanelProps> = ({ canvas }) => {
               key={c.key}
               onClick={() => setCategory(c.key)}
               className={clsx(
-                'text-[10px] px-2 py-1 rounded transition-colors',
+                'text-[11px] px-2 py-1 rounded transition-colors',
                 category === c.key
-                  ? 'bg-forth text-white'
+                  ? 'bg-newAccent text-[#06222e] font-[600]'
                   : 'bg-newColColor text-textColor/70 hover:text-textColor'
               )}
               title={t(c.labelKey, c.fallback)}
@@ -330,14 +332,14 @@ export const TemplatesPanel: FC<TemplatesPanelProps> = ({ canvas }) => {
         </div>
       )}
       {searching && (
-        <div className="text-[10px] text-textColor/50">
+        <div className="text-[11px] text-textColor/65">
           {t('template_searching', 'Searching…')}
         </div>
       )}
 
       <div className="grid grid-cols-2 gap-1.5">
         {filtered.length === 0 && (
-          <div className="col-span-2 text-center text-[11px] text-textColor/50 py-4">
+          <div className="col-span-2 text-center text-[11px] text-textColor/65 py-4">
             {t('template_coming_soon', 'More templates coming soon in this category')}
           </div>
         )}
@@ -348,7 +350,7 @@ export const TemplatesPanel: FC<TemplatesPanelProps> = ({ canvas }) => {
               key={tpl.key}
               onClick={() => handleApply(tpl.key)}
               title={isPl ? tpl.descriptionPl : tpl.description}
-              className="text-left rounded overflow-hidden bg-newColColor hover:bg-forth hover:text-white text-textColor transition-colors border border-newBorder/60 hover:border-forth"
+              className="text-left rounded overflow-hidden bg-newColColor hover:bg-white/[0.08] text-textColor transition-colors border border-newBorder/60 hover:border-forth"
             >
               {thumb ? (
                 <img
@@ -364,7 +366,7 @@ export const TemplatesPanel: FC<TemplatesPanelProps> = ({ canvas }) => {
                   }}
                 />
               )}
-              <div className="text-[10px] font-semibold px-1.5 py-1 leading-tight">
+              <div className="text-[11px] font-semibold px-1.5 py-1 leading-tight">
                 {isPl ? tpl.labelPl : tpl.label}
               </div>
             </button>
@@ -372,7 +374,7 @@ export const TemplatesPanel: FC<TemplatesPanelProps> = ({ canvas }) => {
         })}
       </div>
 
-      <p className="text-[10px] text-textColor/40 leading-snug">
+      <p className="text-[11px] text-textColor/65 leading-snug">
         {t(
           'template_hint',
           'A template overwrites the current canvas (undo with Ctrl+Z). Colours come from your Brand Kit — and every element stays editable: select it to change its colour, text or size.'

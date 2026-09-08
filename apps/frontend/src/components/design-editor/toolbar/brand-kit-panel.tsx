@@ -139,11 +139,11 @@ export const BrandKitPanel: FC = () => {
   return (
     <div className="flex flex-col gap-3">
       <div className="flex items-center justify-between">
-        <span className="text-[10px] uppercase tracking-wide text-textColor/60">
+        <span className="text-[11px] uppercase tracking-wide text-textColor/60">
           {t('brand_kit', 'Brand Kit')}
         </span>
         {savedAt && (
-          <span className="text-[9px] text-textColor/40">
+          <span className="text-[11px] text-textColor/65">
             {t('saved', 'Saved')}
           </span>
         )}
@@ -151,12 +151,12 @@ export const BrandKitPanel: FC = () => {
 
       <div className="rounded-md bg-forth/10 border border-forth/30 p-2.5 text-[11px] leading-relaxed text-textColor/85">
         <div className="font-semibold mb-1">
-          {t('brand_kit_intro_title', '💡 What does Brand Kit do?')}
+          {t('brand_kit_intro_title', 'What does Brand Kit do?')}
         </div>
         <p>
           {t(
             'brand_kit_intro_body',
-            'Set once — every ✨ AI Generate design, 📐 template and 🎬 video text comes out in these colours and font. The logo goes bottom-right on every AI graphic. Tone shapes the wording AI writes.'
+            'Set once — every AI Generate design, template and video text comes out in these colours and font. The logo goes bottom-right on every AI graphic. Tone shapes the wording AI writes.'
           )}
         </p>
       </div>
@@ -183,7 +183,7 @@ export const BrandKitPanel: FC = () => {
       </div>
 
       <div className="flex flex-col gap-1">
-        <label className="text-[10px] text-textColor/60">{t('font', 'Font')}</label>
+        <label className="text-[11px] text-textColor/60">{t('font', 'Font')}</label>
         <select
           value={kit.font}
           onChange={(e) => update('font', e.target.value)}
@@ -202,7 +202,7 @@ export const BrandKitPanel: FC = () => {
       </div>
 
       <div className="flex flex-col gap-1">
-        <label className="text-[10px] text-textColor/60">{t('tone', 'Tone')}</label>
+        <label className="text-[11px] text-textColor/60">{t('tone', 'Tone')}</label>
         <select
           value={kit.tone}
           onChange={(e) => update('tone', e.target.value)}
@@ -217,7 +217,7 @@ export const BrandKitPanel: FC = () => {
       </div>
 
       <div className="flex flex-col gap-1">
-        <label className="text-[10px] text-textColor/60">{t('logo', 'Logo')}</label>
+        <label className="text-[11px] text-textColor/60">{t('logo', 'Logo')}</label>
         {kit.logoPath ? (
           <div className="flex items-center gap-2">
             <img
@@ -227,7 +227,7 @@ export const BrandKitPanel: FC = () => {
             />
             <Button
               onClick={() => update('logoPath', null)}
-              className="!h-[28px] !text-[10px]"
+              className="!h-[28px] !text-[11px]"
               secondary={true}
             >
               {t('remove', 'Remove')}
@@ -260,7 +260,7 @@ export const BrandKitPanel: FC = () => {
         )}
       </div>
 
-      <p className="text-[10px] text-textColor/40 leading-snug">
+      <p className="text-[11px] text-textColor/65 leading-snug">
         {t(
           'brand_kit_hint',
           'Saved automatically. AI generates designs using these colours, font and tone.'
@@ -298,8 +298,8 @@ const ColorRow: FC<{
       className="w-20 min-w-0 text-xs px-2 py-1 rounded bg-newColColor border border-newBorder text-textColor focus:outline-none focus:border-forth font-mono"
     />
     <div className="flex-1 min-w-0 flex flex-col text-right">
-      <span className="text-[10px] text-textColor/80">{label}</span>
-      <span className="text-[9px] text-textColor/45 leading-tight">{hint}</span>
+      <span className="text-[11px] text-textColor/80">{label}</span>
+      <span className="text-[11px] text-textColor/65 leading-tight">{hint}</span>
     </div>
   </div>
 );

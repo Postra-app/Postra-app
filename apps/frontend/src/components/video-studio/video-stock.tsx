@@ -132,6 +132,12 @@ export const VideoStock: FC<VideoStockProps> = ({ onImported }) => {
     [fetch, onImported, toaster, t]
   );
 
+  useEffect(() => {
+    if (autoRan.current) return;
+    autoRan.current = true;
+    handleSearch();
+  }, [handleSearch]);
+
   if (notConfigured) {
     return (
       <div className="flex flex-col gap-3 p-4 text-center">
@@ -145,12 +151,6 @@ export const VideoStock: FC<VideoStockProps> = ({ onImported }) => {
       </div>
     );
   }
-
-  useEffect(() => {
-    if (autoRan.current) return;
-    autoRan.current = true;
-    handleSearch();
-  }, [handleSearch]);
 
   return (
     <div className="flex flex-col gap-3 p-3">
@@ -182,12 +182,12 @@ export const VideoStock: FC<VideoStockProps> = ({ onImported }) => {
           onClick={handleSearch}
           className="!h-[28px] !text-xs"
         >
-          🔍 {t('video_stock_search', 'Search')}
+          {t('video_stock_search', 'Search')}
         </Button>
       </div>
       <div className="grid grid-cols-2 gap-2 max-h-[400px] overflow-y-auto">
         {hits.length === 0 && !isSearching && (
-          <div className="col-span-2 text-xs text-textColor/40 text-center py-4">
+          <div className="col-span-2 text-xs text-textColor/65 text-center py-4">
             {t('video_stock_no_results', 'No results. Type a phrase and press Search.')}
           </div>
         )}
@@ -222,15 +222,15 @@ export const VideoStock: FC<VideoStockProps> = ({ onImported }) => {
                     className="w-full h-full object-cover"
                   />
                 ) : (
-                  <div className="w-full h-full flex items-center justify-center text-textColor/50 text-[10px]">
+                  <div className="w-full h-full flex items-center justify-center text-textColor/65 text-[11px]">
                     {t('video_stock_no_preview', 'No preview')}
                   </div>
                 )}
-                <div className="absolute bottom-0 right-0 bg-black/70 text-white text-[9px] px-1 rounded-tl">
+                <div className="absolute bottom-0 right-0 bg-black/70 text-white text-[11px] px-1 rounded-tl">
                   {Math.round(v.duration)}s
                 </div>
               </button>
-              <div className="text-[10px] text-textColor/70 truncate" title={v.tags}>
+              <div className="text-[11px] text-textColor/70 truncate" title={v.tags}>
                 {v.tags}
               </div>
               <div className="flex items-center justify-between">
@@ -238,7 +238,7 @@ export const VideoStock: FC<VideoStockProps> = ({ onImported }) => {
                   href={pixabayProfileUrl(v)}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="text-[10px] text-newAccent hover:underline truncate"
+                  className="text-[11px] text-newAccent hover:underline truncate"
                   title={t('video_stock_attrib_author', 'Author on Pixabay')}
                 >
                   📷 {v.user}
@@ -246,7 +246,7 @@ export const VideoStock: FC<VideoStockProps> = ({ onImported }) => {
                 <Button
                   loading={isImporting}
                   onClick={() => handleImport(v)}
-                  className="!h-[24px] !text-[10px] !px-2"
+                  className="!h-[24px] !text-[11px] !px-2"
                 >
                   {isImporting
                     ? t('video_stock_importing', 'Downloading…')

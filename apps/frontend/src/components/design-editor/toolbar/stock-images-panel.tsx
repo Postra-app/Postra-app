@@ -144,13 +144,13 @@ export const StockImagesPanel: FC<Props> = ({ canvas, defaultQuery }) => {
 
   return (
     <div className="flex flex-col gap-2">
-      <span className="text-[10px] text-textColor/60 uppercase tracking-wide">
+      <span className="text-[11px] text-textColor/60 uppercase tracking-wide">
         {t('image_stock_title', 'Stock photos')}
       </span>
       {/* Pixabay's API terms ask that results say where they came from,
           wherever they are shown. The video panel does; here the only credit
           was a hover title, which nobody reads. */}
-      <p className="text-[10px] text-textColor/50 leading-snug">
+      <p className="text-[11px] text-textColor/65 leading-snug">
         {t(
           'image_stock_source',
           'Free photos from Pixabay — commercial use, no credit needed.'
@@ -175,7 +175,7 @@ export const StockImagesPanel: FC<Props> = ({ canvas, defaultQuery }) => {
         <button
           onClick={() => search()}
           disabled={searching || !query.trim()}
-          className="text-xs px-2.5 py-1.5 rounded bg-newColColor hover:bg-forth text-textColor transition-colors disabled:opacity-50"
+          className="text-xs px-2.5 py-1.5 rounded bg-newColColor hover:bg-white/[0.08] text-textColor transition-colors disabled:opacity-50"
         >
           {searching ? '…' : t('video_stock_search', 'Search')}
         </button>
@@ -199,7 +199,7 @@ export const StockImagesPanel: FC<Props> = ({ canvas, defaultQuery }) => {
                 className="w-full h-full object-cover"
               />
               {importingId === hit.id && (
-                <span className="absolute inset-0 flex items-center justify-center bg-black/60 text-[10px] text-white">
+                <span className="absolute inset-0 flex items-center justify-center bg-black/60 text-[11px] text-white">
                   {t('video_stock_importing', 'Downloading…')}
                 </span>
               )}
@@ -209,12 +209,12 @@ export const StockImagesPanel: FC<Props> = ({ canvas, defaultQuery }) => {
       )}
 
       {searched && !searching && hits.length === 0 && (
-        <p className="text-[10px] text-textColor/40">
+        <p className="text-[11px] text-textColor/65">
           {t('icon_no_results', 'No results')}
         </p>
       )}
 
-      <p className="text-[10px] text-textColor/40 leading-snug">
+      <p className="text-[11px] text-textColor/65 leading-snug">
         {t(
           'image_stock_hint',
           'Free photos (Pixabay License, commercial use OK). Click a photo to add it to the canvas — it is also saved to your media library.'

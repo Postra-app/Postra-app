@@ -3,6 +3,10 @@
 import { FC, useState } from 'react';
 import dynamic from 'next/dynamic';
 import clsx from 'clsx';
+import {
+  StudioIcon,
+  StudioIconName,
+} from '@gitroom/frontend/components/studio/studio-icons';
 import { useT } from '@gitroom/react/translation/get.transation.service.client';
 
 const PostDesignEditor = dynamic(
@@ -66,13 +70,13 @@ export const StudioWorkspace: FC<StudioWorkspaceProps> = ({
     setMode(next);
   };
 
-  const tabs: { key: StudioMode; label: string }[] = [
-    { key: 'graphic', label: t('studio_tab_graphic', '🎨 Graphics') },
-    { key: 'video', label: t('studio_tab_video', '🎬 Video') },
+  const tabs: { key: StudioMode; label: string; icon: StudioIconName }[] = [
+    { key: 'graphic', label: t('studio_tab_graphic', 'Graphics'), icon: 'graphics' },
+    { key: 'video', label: t('studio_tab_video', 'Video'), icon: 'video' },
   ];
 
   return (
-    <div className="flex flex-col gap-2 h-full w-full">
+    <div className="studio-root dark flex flex-col gap-2 h-full w-full">
       <div className="flex gap-2">
         {tabs.map((tab) => (
           <button
@@ -84,12 +88,13 @@ export const StudioWorkspace: FC<StudioWorkspaceProps> = ({
                 : undefined
             }
             className={clsx(
-              'h-9 px-4 text-sm rounded-lg border transition-colors',
+              'h-9 px-4 text-sm rounded-lg border transition-colors flex items-center gap-2',
               mode === tab.key
-                ? 'bg-forth text-white border-forth'
-                : 'bg-newColColor text-textColor border-newBorder hover:bg-forth/40'
+                ? 'bg-newAccent text-[#06222e] font-[600] border-newAccent'
+                : 'bg-newColColor text-textColor border-newBorder hover:bg-white/[0.08]'
             )}
           >
+            <StudioIcon name={tab.icon} size={16} />
             {tab.label}
           </button>
         ))}
@@ -101,7 +106,7 @@ export const StudioWorkspace: FC<StudioWorkspaceProps> = ({
           target="_blank"
           rel="noopener noreferrer"
           title={t('studio_help_hint', 'How Studio works')}
-          className="h-9 w-9 flex items-center justify-center text-sm rounded-lg border border-newBorder bg-newColColor text-textColor/70 hover:bg-forth/40 hover:text-textColor transition-colors ms-auto"
+          className="h-9 w-9 flex items-center justify-center text-sm rounded-lg border border-newBorder bg-newColColor text-textColor/70 hover:bg-white/[0.08] hover:text-textColor transition-colors ms-auto"
           aria-label={t('studio_help_hint', 'How Studio works')}
         >
           ?
