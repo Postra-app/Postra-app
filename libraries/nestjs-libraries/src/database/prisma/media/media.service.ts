@@ -30,6 +30,7 @@ import { platformDesignSize } from '@gitroom/nestjs-libraries/studio/post-design
 import {
   BrandVoiceCheckDto,
   AiEditTextDto,
+  SuggestHashtagsDto,
   RefineDesignDto,
   TemplateSearchDto,
 } from '@gitroom/nestjs-libraries/studio/studio.dto';
@@ -145,7 +146,7 @@ export class MediaService {
             true
           );
           if (!dalleUrl) {
-            throw new HttpException('DALL-E generation failed', 502);
+            throw new HttpException('The image generator returned nothing. Try again in a moment.', 502);
           }
           return await this.storage.uploadSimple(dalleUrl);
         }
@@ -288,7 +289,7 @@ export class MediaService {
             async () => {
               const dalleUrl = await this._openAi.generateImage(prompt, true);
               if (!dalleUrl) {
-                throw new HttpException('DALL-E generation failed', 502);
+                throw new HttpException('The image generator returned nothing. Try again in a moment.', 502);
               }
               return await this.storage.uploadSimple(dalleUrl);
             }
@@ -307,7 +308,7 @@ export class MediaService {
 
     const firstBg = Object.values(bgByKey).find((u): u is string => !!u) ?? null;
     if (!firstBg) {
-      throw new HttpException('DALL-E generation failed', 502);
+      throw new HttpException('The image generator returned nothing. Try again in a moment.', 502);
     }
 
     return {
@@ -578,6 +579,35 @@ export class MediaService {
 
   // Inline composer AI: rewrite/shorten/expand/adapt/fix-tone the caption in the
   // user's brand voice.
+  async generateAltText(
+    org: Organization,
+    id: string
+  ): Promise<{ alt: string }> {
+    // by id and org, so the URL handed to the model is always one of ours
+    const media = await this.getMediaByIdOrg(org.id, id);
+    if (!media?.path) {
+      throw new HttpException('Media not found', 404);
+    }
+
+    return this._studioAi.describeImageForAlt(media.path, org.id);
+  }
+
+  async suggestHashtags(
+    org: Organization,
+    body: SuggestHashtagsDto
+  ): Promise<{ hashtags: string[] }> {
+    const brandKit = await this._brandKitService.getNormalized(org.id);
+
+    return this._studioAi.suggestHashtags(
+      {
+        text: body.text,
+        platform: body.platform,
+        tone: brandKit?.tone,
+      },
+      org.id
+    );
+  }
+
   async aiEditText(
     org: Organization,
     body: AiEditTextDto

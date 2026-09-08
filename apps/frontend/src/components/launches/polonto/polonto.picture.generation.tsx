@@ -13,6 +13,7 @@ import { Button } from '@gitroom/react/form/button';
 import { useToaster } from '@gitroom/react/toaster/toaster';
 import { useVariables } from '@gitroom/react/helpers/variable.context';
 import { useT } from '@gitroom/react/translation/get.transation.service.client';
+import { useAiError } from '@gitroom/frontend/components/ai/use-ai-error';
 const GenerateTab = observer(({ store }: any) => {
   const inputRef = React.useRef<any>(null);
   const [image, setImage] = React.useState(null);
@@ -34,6 +35,7 @@ const GenerateTab = observer(({ store }: any) => {
   }, []);
   const { data, mutate } = useSWR('copilot-credits', loadCredits);
   const t = useT();
+  const showAiError = useAiError();
 
   const handleGenerate = async () => {
     if (data?.credits <= 0) {
@@ -41,7 +43,7 @@ const GenerateTab = observer(({ store }: any) => {
       return;
     }
     if (!inputRef.current.value) {
-      toast.show('Please type your prompt', 'warning');
+      toast.show(t('type_your_prompt', 'Please type your prompt'), 'warning');
       return;
     }
     setLoading(true);
@@ -54,7 +56,13 @@ const GenerateTab = observer(({ store }: any) => {
     });
     setLoading(false);
     if (!req.ok) {
-      alert('Something went wrong, please try again later...');
+      await showAiError(
+        req,
+        t(
+          'image_generation_failed',
+          'Could not generate the image, please try again.'
+        )
+      );
       return;
     }
     mutate();

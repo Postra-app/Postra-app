@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { HttpException, Injectable } from '@nestjs/common';
 import OpenAI from 'openai';
 import { shuffle } from 'lodash';
 import { zodResponseFormat } from 'openai/helpers/zod';
@@ -155,18 +155,41 @@ export class OpenaiService {
     // image generation breaks after a merge, check here first. gpt-image models
     // return b64 only and reject response_format.
     const model = 'gpt-image-2';
-    const generate = (
-      await imageGenLimit(() =>
-        openai.images.generate({
-          prompt,
-          model,
-          size: isVertical ? '1024x1536' : '1024x1024',
-          // 'medium' is ~4x cheaper than the default ('high'/'auto')
-          // with quality good enough for social graphics — keeps unit cost sane.
-          quality: 'medium',
-        })
-      )
-    ).data?.[0];
+    let generate;
+    try {
+      generate = (
+        await imageGenLimit(() =>
+          openai.images.generate({
+            prompt,
+            model,
+            size: isVertical ? '1024x1536' : '1024x1024',
+            // 'medium' is ~4x cheaper than the default ('high'/'auto')
+            // with quality good enough for social graphics — keeps unit cost sane.
+            quality: 'medium',
+          })
+        )
+      ).data?.[0];
+    } catch (err) {
+      // A prompt refused by the safety filter is not a failure of ours, and
+      // it is the one error the user can actually fix. It used to arrive as
+      // "DALL-E generation failed" - a 502 naming a model retired two years
+      // ago - which tells them nothing. Say what happened and whose move it is.
+      // (The credit is not lost either way: useCredit deletes its reservation
+      // row whenever the wrapped call throws.)
+      const e = err as { status?: number; code?: string; type?: string; message?: string };
+      const blocked =
+        e?.code === 'moderation_blocked' ||
+        e?.code === 'content_policy_violation' ||
+        e?.type === 'image_generation_user_error' ||
+        (e?.status === 400 && /safety|moderation|content policy/i.test(e?.message || ''));
+      if (blocked) {
+        throw new HttpException(
+          'That prompt was refused by the image safety filter. Rephrase it — describing a real person, a brand or anything explicit is the usual cause.',
+          422
+        );
+      }
+      throw err;
+    }
 
     const b64 = generate?.b64_json;
     if (!b64) {
@@ -658,7 +681,10 @@ ${SETTINGS_BLOCK_RULE}`,
     throw new Error('Failed to generate carousel after 3 attempts');
   }
 
-  async generateSlidesFromText(text: string, orgId?: string) {
+  async generateSlidesFromText(
+    text: string,
+    orgId?: string
+  ): Promise<{ imagePrompt: string; voiceText: string }[]> {
     for (let i = 0; i < 3; i++) {
       try {
         const message = `You are an assistant that takes a text and break it into slides, each slide should have an image prompt and voice text to be later used to generate a video and voice, image prompt should capture the essence of the slide and also have a back dark gradient on top, image prompt should not contain text in the picture, generate between 3-5 slides maximum`;

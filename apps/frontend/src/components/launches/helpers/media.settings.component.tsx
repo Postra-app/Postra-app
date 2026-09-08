@@ -8,6 +8,8 @@ import { hasExtension } from '@gitroom/helpers/utils/has.extension';
 import { safeMediaUrl } from '@gitroom/helpers/utils/safe.media.url';
 import { useLaunchStore } from '@gitroom/frontend/components/new-launch/store';
 import { useVariables } from '@gitroom/react/helpers/variable.context';
+import { useT } from '@gitroom/react/translation/get.transation.service.client';
+import { useToaster } from '@gitroom/react/toaster/toaster';
 const postUrlEmitter = new EventEmitter();
 
 export const MediaSettingsLayout = () => {
@@ -102,6 +104,8 @@ export const CreateThumbnail: FC<{
 }> = (props) => {
   const { onSelect, media } = props;
   const { backendUrl } = useVariables();
+  const t = useT();
+  const toaster = useToaster();
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [currentTime, setCurrentTime] = useState(0);
@@ -194,13 +198,17 @@ export const CreateThumbnail: FC<{
         }
       } catch (fallbackError) {
         console.error('Fallback capture also failed:', fallbackError);
-        alert(
-          'Unable to capture frame. This might be due to CORS restrictions on the video source.'
+        toaster.show(
+          t(
+            'thumbnail_capture_failed',
+            'Could not take a frame from this video. The file may be hosted somewhere that blocks it.'
+          ),
+          'warning'
         );
         setIsCapturing(false);
       }
     }
-  }, [onSelect, currentTime]);
+  }, [onSelect, currentTime, toaster, t]);
 
   const formatTime = useCallback((seconds: number) => {
     const mins = Math.floor(seconds / 60);
@@ -315,6 +323,9 @@ export const MediaComponentInner: FC<{
   const [newThumbnail, setNewThumbnail] = useState<string | null>(null);
   const [isEditingThumbnail, setIsEditingThumbnail] = useState(false);
   const [altText, setAltText] = useState<string>(media?.alt || '');
+  const [altBusy, setAltBusy] = useState(false);
+  const t = useT();
+  const toaster = useToaster();
   const [loading, setLoading] = useState(false);
   const [thumbnail, setThumbnail] = useState<string | null>(
     props.media?.thumbnail || null
@@ -366,14 +377,53 @@ export const MediaComponentInner: FC<{
   return (
     <div className="mt-[10px] flex flex-col gap-[20px]">
       <div className="flex flex-col space-y-2">
-        <label className="text-sm text-textColor font-medium">
-          Alt Text (for accessibility)
-        </label>
+        <div className="flex items-center justify-between gap-[10px]">
+          <label className="text-sm text-textColor font-medium">
+            {t('alt_text_label', 'Alt text (for accessibility)')}
+          </label>
+          {/* The field has always been here with nothing to fill it, so most
+              posts go out without any. One call, one sentence, editable. */}
+          {!hasExtension(media?.path, 'mp4') && media?.id && (
+            <button
+              type="button"
+              disabled={altBusy}
+              onClick={async () => {
+                setAltBusy(true);
+                try {
+                  const res = await newFetch(`/media/${media.id}/alt-text`, {
+                    method: 'POST',
+                  });
+                  if (!res.ok) throw new Error(String(res.status));
+                  const data = (await res.json()) as { alt: string };
+                  if (data?.alt) setAltText(data.alt);
+                } catch {
+                  toaster.show(
+                    t(
+                      'alt_text_failed',
+                      'Could not describe the image — write the alt text yourself.'
+                    ),
+                    'warning'
+                  );
+                } finally {
+                  setAltBusy(false);
+                }
+              }}
+              className="text-[12px] px-2 py-1 rounded bg-newColColor text-newTextColor/80 hover:bg-white/[0.08] transition-colors disabled:opacity-50"
+            >
+              {altBusy
+                ? t('alt_text_running', 'Looking at the image…')
+                : t('alt_text_generate', 'Describe it for me')}
+            </button>
+          )}
+        </div>
         <input
           type="text"
           value={altText}
           onChange={(e) => setAltText(e.target.value)}
-          placeholder="Describe the image/video content..."
+          placeholder={t(
+            'alt_text_placeholder',
+            'Describe the image/video content...'
+          )}
           className="w-full px-3 py-2 bg-fifth border border-tableBorder rounded-lg text-textColor placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-forth focus:border-transparent"
         />
       </div>

@@ -13,6 +13,7 @@ import { VideoContextWrapper } from '@gitroom/frontend/components/videos/video.c
 import { useToaster } from '@gitroom/react/toaster/toaster';
 import { useModals } from '@gitroom/frontend/components/layout/new-modal';
 import { createPortal } from 'react-dom';
+import { useAiError } from '@gitroom/frontend/components/ai/use-ai-error';
 
 export const Modal: FC<{
   close: () => void;
@@ -26,6 +27,8 @@ export const Modal: FC<{
   const form = useForm();
   const [position, setPosition] = useState('vertical');
   const toaster = useToaster();
+  const t = useT();
+  const showAiError = useAiError();
 
   const loadCredits = useCallback(async () => {
     return (
@@ -42,7 +45,10 @@ export const Modal: FC<{
     // leave the editor locked forever
     const customParams = form.getValues();
     if (!(await form.trigger())) {
-      toaster.show('Fill in all required fields', 'warning');
+      toaster.show(
+        t('fill_required_fields', 'Fill in all required fields'),
+        'warning'
+      );
       return;
     }
 
@@ -50,11 +56,20 @@ export const Modal: FC<{
     close();
     setLocked(true);
     try {
+      // Both calls used to be turned into a generic Error, so running out of
+      // video credits or hitting a plan limit read as "please try again".
       const allowed = await fetch(
         `/media/generate-video/${type.identifier}/allowed`
       );
       if (!allowed.ok) {
-        throw new Error(`generate-video not allowed (${allowed.status})`);
+        await showAiError(
+          allowed,
+          t(
+            'video_generation_failed',
+            'Could not generate the video, please try again.'
+          )
+        );
+        return;
       }
       const image = await fetch(`/media/generate-video`, {
         method: 'POST',
@@ -65,22 +80,31 @@ export const Modal: FC<{
         }),
       });
 
-      if (image.status == 200 || image.status == 201) {
-        onChange(await image.json());
-      } else {
-        throw new Error(`generate-video failed (${image.status})`);
+      if (!image.ok) {
+        await showAiError(
+          image,
+          t(
+            'video_generation_failed',
+            'Could not generate the video, please try again.'
+          )
+        );
+        return;
       }
+      onChange(await image.json());
     } catch (e) {
       console.error('[Postra:ai-video] generate failed', e);
       toaster.show(
-        'Could not generate the video, please try again.',
+        t(
+          'video_generation_failed',
+          'Could not generate the video, please try again.'
+        ),
         'warning'
       );
     } finally {
       setLocked(false);
       setLoading(false);
     }
-  }, [type, position]);
+  }, [type, position, showAiError, t]);
 
   return (
     // Start with an empty prompt — we no longer copy the post's text field.

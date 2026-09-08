@@ -30,7 +30,6 @@ import { makeId } from '@gitroom/nestjs-libraries/services/make.is';
 import { useModals } from '@gitroom/frontend/components/layout/new-modal';
 import { capitalize } from 'lodash';
 import { SelectCustomer } from '@gitroom/frontend/components/launches/select.customer';
-import { CopilotPopup } from '@copilotkit/react-ui';
 import { DummyCodeComponent } from '@gitroom/frontend/components/new-launch/dummy.code.component';
 import { CreationMethodBadge } from '@gitroom/frontend/components/launches/creation.method.badge';
 import {
@@ -756,41 +755,6 @@ export const ManageModal: FC<AddEditModalProps> = (props) => {
           </div>
         </div>
       </div>
-      <CopilotPopup
-        hitEscapeToClose={false}
-        clickOutsideToClose={true}
-        instructions={t(
-          'assistant_instructions',
-          `You are an AI assistant for writing social media posts in English.
-
-You help the user:
-- Write a new post from scratch ("write a post about time management for LinkedIn")
-- Rewrite / improve an existing one ("make it shorter", "more casual", "add a CTA")
-- Add emoji and hashtags
-- Adjust the tone (formal, friendly, sales-oriented, expert)
-- Translate between languages
-- Suggest A/B variants
-
-Functions available to you:
-- setPosts(content: string[]) — sets the composer content; each element is a separate post in the thread
-
-Rules:
-- By default respond and write in English. Only write in another language if the user explicitly asks for it.
-- Keep content concise, engaging and aligned with each platform's conventions.
-- Instagram: emoji + 3-5 hashtags
-- LinkedIn: professional tone + storytelling
-- X / Twitter: <280 characters
-- TikTok / Reels: catchy hook at the start
-- If the composer already has a draft (check "Current content of posts" in the readable data), treat it as the starting point for iteration; do not wipe it without asking.`
-        )}
-        labels={{
-          title: t('assistant_title', '✨ AI Assistant'),
-          initial: t(
-            'assistant_initial_message',
-            "Hi! 👋 I'll help you write a great social media post. Tell me what you want to write about, or if you already have a draft — how I should improve it."
-          ),
-        }}
-      />
     </div>
   );
 };

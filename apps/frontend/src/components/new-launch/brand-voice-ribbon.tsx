@@ -5,6 +5,7 @@ import clsx from 'clsx';
 import { useFetch } from '@gitroom/helpers/utils/custom.fetch';
 import { useToaster } from '@gitroom/react/toaster/toaster';
 import { useT } from '@gitroom/react/translation/get.transation.service.client';
+import { useAiError } from '@gitroom/frontend/components/ai/use-ai-error';
 
 interface Props {
   content: string;
@@ -34,11 +35,15 @@ export const BrandVoiceRibbon: FC<Props> = ({ content }) => {
   const fetch = useFetch();
   const toaster = useToaster();
   const t = useT();
+  const showAiError = useAiError();
   const [busy, setBusy] = useState(false);
   const [result, setResult] = useState<VoiceResult | null>(null);
   const abortRef = useRef<AbortController | null>(null);
 
-  const plainText = content.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
+  const plainText = content
+    .replace(/<[^>]+>/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
   const ready = plainText.length >= MIN_CONTENT_LEN;
 
   const check = useCallback(async () => {
@@ -56,17 +61,10 @@ export const BrandVoiceRibbon: FC<Props> = ({ content }) => {
       });
 
       if (!res.ok) {
-        if (res.status === 402) {
-          toaster.show(
-            t('ai_no_credits', 'You ran out of AI credits.'),
-            'warning'
-          );
-        } else {
-          toaster.show(
-            t('voice_failed', 'Could not check the tone — try again later.'),
-            'warning'
-          );
-        }
+        await showAiError(
+          res,
+          t('voice_failed', 'Could not check the tone — try again later.')
+        );
         return;
       }
 

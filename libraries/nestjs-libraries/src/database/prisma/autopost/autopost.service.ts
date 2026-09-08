@@ -1,5 +1,5 @@
 import { AiUsageCallbackHandler } from '@gitroom/nestjs-libraries/services/ai-usage.langchain';
-import { Injectable } from '@nestjs/common';
+import { HttpException, Injectable } from '@nestjs/common';
 // eslint-disable-next-line @nx/enforce-module-boundaries
 import { fetch } from 'undici';
 import { ssrfSafeDispatcher } from '@gitroom/nestjs-libraries/dtos/webhooks/ssrf.safe.dispatcher';
@@ -46,6 +46,10 @@ interface WorkflowChannelsState {
   description: string;
   platformContent?: PlatformContent;
   image: string;
+  // Why the post is going out without a picture, when the user asked for one.
+  // 'credits' is the case worth telling them about — nothing they did is wrong
+  // and nothing will fix itself until the cycle rolls over or the plan changes.
+  imageSkipped?: 'credits' | 'failed';
   id: string;
   load: {
     date: string;
@@ -342,6 +346,7 @@ export class AutopostService {
         platformContent: null,
         load: null,
         image: null,
+        imageSkipped: null,
         integrations: null,
         id: null,
       },
@@ -496,17 +501,27 @@ export class AutopostService {
     // metered. Out of credits / generation failure degrades to a text-only
     // post — an autopost must never die on the image step.
     let image = '';
+    let imageSkipped: 'credits' | 'failed' | undefined;
     try {
       image = await this._subscriptionService.useCreditByOrgId(
         state.body.organizationId,
         'ai_images',
         () => this._openaiService.generateImage(generatedTextToBeSentToDallE, true)
       ) || '';
-    } catch {
+    } catch (err) {
       image = '';
+      imageSkipped =
+        err instanceof HttpException && err.getStatus() === 402
+          ? 'credits'
+          : 'failed';
     }
 
-    return { ...state, image: image ? await this.persistImage(image) : '' };
+    const persisted = image ? await this.persistImage(image) : '';
+    return {
+      ...state,
+      image: persisted,
+      imageSkipped: persisted ? undefined : imageSkipped ?? 'failed',
+    };
   }
 
   // Persist an OG/AI image into our own storage. OG images hotlink a third-party
@@ -701,9 +716,10 @@ export class AutopostService {
     // Oldest-first so update-url advances lastUrl in order. Stop on the first
     // failure (and surface it) so lastUrl never skips past an unposted item —
     // the hourly run resumes from there next time.
+    let postsWithoutImage = 0;
     for (const load of loads) {
       try {
-        await app.invoke(
+        const result = await app.invoke(
           {
             messages: [],
             id,
@@ -721,10 +737,29 @@ export class AutopostService {
             ],
           }
         );
+        if (result?.imageSkipped === 'credits') {
+          postsWithoutImage++;
+        }
       } catch (err) {
         await this.notifyFailure(getPost, err);
         break;
       }
+    }
+
+    // An autopost that quietly drops the picture looks like a bug from the
+    // outside. Say it once per run, in the app only — the email policy keeps
+    // routine notices off the sender reputation.
+    if (postsWithoutImage) {
+      await this._notificationService.inAppNotification(
+        getPost.organizationId,
+        'Auto-post published without images',
+        `${postsWithoutImage} auto-post${
+          postsWithoutImage > 1 ? 's went' : ' went'
+        } out without a picture: your image credits for this billing cycle are used up. The text was published as normal.`,
+        false,
+        false,
+        'info'
+      );
     }
   }
 }

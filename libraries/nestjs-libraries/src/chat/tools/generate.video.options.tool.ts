@@ -45,23 +45,6 @@ export class GenerateVideoOptionsTool implements AgentToolInterface {
       execute: async (inputData, context) => {
         checkAuth(inputData, context);
         const videos = this._videoManagerService.getAllVideos();
-        console.log(
-          JSON.stringify(
-            {
-              video: videos.map((p) => {
-                return {
-                  type: p.identifier,
-                  output: 'vertical|horizontal',
-                  tools: p.tools,
-                  customParams: getValidationSchemas()[p.dto.name],
-                };
-              }),
-            },
-            null,
-            2
-          )
-        );
-
         return {
           video: videos.map((p) => {
             return {

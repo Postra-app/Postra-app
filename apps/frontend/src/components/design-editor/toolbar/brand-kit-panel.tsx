@@ -156,7 +156,7 @@ export const BrandKitPanel: FC = () => {
         <p>
           {t(
             'brand_kit_intro_body',
-            'Set once — every AI Generate design, template and video text comes out in these colours and font. The logo goes bottom-right on every AI graphic. Tone shapes the wording AI writes.'
+            'Set once — every AI Generate design, template and video text comes out in these colours and font. The logo goes bottom-right on AI designs; plain AI images have no logo. Tone shapes the wording AI writes.'
           )}
         </p>
       </div>

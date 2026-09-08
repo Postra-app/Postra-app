@@ -299,6 +299,115 @@ Return concise feedback (2 short sentences, actionable). Tags = up to 4 short la
    * Rewrite a post caption inline in the composer — improve, shorten, expand,
    * adapt to a platform, or fix the tone — in the user's brand voice.
    */
+  /**
+   * Hashtags for one post on one platform. Every scheduler in this price band
+   * ships this; we shipped none. Kept deliberately small: no invented brand
+   * names, no banned-on-Instagram tags, and a count that matches what the
+   * platform actually rewards.
+   */
+  /**
+   * One line of alt text for an image. Four of the schedulers we compared ship
+   * this and we shipped none, and the field has been sitting in media settings
+   * with nothing to fill it.
+   */
+  async describeImageForAlt(
+    imageUrl: string,
+    orgId?: string
+  ): Promise<{ alt: string }> {
+    const AltSchema = z.object({ alt: z.string() });
+
+    const system = `You write alt text for an image attached to a social media post.
+Rules:
+- One sentence, at most 125 characters.
+- Describe what is actually visible: subject, action, setting. Nothing you cannot see.
+- No "image of", "picture of", "photo showing" — screen readers already say that.
+- Read any prominent text in the image out loud as part of the sentence.
+- Plain, neutral language. No marketing, no hashtags, no emoji.`;
+
+    const parsed = (
+      await parseChat(openai, {
+        model: MODEL_VISION,
+        messages: [
+          { role: 'system', content: system },
+          {
+            role: 'user',
+            content: [
+              { type: 'image_url', image_url: { url: imageUrl } },
+            ] as never,
+          },
+        ],
+        response_format: zodResponseFormat(AltSchema, 'describeImageForAlt'),
+      }, { organizationId: orgId ?? null, engine: 'studio' })
+    ).choices[0].message.parsed;
+
+    if (!parsed) throw new Error('AI returned no alt text');
+    return { alt: parsed.alt.trim().slice(0, 125) };
+  }
+
+  async suggestHashtags(
+    input: { text: string; platform?: string; tone?: string },
+    orgId?: string
+  ): Promise<{ hashtags: string[] }> {
+    const HashtagSchema = z.object({ hashtags: z.array(z.string()) });
+
+    // What each platform actually rewards, rather than one number for all.
+    const perPlatform: Record<string, string> = {
+      instagram: '8-12 tags, a mix of broad reach and niche',
+      'instagram-standalone': '8-12 tags, a mix of broad reach and niche',
+      threads: '2-3 tags at most',
+      x: '1-2 tags at most',
+      linkedin: '3-5 professional tags',
+      'linkedin-page': '3-5 professional tags',
+      facebook: '2-4 tags',
+      tiktok: '4-6 tags, including one or two trend-style tags',
+      youtube: '4-6 tags',
+      pinterest: '4-8 descriptive tags',
+      mastodon: '3-5 tags — they are how discovery works there',
+      bluesky: '2-3 tags',
+    };
+    const guidance =
+      perPlatform[(input.platform || '').toLowerCase()] ?? '5-8 tags';
+
+    const system = `You suggest hashtags for a social media post.
+${buildBrandVoicePrompt({ tone: input.tone })}
+Rules:
+- ${guidance}.
+- Order them most relevant first.
+- Each tag starts with # and contains no spaces or punctuation.
+- Match the language of the post.
+- Describe what the post is actually about. No invented brand or product names, no generic filler (#love #instagood #follow4follow), nothing misleading.
+- Do not repeat a hashtag that already appears in the post.
+- Return the tags only, no commentary.`;
+
+    const parsed = (
+      await parseChat(openai, {
+        model: MODEL_GPT,
+        messages: [
+          { role: 'system', content: system },
+          { role: 'user', content: input.text },
+        ],
+        response_format: zodResponseFormat(HashtagSchema, 'suggestHashtags'),
+      }, { organizationId: orgId ?? null, engine: 'studio' })
+    ).choices[0].message.parsed;
+
+    if (!parsed) throw new Error('AI returned no hashtags');
+
+    // The model is asked for clean tags; normalise anyway so the UI never has
+    // to think about it.
+    const seen = new Set<string>();
+    const hashtags = (parsed.hashtags as string[])
+      .map((tag: string) => '#' + tag.replace(/^#+/, '').replace(/[^\p{L}\p{N}_]/gu, ''))
+      .filter((tag: string) => {
+        const key = tag.toLowerCase();
+        if (tag.length < 2 || seen.has(key)) return false;
+        seen.add(key);
+        return true;
+      })
+      .slice(0, 15);
+
+    return { hashtags };
+  }
+
   async editText(
     input: {
       text: string;

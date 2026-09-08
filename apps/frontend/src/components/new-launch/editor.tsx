@@ -27,11 +27,11 @@ import { useShallow } from 'zustand/react/shallow';
 import { AddPostButton } from '@gitroom/frontend/components/new-launch/add.post.button';
 import { BrandVoiceRibbon } from '@gitroom/frontend/components/new-launch/brand-voice-ribbon';
 import { AiAssistRibbon } from '@gitroom/frontend/components/new-launch/ai-assist-ribbon';
+import { AdaptAllChannels } from '@gitroom/frontend/components/new-launch/adapt-all-channels';
 import { MultiMediaComponent } from '@gitroom/frontend/components/media/media.component';
 import { UpDownArrow } from '@gitroom/frontend/components/launches/up.down.arrow';
 import { deleteDialog } from '@gitroom/react/helpers/delete.dialog';
 import { useExistingData } from '@gitroom/frontend/components/launches/helpers/use.existing.data';
-import { useCopilotAction, useCopilotReadable } from '@copilotkit/react-core';
 import { useDropzone } from 'react-dropzone';
 import { useUppyUploader } from '@gitroom/frontend/components/media/new.uploader';
 import { Dashboard } from '@uppy/react';
@@ -224,27 +224,6 @@ export const EditorWrapper: FC<{
     },
     [internal, items]
   );
-
-  useCopilotReadable({
-    description: 'Current content of posts',
-    value: (items ?? []).map((p) => p.content),
-  });
-
-  useCopilotAction({
-    name: 'setPosts',
-    description: 'a thread of posts',
-    parameters: [
-      {
-        name: 'content',
-        type: 'string[]',
-        description: 'a thread of posts',
-      },
-    ],
-    handler: async ({ content }) => {
-      if (!Array.isArray(content) || content.length === 0) return;
-      setValue(content);
-    },
-  });
 
   const changeValue = useCallback(
     (index: number) => (value: string) => {
@@ -447,7 +426,6 @@ export const EditorWrapper: FC<{
           <div className="absolute w-full h-full left-0 top-0 bg-newBackdrop opacity-60 z-[100] rounded-[12px]" />
         </>
       )}
-      {(() : null => { if (!items) console.warn('[Postra:editor] items is undefined! current:', current, 'internal:', !!internal); return null; })()}
       {(items ?? []).map((g, index) => (
         <div
           key={g.id}
@@ -551,7 +529,14 @@ export const EditorWrapper: FC<{
                 )}
               </div>
             )}
-            {canEdit && (
+          </div>
+
+          {/* The row above lays its children out horizontally, so sitting in it
+              squeezed the editor to about half its width and scattered the
+              chips down the right-hand side. These belong under the post they
+              act on, on one line. */}
+          {canEdit && (
+            <div className="flex flex-wrap items-start gap-x-4 gap-y-1 px-[12px] -mt-[12px]">
               <AiAssistRibbon
                 content={g.content}
                 platform={
@@ -562,9 +547,10 @@ export const EditorWrapper: FC<{
                 }
                 onReplace={(html) => changeValue(index)(html)}
               />
-            )}
-            {index === 0 && canEdit && <BrandVoiceRibbon content={g.content} />}
-          </div>
+              {index === 0 && <BrandVoiceRibbon content={g.content} />}
+              {index === 0 && <AdaptAllChannels />}
+            </div>
+          )}
         </div>
       ))}
     </div>
@@ -1085,8 +1071,8 @@ export const OnlyEditor = forwardRef<
 
   useEffect(() => {
     if (!editor) return;
-    // Sync external content changes (AI-assist ribbon replace, copilot
-    // setPosts, loading a draft) into the editor. During normal typing the
+    // Sync external content changes (AI-assist ribbon replace, adapt-to-all
+    // rewrite, loading a draft) into the editor. During normal typing the
     // value already equals the editor HTML so this is a no-op and the cursor
     // never jumps; emitUpdate:false avoids echoing the change back out.
     if (value === editor.getHTML()) return;
