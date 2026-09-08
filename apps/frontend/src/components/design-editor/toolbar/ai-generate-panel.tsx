@@ -252,7 +252,7 @@ export const AiGeneratePanel: FC<Props> = ({ canvas }) => {
           </p>
           <button
             onClick={() => setTool('brand')}
-            className="self-start text-[10px] px-2 py-1 rounded bg-forth/20 hover:bg-forth/40 text-textColor transition-colors"
+            className="self-start text-[10px] px-2 py-1 rounded bg-forth/20 hover:bg-white/[0.08] text-textColor transition-colors"
           >
             {t('brand_kit_nudge_cta', 'Set up brand')}
           </button>
@@ -355,13 +355,13 @@ export const AiGeneratePanel: FC<Props> = ({ canvas }) => {
           <div className="flex gap-2">
             <button
               onClick={() => generate(confirmPrompt, true)}
-              className="text-[10px] px-2 py-1 rounded bg-forth text-white hover:bg-forth/80 transition-colors"
+              className="text-[10px] px-2 py-1 rounded bg-forth text-white hover:bg-white/[0.10] transition-colors"
             >
               {t('ai_replace_confirm_btn', 'Replace & generate')}
             </button>
             <button
               onClick={() => setConfirmPrompt(null)}
-              className="text-[10px] px-2 py-1 rounded bg-newColColor text-textColor hover:bg-forth/40 transition-colors"
+              className="text-[10px] px-2 py-1 rounded bg-newColColor text-textColor hover:bg-white/[0.08] transition-colors"
             >
               {t('ai_replace_cancel', 'Cancel')}
             </button>

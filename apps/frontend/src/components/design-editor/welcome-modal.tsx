@@ -98,7 +98,7 @@ export const WelcomeModal: FC = () => {
           <button
             ref={firstButtonRef}
             onClick={() => startWithTool('templates')}
-            className="text-left p-4 rounded-md bg-newColColor hover:bg-forth hover:text-white text-textColor transition-colors group"
+            className="text-left p-4 rounded-md bg-newColColor hover:bg-white/[0.08] text-textColor transition-colors group"
           >
             <div className="text-base font-semibold flex items-center gap-2">
               <span>📐</span>
@@ -116,7 +116,7 @@ export const WelcomeModal: FC = () => {
               whole job is answering "where do I start". */}
           <button
             onClick={() => startWithTool('stock')}
-            className="text-left p-4 rounded-md bg-newColColor hover:bg-forth hover:text-white text-textColor transition-colors group"
+            className="text-left p-4 rounded-md bg-newColColor hover:bg-white/[0.08] text-textColor transition-colors group"
           >
             <div className="text-base font-semibold flex items-center gap-2">
               <span>🏞</span>
@@ -132,7 +132,7 @@ export const WelcomeModal: FC = () => {
 
           <button
             onClick={() => startWithTool('ai')}
-            className="text-left p-4 rounded-md bg-newColColor hover:bg-forth hover:text-white text-textColor transition-colors group"
+            className="text-left p-4 rounded-md bg-newColColor hover:bg-white/[0.08] text-textColor transition-colors group"
           >
             <div className="text-base font-semibold flex items-center gap-2">
               <span>✨</span>

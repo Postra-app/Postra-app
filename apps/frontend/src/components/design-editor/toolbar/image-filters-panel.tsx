@@ -226,7 +226,7 @@ export const ImageFiltersPanel: FC<Props> = ({ canvas }) => {
                   'text-[10px] px-1.5 py-1.5 rounded transition-colors',
                   state.preset === p.key
                     ? 'bg-forth text-white'
-                    : 'bg-newColColor hover:bg-forth text-textColor'
+                    : 'bg-newColColor hover:bg-white/[0.08] text-textColor'
                 )}
               >
                 {t(p.labelKey, p.fallback)}
@@ -259,7 +259,7 @@ export const ImageFiltersPanel: FC<Props> = ({ canvas }) => {
 
           <button
             onClick={() => applyPreset('original')}
-            className="text-xs px-3 py-2 rounded bg-newColColor hover:bg-forth text-textColor transition-colors"
+            className="text-xs px-3 py-2 rounded bg-newColColor hover:bg-white/[0.08] text-textColor transition-colors"
           >
             ↺ {t('filter_reset', 'Reset filters')}
           </button>

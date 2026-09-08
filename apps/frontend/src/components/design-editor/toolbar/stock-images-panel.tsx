@@ -175,7 +175,7 @@ export const StockImagesPanel: FC<Props> = ({ canvas, defaultQuery }) => {
         <button
           onClick={() => search()}
           disabled={searching || !query.trim()}
-          className="text-xs px-2.5 py-1.5 rounded bg-newColColor hover:bg-forth text-textColor transition-colors disabled:opacity-50"
+          className="text-xs px-2.5 py-1.5 rounded bg-newColColor hover:bg-white/[0.08] text-textColor transition-colors disabled:opacity-50"
         >
           {searching ? '…' : t('video_stock_search', 'Search')}
         </button>

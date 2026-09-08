@@ -131,7 +131,7 @@ export const IconsPanel: FC<IconsPanelProps> = ({ canvas }) => {
               key={entry.key}
               onClick={() => addIcon(entry)}
               title={isPl ? entry.labelPl : entry.label}
-              className="aspect-square flex items-center justify-center rounded bg-newColColor hover:bg-forth text-textColor hover:text-white transition-colors"
+              className="aspect-square flex items-center justify-center rounded bg-newColColor hover:bg-white/[0.08] text-textColor hover:text-white transition-colors"
             >
               <IconComp size={ICON_PREVIEW_SIZE} stroke={2} />
             </button>

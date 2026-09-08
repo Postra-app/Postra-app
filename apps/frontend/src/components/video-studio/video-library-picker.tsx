@@ -78,7 +78,7 @@ export const VideoLibraryPicker: FC<VideoLibraryPickerProps> = ({
         <button
           onClick={onClose}
           disabled={busy}
-          className="text-xs px-3 py-1 rounded bg-newColColor text-textColor hover:bg-forth transition-colors disabled:opacity-50"
+          className="text-xs px-3 py-1 rounded bg-newColColor text-textColor hover:bg-white/[0.08] transition-colors disabled:opacity-50"
         >
           {t('close', 'Close')}
         </button>
@@ -129,7 +129,7 @@ export const VideoLibraryPicker: FC<VideoLibraryPickerProps> = ({
           <button
             onClick={() => setPage((p) => Math.max(0, p - 1))}
             disabled={busy || page === 0}
-            className="text-xs px-3 py-1 rounded bg-newColColor text-textColor hover:bg-forth transition-colors disabled:opacity-40"
+            className="text-xs px-3 py-1 rounded bg-newColColor text-textColor hover:bg-white/[0.08] transition-colors disabled:opacity-40"
           >
             ‹ {t('previous', 'Previous')}
           </button>
@@ -139,7 +139,7 @@ export const VideoLibraryPicker: FC<VideoLibraryPickerProps> = ({
           <button
             onClick={() => setPage((p) => Math.min(pages - 1, p + 1))}
             disabled={busy || page >= pages - 1}
-            className="text-xs px-3 py-1 rounded bg-newColColor text-textColor hover:bg-forth transition-colors disabled:opacity-40"
+            className="text-xs px-3 py-1 rounded bg-newColColor text-textColor hover:bg-white/[0.08] transition-colors disabled:opacity-40"
           >
             {t('next', 'Next')} ›
           </button>

@@ -348,7 +348,7 @@ export const TemplatesPanel: FC<TemplatesPanelProps> = ({ canvas }) => {
               key={tpl.key}
               onClick={() => handleApply(tpl.key)}
               title={isPl ? tpl.descriptionPl : tpl.description}
-              className="text-left rounded overflow-hidden bg-newColColor hover:bg-forth hover:text-white text-textColor transition-colors border border-newBorder/60 hover:border-forth"
+              className="text-left rounded overflow-hidden bg-newColColor hover:bg-white/[0.08] text-textColor transition-colors border border-newBorder/60 hover:border-forth"
             >
               {thumb ? (
                 <img

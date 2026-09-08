@@ -570,7 +570,7 @@ export const VideoStudio: FC<VideoStudioProps> = ({
             className={`text-xs px-2 py-1 rounded transition-colors ${
               showGoals
                 ? 'bg-newAccent text-[#06222e] font-[600]'
-                : 'bg-newColColor text-textColor hover:bg-forth'
+                : 'bg-newColColor text-textColor hover:bg-white/[0.08]'
             }`}
           >
             🎯
@@ -587,7 +587,7 @@ export const VideoStudio: FC<VideoStudioProps> = ({
               className={`text-xs px-3 py-1 rounded transition-colors ${
                 tab === tDef.key && !showGoals
                   ? 'bg-newAccent text-[#06222e] font-[600]'
-                  : 'bg-newColColor text-textColor hover:bg-forth'
+                  : 'bg-newColColor text-textColor hover:bg-white/[0.08]'
               } disabled:opacity-40`}
             >
               {tDef.icon} {tDef.label}
@@ -604,13 +604,13 @@ export const VideoStudio: FC<VideoStudioProps> = ({
           />
           <button
             onClick={() => fileInputRef.current?.click()}
-            className="text-xs px-3 py-1 rounded bg-newColColor text-textColor hover:bg-forth transition-colors"
+            className="text-xs px-3 py-1 rounded bg-newColColor text-textColor hover:bg-white/[0.08] transition-colors"
           >
             📁 {t('video_source_disk', 'From disk')}
           </button>
           <button
             onClick={() => setShowLibrary(true)}
-            className="text-xs px-3 py-1 rounded bg-newColColor text-textColor hover:bg-forth transition-colors"
+            className="text-xs px-3 py-1 rounded bg-newColColor text-textColor hover:bg-white/[0.08] transition-colors"
           >
             🗂 {t('video_source_library', 'From library')}
           </button>
@@ -644,7 +644,7 @@ export const VideoStudio: FC<VideoStudioProps> = ({
           </Button>
           <button
             onClick={() => setDelivered(null)}
-            className="px-3 py-1 rounded bg-newColColor text-textColor hover:bg-forth transition-colors"
+            className="px-3 py-1 rounded bg-newColColor text-textColor hover:bg-white/[0.08] transition-colors"
           >
             {t('video_result_stay', 'Keep working')}
           </button>
@@ -683,7 +683,7 @@ export const VideoStudio: FC<VideoStudioProps> = ({
                 <button
                   key={g.goal}
                   onClick={() => pickGoal(g.goal)}
-                  className="relative text-left p-3 rounded-lg bg-newColColor hover:bg-forth hover:text-white text-textColor transition-colors group"
+                  className="relative text-left p-3 rounded-lg bg-newColColor hover:bg-white/[0.08] text-textColor transition-colors group"
                 >
                   <div className="text-sm font-semibold">
                     {g.icon} {g.label}
@@ -735,7 +735,7 @@ export const VideoStudio: FC<VideoStudioProps> = ({
             <button
               onClick={handleSaveToLibrary}
               disabled={isUploading}
-              className="text-xs px-3 h-[28px] rounded bg-newColColor text-textColor hover:bg-forth transition-colors disabled:opacity-50"
+              className="text-xs px-3 h-[28px] rounded bg-newColColor text-textColor hover:bg-white/[0.08] transition-colors disabled:opacity-50"
             >
               💾 {isUploading ? t('saving', 'Saving…') : t('save_to_library_btn', 'Save to library')}
             </button>

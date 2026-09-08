@@ -261,14 +261,14 @@ export const VideoTextOverlay: FC<VideoTextOverlayProps> = ({ onReady }) => {
         <button
           onClick={() => fileRef.current?.click()}
           disabled={busy || importing}
-          className="flex-1 text-xs px-3 py-2 rounded bg-newColColor hover:bg-forth text-textColor transition-colors disabled:opacity-50"
+          className="flex-1 text-xs px-3 py-2 rounded bg-newColColor hover:bg-white/[0.08] text-textColor transition-colors disabled:opacity-50"
         >
           📁 {t('video_source_disk', 'From disk')}
         </button>
         <button
           onClick={() => setShowLibrary(true)}
           disabled={busy || importing}
-          className="flex-1 text-xs px-3 py-2 rounded bg-newColColor hover:bg-forth text-textColor transition-colors disabled:opacity-50"
+          className="flex-1 text-xs px-3 py-2 rounded bg-newColColor hover:bg-white/[0.08] text-textColor transition-colors disabled:opacity-50"
         >
           🗂 {t('video_source_library', 'From library')}
         </button>
@@ -298,7 +298,7 @@ export const VideoTextOverlay: FC<VideoTextOverlayProps> = ({ onReady }) => {
               className={`flex-1 text-xs px-2 py-1.5 rounded transition-colors disabled:opacity-50 ${
                 position === p.key
                   ? 'bg-newAccent text-[#06222e] font-[600]'
-                  : 'bg-newColColor text-textColor hover:bg-forth'
+                  : 'bg-newColColor text-textColor hover:bg-white/[0.08]'
               }`}
             >
               {p.icon} {t(`clip_text_pos_${p.key}`, p.label)}
@@ -348,7 +348,7 @@ export const VideoTextOverlay: FC<VideoTextOverlayProps> = ({ onReady }) => {
                 className={`flex-1 text-xs px-2 py-1.5 rounded transition-colors disabled:opacity-50 ${
                   scale === s.scale
                     ? 'bg-newAccent text-[#06222e] font-[600]'
-                    : 'bg-newColColor text-textColor hover:bg-forth'
+                    : 'bg-newColColor text-textColor hover:bg-white/[0.08]'
                 }`}
               >
                 {s.label}
@@ -405,7 +405,7 @@ export const VideoTextOverlay: FC<VideoTextOverlayProps> = ({ onReady }) => {
             <button
               onClick={saveToLibrary}
               disabled={uploading}
-              className="text-xs px-3 h-[30px] rounded bg-newColColor text-textColor hover:bg-forth transition-colors disabled:opacity-50"
+              className="text-xs px-3 h-[30px] rounded bg-newColColor text-textColor hover:bg-white/[0.08] transition-colors disabled:opacity-50"
             >
               💾 {t('save_to_library_btn', 'Save to library')}
             </button>

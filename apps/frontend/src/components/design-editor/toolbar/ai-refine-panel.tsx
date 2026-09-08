@@ -166,7 +166,7 @@ export const AiRefinePanel: FC<Props> = ({ canvas }) => {
             key={q.key}
             disabled={busy}
             onClick={() => run(t(q.key, q.fallback))}
-            className="text-[10px] px-2 py-1 rounded bg-newColColor hover:bg-forth hover:text-white text-textColor/80 transition-colors disabled:opacity-40"
+            className="text-[10px] px-2 py-1 rounded bg-newColColor hover:bg-white/[0.08] text-textColor/80 transition-colors disabled:opacity-40"
           >
             {t(q.key, q.fallback)}
           </button>

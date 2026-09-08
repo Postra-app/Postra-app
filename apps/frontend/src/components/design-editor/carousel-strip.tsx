@@ -94,7 +94,7 @@ export const CarouselStrip: FC<CarouselStripProps> = ({ fabricRef }) => {
             const json = fabricRef.current ? JSON.stringify(fabricRef.current.toJSON()) : null;
             enterCarouselMode(json);
           }}
-          className="px-3 py-1 text-xs rounded bg-newColColor text-textColor hover:bg-forth transition-colors"
+          className="px-3 py-1 text-xs rounded bg-newColColor text-textColor hover:bg-white/[0.08] transition-colors"
           title={t('carousel_enter_hint', 'Enable carousel mode — the current canvas becomes Slide 1')}
         >
           🎴 {t('carousel_enter', 'Carousel mode')}
@@ -132,7 +132,7 @@ export const CarouselStrip: FC<CarouselStripProps> = ({ fabricRef }) => {
           <button
             onClick={() => addSlide(null)}
             disabled={slides.length >= 10}
-            className="px-2 py-1 text-xs rounded bg-newColColor text-textColor hover:bg-forth disabled:opacity-30 transition-colors"
+            className="px-2 py-1 text-xs rounded bg-newColColor text-textColor hover:bg-white/[0.08] disabled:opacity-30 transition-colors"
             title={t('carousel_add_hint', 'Add an empty slide (max 10)')}
           >
             + {t('carousel_add', 'Slide')}
@@ -147,14 +147,14 @@ export const CarouselStrip: FC<CarouselStripProps> = ({ fabricRef }) => {
               )
             }
             disabled={slides.length >= 10}
-            className="px-2 py-1 text-xs rounded bg-newColColor text-textColor hover:bg-forth disabled:opacity-30 transition-colors"
+            className="px-2 py-1 text-xs rounded bg-newColColor text-textColor hover:bg-white/[0.08] disabled:opacity-30 transition-colors"
             title={t('carousel_duplicate_hint', 'Copy the current slide')}
           >
             ⎘ {t('carousel_duplicate', 'Duplicate')}
           </button>
           <button
             onClick={handleApplyLayoutToAll}
-            className="px-2 py-1 text-xs rounded bg-newColColor text-textColor hover:bg-forth transition-colors"
+            className="px-2 py-1 text-xs rounded bg-newColColor text-textColor hover:bg-white/[0.08] transition-colors"
             title={t('carousel_apply_all_hint', 'Copy the current slide layout to all slides (keeps brand consistency)')}
           >
             ⎘⎘ {t('carousel_apply_all', 'Apply layout')}

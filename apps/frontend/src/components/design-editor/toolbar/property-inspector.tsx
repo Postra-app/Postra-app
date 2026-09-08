@@ -215,7 +215,7 @@ export const PropertyInspector: FC<Props> = ({ canvas }) => {
         'flex-1 px-2 py-1.5 rounded text-xs transition-colors',
         active
           ? 'bg-forth text-white'
-          : 'bg-newColColor hover:bg-forth text-textColor'
+          : 'bg-newColColor hover:bg-white/[0.08] text-textColor'
       )}
     >
       {content}

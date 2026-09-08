@@ -661,7 +661,7 @@ const PostDesignEditor: FC<PostDesignEditorProps> = ({
   return (
     <div
       ref={rootRef}
-      className="dark flex flex-col h-full min-h-0 bg-white/[0.03] rounded-lg overflow-hidden"
+      className="studio-root dark flex flex-col h-full min-h-0 bg-white/[0.03] rounded-lg overflow-hidden"
     >
       <div className="flex flex-1 min-h-0">
         <EditorToolbar canvas={fabricRef} />
@@ -686,7 +686,7 @@ const PostDesignEditor: FC<PostDesignEditorProps> = ({
               <button
                 onClick={handleUndo}
                 disabled={!canUndo}
-                className="h-8 px-3 text-sm rounded bg-newColColor text-textColor hover:bg-forth disabled:opacity-30 transition-colors"
+                className="h-8 px-3 text-sm rounded bg-newColColor text-textColor hover:bg-white/[0.08] disabled:opacity-30 transition-colors"
                 title={t('undo_tooltip', 'Undo (Ctrl+Z)')}
               >
                 ↶
@@ -694,7 +694,7 @@ const PostDesignEditor: FC<PostDesignEditorProps> = ({
               <button
                 onClick={handleRedo}
                 disabled={!canRedo}
-                className="h-8 px-3 text-sm rounded bg-newColColor text-textColor hover:bg-forth disabled:opacity-30 transition-colors"
+                className="h-8 px-3 text-sm rounded bg-newColColor text-textColor hover:bg-white/[0.08] disabled:opacity-30 transition-colors"
                 title={t('redo_tooltip', 'Redo (Ctrl+Shift+Z)')}
               >
                 ↷
@@ -711,7 +711,7 @@ const PostDesignEditor: FC<PostDesignEditorProps> = ({
               <button
                 onClick={handleSaveToLibrary}
                 disabled={savingToLibrary}
-                className="px-3 py-1 text-xs rounded bg-newColColor text-textColor hover:bg-forth transition-colors disabled:opacity-50"
+                className="px-3 py-1 text-xs rounded bg-newColColor text-textColor hover:bg-white/[0.08] transition-colors disabled:opacity-50"
                 title={t('save_to_library_hint', 'Save to media library — use it in any post')}
               >
                 💾 {savingToLibrary ? t('saving', 'Saving…') : t('save_to_library_btn', 'Save to library')}
@@ -719,21 +719,21 @@ const PostDesignEditor: FC<PostDesignEditorProps> = ({
               <button
                 onClick={handleSaveAsTemplate}
                 disabled={savingTemplate}
-                className="px-3 py-1 text-xs rounded bg-newColColor text-textColor hover:bg-forth transition-colors disabled:opacity-50"
+                className="px-3 py-1 text-xs rounded bg-newColColor text-textColor hover:bg-white/[0.08] transition-colors disabled:opacity-50"
                 title={t('template_save_hint', 'Save this design as a reusable template for your team')}
               >
                 ⭐ {savingTemplate ? t('saving', 'Saving…') : t('template_save_btn', 'Save as template')}
               </button>
               <button
                 onClick={handleDownload}
-                className="px-3 py-1 text-xs rounded bg-newColColor text-textColor hover:bg-forth transition-colors"
+                className="px-3 py-1 text-xs rounded bg-newColColor text-textColor hover:bg-white/[0.08] transition-colors"
                 title={t('download_png_hint', 'Download the graphic as a PNG file')}
               >
                 ⬇ {t('download_png', 'Download PNG')}
               </button>
               <button
                 onClick={() => setMultiFormatOpen(true)}
-                className="px-3 py-1 text-xs rounded bg-newColColor text-textColor hover:bg-forth transition-colors"
+                className="px-3 py-1 text-xs rounded bg-newColColor text-textColor hover:bg-white/[0.08] transition-colors"
                 title={t('multi_format_hint', 'Generate 7 variants for all platforms')}
               >
                 📐 {t('multi_format_button', 'All formats')}

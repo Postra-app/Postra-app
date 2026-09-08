@@ -72,7 +72,7 @@ export const StudioWorkspace: FC<StudioWorkspaceProps> = ({
   ];
 
   return (
-    <div className="dark flex flex-col gap-2 h-full w-full">
+    <div className="studio-root dark flex flex-col gap-2 h-full w-full">
       <div className="flex gap-2">
         {tabs.map((tab) => (
           <button
@@ -87,7 +87,7 @@ export const StudioWorkspace: FC<StudioWorkspaceProps> = ({
               'h-9 px-4 text-sm rounded-lg border transition-colors',
               mode === tab.key
                 ? 'bg-forth text-white border-forth'
-                : 'bg-newColColor text-textColor border-newBorder hover:bg-forth/40'
+                : 'bg-newColColor text-textColor border-newBorder hover:bg-white/[0.08]'
             )}
           >
             {tab.label}
@@ -101,7 +101,7 @@ export const StudioWorkspace: FC<StudioWorkspaceProps> = ({
           target="_blank"
           rel="noopener noreferrer"
           title={t('studio_help_hint', 'How Studio works')}
-          className="h-9 w-9 flex items-center justify-center text-sm rounded-lg border border-newBorder bg-newColColor text-textColor/70 hover:bg-forth/40 hover:text-textColor transition-colors ms-auto"
+          className="h-9 w-9 flex items-center justify-center text-sm rounded-lg border border-newBorder bg-newColColor text-textColor/70 hover:bg-white/[0.08] hover:text-textColor transition-colors ms-auto"
           aria-label={t('studio_help_hint', 'How Studio works')}
         >
           ?

@@ -23,7 +23,7 @@ export const FormatBar: FC = () => {
               'px-2 py-1 text-[10px] rounded transition-colors',
               platform.key === size.key
                 ? 'bg-forth text-white'
-                : 'bg-newColColor text-textColor hover:bg-forth/50'
+                : 'bg-newColColor text-textColor hover:bg-white/[0.08]'
             )}
           >
             {size.label}

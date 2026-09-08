@@ -313,7 +313,7 @@ export const VideoSlideshow: FC<VideoSlideshowProps> = ({ onReady }) => {
       <button
         onClick={() => fileRef.current?.click()}
         disabled={busy || images.length >= MAX_IMAGES}
-        className="text-xs px-3 py-2 rounded bg-newColColor hover:bg-forth text-textColor transition-colors disabled:opacity-50"
+        className="text-xs px-3 py-2 rounded bg-newColColor hover:bg-white/[0.08] text-textColor transition-colors disabled:opacity-50"
       >
         📁 {t('slideshow_add', 'Add photos')} ({images.length}/{MAX_IMAGES})
       </button>
@@ -411,7 +411,7 @@ export const VideoSlideshow: FC<VideoSlideshowProps> = ({ onReady }) => {
               key={p.key}
               onClick={() => setText(label)}
               disabled={busy}
-              className="text-[10px] px-2 py-1 rounded bg-newColColor hover:bg-forth text-textColor/80 transition-colors disabled:opacity-50"
+              className="text-[10px] px-2 py-1 rounded bg-newColColor hover:bg-white/[0.08] text-textColor/80 transition-colors disabled:opacity-50"
             >
               {label}
             </button>
@@ -442,7 +442,7 @@ export const VideoSlideshow: FC<VideoSlideshowProps> = ({ onReady }) => {
             <button
               onClick={saveToLibrary}
               disabled={uploading}
-              className="text-xs px-3 h-[30px] rounded bg-newColColor text-textColor hover:bg-forth transition-colors disabled:opacity-50"
+              className="text-xs px-3 h-[30px] rounded bg-newColColor text-textColor hover:bg-white/[0.08] transition-colors disabled:opacity-50"
             >
               💾 {t('save_to_library_btn', 'Save to library')}
             </button>

@@ -260,7 +260,7 @@ export const MultiFormatModal: FC<MultiFormatModalProps> = ({
             <button
               onClick={onClose}
               disabled={uploading}
-              className="text-sm px-4 py-2 rounded bg-newColColor text-textColor hover:bg-forth disabled:opacity-30"
+              className="text-sm px-4 py-2 rounded bg-newColColor text-textColor hover:bg-white/[0.08] disabled:opacity-30"
             >
               {t('multi_format_cancel', 'Cancel')}
             </button>
@@ -273,7 +273,7 @@ export const MultiFormatModal: FC<MultiFormatModalProps> = ({
               <button
                 onClick={handleDownloadZip}
                 disabled={uploading}
-                className="text-sm px-4 py-2 rounded bg-newColColor text-textColor hover:bg-forth disabled:opacity-30"
+                className="text-sm px-4 py-2 rounded bg-newColColor text-textColor hover:bg-white/[0.08] disabled:opacity-30"
               >
                 ⬇ {t('multi_format_download_zip', 'Download all (ZIP)')}
               </button>

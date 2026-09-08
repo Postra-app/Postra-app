@@ -637,7 +637,7 @@ export const EditorToolbar: FC<ToolbarProps> = ({ canvas }) => {
             </select>
             <button
               onClick={addText}
-              className="text-xs px-3 py-2 rounded bg-newColColor hover:bg-forth text-textColor transition-colors"
+              className="text-xs px-3 py-2 rounded bg-newColColor hover:bg-white/[0.08] text-textColor transition-colors"
             >
               + {t('text_add', 'Add text')}
             </button>
@@ -660,7 +660,7 @@ export const EditorToolbar: FC<ToolbarProps> = ({ canvas }) => {
                 <button
                   key={shape.type}
                   onClick={() => addShape(shape.type)}
-                  className="aspect-square rounded bg-newColColor hover:bg-forth flex items-center justify-center text-textColor text-base transition-colors"
+                  className="aspect-square rounded bg-newColColor hover:bg-white/[0.08] flex items-center justify-center text-textColor text-base transition-colors"
                   title={t(shape.titleKey, shape.fallback)}
                   aria-label={t(shape.titleKey, shape.fallback)}
                 >
@@ -679,7 +679,7 @@ export const EditorToolbar: FC<ToolbarProps> = ({ canvas }) => {
             <button
               onClick={() => fileRef.current?.click()}
               disabled={uploading}
-              className="text-xs px-3 py-2 rounded bg-newColColor hover:bg-forth text-textColor transition-colors disabled:opacity-50 disabled:cursor-wait"
+              className="text-xs px-3 py-2 rounded bg-newColColor hover:bg-white/[0.08] text-textColor transition-colors disabled:opacity-50 disabled:cursor-wait"
             >
               {uploading
                 ? t('uploading', 'Uploading…')
@@ -700,7 +700,7 @@ export const EditorToolbar: FC<ToolbarProps> = ({ canvas }) => {
             <button
               onClick={removeImageBackground}
               disabled={removingBg}
-              className="text-xs px-3 py-2 rounded bg-newColColor hover:bg-forth text-textColor transition-colors disabled:opacity-50 disabled:cursor-wait"
+              className="text-xs px-3 py-2 rounded bg-newColColor hover:bg-white/[0.08] text-textColor transition-colors disabled:opacity-50 disabled:cursor-wait"
             >
               {removingBg
                 ? `${t('bg_remove_loading', 'Removing…')} ${Math.round(bgProgress * 100)}%`
@@ -713,7 +713,7 @@ export const EditorToolbar: FC<ToolbarProps> = ({ canvas }) => {
                 'crop_smart_hint',
                 'Crops the photo to the current format (bottom bar), keeping the most detailed part of the picture in frame'
               )}
-              className="text-xs px-3 py-2 rounded bg-newColColor hover:bg-forth text-textColor transition-colors"
+              className="text-xs px-3 py-2 rounded bg-newColColor hover:bg-white/[0.08] text-textColor transition-colors"
             >
               ✂ {t('crop_smart', 'Smart crop to platform')}
             </button>
@@ -728,7 +728,7 @@ export const EditorToolbar: FC<ToolbarProps> = ({ canvas }) => {
 
             <button
               onClick={() => setTool('stock')}
-              className="text-xs px-3 py-2 rounded bg-newColColor hover:bg-forth text-textColor transition-colors text-left"
+              className="text-xs px-3 py-2 rounded bg-newColColor hover:bg-white/[0.08] text-textColor transition-colors text-left"
             >
               🏞 {t('image_stock_jump', 'Browse free stock photos')} →
             </button>
