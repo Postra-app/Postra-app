@@ -129,7 +129,13 @@ export const AdaptAllChannels: FC = () => {
     }
 
     if (stopped === 'credits') {
-      toaster.show(t('ai_no_credits', 'You ran out of AI credits.'), 'warning');
+      toaster.show(
+        t(
+          'ai_no_credits',
+          'You are out of AI credits for this billing cycle. Upgrade your plan or wait for the next one.'
+        ),
+        'warning'
+      );
       return;
     }
     if (stopped === 'rate') {

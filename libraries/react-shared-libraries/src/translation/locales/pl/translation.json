@@ -892,7 +892,7 @@
   "ai_generating": "Generowanie…",
   "ai_generate_failed": "Generowanie AI nie powiodło się. Spróbuj innego promptu.",
   "ai_generate_hint": "AI generuje tło + tekst w jednym kroku. Trwa około 5-10 sekund.",
-  "ai_no_credits": "Brak kredytów na generowanie obrazów w tym miesiącu. Ulepsz plan.",
+  "ai_no_credits": "Wyczerpałeś kredyty AI w tym okresie rozliczeniowym. Zmień plan albo poczekaj na kolejny.",
   "ai_prompt_required": "Opisz, co chcesz wygenerować",
   "ai_prompt_placeholder": "np. Letnia wyprzedaż -50% w sklepie odzieżowym",
   "ai_tier_required": "Projektowanie AI jest dostępne w planie Starter i wyższych.",
@@ -1390,5 +1390,8 @@
   "ai_adapt_all_done": "Dopasowano kanały: {{adapted}}. Bez zmian: {{kept}}.",
   "ai_adapt_all_failed": "Nie udało się dopasować posta — spróbuj później.",
   "ai_adapt_all_rate_limited": "Za dużo zapytań do AI. Odczekaj kilka minut i spróbuj ponownie.",
-  "ai_adapt_all_too_big": "Za dużo kanałów i postów naraz. Dopasuj je z zakładki każdego kanału."
+  "ai_adapt_all_too_big": "Za dużo kanałów i postów naraz. Dopasuj je z zakładki każdego kanału.",
+  "type_your_prompt": "Wpisz swój prompt",
+  "thumbnail_capture_failed": "Nie udało się pobrać klatki z tego wideo. Plik może być hostowany tam, gdzie jest to blokowane.",
+  "fill_required_fields": "Wypełnij wszystkie wymagane pola"
 }

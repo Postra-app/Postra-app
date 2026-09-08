@@ -104,6 +104,8 @@ export const CreateThumbnail: FC<{
 }> = (props) => {
   const { onSelect, media } = props;
   const { backendUrl } = useVariables();
+  const t = useT();
+  const toaster = useToaster();
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [currentTime, setCurrentTime] = useState(0);
@@ -196,13 +198,17 @@ export const CreateThumbnail: FC<{
         }
       } catch (fallbackError) {
         console.error('Fallback capture also failed:', fallbackError);
-        alert(
-          'Unable to capture frame. This might be due to CORS restrictions on the video source.'
+        toaster.show(
+          t(
+            'thumbnail_capture_failed',
+            'Could not take a frame from this video. The file may be hosted somewhere that blocks it.'
+          ),
+          'warning'
         );
         setIsCapturing(false);
       }
     }
-  }, [onSelect, currentTime]);
+  }, [onSelect, currentTime, toaster, t]);
 
   const formatTime = useCallback((seconds: number) => {
     const mins = Math.floor(seconds / 60);

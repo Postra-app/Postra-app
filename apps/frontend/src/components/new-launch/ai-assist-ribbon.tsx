@@ -4,6 +4,7 @@ import { FC, useCallback, useRef, useState } from 'react';
 import { useFetch } from '@gitroom/helpers/utils/custom.fetch';
 import { useToaster } from '@gitroom/react/toaster/toaster';
 import { useT } from '@gitroom/react/translation/get.transation.service.client';
+import { useAiError } from '@gitroom/frontend/components/ai/use-ai-error';
 import {
   AI_MIN_CONTENT_LEN,
   aiPlainText,
@@ -38,6 +39,7 @@ export const AiAssistRibbon: FC<Props> = ({ content, platform, onReplace }) => {
   const fetch = useFetch();
   const toaster = useToaster();
   const t = useT();
+  const showAiError = useAiError();
   const [busy, setBusy] = useState<string | null>(null);
   const [tags, setTags] = useState<string[] | null>(null);
   const [picked, setPicked] = useState<Set<string>>(new Set());
@@ -62,14 +64,9 @@ export const AiAssistRibbon: FC<Props> = ({ content, platform, onReplace }) => {
         });
 
         if (!res.ok) {
-          toaster.show(
-            res.status === 402
-              ? t('ai_no_credits', 'You ran out of AI credits.')
-              : t(
-                  'ai_edit_failed',
-                  'Could not rewrite the text — try again later.'
-                ),
-            'warning'
+          await showAiError(
+            res,
+            t('ai_edit_failed', 'Could not rewrite the text — try again later.')
           );
           return;
         }
@@ -91,7 +88,17 @@ export const AiAssistRibbon: FC<Props> = ({ content, platform, onReplace }) => {
         setBusy(null);
       }
     },
-    [ready, busy, plainText, platform, fetch, t, toaster, onReplace]
+    [
+      ready,
+      busy,
+      plainText,
+      platform,
+      fetch,
+      t,
+      toaster,
+      showAiError,
+      onReplace,
+    ]
   );
 
   const suggest = useCallback(async () => {
@@ -103,14 +110,12 @@ export const AiAssistRibbon: FC<Props> = ({ content, platform, onReplace }) => {
         body: JSON.stringify({ text: plainText, platform }),
       });
       if (!res.ok) {
-        toaster.show(
-          res.status === 402
-            ? t('ai_no_credits', 'You ran out of AI credits.')
-            : t(
-                'ai_hashtags_failed',
-                'Could not suggest hashtags — try again later.'
-              ),
-          'warning'
+        await showAiError(
+          res,
+          t(
+            'ai_hashtags_failed',
+            'Could not suggest hashtags — try again later.'
+          )
         );
         return;
       }
@@ -129,7 +134,7 @@ export const AiAssistRibbon: FC<Props> = ({ content, platform, onReplace }) => {
     } finally {
       setBusy(null);
     }
-  }, [ready, busy, plainText, platform, fetch, t, toaster]);
+  }, [ready, busy, plainText, platform, fetch, t, toaster, showAiError]);
 
   // Append rather than replace: the caption the user wrote stays exactly as it
   // is, tags go on a line of their own at the end.

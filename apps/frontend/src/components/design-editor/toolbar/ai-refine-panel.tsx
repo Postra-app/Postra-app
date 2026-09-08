@@ -1,11 +1,19 @@
 'use client';
 
-import { FC, MutableRefObject, useCallback, useEffect, useRef, useState } from 'react';
+import {
+  FC,
+  MutableRefObject,
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+} from 'react';
 import * as fabric from 'fabric';
 import { useEditorStore } from '../editor.store';
 import { useFetch } from '@gitroom/helpers/utils/custom.fetch';
 import { isFetchHandledError } from '@gitroom/helpers/utils/fetch.errors';
 import { useToaster } from '@gitroom/react/toaster/toaster';
+import { useAiError } from '@gitroom/frontend/components/ai/use-ai-error';
 import { useT } from '@gitroom/react/translation/get.transation.service.client';
 import { useUser } from '@gitroom/frontend/components/layout/user.context';
 import { Button } from '@gitroom/frontend/components/ui/button';
@@ -40,6 +48,7 @@ export const AiRefinePanel: FC<Props> = ({ canvas }) => {
   const fetch = useFetch();
   const toaster = useToaster();
   const t = useT();
+  const showAiError = useAiError();
   const user = useUser();
   const allowed = !!user?.tier?.image_generator;
   const [instruction, setInstruction] = useState('');
@@ -57,7 +66,10 @@ export const AiRefinePanel: FC<Props> = ({ canvas }) => {
       const c = canvas.current;
       if (!c.getObjects().length) {
         toaster.show(
-          t('refine_empty_canvas', 'Add something to the canvas first — a template or AI Generate.'),
+          t(
+            'refine_empty_canvas',
+            'Add something to the canvas first — a template or AI Generate.'
+          ),
           'warning'
         );
         return;
@@ -81,26 +93,13 @@ export const AiRefinePanel: FC<Props> = ({ canvas }) => {
         });
 
         if (!res.ok) {
-          const status = res.status;
-          let message = '';
-          try {
-            const body = await res.json();
-            message = typeof body?.message === 'string' ? body.message : '';
-          } catch {}
-
-          if (status === 402) {
-            toaster.show(
-              t('ai_no_credits', 'You ran out of AI credits this month. Upgrade your plan or wait for the new cycle.'),
-              'warning'
-            );
-          } else if (status === 429) {
-            toaster.show(
-              t('ai_rate_limited', 'Too many requests — wait a few seconds and try again.'),
-              'warning'
-            );
-          } else {
-            toaster.show(message || t('refine_failed', 'AI could not refine the design — try a different instruction.'), 'warning');
-          }
+          await showAiError(
+            res,
+            t(
+              'refine_failed',
+              'AI could not refine the design — try a different instruction.'
+            )
+          );
           return;
         }
 
@@ -111,14 +110,20 @@ export const AiRefinePanel: FC<Props> = ({ canvas }) => {
 
         await applyPatchToCanvas(c, spec, data.patch);
         pushHistory(JSON.stringify(c.toJSON()));
-        setHistory((prev) => [...prev, { role: 'assistant', text: data.explanation }]);
+        setHistory((prev) => [
+          ...prev,
+          { role: 'assistant', text: data.explanation },
+        ]);
       } catch (err) {
         if ((err as { name?: string })?.name === 'AbortError') return;
         // Handled globally (5xx/429/401) — its own message is already up, and
         // "try a different instruction" would blame the wrong thing.
         if (isFetchHandledError(err)) return;
         toaster.show(
-          t('refine_failed', 'AI could not refine the design — try a different instruction.'),
+          t(
+            'refine_failed',
+            'AI could not refine the design — try a different instruction.'
+          ),
           'warning'
         );
       } finally {

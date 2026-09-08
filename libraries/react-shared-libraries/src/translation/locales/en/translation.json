@@ -892,7 +892,7 @@
   "ai_generating": "Generating…",
   "ai_generate_failed": "AI generation failed. Try a different prompt.",
   "ai_generate_hint": "AI generates background + text in one step. Takes about 5-10 seconds.",
-  "ai_no_credits": "No image generation credits left this month. Upgrade your plan.",
+  "ai_no_credits": "You are out of AI credits for this billing cycle. Upgrade your plan or wait for the next one.",
   "ai_prompt_required": "Please describe what you want to generate",
   "ai_prompt_placeholder": "e.g. Summer sale -50% at clothing store",
   "ai_tier_required": "AI design is available on the Starter plan and above.",
@@ -1390,5 +1390,8 @@
   "ai_adapt_all_done": "Adapted {{adapted}} channel(s). Kept {{kept}} as they were.",
   "ai_adapt_all_failed": "Could not adapt the post — try again later.",
   "ai_adapt_all_rate_limited": "Too many AI requests for now. Wait a few minutes and run it again.",
-  "ai_adapt_all_too_big": "Too many channels and posts to adapt in one go. Adapt them from each channel tab instead."
+  "ai_adapt_all_too_big": "Too many channels and posts to adapt in one go. Adapt them from each channel tab instead.",
+  "type_your_prompt": "Please type your prompt",
+  "thumbnail_capture_failed": "Could not take a frame from this video. The file may be hosted somewhere that blocks it.",
+  "fill_required_fields": "Fill in all required fields"
 }
