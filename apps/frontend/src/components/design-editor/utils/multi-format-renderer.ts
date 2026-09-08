@@ -75,6 +75,12 @@ const applyEdges = (
   else if (oY === 'bottom') finalTop += height;
 
   obj.set({ left: finalLeft, top: finalTop });
+  // Fabric caches each object's corner coordinates and skips rendering anything
+  // it believes sits outside the viewport. `set` does not refresh that cache, so
+  // after a move onto a shorter canvas the stale corners still read as
+  // off-frame and the layer is silently dropped from the render — which is how
+  // a promo template lost its call-to-action button on the way from 4:5 to 1:1.
+  obj.setCoords();
 };
 
 export const repositionObjectFromTo = (
@@ -119,6 +125,17 @@ export const repositionObjectFromTo = (
     y: detectAnchor(bounds.top, bounds.height, srcH),
   };
 
+  // A layer that is neither hugging an edge keeps its place RELATIVE to the
+  // frame; it is not snapped to the exact middle. Snapping was the old
+  // behaviour and it collapsed stacked layouts: a headline at 45% down and the
+  // line under it at 70% down both landed dead centre and printed on top of
+  // each other, and because the result is autosaved, the ruined design came
+  // back after a reload with nothing left to undo. Mapping the centre through
+  // the same ratio keeps the gap between them, and stays reversible — one
+  // measure in, one measure out, so a round trip lands where it started.
+  const centreOf = (start: number, size: number, src: number, dst: number) =>
+    ((start + size / 2) / src) * dst;
+
   let newEdgeLeft: number;
   if (anchors.x === 'start') {
     newEdgeLeft = (bounds.left / srcW) * dstW;
@@ -126,7 +143,7 @@ export const repositionObjectFromTo = (
     const rightPad = srcW - (bounds.left + bounds.width);
     newEdgeLeft = dstW - newW - (rightPad / srcW) * dstW;
   } else {
-    newEdgeLeft = (dstW - newW) / 2;
+    newEdgeLeft = centreOf(bounds.left, bounds.width, srcW, dstW) - newW / 2;
   }
 
   let newEdgeTop: number;
@@ -136,7 +153,7 @@ export const repositionObjectFromTo = (
     const bottomPad = srcH - (bounds.top + bounds.height);
     newEdgeTop = dstH - newH - (bottomPad / srcH) * dstH;
   } else {
-    newEdgeTop = (dstH - newH) / 2;
+    newEdgeTop = centreOf(bounds.top, bounds.height, srcH, dstH) - newH / 2;
   }
 
   obj.set({
