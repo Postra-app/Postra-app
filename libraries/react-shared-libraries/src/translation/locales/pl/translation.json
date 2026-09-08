@@ -1245,7 +1245,7 @@
   "image_stock_search_failed": "Wyszukiwanie zdjęć nie powiodło się.",
   "image_stock_import_failed": "Import zdjęcia nie powiódł się.",
   "image_stock_hint": "Darmowe zdjęcia (Pixabay License, użycie komercyjne OK). Kliknij zdjęcie, aby dodać je na canvas — zapisze się też w Twojej bibliotece mediów.",
-  "brand_kit_nudge": "Ustaw Brand Kit raz — AI użyje Twoich kolorów, fontu i logo w każdym projekcie.",
+  "brand_kit_nudge": "Ustaw Brand Kit raz — AI pisze Twoim tonem i projektuje w Twoich kolorach i foncie, a logo trafia na każdą wygenerowaną grafikę.",
   "brand_kit_nudge_cta": "Ustaw markę",
   "filter_section": "Filtry",
   "filter_brightness": "Jasność",
@@ -1364,5 +1364,10 @@
   "zoom_100_hint": "Pokaż projekt w prawdziwym rozmiarze",
   "layers_title": "Warstwy",
   "layer_forward": "Przesuń do przodu",
-  "layer_backward": "Przesuń do tyłu"
+  "layer_backward": "Przesuń do tyłu",
+  "agent_limit_title": "Miesięczny limit asystenta AI wyczerpany",
+  "agent_limit_description": "Wykorzystałeś tegomiesięczny limit asystenta AI. Odnowi się z kolejnym okresem rozliczeniowym — albo podnieś plan, żeby mieć wyższy limit.",
+  "agent_limit_upgrade": "Zobacz plany",
+  "video_generation_failed": "Nie udało się wygenerować wideo, spróbuj ponownie.",
+  "output_voice": "Głos wypowiedzi"
 }

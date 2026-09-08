@@ -1245,7 +1245,7 @@
   "image_stock_search_failed": "Image search failed.",
   "image_stock_import_failed": "Image import failed.",
   "image_stock_hint": "Free photos (Pixabay License, commercial use OK). Click a photo to add it to the canvas — it is also saved to your media library.",
-  "brand_kit_nudge": "Set up your Brand Kit once — AI will use your colours, font and logo in every design.",
+  "brand_kit_nudge": "Set up your Brand Kit once — AI writes in your tone and designs in your colours and font, and your logo is placed on every generated graphic.",
   "brand_kit_nudge_cta": "Set up brand",
   "filter_section": "Filters",
   "filter_brightness": "Brightness",
@@ -1364,5 +1364,10 @@
   "zoom_100_hint": "Show the design at its real size",
   "layers_title": "Layers",
   "layer_forward": "Bring forward",
-  "layer_backward": "Send backward"
+  "layer_backward": "Send backward",
+  "agent_limit_title": "Monthly AI assistant limit reached",
+  "agent_limit_description": "You have used this month's AI assistant allowance. It resets with your next billing month — or upgrade your plan for a higher limit.",
+  "agent_limit_upgrade": "See plans",
+  "video_generation_failed": "Could not generate the video, please try again.",
+  "output_voice": "Output voice"
 }

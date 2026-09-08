@@ -26,6 +26,7 @@ export const Modal: FC<{
   const form = useForm();
   const [position, setPosition] = useState('vertical');
   const toaster = useToaster();
+  const t = useT();
 
   const loadCredits = useCallback(async () => {
     return (
@@ -73,7 +74,10 @@ export const Modal: FC<{
     } catch (e) {
       console.error('[Postra:ai-video] generate failed', e);
       toaster.show(
-        'Could not generate the video, please try again.',
+        t(
+          'video_generation_failed',
+          'Could not generate the video, please try again.'
+        ),
         'warning'
       );
     } finally {

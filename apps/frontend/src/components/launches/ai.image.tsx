@@ -66,7 +66,50 @@ ${style}
         }),
       });
       if (!response.ok) {
-        throw new Error(`generate-image failed (${response.status})`);
+        // Tell people what actually went wrong. Running out of credits is not
+        // "try again" - trying again cannot work.
+        let serverMessage = '';
+        try {
+          const body = await response.json();
+          serverMessage = typeof body?.message === 'string' ? body.message : '';
+        } catch {
+          // non-JSON body - fall through to the generic copy
+        }
+        if (response.status === 402) {
+          toaster.show(
+            t(
+              'ai_no_credits',
+              'You ran out of AI credits this month. Upgrade your plan or wait for the new cycle.'
+            ),
+            'warning'
+          );
+        } else if (response.status === 401 || response.status === 403) {
+          toaster.show(
+            t(
+              'ai_forbidden',
+              'AI is not available on your plan. Check your subscription settings.'
+            ),
+            'warning'
+          );
+        } else if (response.status === 429) {
+          toaster.show(
+            t(
+              'ai_rate_limited',
+              'Too many requests — wait a few seconds and try again.'
+            ),
+            'warning'
+          );
+        } else {
+          toaster.show(
+            serverMessage ||
+              t(
+                'image_generation_failed',
+                'Could not generate the image, please try again.'
+              ),
+            'warning'
+          );
+        }
+        return;
       }
       const image = await response.json();
       if (!image?.path) {

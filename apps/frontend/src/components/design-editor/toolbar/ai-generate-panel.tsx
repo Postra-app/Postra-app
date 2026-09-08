@@ -247,7 +247,7 @@ export const AiGeneratePanel: FC<Props> = ({ canvas }) => {
             🎨{' '}
             {t(
               'brand_kit_nudge',
-              'Set up your Brand Kit once — AI will use your colours, font and logo in every design.'
+              'Set up your Brand Kit once — AI writes in your tone and designs in your colours and font, and your logo is placed on every generated graphic.'
             )}
           </p>
           <button

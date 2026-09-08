@@ -95,7 +95,10 @@ export class MediaController {
   ) {
     const total = await this._subscriptionService.checkCredits(org);
     if (process.env.STRIPE_PUBLISHABLE_KEY && total.credits <= 0) {
-      return false;
+      throw new HttpException(
+        'No image generation credits remaining for this billing cycle',
+        402
+      );
     }
 
     // generateImage generates AND uploads, returning the stored CDN URL. The
@@ -124,7 +127,14 @@ export class MediaController {
   ) {
     const total = await this._subscriptionService.checkCredits(org);
     if (process.env.STRIPE_PUBLISHABLE_KEY && total.credits <= 0) {
-      return false;
+      // `return false` here read as a 201 with a falsy body, so the composer
+      // fell through to "Could not generate the image, please try again" -
+      // telling someone who is out of credits the wrong thing. Same 402 the
+      // design generator already throws.
+      throw new HttpException(
+        'No image generation credits remaining for this billing cycle',
+        402
+      );
     }
 
     // mediaService.generateImage already generates AND uploads the image,

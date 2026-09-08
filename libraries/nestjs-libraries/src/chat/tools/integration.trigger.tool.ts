@@ -54,7 +54,6 @@ export class IntegrationTriggerTool implements AgentToolInterface {
       }),
       execute: async (inputData, context) => {
         checkAuth(inputData, context);
-        console.log('triggerTool', inputData);
         const organizationId = JSON.parse(
           (context?.requestContext as any)?.get('organization') as string
         ).id;
