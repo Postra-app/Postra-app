@@ -3,6 +3,13 @@
 import { FC } from 'react';
 import {
   IconAspectRatio,
+  IconChevronDown,
+  IconChevronUp,
+  IconEye,
+  IconEyeOff,
+  IconLock,
+  IconLockOpen,
+  IconStack2,
   IconArrowBackUp,
   IconArrowForwardUp,
   IconCopy,
@@ -69,7 +76,14 @@ export type StudioIconName =
   | 'textOnVideo'
   | 'photosToVideo'
   | 'graphics'
-  | 'video';
+  | 'video'
+  | 'layers'
+  | 'forward'
+  | 'backward'
+  | 'show'
+  | 'hide'
+  | 'lock'
+  | 'unlock';
 
 const MAP: Record<StudioIconName, FC<{ size?: number; stroke?: number; className?: string }>> = {
   aiGenerate: IconSparkles,
@@ -100,6 +114,13 @@ const MAP: Record<StudioIconName, FC<{ size?: number; stroke?: number; className
   photosToVideo: IconSlideshow,
   graphics: IconPalette,
   video: IconVideo,
+  layers: IconStack2,
+  forward: IconChevronUp,
+  backward: IconChevronDown,
+  show: IconEye,
+  hide: IconEyeOff,
+  lock: IconLock,
+  unlock: IconLockOpen,
 };
 
 export const StudioIcon: FC<{

@@ -833,7 +833,7 @@
   "layer_unlock": "Unlock",
   "layer_delete": "Delete",
   "layers_empty": "No layers. Add text, shape or image first.",
-  "layers_hint": "Drag a layer to reorder.",
+  "layers_hint": "Top of the list is the front of the design.",
   "bg_remove_button": "Remove background",
   "bg_remove_loading": "Removing…",
   "bg_remove_no_image": "Add an image to the canvas first",
@@ -1361,5 +1361,8 @@
   "zoom_out": "Zoom out",
   "zoom_fit": "Fit",
   "zoom_fit_hint": "Fit the design to the window",
-  "zoom_100_hint": "Show the design at its real size"
+  "zoom_100_hint": "Show the design at its real size",
+  "layers_title": "Layers",
+  "layer_forward": "Bring forward",
+  "layer_backward": "Send backward"
 }

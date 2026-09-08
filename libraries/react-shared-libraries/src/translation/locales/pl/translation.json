@@ -833,7 +833,7 @@
   "layer_unlock": "Odblokuj",
   "layer_delete": "Usuń",
   "layers_empty": "Brak warstw. Dodaj tekst, kształt lub obraz.",
-  "layers_hint": "Przeciągnij warstwę aby zmienić kolejność.",
+  "layers_hint": "Góra listy to wierzch projektu.",
   "bg_remove_button": "Usuń tło",
   "bg_remove_loading": "Usuwanie…",
   "bg_remove_no_image": "Najpierw dodaj obraz na canvas",
@@ -1361,5 +1361,8 @@
   "zoom_out": "Pomniejsz",
   "zoom_fit": "Dopasuj",
   "zoom_fit_hint": "Dopasuj projekt do okna",
-  "zoom_100_hint": "Pokaż projekt w prawdziwym rozmiarze"
+  "zoom_100_hint": "Pokaż projekt w prawdziwym rozmiarze",
+  "layers_title": "Warstwy",
+  "layer_forward": "Przesuń do przodu",
+  "layer_backward": "Przesuń do tyłu"
 }

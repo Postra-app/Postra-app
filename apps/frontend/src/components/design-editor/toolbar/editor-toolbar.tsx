@@ -10,6 +10,7 @@ import { AiGeneratePanel } from './ai-generate-panel';
 import { AiRefinePanel } from './ai-refine-panel';
 import { BrandKitPanel } from './brand-kit-panel';
 import { IconsPanel } from './icons-panel';
+import { LayersPanel } from './layers-panel';
 import { TemplatesPanel } from './templates-panel';
 import { StockImagesPanel } from './stock-images-panel';
 import { ImageFiltersPanel } from './image-filters-panel';
@@ -106,6 +107,7 @@ const TOOLS: {
   { key: 'shapes', icon: 'shapes', labelKey: 'tool_shapes', fallback: 'Shapes' },
   { key: 'icons', icon: 'icons', labelKey: 'tool_icons', fallback: 'Icons' },
   { key: 'images', icon: 'images', labelKey: 'tool_images', fallback: 'Images' },
+  { key: 'layers', icon: 'layers', labelKey: 'tool_layers', fallback: 'Layers' },
 ];
 
 export const EditorToolbar: FC<ToolbarProps> = ({ canvas }) => {
@@ -621,6 +623,8 @@ export const EditorToolbar: FC<ToolbarProps> = ({ canvas }) => {
         {activeTool === 'brand' && <BrandKitPanel />}
 
         {activeTool === 'icons' && <IconsPanel canvas={canvas} />}
+
+        {activeTool === 'layers' && <LayersPanel canvas={canvas} />}
 
         {activeTool === 'templates' && <TemplatesPanel canvas={canvas} />}
 

@@ -68,6 +68,11 @@ const CANVAS_FIT_PADDING = 32;
 const MIN_ZOOM = 0.05;
 /** Snap tolerance in screen pixels, converted to canvas units at use. */
 const SNAP_THRESHOLD_PX = 7;
+/** Nudge steps in canvas units; Shift is the coarse one. */
+const NUDGE_SMALL = 1;
+const NUDGE_LARGE = 10;
+/** So a duplicate lands next to its original rather than exactly on it. */
+const DUPLICATE_OFFSET = 16;
 const MAX_ZOOM = 4;
 
 const PostDesignEditor: FC<PostDesignEditorProps> = ({
@@ -811,6 +816,67 @@ const PostDesignEditor: FC<PostDesignEditorProps> = ({
       if ((e.metaKey || e.ctrlKey) && key === 'y') {
         e.preventDefault();
         handleRedo();
+      }
+
+      const c = fabricRef.current;
+      if (!c) return;
+      const active = c.getActiveObject();
+
+      // Duplicate, in place with a small offset so the copy is visible and
+      // grabbable rather than hidden exactly under the original.
+      if ((e.metaKey || e.ctrlKey) && key === 'd') {
+        e.preventDefault();
+        if (!active) return;
+        active.clone().then((copy: fabric.FabricObject) => {
+          copy.set({
+            left: (active.left ?? 0) + DUPLICATE_OFFSET,
+            top: (active.top ?? 0) + DUPLICATE_OFFSET,
+          });
+          copy.setCoords();
+          c.add(copy);
+          c.setActiveObject(copy);
+          c.requestRenderAll();
+        });
+        return;
+      }
+
+      if ((e.metaKey || e.ctrlKey) && key === 'a') {
+        e.preventDefault();
+        const objects = c.getObjects().filter((o) => o.selectable !== false);
+        if (!objects.length) return;
+        c.discardActiveObject();
+        c.setActiveObject(
+          new fabric.ActiveSelection(objects, { canvas: c })
+        );
+        c.requestRenderAll();
+        return;
+      }
+
+      if (e.key === 'Escape') {
+        c.discardActiveObject();
+        c.requestRenderAll();
+        return;
+      }
+
+      // Arrow keys nudge; Shift moves in bigger steps, the way every editor does
+      const nudges: Record<string, [number, number]> = {
+        ArrowLeft: [-1, 0],
+        ArrowRight: [1, 0],
+        ArrowUp: [0, -1],
+        ArrowDown: [0, 1],
+      };
+      const nudge = nudges[e.key];
+      if (nudge && active) {
+        e.preventDefault();
+        const step = e.shiftKey ? NUDGE_LARGE : NUDGE_SMALL;
+        active.set({
+          left: (active.left ?? 0) + nudge[0] * step,
+          top: (active.top ?? 0) + nudge[1] * step,
+        });
+        active.setCoords();
+        c.requestRenderAll();
+        // one history entry per burst, not per key repeat
+        saveStateRef.current?.();
       }
     };
     window.addEventListener('keydown', onKey);
