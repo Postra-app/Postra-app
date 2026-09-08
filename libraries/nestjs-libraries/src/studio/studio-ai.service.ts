@@ -305,6 +305,45 @@ Return concise feedback (2 short sentences, actionable). Tags = up to 4 short la
    * names, no banned-on-Instagram tags, and a count that matches what the
    * platform actually rewards.
    */
+  /**
+   * One line of alt text for an image. Four of the schedulers we compared ship
+   * this and we shipped none, and the field has been sitting in media settings
+   * with nothing to fill it.
+   */
+  async describeImageForAlt(
+    imageUrl: string,
+    orgId?: string
+  ): Promise<{ alt: string }> {
+    const AltSchema = z.object({ alt: z.string() });
+
+    const system = `You write alt text for an image attached to a social media post.
+Rules:
+- One sentence, at most 125 characters.
+- Describe what is actually visible: subject, action, setting. Nothing you cannot see.
+- No "image of", "picture of", "photo showing" — screen readers already say that.
+- Read any prominent text in the image out loud as part of the sentence.
+- Plain, neutral language. No marketing, no hashtags, no emoji.`;
+
+    const parsed = (
+      await parseChat(openai, {
+        model: MODEL_VISION,
+        messages: [
+          { role: 'system', content: system },
+          {
+            role: 'user',
+            content: [
+              { type: 'image_url', image_url: { url: imageUrl } },
+            ] as never,
+          },
+        ],
+        response_format: zodResponseFormat(AltSchema, 'describeImageForAlt'),
+      }, { organizationId: orgId ?? null, engine: 'studio' })
+    ).choices[0].message.parsed;
+
+    if (!parsed) throw new Error('AI returned no alt text');
+    return { alt: parsed.alt.trim().slice(0, 125) };
+  }
+
   async suggestHashtags(
     input: { text: string; platform?: string; tone?: string },
     orgId?: string

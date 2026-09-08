@@ -1377,5 +1377,10 @@
   "ai_hashtags_failed": "Nie udało się zaproponować hashtagów — spróbuj później.",
   "ai_hashtags_none": "Do tego posta nie ma sensownych hashtagów.",
   "ai_hashtags_add": "Dodaj do posta",
-  "dismiss": "Odrzuć"
+  "dismiss": "Odrzuć",
+  "alt_text_label": "Tekst alternatywny (dostępność)",
+  "alt_text_generate": "Opisz za mnie",
+  "alt_text_running": "Oglądam obraz…",
+  "alt_text_failed": "Nie udało się opisać obrazu — wpisz tekst samodzielnie.",
+  "alt_text_placeholder": "Opisz zawartość obrazu lub wideo..."
 }

@@ -1377,5 +1377,10 @@
   "ai_hashtags_failed": "Could not suggest hashtags — try again later.",
   "ai_hashtags_none": "No hashtags worth adding to this one.",
   "ai_hashtags_add": "Add to post",
-  "dismiss": "Dismiss"
+  "dismiss": "Dismiss",
+  "alt_text_label": "Alt text (for accessibility)",
+  "alt_text_generate": "Describe it for me",
+  "alt_text_running": "Looking at the image…",
+  "alt_text_failed": "Could not describe the image — write the alt text yourself.",
+  "alt_text_placeholder": "Describe the image/video content..."
 }

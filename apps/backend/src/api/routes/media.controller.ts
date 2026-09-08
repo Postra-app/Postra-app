@@ -349,6 +349,16 @@ export class MediaController {
     return this._mediaService.checkBrandVoice(org, body);
   }
 
+  @Post('/:id/alt-text')
+  @Throttle({ default: { ttl: 300000, limit: 30 } })
+  @UseGuards(AccountAgeGuard)
+  generateAltText(
+    @GetOrgFromRequest() org: Organization,
+    @Param('id') id: string
+  ) {
+    return this._mediaService.generateAltText(org, id);
+  }
+
   @Post('/suggest-hashtags')
   @Throttle({ default: { ttl: 300000, limit: 30 } })
   @UseGuards(AccountAgeGuard)

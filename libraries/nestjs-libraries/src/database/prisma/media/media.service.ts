@@ -579,6 +579,19 @@ export class MediaService {
 
   // Inline composer AI: rewrite/shorten/expand/adapt/fix-tone the caption in the
   // user's brand voice.
+  async generateAltText(
+    org: Organization,
+    id: string
+  ): Promise<{ alt: string }> {
+    // by id and org, so the URL handed to the model is always one of ours
+    const media = await this.getMediaByIdOrg(org.id, id);
+    if (!media?.path) {
+      throw new HttpException('Media not found', 404);
+    }
+
+    return this._studioAi.describeImageForAlt(media.path, org.id);
+  }
+
   async suggestHashtags(
     org: Organization,
     body: SuggestHashtagsDto
