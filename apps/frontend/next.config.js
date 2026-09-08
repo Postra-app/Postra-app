@@ -103,8 +103,14 @@ export default withSentryConfig(nextConfig, {
     create: true,
     finalize: true,
     // Use git commit hash for releases in monorepo
+    // NEXT_PUBLIC_VERSION is the only commit identifier that reaches the
+    // container build, so it comes first - GITHUB_SHA is not set inside docker
+    // build and the release silently ended up undefined.
     name:
-      process.env.VERCEL_GIT_COMMIT_SHA || process.env.GITHUB_SHA || undefined,
+      process.env.NEXT_PUBLIC_VERSION ||
+      process.env.VERCEL_GIT_COMMIT_SHA ||
+      process.env.GITHUB_SHA ||
+      undefined,
   },
 
   // NextJS specific optimizations for monorepo

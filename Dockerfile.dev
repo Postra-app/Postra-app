@@ -1,6 +1,15 @@
 FROM node:22.20-bookworm-slim
 ARG NEXT_PUBLIC_VERSION
 ENV NEXT_PUBLIC_VERSION=$NEXT_PUBLIC_VERSION
+# Source map upload is a build-time step: without these three the Sentry
+# plugin silently uploads nothing and every frontend stack trace stays
+# minified. Absent values keep the old behaviour, so the build never breaks.
+ARG SENTRY_ORG
+ARG SENTRY_PROJECT
+ARG SENTRY_AUTH_TOKEN
+ENV SENTRY_ORG=$SENTRY_ORG
+ENV SENTRY_PROJECT=$SENTRY_PROJECT
+ENV SENTRY_AUTH_TOKEN=$SENTRY_AUTH_TOKEN
 RUN apt-get update && apt-get install -y --no-install-recommends \
     g++ \
     make \
