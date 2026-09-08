@@ -658,7 +658,10 @@ ${SETTINGS_BLOCK_RULE}`,
     throw new Error('Failed to generate carousel after 3 attempts');
   }
 
-  async generateSlidesFromText(text: string, orgId?: string) {
+  async generateSlidesFromText(
+    text: string,
+    orgId?: string
+  ): Promise<{ imagePrompt: string; voiceText: string }[]> {
     for (let i = 0; i < 3; i++) {
       try {
         const message = `You are an assistant that takes a text and break it into slides, each slide should have an image prompt and voice text to be later used to generate a video and voice, image prompt should capture the essence of the slide and also have a back dark gradient on top, image prompt should not contain text in the picture, generate between 3-5 slides maximum`;

@@ -1369,5 +1369,6 @@
   "agent_limit_description": "You have used this month's AI assistant allowance. It resets with your next billing month — or upgrade your plan for a higher limit.",
   "agent_limit_upgrade": "See plans",
   "video_generation_failed": "Could not generate the video, please try again.",
-  "output_voice": "Output voice"
+  "output_voice": "Output voice",
+  "add_pictures_cost": "One image credit per post — a thread costs one per part."
 }

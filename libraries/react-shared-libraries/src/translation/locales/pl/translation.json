@@ -1369,5 +1369,6 @@
   "agent_limit_description": "Wykorzystałeś tegomiesięczny limit asystenta AI. Odnowi się z kolejnym okresem rozliczeniowym — albo podnieś plan, żeby mieć wyższy limit.",
   "agent_limit_upgrade": "Zobacz plany",
   "video_generation_failed": "Nie udało się wygenerować wideo, spróbuj ponownie.",
-  "output_voice": "Głos wypowiedzi"
+  "output_voice": "Głos wypowiedzi",
+  "add_pictures_cost": "Jeden kredyt obrazkowy na post — wątek kosztuje po jednym za każdą część."
 }

@@ -53,7 +53,7 @@ const FirstStep: FC = (props) => {
       tone: 'personal',
     },
   });
-  const [research] = form.watch(['research']);
+  const [research, isPicture] = form.watch(['research', 'isPicture']);
   const generateStep = useCallback(
     async (reader: ReadableStreamDefaultReader) => {
       const decoder = new TextDecoder('utf-8');
@@ -277,13 +277,28 @@ const FirstStep: FC = (props) => {
                   </option>
                 </Select>
                 <div
-                  className={clsx('flex items-center', loading && 'opacity-50')}
+                  className={clsx(
+                    'flex flex-col gap-[4px]',
+                    loading && 'opacity-50'
+                  )}
                 >
-                  <Checkbox
-                    disabled={loading}
-                    {...form.register('isPicture')}
-                    label={t('add_pictures', 'Add pictures?')}
-                  />
+                  <div className="flex items-center">
+                    <Checkbox
+                      disabled={loading}
+                      {...form.register('isPicture')}
+                      label={t('add_pictures', 'Add pictures?')}
+                    />
+                  </div>
+                  {/* A thread generates one image per post, so a five-part
+                      thread quietly costs five credits. Say so first. */}
+                  {isPicture && (
+                    <div className="text-[12px] text-newTextColor/70">
+                      {t(
+                        'add_pictures_cost',
+                        'One image credit per post — a thread costs one per part.'
+                      )}
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
