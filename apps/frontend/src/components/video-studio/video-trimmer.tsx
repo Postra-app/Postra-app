@@ -35,8 +35,17 @@ export const VideoTrimmer: FC<VideoTrimmerProps> = ({ file, onTrimmed }) => {
   const [trimEnd, setTrimEnd] = useState(0);
   const [isExporting, setIsExporting] = useState(false);
   const [progress, setProgress] = useState(0);
+  const [undecodable, setUndecodable] = useState(false);
 
   useEffect(() => {
+    // Every reading below belongs to the OLD clip until the new one reports
+    // its own. Leaving them in place is how an undecodable file inherited the
+    // previous clip's length and kept the export button live: the summary read
+    // "Trimmed: 11.51s of 11.51s" for a video that had never loaded.
+    setDuration(0);
+    setTrimStart(0);
+    setTrimEnd(0);
+    setUndecodable(false);
     if (!file) {
       setVideoUrl(null);
       return;
@@ -86,6 +95,25 @@ export const VideoTrimmer: FC<VideoTrimmerProps> = ({ file, onTrimmed }) => {
       setTrimEnd(v.duration);
     }
   }, [duration]);
+
+  // The <video> element is the first thing that knows the browser cannot read
+  // this file, and it used to say nothing: the frame went black, the stale
+  // duration stayed on screen and the failure only surfaced after the user
+  // spent a click on Export. Say it here instead, and take the button away.
+  const handleVideoError = useCallback(() => {
+    setUndecodable(true);
+    setDuration(0);
+    setTrimStart(0);
+    setTrimEnd(0);
+    wavesurferRef.current?.empty();
+    toaster.show(
+      t(
+        'clip_codec_unsupported',
+        "This clip's video format can't be decoded by your browser (often HEVC/H.265 from a phone). Re-export it as a standard MP4 (H.264) and try again."
+      ),
+      'warning'
+    );
+  }, [t, toaster]);
 
   const handleSeekStart = useCallback(() => {
     const v = videoRef.current;
@@ -166,6 +194,7 @@ export const VideoTrimmer: FC<VideoTrimmerProps> = ({ file, onTrimmed }) => {
           src={safeMediaUrl(videoUrl)}
           controls
           onLoadedMetadata={handleVideoLoaded}
+          onError={handleVideoError}
           className="w-full max-h-[300px] rounded bg-black"
         />
       )}
@@ -207,13 +236,18 @@ export const VideoTrimmer: FC<VideoTrimmerProps> = ({ file, onTrimmed }) => {
         </div>
       </div>
       <div className="text-[11px] text-textColor/70">
-        {t('video_trim_summary', 'Trimmed: {sec}s of {total}s')
-          .replace('{sec}', (trimEnd - trimStart).toFixed(2))
-          .replace('{total}', duration.toFixed(2))}
+        {undecodable
+          ? t(
+              'video_trim_undecodable',
+              "Your browser can't read this clip, so there is nothing to trim."
+            )
+          : t('video_trim_summary', 'Trimmed: {sec}s of {total}s')
+              .replace('{sec}', (trimEnd - trimStart).toFixed(2))
+              .replace('{total}', duration.toFixed(2))}
       </div>
       <button
         onClick={handleExport}
-        disabled={isExporting || trimEnd <= trimStart}
+        disabled={isExporting || undecodable || trimEnd <= trimStart}
         className="px-3 py-2 text-sm rounded bg-newAccent text-white hover:bg-forth disabled:opacity-50 transition-colors"
       >
         {isExporting
