@@ -13,11 +13,13 @@ import {
   installStudioFabricMetadata,
   wireStudioIds,
 } from './utils/fabric-studio-metadata';
+import { installStudioFabricControls } from './utils/fabric-controls';
 import { renderDesignSpec, PostDesignSpec } from './utils/canvas-renderer';
 import { withHistoryPaused, isHistoryPaused } from './utils/canvas-history';
 import './fonts';
 
 installStudioFabricMetadata();
+installStudioFabricControls();
 
 // A generated post design (flat headline/subtext/cta) versus a semantic
 // StudioSpec (layer list) — they share the media `designSpec` column, told
