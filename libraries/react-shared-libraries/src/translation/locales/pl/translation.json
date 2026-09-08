@@ -1355,5 +1355,11 @@
   "slideshow_unreadable": "Twoja przeglądarka nie odczyta {files} (zwykle zdjęcia HEIC z iPhone'a). Wyeksportuj je jako JPEG i dodaj ponownie.",
   "image_stock_source": "Darmowe zdjęcia z Pixabay — użytek komercyjny, bez podawania autora.",
   "video_trim_undecodable": "Przeglądarka nie potrafi odczytać tego klipu, więc nie ma czego przycinać.",
-  "slideshow_not_photos": "To nie są zdjęcia. Wybierz pliki JPEG lub PNG."
+  "slideshow_not_photos": "To nie są zdjęcia. Wybierz pliki JPEG lub PNG.",
+  "export_menu": "Eksport",
+  "zoom_in": "Powiększ",
+  "zoom_out": "Pomniejsz",
+  "zoom_fit": "Dopasuj",
+  "zoom_fit_hint": "Dopasuj projekt do okna",
+  "zoom_100_hint": "Pokaż projekt w prawdziwym rozmiarze"
 }

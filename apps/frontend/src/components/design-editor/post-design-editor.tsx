@@ -16,6 +16,7 @@ import {
 } from './utils/fabric-studio-metadata';
 import { installStudioFabricControls } from './utils/fabric-controls';
 import { computeSnap, edgesOf, SnapGuide } from './utils/canvas-snapping';
+import { ExportMenu } from './export-menu';
 import { StudioIcon } from '@gitroom/frontend/components/studio/studio-icons';
 import { renderDesignSpec, PostDesignSpec } from './utils/canvas-renderer';
 import { withHistoryPaused, isHistoryPaused } from './utils/canvas-history';
@@ -839,7 +840,7 @@ const PostDesignEditor: FC<PostDesignEditorProps> = ({
               </span>
             </div>
           )}
-          <div className="shrink-0 flex flex-wrap items-center justify-between gap-2 px-4 py-2 border-b border-newBorder">
+          <div className="shrink-0 flex items-center justify-between gap-2 px-4 py-2 border-b border-newBorder">
             <div className="flex gap-2">
               <button
                 onClick={handleUndo}
@@ -865,41 +866,46 @@ const PostDesignEditor: FC<PostDesignEditorProps> = ({
                 <StudioIcon name="delete" size={16} />
               </button>
             </div>
-            <div className="flex flex-wrap gap-2">
-              <button
-                onClick={handleSaveToLibrary}
-                disabled={savingToLibrary}
-                className="px-3 py-1 text-xs rounded bg-newColColor text-textColor hover:bg-white/[0.08] transition-colors disabled:opacity-50"
-                title={t('save_to_library_hint', 'Save to media library — use it in any post')}
-              >
-                <StudioIcon name="save" size={15} />
-                {savingToLibrary ? t('saving', 'Saving…') : t('save_to_library_btn', 'Save to library')}
-              </button>
-              <button
-                onClick={handleSaveAsTemplate}
-                disabled={savingTemplate}
-                className="px-3 py-1 text-xs rounded bg-newColColor text-textColor hover:bg-white/[0.08] transition-colors disabled:opacity-50"
-                title={t('template_save_hint', 'Save this design as a reusable template for your team')}
-              >
-                <StudioIcon name="saveTemplate" size={15} />
-                {savingTemplate ? t('saving', 'Saving…') : t('template_save_btn', 'Save as template')}
-              </button>
-              <button
-                onClick={handleDownload}
-                className="px-3 py-1 text-xs rounded bg-newColColor text-textColor hover:bg-white/[0.08] transition-colors"
-                title={t('download_png_hint', 'Download the graphic as a PNG file')}
-              >
-                <StudioIcon name="download" size={15} />
-                {t('download_png', 'Download PNG')}
-              </button>
-              <button
-                onClick={() => setMultiFormatOpen(true)}
-                className="px-3 py-1 text-xs rounded bg-newColColor text-textColor hover:bg-white/[0.08] transition-colors"
-                title={t('multi_format_hint', 'Generate 7 variants for all platforms')}
-              >
-                <StudioIcon name="formats" size={15} />
-                {t('multi_format_button', 'All formats')}
-              </button>
+            <div className="flex items-center gap-2">
+              <ExportMenu
+                label={t('export_menu', 'Export')}
+                items={[
+                  {
+                    key: 'library',
+                    icon: 'save',
+                    label: savingToLibrary
+                      ? t('saving', 'Saving…')
+                      : t('save_to_library_btn', 'Save to library'),
+                    hint: t('save_to_library_hint', 'Save to media library — use it in any post'),
+                    disabled: savingToLibrary,
+                    onSelect: handleSaveToLibrary,
+                  },
+                  {
+                    key: 'template',
+                    icon: 'saveTemplate',
+                    label: savingTemplate
+                      ? t('saving', 'Saving…')
+                      : t('template_save_btn', 'Save as template'),
+                    hint: t('template_save_hint', 'Save this design as a reusable template for your team'),
+                    disabled: savingTemplate,
+                    onSelect: handleSaveAsTemplate,
+                  },
+                  {
+                    key: 'download',
+                    icon: 'download',
+                    label: t('download_png', 'Download PNG'),
+                    hint: t('download_png_hint', 'Download the graphic as a PNG file'),
+                    onSelect: handleDownload,
+                  },
+                  {
+                    key: 'formats',
+                    icon: 'formats',
+                    label: t('multi_format_button', 'All formats'),
+                    hint: t('multi_format_hint', 'Generate 7 variants for all platforms'),
+                    onSelect: () => setMultiFormatOpen(true),
+                  },
+                ]}
+              />
               <Button
                 loading={exporting}
                 onClick={handleExport}
