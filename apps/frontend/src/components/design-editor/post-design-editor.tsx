@@ -659,7 +659,7 @@ const PostDesignEditor: FC<PostDesignEditorProps> = ({
   return (
     <div
       ref={rootRef}
-      className="flex flex-col h-full min-h-[600px] bg-white/[0.03] rounded-lg overflow-hidden"
+      className="dark flex flex-col h-full min-h-0 bg-white/[0.03] rounded-lg overflow-hidden"
     >
       <div className="flex flex-1 min-h-0">
         <EditorToolbar canvas={fabricRef} />
@@ -667,9 +667,9 @@ const PostDesignEditor: FC<PostDesignEditorProps> = ({
         {/* min-w-0 keeps the 1080px canvas from expanding this column past the
             viewport (it scrolls inside overflow-auto instead) — without it the
             right side of the action bar ("Use in post") lands off-screen. */}
-        <div className="flex-1 min-w-0 flex flex-col">
+        <div className="flex-1 min-w-0 min-h-0 flex flex-col">
           {restoringDraft && (
-            <div className="flex items-center gap-2 px-4 py-2 bg-forth/10 border-b border-forth/30 text-xs text-textColor">
+            <div className="shrink-0 flex items-center gap-2 px-4 py-2 bg-forth/10 border-b border-forth/30 text-xs text-textColor">
               <span>
                 ⏳{' '}
                 {t(
@@ -679,7 +679,7 @@ const PostDesignEditor: FC<PostDesignEditorProps> = ({
               </span>
             </div>
           )}
-          <div className="flex flex-wrap items-center justify-between gap-2 px-4 py-2 border-b border-newBorder">
+          <div className="shrink-0 flex flex-wrap items-center justify-between gap-2 px-4 py-2 border-b border-newBorder">
             <div className="flex gap-2">
               <button
                 onClick={handleUndo}
@@ -751,15 +751,19 @@ const PostDesignEditor: FC<PostDesignEditorProps> = ({
             </div>
           </div>
 
-          <div className="flex-1 flex items-center justify-center bg-black/30 overflow-auto p-4">
+          <div className="flex-1 min-h-0 flex items-center justify-center bg-black/30 overflow-auto p-4">
             <div className="shadow-2xl rounded-sm shrink-0">
               <canvas ref={canvasRef} />
             </div>
           </div>
 
-          <CarouselStrip fabricRef={fabricRef} />
+          <div className="shrink-0">
+            <CarouselStrip fabricRef={fabricRef} />
+          </div>
 
-          <FormatBar />
+          <div className="shrink-0">
+            <FormatBar />
+          </div>
         </div>
       </div>
 

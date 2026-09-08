@@ -72,7 +72,7 @@ export const StudioWorkspace: FC<StudioWorkspaceProps> = ({
   ];
 
   return (
-    <div className="flex flex-col gap-2 h-full w-full">
+    <div className="dark flex flex-col gap-2 h-full w-full">
       <div className="flex gap-2">
         {tabs.map((tab) => (
           <button

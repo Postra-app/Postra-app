@@ -836,7 +836,7 @@ export const MultiMediaComponent: FC<{
         askClose: false,
         title: t('studio_title', '🎨 Studio'),
         size: '80%',
-        height: '750px',
+        height: 'min(92vh, 900px)',
         children: (close) => (
           <StudioWorkspace setMedia={changeMedia} closeModal={close} />
         ),
@@ -945,7 +945,7 @@ export const MultiMediaComponent: FC<{
                             askClose: false,
                             title: t('design_media_edit', 'Edit design'),
                             size: '80%',
-                            height: '750px',
+                            height: 'min(92vh, 900px)',
                             children: (close) => (
                               <PostDesignEditor
                                 loadMediaId={media.id}

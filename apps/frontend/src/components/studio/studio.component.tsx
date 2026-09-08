@@ -32,7 +32,7 @@ export const StudioComponent = () => {
           )}
         </p>
       </div>
-      <div className="h-[calc(100vh-110px)] w-full phone:hidden">
+      <div className="flex-1 min-h-0 w-full phone:hidden">
         <StudioWorkspace
           setMedia={noop}
           closeModal={noop}

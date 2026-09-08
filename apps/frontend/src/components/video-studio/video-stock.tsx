@@ -132,6 +132,12 @@ export const VideoStock: FC<VideoStockProps> = ({ onImported }) => {
     [fetch, onImported, toaster, t]
   );
 
+  useEffect(() => {
+    if (autoRan.current) return;
+    autoRan.current = true;
+    handleSearch();
+  }, [handleSearch]);
+
   if (notConfigured) {
     return (
       <div className="flex flex-col gap-3 p-4 text-center">
@@ -145,12 +151,6 @@ export const VideoStock: FC<VideoStockProps> = ({ onImported }) => {
       </div>
     );
   }
-
-  useEffect(() => {
-    if (autoRan.current) return;
-    autoRan.current = true;
-    handleSearch();
-  }, [handleSearch]);
 
   return (
     <div className="flex flex-col gap-3 p-3">
