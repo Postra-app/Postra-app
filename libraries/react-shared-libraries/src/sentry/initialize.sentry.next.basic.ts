@@ -36,6 +36,10 @@ export const initializeSentryBasic = (environment: string, dsn: string, extensio
         Sentry.consoleLoggingIntegration({ levels: ['warn', 'error'] }),
       ],
       environment: environment || 'development',
+      // Without a release the uploaded source maps have nothing to attach to,
+      // and every frontend stack trace in Sentry stays minified. This is the
+      // same value the build stamps the maps with - see next.config.js.
+      release: process.env.NEXT_PUBLIC_VERSION || undefined,
       spotlight: process.env.SENTRY_SPOTLIGHT === '1',
       dsn,
       // GDPR: never attach IP address / user identifiers by default.
