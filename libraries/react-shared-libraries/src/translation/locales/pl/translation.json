@@ -1416,5 +1416,7 @@
   "agent_confirm_hint": "Nic się nie wydarzy, dopóki tego nie zatwierdzisz.",
   "agent_confirm_done": "Gotowe.",
   "agent_confirm_declined": "Odrzucone — nic nie zostało zmienione.",
-  "agent_confirm_expired": "To potwierdzenie już nie działa. Poproś asystenta jeszcze raz."
+  "agent_confirm_expired": "To potwierdzenie już nie działa. Poproś asystenta jeszcze raz.",
+  "ai_edit_translate": "Przetłumacz",
+  "ai_translate_running": "Tłumaczę…"
 }

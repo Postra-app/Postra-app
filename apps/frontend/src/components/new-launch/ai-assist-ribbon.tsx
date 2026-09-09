@@ -35,6 +35,15 @@ const ACTIONS: {
   { key: 'fix_tone', labelKey: 'ai_edit_fix_tone', fallback: 'Fix tone' },
 ];
 
+/**
+ * The two the product ships in. The backend validates against the same pair,
+ * so a caller cannot ask for a language by typing one into the request.
+ */
+const LANGUAGES: { code: string; label: string }[] = [
+  { code: 'en', label: 'English' },
+  { code: 'pl', label: 'Polski' },
+];
+
 export const AiAssistRibbon: FC<Props> = ({ content, platform, onReplace }) => {
   const fetch = useFetch();
   const toaster = useToaster();
@@ -42,6 +51,7 @@ export const AiAssistRibbon: FC<Props> = ({ content, platform, onReplace }) => {
   const showAiError = useAiError();
   const [busy, setBusy] = useState<string | null>(null);
   const [tags, setTags] = useState<string[] | null>(null);
+  const [languages, setLanguages] = useState(false);
   const [picked, setPicked] = useState<Set<string>>(new Set());
   const abortRef = useRef<AbortController | null>(null);
 
@@ -49,17 +59,18 @@ export const AiAssistRibbon: FC<Props> = ({ content, platform, onReplace }) => {
   const ready = plainText.length >= AI_MIN_CONTENT_LEN;
 
   const run = useCallback(
-    async (action: string) => {
+    async (action: string, language?: string) => {
       if (!ready || busy) return;
       abortRef.current?.abort();
       const ctrl = new AbortController();
       abortRef.current = ctrl;
       setBusy(action);
+      setLanguages(false);
 
       try {
         const res = await fetch('/media/ai-edit', {
           method: 'POST',
-          body: JSON.stringify({ text: plainText, action, platform }),
+          body: JSON.stringify({ text: plainText, action, platform, language }),
           signal: ctrl.signal,
         });
 
@@ -172,6 +183,38 @@ export const AiAssistRibbon: FC<Props> = ({ content, platform, onReplace }) => {
           ? t('ai_hashtags_running', 'Finding hashtags…')
           : t('ai_edit_hashtags', '# Hashtags')}
       </button>
+
+      {/* Translate asks which language rather than guessing: a UK-first
+          product with Polish users has no safe default here. */}
+      <button
+        onClick={() => setLanguages((open) => !open)}
+        disabled={!!busy}
+        className="text-[11px] px-2 py-1 rounded bg-newColColor hover:bg-white/[0.08] text-newTextColor/80 transition-colors disabled:opacity-50"
+      >
+        {busy === 'translate'
+          ? t('ai_translate_running', 'Translating…')
+          : t('ai_edit_translate', 'Translate')}
+      </button>
+
+      {languages && !busy && (
+        <>
+          {LANGUAGES.map((language) => (
+            <button
+              key={language.code}
+              onClick={() => run('translate', language.code)}
+              className="text-[11px] px-2 py-1 rounded bg-newAccent text-[#06222e] font-[600] hover:bg-forth transition-colors"
+            >
+              {language.label}
+            </button>
+          ))}
+          <button
+            onClick={() => setLanguages(false)}
+            className="text-[11px] px-2 py-1 rounded text-newTextColor/60 hover:text-newTextColor transition-colors"
+          >
+            {t('dismiss', 'Dismiss')}
+          </button>
+        </>
+      )}
 
       {tags !== null && (
         <div className="basis-full flex flex-wrap items-center gap-1 mt-1">

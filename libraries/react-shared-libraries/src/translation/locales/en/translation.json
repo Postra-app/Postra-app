@@ -1416,5 +1416,7 @@
   "agent_confirm_hint": "Nothing happens until you approve it here.",
   "agent_confirm_done": "Done.",
   "agent_confirm_declined": "Declined — nothing was changed.",
-  "agent_confirm_expired": "That confirmation is no longer valid. Ask the assistant again."
+  "agent_confirm_expired": "That confirmation is no longer valid. Ask the assistant again.",
+  "ai_edit_translate": "Translate",
+  "ai_translate_running": "Translating…"
 }
