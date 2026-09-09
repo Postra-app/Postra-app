@@ -4,6 +4,7 @@ import {
   Logger,
   Controller,
   Get,
+  HttpException,
   Post,
   Req,
   Res,
@@ -22,6 +23,8 @@ import { SubscriptionService } from '@gitroom/nestjs-libraries/database/prisma/s
 import { BrandKitService } from '@gitroom/nestjs-libraries/database/prisma/brand-kit/brand-kit.service';
 import { MastraAgent } from '@ag-ui/mastra';
 import { MastraService } from '@gitroom/nestjs-libraries/chat/mastra.service';
+import { PendingActionService } from '@gitroom/nestjs-libraries/chat/pending-action.service';
+import { PostsService } from '@gitroom/nestjs-libraries/database/prisma/posts/posts.service';
 import { Request, Response } from 'express';
 import { RequestContext } from '@mastra/core/di';
 import { CheckPolicies } from '@gitroom/backend/services/auth/permissions/permissions.ability';
@@ -39,7 +42,9 @@ export class CopilotController {
   constructor(
     private _subscriptionService: SubscriptionService,
     private _mastraService: MastraService,
-    private _brandKitService: BrandKitService
+    private _brandKitService: BrandKitService,
+    private _pendingActionService: PendingActionService,
+    private _postsService: PostsService
   ) {}
   @Post('/chat')
   @Throttle({ default: { ttl: 300000, limit: 30 } })
@@ -138,6 +143,57 @@ export class CopilotController {
     return aiUsageOrgContext.run(organization.id, () =>
       copilotRuntimeHandler.handleRequest(req, res)
     );
+  }
+
+  /**
+   * The other half of the destructive tools: they park the action and return a
+   * token, and nothing happens until this runs. Approving is a person clicking
+   * a card in the chat, so the model cannot reach it however it is prompted.
+   */
+  @Post('/pending/:token/approve')
+  @Throttle({ default: { ttl: 300000, limit: 60 } })
+  @CheckPolicies([AuthorizationActions.Create, Sections.AI])
+  async approvePendingAction(
+    @GetOrgFromRequest() organization: Organization,
+    @Param('token') token: string
+  ) {
+    const action = await this._pendingActionService.consume(
+      token,
+      organization.id
+    );
+    if (!action) {
+      throw new HttpException(
+        'This confirmation is no longer valid — it was already used or it expired. Ask the assistant again.',
+        410
+      );
+    }
+
+    if (action.kind === 'deletePost') {
+      await this._postsService.deletePost(
+        organization.id,
+        action.payload.group
+      );
+      return { done: true, kind: action.kind };
+    }
+
+    await this._postsService.changeDate(
+      organization.id,
+      action.payload.id,
+      action.payload.date,
+      'schedule'
+    );
+    return { done: true, kind: action.kind };
+  }
+
+  @Post('/pending/:token/decline')
+  @Throttle({ default: { ttl: 300000, limit: 60 } })
+  @CheckPolicies([AuthorizationActions.Create, Sections.AI])
+  async declinePendingAction(
+    @GetOrgFromRequest() organization: Organization,
+    @Param('token') token: string
+  ) {
+    await this._pendingActionService.consume(token, organization.id);
+    return { done: true, declined: true };
   }
 
   @Get('/credits')

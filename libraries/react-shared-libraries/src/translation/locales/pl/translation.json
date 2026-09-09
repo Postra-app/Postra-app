@@ -1410,5 +1410,11 @@
   "shortcut_nudge": "Przesuń o 1 px (z Shiftem o 10 px)",
   "shortcut_undo": "Cofnij",
   "shortcut_redo": "Ponów",
-  "shortcut_zoom": "Powiększ i pomniejsz"
+  "shortcut_zoom": "Powiększ i pomniejsz",
+  "agent_confirm_approve": "Zatwierdź",
+  "agent_confirm_decline": "Odrzuć",
+  "agent_confirm_hint": "Nic się nie wydarzy, dopóki tego nie zatwierdzisz.",
+  "agent_confirm_done": "Gotowe.",
+  "agent_confirm_declined": "Odrzucone — nic nie zostało zmienione.",
+  "agent_confirm_expired": "To potwierdzenie już nie działa. Poproś asystenta jeszcze raz."
 }

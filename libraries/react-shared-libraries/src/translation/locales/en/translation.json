@@ -1410,5 +1410,11 @@
   "shortcut_nudge": "Move by 1px (hold Shift for 10px)",
   "shortcut_undo": "Undo",
   "shortcut_redo": "Redo",
-  "shortcut_zoom": "Zoom in and out"
+  "shortcut_zoom": "Zoom in and out",
+  "agent_confirm_approve": "Approve",
+  "agent_confirm_decline": "Decline",
+  "agent_confirm_hint": "Nothing happens until you approve it here.",
+  "agent_confirm_done": "Done.",
+  "agent_confirm_declined": "Declined — nothing was changed.",
+  "agent_confirm_expired": "That confirmation is no longer valid. Ask the assistant again."
 }
