@@ -1,5 +1,5 @@
 import { meterLanguageModel } from '@gitroom/nestjs-libraries/services/ai-usage.model-wrap';
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { Agent } from '@mastra/core/agent';
 import type { AgentExecutionOptions } from '@mastra/core/agent';
 import { openai } from '@ai-sdk/openai';
@@ -15,6 +15,11 @@ import {
   AGENT_MAX_STEPS,
   shouldStopForBudget,
 } from '@gitroom/nestjs-libraries/chat/agent-budget';
+import {
+  describeAgentRun,
+  describeAgentStep,
+  organizationIdFromContext,
+} from '@gitroom/nestjs-libraries/chat/agent-trace';
 
 /**
  * Working memory: what the agent should still know in the next conversation.
@@ -67,6 +72,8 @@ const renderBrandKit = (raw?: string) => {
 
 @Injectable()
 export class LoadToolsService {
+  private readonly _runLogger = new Logger('AgentRun');
+
   constructor(private _moduleRef: ModuleRef) {}
 
   async loadTools() {
@@ -153,6 +160,32 @@ ${brandKit}
       defaultOptions: ({ requestContext }) =>
         ({
           maxSteps: AGENT_MAX_STEPS,
+          // One line per step and one per run: the only way to answer "why did
+          // it do that" until an exporter exists. Content stays out on purpose.
+          onStepFinish: (event: Parameters<typeof describeAgentStep>[1]) => {
+            this._runLogger.log(
+              JSON.stringify(
+                describeAgentStep(
+                  organizationIdFromContext(
+                    requestContext.get('organization' as never) as string
+                  ),
+                  event
+                )
+              )
+            );
+          },
+          onFinish: (event: Parameters<typeof describeAgentRun>[1]) => {
+            this._runLogger.log(
+              JSON.stringify(
+                describeAgentRun(
+                  organizationIdFromContext(
+                    requestContext.get('organization' as never) as string
+                  ),
+                  event
+                )
+              )
+            );
+          },
           stopWhen: async ({ steps }: { steps: unknown[] }) =>
             shouldStopForBudget(
               steps.length,
@@ -162,9 +195,10 @@ ${brandKit}
                   .get(SubscriptionService, { strict: false })
                   .checkCredits(organization as never, 'ai_agent')
             ),
-          // The options type demands a structuredOutput branch it does not
-          // need here; the agent streams free text through the chat.
-        } as AgentExecutionOptions),
+          // The options type resolves to a branch that demands
+          // `structuredOutput`, which a chat agent streaming free text does not
+          // have. The runtime shape is what Mastra reads.
+        } as unknown as AgentExecutionOptions),
       memory: new Memory({
         storage: pStore,
         options: {
