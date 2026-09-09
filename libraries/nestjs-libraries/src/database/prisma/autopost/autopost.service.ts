@@ -1,4 +1,8 @@
 import { AiUsageCallbackHandler } from '@gitroom/nestjs-libraries/services/ai-usage.langchain';
+import {
+  UNTRUSTED_SOURCE_RULE,
+  wrapUntrusted,
+} from '@gitroom/nestjs-libraries/openai/untrusted-source';
 import { HttpException, Injectable } from '@nestjs/common';
 // eslint-disable-next-line @nx/enforce-module-boundaries
 import { fetch } from 'undici';
@@ -415,6 +419,8 @@ export class AutopostService {
       `
         You are a social media assistant. Based on the article, generate posts tailored to each platform.
 
+        ${UNTRUSTED_SOURCE_RULE}
+
         Rules:
         - Write in the SAME language as the article (article in English -> posts in English; article in Polish -> posts in Polish, etc.)
         ${toneInstruction}
@@ -433,7 +439,9 @@ export class AutopostService {
     )
       .pipe(structuredOutput)
       .invoke({
-        content: description,
+        // The article is scraped from someone else's site: it goes in as
+        // marked data, not as more of the prompt.
+        content: wrapUntrusted('article', description),
         extraInstructions,
       });
 

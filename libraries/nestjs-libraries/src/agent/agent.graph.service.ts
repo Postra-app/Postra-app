@@ -1,4 +1,5 @@
 import { Injectable } from '@nestjs/common';
+import { wrapUntrusted } from '@gitroom/nestjs-libraries/openai/untrusted-source';
 import {
   BaseMessage,
   HumanMessage,
@@ -155,7 +156,15 @@ export class AgentGraphService {
 
   async saveResearch(state: WorkflowChannelsState) {
     const content = state.messages.filter((f) => f instanceof ToolMessage);
-    return { fresearch: content };
+    // Web search results feed four later prompts. Wrapping them here means
+    // every one of those gets the marked version, and the rule travels with
+    // the text instead of being repeated in each template.
+    return {
+      fresearch: wrapUntrusted(
+        'web_research',
+        typeof content === 'string' ? content : JSON.stringify(content)
+      ),
+    };
   }
 
   async findCategories(state: WorkflowChannelsState) {
