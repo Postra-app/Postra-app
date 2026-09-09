@@ -187,7 +187,14 @@ export const Component: FC<{
               !modal.fullScreen
                 ? modal.top
                   ? ''
-                  : 'min-h-full pt-[100px] pb-[100px]'
+                  : // A modal that declares its own height is sized against the
+                    // viewport (Studio asks for 92vh), so a 100px band above and
+                    // below pushes its bottom edge - the Studio format bar, for
+                    // one - under the fold on any normal laptop. Keep the band
+                    // for the small dialogues that grow to their content.
+                    modal.size && modal.height
+                    ? 'min-h-full py-[24px]'
+                    : 'min-h-full pt-[100px] pb-[100px]'
                 : 'h-screen',
               modal.size && modal.height
                 ? 'flex justify-center items-center'

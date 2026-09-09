@@ -214,6 +214,11 @@ const PostDesignEditor: FC<PostDesignEditorProps> = ({
         ctx.stroke();
       }
       ctx.restore();
+      // renderAll only wipes the selection canvas when Fabric itself has drawn
+      // on it, so lines painted here survive the drag and stay on screen until
+      // the next interaction. Claiming the canvas puts them back under Fabric's
+      // own housekeeping.
+      c.contextTopDirty = true;
     });
 
     fabricRef.current = c;
