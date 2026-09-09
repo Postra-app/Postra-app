@@ -23,6 +23,7 @@ import { installStudioFabricControls } from './utils/fabric-controls';
 import { computeSnap, edgesOf, SnapGuide } from './utils/canvas-snapping';
 import { ExportMenu } from './export-menu';
 import { ShortcutsSheet } from './shortcuts-sheet';
+import { PropertyInspector } from './toolbar/property-inspector';
 import { StudioIcon } from '@gitroom/frontend/components/studio/studio-icons';
 import { renderDesignSpec, PostDesignSpec } from './utils/canvas-renderer';
 import { withHistoryPaused, isHistoryPaused } from './utils/canvas-history';
@@ -107,6 +108,7 @@ const PostDesignEditor: FC<PostDesignEditorProps> = ({
   orgIdRef.current = user?.orgId || 'default';
   const [restoringDraft, setRestoringDraft] = useState(false);
   const [shortcutsOpen, setShortcutsOpen] = useState(false);
+  const [hasSelection, setHasSelection] = useState(false);
   // Copy/paste keeps its own clipboard: the system one carries text, and a
   // Fabric object cannot survive a round trip through it.
   const clipboardRef = useRef<fabric.FabricObject | null>(null);
@@ -362,6 +364,18 @@ const PostDesignEditor: FC<PostDesignEditorProps> = ({
     observer.observe(host);
     return () => observer.disconnect();
   }, [canvasReady, refit]);
+
+  /** The inspector lives in its own column, so the editor - not the panel -
+   *  has to know whether anything is selected. */
+  useEffect(() => {
+    const c = fabricRef.current;
+    if (!c || !canvasReady) return;
+    const sync = () => setHasSelection(!!c.getActiveObject());
+    sync();
+    const events = ['selection:created', 'selection:updated', 'selection:cleared'] as const;
+    events.forEach((e) => c.on(e, sync));
+    return () => events.forEach((e) => c.off(e, sync));
+  }, [canvasReady]);
 
   /** Ctrl/Cmd+wheel zooms around the pointer, like every other canvas tool.
    *  The artboard is a real DOM element inside a scrolling box, so keeping the
@@ -1122,6 +1136,16 @@ const PostDesignEditor: FC<PostDesignEditorProps> = ({
             <FormatBar />
           </div>
         </div>
+
+        {/* Properties used to sit under the tool panel in the same 280px
+            column, so choosing a font meant scrolling past the templates and
+            the swatches. They get their own column, and only when there is
+            something selected to describe. */}
+        {hasSelection && (
+          <aside className="w-[260px] shrink-0 min-h-0 overflow-y-auto border-s border-newBorder p-3">
+            <PropertyInspector canvas={fabricRef} />
+          </aside>
+        )}
       </div>
 
       {multiFormatOpen && (

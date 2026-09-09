@@ -14,7 +14,6 @@ import { LayersPanel } from './layers-panel';
 import { TemplatesPanel } from './templates-panel';
 import { StockImagesPanel } from './stock-images-panel';
 import { ImageFiltersPanel } from './image-filters-panel';
-import { PropertyInspector } from './property-inspector';
 import { STUDIO_FONTS, DEFAULT_FONT, findFontByFamily } from '../fonts';
 import {
   removeBackgroundFromImage,
@@ -833,7 +832,6 @@ export const EditorToolbar: FC<ToolbarProps> = ({ canvas }) => {
             />
           </div>
 
-          <PropertyInspector canvas={canvas} />
           </>
         )}
         </div>
