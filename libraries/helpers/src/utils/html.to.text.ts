@@ -8,6 +8,24 @@ const LINE_BREAKS =
   /<br\s*\/?>|<\/(?:p|div|h[1-6]|li|tr|table|blockquote|section|header|footer|article|ul|ol)\s*>/gi;
 
 /**
+ * One pass leaves nested constructs behind: `<!--<!-- -->-->` loses the inner
+ * comment and keeps the outer `-->`, and the same trick works on a style or
+ * script block. Repeat until the string stops changing, which is also what
+ * closes the incomplete-multi-character-sanitization finding on this file.
+ */
+const stripUntilStable = (input: string, pattern: RegExp): string => {
+  let current = input;
+  // A guard rather than a `while (true)`: each pass strictly shortens the
+  // string, so this can only be reached by a pattern that does not.
+  for (let pass = 0; pass < 10; pass++) {
+    const next = current.replace(pattern, '');
+    if (next === current) return next;
+    current = next;
+  }
+  return current;
+};
+
+/**
  * Renders an HTML email body as readable plain text for the `text/plain`
  * alternative part.
  *
@@ -17,9 +35,21 @@ const LINE_BREAKS =
  * the mismatch between the two parts is a spam-filter signal.
  */
 export const htmlToText = (html: string): string => {
-  const withLinks = (html || '')
-    .replace(HIDDEN_BLOCKS, '')
-    .replace(COMMENTS, '')
+  const source = html || '';
+  let withoutHidden = stripUntilStable(
+    stripUntilStable(source, HIDDEN_BLOCKS),
+    COMMENTS
+  );
+
+  // A comment inside a comment leaves the outer `-->` behind, because the
+  // match is non-greedy and stops at the first close. Only clean up the
+  // orphaned markers when this body actually had a comment in it - otherwise
+  // an email that simply writes "click here --> now" loses its arrow.
+  if (source.includes('<!--')) {
+    withoutHidden = withoutHidden.split('-->').join('').split('<!--').join('');
+  }
+
+  const withLinks = withoutHidden
     // Keep the destination visible: a plain-text reader has no other way to
     // follow a link once the markup is gone.
     .replace(LINKS, (_match, doubleQuoted, singleQuoted, bare, label) => {

@@ -619,6 +619,7 @@ export class MediaService {
         text: body.text,
         action: body.action,
         platform: body.platform,
+        language: body.language,
         tone: brandKit?.tone,
       },
       org.id

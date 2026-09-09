@@ -110,7 +110,6 @@ services:
       - "7233:7233"
     depends_on:
       - temporal-postgresql
-      - temporal-elasticsearch
     environment:
       - DB=postgres12
       - DB_PORT=5432
@@ -118,9 +117,11 @@ services:
       - POSTGRES_PWD=temporal
       - POSTGRES_SEEDS=temporal-postgresql
       - DYNAMIC_CONFIG_FILE_PATH=config/dynamicconfig/development-sql.yaml
-      - ENABLE_ES=true
-      - ES_SEEDS=temporal-elasticsearch
-      - ES_VERSION=v7
+      # Production runs Temporal with Elasticsearch off and visibility in SQL.
+      # Local used to force it on, which meant a heavyweight container nobody
+      # needed and a configuration that did not match the one being debugged.
+      - ENABLE_ES=false
+      - SKIP_ADD_CUSTOM_SEARCH_ATTRIBUTES=true
       - TEMPORAL_NAMESPACE=default
     networks:
       - temporal-network

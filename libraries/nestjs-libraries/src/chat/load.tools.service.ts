@@ -1,6 +1,7 @@
 import { meterLanguageModel } from '@gitroom/nestjs-libraries/services/ai-usage.model-wrap';
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { Agent } from '@mastra/core/agent';
+import type { AgentExecutionOptions } from '@mastra/core/agent';
 import { openai } from '@ai-sdk/openai';
 import { Memory } from '@mastra/memory';
 import { pStore } from '@gitroom/nestjs-libraries/chat/mastra.store';
@@ -9,9 +10,47 @@ import { ModuleRef } from '@nestjs/core';
 import { toolList } from '@gitroom/nestjs-libraries/chat/tools/tool.list';
 import dayjs from 'dayjs';
 import { buildBrandAgentPrompt } from '@gitroom/nestjs-libraries/openai/brand-prompt';
+import { SubscriptionService } from '@gitroom/nestjs-libraries/database/prisma/subscriptions/subscription.service';
+import {
+  AGENT_MAX_STEPS,
+  shouldStopForBudget,
+} from '@gitroom/nestjs-libraries/chat/agent-budget';
+import {
+  describeAgentRun,
+  describeAgentStep,
+  organizationIdFromContext,
+} from '@gitroom/nestjs-libraries/chat/agent-trace';
 
+/**
+ * Working memory: what the agent should still know in the next conversation.
+ * It used to be the Mastra starter's `{ proverbs: string[] }`, and the model
+ * duly filed real work in it - a stored value read on 2026-09-09 was
+ * `{"proverbs":["facebook integration id: d68ca68c-..."]}`. Whatever is here
+ * rides along in every later prompt for this organisation, so the fields are
+ * the few things worth carrying: what the user asked us to always do, where
+ * they usually post, and what they are working on right now.
+ *
+ * Brand voice, colours and fonts are deliberately absent - those live in the
+ * Brand Kit and are injected separately, and duplicating them here would let
+ * the two drift apart.
+ */
 export const AgentState = object({
-  proverbs: array(string()).default([]),
+  standingInstructions: array(string())
+    .default([])
+    .describe(
+      'Instructions the user asked to apply from now on, e.g. "never use emojis", "always mention our website". Add one when they say it, drop one when they take it back.'
+    ),
+  usualChannels: array(string())
+    .default([])
+    .describe('Channels this user posts to most often, by name.'),
+  currentFocus: string()
+    .default('')
+    .describe(
+      'What they are working on at the moment: a campaign, a launch, a product. One short line, replaced when it changes.'
+    ),
+  timezone: string()
+    .default('')
+    .describe('IANA timezone if the user mentions their local time.'),
 });
 
 const renderArray = (list: string[], show: boolean) => {
@@ -33,6 +72,8 @@ const renderBrandKit = (raw?: string) => {
 
 @Injectable()
 export class LoadToolsService {
+  private readonly _runLogger = new Logger('AgentRun');
+
   constructor(private _moduleRef: ModuleRef) {}
 
   async loadTools() {
@@ -94,7 +135,7 @@ ${brandKit}
       - In every message I will send you the list of needed social medias (id and platform), if you already have the information use it, if not, use the integrationSchema tool to get it.
       - Make sure you always take the last information I give you about the socials, it might have changed.
       - Before scheduling a post, always make sure you ask the user confirmation by providing all the details of the post (text, images, videos, date, time, social media platform, account).
-      - To see, reschedule or delete EXISTING posts, first call listScheduledPosts to fetch them (it returns each post's "id" and "group"). Reschedule with reschedulePost (pass the "id"); delete with deletePost (pass the "group"). Deleting cannot be undone, so always confirm with the user before deleting.
+      - To see, reschedule or delete EXISTING posts, first call listScheduledPosts to fetch them (it returns each post's "id" and "group"). Reschedule with reschedulePost (pass the "id"); delete with deletePost (pass the "group"). Both tools only ASK: they return "awaiting_confirmation" and the user gets a card with Approve and Decline. Nothing is deleted or moved until they click. So after calling one, say in one sentence what will happen and point at the card - do not ask them to type "yes", do not claim the post is already deleted or moved, and do not call the tool again for the same post while a card is open. Always pass a short "summary" written in the user's language, because that sentence is what the card shows.
       - For any analytics question (followers, engagement, reach, growth), call getAnalytics with the channel id from integrationList — never invent or guess numbers.
       - When the user wants a finished / ready-to-post branded post or graphic about a topic, prefer createBrandedDraft — it writes the caption AND designs a matching branded image in one step — over separately calling generateImageTool and writing the text. Pass createBrandedDraft the language the user is writing in so the caption and the on-image text match. After it returns, show the caption, then open a populated composer (manualPosting) with that caption as the post content and the returned design attached (use the returned mediaId as the attachment id and the returned path as the attachment url), so the user can review before scheduling. The composer needs a target channel, so if the user has not selected one yet, ask which channel to use before opening it.
       - Whenever you generate a standalone image (generateImageTool) or video (generateVideoTool) and are not scheduling it in the same step, always tell the user it has been saved to their Media library (they can reuse it any time from the Media section), and show a preview inline in the chat by embedding the returned URL as a markdown image so it renders (for example: ![preview](the-returned-url)); for a video, include the returned mp4 URL. Then ask whether they want to attach it to a post. Say this in the same language the user is writing in.
@@ -114,6 +155,50 @@ ${brandKit}
       // cheaper lever if agent cost climbs.
       model: meterLanguageModel(openai('gpt-5.5'), 'agent'),
       tools,
+      // Bound the run and re-check the monthly allowance while it is going,
+      // not just before it starts.
+      defaultOptions: ({ requestContext }) =>
+        ({
+          maxSteps: AGENT_MAX_STEPS,
+          // One line per step and one per run: the only way to answer "why did
+          // it do that" until an exporter exists. Content stays out on purpose.
+          onStepFinish: (event: Parameters<typeof describeAgentStep>[1]) => {
+            this._runLogger.log(
+              JSON.stringify(
+                describeAgentStep(
+                  organizationIdFromContext(
+                    requestContext.get('organization' as never) as string
+                  ),
+                  event
+                )
+              )
+            );
+          },
+          onFinish: (event: Parameters<typeof describeAgentRun>[1]) => {
+            this._runLogger.log(
+              JSON.stringify(
+                describeAgentRun(
+                  organizationIdFromContext(
+                    requestContext.get('organization' as never) as string
+                  ),
+                  event
+                )
+              )
+            );
+          },
+          stopWhen: async ({ steps }: { steps: unknown[] }) =>
+            shouldStopForBudget(
+              steps.length,
+              requestContext.get('organization' as never) as string,
+              (organization) =>
+                this._moduleRef
+                  .get(SubscriptionService, { strict: false })
+                  .checkCredits(organization as never, 'ai_agent')
+            ),
+          // The options type resolves to a branch that demands
+          // `structuredOutput`, which a chat agent streaming free text does not
+          // have. The runtime shape is what Mastra reads.
+        } as unknown as AgentExecutionOptions),
       memory: new Memory({
         storage: pStore,
         options: {

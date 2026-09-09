@@ -28,9 +28,13 @@ export class IntegrationTriggerTool implements AgentToolInterface {
       Sometimes this tool requires to user prompt for some settings, like a word to search for. methodName is required [input:callable-tools]`,
       mcp: {
         annotations: {
+          // Not read-only: this calls provider methods by name, and some of
+          // them change or disconnect the channel. It was annotated as safe,
+          // which is exactly the hint an MCP client uses to decide what it can
+          // run without asking.
           title: 'Trigger Integration Tool',
-          readOnlyHint: true,
-          destructiveHint: false,
+          readOnlyHint: false,
+          destructiveHint: true,
           idempotentHint: false,
           openWorldHint: true,
         },

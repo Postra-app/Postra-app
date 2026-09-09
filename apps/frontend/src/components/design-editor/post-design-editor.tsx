@@ -3,7 +3,12 @@
 import { FC, lazy, Suspense, useCallback, useEffect, useRef, useState } from 'react';
 import * as fabric from 'fabric';
 import clsx from 'clsx';
-import { useEditorStore, PLATFORM_SIZES, PlatformSize } from './editor.store';
+import {
+  useEditorStore,
+  PLATFORM_SIZES,
+  PlatformSize,
+  EditorTool,
+} from './editor.store';
 import { useCarouselStore } from './carousel.store';
 import { EditorToolbar } from './toolbar/editor-toolbar';
 import { FormatBar } from './toolbar/format-bar';
@@ -17,6 +22,8 @@ import {
 import { installStudioFabricControls } from './utils/fabric-controls';
 import { computeSnap, edgesOf, SnapGuide } from './utils/canvas-snapping';
 import { ExportMenu } from './export-menu';
+import { ShortcutsSheet } from './shortcuts-sheet';
+import { PropertyInspector } from './toolbar/property-inspector';
 import { StudioIcon } from '@gitroom/frontend/components/studio/studio-icons';
 import { renderDesignSpec, PostDesignSpec } from './utils/canvas-renderer';
 import { withHistoryPaused, isHistoryPaused } from './utils/canvas-history';
@@ -100,6 +107,11 @@ const PostDesignEditor: FC<PostDesignEditorProps> = ({
   const orgIdRef = useRef('default');
   orgIdRef.current = user?.orgId || 'default';
   const [restoringDraft, setRestoringDraft] = useState(false);
+  const [shortcutsOpen, setShortcutsOpen] = useState(false);
+  const [hasSelection, setHasSelection] = useState(false);
+  // Copy/paste keeps its own clipboard: the system one carries text, and a
+  // Fabric object cannot survive a round trip through it.
+  const clipboardRef = useRef<fabric.FabricObject | null>(null);
 
   const { platform, setPlatform, pushHistory, setCanvasReady, setTool } =
     useEditorStore();
@@ -214,6 +226,11 @@ const PostDesignEditor: FC<PostDesignEditorProps> = ({
         ctx.stroke();
       }
       ctx.restore();
+      // renderAll only wipes the selection canvas when Fabric itself has drawn
+      // on it, so lines painted here survive the drag and stay on screen until
+      // the next interaction. Claiming the canvas puts them back under Fabric's
+      // own housekeeping.
+      c.contextTopDirty = true;
     });
 
     fabricRef.current = c;
@@ -347,6 +364,18 @@ const PostDesignEditor: FC<PostDesignEditorProps> = ({
     observer.observe(host);
     return () => observer.disconnect();
   }, [canvasReady, refit]);
+
+  /** The inspector lives in its own column, so the editor - not the panel -
+   *  has to know whether anything is selected. */
+  useEffect(() => {
+    const c = fabricRef.current;
+    if (!c || !canvasReady) return;
+    const sync = () => setHasSelection(!!c.getActiveObject());
+    sync();
+    const events = ['selection:created', 'selection:updated', 'selection:cleared'] as const;
+    events.forEach((e) => c.on(e, sync));
+    return () => events.forEach((e) => c.off(e, sync));
+  }, [canvasReady]);
 
   /** Ctrl/Cmd+wheel zooms around the pointer, like every other canvas tool.
    *  The artboard is a real DOM element inside a scrolling box, so keeping the
@@ -852,10 +881,63 @@ const PostDesignEditor: FC<PostDesignEditorProps> = ({
         return;
       }
 
+      if ((e.metaKey || e.ctrlKey) && key === 'c') {
+        if (!active) return;
+        e.preventDefault();
+        active.clone().then((copy: fabric.FabricObject) => {
+          clipboardRef.current = copy;
+        });
+        return;
+      }
+
+      if ((e.metaKey || e.ctrlKey) && key === 'v') {
+        const source = clipboardRef.current;
+        if (!source) return;
+        e.preventDefault();
+        source.clone().then((copy: fabric.FabricObject) => {
+          copy.set({
+            left: (source.left ?? 0) + DUPLICATE_OFFSET,
+            top: (source.top ?? 0) + DUPLICATE_OFFSET,
+          });
+          copy.setCoords();
+          c.add(copy);
+          c.setActiveObject(copy);
+          c.requestRenderAll();
+          // paste twice in a row and the second copy lands next to the first
+          clipboardRef.current = copy;
+        });
+        return;
+      }
+
       if (e.key === 'Escape') {
         c.discardActiveObject();
         c.requestRenderAll();
         return;
+      }
+
+      // Tool hotkeys, the letters every editor uses. No modifier, so the
+      // typing guard above is what keeps them out of a text object.
+      if (!e.metaKey && !e.ctrlKey && !e.altKey) {
+        // Layouts disagree about what "?" is: some report the character, some
+        // report "/" with Shift held. Accept both.
+        if (e.key === '?' || (e.shiftKey && e.key === '/')) {
+          e.preventDefault();
+          setShortcutsOpen(true);
+          return;
+        }
+        const tools: Record<string, EditorTool> = {
+          v: 'select',
+          t: 'text',
+          r: 'shapes',
+          i: 'icons',
+          l: 'layers',
+        };
+        const tool = tools[key];
+        if (tool) {
+          e.preventDefault();
+          setTool(tool);
+          return;
+        }
       }
 
       // Arrow keys nudge; Shift moves in bigger steps, the way every editor does
@@ -881,7 +963,7 @@ const PostDesignEditor: FC<PostDesignEditorProps> = ({
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [handleDelete, handleUndo, handleRedo]);
+  }, [handleDelete, handleUndo, handleRedo, setTool]);
 
   return (
     <div
@@ -930,6 +1012,15 @@ const PostDesignEditor: FC<PostDesignEditorProps> = ({
                 title={t('delete_tooltip', 'Delete selected object (Delete)')}
               >
                 <StudioIcon name="delete" size={16} />
+              </button>
+              {/* The shortcuts only help someone who knows they exist. */}
+              <button
+                onClick={() => setShortcutsOpen(true)}
+                className="h-8 px-3 text-sm rounded bg-newColColor text-textColor hover:bg-white/[0.08] transition-colors"
+                title={t('shortcuts_tooltip', 'Keyboard shortcuts (?)')}
+                aria-label={t('shortcuts_tooltip', 'Keyboard shortcuts (?)')}
+              >
+                <StudioIcon name="shortcuts" size={16} />
               </button>
             </div>
             <div className="flex items-center gap-2">
@@ -1045,6 +1136,16 @@ const PostDesignEditor: FC<PostDesignEditorProps> = ({
             <FormatBar />
           </div>
         </div>
+
+        {/* Properties used to sit under the tool panel in the same 280px
+            column, so choosing a font meant scrolling past the templates and
+            the swatches. They get their own column, and only when there is
+            something selected to describe. */}
+        {hasSelection && (
+          <aside className="w-[260px] shrink-0 min-h-0 overflow-y-auto border-s border-newBorder p-3">
+            <PropertyInspector canvas={fabricRef} />
+          </aside>
+        )}
       </div>
 
       {multiFormatOpen && (
@@ -1060,6 +1161,11 @@ const PostDesignEditor: FC<PostDesignEditorProps> = ({
           />
         </Suspense>
       )}
+
+      <ShortcutsSheet
+        open={shortcutsOpen}
+        onClose={() => setShortcutsOpen(false)}
+      />
 
       <WelcomeModal />
     </div>

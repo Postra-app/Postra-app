@@ -251,8 +251,131 @@ Use the following social media platforms: ${JSON.stringify(
   );
 };
 
+/**
+ * Delete and reschedule do not happen when the agent says so: the tool parks
+ * the action on the server and returns a token, and this card is the only way
+ * to spend it. Render-only (`available: 'disabled'`) so the model cannot call
+ * it and cannot answer on the user's behalf.
+ */
+const ConfirmActionCard: FC<{
+  result: {
+    status?: string;
+    token?: string;
+    summary?: string;
+    expiresInMinutes?: number;
+  } | null;
+  destructive: boolean;
+}> = ({ result, destructive }) => {
+  const t = useT();
+  const fetch = useFetch();
+  const [state, setState] = useState<
+    'idle' | 'working' | 'approved' | 'declined' | 'error'
+  >('idle');
+
+  const act = useCallback(
+    async (decision: 'approve' | 'decline') => {
+      if (!result?.token) return;
+      setState('working');
+      try {
+        const response = await fetch(
+          `/copilot/pending/${result.token}/${decision}`,
+          { method: 'POST' }
+        );
+        if (!response.ok) throw new Error(String(response.status));
+        setState(decision === 'approve' ? 'approved' : 'declined');
+      } catch {
+        setState('error');
+      }
+    },
+    [fetch, result?.token]
+  );
+
+  if (result?.status !== 'awaiting_confirmation' || !result?.token) return null;
+
+  return (
+    <div className="my-[10px] p-[14px] rounded-[8px] border border-newBorder bg-newColColor flex flex-col gap-[10px]">
+      <div className="text-[13.5px] text-newTextColor">{result.summary}</div>
+
+      {state === 'idle' || state === 'working' ? (
+        <>
+          <div className="flex gap-[8px]">
+            <button
+              type="button"
+              disabled={state === 'working'}
+              onClick={() => act('approve')}
+              className={
+                'h-[32px] px-[14px] rounded-[6px] text-[13px] font-[600] disabled:opacity-50 ' +
+                (destructive
+                  ? 'bg-red-500 text-white hover:bg-red-600'
+                  : 'bg-[#38bdf8] text-[#06222e] hover:bg-[#7dd3fc]')
+              }
+            >
+              {t('agent_confirm_approve', 'Approve')}
+            </button>
+            <button
+              type="button"
+              disabled={state === 'working'}
+              onClick={() => act('decline')}
+              className="h-[32px] px-[14px] rounded-[6px] text-[13px] text-newTextColor hover:bg-white/[0.08] disabled:opacity-50"
+            >
+              {t('agent_confirm_decline', 'Decline')}
+            </button>
+          </div>
+          <div className="text-[11px] text-newTextColor/60">
+            {t(
+              'agent_confirm_hint',
+              'Nothing happens until you approve it here.'
+            )}
+          </div>
+        </>
+      ) : null}
+
+      {state === 'approved' && (
+        <div className="text-[12.5px] text-[#38bdf8]">
+          {t('agent_confirm_done', 'Done.')}
+        </div>
+      )}
+      {state === 'declined' && (
+        <div className="text-[12.5px] text-newTextColor/70">
+          {t('agent_confirm_declined', 'Declined — nothing was changed.')}
+        </div>
+      )}
+      {state === 'error' && (
+        <div className="text-[12.5px] text-red-400">
+          {t(
+            'agent_confirm_expired',
+            'That confirmation is no longer valid. Ask the assistant again.'
+          )}
+        </div>
+      )}
+    </div>
+  );
+};
+
 export const Hooks: FC = () => {
   const modals = useModals();
+
+  useCopilotAction({
+    name: 'deletePost',
+    available: 'disabled',
+    render: ({ status, result }) =>
+      status === 'complete' ? (
+        <ConfirmActionCard result={result} destructive={true} />
+      ) : (
+        <></>
+      ),
+  });
+
+  useCopilotAction({
+    name: 'reschedulePost',
+    available: 'disabled',
+    render: ({ status, result }) =>
+      status === 'complete' ? (
+        <ConfirmActionCard result={result} destructive={false} />
+      ) : (
+        <></>
+      ),
+  });
 
   useCopilotAction({
     name: 'manualPosting',

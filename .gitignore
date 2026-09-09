@@ -67,3 +67,5 @@ i18n.cache
 apps/frontend/public/g.js
 apps/backend/uploads/
 apps/frontend/uploads
+# The orchestrator writes here too when an autopost saves a picture locally.
+apps/orchestrator/uploads/

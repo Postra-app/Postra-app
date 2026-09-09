@@ -8,6 +8,7 @@ import {
   IsString,
   MaxLength,
   MinLength,
+  ValidateIf,
 } from 'class-validator';
 
 export class RefineDesignDto {
@@ -41,7 +42,15 @@ const AI_EDIT_ACTIONS = [
   'expand',
   'adapt',
   'fix_tone',
+  'translate',
 ] as const;
+
+/**
+ * The two languages the product ships in. An allowlist rather than free text:
+ * the value is read straight into the prompt, and "translate into <anything
+ * the caller types>" is an instruction the caller gets to write.
+ */
+export const AI_EDIT_LANGUAGES = ['en', 'pl'] as const;
 
 export class SuggestHashtagsDto {
   @IsString()
@@ -72,6 +81,14 @@ export class AiEditTextDto {
   @IsOptional()
   @MaxLength(50)
   platform?: string;
+
+  // Required for 'translate' and meaningless for the rest: translating into a
+  // language nobody asked for is worse than refusing.
+  @ValidateIf((body: AiEditTextDto) => body.action === 'translate')
+  @IsDefined()
+  @IsString()
+  @IsIn(AI_EDIT_LANGUAGES as unknown as string[])
+  language?: string;
 }
 
 // Studio persistence. Both bodies were previously typed as inline object

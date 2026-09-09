@@ -4,6 +4,8 @@ import { FC } from 'react';
 import {
   IconAspectRatio,
   IconChevronDown,
+  IconChevronLeft,
+  IconKeyboard,
   IconChevronUp,
   IconEye,
   IconEyeOff,
@@ -83,7 +85,9 @@ export type StudioIconName =
   | 'show'
   | 'hide'
   | 'lock'
-  | 'unlock';
+  | 'unlock'
+  | 'collapse'
+  | 'shortcuts';
 
 const MAP: Record<StudioIconName, FC<{ size?: number; stroke?: number; className?: string }>> = {
   aiGenerate: IconSparkles,
@@ -121,6 +125,8 @@ const MAP: Record<StudioIconName, FC<{ size?: number; stroke?: number; className
   hide: IconEyeOff,
   lock: IconLock,
   unlock: IconLockOpen,
+  collapse: IconChevronLeft,
+  shortcuts: IconKeyboard,
 };
 
 export const StudioIcon: FC<{

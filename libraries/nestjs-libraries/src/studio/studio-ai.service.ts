@@ -14,6 +14,15 @@ import {
   validatePatchAgainstSpec,
 } from './studio-spec';
 
+/**
+ * The two languages the composer offers. Mapped here rather than passed
+ * through, so the prompt only ever names a language we chose.
+ */
+const LANGUAGE_NAMES: Record<string, string> = {
+  en: 'English',
+  pl: 'Polish',
+};
+
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY || 'sk-proj-',
   // Cap per-request time (SDK default is 10 min) so a stuck OpenAI call can't
@@ -414,6 +423,7 @@ Rules:
       action: string;
       platform?: string;
       tone?: string;
+      language?: string;
     },
     orgId?: string
   ): Promise<{ text: string }> {
@@ -430,13 +440,20 @@ Rules:
       }'s style, length and conventions.`,
       fix_tone:
         'Rewrite it so it better matches the declared brand tone of voice.',
+      translate: `Translate it into ${
+        LANGUAGE_NAMES[input.language ?? ''] || 'English'
+      }. Translate the wording, not the brand: keep names, @mentions, #hashtags, links, numbers and emoji exactly as they are, and keep the line breaks.`,
     };
 
     const system = `You are an expert social media copywriter. Rewrite the user's post caption. ${
       instructions[input.action] || instructions.improve
     }
 ${buildBrandVoicePrompt({ tone: input.tone })}
-Keep the SAME language as the input. Preserve important facts, @mentions, #hashtags and links. Return ONLY the rewritten caption as plain text — no surrounding quotes, no explanation, no markdown or HTML.`;
+${
+  input.action === 'translate'
+    ? 'Write the result in the target language named above, whatever language the input is in.'
+    : 'Keep the SAME language as the input.'
+} Preserve important facts, @mentions, #hashtags and links. Return ONLY the rewritten caption as plain text — no surrounding quotes, no explanation, no markdown or HTML.`;
 
     const parsed = (
       await parseChat(openai, {

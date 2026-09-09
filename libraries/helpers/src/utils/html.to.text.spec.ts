@@ -43,3 +43,28 @@ describe('htmlToText', () => {
     expect(htmlToText(undefined as unknown as string)).toBe('');
   });
 });
+
+describe('htmlToText — nested markup', () => {
+  it('removes a comment hidden inside another comment', () => {
+    const out = htmlToText('<p>Hello<!--<!-- hidden -->--> there</p>');
+    expect(out).not.toContain('-->');
+    expect(out).not.toContain('hidden');
+    expect(out).toContain('Hello');
+  });
+
+  it('removes a style block that was split by another style tag', () => {
+    const out = htmlToText(
+      '<p>Before<sty<style>x</style>le>body{color:red}</style>After</p>'
+    );
+    expect(out).not.toMatch(/color:red/);
+    expect(out).toContain('Before');
+  });
+
+  it('still returns the visible text of an ordinary email', () => {
+    const out = htmlToText(
+      '<html><head><title>t</title></head><body><p>Hi <a href="https://postra.co.uk">Postra</a></p></body></html>'
+    );
+    expect(out).toContain('Hi Postra (https://postra.co.uk)');
+    expect(out).not.toContain('<');
+  });
+});
