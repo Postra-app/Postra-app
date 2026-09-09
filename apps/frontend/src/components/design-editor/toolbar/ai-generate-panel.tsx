@@ -244,7 +244,6 @@ export const AiGeneratePanel: FC<Props> = ({ canvas }) => {
       {!brandKit.loading && !brandKit.exists && (
         <div className="rounded-md bg-forth/10 border border-forth/30 px-2 py-1.5 flex flex-col gap-1.5">
           <p className="text-[11px] leading-snug text-textColor/80">
-            🎨{' '}
             {t(
               'brand_kit_nudge',
               'Set up your Brand Kit once — AI writes in your tone, designs come out in your colours and font, and your logo goes on every generated design.'

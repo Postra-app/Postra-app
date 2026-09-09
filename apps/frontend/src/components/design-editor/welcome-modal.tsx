@@ -2,6 +2,7 @@
 
 import { FC, useEffect, useRef, useState } from 'react';
 import { useT } from '@gitroom/react/translation/get.transation.service.client';
+import { StudioIcon } from '@gitroom/frontend/components/studio/studio-icons';
 import { useUser } from '@gitroom/frontend/components/layout/user.context';
 import { useEditorStore } from './editor.store';
 
@@ -79,7 +80,9 @@ export const WelcomeModal: FC = () => {
         onClick={(e) => e.stopPropagation()}
       >
         <div className="text-center mb-5">
-          <div className="text-4xl mb-2">🎨</div>
+          <div className="mb-2 flex justify-center text-newAccent">
+            <StudioIcon name="graphics" size={32} />
+          </div>
           <h2
             id="welcome-modal-title"
             className="text-xl font-semibold text-textColor mb-1"
@@ -101,7 +104,7 @@ export const WelcomeModal: FC = () => {
             className="text-left p-4 rounded-md bg-newColColor hover:bg-white/[0.08] text-textColor transition-colors group"
           >
             <div className="text-base font-semibold flex items-center gap-2">
-              <span>📐</span>
+              <StudioIcon name="templates" size={18} />
               <span>{t('welcome_cta_templates', 'Start from a template')}</span>
             </div>
             <div className="text-xs text-textColor/60 group-hover:text-white/70 mt-1">
@@ -119,7 +122,7 @@ export const WelcomeModal: FC = () => {
             className="text-left p-4 rounded-md bg-newColColor hover:bg-white/[0.08] text-textColor transition-colors group"
           >
             <div className="text-base font-semibold flex items-center gap-2">
-              <span>🏞</span>
+              <StudioIcon name="stock" size={18} />
               <span>{t('welcome_cta_stock', 'Free stock photo')}</span>
             </div>
             <div className="text-xs text-textColor/60 group-hover:text-white/70 mt-1">
@@ -135,7 +138,7 @@ export const WelcomeModal: FC = () => {
             className="text-left p-4 rounded-md bg-newColColor hover:bg-white/[0.08] text-textColor transition-colors group"
           >
             <div className="text-base font-semibold flex items-center gap-2">
-              <span>✨</span>
+              <StudioIcon name="aiGenerate" size={18} />
               <span>{t('welcome_cta_ai', 'Generate with AI')}</span>
             </div>
             <div className="text-xs text-textColor/60 group-hover:text-white/70 mt-1">
@@ -156,7 +159,7 @@ export const WelcomeModal: FC = () => {
             className="text-left p-4 rounded-md bg-newColColor/50 hover:bg-newColColor text-textColor transition-colors group"
           >
             <div className="text-base font-semibold flex items-center gap-2">
-              <span>◻</span>
+              <StudioIcon name="select" size={18} />
               <span>{t('welcome_cta_blank', 'Blank canvas')}</span>
             </div>
             <div className="text-xs text-textColor/60 mt-1">
