@@ -41,6 +41,12 @@ export const PLATFORM_SIZES: PlatformSize[] = [
 interface EditorState {
   activeTool: EditorTool;
   /**
+   * The tool panel is a drawer now that the rail is icons-only: on a laptop
+   * the rail plus a permanent 280px panel left the canvas with less room than
+   * the panel it sat next to.
+   */
+  panelOpen: boolean;
+  /**
    * Set when something outside the Templates panel wants it opened on a
    * particular search — the occasion chips on the free plan, which have no AI
    * to fall back on. The panel consumes it once and clears it.
@@ -55,6 +61,7 @@ interface EditorState {
   aiPrompt: string;
 
   setTool: (tool: EditorTool) => void;
+  setPanelOpen: (open: boolean) => void;
   setPendingTemplateQuery: (query: string | null) => void;
   setPlatform: (platform: PlatformSize) => void;
   setGenerating: (val: boolean) => void;
@@ -70,6 +77,7 @@ interface EditorState {
 
 export const useEditorStore = create<EditorState>((set, get) => ({
   activeTool: 'select',
+  panelOpen: true,
   pendingTemplateQuery: null,
   platform: PLATFORM_SIZES[0],
   history: [],
@@ -79,7 +87,8 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   bgColor: '#1a1a2e',
   aiPrompt: '',
 
-  setTool: (tool) => set({ activeTool: tool }),
+  setTool: (tool) => set({ activeTool: tool, panelOpen: true }),
+  setPanelOpen: (open) => set({ panelOpen: open }),
   setPendingTemplateQuery: (query) => set({ pendingTemplateQuery: query }),
   setPlatform: (platform) => set({ platform }),
   setGenerating: (val) => set({ isGenerating: val }),

@@ -111,8 +111,16 @@ const TOOLS: {
 ];
 
 export const EditorToolbar: FC<ToolbarProps> = ({ canvas }) => {
-  const { activeTool, setTool, bgColor, setBgColor, platform, canvasReady } =
-    useEditorStore();
+  const {
+    activeTool,
+    setTool,
+    bgColor,
+    setBgColor,
+    platform,
+    canvasReady,
+    panelOpen,
+    setPanelOpen,
+  } = useEditorStore();
   const t = useT();
   const fetch = useFetch();
   const toaster = useToaster();
@@ -566,10 +574,17 @@ export const EditorToolbar: FC<ToolbarProps> = ({ canvas }) => {
   const handleToolClick = useCallback(
     (tool: EditorTool) => {
       const wasActive = activeTool === tool;
+      // Clicking the tool you are already on closes the drawer, the way every
+      // editor with an icon rail behaves - and it is the only way back to a
+      // full-width canvas without hunting for the collapse arrow.
+      if (wasActive && tool !== 'text') {
+        setPanelOpen(!panelOpen);
+        return;
+      }
       setTool(tool);
       if (tool === 'text' && !wasActive) addText();
     },
-    [activeTool, setTool, addText]
+    [activeTool, setTool, addText, panelOpen, setPanelOpen]
   );
 
   // Every tool keeps the side panel open — collapsing it for Select made the
@@ -578,30 +593,51 @@ export const EditorToolbar: FC<ToolbarProps> = ({ canvas }) => {
 
   return (
     <div className="flex h-full min-h-0 bg-white/[0.03] border-r border-newBorder shrink-0">
-      <div className="w-[100px] flex flex-col gap-1 p-2 shrink-0 overflow-y-auto border-r border-newBorder">
+      {/* Icons only, 56px: with a label under every icon the rail needed 100px
+          and eleven tools still ran past the bottom of a laptop window, so the
+          last one - Layers - could only be reached by scrolling the rail. The
+          name now arrives on hover and through aria-label. */}
+      <div className="w-[56px] flex flex-col gap-1 p-2 shrink-0 overflow-y-auto border-r border-newBorder">
         {TOOLS.map((tool) => (
           <button
             key={tool.key}
             onClick={() => handleToolClick(tool.key)}
             title={t(tool.labelKey, tool.fallback)}
             aria-label={t(tool.labelKey, tool.fallback)}
+            aria-pressed={activeTool === tool.key}
+            data-tooltip-id="tooltip"
+            data-tooltip-content={t(tool.labelKey, tool.fallback)}
             className={clsx(
-              'flex flex-col items-center gap-1 px-1.5 py-2 rounded-md transition-colors',
+              'flex items-center justify-center h-[40px] rounded-md transition-colors',
               activeTool === tool.key
-                ? 'bg-newAccent text-[#06222e] font-[600]'
+                ? 'bg-newAccent text-[#06222e]'
                 : 'text-textColor hover:bg-newColColor'
             )}
           >
             <StudioIcon name={tool.icon} size={20} />
-            <span className="text-[11px] leading-tight text-center">
-              {t(tool.labelKey, tool.fallback)}
-            </span>
           </button>
         ))}
       </div>
 
-      {hasPanel && (
+      {hasPanel && panelOpen && (
         <div className="w-[280px] shrink-0 p-3 flex flex-col gap-3 min-h-0 overflow-y-auto">
+        <div className="flex items-center justify-between -mb-1">
+          <span className="text-[11px] text-textColor/60 uppercase tracking-wide">
+            {t(
+              TOOLS.find((tool) => tool.key === activeTool)?.labelKey ?? 'tool_select',
+              TOOLS.find((tool) => tool.key === activeTool)?.fallback ?? 'Select'
+            )}
+          </span>
+          <button
+            type="button"
+            onClick={() => setPanelOpen(false)}
+            title={t('panel_collapse', 'Hide this panel')}
+            aria-label={t('panel_collapse', 'Hide this panel')}
+            className="text-textColor/60 hover:text-textColor transition-colors px-1"
+          >
+            <StudioIcon name="collapse" size={16} />
+          </button>
+        </div>
         {activeTool === 'select' && (
           <div className="flex flex-col gap-2">
             <span className="text-[11px] text-textColor/60 uppercase tracking-wide">

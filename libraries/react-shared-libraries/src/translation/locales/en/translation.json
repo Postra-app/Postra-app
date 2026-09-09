@@ -1393,5 +1393,22 @@
   "ai_adapt_all_too_big": "Too many channels and posts to adapt in one go. Adapt them from each channel tab instead.",
   "type_your_prompt": "Please type your prompt",
   "thumbnail_capture_failed": "Could not take a frame from this video. The file may be hosted somewhere that blocks it.",
-  "fill_required_fields": "Fill in all required fields"
+  "fill_required_fields": "Fill in all required fields",
+  "panel_collapse": "Hide this panel",
+  "shortcuts_tooltip": "Keyboard shortcuts (?)",
+  "shortcuts_title": "Keyboard shortcuts",
+  "shortcuts_hint": "Press ? at any time to open this list.",
+  "shortcuts_group_tools": "Tools",
+  "shortcuts_group_objects": "Objects",
+  "shortcuts_group_canvas": "Canvas",
+  "shortcut_copy": "Copy",
+  "shortcut_paste": "Paste",
+  "shortcut_duplicate": "Duplicate",
+  "shortcut_select_all": "Select everything",
+  "shortcut_delete": "Delete",
+  "shortcut_deselect": "Deselect",
+  "shortcut_nudge": "Move by 1px (hold Shift for 10px)",
+  "shortcut_undo": "Undo",
+  "shortcut_redo": "Redo",
+  "shortcut_zoom": "Zoom in and out"
 }

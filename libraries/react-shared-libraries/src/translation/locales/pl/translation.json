@@ -1393,5 +1393,22 @@
   "ai_adapt_all_too_big": "Za dużo kanałów i postów naraz. Dopasuj je z zakładki każdego kanału.",
   "type_your_prompt": "Wpisz swój prompt",
   "thumbnail_capture_failed": "Nie udało się pobrać klatki z tego wideo. Plik może być hostowany tam, gdzie jest to blokowane.",
-  "fill_required_fields": "Wypełnij wszystkie wymagane pola"
+  "fill_required_fields": "Wypełnij wszystkie wymagane pola",
+  "panel_collapse": "Ukryj ten panel",
+  "shortcuts_tooltip": "Skróty klawiszowe (?)",
+  "shortcuts_title": "Skróty klawiszowe",
+  "shortcuts_hint": "Naciśnij ?, żeby otworzyć tę listę.",
+  "shortcuts_group_tools": "Narzędzia",
+  "shortcuts_group_objects": "Obiekty",
+  "shortcuts_group_canvas": "Kanwa",
+  "shortcut_copy": "Kopiuj",
+  "shortcut_paste": "Wklej",
+  "shortcut_duplicate": "Duplikuj",
+  "shortcut_select_all": "Zaznacz wszystko",
+  "shortcut_delete": "Usuń",
+  "shortcut_deselect": "Odznacz",
+  "shortcut_nudge": "Przesuń o 1 px (z Shiftem o 10 px)",
+  "shortcut_undo": "Cofnij",
+  "shortcut_redo": "Ponów",
+  "shortcut_zoom": "Powiększ i pomniejsz"
 }
