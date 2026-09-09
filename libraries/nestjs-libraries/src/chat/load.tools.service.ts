@@ -1,6 +1,7 @@
 import { meterLanguageModel } from '@gitroom/nestjs-libraries/services/ai-usage.model-wrap';
 import { Injectable } from '@nestjs/common';
 import { Agent } from '@mastra/core/agent';
+import type { AgentExecutionOptions } from '@mastra/core/agent';
 import { openai } from '@ai-sdk/openai';
 import { Memory } from '@mastra/memory';
 import { pStore } from '@gitroom/nestjs-libraries/chat/mastra.store';
@@ -9,9 +10,42 @@ import { ModuleRef } from '@nestjs/core';
 import { toolList } from '@gitroom/nestjs-libraries/chat/tools/tool.list';
 import dayjs from 'dayjs';
 import { buildBrandAgentPrompt } from '@gitroom/nestjs-libraries/openai/brand-prompt';
+import { SubscriptionService } from '@gitroom/nestjs-libraries/database/prisma/subscriptions/subscription.service';
+import {
+  AGENT_MAX_STEPS,
+  shouldStopForBudget,
+} from '@gitroom/nestjs-libraries/chat/agent-budget';
 
+/**
+ * Working memory: what the agent should still know in the next conversation.
+ * It used to be the Mastra starter's `{ proverbs: string[] }`, and the model
+ * duly filed real work in it - a stored value read on 2026-09-09 was
+ * `{"proverbs":["facebook integration id: d68ca68c-..."]}`. Whatever is here
+ * rides along in every later prompt for this organisation, so the fields are
+ * the few things worth carrying: what the user asked us to always do, where
+ * they usually post, and what they are working on right now.
+ *
+ * Brand voice, colours and fonts are deliberately absent - those live in the
+ * Brand Kit and are injected separately, and duplicating them here would let
+ * the two drift apart.
+ */
 export const AgentState = object({
-  proverbs: array(string()).default([]),
+  standingInstructions: array(string())
+    .default([])
+    .describe(
+      'Instructions the user asked to apply from now on, e.g. "never use emojis", "always mention our website". Add one when they say it, drop one when they take it back.'
+    ),
+  usualChannels: array(string())
+    .default([])
+    .describe('Channels this user posts to most often, by name.'),
+  currentFocus: string()
+    .default('')
+    .describe(
+      'What they are working on at the moment: a campaign, a launch, a product. One short line, replaced when it changes.'
+    ),
+  timezone: string()
+    .default('')
+    .describe('IANA timezone if the user mentions their local time.'),
 });
 
 const renderArray = (list: string[], show: boolean) => {
@@ -114,6 +148,23 @@ ${brandKit}
       // cheaper lever if agent cost climbs.
       model: meterLanguageModel(openai('gpt-5.5'), 'agent'),
       tools,
+      // Bound the run and re-check the monthly allowance while it is going,
+      // not just before it starts.
+      defaultOptions: ({ requestContext }) =>
+        ({
+          maxSteps: AGENT_MAX_STEPS,
+          stopWhen: async ({ steps }: { steps: unknown[] }) =>
+            shouldStopForBudget(
+              steps.length,
+              requestContext.get('organization' as never) as string,
+              (organization) =>
+                this._moduleRef
+                  .get(SubscriptionService, { strict: false })
+                  .checkCredits(organization as never, 'ai_agent')
+            ),
+          // The options type demands a structuredOutput branch it does not
+          // need here; the agent streams free text through the chat.
+        } as AgentExecutionOptions),
       memory: new Memory({
         storage: pStore,
         options: {

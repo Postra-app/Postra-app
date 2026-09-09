@@ -13,6 +13,7 @@ import { PrismaService } from '@gitroom/nestjs-libraries/database/prisma/prisma.
 // spans are telemetry we don't consume, so before Mastra initialises we drop
 // the table if it is nearing the limit and let Mastra recreate it fresh.
 const SPANS_TABLE = 'mastra_ai_spans';
+const RESOURCES_TABLE = 'mastra_resources';
 const SPANS_COLUMN_HARD_LIMIT = 1600; // Postgres hard cap per table
 const SPANS_COLUMN_RESET_AT = 1000; // reset with generous headroom below the cap
 
@@ -30,6 +31,7 @@ export class MastraService {
     if (!MastraService.mastra) {
       // Must run before anything touches pStore (the agent below also uses it).
       await this.resetObservabilityTableIfBloated();
+      await this.clearLegacyWorkingMemory();
 
       MastraService.mastra = new Mastra({
         storage: pStore,
@@ -43,6 +45,35 @@ export class MastraService {
     }
 
     return MastraService.mastra;
+  }
+
+  /**
+   * The agent's working memory used to be the Mastra starter's schema, whose
+   * only field was `proverbs`, and the model used it as a scratchpad for real
+   * data. Those rows would otherwise keep being read back into every prompt
+   * under a field that no longer exists. Working memory is a convenience, not
+   * user data, so the stale shape is simply cleared once.
+   */
+  private async clearLegacyWorkingMemory() {
+    try {
+      const cleared = await this._prisma.$executeRawUnsafe(
+        `UPDATE ${RESOURCES_TABLE}
+            SET "workingMemory" = NULL
+          WHERE "workingMemory" LIKE '%"proverbs"%'`
+      );
+      if (cleared) {
+        this._logger.log(
+          `Cleared ${cleared} working-memory row(s) still holding the old proverbs schema.`
+        );
+      }
+    } catch (err) {
+      // The table may not exist yet on a fresh database - that is fine.
+      this._logger.debug(
+        `Skipped working-memory cleanup: ${
+          err instanceof Error ? err.message : String(err)
+        }`
+      );
+    }
   }
 
   // Drop the unused telemetry spans table before Mastra initialises it if it has
