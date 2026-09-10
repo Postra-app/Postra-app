@@ -36,7 +36,7 @@
     "dompurify": "^3.4.9",
     "geist": "^1.7.0",
     "jszip": "^3.10.1",
-    "mediabunny": "^1.45",
+    "mediabunny": "^1.56.1",
     "mobx-react-lite": "4.1.1",
     "polotno": "3.0.0-beta.25",
     "wavesurfer.js": "^7"

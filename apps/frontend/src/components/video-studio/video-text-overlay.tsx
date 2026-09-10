@@ -2,6 +2,10 @@
 
 import { FC, useCallback, useEffect, useRef, useState } from 'react';
 import { useFetch } from '@gitroom/helpers/utils/custom.fetch';
+import {
+  StudioIcon,
+  StudioIconName,
+} from '@gitroom/frontend/components/studio/studio-icons';
 import { useMediaDirectory } from '@gitroom/react/helpers/use.media.directory';
 import { useT } from '@gitroom/react/translation/get.transation.service.client';
 import { useToaster } from '@gitroom/react/toaster/toaster';
@@ -15,6 +19,9 @@ import {
 } from './load-library-media';
 import * as Sentry from '@sentry/nextjs';
 import { composeVideo, ClipTooLongError, UnsupportedCodecError } from './compositor-pipeline';
+import { useRenderJob } from './use-render-job';
+import { ResultPanel } from './result-panel';
+import { BrandTextPreview } from './brand-text-preview';
 import {
   TextPosition,
   fontFamilyForLabel,
@@ -29,10 +36,10 @@ interface VideoTextOverlayProps {
   onReady: (media: { id: string; path: string }) => void;
 }
 
-const POSITIONS: { key: TextPosition; label: string; icon: string }[] = [
-  { key: 'top', label: 'Top', icon: '⬆' },
-  { key: 'middle', label: 'Middle', icon: '⏺' },
-  { key: 'bottom', label: 'Bottom', icon: '⬇' },
+const POSITIONS: { key: TextPosition; label: string; icon: StudioIconName }[] = [
+  { key: 'top', label: 'Top', icon: 'moveUp' },
+  { key: 'middle', label: 'Middle', icon: 'select' },
+  { key: 'bottom', label: 'Bottom', icon: 'moveDown' },
 ];
 
 const SIZES: { key: string; label: string; scale: number }[] = [
@@ -63,12 +70,11 @@ export const VideoTextOverlay: FC<VideoTextOverlayProps> = ({ onReady }) => {
   const [fontLabel, setFontLabel] = useState<string | null>(null);
   const [scale, setScale] = useState(1);
 
-  const [busy, setBusy] = useState(false);
-  const [progress, setProgress] = useState(0);
+  const job = useRenderJob();
+  const busy = job.busy;
+  const progress = job.progress;
   const [resultBlob, setResultBlob] = useState<Blob | null>(null);
-  const [resultUrl, setResultUrl] = useState<string | null>(null);
   const [hadAudio, setHadAudio] = useState(false);
-  const [uploading, setUploading] = useState(false);
   const [showLibrary, setShowLibrary] = useState(false);
   const [importing, setImporting] = useState(false);
 
@@ -84,29 +90,12 @@ export const VideoTextOverlay: FC<VideoTextOverlayProps> = ({ onReady }) => {
   const effectiveColor = color ?? kit.primaryColor;
   const effectiveFontLabel = fontLabel ?? kit.font;
 
-  const resetResult = useCallback(() => {
-    setResultBlob(null);
-    setResultUrl((prev) => {
-      if (prev) URL.revokeObjectURL(prev);
-      return null;
-    });
-  }, []);
-
-  // Switching tabs unmounts this component with a rendered clip still held by
-  // an object URL; without this the blob lives on for the life of the tab.
-  const resultUrlRef = useRef<string | null>(null);
-  resultUrlRef.current = resultUrl;
-  useEffect(
-    () => () => {
-      if (resultUrlRef.current) URL.revokeObjectURL(resultUrlRef.current);
-    },
-    []
-  );
+  // The result panel owns the preview URL and revokes it, so nothing here has
+  // to remember to.
+  const resetResult = useCallback(() => setResultBlob(null), []);
 
   const compose = useCallback(async () => {
     if (!file || busy) return;
-    setBusy(true);
-    setProgress(0);
     resetResult();
 
     const fontFamily = fontFamilyForLabel(effectiveFontLabel);
@@ -115,21 +104,24 @@ export const VideoTextOverlay: FC<VideoTextOverlayProps> = ({ onReady }) => {
       // Load the chosen webfont before painting, or the canvas falls back to a
       // default face. Probe size is indicative; the loop sizes per frame width.
       await ensureFontLoaded(fontFamily, 64);
-      const result = await composeVideo({
-        file,
-        onProgress: (r) => setProgress(Math.round(r * 100)),
-        drawOverlay: (ctx, { width, height }) =>
-          drawBrandText(ctx, width, height, {
-            text,
-            position,
-            color: effectiveColor,
-            bandColor,
-            fontFamily,
-            scale,
-          }),
-      });
+      const result = await job.run((signal) =>
+        composeVideo({
+          file,
+          signal,
+          onProgress: (r) => job.setProgress(Math.round(r * 100)),
+          drawOverlay: (ctx, { width, height }) =>
+            drawBrandText(ctx, width, height, {
+              text,
+              position,
+              color: effectiveColor,
+              bandColor,
+              fontFamily,
+              scale,
+            }),
+        })
+      );
+      if (!result) return;
       setResultBlob(result.blob);
-      setResultUrl(URL.createObjectURL(result.blob));
       setHadAudio(result.hadAudio);
     } catch (err) {
       // eslint-disable-next-line no-console
@@ -146,8 +138,6 @@ export const VideoTextOverlay: FC<VideoTextOverlayProps> = ({ onReady }) => {
           : t('clip_text_failed', 'Failed to burn the text into the video. Try a different clip — our team has been notified.'),
         'warning'
       );
-    } finally {
-      setBusy(false);
     }
   }, [
     file,
@@ -161,44 +151,10 @@ export const VideoTextOverlay: FC<VideoTextOverlayProps> = ({ onReady }) => {
     scale,
     toaster,
     t,
+    job,
   ]);
 
-  const uploadResult = useCallback(async (): Promise<{ id: string; path: string } | null> => {
-    if (!resultBlob || uploading) return null;
-    setUploading(true);
-    try {
-      const formData = new FormData();
-      formData.append('file', resultBlob, `postra-clip-${Date.now()}.mp4`);
-      const res = await fetch('/media/upload-simple', {
-        method: 'POST',
-        body: formData,
-      });
-      const data = await res.json();
-      if (data?.id && data?.path) return { id: data.id, path: data.path };
-      throw new Error('upload returned no media');
-    } catch {
-      toaster.show(t('clip_text_upload_failed', 'Clip upload failed.'), 'warning');
-      return null;
-    } finally {
-      setUploading(false);
-    }
-  }, [resultBlob, uploading, fetch, toaster, t]);
 
-  const useInPost = useCallback(async () => {
-    const media = await uploadResult();
-    if (media) onReady(media);
-  }, [uploadResult, onReady]);
-
-  // "Just save" without leaving the tool — the honest sibling of Use in post.
-  const saveToLibrary = useCallback(async () => {
-    const media = await uploadResult();
-    if (media) {
-      toaster.show(
-        t('video_saved_to_library', 'Saved to media library — you can use it in any post.'),
-        'success'
-      );
-    }
-  }, [uploadResult, toaster, t]);
 
   const loadFromLibrary = useCallback(
     async (media: LibraryMedia) => {
@@ -228,7 +184,7 @@ export const VideoTextOverlay: FC<VideoTextOverlayProps> = ({ onReady }) => {
   return (
     <div className="flex flex-col gap-3 p-3 text-textColor">
       <div className="text-[11px] text-textColor/70 leading-snug">
-        ✍️{' '}
+        <StudioIcon name="textOnVideo" size={14} className="inline-block shrink-0" />{' '}
         {t(
           'clip_text_intro',
           'Upload a clip (or grab B-roll from the library), type your text — we burn it into the video in your Brand Kit colour and font. Audio stays.'
@@ -274,7 +230,22 @@ export const VideoTextOverlay: FC<VideoTextOverlayProps> = ({ onReady }) => {
         </button>
       </div>
       {file && (
-        <div className="text-[11px] text-textColor/60 truncate">✓ {file.name}</div>
+        <div className="text-[11px] text-textColor/60 truncate"><StudioIcon name="done" size={12} className="inline-block" /> {file.name}</div>
+      )}
+
+      {file && !resultBlob && (
+        <BrandTextPreview
+          source={file}
+          showSafeArea={true}
+          style={{
+            text,
+            position,
+            color: effectiveColor,
+            bandColor: hexToRgba(kit.secondaryColor, 0.55),
+            fontFamily: fontFamilyForLabel(effectiveFontLabel),
+            scale,
+          }}
+        />
       )}
 
       <textarea
@@ -301,7 +272,8 @@ export const VideoTextOverlay: FC<VideoTextOverlayProps> = ({ onReady }) => {
                   : 'bg-newColColor text-textColor hover:bg-white/[0.08]'
               }`}
             >
-              {p.icon} {t(`clip_text_pos_${p.key}`, p.label)}
+              <StudioIcon name={p.icon} size={14} className="inline-block me-1" />
+              {t(`clip_text_pos_${p.key}`, p.label)}
             </button>
           ))}
         </div>
@@ -375,49 +347,43 @@ export const VideoTextOverlay: FC<VideoTextOverlayProps> = ({ onReady }) => {
         </select>
       </div>
 
-      <Button
-        onClick={compose}
-        disabled={!file || busy}
-        className="self-start"
-      >
-        {busy
-          ? `${t('clip_text_running', 'Rendering…')} ${progress}%`
-          : t('clip_text_run', 'Burn text into video')}
-      </Button>
+      <div className="flex items-center gap-2">
+        <Button
+          onClick={compose}
+          disabled={!file || busy}
+          className="self-start"
+        >
+          {busy
+            ? `${t('clip_text_running', 'Rendering…')} ${progress}%`
+            : t('clip_text_run', 'Burn text into video')}
+        </Button>
+        {busy && (
+          <Button
+            onClick={job.cancel}
+            disabled={job.cancelling}
+            secondary={true}
+            className="self-start"
+          >
+            {job.cancelling
+              ? t('video_cancelling', 'Cancelling…')
+              : t('video_cancel_render', 'Cancel')}
+          </Button>
+        )}
+      </div>
 
-      {resultUrl && (
-        <div className="flex flex-col gap-2">
-          <div className="text-[11px] text-green-400">
-            ✓{' '}
-            {hadAudio
-              ? t('compositor_with_audio', 'with audio')
-              : t('compositor_no_audio', 'no audio')}
-          </div>
-          <video
-            src={resultUrl}
-            controls
-            className="w-full rounded border border-newBorder"
-          />
-          <div className="flex items-center gap-2">
-            <Button loading={uploading} onClick={useInPost} className="!h-[30px] !text-xs">
-              {t('clip_text_use_in_post', 'Use in post')}
-            </Button>
-            <button
-              onClick={saveToLibrary}
-              disabled={uploading}
-              className="text-xs px-3 h-[30px] rounded bg-newColColor text-textColor hover:bg-white/[0.08] transition-colors disabled:opacity-50"
-            >
-              💾 {t('save_to_library_btn', 'Save to library')}
-            </button>
-            <a
-              href={resultUrl}
-              download="postra-clip.mp4"
-              className="text-[11px] text-newAccent underline"
-            >
-              {t('clip_text_download', 'Download')}
-            </a>
-          </div>
-        </div>
+      {resultBlob && (
+        <ResultPanel
+          results={[
+            {
+              key: 'clip',
+              label: t('video_result_clip', 'Clip'),
+              blob: resultBlob,
+              hadAudio,
+            },
+          ]}
+          fileNameFor={() => `postra-clip-${Date.now()}`}
+          onUseInPost={onReady}
+        />
       )}
 
       {/* Fills VideoStudio's relative content area, like the trim/library flow. */}

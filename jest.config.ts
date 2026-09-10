@@ -10,6 +10,7 @@ export default {
   // Mirror the @gitroom/* path aliases from tsconfig.base.json so specs can
   // import source files that use them.
   moduleNameMapper: {
+    '\\.(css|scss|sass)$': '<rootDir>/jest.style-stub.js',
     '^@gitroom/backend/(.*)$': '<rootDir>/apps/backend/src/$1',
     '^@gitroom/frontend/(.*)$': '<rootDir>/apps/frontend/src/$1',
     '^@gitroom/helpers/(.*)$': '<rootDir>/libraries/helpers/src/$1',

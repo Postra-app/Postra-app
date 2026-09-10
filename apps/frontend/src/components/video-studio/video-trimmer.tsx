@@ -11,12 +11,16 @@ import {
   Mp4OutputFormat,
 } from 'mediabunny';
 import WaveSurfer from 'wavesurfer.js';
+import RegionsPlugin, {
+  type Region,
+} from 'wavesurfer.js/dist/plugins/regions.js';
 import { useT } from '@gitroom/react/translation/get.transation.service.client';
 import { Button } from '@gitroom/frontend/components/ui/button';
 import { useToaster } from '@gitroom/react/toaster/toaster';
 import { safeMediaUrl } from '@gitroom/helpers/utils/safe.media.url';
 import { assertVideoSurvives } from './mp4-source';
 import { UnsupportedCodecError } from './compositor-pipeline';
+import { useRenderJob } from './use-render-job';
 
 interface VideoTrimmerProps {
   file: File | null;
@@ -29,13 +33,15 @@ export const VideoTrimmer: FC<VideoTrimmerProps> = ({ file, onTrimmed }) => {
   const videoRef = useRef<HTMLVideoElement>(null);
   const waveContainerRef = useRef<HTMLDivElement>(null);
   const wavesurferRef = useRef<WaveSurfer | null>(null);
+  const regionRef = useRef<Region | null>(null);
 
   const [videoUrl, setVideoUrl] = useState<string | null>(null);
   const [duration, setDuration] = useState(0);
   const [trimStart, setTrimStart] = useState(0);
   const [trimEnd, setTrimEnd] = useState(0);
-  const [isExporting, setIsExporting] = useState(false);
-  const [progress, setProgress] = useState(0);
+  const job = useRenderJob();
+  const isExporting = job.busy;
+  const progress = job.progress;
   const [undecodable, setUndecodable] = useState(false);
 
   useEffect(() => {
@@ -58,15 +64,19 @@ export const VideoTrimmer: FC<VideoTrimmerProps> = ({ file, onTrimmed }) => {
 
   useEffect(() => {
     if (!videoUrl || !waveContainerRef.current) return;
+    // One draggable region on the waveform, instead of two range inputs that
+    // had no visible relation to the sound they were cutting.
+    const regions = RegionsPlugin.create();
     const ws = WaveSurfer.create({
       container: waveContainerRef.current,
       waveColor: '#475569',
       progressColor: '#38bdf8',
       cursorColor: '#a78bfa',
-      height: 60,
+      height: 88,
       normalize: true,
       barWidth: 2,
       barGap: 1,
+      plugins: [regions],
     });
     // The waveform is decorative. Many clips — stock B-roll, photo→video
     // slideshows — have no decodable audio track, and switching files mid-load
@@ -80,9 +90,26 @@ export const VideoTrimmer: FC<VideoTrimmerProps> = ({ file, onTrimmed }) => {
       setDuration(d);
       setTrimStart(0);
       setTrimEnd(d);
+      regions.clearRegions();
+      regionRef.current = regions.addRegion({
+        start: 0,
+        end: d,
+        color: 'rgba(56,189,248,0.18)',
+        drag: true,
+        resize: true,
+      });
+    });
+    // Dragging the whole region moves both ends; dragging a handle moves one.
+    // Either way the numbers below follow the picture, not the other way round.
+    regions.on('region-updated', (region: Region, side?: 'start' | 'end') => {
+      setTrimStart(region.start);
+      setTrimEnd(region.end);
+      const v = videoRef.current;
+      if (v) v.currentTime = side === 'end' ? region.end : region.start;
     });
     wavesurferRef.current = ws;
     return () => {
+      regionRef.current = null;
       ws.destroy();
       wavesurferRef.current = null;
     };
@@ -116,15 +143,6 @@ export const VideoTrimmer: FC<VideoTrimmerProps> = ({ file, onTrimmed }) => {
     );
   }, [t, toaster]);
 
-  const handleSeekStart = useCallback(() => {
-    const v = videoRef.current;
-    if (v) v.currentTime = trimStart;
-  }, [trimStart]);
-
-  const handleSeekEnd = useCallback(() => {
-    const v = videoRef.current;
-    if (v) v.currentTime = trimEnd;
-  }, [trimEnd]);
 
   const handleExport = useCallback(async () => {
     if (!file) return;
@@ -135,31 +153,33 @@ export const VideoTrimmer: FC<VideoTrimmerProps> = ({ file, onTrimmed }) => {
       );
       return;
     }
-    setIsExporting(true);
-    setProgress(0);
     try {
-      const input = new Input({
-        source: new BlobSource(file),
-        formats: ALL_FORMATS,
+      const blob = await job.run(async (signal, registerCancel) => {
+        const input = new Input({
+          source: new BlobSource(file),
+          formats: ALL_FORMATS,
+        });
+        const output = new Output({
+          format: new Mp4OutputFormat(),
+          target: new BufferTarget(),
+        });
+        const conversion = await Conversion.init({
+          input,
+          output,
+          trim: { start: trimStart, end: trimEnd },
+        });
+        registerCancel(() => conversion.cancel());
+        // A clip whose video we can't decode still converts "successfully" as
+        // long as its audio survives — the user would get sound over a black
+        // screen with no error anywhere. Say so before spending the render.
+        assertVideoSurvives(conversion);
+        conversion.onProgress = (p) => job.setProgress(Math.round(p * 100));
+        await conversion.execute();
+        const buffer = (output.target as BufferTarget).buffer;
+        if (!buffer) throw new Error('empty buffer');
+        return new Blob([buffer], { type: 'video/mp4' });
       });
-      const output = new Output({
-        format: new Mp4OutputFormat(),
-        target: new BufferTarget(),
-      });
-      const conversion = await Conversion.init({
-        input,
-        output,
-        trim: { start: trimStart, end: trimEnd },
-      });
-      // A clip whose video we can't decode still converts "successfully" as
-      // long as its audio survives — the user would get sound over a black
-      // screen with no error anywhere. Say so before spending the render.
-      assertVideoSurvives(conversion);
-      conversion.onProgress = (p) => setProgress(Math.round(p * 100));
-      await conversion.execute();
-      const buffer = (output.target as BufferTarget).buffer;
-      if (!buffer) throw new Error('empty buffer');
-      const blob = new Blob([buffer], { type: 'video/mp4' });
+      if (!blob) return;
       onTrimmed(blob);
     } catch (err) {
       toaster.show(
@@ -174,10 +194,8 @@ export const VideoTrimmer: FC<VideoTrimmerProps> = ({ file, onTrimmed }) => {
             ),
         'warning'
       );
-    } finally {
-      setIsExporting(false);
     }
-  }, [file, trimStart, trimEnd, onTrimmed, t, toaster]);
+  }, [file, trimStart, trimEnd, onTrimmed, t, toaster, job]);
 
   if (!file) {
     return (
@@ -200,41 +218,16 @@ export const VideoTrimmer: FC<VideoTrimmerProps> = ({ file, onTrimmed }) => {
         />
       )}
       <div ref={waveContainerRef} className="w-full bg-white/[0.03] rounded" />
-      <div className="grid grid-cols-2 gap-3">
-        <div className="flex flex-col gap-1">
-          <label className="text-[11px] uppercase tracking-wide text-textColor/60">
-            {t('video_trim_start', 'Start')}: {trimStart.toFixed(2)}s
-          </label>
-          <input
-            type="range"
-            min={0}
-            max={duration}
-            step={0.05}
-            value={trimStart}
-            onChange={(e) => setTrimStart(Math.min(Number(e.target.value), trimEnd - 0.1))}
-            onMouseUp={handleSeekStart}
-            onTouchEnd={handleSeekStart}
-            disabled={isExporting}
-            className="w-full"
-          />
-        </div>
-        <div className="flex flex-col gap-1">
-          <label className="text-[11px] uppercase tracking-wide text-textColor/60">
-            {t('video_trim_end', 'End')}: {trimEnd.toFixed(2)}s
-          </label>
-          <input
-            type="range"
-            min={0}
-            max={duration}
-            step={0.05}
-            value={trimEnd}
-            onChange={(e) => setTrimEnd(Math.max(Number(e.target.value), trimStart + 0.1))}
-            onMouseUp={handleSeekEnd}
-            onTouchEnd={handleSeekEnd}
-            disabled={isExporting}
-            className="w-full"
-          />
-        </div>
+      <div className="flex items-center justify-between text-[11px] text-textColor/60">
+        <span>
+          {t('video_trim_start', 'Start')}: {trimStart.toFixed(2)}s
+        </span>
+        <span className="text-textColor/45">
+          {t('video_trim_drag_hint', 'Drag the highlighted part, or its edges.')}
+        </span>
+        <span>
+          {t('video_trim_end', 'End')}: {trimEnd.toFixed(2)}s
+        </span>
       </div>
       <div className="text-[11px] text-textColor/70">
         {undecodable
@@ -246,15 +239,29 @@ export const VideoTrimmer: FC<VideoTrimmerProps> = ({ file, onTrimmed }) => {
               .replace('{sec}', (trimEnd - trimStart).toFixed(2))
               .replace('{total}', duration.toFixed(2))}
       </div>
-      <Button
-        onClick={handleExport}
-        disabled={isExporting || undecodable || trimEnd <= trimStart}
-        className="self-start"
-      >
-        {isExporting
-          ? `${t('video_exporting', 'Exporting')} ${progress}%`
-          : t('video_export_trimmed', 'Export trimmed clip')}
-      </Button>
+      <div className="flex items-center gap-2">
+        <Button
+          onClick={handleExport}
+          disabled={isExporting || undecodable || trimEnd <= trimStart}
+          className="self-start"
+        >
+          {isExporting
+            ? `${t('video_exporting', 'Exporting')} ${progress}%`
+            : t('video_export_trimmed', 'Export trimmed clip')}
+        </Button>
+        {isExporting && (
+          <Button
+            onClick={job.cancel}
+            disabled={job.cancelling}
+            secondary={true}
+            className="self-start"
+          >
+            {job.cancelling
+              ? t('video_cancelling', 'Cancelling…')
+              : t('video_cancel_render', 'Cancel')}
+          </Button>
+        )}
+      </div>
     </div>
   );
 };

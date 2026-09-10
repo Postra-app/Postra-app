@@ -15,6 +15,7 @@ import { Button } from '@gitroom/frontend/components/ui/button';
 import useSWR from 'swr';
 import { useFetch } from '@gitroom/helpers/utils/custom.fetch';
 import { readResponseError } from '@gitroom/helpers/utils/response.error';
+import { isVideoMedia } from '@gitroom/helpers/utils/media.type';
 import { Media } from '@prisma/client';
 import { useMediaDirectory } from '@gitroom/react/helpers/use.media.directory';
 import { useVariables } from '@gitroom/react/helpers/variable.context';
@@ -247,10 +248,16 @@ export const MediaBox: FC<{
     if (debouncedSearch.trim()) {
       params.set('search', debouncedSearch.trim());
     }
+    // The server filters and pages the same set. Filtering here instead used to
+    // empty a page of images in the video picker while the pager still counted
+    // them.
+    if (type) {
+      params.set('type', type);
+    }
     return (await fetch(`/media?${params.toString()}`)).json();
-  }, [page, debouncedSearch]);
+  }, [page, debouncedSearch, type]);
   const { data, mutate, isLoading } = useSWR(
-    `get-media-${page}-${debouncedSearch}`,
+    `get-media-${page}-${debouncedSearch}-${type ?? 'all'}`,
     loadMedia
   );
   const [selected, setSelected] = useState([]);
@@ -377,7 +384,7 @@ export const MediaBox: FC<{
         top: 10,
         children: (
           <div className="w-full h-full p-[50px]">
-            {media.path.indexOf('mp4') > -1 ? (
+            {isVideoMedia(media) ? (
               <VideoFrame
                 autoplay={true}
                 controls={true}
@@ -585,16 +592,7 @@ export const MediaBox: FC<{
                 ))}
               </>
             )}
-            {data?.results
-              ?.filter((f: any) => {
-                if (type === 'video') {
-                  return f.path.indexOf('mp4') > -1;
-                } else if (type === 'image') {
-                  return f.path.indexOf('mp4') === -1;
-                }
-                return true;
-              })
-              .map((media: any) => (
+            {data?.results?.map((media: any) => (
                 <div
                   className={clsx(
                     'group px-[3px] py-[3px] float-left rounded-[6px] w8-max',
@@ -624,7 +622,7 @@ export const MediaBox: FC<{
                     {/* /studio?mediaId= already loads a library file onto the
                         canvas; the library just never linked to it. Images
                         only — Studio's graphic editor cannot open an mp4. */}
-                    {standalone && media.path.indexOf('mp4') === -1 && (
+                    {standalone && !isVideoMedia(media) && (
                       <button
                         type="button"
                         onClick={(e) => {
@@ -657,7 +655,7 @@ export const MediaBox: FC<{
                           </svg>
                         </div>
                       </div>
-                      {media.path.indexOf('mp4') > -1 ? (
+                      {isVideoMedia(media) ? (
                         <VideoFrame url={mediaDirectory.set(media.path)} />
                       ) : (
                         <img
@@ -926,7 +924,7 @@ export const MultiMediaComponent: FC<{
                       >
                         <MediaSettingsIcon className="cursor-pointer relative z-[200]" />
                       </div>
-                      {media?.path?.indexOf('mp4') > -1 ? (
+                      {isVideoMedia(media) ? (
                         <VideoFrame url={mediaDirectory.set(media?.path)} />
                       ) : (
                         <img
@@ -936,7 +934,7 @@ export const MultiMediaComponent: FC<{
                       )}
                     </div>
 
-                    {!dummy && media?.path && media.path.indexOf('mp4') === -1 && (
+                    {!dummy && media?.path && !isVideoMedia(media) && (
                       <button
                         type="button"
                         onClick={(e) => {

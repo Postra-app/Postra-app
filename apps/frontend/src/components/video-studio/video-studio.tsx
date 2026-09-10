@@ -13,7 +13,7 @@ import {
 } from '@gitroom/frontend/components/studio/studio-icons';
 import { useUser } from '@gitroom/frontend/components/layout/user.context';
 import { VideoTrimmer } from './video-trimmer';
-import { VideoMultiFormat, VideoFormat } from './video-multi-format';
+import { VideoMultiFormat } from './video-multi-format';
 import { VideoCaptions } from './video-captions';
 import { VideoStock } from './video-stock';
 import { VideoTextOverlay } from './video-text-overlay';
@@ -26,9 +26,10 @@ import {
 } from './load-library-media';
 import { ensureMp4, isMp4 } from './mp4-source';
 import { UnsupportedCodecError } from './compositor-pipeline';
+import { deliveryTarget } from './delivery-target';
+import { mediaTypeFromPath } from '@gitroom/helpers/utils/media.type';
 
-// Extensions worth trying when the browser hands us a useless MIME type.
-const VIDEO_EXTENSION = /\.(mp4|m4v|mov|webm|mkv|avi|qt)$/i;
+
 
 interface VideoStudioProps {
   setMedia: (params: { id: string; path: string }[]) => void;
@@ -87,8 +88,8 @@ export const VideoStudio: FC<VideoStudioProps> = ({
   >(null);
 
   const deliver = useCallback(
-    (uploaded: { id: string; path: string }[]) => {
-      if (mode === 'studio') {
+    (uploaded: { id: string; path: string }[], startedOn?: Tab) => {
+      if (deliveryTarget(mode, tabRef.current, startedOn) === 'bar') {
         setDelivered(uploaded);
         return;
       }
@@ -125,7 +126,7 @@ export const VideoStudio: FC<VideoStudioProps> = ({
   const [isImportingLibrary, setIsImportingLibrary] = useState(false);
   // Goal-based start screen: tools are tabs, but users think in outcomes
   // ("photos → Reels"), so the content area opens on goals until one is
-  // picked (or a tab is clicked directly). 🎯 in the header brings it back.
+  // picked (or a tab is clicked directly). The goals button in the header brings it back.
   const [showGoals, setShowGoals] = useState(true);
   // A goal that needs a clip first (captions) is parked here until the file
   // the user just picked lands in state.
@@ -160,6 +161,12 @@ export const VideoStudio: FC<VideoStudioProps> = ({
   showGoalsRef.current = showGoals;
   const tabRef = useRef(tab);
   tabRef.current = tab;
+
+  // Every tab the user has opened stays mounted from then on.
+  const [visited, setVisited] = useState<Set<Tab>>(() => new Set<Tab>([tab]));
+  useEffect(() => {
+    setVisited((prev) => (prev.has(tab) ? prev : new Set(prev).add(tab)));
+  }, [tab]);
   /** Tabs that edit the one shared source clip (the others bring their own). */
   const SHARED_CLIP_TABS: Tab[] = ['trim', 'formats', 'captions'];
   const wantsSharedClip = () =>
@@ -243,7 +250,7 @@ export const VideoStudio: FC<VideoStudioProps> = ({
     // "choose a video file (MP4, WebM, MOV)" about the MOV they had just
     // chosen. Accept it by extension too and let the decoder be the judge -
     // an undecodable clip is reported properly further down the line.
-    if (!f.type.startsWith('video/') && !VIDEO_EXTENSION.test(f.name)) {
+    if (!f.type.startsWith('video/') && mediaTypeFromPath(f.name) !== 'video') {
       toaster.show(t('video_bad_type', 'Choose a video file (MP4, WebM, MOV).'), 'warning');
       return;
     }
@@ -496,44 +503,32 @@ export const VideoStudio: FC<VideoStudioProps> = ({
     }
   }, [ensureUploaded, toaster, t]);
 
-  const handleFormatsExported = useCallback(
-    async (results: { format: VideoFormat; blob: Blob }[]) => {
-      setIsUploading(true);
-      const uploaded: { id: string; path: string }[] = [];
-      let failure: UploadFailure | null = null;
-      for (const r of results) {
-        const result = await uploadBlob(r.blob, `${r.format.key}-${Date.now()}.mp4`);
-        if (result.media) uploaded.push(result.media);
-        else failure = failure ?? result.reason;
-      }
-      setIsUploading(false);
-      if (uploaded.length) {
-        deliver(uploaded);
-      } else {
-        reportUploadFailure(failure ?? 'network');
-      }
+  const handleFormatsReady = useCallback(
+    (newMedia: { id: string; path: string }) => {
+      setUploadedMedia(newMedia);
+      deliver([newMedia], 'formats');
     },
-    [uploadBlob, deliver, reportUploadFailure]
+    [deliver]
   );
 
   const handleCaptionedReady = useCallback(
     (newMedia: { id: string; path: string }) => {
       setUploadedMedia(newMedia);
-      deliver([newMedia]);
+      deliver([newMedia], 'captions');
     },
     [deliver]
   );
 
   const handleStockImported = useCallback(
     (newMedia: { id: string; path: string }) => {
-      deliver([newMedia]);
+      deliver([newMedia], 'stock');
     },
     [deliver]
   );
 
   const handleComposedReady = useCallback(
-    (newMedia: { id: string; path: string }) => {
-      deliver([newMedia]);
+    (newMedia: { id: string; path: string }, startedOn: Tab) => {
+      deliver([newMedia], startedOn);
     },
     [deliver]
   );
@@ -542,7 +537,7 @@ export const VideoStudio: FC<VideoStudioProps> = ({
     return (
       <div className="flex flex-col gap-3 p-6">
         <div className="text-sm text-textColor">
-          ⚠️{' '}
+          <StudioIcon name="warning" size={14} className="inline-block shrink-0" />{' '}
           {t(
             'video_unsupported_browser',
             'Your browser does not support video editing (WebCodecs). Use Chrome, Edge or Safari 16.4+.'
@@ -638,7 +633,7 @@ export const VideoStudio: FC<VideoStudioProps> = ({
       {delivered && (
         <div className="shrink-0 flex items-center gap-2 flex-wrap px-3 py-2 rounded-lg bg-forth/15 border border-forth/40 text-xs text-textColor">
           <span className="flex-1 min-w-[180px]">
-            ✅{' '}
+            <StudioIcon name="done" size={14} className="inline-block shrink-0" />{' '}
             {t(
               'video_result_saved',
               'Saved to your media library — use it now or keep working.'
@@ -712,24 +707,50 @@ export const VideoStudio: FC<VideoStudioProps> = ({
             </div>
           </div>
         )}
-        {!showGoals && tab === 'trim' && (
-          <VideoTrimmer file={file} onTrimmed={handleTrimmedExport} />
+        {/* Tabs are mounted on first visit and then only hidden. They used to
+            unmount, which threw away the SRT you had just edited, the photos
+            you had lined up and any result you had not saved yet - and killed
+            the render that was still going. The goals screen hides them the
+            same way, because opening it used to cost the work too. Mounting
+            lazily keeps the cost of the ones nobody opens at zero. */}
+        {visited.has('trim') && (
+          <div hidden={showGoals || tab !== 'trim'}>
+            <VideoTrimmer file={file} onTrimmed={handleTrimmedExport} />
+          </div>
         )}
-        {!showGoals && tab === 'formats' && (
-          <VideoMultiFormat source={trimmedBlob ?? file} onExported={handleFormatsExported} />
+        {visited.has('formats') && (
+          <div hidden={showGoals || tab !== 'formats'}>
+            <VideoMultiFormat source={trimmedBlob ?? file} onReady={handleFormatsReady} />
+          </div>
         )}
-        {!showGoals && tab === 'captions' && (
-          <VideoCaptions
-            mediaId={uploadedMedia?.id ?? null}
-            source={trimmedBlob ?? file}
-            onCaptioned={handleCaptionedReady}
-          />
+        {visited.has('captions') && (
+          <div hidden={showGoals || tab !== 'captions'}>
+            <VideoCaptions
+              mediaId={uploadedMedia?.id ?? null}
+              source={trimmedBlob ?? file}
+              onCaptioned={handleCaptionedReady}
+            />
+          </div>
         )}
-        {!showGoals && tab === 'stock' && (
-          <VideoStock onImported={handleStockImported} />
+        {visited.has('stock') && (
+          <div hidden={showGoals || tab !== 'stock'}>
+            <VideoStock onImported={handleStockImported} />
+          </div>
         )}
-        {!showGoals && tab === 'text' && <VideoTextOverlay onReady={handleComposedReady} />}
-        {!showGoals && tab === 'slideshow' && <VideoSlideshow onReady={handleComposedReady} />}
+        {visited.has('text') && (
+          <div hidden={showGoals || tab !== 'text'}>
+            <VideoTextOverlay
+              onReady={(media) => handleComposedReady(media, 'text')}
+            />
+          </div>
+        )}
+        {visited.has('slideshow') && (
+          <div hidden={showGoals || tab !== 'slideshow'}>
+            <VideoSlideshow
+              onReady={(media) => handleComposedReady(media, 'slideshow')}
+            />
+          </div>
+        )}
       </div>
 
       {trimmedBlob && !showGoals && tab === 'trim' && (
@@ -743,7 +764,7 @@ export const VideoStudio: FC<VideoStudioProps> = ({
               disabled={isUploading}
               className="text-xs px-3 h-[28px] rounded bg-newColColor text-textColor hover:bg-white/[0.08] transition-colors disabled:opacity-50"
             >
-              💾 {isUploading ? t('saving', 'Saving…') : t('save_to_library_btn', 'Save to library')}
+              <StudioIcon name="save" size={14} className="inline-block me-1" />{isUploading ? t('saving', 'Saving…') : t('save_to_library_btn', 'Save to library')}
             </button>
             <Button
               loading={isUploading}

@@ -2,11 +2,15 @@
 
 import { FC, useCallback, useEffect, useRef, useState } from 'react';
 import { useFetch } from '@gitroom/helpers/utils/custom.fetch';
+import { StudioIcon } from '@gitroom/frontend/components/studio/studio-icons';
 import { useT } from '@gitroom/react/translation/get.transation.service.client';
 import { useToaster } from '@gitroom/react/toaster/toaster';
 import { Button } from '@gitroom/frontend/components/ui/button';
 import { VIDEO_FORMATS, VideoFormat } from './video-formats';
 import { composeSlideshow, UndecodableImageError } from './slideshow-pipeline';
+import { useRenderJob } from './use-render-job';
+import { ResultPanel } from './result-panel';
+import { BrandTextPreview } from './brand-text-preview';
 import {
   fontFamilyForLabel,
   ensureFontLoaded,
@@ -57,11 +61,10 @@ export const VideoSlideshow: FC<VideoSlideshowProps> = ({ onReady }) => {
   const [color, setColor] = useState<string | null>(null);
   const [fontLabel, setFontLabel] = useState<string | null>(null);
 
-  const [busy, setBusy] = useState(false);
-  const [progress, setProgress] = useState(0);
+  const job = useRenderJob();
+  const busy = job.busy;
+  const progress = job.progress;
   const [resultBlob, setResultBlob] = useState<Blob | null>(null);
-  const [resultUrl, setResultUrl] = useState<string | null>(null);
-  const [uploading, setUploading] = useState(false);
 
   const seeded = useRef(false);
   useEffect(() => {
@@ -75,18 +78,11 @@ export const VideoSlideshow: FC<VideoSlideshowProps> = ({ onReady }) => {
   // through refs: with an empty dependency list it closes over the FIRST
   // render's empty arrays, so the version that read `images` directly revoked
   // nothing and leaked every photo for the life of the tab.
-  const liveUrlsRef = useRef<{ images: string[]; result: string | null }>({
-    images: [],
-    result: null,
-  });
-  liveUrlsRef.current = {
-    images: images.map((p) => p.url),
-    result: resultUrl,
-  };
+  const liveUrlsRef = useRef<string[]>([]);
+  liveUrlsRef.current = images.map((p) => p.url);
   useEffect(
     () => () => {
-      liveUrlsRef.current.images.forEach((url) => URL.revokeObjectURL(url));
-      if (liveUrlsRef.current.result) URL.revokeObjectURL(liveUrlsRef.current.result);
+      liveUrlsRef.current.forEach((url) => URL.revokeObjectURL(url));
     },
     []
   );
@@ -94,13 +90,8 @@ export const VideoSlideshow: FC<VideoSlideshowProps> = ({ onReady }) => {
   const effectiveColor = color ?? kit.primaryColor;
   const effectiveFontLabel = fontLabel ?? kit.font;
 
-  const resetResult = useCallback(() => {
-    setResultBlob(null);
-    setResultUrl((prev) => {
-      if (prev) URL.revokeObjectURL(prev);
-      return null;
-    });
-  }, []);
+  // The result panel owns the preview URL and revokes it.
+  const resetResult = useCallback(() => setResultBlob(null), []);
 
   const addFiles = useCallback(
     async (files: FileList) => {
@@ -194,8 +185,6 @@ export const VideoSlideshow: FC<VideoSlideshowProps> = ({ onReady }) => {
 
   const compose = useCallback(async () => {
     if (!images.length || busy) return;
-    setBusy(true);
-    setProgress(0);
     resetResult();
 
     const fontFamily = fontFamilyForLabel(effectiveFontLabel);
@@ -203,26 +192,29 @@ export const VideoSlideshow: FC<VideoSlideshowProps> = ({ onReady }) => {
     const headline = text.trim();
     try {
       await ensureFontLoaded(fontFamily, 64);
-      const result = await composeSlideshow({
-        images: images.map((p) => p.file),
-        width: format.width,
-        height: format.height,
-        secondsPerImage: secondsPer,
-        backgroundColor: kit.secondaryColor,
-        onProgress: (r) => setProgress(Math.round(r * 100)),
-        drawOverlay: headline
-          ? (ctx, { width, height }) =>
-              drawBrandText(ctx, width, height, {
-                text: headline,
-                position: 'bottom',
-                color: effectiveColor,
-                bandColor,
-                fontFamily,
-              })
-          : undefined,
-      });
+      const result = await job.run((signal) =>
+        composeSlideshow({
+          images: images.map((p) => p.file),
+          width: format.width,
+          height: format.height,
+          secondsPerImage: secondsPer,
+          backgroundColor: kit.secondaryColor,
+          signal,
+          onProgress: (r) => job.setProgress(Math.round(r * 100)),
+          drawOverlay: headline
+            ? (ctx, { width, height }) =>
+                drawBrandText(ctx, width, height, {
+                  text: headline,
+                  position: 'bottom',
+                  color: effectiveColor,
+                  bandColor,
+                  fontFamily,
+                })
+            : undefined,
+        })
+      );
+      if (!result) return;
       setResultBlob(result.blob);
-      setResultUrl(URL.createObjectURL(result.blob));
     } catch (err) {
       toaster.show(
         err instanceof UndecodableImageError
@@ -236,8 +228,6 @@ export const VideoSlideshow: FC<VideoSlideshowProps> = ({ onReady }) => {
             ),
         'warning'
       );
-    } finally {
-      setBusy(false);
     }
   }, [
     images,
@@ -251,46 +241,15 @@ export const VideoSlideshow: FC<VideoSlideshowProps> = ({ onReady }) => {
     secondsPer,
     toaster,
     t,
+    job,
   ]);
 
-  const uploadResult = useCallback(async (): Promise<{ id: string; path: string } | null> => {
-    if (!resultBlob || uploading) return null;
-    setUploading(true);
-    try {
-      const formData = new FormData();
-      formData.append('file', resultBlob, `postra-slideshow-${Date.now()}.mp4`);
-      const res = await fetch('/media/upload-simple', { method: 'POST', body: formData });
-      const data = await res.json();
-      if (data?.id && data?.path) return { id: data.id, path: data.path };
-      throw new Error('upload returned no media');
-    } catch {
-      toaster.show(t('clip_text_upload_failed', 'Clip upload failed.'), 'warning');
-      return null;
-    } finally {
-      setUploading(false);
-    }
-  }, [resultBlob, uploading, fetch, toaster, t]);
 
-  const useInPost = useCallback(async () => {
-    const media = await uploadResult();
-    if (media) onReady(media);
-  }, [uploadResult, onReady]);
-
-  // "Just save" without leaving the tool — the honest sibling of Use in post.
-  const saveToLibrary = useCallback(async () => {
-    const media = await uploadResult();
-    if (media) {
-      toaster.show(
-        t('video_saved_to_library', 'Saved to media library — you can use it in any post.'),
-        'success'
-      );
-    }
-  }, [uploadResult, toaster, t]);
 
   return (
     <div className="flex flex-col gap-3 p-3 text-textColor">
       <div className="text-[11px] text-textColor/70 leading-snug">
-        🖼{' '}
+        <StudioIcon name="images" size={14} className="inline-block shrink-0" />{' '}
         {t(
           'slideshow_intro',
           'Got product photos but no footage? Drop in a few — we turn them into a vertical clip with subtle motion and text in your brand.'
@@ -419,42 +378,58 @@ export const VideoSlideshow: FC<VideoSlideshowProps> = ({ onReady }) => {
         })}
       </div>
 
-      <Button
-        onClick={compose}
-        disabled={!images.length || busy}
-        className="self-start"
-      >
-        {busy
-          ? `${t('slideshow_running', 'Building video…')} ${progress}%`
-          : t('slideshow_run', 'Build video from photos')}
-      </Button>
+      {images.length > 0 && !resultBlob && (
+        <BrandTextPreview
+          source={images[0].file}
+          format={{ width: format.width, height: format.height }}
+          showSafeArea={true}
+          style={{
+            text,
+            position: 'bottom',
+            color: effectiveColor,
+            bandColor: hexToRgba(kit.secondaryColor, 0.55),
+            fontFamily: fontFamilyForLabel(effectiveFontLabel),
+          }}
+        />
+      )}
 
-      {resultUrl && (
-        <div className="flex flex-col gap-2">
-          <div className="text-[11px] text-green-400">
-            ✓ {t('compositor_no_audio', 'no audio')}
-          </div>
-          <video src={resultUrl} controls className="w-full rounded border border-newBorder" />
-          <div className="flex items-center gap-2">
-            <Button loading={uploading} onClick={useInPost} className="!h-[30px] !text-xs">
-              {t('clip_text_use_in_post', 'Use in post')}
-            </Button>
-            <button
-              onClick={saveToLibrary}
-              disabled={uploading}
-              className="text-xs px-3 h-[30px] rounded bg-newColColor text-textColor hover:bg-white/[0.08] transition-colors disabled:opacity-50"
-            >
-              💾 {t('save_to_library_btn', 'Save to library')}
-            </button>
-            <a
-              href={resultUrl}
-              download="postra-slideshow.mp4"
-              className="text-[11px] text-newAccent underline"
-            >
-              {t('clip_text_download', 'Download')}
-            </a>
-          </div>
-        </div>
+      <div className="flex items-center gap-2">
+        <Button
+          onClick={compose}
+          disabled={!images.length || busy}
+          className="self-start"
+        >
+          {busy
+            ? `${t('slideshow_running', 'Building video…')} ${progress}%`
+            : t('slideshow_run', 'Build video from photos')}
+        </Button>
+        {busy && (
+          <Button
+            onClick={job.cancel}
+            disabled={job.cancelling}
+            secondary={true}
+            className="self-start"
+          >
+            {job.cancelling
+              ? t('video_cancelling', 'Cancelling…')
+              : t('video_cancel_render', 'Cancel')}
+          </Button>
+        )}
+      </div>
+
+      {resultBlob && (
+        <ResultPanel
+          results={[
+            {
+              key: 'slideshow',
+              label: t('video_result_clip', 'Clip'),
+              blob: resultBlob,
+              hadAudio: false,
+            },
+          ]}
+          fileNameFor={() => `postra-slideshow-${Date.now()}`}
+          onUseInPost={onReady}
+        />
       )}
     </div>
   );

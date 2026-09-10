@@ -4,6 +4,10 @@ import { Prisma } from '@prisma/client';
 import { SaveMediaInformationDto } from '@gitroom/nestjs-libraries/dtos/media/save.media.information.dto';
 import { StudioSpec } from '@gitroom/nestjs-libraries/studio/studio-spec';
 import { PostDesignSpec } from '@gitroom/nestjs-libraries/studio/post-design-spec';
+import {
+  MediaType,
+  mediaTypeFromPath,
+} from '@gitroom/helpers/utils/media.type';
 
 @Injectable()
 export class MediaRepository {
@@ -30,6 +34,11 @@ export class MediaRepository {
         path: filePath,
         originalName: originalName || null,
         aiGenerated,
+        // Every caller lands here with a stored path, and storage keeps the
+        // extension it validated, so this is the one place that can record the
+        // type. Before this the column defaulted to `image` for everything,
+        // videos included.
+        type: mediaTypeFromPath(filePath),
       },
       select: {
         id: true,
@@ -39,8 +48,35 @@ export class MediaRepository {
         thumbnail: true,
         alt: true,
         aiGenerated: true,
+        type: true,
       },
     });
+  }
+
+  // One-off repair for the column that was never written. Rows keep resolving
+  // through their path either way (`isVideoMedia`), so this can run before or
+  // after the readers ship; what it buys is a column the database itself can
+  // filter and page on.
+  async backfillMediaType(apply: boolean) {
+    const candidates = await this._media.model.media.findMany({
+      where: { type: { not: 'video' } },
+      select: { id: true, path: true },
+    });
+    const videos = candidates.filter(
+      (row: { path: string }) => mediaTypeFromPath(row.path) === 'video'
+    );
+
+    if (apply) {
+      // Chunked so the id list stays a sane query even on a large library.
+      for (let i = 0; i < videos.length; i += 500) {
+        await this._media.model.media.updateMany({
+          where: { id: { in: videos.slice(i, i + 500).map((v) => v.id) } },
+          data: { type: 'video' },
+        });
+      }
+    }
+
+    return { scanned: candidates.length, videos };
   }
 
   getMediaById(id: string) {
@@ -151,7 +187,12 @@ export class MediaRepository {
     });
   }
 
-  async getMedia(org: string, page: number, search?: string) {
+  async getMedia(
+    org: string,
+    page: number,
+    search?: string,
+    type?: MediaType
+  ) {
     const pageNum = (page || 1) - 1;
     const trimmedSearch = search?.trim();
     const searchFilter = trimmedSearch
@@ -162,6 +203,24 @@ export class MediaRepository {
           },
         }
       : {};
+    // The video tab used to filter the 18 rows it had already been given, so a
+    // page of images showed nothing while the pager still promised more pages.
+    // Rows written before the backfill say `image` for everything, so a video
+    // filter has to accept the extension too, and an image filter has to
+    // exclude it.
+    const typeFilter = !type
+      ? {}
+      : type === 'video'
+      ? {
+          OR: [
+            { type: 'video' },
+            { path: { endsWith: '.mp4', mode: 'insensitive' as const } },
+          ],
+        }
+      : {
+          type: { not: 'video' },
+          NOT: { path: { endsWith: '.mp4', mode: 'insensitive' as const } },
+        };
     const query = {
       where: {
         organization: {
@@ -169,6 +228,7 @@ export class MediaRepository {
         },
         deletedAt: null as null,
         ...searchFilter,
+        ...typeFilter,
       },
     };
     const pages = Math.ceil((await this._media.model.media.count(query)) / 18);
@@ -177,6 +237,7 @@ export class MediaRepository {
         organizationId: org,
         deletedAt: null as null,
         ...searchFilter,
+        ...typeFilter,
       },
       orderBy: {
         createdAt: 'desc',
@@ -190,6 +251,7 @@ export class MediaRepository {
         alt: true,
         thumbnailTimestamp: true,
         aiGenerated: true,
+        type: true,
       },
       skip: pageNum * 18,
       take: 18,

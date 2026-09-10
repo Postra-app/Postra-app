@@ -11,25 +11,31 @@ import {
   Mp4OutputFormat,
 } from 'mediabunny';
 import { useT } from '@gitroom/react/translation/get.transation.service.client';
+import { StudioIcon } from '@gitroom/frontend/components/studio/studio-icons';
 import { Button } from '@gitroom/frontend/components/ui/button';
 import { useToaster } from '@gitroom/react/toaster/toaster';
 import { VIDEO_FORMATS, VideoFormat } from './video-formats';
 import { assertVideoSurvives } from './mp4-source';
+import { useRenderJob } from './use-render-job';
 import { UnsupportedCodecError } from './compositor-pipeline';
+import { ResultPanel } from './result-panel';
 
 interface VideoMultiFormatProps {
   source: Blob | null;
-  onExported: (results: { format: VideoFormat; blob: Blob }[]) => void;
+  /** The one file the user picked for the post; the rest are still saved. */
+  onReady: (media: { id: string; path: string }) => void;
 }
 
-export const VideoMultiFormat: FC<VideoMultiFormatProps> = ({ source, onExported }) => {
+export const VideoMultiFormat: FC<VideoMultiFormatProps> = ({ source, onReady }) => {
   const t = useT();
   const toaster = useToaster();
   const [selected, setSelected] = useState<Set<string>>(
     new Set(VIDEO_FORMATS.map((f) => f.key))
   );
-  const [isExporting, setIsExporting] = useState(false);
+  const job = useRenderJob();
+  const isExporting = job.busy;
   const [progressMap, setProgressMap] = useState<Record<string, number>>({});
+  const [exported, setExported] = useState<{ format: VideoFormat; blob: Blob }[]>([]);
 
   const toggle = (key: string) => {
     const next = new Set(selected);
@@ -47,36 +53,45 @@ export const VideoMultiFormat: FC<VideoMultiFormatProps> = ({ source, onExported
       );
       return;
     }
-    setIsExporting(true);
-    const results: { format: VideoFormat; blob: Blob }[] = [];
     try {
-      const targets = VIDEO_FORMATS.filter((f) => selected.has(f.key));
-      for (const fmt of targets) {
-        const input = new Input({
-          source: new BlobSource(source),
-          formats: ALL_FORMATS,
-        });
-        const output = new Output({
-          format: new Mp4OutputFormat(),
-          target: new BufferTarget(),
-        });
-        const conversion = await Conversion.init({
-          input,
-          output,
-          video: { width: fmt.width, height: fmt.height, fit: 'cover' },
-        });
-        // Resizing forces a decode. If the source codec can't be decoded the
-        // video track is dropped and the "successful" export is audio-only —
-        // catch it on the first format instead of writing three mute files.
-        assertVideoSurvives(conversion);
-        conversion.onProgress = (p) =>
-          setProgressMap((prev) => ({ ...prev, [fmt.key]: Math.round(p * 100) }));
-        await conversion.execute();
-        const buffer = (output.target as BufferTarget).buffer;
-        if (!buffer) throw new Error(`empty buffer for ${fmt.key}`);
-        results.push({ format: fmt, blob: new Blob([buffer], { type: 'video/mp4' }) });
-      }
-      onExported(results);
+      const results = await job.run(async (signal, registerCancel) => {
+        const done: { format: VideoFormat; blob: Blob }[] = [];
+        const targets = VIDEO_FORMATS.filter((f) => selected.has(f.key));
+        for (const fmt of targets) {
+          // Cancelling during format two must not start format three.
+          if (signal.aborted) break;
+          const input = new Input({
+            source: new BlobSource(source),
+            formats: ALL_FORMATS,
+          });
+          const output = new Output({
+            format: new Mp4OutputFormat(),
+            target: new BufferTarget(),
+          });
+          const conversion = await Conversion.init({
+            input,
+            output,
+            video: { width: fmt.width, height: fmt.height, fit: 'cover' },
+          });
+          registerCancel(() => conversion.cancel());
+          // Resizing forces a decode. If the source codec can't be decoded the
+          // video track is dropped and the "successful" export is audio-only —
+          // catch it on the first format instead of writing three mute files.
+          assertVideoSurvives(conversion);
+          conversion.onProgress = (p) =>
+            setProgressMap((prev) => ({ ...prev, [fmt.key]: Math.round(p * 100) }));
+          await conversion.execute();
+          const buffer = (output.target as BufferTarget).buffer;
+          if (!buffer) throw new Error(`empty buffer for ${fmt.key}`);
+          done.push({
+            format: fmt,
+            blob: new Blob([buffer], { type: 'video/mp4' }),
+          });
+        }
+        return done;
+      });
+      if (!results) return;
+      setExported(results);
     } catch (err) {
       toaster.show(
         err instanceof UnsupportedCodecError
@@ -90,10 +105,8 @@ export const VideoMultiFormat: FC<VideoMultiFormatProps> = ({ source, onExported
             ),
         'warning'
       );
-    } finally {
-      setIsExporting(false);
     }
-  }, [source, selected, onExported, t, toaster]);
+  }, [source, selected, t, toaster, job]);
 
   if (!source) {
     return (
@@ -141,26 +154,54 @@ export const VideoMultiFormat: FC<VideoMultiFormatProps> = ({ source, onExported
               {progress !== undefined && progress < 100 && (
                 <div className="text-[11px] text-textColor/70">{progress}%</div>
               )}
-              {progress === 100 && <div className="text-[11px] text-green-400">✓</div>}
+              {progress === 100 && (
+                  <StudioIcon name="done" size={14} className="text-green-400" />
+                )}
             </label>
           );
         })}
       </div>
-      <Button
-        onClick={handleExport}
-        disabled={isExporting || selected.size === 0}
-        className="self-start"
-      >
-        {isExporting
-          ? t('video_format_exporting', 'Exporting {n} formats...').replace(
-              '{n}',
-              String(selected.size)
-            )
-          : t('video_format_export', 'Export {n} formats').replace(
-              '{n}',
-              String(selected.size)
-            )}
-      </Button>
+      <div className="flex items-center gap-2">
+        <Button
+          onClick={handleExport}
+          disabled={isExporting || selected.size === 0}
+          className="self-start"
+        >
+          {isExporting
+            ? t('video_format_exporting', 'Exporting {n} formats...').replace(
+                '{n}',
+                String(selected.size)
+              )
+            : t('video_format_export', 'Export {n} formats').replace(
+                '{n}',
+                String(selected.size)
+              )}
+        </Button>
+        {isExporting && (
+          <Button
+            onClick={job.cancel}
+            disabled={job.cancelling}
+            secondary={true}
+            className="self-start"
+          >
+            {job.cancelling
+              ? t('video_cancelling', 'Cancelling…')
+              : t('video_cancel_render', 'Cancel')}
+          </Button>
+        )}
+      </div>
+      {exported.length > 0 && (
+        <ResultPanel
+          results={exported.map((r) => ({
+            key: r.format.key,
+            label: r.format.label,
+            blob: r.blob,
+            hadAudio: null,
+          }))}
+          fileNameFor={(r) => `${r.key}-${Date.now()}`}
+          onUseInPost={onReady}
+        />
+      )}
     </div>
   );
 };

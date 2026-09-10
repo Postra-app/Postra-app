@@ -4,6 +4,8 @@ import { FC, useCallback, useEffect, useState } from 'react';
 import useSWR from 'swr';
 import { useDebounce } from 'use-debounce';
 import { useFetch } from '@gitroom/helpers/utils/custom.fetch';
+import { StudioIcon } from '@gitroom/frontend/components/studio/studio-icons';
+import { isVideoMedia } from '@gitroom/helpers/utils/media.type';
 import { useMediaDirectory } from '@gitroom/react/helpers/use.media.directory';
 import { VideoFrame } from '@gitroom/react/helpers/video.frame';
 import { useT } from '@gitroom/react/translation/get.transation.service.client';
@@ -46,7 +48,7 @@ export const VideoLibraryPicker: FC<VideoLibraryPickerProps> = ({
   }, [debouncedSearch]);
 
   const loadMedia = useCallback(async () => {
-    const params = new URLSearchParams({ page: String(page + 1) });
+    const params = new URLSearchParams({ page: String(page + 1), type: 'video' });
     if (debouncedSearch.trim()) params.set('search', debouncedSearch.trim());
     return (await fetch(`/media?${params.toString()}`)).json();
   }, [fetch, page, debouncedSearch]);
@@ -56,8 +58,10 @@ export const VideoLibraryPicker: FC<VideoLibraryPickerProps> = ({
     loadMedia
   );
 
-  const videos: LibraryMedia[] = (data?.results ?? []).filter(
-    (f: any) => typeof f?.path === 'string' && f.path.indexOf('mp4') > -1
+  // The server already returns videos only, so a page is never empty just
+  // because the first 18 rows of the library happened to be images.
+  const videos: LibraryMedia[] = (data?.results ?? []).filter((f: any) =>
+    isVideoMedia(f)
   );
   const pages: number = data?.pages ?? 0;
 
@@ -116,7 +120,7 @@ export const VideoLibraryPicker: FC<VideoLibraryPickerProps> = ({
               >
                 <VideoFrame url={mediaDirectory.set(media.path)} />
                 <div className="absolute inset-0 flex items-center justify-center bg-black/40 text-white text-xs opacity-0 group-hover:opacity-100 transition-opacity">
-                  ✏ {t('video_library_edit_cta', 'Edit')}
+                  <StudioIcon name="edit" size={12} className="inline-block me-1" />{t('video_library_edit_cta', 'Edit')}
                 </div>
               </button>
             ))}

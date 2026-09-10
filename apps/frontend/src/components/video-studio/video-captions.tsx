@@ -8,6 +8,9 @@ import { useT } from '@gitroom/react/translation/get.transation.service.client';
 import { Button } from '@gitroom/frontend/components/ui/button';
 import * as Sentry from '@sentry/nextjs';
 import { composeVideo, ClipTooLongError, UnsupportedCodecError } from './compositor-pipeline';
+import { useRenderJob } from './use-render-job';
+import { ResultPanel } from './result-panel';
+import { BrandTextPreview } from './brand-text-preview';
 import { parseSrt, captionAt } from './srt';
 import {
   fontFamilyForLabel,
@@ -31,8 +34,16 @@ export const VideoCaptions: FC<VideoCaptionsProps> = ({ mediaId, source, onCapti
   const { kit } = useBrandKit();
   const [srt, setSrt] = useState('');
   const [isGenerating, setIsGenerating] = useState(false);
-  const [isBurning, setIsBurning] = useState(false);
-  const [burnProgress, setBurnProgress] = useState(0);
+  // Burning used to upload straight away and close the composer, so nobody
+  // ever saw the captions they had just burned in - and there was no way back.
+  const [burned, setBurned] = useState<Blob | null>(null);
+  const [replacedSource, setReplacedSource] = useState(false);
+  // Caption size is the one styling choice worth exposing: 0.78 of the auto
+  // size reads well on a phone held close, and badly on a laptop screencast.
+  const [captionScale, setCaptionScale] = useState(0.78);
+  const job = useRenderJob();
+  const isBurning = job.busy;
+  const burnProgress = job.progress;
   const { i18n } = useTranslation();
   // Default transcription language follows the UI locale (UK-first product —
   // 'pl' is only right for the Polish UI), and 'auto' stays one click away.
@@ -96,17 +107,7 @@ export const VideoCaptions: FC<VideoCaptionsProps> = ({ mediaId, source, onCapti
     }
   }, [mediaId, language, fetch, toaster, t]);
 
-  const uploadResult = useCallback(
-    async (blob: Blob) => {
-      const formData = new FormData();
-      formData.append('file', blob, `captioned-${Date.now()}.mp4`);
-      const res = await fetch('/media/upload-simple', { method: 'POST', body: formData });
-      const data = await res.json();
-      if (data?.id && data?.path) onCaptioned({ id: data.id, path: data.path });
-      else throw new Error('upload returned no media');
-    },
-    [fetch, onCaptioned]
-  );
+
 
   const handleBurn = useCallback(async () => {
     if (!srt.trim() || isBurning) return;
@@ -118,8 +119,6 @@ export const VideoCaptions: FC<VideoCaptionsProps> = ({ mediaId, source, onCapti
       );
       return;
     }
-    setIsBurning(true);
-    setBurnProgress(0);
     try {
       if (source) {
         // Branded, in-browser render on the shared compositor — captions are a
@@ -127,35 +126,46 @@ export const VideoCaptions: FC<VideoCaptionsProps> = ({ mediaId, source, onCapti
         const fontFamily = fontFamilyForLabel(kit.font);
         const bandColor = hexToRgba(kit.secondaryColor, 0.6);
         await ensureFontLoaded(fontFamily, 48);
-        const result = await composeVideo({
-          file: source,
-          onProgress: (r) => setBurnProgress(Math.round(r * 100)),
-          drawOverlay: (ctx, { timestampSec, width, height }) => {
-            const cap = captionAt(segments, timestampSec);
-            if (cap) {
-              drawBrandText(ctx, width, height, {
-                text: cap,
-                position: 'bottom',
-                color: kit.textColor,
-                bandColor,
-                fontFamily,
-                scale: 0.78,
-              });
-            }
-          },
-        });
-        await uploadResult(result.blob);
+        const result = await job.run((signal) =>
+          composeVideo({
+            file: source,
+            signal,
+            onProgress: (r) => job.setProgress(Math.round(r * 100)),
+            drawOverlay: (ctx, { timestampSec, width, height }) => {
+              const cap = captionAt(segments, timestampSec);
+              if (cap) {
+                drawBrandText(ctx, width, height, {
+                  text: cap,
+                  position: 'bottom',
+                  color: kit.textColor,
+                  bandColor,
+                  fontFamily,
+                  scale: captionScale,
+                });
+              }
+            },
+          })
+        );
+        if (!result) return;
+        // Show it before it goes anywhere: the result panel does the upload,
+        // once the user has looked at it and said so.
+        setBurned(result.blob);
       } else if (mediaId) {
-        // Fallback: server burn-in when we don't hold the local bytes.
-        const res = await fetch(`/media/${mediaId}/burn-captions`, {
-          method: 'POST',
-          body: JSON.stringify({ srt }),
+        // Fallback: server burn-in when we don't hold the local bytes. Cancel
+        // here only drops our end of the request — ffmpeg on the server runs to
+        // completion — so the file still lands in the library.
+        const data = await job.run(async (signal) => {
+          const res = await fetch(`/media/${mediaId}/burn-captions`, {
+            method: 'POST',
+            body: JSON.stringify({ srt }),
+            signal,
+          });
+          if (!res.ok) {
+            toaster.show(t('video_burn_failed', 'Burning captions failed.'), 'warning');
+            return null;
+          }
+          return res.json();
         });
-        if (!res.ok) {
-          toaster.show(t('video_burn_failed', 'Burning captions failed.'), 'warning');
-          return;
-        }
-        const data = await res.json();
         if (data?.id && data?.path) onCaptioned({ id: data.id, path: data.path });
       } else {
         toaster.show(
@@ -178,10 +188,28 @@ export const VideoCaptions: FC<VideoCaptionsProps> = ({ mediaId, source, onCapti
           : t('video_burn_failed', 'Burning captions failed. Try a different clip — our team has been notified.'),
         'warning'
       );
-    } finally {
-      setIsBurning(false);
     }
-  }, [srt, isBurning, source, mediaId, kit, fetch, uploadResult, onCaptioned, toaster, t]);
+  }, [srt, isBurning, source, mediaId, kit, captionScale, fetch, onCaptioned, toaster, t, job]);
+
+  // The clip is in the library only because Whisper needed a URL to transcribe.
+  // Once the captioned version is stored, the silent twin is usually clutter -
+  // but deleting is not ours to assume, so it stays one explicit click.
+  const removeSourceClip = useCallback(async () => {
+    if (!mediaId) return;
+    try {
+      await fetch(`/media/${mediaId}`, { method: 'DELETE' });
+      setReplacedSource(true);
+      toaster.show(
+        t('video_captions_source_removed', 'Removed the clip without captions.'),
+        'success'
+      );
+    } catch {
+      toaster.show(
+        t('video_captions_source_remove_failed', 'Could not remove the earlier clip.'),
+        'warning'
+      );
+    }
+  }, [mediaId, fetch, toaster, t]);
 
   return (
     <div className="flex flex-col gap-3 p-3">
@@ -234,17 +262,100 @@ export const VideoCaptions: FC<VideoCaptionsProps> = ({ mediaId, source, onCapti
             ? t('video_captions_lines', '{n} SRT characters').replace('{n}', String(srt.length))
             : t('video_captions_empty', 'No captions')}
         </div>
-        <Button
-          loading={isBurning}
-          onClick={handleBurn}
-          disabled={!srt.trim() || (!source && !mediaId)}
-          className="!h-[28px] !text-xs"
-        >
-          {isBurning && source
-            ? `${t('video_captions_burning', 'Burning…')} ${burnProgress}%`
-            : t('video_captions_burn', 'Burn into video')}
-        </Button>
+        <div className="flex items-center gap-2">
+          {isBurning && (
+            <Button
+              onClick={job.cancel}
+              disabled={job.cancelling}
+              secondary={true}
+              className="!h-[28px] !text-xs"
+            >
+              {job.cancelling
+                ? t('video_cancelling', 'Cancelling…')
+                : t('video_cancel_render', 'Cancel')}
+            </Button>
+          )}
+          <Button
+            loading={isBurning}
+            onClick={handleBurn}
+            disabled={!srt.trim() || (!source && !mediaId)}
+            className="!h-[28px] !text-xs"
+          >
+            {isBurning && source
+              ? `${t('video_captions_burning', 'Burning…')} ${burnProgress}%`
+              : t('video_captions_burn', 'Burn into video')}
+          </Button>
+        </div>
       </div>
+      {source && !burned && srt.trim() && (
+        <div className="flex flex-col gap-1">
+          <div className="flex items-center gap-2">
+            <span className="text-[11px] uppercase tracking-wide text-textColor/60">
+              {t('video_captions_size', 'Caption size')}
+            </span>
+            {[
+              { key: 'small', label: t('video_captions_size_s', 'Small'), value: 0.62 },
+              { key: 'medium', label: t('video_captions_size_m', 'Medium'), value: 0.78 },
+              { key: 'large', label: t('video_captions_size_l', 'Large'), value: 0.95 },
+            ].map((option) => (
+              <button
+                key={option.key}
+                type="button"
+                onClick={() => setCaptionScale(option.value)}
+                disabled={isBurning}
+                className={
+                  captionScale === option.value
+                    ? 'text-[11px] px-2 h-[24px] rounded bg-forth text-white'
+                    : 'text-[11px] px-2 h-[24px] rounded bg-newColColor text-textColor hover:bg-white/[0.08] transition-colors disabled:opacity-50'
+                }
+              >
+                {option.label}
+              </button>
+            ))}
+          </div>
+          <BrandTextPreview
+            source={source}
+            showSafeArea={true}
+            style={{
+              text: parseSrt(srt)[0]?.text ?? '',
+              position: 'bottom',
+              color: kit.textColor,
+              bandColor: hexToRgba(kit.secondaryColor, 0.6),
+              fontFamily: fontFamilyForLabel(kit.font),
+              scale: captionScale,
+            }}
+          />
+        </div>
+      )}
+
+      {burned && (
+        <>
+          <ResultPanel
+            results={[
+              {
+                key: 'captioned',
+                label: t('video_result_captioned', 'With captions'),
+                blob: burned,
+                hadAudio: true,
+              },
+            ]}
+            fileNameFor={() => `postra-captioned-${Date.now()}`}
+            onUseInPost={onCaptioned}
+          />
+          {mediaId && !replacedSource && (
+            <button
+              type="button"
+              onClick={removeSourceClip}
+              className="self-start text-[11px] text-textColor/65 underline hover:text-textColor transition-colors"
+            >
+              {t(
+                'video_captions_remove_source',
+                'Remove the clip without captions from the library'
+              )}
+            </button>
+          )}
+        </>
+      )}
       <div className="text-[11px] text-textColor/65 leading-snug">
         {source
           ? t(

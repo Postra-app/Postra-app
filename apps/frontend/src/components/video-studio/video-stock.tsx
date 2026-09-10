@@ -2,6 +2,7 @@
 
 import { FC, useCallback, useEffect, useRef, useState } from 'react';
 import { useFetch } from '@gitroom/helpers/utils/custom.fetch';
+import { StudioIcon } from '@gitroom/frontend/components/studio/studio-icons';
 import { useToaster } from '@gitroom/react/toaster/toaster';
 import { useT } from '@gitroom/react/translation/get.transation.service.client';
 import { Button } from '@gitroom/frontend/components/ui/button';
@@ -142,7 +143,7 @@ export const VideoStock: FC<VideoStockProps> = ({ onImported }) => {
     return (
       <div className="flex flex-col gap-3 p-4 text-center">
         <div className="text-sm text-textColor">
-          ⚠️{' '}
+          <StudioIcon name="warning" size={14} className="inline-block shrink-0" />{' '}
           {t(
             'video_stock_no_key',
             'Stock video search is unavailable right now. Upload your own clip, or try again later.'
@@ -241,7 +242,7 @@ export const VideoStock: FC<VideoStockProps> = ({ onImported }) => {
                   className="text-[11px] text-newAccent hover:underline truncate"
                   title={t('video_stock_attrib_author', 'Author on Pixabay')}
                 >
-                  📷 {v.user}
+                  <StudioIcon name="camera" size={12} className="inline-block me-1" />{v.user}
                 </a>
                 <Button
                   loading={isImporting}
