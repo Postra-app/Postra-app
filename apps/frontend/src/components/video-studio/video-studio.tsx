@@ -162,6 +162,11 @@ export const VideoStudio: FC<VideoStudioProps> = ({
   const tabRef = useRef(tab);
   tabRef.current = tab;
 
+  // Every tab the user has opened stays mounted from then on.
+  const [visited, setVisited] = useState<Set<Tab>>(() => new Set<Tab>([tab]));
+  useEffect(() => {
+    setVisited((prev) => (prev.has(tab) ? prev : new Set(prev).add(tab)));
+  }, [tab]);
   /** Tabs that edit the one shared source clip (the others bring their own). */
   const SHARED_CLIP_TABS: Tab[] = ['trim', 'formats', 'captions'];
   const wantsSharedClip = () =>
@@ -702,18 +707,24 @@ export const VideoStudio: FC<VideoStudioProps> = ({
             </div>
           </div>
         )}
-        {!showGoals && tab === 'trim' && (
-          <div>
+        {/* Tabs are mounted on first visit and then only hidden. They used to
+            unmount, which threw away the SRT you had just edited, the photos
+            you had lined up and any result you had not saved yet - and killed
+            the render that was still going. The goals screen hides them the
+            same way, because opening it used to cost the work too. Mounting
+            lazily keeps the cost of the ones nobody opens at zero. */}
+        {visited.has('trim') && (
+          <div hidden={showGoals || tab !== 'trim'}>
             <VideoTrimmer file={file} onTrimmed={handleTrimmedExport} />
           </div>
         )}
-        {!showGoals && tab === 'formats' && (
-          <div>
+        {visited.has('formats') && (
+          <div hidden={showGoals || tab !== 'formats'}>
             <VideoMultiFormat source={trimmedBlob ?? file} onReady={handleFormatsReady} />
           </div>
         )}
-        {!showGoals && tab === 'captions' && (
-          <div>
+        {visited.has('captions') && (
+          <div hidden={showGoals || tab !== 'captions'}>
             <VideoCaptions
               mediaId={uploadedMedia?.id ?? null}
               source={trimmedBlob ?? file}
@@ -721,20 +732,20 @@ export const VideoStudio: FC<VideoStudioProps> = ({
             />
           </div>
         )}
-        {!showGoals && tab === 'stock' && (
-          <div>
+        {visited.has('stock') && (
+          <div hidden={showGoals || tab !== 'stock'}>
             <VideoStock onImported={handleStockImported} />
           </div>
         )}
-        {!showGoals && tab === 'text' && (
-          <div>
+        {visited.has('text') && (
+          <div hidden={showGoals || tab !== 'text'}>
             <VideoTextOverlay
               onReady={(media) => handleComposedReady(media, 'text')}
             />
           </div>
         )}
-        {!showGoals && tab === 'slideshow' && (
-          <div>
+        {visited.has('slideshow') && (
+          <div hidden={showGoals || tab !== 'slideshow'}>
             <VideoSlideshow
               onReady={(media) => handleComposedReady(media, 'slideshow')}
             />
