@@ -35,6 +35,7 @@ import {
   RefineDesignDto,
   TemplateSearchDto,
 } from '@gitroom/nestjs-libraries/studio/studio.dto';
+import { AiUsageEvent } from '@gitroom/nestjs-libraries/services/ai-usage.record';
 import {
   AuthorizationActions,
   Sections,
@@ -101,7 +102,10 @@ export class MediaService {
   async generateImage(
     prompt: string,
     org: Organization,
-    generatePromptFirst?: boolean
+    generatePromptFirst?: boolean,
+    // Which surface asked, so the usage log can tell the composer's images
+    // apart from the agent's. Defaults to the /media routes.
+    engine: AiUsageEvent['engine'] = 'media'
   ) {
     const brandKit = await this._brandKitService.getNormalized(org.id);
     const brand = buildBrandContext(brandKit, {
@@ -118,7 +122,9 @@ export class MediaService {
         }
         const dataUrl = await this._openAi.generateImage(
           brand ? `${prompt}\n\n${brand}` : prompt,
-          !!generatePromptFirst
+          !!generatePromptFirst,
+          false,
+          { orgId: org.id, engine }
         );
         return dataUrl ? await this.storage.uploadSimple(dataUrl) : dataUrl;
       }
@@ -161,7 +167,9 @@ export class MediaService {
         async () => {
           const dalleUrl = await this._openAi.generateImage(
             spec.imagePrompt,
-            true
+            true,
+            false,
+            { orgId: org.id, engine: 'media' }
           );
           if (!dalleUrl) {
             throw new HttpException('The image generator returned nothing. Try again in a moment.', 502);
@@ -305,7 +313,12 @@ export class MediaService {
             org,
             'ai_images',
             async () => {
-              const dalleUrl = await this._openAi.generateImage(prompt, true);
+              const dalleUrl = await this._openAi.generateImage(
+                prompt,
+                true,
+                false,
+                { orgId: org.id, engine: 'media' }
+              );
               if (!dalleUrl) {
                 throw new HttpException('The image generator returned nothing. Try again in a moment.', 502);
               }
@@ -655,7 +668,8 @@ export class MediaService {
    * query embedding.
    */
   async searchTemplates(
-    body: TemplateSearchDto
+    body: TemplateSearchDto,
+    orgId?: string
   ): Promise<{ id: string; score: number }[]> {
     if (!body.templates.length) return [];
 
@@ -683,7 +697,7 @@ export class MediaService {
 
     if (!embeddings) {
       const texts = body.templates.map((t) => t.text);
-      const vectors = await this._studioAi.embedBatch(texts);
+      const vectors = await this._studioAi.embedBatch(texts, orgId);
       embeddings = body.templates.map((t, i) => ({ id: t.id, embedding: vectors[i] }));
       await ioRedis.set(
         cacheKey,
@@ -693,7 +707,7 @@ export class MediaService {
       );
     }
 
-    const queryEmbedding = await this._studioAi.embedText(body.query);
+    const queryEmbedding = await this._studioAi.embedText(body.query, orgId);
     return rankBySimilarity(queryEmbedding, embeddings);
   }
 

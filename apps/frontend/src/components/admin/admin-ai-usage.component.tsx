@@ -61,6 +61,14 @@ interface AiUsageResponse {
 
 const PERIODS = [7, 30, 90] as const;
 
+// A row's amount means whatever its unit says: audio seconds for Whisper,
+// pictures for the image model, tokens for everything else.
+const UNIT_LABEL: Record<string, string> = {
+  seconds: 's',
+  images: 'img',
+  tokens: 'tok',
+};
+
 const isoDaysAgo = (n: number) =>
   new Date(Date.now() - n * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
 
@@ -287,7 +295,10 @@ export const AdminAiUsageComponent = () => {
 
       <div className="bg-white/[0.03] border border-white/10 rounded-[12px] overflow-hidden">
         <div className="px-[16px] py-[12px] border-b border-white/10 text-[14px] font-[500]">
-          {t('ai_text_usage', 'Text AI (observational metering — not billed)')}
+          {t(
+            'ai_text_usage',
+            'Model usage (observational metering — not billed)'
+          )}
         </div>
         <div className="grid grid-cols-[1fr_120px_90px_110px_110px] gap-[12px] px-[16px] py-[8px] text-[11px] uppercase opacity-50 border-b border-white/10">
           <div>Engine</div>
@@ -312,13 +323,13 @@ export const AdminAiUsageComponent = () => {
               <div className="text-right">
                 {row.inputAmount.toLocaleString()}
                 <span className="opacity-40 ml-[3px]">
-                  {row.unit === 'seconds' ? 's' : 'tok'}
+                  {UNIT_LABEL[row.unit] ?? 'tok'}
                 </span>
               </div>
               <div className="text-right">
-                {row.unit === 'seconds'
-                  ? '-'
-                  : `${row.outputAmount.toLocaleString()} tok`}
+                {row.unit === 'tokens'
+                  ? `${row.outputAmount.toLocaleString()} tok`
+                  : '-'}
               </div>
             </div>
           ))

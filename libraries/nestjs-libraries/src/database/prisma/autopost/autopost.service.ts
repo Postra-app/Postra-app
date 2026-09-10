@@ -542,7 +542,13 @@ export class AutopostService {
       image = await this._subscriptionService.useCreditByOrgId(
         state.body.organizationId,
         'ai_images',
-        () => this._openaiService.generateImage(generatedTextToBeSentToDallE, true)
+        () =>
+          this._openaiService.generateImage(
+            generatedTextToBeSentToDallE,
+            true,
+            false,
+            { orgId: state.body.organizationId, engine: 'autopost' }
+          )
       ) || '';
     } catch (err) {
       image = '';

@@ -14,9 +14,12 @@ export interface AiUsageEvent {
     | 'creator'
     | 'studio'
     | 'whisper'
-    | 'insert-graph';
+    | 'insert-graph'
+    // Images and embeddings from the /media surfaces: the composer's AI
+    // Image, Studio's AI tab and template search.
+    | 'media';
   model: string;
-  unit?: 'tokens' | 'seconds';
+  unit?: 'tokens' | 'seconds' | 'images';
   inputAmount?: number;
   outputAmount?: number;
 }

@@ -365,7 +365,11 @@ export class AgentGraphService {
         const image = await this._subscriptionService.useCreditByOrgId(
           state.orgId,
           'ai_images',
-          () => this._openaiService.generateImage(prompt, true)
+          () =>
+            this._openaiService.generateImage(prompt, true, false, {
+              orgId: state.orgId,
+              engine: 'generate-posts',
+            })
         );
         return {
           ...p,

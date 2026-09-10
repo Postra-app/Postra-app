@@ -398,8 +398,11 @@ export class MediaController {
   @Post('/search-templates')
   @CheckPolicies([AuthorizationActions.Create, Sections.AI])
   @Throttle({ default: { ttl: 300000, limit: 60 } })
-  searchTemplates(@Body() body: TemplateSearchDto) {
-    return this._mediaService.searchTemplates(body);
+  searchTemplates(
+    @GetOrgFromRequest() org: Organization,
+    @Body() body: TemplateSearchDto
+  ) {
+    return this._mediaService.searchTemplates(body, org.id);
   }
 
   @Post('/:id/design-spec')

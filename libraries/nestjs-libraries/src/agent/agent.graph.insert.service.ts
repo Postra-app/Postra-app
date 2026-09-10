@@ -140,6 +140,9 @@ You are an assistant that get a social media post and extract the hook, the hook
       {
         callbacks: [
           new AiUsageCallbackHandler({
+            // No org on purpose: this graph runs from /public/agent, an
+            // API-key endpoint that files posts into the shared "popular
+            // posts" pool. There is no organization to bill it to.
             organizationId: null,
             engine: 'insert-graph',
             model: 'gpt-4o-2024-08-06',

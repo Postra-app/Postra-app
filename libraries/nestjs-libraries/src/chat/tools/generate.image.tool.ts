@@ -47,7 +47,9 @@ export class GenerateImageTool implements AgentToolInterface {
         // bytes and an "Unsupported file type" error.)
         const url = await this._mediaService.generateImage(
           inputData.prompt,
-          org
+          org,
+          false,
+          'agent'
         );
         if (!url) {
           throw new Error('Image generation returned no image.');

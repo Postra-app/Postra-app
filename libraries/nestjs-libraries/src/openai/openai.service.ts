@@ -6,12 +6,15 @@ import { z } from 'zod';
 import { createReadStream } from 'fs';
 import { stat } from 'fs/promises';
 import { parseChat } from '@gitroom/nestjs-libraries/openai/parse-chat';
-import { recordAiUsage } from '@gitroom/nestjs-libraries/services/ai-usage.record';
+import {
+  recordAiUsage,
+  AiUsageEvent,
+} from '@gitroom/nestjs-libraries/services/ai-usage.record';
 import {
   buildBrandVoicePrompt,
   buildBrandDesignPrompt,
 } from '@gitroom/nestjs-libraries/openai/brand-prompt';
-import pLimit from 'p-limit';
+import { withImageSlot } from '@gitroom/nestjs-libraries/openai/image-concurrency';
 
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY || 'sk-proj-',
@@ -20,11 +23,6 @@ const openai = new OpenAI({
   // (~40s). maxRetries stays at the SDK default (2, backoff on 429/5xx).
   timeout: 90_000,
 });
-
-// Cap concurrent image generations so peak traffic can't stampede OpenAI's
-// image rate limits (429s). One process today; move to a shared/Redis limiter
-// if we scale out.
-const imageGenLimit = pLimit(Number(process.env.OPENAI_IMAGE_CONCURRENCY) || 4);
 
 // System prompts must stay constant: any request-supplied string that reaches a
 // `role: 'system'` message is a prompt-injection vector. Platform ids resolve
@@ -143,7 +141,12 @@ export class OpenaiService {
   async generateImage(
     prompt: string,
     _isUrl: boolean,
-    isVertical = false
+    isVertical = false,
+    // Who to bill the picture to in the usage log. Images cost more than any
+    // text call we make, and until now they were the one model call that never
+    // reached AiUsage — the admin panel showed text only and read as if the
+    // month had been cheap.
+    meta?: { orgId?: string | null; engine?: AiUsageEvent['engine'] }
   ): Promise<string | undefined> {
     // Model = 'gpt-image-2', the successor to 'gpt-image-1' (which OpenAI retires
     // 2026-10-23). The earlier swap looked like it failed (#102), but the visible
@@ -158,7 +161,7 @@ export class OpenaiService {
     let generate;
     try {
       generate = (
-        await imageGenLimit(() =>
+        await withImageSlot(() =>
           openai.images.generate({
             prompt,
             model,
@@ -190,6 +193,14 @@ export class OpenaiService {
       }
       throw err;
     }
+
+    recordAiUsage({
+      organizationId: meta?.orgId ?? null,
+      engine: meta?.engine ?? 'media',
+      model,
+      unit: 'images',
+      inputAmount: 1,
+    });
 
     const b64 = generate?.b64_json;
     if (!b64) {
