@@ -1,5 +1,8 @@
 import type * as fabric from 'fabric';
-import { repositionObjectFromTo } from './multi-format-renderer';
+import {
+  repositionObjectFromTo,
+  isBackgroundBox,
+} from './multi-format-renderer';
 
 /**
  * Switching platform sizes moves and rescales every layer. The bug this guards
@@ -192,5 +195,44 @@ describe('repositionObjectFromTo', () => {
     move(o, SQUARE, STORY);
     // Still centred horizontally, and `left` is still the object's centre.
     expect(o.left).toBeCloseTo(STORY[0] / 2, 3);
+  });
+});
+
+describe('isBackgroundBox', () => {
+  const SRC_W = 1080;
+  const SRC_H = 1350;
+
+  it('accepts a layer that fills the canvas', () => {
+    expect(
+      isBackgroundBox({ left: 0, top: 0, width: SRC_W, height: SRC_H }, SRC_W, SRC_H)
+    ).toBe(true);
+  });
+
+  // The bug this guards: a template's content card is over half the canvas by
+  // area, and cover-scaling it to the new format wrecked the layout.
+  it('rejects a big card floating in the middle', () => {
+    expect(
+      isBackgroundBox(
+        { left: 120, top: 300, width: 840, height: 800 },
+        SRC_W,
+        SRC_H
+      )
+    ).toBe(false);
+  });
+
+  it('rejects a layer that reaches the edges but is too small', () => {
+    expect(
+      isBackgroundBox({ left: 0, top: 0, width: SRC_W, height: 200 }, SRC_W, SRC_H)
+    ).toBe(false);
+  });
+
+  it('tolerates a background a few pixels off the corner', () => {
+    expect(
+      isBackgroundBox(
+        { left: -10, top: -10, width: SRC_W + 20, height: SRC_H + 20 },
+        SRC_W,
+        SRC_H
+      )
+    ).toBe(true);
   });
 });
