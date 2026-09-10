@@ -16,6 +16,9 @@ import { useTranslation } from 'react-i18next';
 import { useUser } from '@gitroom/frontend/components/layout/user.context';
 import { Button } from '@gitroom/frontend/components/ui/button';
 import { useBrandKit } from '@gitroom/frontend/components/video-studio/use-brand-kit';
+import { loadCanvasFonts } from '../utils/font-loading';
+import { StudioIcon } from '@gitroom/frontend/components/studio/studio-icons';
+import { useAiError } from '@gitroom/frontend/components/ai/use-ai-error';
 
 interface Props {
   canvas: MutableRefObject<fabric.Canvas | null>;
@@ -32,6 +35,7 @@ export const AiGeneratePanel: FC<Props> = ({ canvas }) => {
     setPendingTemplateQuery,
   } = useEditorStore();
   const fetch = useFetch();
+  const showAiError = useAiError();
   const toaster = useToaster();
   const t = useT();
   const { i18n } = useTranslation();
@@ -104,36 +108,16 @@ export const AiGeneratePanel: FC<Props> = ({ canvas }) => {
           });
 
       if (!res.ok) {
-        let serverMessage = '';
-        try {
-          const body = await res.json();
-          serverMessage = typeof body?.message === 'string' ? body.message : '';
-        } catch {
-          // backend returned non-JSON — ignore, fall through to generic copy
-        }
-
-        if (res.status === 402) {
-          toaster.show(
-            t('ai_no_credits', 'You ran out of AI credits this month. Upgrade your plan or wait for the new cycle.'),
-            'warning'
-          );
-        } else if (res.status === 401 || res.status === 403) {
-          toaster.show(
-            t('ai_forbidden', 'AI is not available on your plan. Check your subscription settings.'),
-            'warning'
-          );
-        } else if (res.status === 429) {
-          toaster.show(
-            t('ai_rate_limited', 'Too many requests — wait a few seconds and try again.'),
-            'warning'
-          );
-        } else {
-          toaster.show(
-            serverMessage ||
-              t('ai_generate_failed', 'AI generation failed. Try a different prompt or check your connection.'),
-            'warning'
-          );
-        }
+        // One contract for every AI failure in the app, and the only branch
+        // that can be reached here: the shared fetch wrapper turns 403, 429 and
+        // 5xx into a handled error before this line, and reports 402 itself.
+        await showAiError(
+          res,
+          t(
+            'ai_generate_failed',
+            'AI generation failed. Try a different prompt or check your connection.'
+          )
+        );
         return;
       }
 
@@ -176,6 +160,7 @@ export const AiGeneratePanel: FC<Props> = ({ canvas }) => {
           // slide 1 — reload slide 1 so the canvas matches the highlighted thumbnail
           // (otherwise clicking thumbnail 1 is a no-op and the canvas looks stuck).
           await canvas.current!.loadFromJSON(slides[0].canvasJson!);
+          await loadCanvasFonts(canvas.current!);
           canvas.current!.renderAll();
         });
       } else {
@@ -305,7 +290,7 @@ export const AiGeneratePanel: FC<Props> = ({ canvas }) => {
                     title={t('holiday_fill_prompt', 'Fill the prompt so you can edit it before generating')}
                     className="px-2 rounded bg-newColColor/40 hover:bg-newColColor border border-newBorder/50 text-textColor/60 hover:text-textColor transition-colors disabled:opacity-50"
                   >
-                    ✎
+                    <StudioIcon name="edit" size={13} />
                   </button>
                 </div>
               );
@@ -314,7 +299,7 @@ export const AiGeneratePanel: FC<Props> = ({ canvas }) => {
           <p className="text-[11px] text-textColor/65 leading-snug">
             {t(
               'holiday_or_custom',
-              'Click an occasion to generate instantly (✎ fills the prompt for editing) — or type your own idea below.'
+              'Click an occasion to generate instantly, or use the pencil to fill the prompt and edit it first. You can also type your own idea below.'
             )}
           </p>
         </div>
@@ -328,7 +313,7 @@ export const AiGeneratePanel: FC<Props> = ({ canvas }) => {
         )}
         rows={4}
         disabled={isGenerating}
-        className="text-xs p-2 rounded bg-newColColor border border-newBorder text-textColor placeholder-textColor/40 resize-none focus:outline-none focus:border-forth disabled:opacity-50"
+        className="text-xs p-2 rounded bg-newColColor border border-newBorder text-textColor placeholder-textColor/60 resize-none focus:outline-none focus:border-forth disabled:opacity-50"
       />
       <div className="flex items-center gap-2">
         <label className="text-[11px] uppercase tracking-wide text-textColor/60">
@@ -361,8 +346,8 @@ export const AiGeneratePanel: FC<Props> = ({ canvas }) => {
       </Button>
       {confirmPrompt !== null && (
         <div className="rounded-md bg-yellow-500/10 border border-yellow-500/30 px-2 py-1.5 flex flex-col gap-1.5">
-          <p className="text-[11px] leading-snug text-textColor/80">
-            ⚠️{' '}
+          <p className="flex items-start gap-1.5 text-[11px] leading-snug text-textColor/80">
+            <StudioIcon name="warning" size={13} className="mt-[2px] shrink-0" />
             {t(
               'ai_replace_confirm',
               'This will replace the design currently on the canvas. Save it to the library first if you want to keep it.'

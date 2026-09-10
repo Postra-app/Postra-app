@@ -1091,6 +1091,7 @@ export const MediaComponent: FC<{
   height?: number;
 }> = (props) => {
   const t = useT();
+  const toaster = useToaster();
 
   const { name, type, label, description, onChange, value, width, height } =
     props;
@@ -1127,6 +1128,18 @@ export const MediaComponent: FC<{
   }, [t]);
   const changeMedia = useCallback((m: { path: string; id: string }[]) => {
     setCurrentMedia(m[0]);
+    // This field holds one picture, but Studio can hand back a whole carousel.
+    // The other slides are saved in the library; say so, instead of appearing
+    // to throw four of five designs away.
+    if (m.length > 1) {
+      toaster.show(
+        t(
+          'carousel_first_slide_used',
+          'Slide 1 was added here. The other slides are saved in your media library.'
+        ),
+        'success'
+      );
+    }
     onChange({
       target: {
         name,
