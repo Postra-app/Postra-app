@@ -4,6 +4,7 @@ import { FC, useCallback, useEffect, useState } from 'react';
 import useSWR from 'swr';
 import { useDebounce } from 'use-debounce';
 import { useFetch } from '@gitroom/helpers/utils/custom.fetch';
+import { StudioIcon } from '@gitroom/frontend/components/studio/studio-icons';
 import { isVideoMedia } from '@gitroom/helpers/utils/media.type';
 import { useMediaDirectory } from '@gitroom/react/helpers/use.media.directory';
 import { VideoFrame } from '@gitroom/react/helpers/video.frame';
@@ -119,7 +120,7 @@ export const VideoLibraryPicker: FC<VideoLibraryPickerProps> = ({
               >
                 <VideoFrame url={mediaDirectory.set(media.path)} />
                 <div className="absolute inset-0 flex items-center justify-center bg-black/40 text-white text-xs opacity-0 group-hover:opacity-100 transition-opacity">
-                  ✏ {t('video_library_edit_cta', 'Edit')}
+                  <StudioIcon name="edit" size={12} className="inline-block me-1" />{t('video_library_edit_cta', 'Edit')}
                 </div>
               </button>
             ))}

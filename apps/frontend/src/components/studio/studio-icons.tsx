@@ -2,7 +2,12 @@
 
 import { FC } from 'react';
 import {
+  IconAlertTriangle,
+  IconArrowDown,
+  IconArrowUp,
   IconAspectRatio,
+  IconCamera,
+  IconCheck,
   IconChevronDown,
   IconChevronLeft,
   IconKeyboard,
@@ -23,6 +28,7 @@ import {
   IconPalette,
   IconPhoto,
   IconPhotoPlus,
+  IconPencil,
   IconPointer,
   IconScissors,
   IconShape,
@@ -87,7 +93,13 @@ export type StudioIconName =
   | 'lock'
   | 'unlock'
   | 'collapse'
-  | 'shortcuts';
+  | 'shortcuts'
+  | 'warning'
+  | 'done'
+  | 'camera'
+  | 'edit'
+  | 'moveUp'
+  | 'moveDown';
 
 const MAP: Record<StudioIconName, FC<{ size?: number; stroke?: number; className?: string }>> = {
   aiGenerate: IconSparkles,
@@ -108,6 +120,12 @@ const MAP: Record<StudioIconName, FC<{ size?: number; stroke?: number; className
   download: IconDownload,
   formats: IconAspectRatio,
   carousel: IconLayoutCollage,
+  warning: IconAlertTriangle,
+  done: IconCheck,
+  camera: IconCamera,
+  edit: IconPencil,
+  moveUp: IconArrowUp,
+  moveDown: IconArrowDown,
   duplicate: IconCopy,
   close: IconX,
   goals: IconTarget,

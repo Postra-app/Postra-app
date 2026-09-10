@@ -2,6 +2,10 @@
 
 import { FC, useCallback, useEffect, useRef, useState } from 'react';
 import { useFetch } from '@gitroom/helpers/utils/custom.fetch';
+import {
+  StudioIcon,
+  StudioIconName,
+} from '@gitroom/frontend/components/studio/studio-icons';
 import { useMediaDirectory } from '@gitroom/react/helpers/use.media.directory';
 import { useT } from '@gitroom/react/translation/get.transation.service.client';
 import { useToaster } from '@gitroom/react/toaster/toaster';
@@ -17,6 +21,7 @@ import * as Sentry from '@sentry/nextjs';
 import { composeVideo, ClipTooLongError, UnsupportedCodecError } from './compositor-pipeline';
 import { useRenderJob } from './use-render-job';
 import { ResultPanel } from './result-panel';
+import { BrandTextPreview } from './brand-text-preview';
 import {
   TextPosition,
   fontFamilyForLabel,
@@ -31,10 +36,10 @@ interface VideoTextOverlayProps {
   onReady: (media: { id: string; path: string }) => void;
 }
 
-const POSITIONS: { key: TextPosition; label: string; icon: string }[] = [
-  { key: 'top', label: 'Top', icon: '⬆' },
-  { key: 'middle', label: 'Middle', icon: '⏺' },
-  { key: 'bottom', label: 'Bottom', icon: '⬇' },
+const POSITIONS: { key: TextPosition; label: string; icon: StudioIconName }[] = [
+  { key: 'top', label: 'Top', icon: 'moveUp' },
+  { key: 'middle', label: 'Middle', icon: 'select' },
+  { key: 'bottom', label: 'Bottom', icon: 'moveDown' },
 ];
 
 const SIZES: { key: string; label: string; scale: number }[] = [
@@ -179,7 +184,7 @@ export const VideoTextOverlay: FC<VideoTextOverlayProps> = ({ onReady }) => {
   return (
     <div className="flex flex-col gap-3 p-3 text-textColor">
       <div className="text-[11px] text-textColor/70 leading-snug">
-        ✍️{' '}
+        <StudioIcon name="textOnVideo" size={14} className="inline-block shrink-0" />{' '}
         {t(
           'clip_text_intro',
           'Upload a clip (or grab B-roll from the library), type your text — we burn it into the video in your Brand Kit colour and font. Audio stays.'
@@ -225,7 +230,22 @@ export const VideoTextOverlay: FC<VideoTextOverlayProps> = ({ onReady }) => {
         </button>
       </div>
       {file && (
-        <div className="text-[11px] text-textColor/60 truncate">✓ {file.name}</div>
+        <div className="text-[11px] text-textColor/60 truncate"><StudioIcon name="done" size={12} className="inline-block" /> {file.name}</div>
+      )}
+
+      {file && !resultBlob && (
+        <BrandTextPreview
+          source={file}
+          showSafeArea={true}
+          style={{
+            text,
+            position,
+            color: effectiveColor,
+            bandColor: hexToRgba(kit.secondaryColor, 0.55),
+            fontFamily: fontFamilyForLabel(effectiveFontLabel),
+            scale,
+          }}
+        />
       )}
 
       <textarea
@@ -252,7 +272,8 @@ export const VideoTextOverlay: FC<VideoTextOverlayProps> = ({ onReady }) => {
                   : 'bg-newColColor text-textColor hover:bg-white/[0.08]'
               }`}
             >
-              {p.icon} {t(`clip_text_pos_${p.key}`, p.label)}
+              <StudioIcon name={p.icon} size={14} className="inline-block me-1" />
+              {t(`clip_text_pos_${p.key}`, p.label)}
             </button>
           ))}
         </div>

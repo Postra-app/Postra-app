@@ -2,6 +2,7 @@
 
 import { FC, useCallback, useEffect, useRef, useState } from 'react';
 import { useFetch } from '@gitroom/helpers/utils/custom.fetch';
+import { StudioIcon } from '@gitroom/frontend/components/studio/studio-icons';
 import { useT } from '@gitroom/react/translation/get.transation.service.client';
 import { useToaster } from '@gitroom/react/toaster/toaster';
 import { Button } from '@gitroom/frontend/components/ui/button';
@@ -9,6 +10,7 @@ import { VIDEO_FORMATS, VideoFormat } from './video-formats';
 import { composeSlideshow, UndecodableImageError } from './slideshow-pipeline';
 import { useRenderJob } from './use-render-job';
 import { ResultPanel } from './result-panel';
+import { BrandTextPreview } from './brand-text-preview';
 import {
   fontFamilyForLabel,
   ensureFontLoaded,
@@ -247,7 +249,7 @@ export const VideoSlideshow: FC<VideoSlideshowProps> = ({ onReady }) => {
   return (
     <div className="flex flex-col gap-3 p-3 text-textColor">
       <div className="text-[11px] text-textColor/70 leading-snug">
-        🖼{' '}
+        <StudioIcon name="images" size={14} className="inline-block shrink-0" />{' '}
         {t(
           'slideshow_intro',
           'Got product photos but no footage? Drop in a few — we turn them into a vertical clip with subtle motion and text in your brand.'
@@ -375,6 +377,21 @@ export const VideoSlideshow: FC<VideoSlideshowProps> = ({ onReady }) => {
           );
         })}
       </div>
+
+      {images.length > 0 && !resultBlob && (
+        <BrandTextPreview
+          source={images[0].file}
+          format={{ width: format.width, height: format.height }}
+          showSafeArea={true}
+          style={{
+            text,
+            position: 'bottom',
+            color: effectiveColor,
+            bandColor: hexToRgba(kit.secondaryColor, 0.55),
+            fontFamily: fontFamilyForLabel(effectiveFontLabel),
+          }}
+        />
+      )}
 
       <div className="flex items-center gap-2">
         <Button

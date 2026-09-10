@@ -2,6 +2,7 @@
 
 import { FC, useCallback, useEffect, useMemo, useState } from 'react';
 import { Button } from '@gitroom/frontend/components/ui/button';
+import { StudioIcon } from '@gitroom/frontend/components/studio/studio-icons';
 import { useT } from '@gitroom/react/translation/get.transation.service.client';
 import { useToaster } from '@gitroom/react/toaster/toaster';
 import {
@@ -102,7 +103,7 @@ export const ResultPanel: FC<ResultPanelProps> = ({
   return (
     <div className="flex flex-col gap-2">
       <div className="text-[11px] text-green-400">
-        ✓{' '}
+        <StudioIcon name="done" size={13} className="inline-block shrink-0" />{' '}
         {selected.hadAudio === null || selected.hadAudio === undefined
           ? t('video_result_ready', 'ready')
           : selected.hadAudio

@@ -10,6 +10,7 @@ import * as Sentry from '@sentry/nextjs';
 import { composeVideo, ClipTooLongError, UnsupportedCodecError } from './compositor-pipeline';
 import { useRenderJob } from './use-render-job';
 import { ResultPanel } from './result-panel';
+import { BrandTextPreview } from './brand-text-preview';
 import { parseSrt, captionAt } from './srt';
 import {
   fontFamilyForLabel,
@@ -37,6 +38,9 @@ export const VideoCaptions: FC<VideoCaptionsProps> = ({ mediaId, source, onCapti
   // ever saw the captions they had just burned in - and there was no way back.
   const [burned, setBurned] = useState<Blob | null>(null);
   const [replacedSource, setReplacedSource] = useState(false);
+  // Caption size is the one styling choice worth exposing: 0.78 of the auto
+  // size reads well on a phone held close, and badly on a laptop screencast.
+  const [captionScale, setCaptionScale] = useState(0.78);
   const job = useRenderJob();
   const isBurning = job.busy;
   const burnProgress = job.progress;
@@ -136,7 +140,7 @@ export const VideoCaptions: FC<VideoCaptionsProps> = ({ mediaId, source, onCapti
                   color: kit.textColor,
                   bandColor,
                   fontFamily,
-                  scale: 0.78,
+                  scale: captionScale,
                 });
               }
             },
@@ -185,7 +189,7 @@ export const VideoCaptions: FC<VideoCaptionsProps> = ({ mediaId, source, onCapti
         'warning'
       );
     }
-  }, [srt, isBurning, source, mediaId, kit, fetch, onCaptioned, toaster, t, job]);
+  }, [srt, isBurning, source, mediaId, kit, captionScale, fetch, onCaptioned, toaster, t, job]);
 
   // The clip is in the library only because Whisper needed a URL to transcribe.
   // Once the captioned version is stored, the silent twin is usually clutter -
@@ -283,6 +287,47 @@ export const VideoCaptions: FC<VideoCaptionsProps> = ({ mediaId, source, onCapti
           </Button>
         </div>
       </div>
+      {source && !burned && srt.trim() && (
+        <div className="flex flex-col gap-1">
+          <div className="flex items-center gap-2">
+            <span className="text-[11px] uppercase tracking-wide text-textColor/60">
+              {t('video_captions_size', 'Caption size')}
+            </span>
+            {[
+              { key: 'small', label: t('video_captions_size_s', 'Small'), value: 0.62 },
+              { key: 'medium', label: t('video_captions_size_m', 'Medium'), value: 0.78 },
+              { key: 'large', label: t('video_captions_size_l', 'Large'), value: 0.95 },
+            ].map((option) => (
+              <button
+                key={option.key}
+                type="button"
+                onClick={() => setCaptionScale(option.value)}
+                disabled={isBurning}
+                className={
+                  captionScale === option.value
+                    ? 'text-[11px] px-2 h-[24px] rounded bg-forth text-white'
+                    : 'text-[11px] px-2 h-[24px] rounded bg-newColColor text-textColor hover:bg-white/[0.08] transition-colors disabled:opacity-50'
+                }
+              >
+                {option.label}
+              </button>
+            ))}
+          </div>
+          <BrandTextPreview
+            source={source}
+            showSafeArea={true}
+            style={{
+              text: parseSrt(srt)[0]?.text ?? '',
+              position: 'bottom',
+              color: kit.textColor,
+              bandColor: hexToRgba(kit.secondaryColor, 0.6),
+              fontFamily: fontFamilyForLabel(kit.font),
+              scale: captionScale,
+            }}
+          />
+        </div>
+      )}
+
       {burned && (
         <>
           <ResultPanel

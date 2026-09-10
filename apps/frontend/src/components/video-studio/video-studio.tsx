@@ -126,7 +126,7 @@ export const VideoStudio: FC<VideoStudioProps> = ({
   const [isImportingLibrary, setIsImportingLibrary] = useState(false);
   // Goal-based start screen: tools are tabs, but users think in outcomes
   // ("photos → Reels"), so the content area opens on goals until one is
-  // picked (or a tab is clicked directly). 🎯 in the header brings it back.
+  // picked (or a tab is clicked directly). The goals button in the header brings it back.
   const [showGoals, setShowGoals] = useState(true);
   // A goal that needs a clip first (captions) is parked here until the file
   // the user just picked lands in state.
@@ -537,7 +537,7 @@ export const VideoStudio: FC<VideoStudioProps> = ({
     return (
       <div className="flex flex-col gap-3 p-6">
         <div className="text-sm text-textColor">
-          ⚠️{' '}
+          <StudioIcon name="warning" size={14} className="inline-block shrink-0" />{' '}
           {t(
             'video_unsupported_browser',
             'Your browser does not support video editing (WebCodecs). Use Chrome, Edge or Safari 16.4+.'
@@ -633,7 +633,7 @@ export const VideoStudio: FC<VideoStudioProps> = ({
       {delivered && (
         <div className="shrink-0 flex items-center gap-2 flex-wrap px-3 py-2 rounded-lg bg-forth/15 border border-forth/40 text-xs text-textColor">
           <span className="flex-1 min-w-[180px]">
-            ✅{' '}
+            <StudioIcon name="done" size={14} className="inline-block shrink-0" />{' '}
             {t(
               'video_result_saved',
               'Saved to your media library — use it now or keep working.'
@@ -764,7 +764,7 @@ export const VideoStudio: FC<VideoStudioProps> = ({
               disabled={isUploading}
               className="text-xs px-3 h-[28px] rounded bg-newColColor text-textColor hover:bg-white/[0.08] transition-colors disabled:opacity-50"
             >
-              💾 {isUploading ? t('saving', 'Saving…') : t('save_to_library_btn', 'Save to library')}
+              <StudioIcon name="save" size={14} className="inline-block me-1" />{isUploading ? t('saving', 'Saving…') : t('save_to_library_btn', 'Save to library')}
             </button>
             <Button
               loading={isUploading}

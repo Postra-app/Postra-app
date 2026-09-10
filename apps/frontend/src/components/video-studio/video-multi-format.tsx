@@ -11,6 +11,7 @@ import {
   Mp4OutputFormat,
 } from 'mediabunny';
 import { useT } from '@gitroom/react/translation/get.transation.service.client';
+import { StudioIcon } from '@gitroom/frontend/components/studio/studio-icons';
 import { Button } from '@gitroom/frontend/components/ui/button';
 import { useToaster } from '@gitroom/react/toaster/toaster';
 import { VIDEO_FORMATS, VideoFormat } from './video-formats';
@@ -153,7 +154,9 @@ export const VideoMultiFormat: FC<VideoMultiFormatProps> = ({ source, onReady })
               {progress !== undefined && progress < 100 && (
                 <div className="text-[11px] text-textColor/70">{progress}%</div>
               )}
-              {progress === 100 && <div className="text-[11px] text-green-400">✓</div>}
+              {progress === 100 && (
+                  <StudioIcon name="done" size={14} className="text-green-400" />
+                )}
             </label>
           );
         })}
