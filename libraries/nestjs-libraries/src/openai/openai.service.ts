@@ -19,6 +19,11 @@ import {
   tooShortToDetectLanguage,
 } from '@gitroom/nestjs-libraries/openai/language-rule';
 import { withImageSlot } from '@gitroom/nestjs-libraries/openai/image-concurrency';
+import {
+  ImageOrientation,
+  normalizeOrientation,
+  sizeForOrientation,
+} from './image-orientation';
 
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY || 'sk-proj-',
@@ -154,7 +159,9 @@ export class OpenaiService {
   async generateImage(
     prompt: string,
     _isUrl: boolean,
-    isVertical = false,
+    // Historically a boolean "isVertical"; now any of the three shapes, with
+    // the boolean still understood so older call sites keep working.
+    orientation: ImageOrientation | boolean = false,
     // Who to bill the picture to in the usage log. Images cost more than any
     // text call we make, and until now they were the one model call that never
     // reached AiUsage — the admin panel showed text only and read as if the
@@ -178,7 +185,10 @@ export class OpenaiService {
           openai.images.generate({
             prompt,
             model,
-            size: isVertical ? '1024x1536' : '1024x1024',
+            size: sizeForOrientation(normalizeOrientation(orientation)) as
+              | '1024x1024'
+              | '1024x1536'
+              | '1536x1024',
             // 'medium' is ~4x cheaper than the default ('high'/'auto')
             // with quality good enough for social graphics — keeps unit cost sane.
             quality: 'medium',
