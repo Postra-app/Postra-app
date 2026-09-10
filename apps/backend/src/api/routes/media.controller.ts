@@ -17,6 +17,11 @@ import {
   UsePipes,
 } from '@nestjs/common';
 import { AccountAgeGuard } from '@gitroom/backend/services/auth/account-age.guard';
+import { CheckPolicies } from '@gitroom/backend/services/auth/permissions/permissions.ability';
+import {
+  AuthorizationActions,
+  Sections,
+} from '@gitroom/backend/services/auth/permissions/permission.exception.class';
 import { Request, Response } from 'express';
 import { GetOrgFromRequest } from '@gitroom/nestjs-libraries/user/org.from.request';
 import { Organization } from '@prisma/client';
@@ -76,6 +81,7 @@ export class MediaController {
   }
 
   @Post('/generate-video')
+  @CheckPolicies([AuthorizationActions.Create, Sections.AI])
   @Throttle({ default: { ttl: 300000, limit: 10 } })
   @UseGuards(AccountAgeGuard)
   generateVideo(
@@ -86,6 +92,7 @@ export class MediaController {
   }
 
   @Post('/generate-image')
+  @CheckPolicies([AuthorizationActions.Create, Sections.AI])
   @Throttle({ default: { ttl: 300000, limit: 30 } })
   @UseGuards(AccountAgeGuard)
   async generateImage(
@@ -120,6 +127,7 @@ export class MediaController {
   }
 
   @Post('/generate-image-with-prompt')
+  @CheckPolicies([AuthorizationActions.Create, Sections.AI])
   @Throttle({ default: { ttl: 300000, limit: 30 } })
   @UseGuards(AccountAgeGuard)
   async generateImageFromText(
@@ -153,6 +161,7 @@ export class MediaController {
   }
 
   @Post('/generate-post-design')
+  @CheckPolicies([AuthorizationActions.Create, Sections.AI])
   @Throttle({ default: { ttl: 300000, limit: 30 } })
   @UseGuards(AccountAgeGuard)
   generatePostDesign(
@@ -163,6 +172,7 @@ export class MediaController {
   }
 
   @Post('/generate-carousel-design')
+  @CheckPolicies([AuthorizationActions.Create, Sections.AI])
   @Throttle({ default: { ttl: 300000, limit: 15 } })
   @UseGuards(AccountAgeGuard)
   generateCarouselDesign(
@@ -269,6 +279,7 @@ export class MediaController {
   }
 
   @Post('/:id/auto-caption')
+  @CheckPolicies([AuthorizationActions.Create, Sections.AI])
   @Throttle({ default: { ttl: 300000, limit: 5 } })
   @UseGuards(AccountAgeGuard)
   async autoCaption(
@@ -330,6 +341,7 @@ export class MediaController {
   }
 
   @Post('/refine-design')
+  @CheckPolicies([AuthorizationActions.Create, Sections.AI])
   @Throttle({ default: { ttl: 300000, limit: 30 } })
   @UseGuards(AccountAgeGuard)
   refineDesign(
@@ -340,6 +352,7 @@ export class MediaController {
   }
 
   @Post('/brand-voice-check')
+  @CheckPolicies([AuthorizationActions.Create, Sections.AI])
   @Throttle({ default: { ttl: 300000, limit: 30 } })
   @UseGuards(AccountAgeGuard)
   brandVoiceCheck(
@@ -350,6 +363,7 @@ export class MediaController {
   }
 
   @Post('/:id/alt-text')
+  @CheckPolicies([AuthorizationActions.Create, Sections.AI])
   @Throttle({ default: { ttl: 300000, limit: 30 } })
   @UseGuards(AccountAgeGuard)
   generateAltText(
@@ -360,6 +374,7 @@ export class MediaController {
   }
 
   @Post('/suggest-hashtags')
+  @CheckPolicies([AuthorizationActions.Create, Sections.AI])
   @Throttle({ default: { ttl: 300000, limit: 30 } })
   @UseGuards(AccountAgeGuard)
   suggestHashtags(
@@ -370,6 +385,7 @@ export class MediaController {
   }
 
   @Post('/ai-edit')
+  @CheckPolicies([AuthorizationActions.Create, Sections.AI])
   @Throttle({ default: { ttl: 300000, limit: 30 } })
   @UseGuards(AccountAgeGuard)
   aiEdit(
@@ -380,6 +396,7 @@ export class MediaController {
   }
 
   @Post('/search-templates')
+  @CheckPolicies([AuthorizationActions.Create, Sections.AI])
   @Throttle({ default: { ttl: 300000, limit: 60 } })
   searchTemplates(@Body() body: TemplateSearchDto) {
     return this._mediaService.searchTemplates(body);

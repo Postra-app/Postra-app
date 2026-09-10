@@ -7,6 +7,7 @@ import { useTranslation } from 'react-i18next';
 import { useT } from '@gitroom/react/translation/get.transation.service.client';
 import { useToaster } from '@gitroom/react/toaster/toaster';
 import { useFetch } from '@gitroom/helpers/utils/custom.fetch';
+import { useAiError } from '@gitroom/frontend/components/ai/use-ai-error';
 import { useEditorStore } from '../editor.store';
 import { useBrandKit } from '@gitroom/frontend/components/video-studio/use-brand-kit';
 import {
@@ -42,6 +43,7 @@ export const TemplatesPanel: FC<TemplatesPanelProps> = ({ canvas }) => {
     .startsWith('pl');
   const lang: TemplateLang = isPl ? 'pl' : 'en';
   const toaster = useToaster();
+  const showAiError = useAiError();
   const fetch = useFetch();
   const { platform } = useEditorStore();
   // Templates render in the org's own colours/font the moment a Brand Kit is
@@ -174,6 +176,14 @@ export const TemplatesPanel: FC<TemplatesPanelProps> = ({ canvas }) => {
         });
         if (!res.ok) {
           setSearchHits([]);
+          // Search runs on embeddings, so a plan without AI is turned away
+          // here. Saying nothing looks like "no templates match".
+          if (res.status === 402 || res.status === 403) {
+            await showAiError(
+              res,
+              t('template_search_failed', 'Could not search templates.')
+            );
+          }
           return;
         }
         const hits = (await res.json()) as { id: string; score: number }[];
@@ -191,7 +201,7 @@ export const TemplatesPanel: FC<TemplatesPanelProps> = ({ canvas }) => {
       window.clearTimeout(id);
       ctrl.abort();
     };
-  }, [query, fetch, isPl]);
+  }, [query, fetch, isPl, showAiError, t]);
 
   useEffect(() => () => searchAbort.current?.abort(), []);
 

@@ -1429,5 +1429,6 @@
   "ai_preview_counter": "version {{n}} of {{total}}",
   "ai_preview_chars": "{{before}} → {{after}} characters",
   "ai_preview_prev": "Previous version",
-  "ai_preview_next": "Next version"
+  "ai_preview_next": "Next version",
+  "template_search_failed": "Could not search templates."
 }

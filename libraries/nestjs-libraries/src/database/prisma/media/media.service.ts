@@ -453,7 +453,9 @@ export class MediaService {
   async generateVideoAllowed(org: Organization, type: string) {
     const video = this._videoManager.getVideoByName(type);
     if (!video) {
-      throw new Error(`Video type ${type} not found`);
+      // A name that is not on the list is a bad request, not a server fault.
+      // Thrown as a plain Error it surfaced as a 500 and filled Sentry.
+      throw new HttpException(`Video type ${type} not found`, 404);
     }
 
     if (!video.trial && org.isTrailing) {
@@ -508,7 +510,10 @@ export class MediaService {
   async videoFunction(identifier: string, functionName: string, body: any) {
     const video = this._videoManager.getVideoByName(identifier);
     if (!video) {
-      throw new Error(`Video with identifier ${identifier} not found`);
+      throw new HttpException(
+        `Video with identifier ${identifier} not found`,
+        404
+      );
     }
 
     // Resolve the name against the @ExposeVideoFunction allowlist instead of

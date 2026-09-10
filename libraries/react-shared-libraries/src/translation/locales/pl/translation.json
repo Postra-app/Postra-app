@@ -1429,5 +1429,6 @@
   "ai_preview_counter": "wersja {{n}} z {{total}}",
   "ai_preview_chars": "{{before}} → {{after}} znaków",
   "ai_preview_prev": "Poprzednia wersja",
-  "ai_preview_next": "Następna wersja"
+  "ai_preview_next": "Następna wersja",
+  "template_search_failed": "Nie udało się przeszukać szablonów."
 }
