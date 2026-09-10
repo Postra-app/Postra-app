@@ -5,6 +5,7 @@ import { useT } from '@gitroom/react/translation/get.transation.service.client';
 import { StudioIcon } from '@gitroom/frontend/components/studio/studio-icons';
 import { useUser } from '@gitroom/frontend/components/layout/user.context';
 import { useEditorStore } from './editor.store';
+import { useFocusTrap } from '@gitroom/frontend/components/ui/use-focus-trap';
 
 const WELCOME_KEY = 'postra:studio-welcomed';
 
@@ -32,6 +33,9 @@ export const WelcomeModal: FC = () => {
   const aiAllowed = !!user?.tier?.image_generator;
   const { setTool } = useEditorStore();
   const [open, setOpen] = useState(false);
+  const dialogRef = useRef<HTMLDivElement>(null);
+  // Tab used to walk out of the dialog into the page behind it.
+  useFocusTrap(dialogRef, open);
   const firstButtonRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
@@ -69,6 +73,7 @@ export const WelcomeModal: FC = () => {
 
   return (
     <div
+      ref={dialogRef}
       className="fixed inset-0 z-[100] flex items-center justify-center bg-black/70 backdrop-blur-sm"
       onClick={close}
       role="dialog"
