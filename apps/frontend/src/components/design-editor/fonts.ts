@@ -1,3 +1,7 @@
+// The literal "Geist" family the canvas draws with. `next/font` gives the app
+// shell a hashed family name that changes every build, which a saved design
+// cannot reference.
+import './geist-canvas.css';
 import '@fontsource/lato/400.css';
 import '@fontsource/lato/700.css';
 import '@fontsource/inter/400.css';
@@ -118,6 +122,9 @@ export const STUDIO_FONTS: StudioFont[] = [
 ];
 
 export const DEFAULT_FONT = STUDIO_FONTS[0];
+
+/** Every family Studio can draw with, for a one-shot warm-up. */
+export const ALL_FONT_FAMILIES = STUDIO_FONTS.map((f) => f.family);
 
 export const findFontByFamily = (family?: string): StudioFont => {
   if (!family) return DEFAULT_FONT;

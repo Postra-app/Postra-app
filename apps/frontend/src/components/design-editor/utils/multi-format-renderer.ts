@@ -1,9 +1,16 @@
 import * as fabric from 'fabric';
 import { PLATFORM_SIZES, PlatformSize } from '../editor.store';
+import { loadCanvasFonts } from './font-loading';
+import { stampPlatform } from './canvas-format';
 
 export interface FormatRender {
   platform: PlatformSize;
+  /** Lossless, for the download and the ZIP. */
   dataUrl: string;
+  /** What gets uploaded. Seven 1080x1920 PNGs regularly ran past the 10MB
+   *  upload cap and came back as a generic "Rendering failed"; every other
+   *  export path in Studio uploads JPEG for exactly this reason. */
+  uploadDataUrl: string;
   canvasJson?: string;
 }
 
@@ -29,15 +36,37 @@ const detectAnchor = (
   return 'center';
 };
 
+/** How far from a corner a background may start, as a share of the canvas. */
+const BG_EDGE_TOLERANCE = 0.05;
+
+/**
+ * Is this object the backdrop, to be re-cropped to cover the new format?
+ *
+ * Area alone was not enough: a template's big content card covers more than
+ * half the canvas, and stretching it to cover the frame wrecked the layout.
+ * A real background also starts at a corner and reaches the far edges.
+ */
+export const isBackgroundBox = (
+  box: { left: number; top: number; width: number; height: number },
+  srcW: number,
+  srcH: number
+): boolean => {
+  if (box.width * box.height < srcW * srcH * BG_COVERAGE_THRESHOLD) return false;
+  const tolX = srcW * BG_EDGE_TOLERANCE;
+  const tolY = srcH * BG_EDGE_TOLERANCE;
+  return (
+    box.left <= tolX &&
+    box.top <= tolY &&
+    box.left + box.width >= srcW - tolX &&
+    box.top + box.height >= srcH - tolY
+  );
+};
+
 const isBackground = (
   obj: fabric.Object,
   srcW: number,
   srcH: number
-): boolean => {
-  const w = (obj.width || 0) * (obj.scaleX || 1);
-  const h = (obj.height || 0) * (obj.scaleY || 1);
-  return w * h >= srcW * srcH * BG_COVERAGE_THRESHOLD;
-};
+): boolean => isBackgroundBox(getEdges(obj), srcW, srcH);
 
 const getEdges = (obj: fabric.Object) => {
   const w = (obj.width || 0) * (obj.scaleX || 1);
@@ -168,7 +197,7 @@ export const renderCanvasAtSize = async (
   srcW: number,
   srcH: number,
   target: PlatformSize
-): Promise<{ dataUrl: string; canvasJson: string }> => {
+): Promise<{ dataUrl: string; uploadDataUrl: string; canvasJson: string }> => {
   const el = document.createElement('canvas');
   el.width = target.width;
   el.height = target.height;
@@ -181,6 +210,10 @@ export const renderCanvasAtSize = async (
   });
 
   await c.loadFromJSON(canvasJson);
+  // Exports run on a throw-away canvas of their own. Without this the
+  // resized formats are measured in the fallback font and the text wraps
+  // differently from what the user approved on screen.
+  await loadCanvasFonts(c);
 
   c.getObjects().forEach((obj) =>
     repositionObjectFromTo(obj, srcW, srcH, target.width, target.height)
@@ -188,9 +221,13 @@ export const renderCanvasAtSize = async (
 
   c.renderAll();
   const dataUrl = c.toDataURL({ format: 'png', quality: 1, multiplier: 1 });
-  const repositionedJson = JSON.stringify(c.toJSON());
+  const uploadDataUrl = c.toDataURL({ format: 'jpeg', quality: 0.92, multiplier: 1 });
+  // Each rendered format is saved as its own design, so it carries the format
+  // it was rendered for — reopening the IG Story version must not draw it in
+  // the format the editor happens to be on.
+  const repositionedJson = stampPlatform(JSON.stringify(c.toJSON()), target);
   c.dispose();
-  return { dataUrl, canvasJson: repositionedJson };
+  return { dataUrl, uploadDataUrl, canvasJson: repositionedJson };
 };
 
 export const renderAllFormats = async (
@@ -205,13 +242,14 @@ export const renderAllFormats = async (
   for (let i = 0; i < targets.length; i += 1) {
     const target = targets[i];
     // eslint-disable-next-line no-await-in-loop
-    const { dataUrl, canvasJson: repositioned } = await renderCanvasAtSize(
-      canvasJson,
-      srcW,
-      srcH,
-      target
-    );
-    results.push({ platform: target, dataUrl, canvasJson: repositioned });
+    const { dataUrl, uploadDataUrl, canvasJson: repositioned } =
+      await renderCanvasAtSize(canvasJson, srcW, srcH, target);
+    results.push({
+      platform: target,
+      dataUrl,
+      uploadDataUrl,
+      canvasJson: repositioned,
+    });
     onProgress?.(i + 1, targets.length);
   }
 

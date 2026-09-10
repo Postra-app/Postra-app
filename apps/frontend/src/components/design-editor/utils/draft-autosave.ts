@@ -11,9 +11,15 @@ export interface StudioDraft {
 
 const DRAFT_PREFIX = 'postra:studio-draft:';
 
-// localStorage quota is ~5MB; a canvas JSON bigger than this (e.g. embedded
-// data-URLs after background removal) would evict everything else, so skip it.
+// localStorage gives a page about 5MB in total, shared with everything else the
+// app keeps there. A canvas JSON above this (background removal embeds the cut
+// out image as a data-URL, which alone is megabytes) is not worth the whole
+// budget, so it is skipped — but the editor is told, because silently not
+// saving is how a design gets lost on a refresh.
 const MAX_DRAFT_BYTES = 3_500_000;
+
+/** What actually happened, so the editor can say so instead of pretending. */
+export type DraftSaveResult = 'saved' | 'too-large' | 'unavailable';
 
 const key = (orgId: string) => `${DRAFT_PREFIX}${orgId || 'default'}`;
 
@@ -35,12 +41,14 @@ export const readDraft = (orgId: string): StudioDraft | null => {
   }
 };
 
-export const writeDraft = (orgId: string, draft: StudioDraft): void => {
-  if (draft.canvasJson.length > MAX_DRAFT_BYTES) return;
+export const writeDraft = (orgId: string, draft: StudioDraft): DraftSaveResult => {
+  if (draft.canvasJson.length > MAX_DRAFT_BYTES) return 'too-large';
   try {
     window.localStorage.setItem(key(orgId), JSON.stringify(draft));
+    return 'saved';
   } catch {
     // quota exceeded / private mode — autosave is best-effort
+    return 'unavailable';
   }
 };
 

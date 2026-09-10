@@ -360,7 +360,7 @@ export const VideoSlideshow: FC<VideoSlideshowProps> = ({ onReady }) => {
         onChange={(e) => setText(e.target.value)}
         disabled={busy}
         placeholder={t('slideshow_text', 'Text (leave empty = no text)')}
-        className="text-xs px-2 py-2 rounded bg-newColColor border border-newBorder text-textColor placeholder-textColor/40 focus:outline-none focus:border-forth disabled:opacity-50"
+        className="text-xs px-2 py-2 rounded bg-newColColor border border-newBorder text-textColor placeholder-textColor/60 focus:outline-none focus:border-forth disabled:opacity-50"
       />
       <div className="flex gap-1.5 flex-wrap">
         {PRESETS.map((p) => {

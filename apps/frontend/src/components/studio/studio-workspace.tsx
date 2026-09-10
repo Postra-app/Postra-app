@@ -8,10 +8,26 @@ import {
   StudioIconName,
 } from '@gitroom/frontend/components/studio/studio-icons';
 import { useT } from '@gitroom/react/translation/get.transation.service.client';
+import { Skeleton } from '@gitroom/frontend/components/ui/skeleton';
+
+/** The editors are a heavy chunk. Until now the screen simply stayed empty
+ *  while it downloaded, which on a slow connection is indistinguishable from a
+ *  broken Studio. This is the shape of what is coming: rail, canvas, panel. */
+const EditorSkeleton = () => (
+  <div className="flex flex-1 gap-2 p-2" role="status" aria-label="Loading Studio">
+    <Skeleton className="w-[56px] h-full" />
+    <div className="flex flex-col flex-1 gap-2">
+      <Skeleton className="h-[40px] w-full" />
+      <Skeleton className="flex-1 w-full" />
+      <Skeleton className="h-[44px] w-full" />
+    </div>
+    <Skeleton className="w-[260px] h-full" />
+  </div>
+);
 
 const PostDesignEditor = dynamic(
   () => import('@gitroom/frontend/components/design-editor/post-design-editor'),
-  { ssr: false }
+  { ssr: false, loading: () => <EditorSkeleton /> }
 );
 
 const VideoStudio = dynamic(
@@ -19,7 +35,7 @@ const VideoStudio = dynamic(
     import('@gitroom/frontend/components/video-studio/video-studio').then(
       (m) => m.VideoStudio
     ),
-  { ssr: false }
+  { ssr: false, loading: () => <EditorSkeleton /> }
 );
 
 export type StudioMode = 'graphic' | 'video';

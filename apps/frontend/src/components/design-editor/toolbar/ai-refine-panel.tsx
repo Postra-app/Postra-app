@@ -26,6 +26,7 @@ import {
   StudioPatch,
   StudioSpec,
 } from '@gitroom/nestjs-libraries/studio/studio-spec';
+import { StudioIcon } from '@gitroom/frontend/components/studio/studio-icons';
 
 interface Props {
   canvas: MutableRefObject<fabric.Canvas | null>;
@@ -187,7 +188,7 @@ export const AiRefinePanel: FC<Props> = ({ canvas }) => {
         )}
         rows={3}
         disabled={busy}
-        className="text-xs p-2 rounded bg-newColColor border border-newBorder text-textColor placeholder-textColor/40 resize-none focus:outline-none focus:border-forth disabled:opacity-50"
+        className="text-xs p-2 rounded bg-newColColor border border-newBorder text-textColor placeholder-textColor/60 resize-none focus:outline-none focus:border-forth disabled:opacity-50"
       />
 
       <Button
@@ -212,7 +213,11 @@ export const AiRefinePanel: FC<Props> = ({ canvas }) => {
               }
             >
               <span className="opacity-60 mr-1">
-                {m.role === 'user' ? '›' : '✨'}
+                {m.role === 'user' ? (
+                  '›'
+                ) : (
+                  <StudioIcon name="aiGenerate" size={13} />
+                )}
               </span>
               {m.text}
             </div>

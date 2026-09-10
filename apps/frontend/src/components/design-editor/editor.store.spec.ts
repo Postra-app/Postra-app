@@ -44,6 +44,26 @@ describe('history', () => {
     expect(state().historyIndex).toBe(29);
   });
 
+  it('drops old steps once the stack outgrows its memory budget', () => {
+    // Three snapshots of 10MB each: the third pushes the stack past the
+    // budget, so the first is forgotten rather than the tab going to swap.
+    const big = 'x'.repeat(10_000_000);
+    state().pushHistory(`${big}1`);
+    state().pushHistory(`${big}2`);
+    state().pushHistory(`${big}3`);
+    expect(state().history).toHaveLength(2);
+    expect(state().history[1].endsWith('3')).toBe(true);
+    // Undo still has somewhere to go.
+    expect(state().undo()?.endsWith('2')).toBe(true);
+  });
+
+  it('never trims below two entries, however large they are', () => {
+    const huge = 'y'.repeat(30_000_000);
+    state().pushHistory(`${huge}1`);
+    state().pushHistory(`${huge}2`);
+    expect(state().history).toHaveLength(2);
+  });
+
   it('is cleared by resetHistory, so a new editor cannot undo into the last one', () => {
     ['a', 'b'].forEach(state().pushHistory);
     state().resetHistory();

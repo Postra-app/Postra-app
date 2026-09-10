@@ -1,5 +1,6 @@
 import * as fabric from 'fabric';
 import { PlatformSize } from '../editor.store';
+import { ensureFontsLoaded } from './font-loading';
 import {
   PostDesignSpec,
   computeLayout,
@@ -31,6 +32,10 @@ export const renderDesignSpec = async (
   platform: PlatformSize
 ) => {
   canvas.clear();
+
+  // Same brand font the server-side renderer draws with. Loading it before the
+  // text objects exist is what makes the two agree on where the lines break.
+  await ensureFontsLoaded([TEXT_FONT]);
 
   const { width, height } = platform;
   const positions = computeLayout(spec.layout, width, height);

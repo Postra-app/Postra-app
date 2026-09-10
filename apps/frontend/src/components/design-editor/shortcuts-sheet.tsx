@@ -2,6 +2,7 @@
 
 import { FC, useEffect, useRef } from 'react';
 import { useT } from '@gitroom/react/translation/get.transation.service.client';
+import { useFocusTrap } from '@gitroom/frontend/components/ui/use-focus-trap';
 
 /**
  * The shortcuts exist and are worth knowing, but nothing on screen said so.
@@ -74,6 +75,9 @@ export const ShortcutsSheet: FC<{ open: boolean; onClose: () => void }> = ({
   onClose,
 }) => {
   const t = useT();
+  const dialogRef = useRef<HTMLDivElement>(null);
+  // Tab used to walk out of the dialog into the page behind it.
+  useFocusTrap(dialogRef, open);
   const closeRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
@@ -97,6 +101,7 @@ export const ShortcutsSheet: FC<{ open: boolean; onClose: () => void }> = ({
 
   return (
     <div
+      ref={dialogRef}
       className="fixed inset-0 z-[100] flex items-center justify-center bg-black/70 backdrop-blur-sm"
       onClick={onClose}
       role="dialog"

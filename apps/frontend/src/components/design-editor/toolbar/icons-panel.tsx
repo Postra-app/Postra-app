@@ -2,7 +2,8 @@
 
 import { FC, MutableRefObject, useCallback, useMemo, useState } from 'react';
 import * as fabric from 'fabric';
-import { renderToStaticMarkup } from 'react-dom/server';
+import { createRoot } from 'react-dom/client';
+import { flushSync } from 'react-dom';
 import clsx from 'clsx';
 import { useTranslation } from 'react-i18next';
 import { useT } from '@gitroom/react/translation/get.transation.service.client';
@@ -13,10 +14,33 @@ import {
   IconCategory,
   IconManifestEntry,
 } from '../icons-manifest';
+import { EmptyState } from '@gitroom/frontend/components/ui/empty-state';
+import { StudioIcon } from '@gitroom/frontend/components/studio/studio-icons';
 
 interface IconsPanelProps {
   canvas: MutableRefObject<fabric.Canvas | null>;
 }
+
+/**
+ * The SVG markup of an icon component, rendered in the browser.
+ *
+ * This used to call `renderToStaticMarkup` from `react-dom/server`, which
+ * pulled the server renderer into the editor's client chunk for the sake of one
+ * string. A detached root renders the same markup with what is already loaded.
+ */
+const svgMarkupOf = (
+  Comp: IconManifestEntry['component'],
+  size: number
+): string => {
+  const host = document.createElement('div');
+  const root = createRoot(host);
+  // Synchronous, because the caller needs the markup on the next line.
+  flushSync(() => root.render(<Comp size={size} stroke={2} color="#ffffff" />));
+  const markup = host.innerHTML;
+  // Unmounting inside the same tick is what React warns about.
+  queueMicrotask(() => root.unmount());
+  return markup;
+};
 
 const ICON_PREVIEW_SIZE = 24;
 const ICON_CANVAS_SIZE = 120;
@@ -49,13 +73,7 @@ export const IconsPanel: FC<IconsPanelProps> = ({ canvas }) => {
       if (!canvas.current) return;
       try {
         const IconComp = entry.component;
-        const markup = renderToStaticMarkup(
-          <IconComp
-            size={ICON_CANVAS_SIZE}
-            stroke={2}
-            color="#ffffff"
-          />
-        );
+        const markup = svgMarkupOf(IconComp, ICON_CANVAS_SIZE);
 
         const result = await fabric.loadSVGFromString(markup);
         const obj = fabric.util.groupSVGElements(
@@ -138,9 +156,12 @@ export const IconsPanel: FC<IconsPanelProps> = ({ canvas }) => {
           );
         })}
         {filtered.length === 0 && (
-          <div className="col-span-4 text-center text-[11px] text-textColor/65 py-4">
-            {t('icon_no_results', 'No results')}
-          </div>
+          <EmptyState
+            className="col-span-4 py-[20px] gap-[6px]"
+            icon={<StudioIcon name="icons" size={28} />}
+            title={t('icon_no_results', 'No results')}
+            description={t('icon_no_results_hint', 'Try a single word, like "arrow" or "star".')}
+          />
         )}
       </div>
     </div>

@@ -127,7 +127,15 @@ export class TemplateSearchDto {
   @MaxLength(200)
   query: string;
 
+  // Optional now: the client sends the hash of the catalogue first, and only
+  // resends the texts when the server has no embeddings cached under it.
+  @IsOptional()
   @IsArray()
   @ArrayMaxSize(200)
-  templates: TemplateSearchEntryDto[];
+  templates?: TemplateSearchEntryDto[];
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(128)
+  corpusHash?: string;
 }

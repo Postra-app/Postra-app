@@ -53,6 +53,9 @@ import {
   writeDraft,
   clearDraft,
 } from './utils/draft-autosave';
+import { loadCanvasFonts } from './utils/font-loading';
+import { stampPlatform, readStampedPlatform, sameSurface } from './utils/canvas-format';
+import { SaveIndicator, SaveState } from './save-indicator';
 
 const MultiFormatModal = lazy(() =>
   import('./multi-format-modal').then((m) => ({ default: m.MultiFormatModal }))
@@ -130,6 +133,8 @@ const PostDesignEditor: FC<PostDesignEditorProps> = ({
   const [manualZoom, setManualZoom] = useState<number | null>(null);
   const manualZoomRef = useRef<number | null>(null);
   const [zoomLabel, setZoomLabel] = useState(1);
+  /** What the last autosave actually did, so the editor can show it. */
+  const [saveState, setSaveState] = useState<SaveState | null>(null);
 
   const fitScale = useCallback((p: PlatformSize) => {
     const { width, height } = viewportSizeRef.current;
@@ -247,7 +252,14 @@ const PostDesignEditor: FC<PostDesignEditorProps> = ({
       // Bulk loads (templates, AI designs, carousel slides) pause history and
       // commit once at the end — see withHistoryPaused.
       if (isRestoringRef.current || isHistoryPaused(c)) return;
-      pushHistory(JSON.stringify(c.toJSON()));
+      // Stamped, so that undoing across a format switch restores the frame the
+      // coordinates belong to instead of dropping them onto the current one.
+      pushHistory(
+        stampPlatform(
+          JSON.stringify(c.toJSON()),
+          useEditorStore.getState().platform
+        )
+      );
     };
     saveStateRef.current = saveState;
     saveState();
@@ -269,11 +281,12 @@ const PostDesignEditor: FC<PostDesignEditorProps> = ({
         if (hadContentRef.current) clearDraft(orgIdRef.current);
         return;
       }
-      writeDraft(orgIdRef.current, {
+      const result = writeDraft(orgIdRef.current, {
         canvasJson: JSON.stringify(c.toJSON()),
         platformKey: useEditorStore.getState().platform.key,
         savedAt: Date.now(),
       });
+      setSaveState({ result, at: Date.now() });
     };
     const autosave = window.setInterval(snapshotDraft, 30_000);
     // React cleanup never runs on a browser refresh/close — pagehide is the
@@ -335,6 +348,19 @@ const PostDesignEditor: FC<PostDesignEditorProps> = ({
     const p = useEditorStore.getState().platform;
     applyScale(manualZoomRef.current ?? fitScale(p));
   }, [applyScale, fitScale]);
+
+  /** restoreState is mounted once and must not re-create itself on every zoom
+   *  change, so it reaches the current refit through a ref. */
+  const refitRef = useRef<(() => void) | null>(null);
+  const toasterRef = useRef<((text: string, type?: 'success' | 'warning') => void) | null>(null);
+  const tRef = useRef<((key: string, fallback: string) => string) | null>(null);
+  useEffect(() => {
+    toasterRef.current = toaster.show;
+    tRef.current = t;
+  }, [toaster, t]);
+  useEffect(() => {
+    refitRef.current = refit;
+  }, [refit]);
 
   const zoomTo = useCallback(
     (next: number | null) => {
@@ -417,11 +443,37 @@ const PostDesignEditor: FC<PostDesignEditorProps> = ({
     isRestoringRef.current = true;
     HISTORY_EVENTS.forEach((evt) => c.off(evt, handler));
 
+    // The coordinates in this JSON belong to the format it was saved in. Move
+    // the editor there first, and tell the format effect the move is already
+    // accounted for, so it does not reposition everything a second time.
+    const stamped = readStampedPlatform(json);
+    if (stamped && !sameSurface(stamped, useEditorStore.getState().platform)) {
+      prevPlatformRef.current = stamped;
+      useEditorStore.getState().setPlatform(stamped);
+    }
+
     return c
       .loadFromJSON(json)
-      .then(() => {
+      .then(async () => {
+        // A restored design names its fonts. Loading them before the first
+        // render is what keeps a reopened project identical to the one saved.
+        await loadCanvasFonts(c);
+        if (stamped) refitRef.current?.();
         c.renderAll();
         useEditorStore.getState().setBgColor(c.backgroundColor as string || '#1a1a2e');
+      })
+      .catch(() => {
+        // A truncated draft, a design whose image 404s, a snapshot from an
+        // older format: any of these rejected here, and because the listeners
+        // were still detached and isRestoringRef still true, the editor went
+        // quietly read-only — nothing was recorded and nothing said why.
+        toasterRef.current?.(
+          tRef.current?.(
+            'studio_restore_failed',
+            'That design could not be reopened. Nothing was changed.'
+          ) ?? 'That design could not be reopened.',
+          'warning'
+        );
       })
       .finally(() => {
         isRestoringRef.current = false;
@@ -570,6 +622,7 @@ const PostDesignEditor: FC<PostDesignEditorProps> = ({
       });
       try {
         await c.loadFromJSON(canvasJson);
+        await loadCanvasFonts(c);
         c.renderAll();
         // JPEG, not PNG: photo backgrounds make PNGs several MB and the upload
         // dominates export time. The canvas is always opaque, platforms
@@ -666,7 +719,10 @@ const PostDesignEditor: FC<PostDesignEditorProps> = ({
         })
       ).json();
 
-      const canvasJson = JSON.stringify(fabricRef.current.toJSON());
+      const canvasJson = stampPlatform(
+        JSON.stringify(fabricRef.current.toJSON()),
+        useEditorStore.getState().platform
+      );
       await fetch(`/media/${data.id}/canvas`, {
         method: 'PUT',
         body: JSON.stringify({ canvasJson }),
@@ -718,7 +774,10 @@ const PostDesignEditor: FC<PostDesignEditorProps> = ({
       const data = await (
         await fetch('/media/upload-simple', { method: 'POST', body: formData })
       ).json();
-      const canvasJson = JSON.stringify(fabricRef.current.toJSON());
+      const canvasJson = stampPlatform(
+        JSON.stringify(fabricRef.current.toJSON()),
+        useEditorStore.getState().platform
+      );
       await fetch(`/media/${data.id}/canvas`, {
         method: 'PUT',
         body: JSON.stringify({ canvasJson }),
@@ -1024,6 +1083,7 @@ const PostDesignEditor: FC<PostDesignEditorProps> = ({
               </button>
             </div>
             <div className="flex items-center gap-2">
+              <SaveIndicator state={saveState} />
               <ExportMenu
                 label={t('export_menu', 'Export')}
                 items={[

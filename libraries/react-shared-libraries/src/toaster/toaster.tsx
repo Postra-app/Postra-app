@@ -1,15 +1,21 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import EventEmitter from 'events';
 import clsx from 'clsx';
+import { addToast, removeToast, ToastItem } from './toaster.queue';
 const toaster = new EventEmitter();
+const TOAST_MS = 4200;
+
 export const Toaster = () => {
-  const [showToaster, setShowToaster] = useState(false);
-  const [toasterText, setToasterText] = useState('');
-  const [toasterType, setToasterType] = useState<'success' | 'warning' | ''>(
-    ''
-  );
+  const [toasts, setToasts] = useState<ToastItem[]>([]);
+  const timers = useRef<number[]>([]);
+  const nextId = useRef(0);
+
+  const dismiss = useCallback((id: number) => {
+    setToasts((list) => removeToast(list, id));
+  }, []);
+
   useEffect(() => {
     // Named handler so cleanup removes only THIS instance's listener. The
     // Toaster is mounted more than once (app shell + preview); the old
@@ -19,25 +25,51 @@ export const Toaster = () => {
       type?: 'success' | 'warning';
     }) => {
       const { text, type } = params;
-      setToasterText(text);
-      setToasterType(type || 'success');
-      setShowToaster(true);
-      setTimeout(() => {
-        setShowToaster(false);
-      }, 4200);
+      nextId.current += 1;
+      const id = nextId.current;
+      setToasts((list) => addToast(list, { id, text, type: type || 'success' }));
+      timers.current.push(
+        window.setTimeout(() => setToasts((list) => removeToast(list, id)), TOAST_MS)
+      );
     };
     toaster.on('show', handler);
     return () => {
       toaster.off('show', handler);
+      timers.current.forEach((t) => window.clearTimeout(t));
+      timers.current = [];
     };
   }, []);
-  if (!showToaster) {
+
+  if (!toasts.length) {
     return <></>;
   }
+
+  return (
+    <div
+      className="flex flex-col gap-[8px] items-center fixed start-[50%] -translate-x-[50%] top-[32px] z-[900]"
+      role="status"
+      aria-live="polite"
+    >
+      {toasts.map((toast) => (
+        <ToastRow key={toast.id} toast={toast} onDismiss={dismiss} />
+      ))}
+    </div>
+  );
+};
+
+const ToastRow = ({
+  toast,
+  onDismiss,
+}: {
+  toast: ToastItem;
+  onDismiss: (id: number) => void;
+}) => {
+  const toasterText = toast.text;
+  const toasterType = toast.type;
   return (
     <div
       className={clsx(
-        'animate-fadeDown rounded-[8px] gap-[18px] flex items-center overflow-hidden bg-customColor8 p-[16px] min-w-[319px] fixed start-[50%] text-white z-[900] top-[32px] -translate-x-[50%] h-[56px]',
+        'animate-fadeDown relative rounded-[8px] gap-[18px] flex items-center overflow-hidden bg-customColor8 p-[16px] min-w-[319px] max-w-[92vw] text-white h-[56px]',
         toasterType === 'success' ? 'shadow-greenToast' : 'shadow-yellowToast'
       )}
     >
@@ -71,6 +103,13 @@ export const Toaster = () => {
         )}
       </div>
       <div className="flex-1 text-textColor">{toasterText}</div>
+      <button
+        onClick={() => onDismiss(toast.id)}
+        aria-label="Dismiss"
+        className="relative z-[1] text-textColor/60 hover:text-textColor transition-colors text-[18px] leading-none px-1"
+      >
+        &times;
+      </button>
       <svg
         xmlns="http://www.w3.org/2000/svg"
         width="60"

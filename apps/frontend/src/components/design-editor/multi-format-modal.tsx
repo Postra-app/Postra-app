@@ -7,6 +7,7 @@ import { useFetch } from '@gitroom/helpers/utils/custom.fetch';
 import { useToaster } from '@gitroom/react/toaster/toaster';
 import { useT } from '@gitroom/react/translation/get.transation.service.client';
 import { Button } from '@gitroom/frontend/components/ui/button';
+import { useFocusTrap } from '@gitroom/frontend/components/ui/use-focus-trap';
 import {
   renderAllFormats,
   dataUrlToBlob,
@@ -108,7 +109,8 @@ export const MultiFormatModal: FC<MultiFormatModalProps> = ({
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
-      URL.revokeObjectURL(url);
+      // Safari cancels a download whose blob URL is revoked in the same tick.
+      window.setTimeout(() => URL.revokeObjectURL(url), 60_000);
     } catch {
       toaster.show(
         t('multi_format_error', 'Rendering failed. Please try again.'),
@@ -125,9 +127,9 @@ export const MultiFormatModal: FC<MultiFormatModalProps> = ({
       for (let i = 0; i < renders.length; i += 1) {
         const r = renders[i];
         // eslint-disable-next-line no-await-in-loop
-        const blob = await dataUrlToBlob(r.dataUrl);
+        const blob = await dataUrlToBlob(r.uploadDataUrl);
         const formData = new FormData();
-        formData.append('file', blob, `${r.platform.key}.png`);
+        formData.append('file', blob, `${r.platform.key}.jpg`);
         // eslint-disable-next-line no-await-in-loop
         const data = await (
           await fetch('/media/upload-simple', {
@@ -157,6 +159,9 @@ export const MultiFormatModal: FC<MultiFormatModalProps> = ({
     }
   }, [renders, fetch, setMedia, onClose, closeParent, t, toaster]);
 
+  const dialogRef = useRef<HTMLDivElement>(null);
+  // Tab used to walk out of the dialog into the page behind it.
+  useFocusTrap(dialogRef);
   const closeButtonRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
@@ -177,6 +182,7 @@ export const MultiFormatModal: FC<MultiFormatModalProps> = ({
 
   return (
     <div
+      ref={dialogRef}
       className="fixed inset-0 z-[100] flex items-center justify-center bg-black/70 backdrop-blur-sm"
       onClick={() => !uploading && onClose()}
       role="dialog"

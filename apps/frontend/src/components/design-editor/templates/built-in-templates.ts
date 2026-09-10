@@ -1,6 +1,8 @@
 import * as fabric from 'fabric';
 import type { DesignTemplate, BrandStyle, TemplateLang } from './template-types';
 import type { PlatformSize } from '../editor.store';
+import { DEFAULT_FONT } from '../fonts';
+import { ensureFontsLoaded } from '../utils/font-loading';
 
 const pick = (lang: TemplateLang) => (pl: string, en: string) =>
   lang === 'pl' ? pl : en;
@@ -2842,6 +2844,11 @@ export const applyTemplate = async (
     return w * h >= platform.width * platform.height * BG_COVERAGE_THRESHOLD;
   });
   const kept = bgPhoto ? await bgPhoto.clone() : null;
+
+  // The template builds its text objects synchronously, and Fabric measures
+  // each one as it is created. Have the families in the document first, or the
+  // layout is sized for the fallback font and stays that way.
+  await ensureFontsLoaded([brand.fontFamily, DEFAULT_FONT.family]);
 
   template.apply(canvas, platform, brand, lang);
 

@@ -22,19 +22,11 @@ export const useAiError = () => {
         // non-JSON body — fall through to the generic copy
       }
 
-      // The server knows which allowance ran out (images, video); prefer its
-      // wording and fall back to the neutral one.
-      if (response.status === 402) {
-        toaster.show(
-          serverMessage ||
-            t(
-              'ai_no_credits',
-              'You are out of AI credits for this billing cycle. Upgrade your plan or wait for the next one.'
-            ),
-          'warning'
-        );
-        return;
-      }
+      // 402 is already reported: the shared fetch wrapper opens a dialog
+      // carrying this same server message plus a way to the billing page, and
+      // then hands the response back. A toast on top of it said the same thing
+      // twice, in weaker words.
+      if (response.status === 402) return;
       if (response.status === 401 || response.status === 403) {
         toaster.show(
           t(

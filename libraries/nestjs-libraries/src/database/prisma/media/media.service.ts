@@ -28,6 +28,7 @@ import {
 } from '@gitroom/nestjs-libraries/studio/studio-spec';
 import { DesignRenderService } from '@gitroom/nestjs-libraries/studio/design-render.service';
 import { platformDesignSize } from '@gitroom/nestjs-libraries/studio/post-design-spec';
+import { templateCorpus } from '@gitroom/nestjs-libraries/studio/template-corpus';
 import {
   BrandVoiceCheckDto,
   AiEditTextDto,
@@ -37,6 +38,10 @@ import {
 } from '@gitroom/nestjs-libraries/studio/studio.dto';
 import { AiUsageEvent } from '@gitroom/nestjs-libraries/services/ai-usage.record';
 import { MediaType } from '@gitroom/helpers/utils/media.type';
+import {
+  ImageOrientation,
+  orientationForSize,
+} from '@gitroom/nestjs-libraries/openai/image-orientation';
 import {
   AuthorizationActions,
   Sections,
@@ -106,7 +111,10 @@ export class MediaService {
     generatePromptFirst?: boolean,
     // Which surface asked, so the usage log can tell the composer's images
     // apart from the agent's. Defaults to the /media routes.
-    engine: AiUsageEvent['engine'] = 'media'
+    engine: AiUsageEvent['engine'] = 'media',
+    // The shape the caller needs. Studio knows the format the design is in;
+    // everything else keeps the square default.
+    orientation: ImageOrientation = 'square'
   ) {
     const brandKit = await this._brandKitService.getNormalized(org.id);
     const brand = buildBrandContext(brandKit, {
@@ -124,7 +132,7 @@ export class MediaService {
         const dataUrl = await this._openAi.generateImage(
           brand ? `${prompt}\n\n${brand}` : prompt,
           !!generatePromptFirst,
-          false,
+          orientation,
           { orgId: org.id, engine }
         );
         return dataUrl ? await this.storage.uploadSimple(dataUrl) : dataUrl;
@@ -155,7 +163,14 @@ export class MediaService {
       dto.languageFallback
     );
 
-    const cacheKey = `bg:${createHash('md5')
+    // The background is generated in the shape of the design. Until now every
+    // format got a square, so an X post (16:9) lost a third of its background
+    // to the crop. The orientation is part of the cache key for the same
+    // reason — a square cached under this prompt is the wrong picture for a
+    // landscape design.
+    const designSize = platformDesignSize(dto.platform);
+    const orientation = orientationForSize(designSize.width, designSize.height);
+    const cacheKey = `bg:${orientation}:${createHash('md5')
       .update(spec.imagePrompt.trim().toLowerCase())
       .digest('hex')}`;
 
@@ -170,7 +185,7 @@ export class MediaService {
           const dalleUrl = await this._openAi.generateImage(
             spec.imagePrompt,
             true,
-            false,
+            orientation,
             { orgId: org.id, engine: 'media' }
           );
           if (!dalleUrl) {
@@ -290,10 +305,15 @@ export class MediaService {
         : carousel.imagePrompt;
     };
 
+    const carouselSize = platformDesignSize(dto.platform);
+    const carouselOrientation = orientationForSize(
+      carouselSize.width,
+      carouselSize.height
+    );
     const slidesWithPrompts = carousel.slides.map(
       (s: { imageVariation?: string }) => {
         const prompt = slidePrompt(s.imageVariation);
-        const cacheKey = `bg:${createHash('md5')
+        const cacheKey = `bg:${carouselOrientation}:${createHash('md5')
           .update(prompt.trim().toLowerCase())
           .digest('hex')}`;
         return { slide: s, prompt, cacheKey };
@@ -323,7 +343,7 @@ export class MediaService {
               const dalleUrl = await this._openAi.generateImage(
                 prompt,
                 true,
-                false,
+                carouselOrientation,
                 { orgId: org.id, engine: 'media' }
               );
               if (!dalleUrl) {
@@ -693,21 +713,17 @@ export class MediaService {
   async searchTemplates(
     body: TemplateSearchDto,
     orgId?: string
-  ): Promise<{ id: string; score: number }[]> {
-    if (!body.templates.length) return [];
-
+  ): Promise<{ id: string; score: number }[] | { needTemplates: true }> {
     // The key has to cover the TEXTS, not just the ids: the client sends both,
     // and the ids alone are identical across languages and across template
     // edits. Keyed by id only, whoever searched first — any org, in whichever
     // language their UI happened to be — defined the embeddings everyone else
     // matched against for the next 30 days.
-    const corpus = body.templates
-      // Unit separator, not NUL: a raw NUL byte in the source made grep treat
-      // this whole file as binary and skip it without saying so.
-      .map((t) => `${t.id}\u001f${t.text}`)
-      .sort()
-      .join('|');
-    const corpusHash = createHash('md5').update(corpus).digest('hex');
+    const corpusHash = body.templates?.length
+      ? createHash('sha256').update(templateCorpus(body.templates)).digest('hex')
+      : body.corpusHash;
+    if (!corpusHash) return [];
+
     const cacheKey = `studio:tpl-embeds:${corpusHash}`;
 
     let embeddings: { id: string; embedding: number[] }[] | null = null;
@@ -721,6 +737,9 @@ export class MediaService {
     }
 
     if (!embeddings) {
+      // Nothing cached and no texts to embed: ask for them rather than
+      // returning an empty result, which would read as "no template matches".
+      if (!body.templates?.length) return { needTemplates: true };
       const texts = body.templates.map((t) => t.text);
       const vectors = await this._studioAi.embedBatch(texts, orgId);
       embeddings = body.templates.map((t, i) => ({ id: t.id, embedding: vectors[i] }));

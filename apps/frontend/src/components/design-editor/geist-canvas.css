@@ -1,0 +1,27 @@
+/* Studio writes the literal family name "Geist" into every design it saves, and
+ * a canvas can only draw a family the document has actually registered.
+ * `next/font` registers Geist under a hashed name that changes with each build,
+ * so a design saved today would look for a family that no longer exists after
+ * the next deploy. Registering the real name here keeps saved designs readable
+ * and makes the default font look the same on every machine instead of falling
+ * through to system-ui.
+ *
+ * The files are served from /public rather than imported from the `geist`
+ * package: the build does not resolve node_modules paths inside CSS url(), and
+ * a missing font would be a 500 on the whole page. Licence (SIL OFL) sits next
+ * to them in GEIST-LICENSE.txt. */
+@font-face {
+  font-family: 'Geist';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url('/fonts/Geist-Regular.woff2') format('woff2');
+}
+
+@font-face {
+  font-family: 'Geist';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url('/fonts/Geist-Bold.woff2') format('woff2');
+}

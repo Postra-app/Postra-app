@@ -12,6 +12,9 @@ import * as fabric from 'fabric';
 import { useFetch } from '@gitroom/helpers/utils/custom.fetch';
 import { useToaster } from '@gitroom/react/toaster/toaster';
 import { useT } from '@gitroom/react/translation/get.transation.service.client';
+import { EmptyState } from '@gitroom/frontend/components/ui/empty-state';
+import { Skeleton } from '@gitroom/frontend/components/ui/skeleton';
+import { StudioIcon } from '@gitroom/frontend/components/studio/studio-icons';
 
 interface PixabayImageHit {
   id: number;
@@ -170,7 +173,7 @@ export const StockImagesPanel: FC<Props> = ({ canvas, defaultQuery }) => {
           onChange={(e) => setQuery(e.target.value)}
           onKeyDown={(e) => e.key === 'Enter' && search()}
           placeholder={t('image_stock_search_ph', 'e.g. coffee, office, summer')}
-          className="flex-1 min-w-0 text-xs px-2 py-1.5 rounded bg-newColColor border border-newBorder text-textColor placeholder-textColor/40 focus:outline-none focus:border-forth"
+          className="flex-1 min-w-0 text-xs px-2 py-1.5 rounded bg-newColColor border border-newBorder text-textColor placeholder-textColor/60 focus:outline-none focus:border-forth"
         />
         <button
           onClick={() => search()}
@@ -208,10 +211,24 @@ export const StockImagesPanel: FC<Props> = ({ canvas, defaultQuery }) => {
         </div>
       )}
 
+      {searching && (
+        <div className="grid grid-cols-2 gap-1.5" role="status">
+          {[0, 1, 2, 3].map((i) => (
+            <Skeleton key={i} className="aspect-square w-full" />
+          ))}
+        </div>
+      )}
+
       {searched && !searching && hits.length === 0 && (
-        <p className="text-[11px] text-textColor/65">
-          {t('icon_no_results', 'No results')}
-        </p>
+        <EmptyState
+          className="py-[20px] gap-[6px]"
+          icon={<StudioIcon name="stock" size={28} />}
+          title={t('stock_none_title', 'No photos for that search')}
+          description={t(
+            'stock_none_hint',
+            'Try a plainer word — "coffee" finds more than "coffee shop interior".'
+          )}
+        />
       )}
 
       <p className="text-[11px] text-textColor/65 leading-snug">

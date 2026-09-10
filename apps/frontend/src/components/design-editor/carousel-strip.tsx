@@ -6,6 +6,7 @@ import { useCarouselStore, CarouselSlide } from './carousel.store';
 import { useEditorStore } from './editor.store';
 import { useT } from '@gitroom/react/translation/get.transation.service.client';
 import { StudioIcon } from '@gitroom/frontend/components/studio/studio-icons';
+import { loadCanvasFonts } from './utils/font-loading';
 
 const THUMB_W = 80;
 const THUMB_H = 100;
@@ -37,7 +38,8 @@ const SlideThumb: FC<{ slide: CarouselSlide; sourceWidth: number; sourceHeight: 
     const scale = Math.min(THUMB_W / sourceWidth, THUMB_H / sourceHeight);
     c.setZoom(scale);
     c.loadFromJSON(slide.canvasJson)
-      .then(() => {
+      .then(async () => {
+        await loadCanvasFonts(c);
         c.renderAll();
         if (!cancelled) {
           setDataUrl(c.toDataURL({ format: 'jpeg', quality: 0.7, multiplier: 1 }));
@@ -209,7 +211,7 @@ export const CarouselStrip: FC<CarouselStripProps> = ({ fabricRef }) => {
                   className="absolute top-0 right-0 bg-black/70 text-white text-[11px] w-4 h-4 rounded-bl hover:bg-red-500 flex items-center justify-center"
                   title={t('carousel_delete_slide', 'Delete this slide')}
                 >
-                  ✕
+                  <StudioIcon name="close" size={11} />
                 </button>
               )}
             </div>

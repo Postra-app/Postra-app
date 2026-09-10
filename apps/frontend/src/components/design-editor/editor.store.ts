@@ -38,6 +38,24 @@ export const PLATFORM_SIZES: PlatformSize[] = [
   { key: 'custom', label: 'Custom', width: 1080, height: 1080 },
 ];
 
+/** Thirty steps of undo, but not at any price. A design with a cut-out
+ *  background carries the image inline, so a single snapshot can be several
+ *  megabytes and thirty of them are enough to make the tab crawl. Older steps
+ *  are dropped once the stack passes the budget, newest always kept. */
+export const HISTORY_MAX_ENTRIES = 30;
+export const HISTORY_MAX_BYTES = 24_000_000;
+
+export const capHistory = (entries: string[]): string[] => {
+  const capped = entries.slice(-HISTORY_MAX_ENTRIES);
+  let total = capped.reduce((sum, e) => sum + e.length, 0);
+  // Keep at least two entries: one to be on, one to undo to.
+  while (capped.length > 2 && total > HISTORY_MAX_BYTES) {
+    total -= capped[0].length;
+    capped.shift();
+  }
+  return capped;
+};
+
 interface EditorState {
   activeTool: EditorTool;
   /**
@@ -104,7 +122,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   pushHistory: (json) => {
     const { history, historyIndex } = get();
     const trimmed = history.slice(0, historyIndex + 1);
-    const next = [...trimmed, json].slice(-30);
+    const next = capHistory([...trimmed, json]);
     set({ history: next, historyIndex: next.length - 1 });
   },
 

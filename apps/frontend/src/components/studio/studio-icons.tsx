@@ -20,6 +20,31 @@ import {
   IconArrowBackUp,
   IconArrowForwardUp,
   IconCopy,
+  IconBolt,
+  IconBuildingStore,
+  IconChartBar,
+  IconBulb,
+  IconConfetti,
+  IconHeartHandshake,
+  IconDeviceMobile,
+  IconSpeakerphone,
+  IconQuote,
+  IconHeart,
+  IconArrowRight,
+  IconPentagon,
+  IconHexagon,
+  IconPlus,
+  IconCircle,
+  IconSquare,
+  IconBoxMultiple,
+  IconTriangle,
+  IconLine,
+  IconDiamond,
+  IconCircleDot,
+  IconRectangle,
+  IconColorSwatch,
+  IconCrop,
+  IconEraser,
   IconDeviceFloppy,
   IconDownload,
   IconLayoutCollage,
@@ -94,6 +119,33 @@ export type StudioIconName =
   | 'unlock'
   | 'collapse'
   | 'shortcuts'
+  | 'crop'
+  | 'catPromo'
+  | 'catQuote'
+  | 'catAnnouncement'
+  | 'catStats'
+  | 'catTip'
+  | 'catEvent'
+  | 'catCommunity'
+  | 'catReelCover'
+  | 'shapeStar'
+  | 'shapeHexagon'
+  | 'shapeHeart'
+  | 'shapeArrow'
+  | 'shapeSpeech'
+  | 'shapePentagon'
+  | 'shapePlus'
+  | 'shapeLightning'
+  | 'shapeCircle'
+  | 'shapeSquare'
+  | 'shapeRect'
+  | 'shapeTriangle'
+  | 'shapeLine'
+  | 'shapeDiamond'
+  | 'shapeRing'
+  | 'shapeParallelogram'
+  | 'eraser'
+  | 'gradient'
   | 'warning'
   | 'done'
   | 'camera'
@@ -145,6 +197,33 @@ const MAP: Record<StudioIconName, FC<{ size?: number; stroke?: number; className
   unlock: IconLockOpen,
   collapse: IconChevronLeft,
   shortcuts: IconKeyboard,
+  crop: IconCrop,
+  catPromo: IconBuildingStore,
+  catQuote: IconQuote,
+  catAnnouncement: IconSpeakerphone,
+  catStats: IconChartBar,
+  catTip: IconBulb,
+  catEvent: IconConfetti,
+  catCommunity: IconHeartHandshake,
+  catReelCover: IconDeviceMobile,
+  shapeStar: IconStar,
+  shapeHexagon: IconHexagon,
+  shapeHeart: IconHeart,
+  shapeArrow: IconArrowRight,
+  shapeSpeech: IconMessageCircle,
+  shapePentagon: IconPentagon,
+  shapePlus: IconPlus,
+  shapeLightning: IconBolt,
+  shapeCircle: IconCircle,
+  shapeSquare: IconSquare,
+  shapeRect: IconRectangle,
+  shapeTriangle: IconTriangle,
+  shapeLine: IconLine,
+  shapeDiamond: IconDiamond,
+  shapeRing: IconCircleDot,
+  shapeParallelogram: IconBoxMultiple,
+  eraser: IconEraser,
+  gradient: IconColorSwatch,
 };
 
 export const StudioIcon: FC<{
