@@ -36,6 +36,7 @@ import {
   TemplateSearchDto,
 } from '@gitroom/nestjs-libraries/studio/studio.dto';
 import { AiUsageEvent } from '@gitroom/nestjs-libraries/services/ai-usage.record';
+import { MediaType } from '@gitroom/helpers/utils/media.type';
 import {
   AuthorizationActions,
   Sections,
@@ -487,8 +488,12 @@ export class MediaService {
     );
   }
 
-  getMedia(org: string, page: number, search?: string) {
-    return this._mediaRepository.getMedia(org, page, search);
+  backfillMediaType(apply: boolean) {
+    return this._mediaRepository.backfillMediaType(apply);
+  }
+
+  getMedia(org: string, page: number, search?: string, type?: MediaType) {
+    return this._mediaRepository.getMedia(org, page, search, type);
   }
 
   saveMediaInformation(org: string, data: SaveMediaInformationDto) {
@@ -697,7 +702,9 @@ export class MediaService {
     // language their UI happened to be — defined the embeddings everyone else
     // matched against for the next 30 days.
     const corpus = body.templates
-      .map((t) => `${t.id} ${t.text}`)
+      // Unit separator, not NUL: a raw NUL byte in the source made grep treat
+      // this whole file as binary and skip it without saying so.
+      .map((t) => `${t.id}\u001f${t.text}`)
       .sort()
       .join('|');
     const corpusHash = createHash('md5').update(corpus).digest('hex');

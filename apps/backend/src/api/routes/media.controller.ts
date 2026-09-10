@@ -531,12 +531,15 @@ export class MediaController {
   getMedia(
     @GetOrgFromRequest() org: Organization,
     @Query('page') page: unknown,
-    @Query('search') search?: unknown
+    @Query('search') search?: unknown,
+    @Query('type') type?: unknown
   ) {
+    const asked = queryString(type);
     return this._mediaService.getMedia(
       org.id,
       queryPage(page),
-      queryString(search) || undefined
+      queryString(search) || undefined,
+      asked === 'video' || asked === 'image' ? asked : undefined
     );
   }
 
