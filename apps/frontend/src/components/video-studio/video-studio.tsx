@@ -26,9 +26,10 @@ import {
 } from './load-library-media';
 import { ensureMp4, isMp4 } from './mp4-source';
 import { UnsupportedCodecError } from './compositor-pipeline';
+import { deliveryTarget } from './delivery-target';
+import { mediaTypeFromPath } from '@gitroom/helpers/utils/media.type';
 
-// Extensions worth trying when the browser hands us a useless MIME type.
-const VIDEO_EXTENSION = /\.(mp4|m4v|mov|webm|mkv|avi|qt)$/i;
+
 
 interface VideoStudioProps {
   setMedia: (params: { id: string; path: string }[]) => void;
@@ -87,8 +88,8 @@ export const VideoStudio: FC<VideoStudioProps> = ({
   >(null);
 
   const deliver = useCallback(
-    (uploaded: { id: string; path: string }[]) => {
-      if (mode === 'studio') {
+    (uploaded: { id: string; path: string }[], startedOn?: Tab) => {
+      if (deliveryTarget(mode, tabRef.current, startedOn) === 'bar') {
         setDelivered(uploaded);
         return;
       }
@@ -243,7 +244,7 @@ export const VideoStudio: FC<VideoStudioProps> = ({
     // "choose a video file (MP4, WebM, MOV)" about the MOV they had just
     // chosen. Accept it by extension too and let the decoder be the judge -
     // an undecodable clip is reported properly further down the line.
-    if (!f.type.startsWith('video/') && !VIDEO_EXTENSION.test(f.name)) {
+    if (!f.type.startsWith('video/') && mediaTypeFromPath(f.name) !== 'video') {
       toaster.show(t('video_bad_type', 'Choose a video file (MP4, WebM, MOV).'), 'warning');
       return;
     }
@@ -508,7 +509,7 @@ export const VideoStudio: FC<VideoStudioProps> = ({
       }
       setIsUploading(false);
       if (uploaded.length) {
-        deliver(uploaded);
+        deliver(uploaded, 'formats');
       } else {
         reportUploadFailure(failure ?? 'network');
       }
@@ -519,21 +520,21 @@ export const VideoStudio: FC<VideoStudioProps> = ({
   const handleCaptionedReady = useCallback(
     (newMedia: { id: string; path: string }) => {
       setUploadedMedia(newMedia);
-      deliver([newMedia]);
+      deliver([newMedia], 'captions');
     },
     [deliver]
   );
 
   const handleStockImported = useCallback(
     (newMedia: { id: string; path: string }) => {
-      deliver([newMedia]);
+      deliver([newMedia], 'stock');
     },
     [deliver]
   );
 
   const handleComposedReady = useCallback(
-    (newMedia: { id: string; path: string }) => {
-      deliver([newMedia]);
+    (newMedia: { id: string; path: string }, startedOn: Tab) => {
+      deliver([newMedia], startedOn);
     },
     [deliver]
   );
@@ -728,8 +729,16 @@ export const VideoStudio: FC<VideoStudioProps> = ({
         {!showGoals && tab === 'stock' && (
           <VideoStock onImported={handleStockImported} />
         )}
-        {!showGoals && tab === 'text' && <VideoTextOverlay onReady={handleComposedReady} />}
-        {!showGoals && tab === 'slideshow' && <VideoSlideshow onReady={handleComposedReady} />}
+        {!showGoals && tab === 'text' && (
+          <VideoTextOverlay
+            onReady={(media) => handleComposedReady(media, 'text')}
+          />
+        )}
+        {!showGoals && tab === 'slideshow' && (
+          <VideoSlideshow
+            onReady={(media) => handleComposedReady(media, 'slideshow')}
+          />
+        )}
       </div>
 
       {trimmedBlob && !showGoals && tab === 'trim' && (

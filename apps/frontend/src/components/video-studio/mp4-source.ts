@@ -31,6 +31,32 @@ const LOST_VIDEO_REASONS: ReadonlySet<string> = new Set([
 ]);
 
 /**
+ * Video codecs we let out of the editor and into an upload.
+ *
+ * This is deliberately a list of our own rather than "whatever Mediabunny can
+ * put in an MP4". Mediabunny 1.56 learned ProRes, and the moment it did, a
+ * ProRes clip stopped being rejected and started remuxing into a `video/mp4`
+ * the upload validator waves through, the browser cannot decode and no platform
+ * will play - a failure that only shows up after publishing. The list matches
+ * what 1.45 could carry; anything Mediabunny learns next has to be added here
+ * on purpose.
+ */
+const UPLOADABLE_VIDEO_CODECS: ReadonlySet<string> = new Set([
+  'avc',
+  'hevc',
+  'av1',
+  'vp9',
+  'vp8',
+]);
+
+/** Throw the same codec error for a clip we can wrap but nobody can play. */
+export function assertUploadableCodec(codec: string | null): void {
+  if (!codec || !UPLOADABLE_VIDEO_CODECS.has(codec)) {
+    throw new UnsupportedCodecError(codec);
+  }
+}
+
+/**
  * True when the blob is already the container the server accepts.
  *
  * Deliberately strict: `video/quicktime` (an iPhone `.mov`) is rejected by the
@@ -76,6 +102,9 @@ export async function ensureMp4(
   if (isMp4(source)) return source;
 
   const input = new Input({ source: new BlobSource(source), formats: ALL_FORMATS });
+  const track = await input.getPrimaryVideoTrack();
+  assertUploadableCodec(track ? track.codec : null);
+
   const output = new Output({
     format: new Mp4OutputFormat(),
     target: new BufferTarget(),
