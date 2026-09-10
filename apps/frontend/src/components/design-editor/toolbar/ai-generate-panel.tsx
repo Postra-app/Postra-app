@@ -6,6 +6,7 @@ import { useEditorStore } from '../editor.store';
 import { useCarouselStore, CarouselSlide } from '../carousel.store';
 import { renderDesignSpec, PostDesignSpec } from '../utils/canvas-renderer';
 import { withHistoryPaused } from '../utils/canvas-history';
+import { reusedBackground } from '../utils/reused-background';
 import { useHolidays, getUpcomingHolidays } from '../utils/holidays';
 import { useFetch } from '@gitroom/helpers/utils/custom.fetch';
 import { isFetchHandledError } from '@gitroom/helpers/utils/fetch.errors';
@@ -138,6 +139,16 @@ export const AiGeneratePanel: FC<Props> = ({ canvas }) => {
 
       const data = await res.json();
       if (ctrl.signal.aborted) return;
+
+      if (reusedBackground(data, isCarousel)) {
+        toaster.show(
+          t(
+            'ai_background_reused',
+            'Reused a background from an identical prompt — no image credit used.'
+          ),
+          'success'
+        );
+      }
 
       if (isCarousel) {
         const slideSpecs = (data?.slides ?? []) as PostDesignSpec[];

@@ -893,6 +893,7 @@
   "ai_generate_failed": "AI generation failed. Try a different prompt.",
   "ai_generate_hint": "AI generates background + text in one step. Takes about 5-10 seconds.",
   "ai_no_credits": "You are out of AI credits for this billing cycle. Upgrade your plan or wait for the next one.",
+  "ai_background_reused": "Reused a background from an identical prompt — no image credit used.",
   "ai_prompt_required": "Please describe what you want to generate",
   "ai_prompt_placeholder": "e.g. Summer sale -50% at clothing store",
   "ai_tier_required": "AI design is available on the Starter plan and above.",
