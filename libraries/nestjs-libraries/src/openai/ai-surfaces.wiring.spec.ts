@@ -60,6 +60,24 @@ describe('brand guidance comes from one place', () => {
     }
   });
 
+  it('leaves no surface writing its own language rule', () => {
+    const surfaces = [
+      'database/prisma/media/media.service.ts',
+      'database/prisma/autopost/autopost.service.ts',
+      'agent/agent.graph.service.ts',
+      'chat/load.tools.service.ts',
+      'studio/studio-ai.service.ts',
+      'openai/openai.service.ts',
+    ];
+    for (const file of surfaces) {
+      const source = read(file);
+      expect(source).not.toMatch(/simple english/i);
+      // "the same language as X" is the rule's own wording; a surface
+      // repeating it inline is a second rule waiting to drift.
+      expect(source).not.toMatch(/SAME language as/);
+    }
+  });
+
   it('leaves no surface assembling brand text of its own', () => {
     const surfaces = [
       ...IMAGE_CALL_SITES,

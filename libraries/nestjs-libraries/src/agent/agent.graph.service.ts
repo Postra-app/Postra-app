@@ -21,6 +21,7 @@ import { AiUsageCallbackHandler } from '@gitroom/nestjs-libraries/services/ai-us
 import { GeneratorDto } from '@gitroom/nestjs-libraries/dtos/generator/generator.dto';
 import { BrandKitService } from '@gitroom/nestjs-libraries/database/prisma/brand-kit/brand-kit.service';
 import { buildBrandContext } from '@gitroom/nestjs-libraries/openai/brand-prompt';
+import { languageRule } from '@gitroom/nestjs-libraries/openai/language-rule';
 
 const tools = !process.env.TAVILY_API_KEY
   ? []
@@ -254,7 +255,8 @@ export class AgentGraphService {
         - Use ${state.tone === 'personal' ? '1st' : '3rd'} person mode
         - Make sure it's engaging
         - Don't be cringy
-        - Use simple english
+        - Keep the wording simple
+        {language}
         - Make sure you add "\n" between the lines
         - Don't take the hook from "request of the user"
         {brand}
@@ -279,6 +281,7 @@ export class AgentGraphService {
         hooks: state.popularPosts!.map((p) => p.hook).join('\n'),
         text: state.fresearch,
         brand: state.brandVoice || '',
+        language: languageRule({ follow: "the user's request" }),
       });
 
     return {
@@ -309,7 +312,8 @@ export class AgentGraphService {
         - Use the hook as inspiration
         - Make sure it's engaging
         - Don't be cringy
-        - Use simple english
+        - Keep the wording simple
+        {language}
         - The Content should not contain the hook
         - Try to put some call to action at the end of the post
         - Make sure you add "\n" between the lines
@@ -332,6 +336,7 @@ export class AgentGraphService {
         request: state.messages[0].content,
         information: state.fresearch,
         brand: state.brandVoice || '',
+        language: languageRule({ follow: "the user's request" }),
       });
 
     return {

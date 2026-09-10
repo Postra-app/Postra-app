@@ -150,7 +150,8 @@ export class MediaService {
       dto.platform,
       brandKit,
       dto.language,
-      org.id
+      org.id,
+      dto.languageFallback
     );
 
     const cacheKey = `bg:${createHash('md5')
@@ -267,7 +268,8 @@ export class MediaService {
       dto.slidesCount,
       brandKit,
       dto.language,
-      org.id
+      org.id,
+      dto.languageFallback
     );
 
     // Each slide gets a DISTINCT background that is a variation of one shared

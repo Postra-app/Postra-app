@@ -80,4 +80,12 @@ export class GeneratePostDesignDto {
   @IsOptional()
   @MaxLength(40)
   language?: string;
+
+  // The UI locale. Used only when the prompt is too short to tell what
+  // language it is in — an explicit `language` still wins. Studio used to send
+  // the locale AS the target, which put English text on a Polish prompt.
+  @IsString()
+  @IsOptional()
+  @MaxLength(40)
+  languageFallback?: string;
 }

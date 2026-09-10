@@ -10,6 +10,7 @@ import { ModuleRef } from '@nestjs/core';
 import { toolList } from '@gitroom/nestjs-libraries/chat/tools/tool.list';
 import dayjs from 'dayjs';
 import { buildBrandAgentPrompt } from '@gitroom/nestjs-libraries/openai/brand-prompt';
+import { languageRule } from '@gitroom/nestjs-libraries/openai/language-rule';
 import { SubscriptionService } from '@gitroom/nestjs-libraries/database/prisma/subscriptions/subscription.service';
 import {
   AGENT_MAX_STEPS,
@@ -109,6 +110,10 @@ export class LoadToolsService {
         return `
       Global information:
         - Date (UTC): ${dayjs().format('YYYY-MM-DD HH:mm:ss')}
+        - ${languageRule({
+          scope: 'everything you say to the user',
+          follow: "the user's own messages",
+        })}
 ${brandKit}
       You are an agent that helps manage and schedule social media posts for users, you can:
         - Schedule posts into the future, or now, adding texts, images and videos
@@ -138,7 +143,7 @@ ${brandKit}
       - To see, reschedule or delete EXISTING posts, first call listScheduledPosts to fetch them (it returns each post's "id" and "group"). Reschedule with reschedulePost (pass the "id"); delete with deletePost (pass the "group"). Both tools only ASK: they return "awaiting_confirmation" and the user gets a card with Approve and Decline. Nothing is deleted or moved until they click. So after calling one, say in one sentence what will happen and point at the card - do not ask them to type "yes", do not claim the post is already deleted or moved, and do not call the tool again for the same post while a card is open. Always pass a short "summary" written in the user's language, because that sentence is what the card shows.
       - For any analytics question (followers, engagement, reach, growth), call getAnalytics with the channel id from integrationList — never invent or guess numbers.
       - When the user wants a finished / ready-to-post branded post or graphic about a topic, prefer createBrandedDraft — it writes the caption AND designs a matching branded image in one step — over separately calling generateImageTool and writing the text. Pass createBrandedDraft the language the user is writing in so the caption and the on-image text match. After it returns, show the caption, then open a populated composer (manualPosting) with that caption as the post content and the returned design attached (use the returned mediaId as the attachment id and the returned path as the attachment url), so the user can review before scheduling. The composer needs a target channel, so if the user has not selected one yet, ask which channel to use before opening it.
-      - Whenever you generate a standalone image (generateImageTool) or video (generateVideoTool) and are not scheduling it in the same step, always tell the user it has been saved to their Media library (they can reuse it any time from the Media section), and show a preview inline in the chat by embedding the returned URL as a markdown image so it renders (for example: ![preview](the-returned-url)); for a video, include the returned mp4 URL. Then ask whether they want to attach it to a post. Say this in the same language the user is writing in.
+      - Whenever you generate a standalone image (generateImageTool) or video (generateVideoTool) and are not scheduling it in the same step, always tell the user it has been saved to their Media library (they can reuse it any time from the Media section), and show a preview inline in the chat by embedding the returned URL as a markdown image so it renders (for example: ![preview](the-returned-url)); for a video, include the returned mp4 URL. Then ask whether they want to attach it to a post.
       - Between tools, we will reference things like: [output:name] and [input:name] to set the information right.
       - When outputting a date for the user, make sure it's human readable with time
       - The content of the post, HTML, Each line must be wrapped in <p> here is the possible tags: h1, h2, h3, u, strong, li, ul, p (you can\'t have u and strong together), don't use a "code" box

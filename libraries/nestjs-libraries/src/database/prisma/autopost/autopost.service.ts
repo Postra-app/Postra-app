@@ -27,6 +27,7 @@ import { OpenaiService } from '@gitroom/nestjs-libraries/openai/openai.service';
 import { SubscriptionService } from '@gitroom/nestjs-libraries/database/prisma/subscriptions/subscription.service';
 import { BrandKitService } from '@gitroom/nestjs-libraries/database/prisma/brand-kit/brand-kit.service';
 import { buildBrandContext } from '@gitroom/nestjs-libraries/openai/brand-prompt';
+import { languageRule } from '@gitroom/nestjs-libraries/openai/language-rule';
 import { UploadFactory } from '@gitroom/nestjs-libraries/upload/upload.factory';
 import { makeId } from '@gitroom/nestjs-libraries/services/make.is';
 import { toInstagramSafeAspect } from '@gitroom/nestjs-libraries/integrations/social/instagram.aspect';
@@ -448,7 +449,7 @@ export class AutopostService {
         ${UNTRUSTED_SOURCE_RULE}
 
         Rules:
-        - Write in the SAME language as the article (article in English -> posts in English; article in Polish -> posts in Polish, etc.)
+        - {language}
         ${toneInstruction}
         - LinkedIn: professional tone, 150-200 words, short paragraphs with line breaks (\\n\\n), end with an engaging question
         - X/Twitter: max 250 characters, punchy hook, 1-2 hashtags at the end
@@ -469,6 +470,7 @@ export class AutopostService {
         // marked data, not as more of the prompt.
         content: wrapUntrusted('article', description),
         extraInstructions,
+        language: languageRule({ scope: 'the posts', follow: 'the article' }),
       });
 
     return {

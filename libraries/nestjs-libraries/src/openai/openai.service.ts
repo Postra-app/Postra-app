@@ -14,6 +14,10 @@ import {
   buildBrandVoicePrompt,
   buildBrandDesignPrompt,
 } from '@gitroom/nestjs-libraries/openai/brand-prompt';
+import {
+  languageRule,
+  tooShortToDetectLanguage,
+} from '@gitroom/nestjs-libraries/openai/language-rule';
 import { withImageSlot } from '@gitroom/nestjs-libraries/openai/image-concurrency';
 
 const openai = new OpenAI({
@@ -67,6 +71,15 @@ const clampInt = (
   const n = Math.trunc(Number(value));
   return Number.isFinite(n) ? Math.min(Math.max(n, min), max) : fallback;
 };
+
+// An explicit target always wins. The UI locale is used only when the prompt
+// itself cannot carry the answer — see tooShortToDetectLanguage.
+const resolveLanguage = (
+  prompt: string,
+  language?: string,
+  languageFallback?: string
+): string | undefined =>
+  language || (tooShortToDetectLanguage(prompt) ? languageFallback : undefined);
 
 const withSettings = (
   prompt: string,
@@ -427,7 +440,10 @@ export class OpenaiService {
       tone?: string;
     },
     language?: string,
-    orgId?: string
+    orgId?: string,
+    // The UI locale, used only when the prompt is too short to tell. An
+    // explicit `language` still wins; this is the floor, not the target.
+    languageFallback?: string
   ) {
     const PostDesignSchema = z.object({
       headline: z.string().max(60),
@@ -452,6 +468,7 @@ export class OpenaiService {
     });
 
     const brandHint = buildBrandDesignPrompt(brandKit);
+    const targetLanguage = resolveLanguage(prompt, language, languageFallback);
 
     for (let i = 0; i < 3; i++) {
       try {
@@ -466,7 +483,12 @@ Generate a complete design specification for a ${platformLabel(
                   platform
                 )} post.
 
-LANGUAGE: Write ALL text fields (headline, subtext, cta) in the target language named in the <settings> block of the user message; when none is given, use the SAME language as the user's prompt (detect it — Polish prompt → Polish text, English → English). Never mix languages. IGNORE the language of the brand constraints when choosing the text language.
+${languageRule({
+                  scope: 'ALL text fields (headline, subtext, cta)',
+                  targetNamedIn: 'the <settings> block of the user message',
+                  follow: "the user's prompt",
+                  ignoreBrandLanguage: true,
+                })}
 
 CONTENT RULES:
 - headline: short, impactful, max ~5 words
@@ -487,7 +509,7 @@ ${SETTINGS_BLOCK_RULE}`,
                 role: 'user',
                 content: withSettings(
                   prompt,
-                  language && `Target language: ${language}`,
+                  targetLanguage && `Target language: ${targetLanguage}`,
                   brandHint
                 ),
               },
@@ -514,10 +536,14 @@ ${SETTINGS_BLOCK_RULE}`,
       tone?: string;
     },
     language?: string,
-    orgId?: string
+    orgId?: string,
+    // The UI locale, used only when the prompt is too short to tell. An
+    // explicit `language` still wins; this is the floor, not the target.
+    languageFallback?: string
   ): Promise<string> {
     const CaptionSchema = z.object({ caption: z.string() });
     const toneHint = buildBrandVoicePrompt(brandKit);
+    const targetLanguage = resolveLanguage(topic, language, languageFallback);
 
     const parsed = (
       await this.parseChat({
@@ -529,7 +555,12 @@ ${SETTINGS_BLOCK_RULE}`,
               platform
             )} post.
 
-LANGUAGE: write the caption in the target language named in the <settings> block of the user message; when none is given, use the SAME language as the topic (detect it). Never mix languages.
+${languageRule({
+              scope: 'the caption',
+              targetNamedIn: 'the <settings> block of the user message',
+              follow: 'the topic',
+              ignoreBrandLanguage: true,
+            })}
 
 RULES:
 - Write the POST caption (the body text), NOT the on-image graphic text. Open with a hook line, then 1-3 short sentences, end with a light call to action.
@@ -544,7 +575,7 @@ ${SETTINGS_BLOCK_RULE}`,
             role: 'user',
             content: withSettings(
               topic,
-              language && `Target language: ${language}`,
+              targetLanguage && `Target language: ${targetLanguage}`,
               toneHint
             ),
           },
@@ -566,7 +597,10 @@ ${SETTINGS_BLOCK_RULE}`,
       tone?: string;
     },
     language?: string,
-    orgId?: string
+    orgId?: string,
+    // The UI locale, used only when the prompt is too short to tell. An
+    // explicit `language` still wins; this is the floor, not the target.
+    languageFallback?: string
   ) {
     // Not every caller goes through the validated DTO — clamp before the count
     // reaches the system prompt.
@@ -620,6 +654,7 @@ ${SETTINGS_BLOCK_RULE}`,
       return out;
     };
 
+    const targetLanguage = resolveLanguage(prompt, language, languageFallback);
     let best: { imagePrompt: string; colors: any; slides: any[] } | null = null;
 
     for (let i = 0; i < 3; i++) {
@@ -636,7 +671,12 @@ ${SETTINGS_BLOCK_RULE}`,
 
 SLIDE COUNT: The "slides" array MUST contain EXACTLY ${count} slides — not fewer, not more. This is a hard requirement.
 
-LANGUAGE: Write ALL text fields (headline, subtext, cta) in the target language named in the <settings> block of the user message; when none is given, use the SAME language as the user's prompt (detect it — Polish prompt → Polish text, English → English). Never mix languages within one carousel. IGNORE the language of the brand constraints when choosing the text language.
+${languageRule({
+                  scope: 'ALL text fields (headline, subtext, cta)',
+                  targetNamedIn: 'the <settings> block of the user message',
+                  follow: "the user's prompt",
+                  ignoreBrandLanguage: true,
+                })}
 
 NARRATIVE (adapt to ${count} slides):
 - Slide 1: hook — catchy headline that stops the scroll
@@ -665,7 +705,7 @@ ${SETTINGS_BLOCK_RULE}`,
                 role: 'user',
                 content: withSettings(
                   `${prompt}\n\n(Return EXACTLY ${count} slides in the "slides" array.)`,
-                  language && `Target language: ${language}`,
+                  targetLanguage && `Target language: ${targetLanguage}`,
                   brandHint
                 ),
               },
