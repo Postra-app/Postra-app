@@ -254,7 +254,7 @@ export const VideoTextOverlay: FC<VideoTextOverlayProps> = ({ onReady }) => {
         disabled={busy}
         rows={2}
         placeholder={t('clip_text_placeholder', 'Text on video')}
-        className="text-xs px-2 py-2 rounded bg-newColColor border border-newBorder text-textColor placeholder-textColor/40 focus:outline-none focus:border-forth disabled:opacity-50 resize-none"
+        className="text-xs px-2 py-2 rounded bg-newColColor border border-newBorder text-textColor placeholder-textColor/60 focus:outline-none focus:border-forth disabled:opacity-50 resize-none"
       />
 
       {/* Position */}

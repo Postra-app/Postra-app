@@ -119,13 +119,21 @@ const SLIDERS: {
   { key: 'blur', labelKey: 'filter_blur', fallback: 'Blur', min: 0, max: 0.5, step: 0.01 },
 ];
 
-const PRESETS: { key: PresetKey; labelKey: string; fallback: string }[] = [
-  { key: 'original', labelKey: 'filter_preset_original', fallback: 'Original' },
-  { key: 'bw', labelKey: 'filter_preset_bw', fallback: 'B&W' },
-  { key: 'sepia', labelKey: 'filter_preset_sepia', fallback: 'Sepia' },
-  { key: 'vivid', labelKey: 'filter_preset_vivid', fallback: 'Vivid' },
-  { key: 'cool', labelKey: 'filter_preset_cool', fallback: 'Cool' },
-  { key: 'warm', labelKey: 'filter_preset_warm', fallback: 'Warm' },
+/** `preview` is the CSS equivalent of the Fabric filter, close enough for a
+ *  40px thumbnail and free — rendering six real filtered canvases to label six
+ *  buttons would cost more than the edit itself. */
+const PRESETS: {
+  key: PresetKey;
+  labelKey: string;
+  fallback: string;
+  preview: string;
+}[] = [
+  { key: 'original', labelKey: 'filter_preset_original', fallback: 'Original', preview: 'none' },
+  { key: 'bw', labelKey: 'filter_preset_bw', fallback: 'B&W', preview: 'grayscale(1)' },
+  { key: 'sepia', labelKey: 'filter_preset_sepia', fallback: 'Sepia', preview: 'sepia(0.85)' },
+  { key: 'vivid', labelKey: 'filter_preset_vivid', fallback: 'Vivid', preview: 'saturate(1.6)' },
+  { key: 'cool', labelKey: 'filter_preset_cool', fallback: 'Cool', preview: 'saturate(1.1) hue-rotate(15deg)' },
+  { key: 'warm', labelKey: 'filter_preset_warm', fallback: 'Warm', preview: 'sepia(0.25) saturate(1.2) hue-rotate(-10deg)' },
 ];
 
 // Lightroom-lite: built-in Fabric WebGL filters on the selected image.
@@ -204,6 +212,12 @@ export const ImageFiltersPanel: FC<Props> = ({ canvas }) => {
   );
 
   const hasImage = !!getActiveImage();
+  // The preview is of THIS photo, not a stock swatch — a filter looks entirely
+  // different on a dark product shot and on a bright outdoor one.
+  const previewSrc = (() => {
+    const el = getActiveImage()?.getElement();
+    return el instanceof HTMLImageElement ? el.src : null;
+  })();
 
   return (
     <div className="flex flex-col gap-2">
@@ -223,13 +237,22 @@ export const ImageFiltersPanel: FC<Props> = ({ canvas }) => {
                 key={p.key}
                 onClick={() => applyPreset(p.key)}
                 className={clsx(
-                  'text-[11px] px-1.5 py-1.5 rounded transition-colors',
+                  'flex flex-col items-center gap-1 p-1 rounded transition-colors',
                   state.preset === p.key
                     ? 'bg-newAccent text-[#06222e] font-[600]'
                     : 'bg-newColColor hover:bg-white/[0.08] text-textColor'
                 )}
               >
-                {t(p.labelKey, p.fallback)}
+                {previewSrc && (
+                  <img
+                    src={previewSrc}
+                    alt=""
+                    aria-hidden="true"
+                    className="w-full aspect-square object-cover rounded-[3px]"
+                    style={{ filter: p.preview }}
+                  />
+                )}
+                <span className="text-[11px]">{t(p.labelKey, p.fallback)}</span>
               </button>
             ))}
           </div>

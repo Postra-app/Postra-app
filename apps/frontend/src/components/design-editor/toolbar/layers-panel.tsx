@@ -154,7 +154,7 @@ export const LayersPanel: FC<{
               })}
               className={clsx(
                 'h-6 w-6 rounded flex items-center justify-center transition-colors hover:bg-white/[0.10]',
-                row.hidden ? 'text-textColor/40' : 'text-textColor/65 hover:text-textColor'
+                row.hidden ? 'text-textColor/50' : 'text-textColor/65 hover:text-textColor'
               )}
               title={row.hidden ? t('layer_show', 'Show') : t('layer_hide', 'Hide')}
               aria-label={row.hidden ? t('layer_show', 'Show') : t('layer_hide', 'Hide')}
