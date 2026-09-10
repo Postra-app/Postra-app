@@ -17,13 +17,15 @@ import { VIDEO_FORMATS, VideoFormat } from './video-formats';
 import { assertVideoSurvives } from './mp4-source';
 import { useRenderJob } from './use-render-job';
 import { UnsupportedCodecError } from './compositor-pipeline';
+import { ResultPanel } from './result-panel';
 
 interface VideoMultiFormatProps {
   source: Blob | null;
-  onExported: (results: { format: VideoFormat; blob: Blob }[]) => void;
+  /** The one file the user picked for the post; the rest are still saved. */
+  onReady: (media: { id: string; path: string }) => void;
 }
 
-export const VideoMultiFormat: FC<VideoMultiFormatProps> = ({ source, onExported }) => {
+export const VideoMultiFormat: FC<VideoMultiFormatProps> = ({ source, onReady }) => {
   const t = useT();
   const toaster = useToaster();
   const [selected, setSelected] = useState<Set<string>>(
@@ -32,6 +34,7 @@ export const VideoMultiFormat: FC<VideoMultiFormatProps> = ({ source, onExported
   const job = useRenderJob();
   const isExporting = job.busy;
   const [progressMap, setProgressMap] = useState<Record<string, number>>({});
+  const [exported, setExported] = useState<{ format: VideoFormat; blob: Blob }[]>([]);
 
   const toggle = (key: string) => {
     const next = new Set(selected);
@@ -87,7 +90,7 @@ export const VideoMultiFormat: FC<VideoMultiFormatProps> = ({ source, onExported
         return done;
       });
       if (!results) return;
-      onExported(results);
+      setExported(results);
     } catch (err) {
       toaster.show(
         err instanceof UnsupportedCodecError
@@ -102,7 +105,7 @@ export const VideoMultiFormat: FC<VideoMultiFormatProps> = ({ source, onExported
         'warning'
       );
     }
-  }, [source, selected, onExported, t, toaster, job]);
+  }, [source, selected, t, toaster, job]);
 
   if (!source) {
     return (
@@ -184,6 +187,18 @@ export const VideoMultiFormat: FC<VideoMultiFormatProps> = ({ source, onExported
           </Button>
         )}
       </div>
+      {exported.length > 0 && (
+        <ResultPanel
+          results={exported.map((r) => ({
+            key: r.format.key,
+            label: r.format.label,
+            blob: r.blob,
+            hadAudio: null,
+          }))}
+          fileNameFor={(r) => `${r.key}-${Date.now()}`}
+          onUseInPost={onReady}
+        />
+      )}
     </div>
   );
 };

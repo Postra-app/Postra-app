@@ -9,6 +9,7 @@ import { Button } from '@gitroom/frontend/components/ui/button';
 import * as Sentry from '@sentry/nextjs';
 import { composeVideo, ClipTooLongError, UnsupportedCodecError } from './compositor-pipeline';
 import { useRenderJob } from './use-render-job';
+import { ResultPanel } from './result-panel';
 import { parseSrt, captionAt } from './srt';
 import {
   fontFamilyForLabel,
@@ -32,6 +33,10 @@ export const VideoCaptions: FC<VideoCaptionsProps> = ({ mediaId, source, onCapti
   const { kit } = useBrandKit();
   const [srt, setSrt] = useState('');
   const [isGenerating, setIsGenerating] = useState(false);
+  // Burning used to upload straight away and close the composer, so nobody
+  // ever saw the captions they had just burned in - and there was no way back.
+  const [burned, setBurned] = useState<Blob | null>(null);
+  const [replacedSource, setReplacedSource] = useState(false);
   const job = useRenderJob();
   const isBurning = job.busy;
   const burnProgress = job.progress;
@@ -98,17 +103,7 @@ export const VideoCaptions: FC<VideoCaptionsProps> = ({ mediaId, source, onCapti
     }
   }, [mediaId, language, fetch, toaster, t]);
 
-  const uploadResult = useCallback(
-    async (blob: Blob) => {
-      const formData = new FormData();
-      formData.append('file', blob, `captioned-${Date.now()}.mp4`);
-      const res = await fetch('/media/upload-simple', { method: 'POST', body: formData });
-      const data = await res.json();
-      if (data?.id && data?.path) onCaptioned({ id: data.id, path: data.path });
-      else throw new Error('upload returned no media');
-    },
-    [fetch, onCaptioned]
-  );
+
 
   const handleBurn = useCallback(async () => {
     if (!srt.trim() || isBurning) return;
@@ -148,7 +143,9 @@ export const VideoCaptions: FC<VideoCaptionsProps> = ({ mediaId, source, onCapti
           })
         );
         if (!result) return;
-        await uploadResult(result.blob);
+        // Show it before it goes anywhere: the result panel does the upload,
+        // once the user has looked at it and said so.
+        setBurned(result.blob);
       } else if (mediaId) {
         // Fallback: server burn-in when we don't hold the local bytes. Cancel
         // here only drops our end of the request — ffmpeg on the server runs to
@@ -188,7 +185,27 @@ export const VideoCaptions: FC<VideoCaptionsProps> = ({ mediaId, source, onCapti
         'warning'
       );
     }
-  }, [srt, isBurning, source, mediaId, kit, fetch, uploadResult, onCaptioned, toaster, t, job]);
+  }, [srt, isBurning, source, mediaId, kit, fetch, onCaptioned, toaster, t, job]);
+
+  // The clip is in the library only because Whisper needed a URL to transcribe.
+  // Once the captioned version is stored, the silent twin is usually clutter -
+  // but deleting is not ours to assume, so it stays one explicit click.
+  const removeSourceClip = useCallback(async () => {
+    if (!mediaId) return;
+    try {
+      await fetch(`/media/${mediaId}`, { method: 'DELETE' });
+      setReplacedSource(true);
+      toaster.show(
+        t('video_captions_source_removed', 'Removed the clip without captions.'),
+        'success'
+      );
+    } catch {
+      toaster.show(
+        t('video_captions_source_remove_failed', 'Could not remove the earlier clip.'),
+        'warning'
+      );
+    }
+  }, [mediaId, fetch, toaster, t]);
 
   return (
     <div className="flex flex-col gap-3 p-3">
@@ -266,6 +283,34 @@ export const VideoCaptions: FC<VideoCaptionsProps> = ({ mediaId, source, onCapti
           </Button>
         </div>
       </div>
+      {burned && (
+        <>
+          <ResultPanel
+            results={[
+              {
+                key: 'captioned',
+                label: t('video_result_captioned', 'With captions'),
+                blob: burned,
+                hadAudio: true,
+              },
+            ]}
+            fileNameFor={() => `postra-captioned-${Date.now()}`}
+            onUseInPost={onCaptioned}
+          />
+          {mediaId && !replacedSource && (
+            <button
+              type="button"
+              onClick={removeSourceClip}
+              className="self-start text-[11px] text-textColor/65 underline hover:text-textColor transition-colors"
+            >
+              {t(
+                'video_captions_remove_source',
+                'Remove the clip without captions from the library'
+              )}
+            </button>
+          )}
+        </>
+      )}
       <div className="text-[11px] text-textColor/65 leading-snug">
         {source
           ? t(

@@ -13,7 +13,7 @@ import {
 } from '@gitroom/frontend/components/studio/studio-icons';
 import { useUser } from '@gitroom/frontend/components/layout/user.context';
 import { VideoTrimmer } from './video-trimmer';
-import { VideoMultiFormat, VideoFormat } from './video-multi-format';
+import { VideoMultiFormat } from './video-multi-format';
 import { VideoCaptions } from './video-captions';
 import { VideoStock } from './video-stock';
 import { VideoTextOverlay } from './video-text-overlay';
@@ -161,6 +161,7 @@ export const VideoStudio: FC<VideoStudioProps> = ({
   showGoalsRef.current = showGoals;
   const tabRef = useRef(tab);
   tabRef.current = tab;
+
   /** Tabs that edit the one shared source clip (the others bring their own). */
   const SHARED_CLIP_TABS: Tab[] = ['trim', 'formats', 'captions'];
   const wantsSharedClip = () =>
@@ -497,24 +498,12 @@ export const VideoStudio: FC<VideoStudioProps> = ({
     }
   }, [ensureUploaded, toaster, t]);
 
-  const handleFormatsExported = useCallback(
-    async (results: { format: VideoFormat; blob: Blob }[]) => {
-      setIsUploading(true);
-      const uploaded: { id: string; path: string }[] = [];
-      let failure: UploadFailure | null = null;
-      for (const r of results) {
-        const result = await uploadBlob(r.blob, `${r.format.key}-${Date.now()}.mp4`);
-        if (result.media) uploaded.push(result.media);
-        else failure = failure ?? result.reason;
-      }
-      setIsUploading(false);
-      if (uploaded.length) {
-        deliver(uploaded, 'formats');
-      } else {
-        reportUploadFailure(failure ?? 'network');
-      }
+  const handleFormatsReady = useCallback(
+    (newMedia: { id: string; path: string }) => {
+      setUploadedMedia(newMedia);
+      deliver([newMedia], 'formats');
     },
-    [uploadBlob, deliver, reportUploadFailure]
+    [deliver]
   );
 
   const handleCaptionedReady = useCallback(
@@ -714,30 +703,42 @@ export const VideoStudio: FC<VideoStudioProps> = ({
           </div>
         )}
         {!showGoals && tab === 'trim' && (
-          <VideoTrimmer file={file} onTrimmed={handleTrimmedExport} />
+          <div>
+            <VideoTrimmer file={file} onTrimmed={handleTrimmedExport} />
+          </div>
         )}
         {!showGoals && tab === 'formats' && (
-          <VideoMultiFormat source={trimmedBlob ?? file} onExported={handleFormatsExported} />
+          <div>
+            <VideoMultiFormat source={trimmedBlob ?? file} onReady={handleFormatsReady} />
+          </div>
         )}
         {!showGoals && tab === 'captions' && (
-          <VideoCaptions
-            mediaId={uploadedMedia?.id ?? null}
-            source={trimmedBlob ?? file}
-            onCaptioned={handleCaptionedReady}
-          />
+          <div>
+            <VideoCaptions
+              mediaId={uploadedMedia?.id ?? null}
+              source={trimmedBlob ?? file}
+              onCaptioned={handleCaptionedReady}
+            />
+          </div>
         )}
         {!showGoals && tab === 'stock' && (
-          <VideoStock onImported={handleStockImported} />
+          <div>
+            <VideoStock onImported={handleStockImported} />
+          </div>
         )}
         {!showGoals && tab === 'text' && (
-          <VideoTextOverlay
-            onReady={(media) => handleComposedReady(media, 'text')}
-          />
+          <div>
+            <VideoTextOverlay
+              onReady={(media) => handleComposedReady(media, 'text')}
+            />
+          </div>
         )}
         {!showGoals && tab === 'slideshow' && (
-          <VideoSlideshow
-            onReady={(media) => handleComposedReady(media, 'slideshow')}
-          />
+          <div>
+            <VideoSlideshow
+              onReady={(media) => handleComposedReady(media, 'slideshow')}
+            />
+          </div>
         )}
       </div>
 
