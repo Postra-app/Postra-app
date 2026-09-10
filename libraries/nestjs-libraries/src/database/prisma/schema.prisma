@@ -258,6 +258,10 @@ model Media {
   designSpec         Json?
   canvasJson         String?             @db.Text
   isTemplate         Boolean             @default(false)
+  // Set when the bytes came out of an image model. YouTube and TikTok both
+  // require the post to declare synthetic media, and our own renderers strip
+  // the C2PA marker the model embeds, so their auto-detection cannot see it.
+  aiGenerated        Boolean             @default(false)
   organization       Organization        @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   agencies           SocialMediaAgency[]
   userPicture        User[]

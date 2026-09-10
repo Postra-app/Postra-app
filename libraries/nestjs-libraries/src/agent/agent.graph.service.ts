@@ -397,7 +397,9 @@ export class AgentGraphService {
           const uploadWithId = await this._mediaService.saveFile(
             state.orgId,
             name,
-            upload
+            upload,
+            undefined,
+            true
           );
 
           return {

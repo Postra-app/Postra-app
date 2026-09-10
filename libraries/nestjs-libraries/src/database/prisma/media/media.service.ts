@@ -235,7 +235,11 @@ export class MediaService {
     const media = await this._mediaRepository.saveFile(
       org.id,
       uploaded.split('/').pop() as string,
-      uploaded
+      uploaded,
+      undefined,
+      // The design is composed over an AI-generated background, so the picture
+      // that goes out is synthetic media even though we drew the text on it.
+      true
     );
 
     // Persist the design spec so opening this media in Studio rebuilds an
@@ -467,8 +471,20 @@ export class MediaService {
     );
   }
 
-  saveFile(org: string, fileName: string, filePath: string, originalName?: string) {
-    return this._mediaRepository.saveFile(org, fileName, filePath, originalName);
+  saveFile(
+    org: string,
+    fileName: string,
+    filePath: string,
+    originalName?: string,
+    aiGenerated = false
+  ) {
+    return this._mediaRepository.saveFile(
+      org,
+      fileName,
+      filePath,
+      originalName,
+      aiGenerated
+    );
   }
 
   getMedia(org: string, page: number, search?: string) {
@@ -535,7 +551,7 @@ export class MediaService {
         );
 
         const file = await this.storage.uploadSimple(loadedData);
-        return this.saveFile(org.id, file.split('/').pop(), file);
+        return this.saveFile(org.id, file.split('/').pop(), file, undefined, true);
       }
     );
   }

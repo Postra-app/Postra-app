@@ -55,7 +55,13 @@ export class GenerateImageTool implements AgentToolInterface {
           throw new Error('Image generation returned no image.');
         }
 
-        return this._mediaService.saveFile(org.id, url.split('/').pop(), url);
+        return this._mediaService.saveFile(
+          org.id,
+          url.split('/').pop(),
+          url,
+          undefined,
+          true
+        );
       },
     });
   }

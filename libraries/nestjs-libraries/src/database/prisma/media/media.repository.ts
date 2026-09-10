@@ -9,7 +9,16 @@ import { PostDesignSpec } from '@gitroom/nestjs-libraries/studio/post-design-spe
 export class MediaRepository {
   constructor(private _media: PrismaRepository<'media'>) {}
 
-  saveFile(org: string, fileName: string, filePath: string, originalName?: string) {
+  saveFile(
+    org: string,
+    fileName: string,
+    filePath: string,
+    originalName?: string,
+    // True when the bytes came from an image model. Recorded at creation
+    // because nothing downstream can tell afterwards — our renderers strip the
+    // C2PA marker the model embeds.
+    aiGenerated = false
+  ) {
     return this._media.model.media.create({
       data: {
         organization: {
@@ -20,6 +29,7 @@ export class MediaRepository {
         name: fileName,
         path: filePath,
         originalName: originalName || null,
+        aiGenerated,
       },
       select: {
         id: true,
@@ -28,6 +38,7 @@ export class MediaRepository {
         path: true,
         thumbnail: true,
         alt: true,
+        aiGenerated: true,
       },
     });
   }
@@ -178,6 +189,7 @@ export class MediaRepository {
         thumbnail: true,
         alt: true,
         thumbnailTimestamp: true,
+        aiGenerated: true,
       },
       skip: pageNum * 18,
       take: 18,

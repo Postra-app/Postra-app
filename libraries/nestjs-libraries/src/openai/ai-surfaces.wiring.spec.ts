@@ -40,6 +40,32 @@ describe('every image call says who it is for', () => {
   });
 });
 
+describe('media a model produced is recorded as such', () => {
+  // The flag can only be set where the file is created; nothing downstream can
+  // tell afterwards, because every render path strips the model's C2PA marker.
+  it.each([
+    ['database/prisma/media/media.service.ts', 2],
+    ['chat/tools/generate.image.tool.ts', 1],
+    ['agent/agent.graph.service.ts', 1],
+  ])('%s flags what it generates', (file, expected) => {
+    const source = read(file);
+    const flagged = source.match(/saveFile\(([^;]*?)true\s*\)/gs) ?? [];
+    expect(flagged.length).toBe(expected);
+  });
+
+  it('the composer route flags the image it just generated', () => {
+    const controller = readFileSync(
+      join(__dirname, '../../../../apps/backend/src/api/routes/media.controller.ts'),
+      'utf8'
+    );
+    const route = controller.slice(
+      controller.indexOf("@Post('/generate-image-with-prompt')"),
+      controller.indexOf("@Post('/generate-post-design')")
+    );
+    expect(route).toMatch(/saveFile\([\s\S]*?true\s*\)/);
+  });
+});
+
 describe('brand guidance comes from one place', () => {
   it('applies the kit to every raw AI image, in MediaService', () => {
     const media = read('database/prisma/media/media.service.ts');

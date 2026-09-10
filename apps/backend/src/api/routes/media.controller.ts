@@ -157,7 +157,13 @@ export class MediaController {
       return false;
     }
 
-    return this._mediaService.saveFile(org.id, file.split('/').pop(), file);
+    return this._mediaService.saveFile(
+      org.id,
+      file.split('/').pop(),
+      file,
+      undefined,
+      true
+    );
   }
 
   @Post('/generate-post-design')
