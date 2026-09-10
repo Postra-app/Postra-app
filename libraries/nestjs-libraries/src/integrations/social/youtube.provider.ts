@@ -1,3 +1,4 @@
+import { hasAiGeneratedMedia } from '@gitroom/nestjs-libraries/integrations/social/ai.media';
 import {
   AnalyticsData,
   AuthTokenDetails,
@@ -452,6 +453,12 @@ export class YoutubeProvider extends SocialAbstract implements SocialProvider {
               privacyStatus: settings.type,
               selfDeclaredMadeForKids:
                 settings.selfDeclaredMadeForKids === 'yes',
+              // YouTube requires altered or synthetic content to be declared.
+              // Its own detection relies on C2PA, which our render pipeline
+              // strips, so we declare what we recorded at creation time.
+              ...(hasAiGeneratedMedia(firstPost)
+                ? { containsSyntheticMedia: true }
+                : {}),
             },
           },
           media: {

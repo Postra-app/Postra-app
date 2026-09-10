@@ -391,6 +391,18 @@ export class PostsService {
                 return this._mediaService.getMediaByIdOrg(orgId, p.id);
               }
 
+              // Posts saved before the flag existed (and any client that
+              // stores only the path) carry no origin. YouTube and TikTok have
+              // to be told about synthetic media, and the library row is the
+              // only place that knows, so ask it rather than publish blind.
+              if (p.id && p.aiGenerated === undefined) {
+                const row = await this._mediaService.getMediaByIdOrg(
+                  orgId,
+                  p.id
+                );
+                return { ...p, aiGenerated: !!row?.aiGenerated };
+              }
+
               return p;
             })
           )

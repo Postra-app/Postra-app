@@ -14,6 +14,7 @@ import {
 } from '@gitroom/nestjs-libraries/dtos/media/generate.post.design.dto';
 import { GeneratePostCarouselDto } from '@gitroom/nestjs-libraries/dtos/media/generate.post.carousel.dto';
 import { BrandKitService } from '@gitroom/nestjs-libraries/database/prisma/brand-kit/brand-kit.service';
+import { buildBrandContext } from '@gitroom/nestjs-libraries/openai/brand-prompt';
 import { PostsRepository } from '@gitroom/nestjs-libraries/database/prisma/posts/posts.repository';
 import { ioRedis } from '@gitroom/nestjs-libraries/redis/redis.service';
 import {
@@ -34,6 +35,7 @@ import {
   RefineDesignDto,
   TemplateSearchDto,
 } from '@gitroom/nestjs-libraries/studio/studio.dto';
+import { AiUsageEvent } from '@gitroom/nestjs-libraries/services/ai-usage.record';
 import {
   AuthorizationActions,
   Sections,
@@ -86,11 +88,31 @@ export class MediaService {
     return this._mediaRepository.getMediaByIdOrg(org, id);
   }
 
+  /**
+   * Every raw AI image in the product goes through here — the composer's AI
+   * Image, Studio's "AI Img" tab and the agent's generateImageTool — so this is
+   * where the Brand Kit is applied. It used to be applied by the agent tool
+   * alone, which is why an image asked for in the composer came back in
+   * whatever palette the model felt like.
+   *
+   * The brand block is appended AFTER `generatePromptForPicture` expands the
+   * prompt: the expander rewrites its input into a long scene description and
+   * would paraphrase the hex colours away.
+   */
   async generateImage(
     prompt: string,
     org: Organization,
-    generatePromptFirst?: boolean
+    generatePromptFirst?: boolean,
+    // Which surface asked, so the usage log can tell the composer's images
+    // apart from the agent's. Defaults to the /media routes.
+    engine: AiUsageEvent['engine'] = 'media'
   ) {
+    const brandKit = await this._brandKitService.getNormalized(org.id);
+    const brand = buildBrandContext(brandKit, {
+      palette: true,
+      logoHint: true,
+    });
+
     const generating = await this._subscriptionService.useCredit(
       org,
       'ai_images',
@@ -99,8 +121,10 @@ export class MediaService {
           prompt = await this._openAi.generatePromptForPicture(prompt, org.id);
         }
         const dataUrl = await this._openAi.generateImage(
-          prompt,
-          !!generatePromptFirst
+          brand ? `${prompt}\n\n${brand}` : prompt,
+          !!generatePromptFirst,
+          false,
+          { orgId: org.id, engine }
         );
         return dataUrl ? await this.storage.uploadSimple(dataUrl) : dataUrl;
       }
@@ -126,7 +150,8 @@ export class MediaService {
       dto.platform,
       brandKit,
       dto.language,
-      org.id
+      org.id,
+      dto.languageFallback
     );
 
     const cacheKey = `bg:${createHash('md5')
@@ -143,7 +168,9 @@ export class MediaService {
         async () => {
           const dalleUrl = await this._openAi.generateImage(
             spec.imagePrompt,
-            true
+            true,
+            false,
+            { orgId: org.id, engine: 'media' }
           );
           if (!dalleUrl) {
             throw new HttpException('The image generator returned nothing. Try again in a moment.', 502);
@@ -208,7 +235,11 @@ export class MediaService {
     const media = await this._mediaRepository.saveFile(
       org.id,
       uploaded.split('/').pop() as string,
-      uploaded
+      uploaded,
+      undefined,
+      // The design is composed over an AI-generated background, so the picture
+      // that goes out is synthetic media even though we drew the text on it.
+      true
     );
 
     // Persist the design spec so opening this media in Studio rebuilds an
@@ -241,7 +272,8 @@ export class MediaService {
       dto.slidesCount,
       brandKit,
       dto.language,
-      org.id
+      org.id,
+      dto.languageFallback
     );
 
     // Each slide gets a DISTINCT background that is a variation of one shared
@@ -287,7 +319,12 @@ export class MediaService {
             org,
             'ai_images',
             async () => {
-              const dalleUrl = await this._openAi.generateImage(prompt, true);
+              const dalleUrl = await this._openAi.generateImage(
+                prompt,
+                true,
+                false,
+                { orgId: org.id, engine: 'media' }
+              );
               if (!dalleUrl) {
                 throw new HttpException('The image generator returned nothing. Try again in a moment.', 502);
               }
@@ -434,8 +471,20 @@ export class MediaService {
     );
   }
 
-  saveFile(org: string, fileName: string, filePath: string, originalName?: string) {
-    return this._mediaRepository.saveFile(org, fileName, filePath, originalName);
+  saveFile(
+    org: string,
+    fileName: string,
+    filePath: string,
+    originalName?: string,
+    aiGenerated = false
+  ) {
+    return this._mediaRepository.saveFile(
+      org,
+      fileName,
+      filePath,
+      originalName,
+      aiGenerated
+    );
   }
 
   getMedia(org: string, page: number, search?: string) {
@@ -502,7 +551,7 @@ export class MediaService {
         );
 
         const file = await this.storage.uploadSimple(loadedData);
-        return this.saveFile(org.id, file.split('/').pop(), file);
+        return this.saveFile(org.id, file.split('/').pop(), file, undefined, true);
       }
     );
   }
@@ -637,7 +686,8 @@ export class MediaService {
    * query embedding.
    */
   async searchTemplates(
-    body: TemplateSearchDto
+    body: TemplateSearchDto,
+    orgId?: string
   ): Promise<{ id: string; score: number }[]> {
     if (!body.templates.length) return [];
 
@@ -665,7 +715,7 @@ export class MediaService {
 
     if (!embeddings) {
       const texts = body.templates.map((t) => t.text);
-      const vectors = await this._studioAi.embedBatch(texts);
+      const vectors = await this._studioAi.embedBatch(texts, orgId);
       embeddings = body.templates.map((t, i) => ({ id: t.id, embedding: vectors[i] }));
       await ioRedis.set(
         cacheKey,
@@ -675,7 +725,7 @@ export class MediaService {
       );
     }
 
-    const queryEmbedding = await this._studioAi.embedText(body.query);
+    const queryEmbedding = await this._studioAi.embedText(body.query, orgId);
     return rankBySimilarity(queryEmbedding, embeddings);
   }
 

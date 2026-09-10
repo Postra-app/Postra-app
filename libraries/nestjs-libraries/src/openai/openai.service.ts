@@ -6,12 +6,19 @@ import { z } from 'zod';
 import { createReadStream } from 'fs';
 import { stat } from 'fs/promises';
 import { parseChat } from '@gitroom/nestjs-libraries/openai/parse-chat';
-import { recordAiUsage } from '@gitroom/nestjs-libraries/services/ai-usage.record';
+import {
+  recordAiUsage,
+  AiUsageEvent,
+} from '@gitroom/nestjs-libraries/services/ai-usage.record';
 import {
   buildBrandVoicePrompt,
   buildBrandDesignPrompt,
 } from '@gitroom/nestjs-libraries/openai/brand-prompt';
-import pLimit from 'p-limit';
+import {
+  languageRule,
+  tooShortToDetectLanguage,
+} from '@gitroom/nestjs-libraries/openai/language-rule';
+import { withImageSlot } from '@gitroom/nestjs-libraries/openai/image-concurrency';
 
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY || 'sk-proj-',
@@ -20,11 +27,6 @@ const openai = new OpenAI({
   // (~40s). maxRetries stays at the SDK default (2, backoff on 429/5xx).
   timeout: 90_000,
 });
-
-// Cap concurrent image generations so peak traffic can't stampede OpenAI's
-// image rate limits (429s). One process today; move to a shared/Redis limiter
-// if we scale out.
-const imageGenLimit = pLimit(Number(process.env.OPENAI_IMAGE_CONCURRENCY) || 4);
 
 // System prompts must stay constant: any request-supplied string that reaches a
 // `role: 'system'` message is a prompt-injection vector. Platform ids resolve
@@ -69,6 +71,15 @@ const clampInt = (
   const n = Math.trunc(Number(value));
   return Number.isFinite(n) ? Math.min(Math.max(n, min), max) : fallback;
 };
+
+// An explicit target always wins. The UI locale is used only when the prompt
+// itself cannot carry the answer — see tooShortToDetectLanguage.
+const resolveLanguage = (
+  prompt: string,
+  language?: string,
+  languageFallback?: string
+): string | undefined =>
+  language || (tooShortToDetectLanguage(prompt) ? languageFallback : undefined);
 
 const withSettings = (
   prompt: string,
@@ -143,7 +154,12 @@ export class OpenaiService {
   async generateImage(
     prompt: string,
     _isUrl: boolean,
-    isVertical = false
+    isVertical = false,
+    // Who to bill the picture to in the usage log. Images cost more than any
+    // text call we make, and until now they were the one model call that never
+    // reached AiUsage — the admin panel showed text only and read as if the
+    // month had been cheap.
+    meta?: { orgId?: string | null; engine?: AiUsageEvent['engine'] }
   ): Promise<string | undefined> {
     // Model = 'gpt-image-2', the successor to 'gpt-image-1' (which OpenAI retires
     // 2026-10-23). The earlier swap looked like it failed (#102), but the visible
@@ -158,7 +174,7 @@ export class OpenaiService {
     let generate;
     try {
       generate = (
-        await imageGenLimit(() =>
+        await withImageSlot(() =>
           openai.images.generate({
             prompt,
             model,
@@ -190,6 +206,14 @@ export class OpenaiService {
       }
       throw err;
     }
+
+    recordAiUsage({
+      organizationId: meta?.orgId ?? null,
+      engine: meta?.engine ?? 'media',
+      model,
+      unit: 'images',
+      inputAmount: 1,
+    });
 
     const b64 = generate?.b64_json;
     if (!b64) {
@@ -416,7 +440,10 @@ export class OpenaiService {
       tone?: string;
     },
     language?: string,
-    orgId?: string
+    orgId?: string,
+    // The UI locale, used only when the prompt is too short to tell. An
+    // explicit `language` still wins; this is the floor, not the target.
+    languageFallback?: string
   ) {
     const PostDesignSchema = z.object({
       headline: z.string().max(60),
@@ -441,6 +468,7 @@ export class OpenaiService {
     });
 
     const brandHint = buildBrandDesignPrompt(brandKit);
+    const targetLanguage = resolveLanguage(prompt, language, languageFallback);
 
     for (let i = 0; i < 3; i++) {
       try {
@@ -455,7 +483,12 @@ Generate a complete design specification for a ${platformLabel(
                   platform
                 )} post.
 
-LANGUAGE: Write ALL text fields (headline, subtext, cta) in the target language named in the <settings> block of the user message; when none is given, use the SAME language as the user's prompt (detect it — Polish prompt → Polish text, English → English). Never mix languages. IGNORE the language of the brand constraints when choosing the text language.
+${languageRule({
+                  scope: 'ALL text fields (headline, subtext, cta)',
+                  targetNamedIn: 'the <settings> block of the user message',
+                  follow: "the user's prompt",
+                  ignoreBrandLanguage: true,
+                })}
 
 CONTENT RULES:
 - headline: short, impactful, max ~5 words
@@ -476,7 +509,7 @@ ${SETTINGS_BLOCK_RULE}`,
                 role: 'user',
                 content: withSettings(
                   prompt,
-                  language && `Target language: ${language}`,
+                  targetLanguage && `Target language: ${targetLanguage}`,
                   brandHint
                 ),
               },
@@ -503,10 +536,14 @@ ${SETTINGS_BLOCK_RULE}`,
       tone?: string;
     },
     language?: string,
-    orgId?: string
+    orgId?: string,
+    // The UI locale, used only when the prompt is too short to tell. An
+    // explicit `language` still wins; this is the floor, not the target.
+    languageFallback?: string
   ): Promise<string> {
     const CaptionSchema = z.object({ caption: z.string() });
     const toneHint = buildBrandVoicePrompt(brandKit);
+    const targetLanguage = resolveLanguage(topic, language, languageFallback);
 
     const parsed = (
       await this.parseChat({
@@ -518,7 +555,12 @@ ${SETTINGS_BLOCK_RULE}`,
               platform
             )} post.
 
-LANGUAGE: write the caption in the target language named in the <settings> block of the user message; when none is given, use the SAME language as the topic (detect it). Never mix languages.
+${languageRule({
+              scope: 'the caption',
+              targetNamedIn: 'the <settings> block of the user message',
+              follow: 'the topic',
+              ignoreBrandLanguage: true,
+            })}
 
 RULES:
 - Write the POST caption (the body text), NOT the on-image graphic text. Open with a hook line, then 1-3 short sentences, end with a light call to action.
@@ -533,7 +575,7 @@ ${SETTINGS_BLOCK_RULE}`,
             role: 'user',
             content: withSettings(
               topic,
-              language && `Target language: ${language}`,
+              targetLanguage && `Target language: ${targetLanguage}`,
               toneHint
             ),
           },
@@ -555,7 +597,10 @@ ${SETTINGS_BLOCK_RULE}`,
       tone?: string;
     },
     language?: string,
-    orgId?: string
+    orgId?: string,
+    // The UI locale, used only when the prompt is too short to tell. An
+    // explicit `language` still wins; this is the floor, not the target.
+    languageFallback?: string
   ) {
     // Not every caller goes through the validated DTO — clamp before the count
     // reaches the system prompt.
@@ -609,6 +654,7 @@ ${SETTINGS_BLOCK_RULE}`,
       return out;
     };
 
+    const targetLanguage = resolveLanguage(prompt, language, languageFallback);
     let best: { imagePrompt: string; colors: any; slides: any[] } | null = null;
 
     for (let i = 0; i < 3; i++) {
@@ -625,7 +671,12 @@ ${SETTINGS_BLOCK_RULE}`,
 
 SLIDE COUNT: The "slides" array MUST contain EXACTLY ${count} slides — not fewer, not more. This is a hard requirement.
 
-LANGUAGE: Write ALL text fields (headline, subtext, cta) in the target language named in the <settings> block of the user message; when none is given, use the SAME language as the user's prompt (detect it — Polish prompt → Polish text, English → English). Never mix languages within one carousel. IGNORE the language of the brand constraints when choosing the text language.
+${languageRule({
+                  scope: 'ALL text fields (headline, subtext, cta)',
+                  targetNamedIn: 'the <settings> block of the user message',
+                  follow: "the user's prompt",
+                  ignoreBrandLanguage: true,
+                })}
 
 NARRATIVE (adapt to ${count} slides):
 - Slide 1: hook — catchy headline that stops the scroll
@@ -654,7 +705,7 @@ ${SETTINGS_BLOCK_RULE}`,
                 role: 'user',
                 content: withSettings(
                   `${prompt}\n\n(Return EXACTLY ${count} slides in the "slides" array.)`,
-                  language && `Target language: ${language}`,
+                  targetLanguage && `Target language: ${targetLanguage}`,
                   brandHint
                 ),
               },

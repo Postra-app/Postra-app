@@ -3,7 +3,9 @@ import OpenAI from 'openai';
 import { zodResponseFormat } from 'openai/helpers/zod';
 import { z } from 'zod';
 import { parseChat } from '@gitroom/nestjs-libraries/openai/parse-chat';
+import { recordAiUsage } from '@gitroom/nestjs-libraries/services/ai-usage.record';
 import { buildBrandVoicePrompt } from '@gitroom/nestjs-libraries/openai/brand-prompt';
+import { languageRule } from '@gitroom/nestjs-libraries/openai/language-rule';
 
 import {
   StudioBrandRef,
@@ -200,7 +202,7 @@ Rules:
 - Image layers are photos: you CANNOT recolor, retouch or edit their pixels. Setting fill/color on an image layer does nothing — never do it, and never claim you changed a photo.
 - To make the picture warmer/cooler/tinted/darker: ADD a full-canvas rect (x:0, y:0, originX:left, originY:top, width/height = canvas size) with the tint color as fill and opacity 0.15-0.35 — added layers render on top, so it tints the photo. Say in the explanation that you added a colour tint overlay.
 - If the request truly needs photo editing (add/remove objects or people, change the scene), emit no ops and point at the in-app paths instead of external tools: (1) the Images tool's stock search — name the exact term to search (e.g. "scarecrow") so they can drop it onto the design as its own layer; (2) regenerating in AI Generate with the change added to the prompt. Never send the user to outside photo editors.
-- Reply in the same language as the instruction (Polish or English).`;
+- ${languageRule({ scope: 'the explanation', follow: 'the instruction' })}`;
 
     const userText = [
       `Canvas: ${spec.width}x${spec.height} (${spec.platform}).`,
@@ -452,7 +454,7 @@ ${buildBrandVoicePrompt({ tone: input.tone })}
 ${
   input.action === 'translate'
     ? 'Write the result in the target language named above, whatever language the input is in.'
-    : 'Keep the SAME language as the input.'
+    : languageRule({ scope: 'the caption', follow: 'the input' })
 } Preserve important facts, @mentions, #hashtags and links. Return ONLY the rewritten caption as plain text — no surrounding quotes, no explanation, no markdown or HTML.`;
 
     const parsed = (
@@ -470,20 +472,38 @@ ${
     return { text: parsed.text };
   }
 
-  async embedText(text: string): Promise<number[]> {
+  // Embeddings are cheap per call but template search runs on every keystroke
+  // pause in Studio, so they belong in the usage log like everything else.
+  // They were the second blind spot next to images.
+  async embedText(text: string, orgId?: string | null): Promise<number[]> {
     const trimmed = text.trim().slice(0, 8000);
     const res = await openai.embeddings.create({
       model: MODEL_EMBED,
       input: trimmed,
     });
+    recordAiUsage({
+      organizationId: orgId ?? null,
+      engine: 'media',
+      model: MODEL_EMBED,
+      inputAmount: res.usage?.prompt_tokens ?? 0,
+    });
     return res.data[0].embedding;
   }
 
-  async embedBatch(texts: string[]): Promise<number[][]> {
+  async embedBatch(
+    texts: string[],
+    orgId?: string | null
+  ): Promise<number[][]> {
     if (!texts.length) return [];
     const res = await openai.embeddings.create({
       model: MODEL_EMBED,
       input: texts.map((t) => t.trim().slice(0, 8000)),
+    });
+    recordAiUsage({
+      organizationId: orgId ?? null,
+      engine: 'media',
+      model: MODEL_EMBED,
+      inputAmount: res.usage?.prompt_tokens ?? 0,
     });
     return res.data.map((d) => d.embedding);
   }

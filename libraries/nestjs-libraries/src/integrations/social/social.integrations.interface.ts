@@ -129,6 +129,9 @@ export type MediaContent = {
   alt?: string;
   thumbnail?: string;
   thumbnailTimestamp?: number;
+  // Came from an image or video model. Platforms that require a synthetic
+  // media declaration read this — see hasAiGeneratedMedia.
+  aiGenerated?: boolean;
 };
 
 export type FetchPageInformationResult = {

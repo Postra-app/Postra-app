@@ -893,6 +893,7 @@
   "ai_generate_failed": "Generowanie AI nie powiodło się. Spróbuj innego promptu.",
   "ai_generate_hint": "AI generuje tło + tekst w jednym kroku. Trwa około 5-10 sekund.",
   "ai_no_credits": "Wyczerpałeś kredyty AI w tym okresie rozliczeniowym. Zmień plan albo poczekaj na kolejny.",
+  "ai_background_reused": "Użyto tła z identycznego promptu — nie zużyto kredytu na obraz.",
   "ai_prompt_required": "Opisz, co chcesz wygenerować",
   "ai_prompt_placeholder": "np. Letnia wyprzedaż -50% w sklepie odzieżowym",
   "ai_tier_required": "Projektowanie AI jest dostępne w planie Starter i wyższych.",

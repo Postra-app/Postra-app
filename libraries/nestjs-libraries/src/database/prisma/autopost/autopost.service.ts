@@ -25,6 +25,9 @@ import { IntegrationService } from '@gitroom/nestjs-libraries/database/prisma/in
 import { NotificationService } from '@gitroom/nestjs-libraries/database/prisma/notifications/notification.service';
 import { OpenaiService } from '@gitroom/nestjs-libraries/openai/openai.service';
 import { SubscriptionService } from '@gitroom/nestjs-libraries/database/prisma/subscriptions/subscription.service';
+import { BrandKitService } from '@gitroom/nestjs-libraries/database/prisma/brand-kit/brand-kit.service';
+import { buildBrandContext } from '@gitroom/nestjs-libraries/openai/brand-prompt';
+import { languageRule } from '@gitroom/nestjs-libraries/openai/language-rule';
 import { UploadFactory } from '@gitroom/nestjs-libraries/upload/upload.factory';
 import { makeId } from '@gitroom/nestjs-libraries/services/make.is';
 import { toInstagramSafeAspect } from '@gitroom/nestjs-libraries/integrations/social/instagram.aspect';
@@ -60,6 +63,9 @@ interface WorkflowChannelsState {
     url: string;
     description: string;
   };
+  /** Brand Kit rendered once per item — voice for the copy, palette for the picture. */
+  brandVoice?: string;
+  brandVisual?: string;
 }
 
 const model = new ChatOpenAI({
@@ -110,8 +116,23 @@ export class AutopostService {
     private _postsService: PostsService,
     private _notificationService: NotificationService,
     private _openaiService: OpenaiService,
-    private _subscriptionService: SubscriptionService
+    private _subscriptionService: SubscriptionService,
+    private _brandKitService: BrandKitService
   ) {}
+
+  // AutoPost publishes unattended, so it is the surface where an off-brand
+  // voice or a stock-looking picture goes out without anyone reading it first.
+  // One read per feed item, at the top of the graph.
+  async loadBrand(state: WorkflowChannelsState) {
+    const kit = await this._brandKitService.getNormalized(
+      state.body.organizationId
+    );
+    return {
+      ...state,
+      brandVoice: buildBrandContext(kit, { voice: true }),
+      brandVisual: buildBrandContext(kit, { palette: true }),
+    };
+  }
 
   // Autopost produces text + (optional) image. Skip platforms that can't accept
   // that shape so we never schedule a post doomed to fail at publish time.
@@ -353,6 +374,8 @@ export class AutopostService {
         imageSkipped: null,
         integrations: null,
         id: null,
+        brandVoice: null,
+        brandVisual: null,
       },
     });
 
@@ -401,8 +424,12 @@ export class AutopostService {
       };
     }
 
+    // The per-autopost tone wins when the user set one; otherwise the org's
+    // Brand Kit speaks, and only with neither do we fall back to a default.
     const toneInstruction = state.body.tone
       ? `- Tone of voice: ${state.body.tone}`
+      : state.brandVoice
+      ? `- ${state.brandVoice}`
       : '- Tone: professional but approachable';
 
     // Extra brand/topic context from the user (e.g. "fitness brand, add one
@@ -422,7 +449,7 @@ export class AutopostService {
         ${UNTRUSTED_SOURCE_RULE}
 
         Rules:
-        - Write in the SAME language as the article (article in English -> posts in English; article in Polish -> posts in Polish, etc.)
+        - {language}
         ${toneInstruction}
         - LinkedIn: professional tone, 150-200 words, short paragraphs with line breaks (\\n\\n), end with an engaging question
         - X/Twitter: max 250 characters, punchy hook, 1-2 hashtags at the end
@@ -443,6 +470,7 @@ export class AutopostService {
         // marked data, not as more of the prompt.
         content: wrapUntrusted('article', description),
         extraInstructions,
+        language: languageRule({ scope: 'the posts', follow: 'the article' }),
       });
 
     return {
@@ -494,6 +522,7 @@ export class AutopostService {
         - Prefer: clean compositions, shallow depth of field, muted corporate color palette
         - If topic is abstract (software, data, AI) — use metaphorical real-world objects (desk setup, office, city, nature)
         - Aspect ratio: 16:9 landscape
+        {brand}
         
         Article topic:
         {content}
@@ -502,6 +531,7 @@ export class AutopostService {
         .pipe(structuredOutput)
         .invoke({
           content: state.load.description || state.description,
+          brand: state.brandVisual ? `- ${state.brandVisual}` : '',
         });
 
     // OpenaiService.generateImage = gpt-image-2 (DallEAPIWrapper pointed at
@@ -514,7 +544,13 @@ export class AutopostService {
       image = await this._subscriptionService.useCreditByOrgId(
         state.body.organizationId,
         'ai_images',
-        () => this._openaiService.generateImage(generatedTextToBeSentToDallE, true)
+        () =>
+          this._openaiService.generateImage(
+            generatedTextToBeSentToDallE,
+            true,
+            false,
+            { orgId: state.body.organizationId, engine: 'autopost' }
+          )
       ) || '';
     } catch (err) {
       image = '';
@@ -699,11 +735,13 @@ export class AutopostService {
     }
 
     const app = AutopostService.state()
+      .addNode('load-brand', this.loadBrand.bind(this))
       .addNode('generate-description', this.generateDescription.bind(this))
       .addNode('generate-picture', this.generatePicture.bind(this))
       .addNode('schedule-post', this.schedulePost.bind(this))
       .addNode('update-url', this.updateUrl.bind(this))
-      .addEdge(START, 'generate-description')
+      .addEdge(START, 'load-brand')
+      .addEdge('load-brand', 'generate-description')
       .addConditionalEdges(
         'generate-description',
         (state: WorkflowChannelsState) => {

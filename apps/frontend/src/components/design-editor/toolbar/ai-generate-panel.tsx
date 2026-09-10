@@ -6,6 +6,7 @@ import { useEditorStore } from '../editor.store';
 import { useCarouselStore, CarouselSlide } from '../carousel.store';
 import { renderDesignSpec, PostDesignSpec } from '../utils/canvas-renderer';
 import { withHistoryPaused } from '../utils/canvas-history';
+import { reusedBackground } from '../utils/reused-background';
 import { useHolidays, getUpcomingHolidays } from '../utils/holidays';
 import { useFetch } from '@gitroom/helpers/utils/custom.fetch';
 import { isFetchHandledError } from '@gitroom/helpers/utils/fetch.errors';
@@ -71,10 +72,12 @@ export const AiGeneratePanel: FC<Props> = ({ canvas }) => {
     setGenerating(true);
     try {
       const isCarousel = slidesCount > 1;
-      // On-image text follows the app language — without an explicit target a
-      // Polish brand-kit tone can tip the model into Polish even for an
-      // English prompt (see MediaService.createBrandedDraft).
-      const language = (i18n.resolvedLanguage ?? i18n.language ?? 'en')
+      // On-image text follows the PROMPT's language, with the app language as
+      // a fallback for a prompt too short to tell. Sending the locale as the
+      // target (what this used to do) put English text on a Polish prompt
+      // whenever the UI happened to be English. The brand-kit tone can no
+      // longer tip the language either — the prompt rule rules that out.
+      const languageFallback = (i18n.resolvedLanguage ?? i18n.language ?? 'en')
         .toLowerCase()
         .startsWith('pl')
         ? 'Polish'
@@ -86,13 +89,17 @@ export const AiGeneratePanel: FC<Props> = ({ canvas }) => {
               prompt,
               platform: platform.key,
               slidesCount,
-              language,
+              languageFallback,
             }),
             signal: ctrl.signal,
           })
         : await fetch('/media/generate-post-design', {
             method: 'POST',
-            body: JSON.stringify({ prompt, platform: platform.key, language }),
+            body: JSON.stringify({
+              prompt,
+              platform: platform.key,
+              languageFallback,
+            }),
             signal: ctrl.signal,
           });
 
@@ -132,6 +139,16 @@ export const AiGeneratePanel: FC<Props> = ({ canvas }) => {
 
       const data = await res.json();
       if (ctrl.signal.aborted) return;
+
+      if (reusedBackground(data, isCarousel)) {
+        toaster.show(
+          t(
+            'ai_background_reused',
+            'Reused a background from an identical prompt — no image credit used.'
+          ),
+          'success'
+        );
+      }
 
       if (isCarousel) {
         const slideSpecs = (data?.slides ?? []) as PostDesignSpec[];

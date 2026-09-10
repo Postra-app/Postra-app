@@ -1,3 +1,4 @@
+import { hasAiGeneratedMedia } from '@gitroom/nestjs-libraries/integrations/social/ai.media';
 import {
   AnalyticsData,
   AuthTokenDetails,
@@ -535,7 +536,15 @@ export class TiktokProvider extends SocialAbstract implements SocialProvider {
             : { disable_stitch: !firstPost.settings.stitch || false }),
           ...(isPhoto
             ? {}
-            : { is_aigc: firstPost.settings.video_made_with_ai || false }),
+            : {
+                // TikTok requires AI-generated content to be labelled. The
+                // user's own switch stands, and media we generated declares
+                // itself — TikTok cannot detect it, because our renders strip
+                // the C2PA marker the model embeds.
+                is_aigc:
+                  firstPost.settings.video_made_with_ai ||
+                  hasAiGeneratedMedia(firstPost),
+              }),
           brand_content_toggle:
             firstPost.settings.brand_content_toggle || false,
           brand_organic_toggle:

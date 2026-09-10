@@ -19,6 +19,9 @@ import { SubscriptionService } from '@gitroom/nestjs-libraries/database/prisma/s
 import { UploadFactory } from '@gitroom/nestjs-libraries/upload/upload.factory';
 import { AiUsageCallbackHandler } from '@gitroom/nestjs-libraries/services/ai-usage.langchain';
 import { GeneratorDto } from '@gitroom/nestjs-libraries/dtos/generator/generator.dto';
+import { BrandKitService } from '@gitroom/nestjs-libraries/database/prisma/brand-kit/brand-kit.service';
+import { buildBrandContext } from '@gitroom/nestjs-libraries/openai/brand-prompt';
+import { languageRule } from '@gitroom/nestjs-libraries/openai/language-rule';
 
 const tools = !process.env.TAVILY_API_KEY
   ? []
@@ -54,6 +57,9 @@ interface WorkflowChannelsState {
   }[];
   isPicture?: boolean;
   popularPosts?: { content: string; hook: string }[];
+  /** Brand Kit rendered once per run — voice for the copy, palette for the picture. */
+  brandVoice?: string;
+  brandVisual?: string;
 }
 
 const category = z.object({
@@ -111,8 +117,20 @@ export class AgentGraphService {
     private _postsService: PostsService,
     private _mediaService: MediaService,
     private _openaiService: OpenaiService,
-    private _subscriptionService: SubscriptionService
+    private _subscriptionService: SubscriptionService,
+    private _brandKitService: BrandKitService
   ) {}
+
+  // One read per run, at the top of the graph: the hook, the content and the
+  // picture prompts all need the kit, and the Creator used to ignore it
+  // entirely — posts came back in a generic voice with a generic image.
+  async loadBrand(state: WorkflowChannelsState) {
+    const kit = await this._brandKitService.getNormalized(state.orgId);
+    return {
+      brandVoice: buildBrandContext(kit, { voice: true }),
+      brandVisual: buildBrandContext(kit, { palette: true, logoHint: true }),
+    };
+  }
   static state = () =>
     new StateGraph<WorkflowChannelsState>({
       channels: {
@@ -133,6 +151,8 @@ export class AgentGraphService {
         popularPosts: null,
         topic: null,
         isPicture: null,
+        brandVoice: null,
+        brandVisual: null,
       },
     });
 
@@ -235,9 +255,11 @@ export class AgentGraphService {
         - Use ${state.tone === 'personal' ? '1st' : '3rd'} person mode
         - Make sure it's engaging
         - Don't be cringy
-        - Use simple english
+        - Keep the wording simple
+        {language}
         - Make sure you add "\n" between the lines
         - Don't take the hook from "request of the user"
+        {brand}
 
         <!-- BEGIN request of the user -->
         {request}
@@ -258,6 +280,8 @@ export class AgentGraphService {
         request: state.messages[0].content,
         hooks: state.popularPosts!.map((p) => p.hook).join('\n'),
         text: state.fresearch,
+        brand: state.brandVoice || '',
+        language: languageRule({ follow: "the user's request" }),
       });
 
     return {
@@ -288,11 +312,13 @@ export class AgentGraphService {
         - Use the hook as inspiration
         - Make sure it's engaging
         - Don't be cringy
-        - Use simple english
+        - Keep the wording simple
+        {language}
         - The Content should not contain the hook
         - Try to put some call to action at the end of the post
         - Make sure you add "\n" between the lines
         - Add "\n" after every "."
+        {brand}
         
         Hook:
         {hook}
@@ -309,6 +335,8 @@ export class AgentGraphService {
         hook: state.hook,
         request: state.messages[0].content,
         information: state.fresearch,
+        brand: state.brandVoice || '',
+        language: languageRule({ follow: "the user's request" }),
       });
 
     return {
@@ -336,10 +364,17 @@ export class AgentGraphService {
     // metered: each image burns an ai_images credit like every other AI image.
     const newContent = await Promise.all(
       (state.content || []).map(async (p) => {
+        const prompt = state.brandVisual
+          ? `${p.prompt!}\n\n${state.brandVisual}`
+          : p.prompt!;
         const image = await this._subscriptionService.useCreditByOrgId(
           state.orgId,
           'ai_images',
-          () => this._openaiService.generateImage(p.prompt!, true)
+          () =>
+            this._openaiService.generateImage(prompt, true, false, {
+              orgId: state.orgId,
+              engine: 'generate-posts',
+            })
         );
         return {
           ...p,
@@ -362,7 +397,9 @@ export class AgentGraphService {
           const uploadWithId = await this._mediaService.saveFile(
             state.orgId,
             name,
-            upload
+            upload,
+            undefined,
+            true
           );
 
           return {
@@ -393,6 +430,7 @@ export class AgentGraphService {
   start(orgId: string, body: GeneratorDto) {
     const state = AgentGraphService.state();
     const workflow = state
+      .addNode('load-brand', this.loadBrand.bind(this))
       .addNode('agent', this.startCall.bind(this))
       .addNode('research', toolNode)
       .addNode('save-research', this.saveResearch.bind(this))
@@ -405,7 +443,8 @@ export class AgentGraphService {
       .addNode('generate-picture', this.generatePictures.bind(this))
       .addNode('upload-pictures', this.uploadPictures.bind(this))
       .addNode('post-time', this.postDateTime.bind(this))
-      .addEdge(START, 'agent')
+      .addEdge(START, 'load-brand')
+      .addEdge('load-brand', 'agent')
       .addEdge('agent', 'research')
       .addEdge('research', 'save-research')
       .addEdge('save-research', 'find-category')
