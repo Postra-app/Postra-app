@@ -7,6 +7,7 @@ import { useToaster } from '@gitroom/react/toaster/toaster';
 import { useT } from '@gitroom/react/translation/get.transation.service.client';
 import { Button } from '@gitroom/frontend/components/ui/button';
 import { STUDIO_FONTS } from '../fonts';
+import { quantize, pickBrandColors } from '../utils/brand-colors';
 
 interface BrandKit {
   logoPath: string | null;
@@ -37,6 +38,7 @@ export const BrandKitPanel: FC = () => {
   const [loading, setLoading] = useState(true);
   const [savedAt, setSavedAt] = useState<number | null>(null);
   const [uploading, setUploading] = useState(false);
+  const [pickingColors, setPickingColors] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -128,6 +130,53 @@ export const BrandKitPanel: FC = () => {
     [fetch, toaster, t, update]
   );
 
+  /** Read the brand's own colours out of the logo, so the kit is one upload
+   *  instead of three colour pickers and a guess. */
+  const pickColorsFromLogo = useCallback(async () => {
+    if (!kit.logoPath) return;
+    setPickingColors(true);
+    try {
+      const img = new Image();
+      img.crossOrigin = 'anonymous';
+      await new Promise<void>((resolve, reject) => {
+        img.onload = () => resolve();
+        img.onerror = () => reject(new Error('logo load failed'));
+        img.src = kit.logoPath as string;
+      });
+      // A small sample is enough for a palette and keeps this instant.
+      const size = 64;
+      const el = document.createElement('canvas');
+      el.width = size;
+      el.height = size;
+      const ctx = el.getContext('2d', { willReadFrequently: true });
+      if (!ctx) throw new Error('no 2d context');
+      ctx.drawImage(img, 0, 0, size, size);
+      const palette = pickBrandColors(quantize(ctx.getImageData(0, 0, size, size).data));
+      if (!palette) {
+        toaster.show(
+          t('brand_colors_none', 'That logo has no colour to read — pick the colours by hand.'),
+          'warning'
+        );
+        return;
+      }
+      setKit((prev) => {
+        const next = { ...prev, ...palette };
+        persist(next);
+        return next;
+      });
+      toaster.show(t('brand_colors_picked', 'Colours taken from your logo.'), 'success');
+    } catch {
+      // A cross-origin logo taints the canvas and reading it throws; so does a
+      // logo that will not load at all.
+      toaster.show(
+        t('brand_colors_failed', 'Could not read the colours from that logo.'),
+        'warning'
+      );
+    } finally {
+      setPickingColors(false);
+    }
+  }, [kit.logoPath, persist, t, toaster]);
+
   if (loading) {
     return (
       <div className="text-[11px] text-textColor/60">
@@ -162,6 +211,17 @@ export const BrandKitPanel: FC = () => {
       </div>
 
       <div className="flex flex-col gap-2">
+        {kit.logoPath && (
+          <button
+            onClick={pickColorsFromLogo}
+            disabled={pickingColors}
+            className="text-xs px-3 py-2 rounded bg-newColColor hover:bg-white/[0.08] text-textColor transition-colors disabled:opacity-50 disabled:cursor-wait text-left"
+          >
+            {pickingColors
+              ? t('brand_colors_reading', 'Reading your logo…')
+              : t('brand_colors_from_logo', 'Use the colours from my logo')}
+          </button>
+        )}
         <ColorRow
           label={t('color_primary', 'Primary')}
           hint={t('color_primary_hint', 'Accents: buttons, badges, highlights')}
