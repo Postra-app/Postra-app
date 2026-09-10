@@ -7,6 +7,7 @@ import { useToaster } from '@gitroom/react/toaster/toaster';
 import { Button } from '@gitroom/frontend/components/ui/button';
 import { VIDEO_FORMATS, VideoFormat } from './video-formats';
 import { composeSlideshow, UndecodableImageError } from './slideshow-pipeline';
+import { useRenderJob } from './use-render-job';
 import {
   fontFamilyForLabel,
   ensureFontLoaded,
@@ -57,8 +58,9 @@ export const VideoSlideshow: FC<VideoSlideshowProps> = ({ onReady }) => {
   const [color, setColor] = useState<string | null>(null);
   const [fontLabel, setFontLabel] = useState<string | null>(null);
 
-  const [busy, setBusy] = useState(false);
-  const [progress, setProgress] = useState(0);
+  const job = useRenderJob();
+  const busy = job.busy;
+  const progress = job.progress;
   const [resultBlob, setResultBlob] = useState<Blob | null>(null);
   const [resultUrl, setResultUrl] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
@@ -194,8 +196,6 @@ export const VideoSlideshow: FC<VideoSlideshowProps> = ({ onReady }) => {
 
   const compose = useCallback(async () => {
     if (!images.length || busy) return;
-    setBusy(true);
-    setProgress(0);
     resetResult();
 
     const fontFamily = fontFamilyForLabel(effectiveFontLabel);
@@ -203,24 +203,28 @@ export const VideoSlideshow: FC<VideoSlideshowProps> = ({ onReady }) => {
     const headline = text.trim();
     try {
       await ensureFontLoaded(fontFamily, 64);
-      const result = await composeSlideshow({
-        images: images.map((p) => p.file),
-        width: format.width,
-        height: format.height,
-        secondsPerImage: secondsPer,
-        backgroundColor: kit.secondaryColor,
-        onProgress: (r) => setProgress(Math.round(r * 100)),
-        drawOverlay: headline
-          ? (ctx, { width, height }) =>
-              drawBrandText(ctx, width, height, {
-                text: headline,
-                position: 'bottom',
-                color: effectiveColor,
-                bandColor,
-                fontFamily,
-              })
-          : undefined,
-      });
+      const result = await job.run((signal) =>
+        composeSlideshow({
+          images: images.map((p) => p.file),
+          width: format.width,
+          height: format.height,
+          secondsPerImage: secondsPer,
+          backgroundColor: kit.secondaryColor,
+          signal,
+          onProgress: (r) => job.setProgress(Math.round(r * 100)),
+          drawOverlay: headline
+            ? (ctx, { width, height }) =>
+                drawBrandText(ctx, width, height, {
+                  text: headline,
+                  position: 'bottom',
+                  color: effectiveColor,
+                  bandColor,
+                  fontFamily,
+                })
+            : undefined,
+        })
+      );
+      if (!result) return;
       setResultBlob(result.blob);
       setResultUrl(URL.createObjectURL(result.blob));
     } catch (err) {
@@ -236,8 +240,6 @@ export const VideoSlideshow: FC<VideoSlideshowProps> = ({ onReady }) => {
             ),
         'warning'
       );
-    } finally {
-      setBusy(false);
     }
   }, [
     images,
@@ -251,6 +253,7 @@ export const VideoSlideshow: FC<VideoSlideshowProps> = ({ onReady }) => {
     secondsPer,
     toaster,
     t,
+    job,
   ]);
 
   const uploadResult = useCallback(async (): Promise<{ id: string; path: string } | null> => {
@@ -419,15 +422,29 @@ export const VideoSlideshow: FC<VideoSlideshowProps> = ({ onReady }) => {
         })}
       </div>
 
-      <Button
-        onClick={compose}
-        disabled={!images.length || busy}
-        className="self-start"
-      >
-        {busy
-          ? `${t('slideshow_running', 'Building video…')} ${progress}%`
-          : t('slideshow_run', 'Build video from photos')}
-      </Button>
+      <div className="flex items-center gap-2">
+        <Button
+          onClick={compose}
+          disabled={!images.length || busy}
+          className="self-start"
+        >
+          {busy
+            ? `${t('slideshow_running', 'Building video…')} ${progress}%`
+            : t('slideshow_run', 'Build video from photos')}
+        </Button>
+        {busy && (
+          <Button
+            onClick={job.cancel}
+            disabled={job.cancelling}
+            secondary={true}
+            className="self-start"
+          >
+            {job.cancelling
+              ? t('video_cancelling', 'Cancelling…')
+              : t('video_cancel_render', 'Cancel')}
+          </Button>
+        )}
+      </div>
 
       {resultUrl && (
         <div className="flex flex-col gap-2">

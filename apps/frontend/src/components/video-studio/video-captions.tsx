@@ -8,6 +8,7 @@ import { useT } from '@gitroom/react/translation/get.transation.service.client';
 import { Button } from '@gitroom/frontend/components/ui/button';
 import * as Sentry from '@sentry/nextjs';
 import { composeVideo, ClipTooLongError, UnsupportedCodecError } from './compositor-pipeline';
+import { useRenderJob } from './use-render-job';
 import { parseSrt, captionAt } from './srt';
 import {
   fontFamilyForLabel,
@@ -31,8 +32,9 @@ export const VideoCaptions: FC<VideoCaptionsProps> = ({ mediaId, source, onCapti
   const { kit } = useBrandKit();
   const [srt, setSrt] = useState('');
   const [isGenerating, setIsGenerating] = useState(false);
-  const [isBurning, setIsBurning] = useState(false);
-  const [burnProgress, setBurnProgress] = useState(0);
+  const job = useRenderJob();
+  const isBurning = job.busy;
+  const burnProgress = job.progress;
   const { i18n } = useTranslation();
   // Default transcription language follows the UI locale (UK-first product —
   // 'pl' is only right for the Polish UI), and 'auto' stays one click away.
@@ -118,8 +120,6 @@ export const VideoCaptions: FC<VideoCaptionsProps> = ({ mediaId, source, onCapti
       );
       return;
     }
-    setIsBurning(true);
-    setBurnProgress(0);
     try {
       if (source) {
         // Branded, in-browser render on the shared compositor — captions are a
@@ -127,35 +127,44 @@ export const VideoCaptions: FC<VideoCaptionsProps> = ({ mediaId, source, onCapti
         const fontFamily = fontFamilyForLabel(kit.font);
         const bandColor = hexToRgba(kit.secondaryColor, 0.6);
         await ensureFontLoaded(fontFamily, 48);
-        const result = await composeVideo({
-          file: source,
-          onProgress: (r) => setBurnProgress(Math.round(r * 100)),
-          drawOverlay: (ctx, { timestampSec, width, height }) => {
-            const cap = captionAt(segments, timestampSec);
-            if (cap) {
-              drawBrandText(ctx, width, height, {
-                text: cap,
-                position: 'bottom',
-                color: kit.textColor,
-                bandColor,
-                fontFamily,
-                scale: 0.78,
-              });
-            }
-          },
-        });
+        const result = await job.run((signal) =>
+          composeVideo({
+            file: source,
+            signal,
+            onProgress: (r) => job.setProgress(Math.round(r * 100)),
+            drawOverlay: (ctx, { timestampSec, width, height }) => {
+              const cap = captionAt(segments, timestampSec);
+              if (cap) {
+                drawBrandText(ctx, width, height, {
+                  text: cap,
+                  position: 'bottom',
+                  color: kit.textColor,
+                  bandColor,
+                  fontFamily,
+                  scale: 0.78,
+                });
+              }
+            },
+          })
+        );
+        if (!result) return;
         await uploadResult(result.blob);
       } else if (mediaId) {
-        // Fallback: server burn-in when we don't hold the local bytes.
-        const res = await fetch(`/media/${mediaId}/burn-captions`, {
-          method: 'POST',
-          body: JSON.stringify({ srt }),
+        // Fallback: server burn-in when we don't hold the local bytes. Cancel
+        // here only drops our end of the request — ffmpeg on the server runs to
+        // completion — so the file still lands in the library.
+        const data = await job.run(async (signal) => {
+          const res = await fetch(`/media/${mediaId}/burn-captions`, {
+            method: 'POST',
+            body: JSON.stringify({ srt }),
+            signal,
+          });
+          if (!res.ok) {
+            toaster.show(t('video_burn_failed', 'Burning captions failed.'), 'warning');
+            return null;
+          }
+          return res.json();
         });
-        if (!res.ok) {
-          toaster.show(t('video_burn_failed', 'Burning captions failed.'), 'warning');
-          return;
-        }
-        const data = await res.json();
         if (data?.id && data?.path) onCaptioned({ id: data.id, path: data.path });
       } else {
         toaster.show(
@@ -178,10 +187,8 @@ export const VideoCaptions: FC<VideoCaptionsProps> = ({ mediaId, source, onCapti
           : t('video_burn_failed', 'Burning captions failed. Try a different clip — our team has been notified.'),
         'warning'
       );
-    } finally {
-      setIsBurning(false);
     }
-  }, [srt, isBurning, source, mediaId, kit, fetch, uploadResult, onCaptioned, toaster, t]);
+  }, [srt, isBurning, source, mediaId, kit, fetch, uploadResult, onCaptioned, toaster, t, job]);
 
   return (
     <div className="flex flex-col gap-3 p-3">
@@ -234,16 +241,30 @@ export const VideoCaptions: FC<VideoCaptionsProps> = ({ mediaId, source, onCapti
             ? t('video_captions_lines', '{n} SRT characters').replace('{n}', String(srt.length))
             : t('video_captions_empty', 'No captions')}
         </div>
-        <Button
-          loading={isBurning}
-          onClick={handleBurn}
-          disabled={!srt.trim() || (!source && !mediaId)}
-          className="!h-[28px] !text-xs"
-        >
-          {isBurning && source
-            ? `${t('video_captions_burning', 'Burning…')} ${burnProgress}%`
-            : t('video_captions_burn', 'Burn into video')}
-        </Button>
+        <div className="flex items-center gap-2">
+          {isBurning && (
+            <Button
+              onClick={job.cancel}
+              disabled={job.cancelling}
+              secondary={true}
+              className="!h-[28px] !text-xs"
+            >
+              {job.cancelling
+                ? t('video_cancelling', 'Cancelling…')
+                : t('video_cancel_render', 'Cancel')}
+            </Button>
+          )}
+          <Button
+            loading={isBurning}
+            onClick={handleBurn}
+            disabled={!srt.trim() || (!source && !mediaId)}
+            className="!h-[28px] !text-xs"
+          >
+            {isBurning && source
+              ? `${t('video_captions_burning', 'Burning…')} ${burnProgress}%`
+              : t('video_captions_burn', 'Burn into video')}
+          </Button>
+        </div>
       </div>
       <div className="text-[11px] text-textColor/65 leading-snug">
         {source

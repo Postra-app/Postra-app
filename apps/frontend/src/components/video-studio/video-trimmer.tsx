@@ -17,6 +17,7 @@ import { useToaster } from '@gitroom/react/toaster/toaster';
 import { safeMediaUrl } from '@gitroom/helpers/utils/safe.media.url';
 import { assertVideoSurvives } from './mp4-source';
 import { UnsupportedCodecError } from './compositor-pipeline';
+import { useRenderJob } from './use-render-job';
 
 interface VideoTrimmerProps {
   file: File | null;
@@ -34,8 +35,9 @@ export const VideoTrimmer: FC<VideoTrimmerProps> = ({ file, onTrimmed }) => {
   const [duration, setDuration] = useState(0);
   const [trimStart, setTrimStart] = useState(0);
   const [trimEnd, setTrimEnd] = useState(0);
-  const [isExporting, setIsExporting] = useState(false);
-  const [progress, setProgress] = useState(0);
+  const job = useRenderJob();
+  const isExporting = job.busy;
+  const progress = job.progress;
   const [undecodable, setUndecodable] = useState(false);
 
   useEffect(() => {
@@ -135,31 +137,33 @@ export const VideoTrimmer: FC<VideoTrimmerProps> = ({ file, onTrimmed }) => {
       );
       return;
     }
-    setIsExporting(true);
-    setProgress(0);
     try {
-      const input = new Input({
-        source: new BlobSource(file),
-        formats: ALL_FORMATS,
+      const blob = await job.run(async (signal, registerCancel) => {
+        const input = new Input({
+          source: new BlobSource(file),
+          formats: ALL_FORMATS,
+        });
+        const output = new Output({
+          format: new Mp4OutputFormat(),
+          target: new BufferTarget(),
+        });
+        const conversion = await Conversion.init({
+          input,
+          output,
+          trim: { start: trimStart, end: trimEnd },
+        });
+        registerCancel(() => conversion.cancel());
+        // A clip whose video we can't decode still converts "successfully" as
+        // long as its audio survives — the user would get sound over a black
+        // screen with no error anywhere. Say so before spending the render.
+        assertVideoSurvives(conversion);
+        conversion.onProgress = (p) => job.setProgress(Math.round(p * 100));
+        await conversion.execute();
+        const buffer = (output.target as BufferTarget).buffer;
+        if (!buffer) throw new Error('empty buffer');
+        return new Blob([buffer], { type: 'video/mp4' });
       });
-      const output = new Output({
-        format: new Mp4OutputFormat(),
-        target: new BufferTarget(),
-      });
-      const conversion = await Conversion.init({
-        input,
-        output,
-        trim: { start: trimStart, end: trimEnd },
-      });
-      // A clip whose video we can't decode still converts "successfully" as
-      // long as its audio survives — the user would get sound over a black
-      // screen with no error anywhere. Say so before spending the render.
-      assertVideoSurvives(conversion);
-      conversion.onProgress = (p) => setProgress(Math.round(p * 100));
-      await conversion.execute();
-      const buffer = (output.target as BufferTarget).buffer;
-      if (!buffer) throw new Error('empty buffer');
-      const blob = new Blob([buffer], { type: 'video/mp4' });
+      if (!blob) return;
       onTrimmed(blob);
     } catch (err) {
       toaster.show(
@@ -174,10 +178,8 @@ export const VideoTrimmer: FC<VideoTrimmerProps> = ({ file, onTrimmed }) => {
             ),
         'warning'
       );
-    } finally {
-      setIsExporting(false);
     }
-  }, [file, trimStart, trimEnd, onTrimmed, t, toaster]);
+  }, [file, trimStart, trimEnd, onTrimmed, t, toaster, job]);
 
   if (!file) {
     return (
@@ -246,15 +248,29 @@ export const VideoTrimmer: FC<VideoTrimmerProps> = ({ file, onTrimmed }) => {
               .replace('{sec}', (trimEnd - trimStart).toFixed(2))
               .replace('{total}', duration.toFixed(2))}
       </div>
-      <Button
-        onClick={handleExport}
-        disabled={isExporting || undecodable || trimEnd <= trimStart}
-        className="self-start"
-      >
-        {isExporting
-          ? `${t('video_exporting', 'Exporting')} ${progress}%`
-          : t('video_export_trimmed', 'Export trimmed clip')}
-      </Button>
+      <div className="flex items-center gap-2">
+        <Button
+          onClick={handleExport}
+          disabled={isExporting || undecodable || trimEnd <= trimStart}
+          className="self-start"
+        >
+          {isExporting
+            ? `${t('video_exporting', 'Exporting')} ${progress}%`
+            : t('video_export_trimmed', 'Export trimmed clip')}
+        </Button>
+        {isExporting && (
+          <Button
+            onClick={job.cancel}
+            disabled={job.cancelling}
+            secondary={true}
+            className="self-start"
+          >
+            {job.cancelling
+              ? t('video_cancelling', 'Cancelling…')
+              : t('video_cancel_render', 'Cancel')}
+          </Button>
+        )}
+      </div>
     </div>
   );
 };

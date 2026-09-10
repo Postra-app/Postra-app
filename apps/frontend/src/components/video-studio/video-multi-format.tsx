@@ -15,6 +15,7 @@ import { Button } from '@gitroom/frontend/components/ui/button';
 import { useToaster } from '@gitroom/react/toaster/toaster';
 import { VIDEO_FORMATS, VideoFormat } from './video-formats';
 import { assertVideoSurvives } from './mp4-source';
+import { useRenderJob } from './use-render-job';
 import { UnsupportedCodecError } from './compositor-pipeline';
 
 interface VideoMultiFormatProps {
@@ -28,7 +29,8 @@ export const VideoMultiFormat: FC<VideoMultiFormatProps> = ({ source, onExported
   const [selected, setSelected] = useState<Set<string>>(
     new Set(VIDEO_FORMATS.map((f) => f.key))
   );
-  const [isExporting, setIsExporting] = useState(false);
+  const job = useRenderJob();
+  const isExporting = job.busy;
   const [progressMap, setProgressMap] = useState<Record<string, number>>({});
 
   const toggle = (key: string) => {
@@ -47,35 +49,44 @@ export const VideoMultiFormat: FC<VideoMultiFormatProps> = ({ source, onExported
       );
       return;
     }
-    setIsExporting(true);
-    const results: { format: VideoFormat; blob: Blob }[] = [];
     try {
-      const targets = VIDEO_FORMATS.filter((f) => selected.has(f.key));
-      for (const fmt of targets) {
-        const input = new Input({
-          source: new BlobSource(source),
-          formats: ALL_FORMATS,
-        });
-        const output = new Output({
-          format: new Mp4OutputFormat(),
-          target: new BufferTarget(),
-        });
-        const conversion = await Conversion.init({
-          input,
-          output,
-          video: { width: fmt.width, height: fmt.height, fit: 'cover' },
-        });
-        // Resizing forces a decode. If the source codec can't be decoded the
-        // video track is dropped and the "successful" export is audio-only —
-        // catch it on the first format instead of writing three mute files.
-        assertVideoSurvives(conversion);
-        conversion.onProgress = (p) =>
-          setProgressMap((prev) => ({ ...prev, [fmt.key]: Math.round(p * 100) }));
-        await conversion.execute();
-        const buffer = (output.target as BufferTarget).buffer;
-        if (!buffer) throw new Error(`empty buffer for ${fmt.key}`);
-        results.push({ format: fmt, blob: new Blob([buffer], { type: 'video/mp4' }) });
-      }
+      const results = await job.run(async (signal, registerCancel) => {
+        const done: { format: VideoFormat; blob: Blob }[] = [];
+        const targets = VIDEO_FORMATS.filter((f) => selected.has(f.key));
+        for (const fmt of targets) {
+          // Cancelling during format two must not start format three.
+          if (signal.aborted) break;
+          const input = new Input({
+            source: new BlobSource(source),
+            formats: ALL_FORMATS,
+          });
+          const output = new Output({
+            format: new Mp4OutputFormat(),
+            target: new BufferTarget(),
+          });
+          const conversion = await Conversion.init({
+            input,
+            output,
+            video: { width: fmt.width, height: fmt.height, fit: 'cover' },
+          });
+          registerCancel(() => conversion.cancel());
+          // Resizing forces a decode. If the source codec can't be decoded the
+          // video track is dropped and the "successful" export is audio-only —
+          // catch it on the first format instead of writing three mute files.
+          assertVideoSurvives(conversion);
+          conversion.onProgress = (p) =>
+            setProgressMap((prev) => ({ ...prev, [fmt.key]: Math.round(p * 100) }));
+          await conversion.execute();
+          const buffer = (output.target as BufferTarget).buffer;
+          if (!buffer) throw new Error(`empty buffer for ${fmt.key}`);
+          done.push({
+            format: fmt,
+            blob: new Blob([buffer], { type: 'video/mp4' }),
+          });
+        }
+        return done;
+      });
+      if (!results) return;
       onExported(results);
     } catch (err) {
       toaster.show(
@@ -90,10 +101,8 @@ export const VideoMultiFormat: FC<VideoMultiFormatProps> = ({ source, onExported
             ),
         'warning'
       );
-    } finally {
-      setIsExporting(false);
     }
-  }, [source, selected, onExported, t, toaster]);
+  }, [source, selected, onExported, t, toaster, job]);
 
   if (!source) {
     return (
@@ -146,21 +155,35 @@ export const VideoMultiFormat: FC<VideoMultiFormatProps> = ({ source, onExported
           );
         })}
       </div>
-      <Button
-        onClick={handleExport}
-        disabled={isExporting || selected.size === 0}
-        className="self-start"
-      >
-        {isExporting
-          ? t('video_format_exporting', 'Exporting {n} formats...').replace(
-              '{n}',
-              String(selected.size)
-            )
-          : t('video_format_export', 'Export {n} formats').replace(
-              '{n}',
-              String(selected.size)
-            )}
-      </Button>
+      <div className="flex items-center gap-2">
+        <Button
+          onClick={handleExport}
+          disabled={isExporting || selected.size === 0}
+          className="self-start"
+        >
+          {isExporting
+            ? t('video_format_exporting', 'Exporting {n} formats...').replace(
+                '{n}',
+                String(selected.size)
+              )
+            : t('video_format_export', 'Export {n} formats').replace(
+                '{n}',
+                String(selected.size)
+              )}
+        </Button>
+        {isExporting && (
+          <Button
+            onClick={job.cancel}
+            disabled={job.cancelling}
+            secondary={true}
+            className="self-start"
+          >
+            {job.cancelling
+              ? t('video_cancelling', 'Cancelling…')
+              : t('video_cancel_render', 'Cancel')}
+          </Button>
+        )}
+      </div>
     </div>
   );
 };

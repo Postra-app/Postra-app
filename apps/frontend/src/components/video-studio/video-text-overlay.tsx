@@ -15,6 +15,7 @@ import {
 } from './load-library-media';
 import * as Sentry from '@sentry/nextjs';
 import { composeVideo, ClipTooLongError, UnsupportedCodecError } from './compositor-pipeline';
+import { useRenderJob } from './use-render-job';
 import {
   TextPosition,
   fontFamilyForLabel,
@@ -63,8 +64,9 @@ export const VideoTextOverlay: FC<VideoTextOverlayProps> = ({ onReady }) => {
   const [fontLabel, setFontLabel] = useState<string | null>(null);
   const [scale, setScale] = useState(1);
 
-  const [busy, setBusy] = useState(false);
-  const [progress, setProgress] = useState(0);
+  const job = useRenderJob();
+  const busy = job.busy;
+  const progress = job.progress;
   const [resultBlob, setResultBlob] = useState<Blob | null>(null);
   const [resultUrl, setResultUrl] = useState<string | null>(null);
   const [hadAudio, setHadAudio] = useState(false);
@@ -105,8 +107,6 @@ export const VideoTextOverlay: FC<VideoTextOverlayProps> = ({ onReady }) => {
 
   const compose = useCallback(async () => {
     if (!file || busy) return;
-    setBusy(true);
-    setProgress(0);
     resetResult();
 
     const fontFamily = fontFamilyForLabel(effectiveFontLabel);
@@ -115,19 +115,23 @@ export const VideoTextOverlay: FC<VideoTextOverlayProps> = ({ onReady }) => {
       // Load the chosen webfont before painting, or the canvas falls back to a
       // default face. Probe size is indicative; the loop sizes per frame width.
       await ensureFontLoaded(fontFamily, 64);
-      const result = await composeVideo({
-        file,
-        onProgress: (r) => setProgress(Math.round(r * 100)),
-        drawOverlay: (ctx, { width, height }) =>
-          drawBrandText(ctx, width, height, {
-            text,
-            position,
-            color: effectiveColor,
-            bandColor,
-            fontFamily,
-            scale,
-          }),
-      });
+      const result = await job.run((signal) =>
+        composeVideo({
+          file,
+          signal,
+          onProgress: (r) => job.setProgress(Math.round(r * 100)),
+          drawOverlay: (ctx, { width, height }) =>
+            drawBrandText(ctx, width, height, {
+              text,
+              position,
+              color: effectiveColor,
+              bandColor,
+              fontFamily,
+              scale,
+            }),
+        })
+      );
+      if (!result) return;
       setResultBlob(result.blob);
       setResultUrl(URL.createObjectURL(result.blob));
       setHadAudio(result.hadAudio);
@@ -146,8 +150,6 @@ export const VideoTextOverlay: FC<VideoTextOverlayProps> = ({ onReady }) => {
           : t('clip_text_failed', 'Failed to burn the text into the video. Try a different clip — our team has been notified.'),
         'warning'
       );
-    } finally {
-      setBusy(false);
     }
   }, [
     file,
@@ -161,6 +163,7 @@ export const VideoTextOverlay: FC<VideoTextOverlayProps> = ({ onReady }) => {
     scale,
     toaster,
     t,
+    job,
   ]);
 
   const uploadResult = useCallback(async (): Promise<{ id: string; path: string } | null> => {
@@ -375,15 +378,29 @@ export const VideoTextOverlay: FC<VideoTextOverlayProps> = ({ onReady }) => {
         </select>
       </div>
 
-      <Button
-        onClick={compose}
-        disabled={!file || busy}
-        className="self-start"
-      >
-        {busy
-          ? `${t('clip_text_running', 'Rendering…')} ${progress}%`
-          : t('clip_text_run', 'Burn text into video')}
-      </Button>
+      <div className="flex items-center gap-2">
+        <Button
+          onClick={compose}
+          disabled={!file || busy}
+          className="self-start"
+        >
+          {busy
+            ? `${t('clip_text_running', 'Rendering…')} ${progress}%`
+            : t('clip_text_run', 'Burn text into video')}
+        </Button>
+        {busy && (
+          <Button
+            onClick={job.cancel}
+            disabled={job.cancelling}
+            secondary={true}
+            className="self-start"
+          >
+            {job.cancelling
+              ? t('video_cancelling', 'Cancelling…')
+              : t('video_cancel_render', 'Cancel')}
+          </Button>
+        )}
+      </div>
 
       {resultUrl && (
         <div className="flex flex-col gap-2">
