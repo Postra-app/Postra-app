@@ -1,5 +1,6 @@
 import type * as fabric from 'fabric';
 import type { PlatformSize } from '../editor.store';
+import { StudioIconName } from '@gitroom/frontend/components/studio/studio-icons';
 
 export type TemplateLang = 'pl' | 'en';
 
@@ -39,16 +40,18 @@ export const TEMPLATE_CATEGORIES: {
   key: TemplateCategory;
   labelKey: string;
   fallback: string;
-  emoji: string;
+  /** Name in the shared Studio icon set — emoji rendered differently on every
+   *  OS and never took the colour of the chip they sat in. */
+  icon: StudioIconName;
 }[] = [
-  { key: 'promo', labelKey: 'tpl_cat_promo', fallback: 'Promo', emoji: '🛍️' },
-  { key: 'quote', labelKey: 'tpl_cat_quote', fallback: 'Quote', emoji: '💬' },
-  { key: 'announcement', labelKey: 'tpl_cat_announcement', fallback: 'Announcement', emoji: '📢' },
-  { key: 'stats', labelKey: 'tpl_cat_stats', fallback: 'Stats', emoji: '📊' },
-  { key: 'tip', labelKey: 'tpl_cat_tip', fallback: 'Tip', emoji: '💡' },
-  { key: 'event', labelKey: 'tpl_cat_event', fallback: 'Event', emoji: '🎉' },
-  { key: 'community', labelKey: 'tpl_cat_community', fallback: 'Community', emoji: '🤝' },
-  { key: 'reel-cover', labelKey: 'tpl_cat_reel_cover', fallback: 'Reel cover', emoji: '📱' },
+  { key: 'promo', labelKey: 'tpl_cat_promo', fallback: 'Promo', icon: 'catPromo' },
+  { key: 'quote', labelKey: 'tpl_cat_quote', fallback: 'Quote', icon: 'catQuote' },
+  { key: 'announcement', labelKey: 'tpl_cat_announcement', fallback: 'Announcement', icon: 'catAnnouncement' },
+  { key: 'stats', labelKey: 'tpl_cat_stats', fallback: 'Stats', icon: 'catStats' },
+  { key: 'tip', labelKey: 'tpl_cat_tip', fallback: 'Tip', icon: 'catTip' },
+  { key: 'event', labelKey: 'tpl_cat_event', fallback: 'Event', icon: 'catEvent' },
+  { key: 'community', labelKey: 'tpl_cat_community', fallback: 'Community', icon: 'catCommunity' },
+  { key: 'reel-cover', labelKey: 'tpl_cat_reel_cover', fallback: 'Reel cover', icon: 'catReelCover' },
 ];
 
 export const DEFAULT_BRAND: BrandStyle = {

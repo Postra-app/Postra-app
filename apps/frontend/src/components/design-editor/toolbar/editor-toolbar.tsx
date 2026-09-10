@@ -15,6 +15,14 @@ import { TemplatesPanel } from './templates-panel';
 import { StockImagesPanel } from './stock-images-panel';
 import { ImageFiltersPanel } from './image-filters-panel';
 import { STUDIO_FONTS, DEFAULT_FONT, findFontByFamily } from '../fonts';
+import { ensureFontsLoaded } from '../utils/font-loading';
+import { blend } from '../utils/brand-colors';
+import {
+  cropFromRect,
+  resetCrop,
+  initialCropRect,
+  CroppableImage,
+} from '../utils/image-crop';
 import {
   removeBackgroundFromImage,
   replaceImageOnCanvas,
@@ -47,22 +55,27 @@ type ShapeType =
   | 'ring'
   | 'parallelogram';
 
-const SHAPE_BUTTONS: { type: ShapeType; icon: string; titleKey: string; fallback: string }[] = [
-  { type: 'rect', icon: '▭', titleKey: 'shape_rect', fallback: 'Rectangle' },
-  { type: 'circle', icon: '●', titleKey: 'shape_circle', fallback: 'Circle' },
-  { type: 'triangle', icon: '▲', titleKey: 'shape_triangle', fallback: 'Triangle' },
-  { type: 'star', icon: '★', titleKey: 'shape_star', fallback: 'Star' },
-  { type: 'hexagon', icon: '⬡', titleKey: 'shape_hexagon', fallback: 'Hexagon' },
-  { type: 'heart', icon: '♥', titleKey: 'shape_heart', fallback: 'Heart' },
-  { type: 'arrow', icon: '➜', titleKey: 'shape_arrow', fallback: 'Arrow' },
-  { type: 'speech', icon: '💬', titleKey: 'shape_speech', fallback: 'Speech bubble' },
-  { type: 'line', icon: '─', titleKey: 'shape_line', fallback: 'Line' },
-  { type: 'diamond', icon: '◆', titleKey: 'shape_diamond', fallback: 'Diamond' },
-  { type: 'pentagon', icon: '⬟', titleKey: 'shape_pentagon', fallback: 'Pentagon' },
-  { type: 'plus', icon: '✚', titleKey: 'shape_plus', fallback: 'Plus' },
-  { type: 'lightning', icon: '⚡', titleKey: 'shape_lightning', fallback: 'Lightning' },
-  { type: 'ring', icon: '◍', titleKey: 'shape_ring', fallback: 'Ring' },
-  { type: 'parallelogram', icon: '▱', titleKey: 'shape_parallelogram', fallback: 'Parallelogram' },
+const SHAPE_BUTTONS: {
+  type: ShapeType;
+  icon: StudioIconName;
+  titleKey: string;
+  fallback: string;
+}[] = [
+  { type: 'rect', icon: 'shapeRect', titleKey: 'shape_rect', fallback: 'Rectangle' },
+  { type: 'circle', icon: 'shapeCircle', titleKey: 'shape_circle', fallback: 'Circle' },
+  { type: 'triangle', icon: 'shapeTriangle', titleKey: 'shape_triangle', fallback: 'Triangle' },
+  { type: 'star', icon: 'shapeStar', titleKey: 'shape_star', fallback: 'Star' },
+  { type: 'hexagon', icon: 'shapeHexagon', titleKey: 'shape_hexagon', fallback: 'Hexagon' },
+  { type: 'heart', icon: 'shapeHeart', titleKey: 'shape_heart', fallback: 'Heart' },
+  { type: 'arrow', icon: 'shapeArrow', titleKey: 'shape_arrow', fallback: 'Arrow' },
+  { type: 'speech', icon: 'shapeSpeech', titleKey: 'shape_speech', fallback: 'Speech bubble' },
+  { type: 'line', icon: 'shapeLine', titleKey: 'shape_line', fallback: 'Line' },
+  { type: 'diamond', icon: 'shapeDiamond', titleKey: 'shape_diamond', fallback: 'Diamond' },
+  { type: 'pentagon', icon: 'shapePentagon', titleKey: 'shape_pentagon', fallback: 'Pentagon' },
+  { type: 'plus', icon: 'shapePlus', titleKey: 'shape_plus', fallback: 'Plus' },
+  { type: 'lightning', icon: 'shapeLightning', titleKey: 'shape_lightning', fallback: 'Lightning' },
+  { type: 'ring', icon: 'shapeRing', titleKey: 'shape_ring', fallback: 'Ring' },
+  { type: 'parallelogram', icon: 'shapeParallelogram', titleKey: 'shape_parallelogram', fallback: 'Parallelogram' },
 ];
 
 const BG_COLORS = [
@@ -129,6 +142,12 @@ export const EditorToolbar: FC<ToolbarProps> = ({ canvas }) => {
     DEFAULT_FONT.family
   );
   const [removingBg, setRemovingBg] = useState(false);
+  /** Manual crop is a mode: a frame sits on the canvas until it is applied or
+   *  cancelled, and the rest of the toolbar keeps working around it. */
+  const [cropping, setCropping] = useState(false);
+  const cropFrameRef = useRef<fabric.Rect | null>(null);
+  const cropTargetRef = useRef<fabric.FabricImage | null>(null);
+  const replaceRef = useRef<HTMLInputElement>(null);
   const [bgProgress, setBgProgress] = useState(0);
 
   // Image tools shouldn't demand a manual selection: if nothing (or a
@@ -178,6 +197,130 @@ export const EditorToolbar: FC<ToolbarProps> = ({ canvas }) => {
     }
   }, [canvas, platform, toaster, t, resolveTargetImage]);
 
+  /** The image as the crop maths wants it: a box on the canvas plus the source
+   *  window it is showing. */
+  const readCroppable = (img: fabric.FabricImage): CroppableImage => {
+    const rect = img.getBoundingRect();
+    const el = img.getElement() as HTMLImageElement;
+    return {
+      left: rect.left,
+      top: rect.top,
+      width: img.width || 1,
+      height: img.height || 1,
+      cropX: img.cropX || 0,
+      cropY: img.cropY || 0,
+      scaleX: img.scaleX || 1,
+      scaleY: img.scaleY || 1,
+      sourceWidth: el?.naturalWidth || img.width || 1,
+      sourceHeight: el?.naturalHeight || img.height || 1,
+    };
+  };
+
+  const clearCropFrame = useCallback(() => {
+    const c = canvas.current;
+    if (c && cropFrameRef.current) c.remove(cropFrameRef.current);
+    cropFrameRef.current = null;
+    cropTargetRef.current = null;
+    setCropping(false);
+    c?.requestRenderAll();
+  }, [canvas]);
+
+  const startCrop = useCallback(() => {
+    const c = canvas.current;
+    if (!c) return;
+    const img = resolveTargetImage();
+    if (!img) {
+      toaster.show(t('crop_no_image', 'Add an image to the canvas first'), 'warning');
+      return;
+    }
+    // A rotated image would need the frame rotated with it; the maths below
+    // works in canvas axes, so say so instead of cropping the wrong pixels.
+    if (Math.round(img.angle || 0) % 360 !== 0) {
+      toaster.show(
+        t('crop_rotate_first', 'Set the rotation back to 0° before cropping this image.'),
+        'warning'
+      );
+      return;
+    }
+    const start = initialCropRect(readCroppable(img));
+    const frame = new fabric.Rect({
+      ...start,
+      originX: 'left',
+      originY: 'top',
+      fill: 'rgba(56,189,248,0.12)',
+      stroke: '#38bdf8',
+      strokeWidth: 2,
+      strokeUniform: true,
+      strokeDashArray: [6, 4],
+      hasRotatingPoint: false,
+      lockRotation: true,
+      excludeFromExport: true,
+    });
+    cropFrameRef.current = frame;
+    cropTargetRef.current = img;
+    c.add(frame);
+    c.setActiveObject(frame);
+    c.requestRenderAll();
+    setCropping(true);
+  }, [canvas, resolveTargetImage, t, toaster]);
+
+  const applyCrop = useCallback(() => {
+    const c = canvas.current;
+    const frame = cropFrameRef.current;
+    const img = cropTargetRef.current;
+    if (!c || !frame || !img) return;
+    const rect = frame.getBoundingRect();
+    const next = cropFromRect(readCroppable(img), {
+      left: rect.left,
+      top: rect.top,
+      width: rect.width,
+      height: rect.height,
+    });
+    img.set({ cropX: next.cropX, cropY: next.cropY, width: next.width, height: next.height });
+    img.setXY(new fabric.Point(next.left, next.top), 'left', 'top');
+    img.setCoords();
+    clearCropFrame();
+    c.setActiveObject(img);
+    c.fire('object:modified', { target: img } as fabric.ModifiedEvent);
+    c.requestRenderAll();
+  }, [canvas, clearCropFrame]);
+
+  const undoCrop = useCallback(() => {
+    const c = canvas.current;
+    if (!c) return;
+    const img = resolveTargetImage();
+    if (!img) return;
+    const next = resetCrop(readCroppable(img));
+    img.set({ cropX: 0, cropY: 0, width: next.width, height: next.height });
+    img.setXY(new fabric.Point(next.left, next.top), 'left', 'top');
+    img.setCoords();
+    c.fire('object:modified', { target: img } as fabric.ModifiedEvent);
+    c.requestRenderAll();
+  }, [canvas, resolveTargetImage]);
+
+  /** Swap the pixels, keep the frame the design was built around. */
+  const replaceImage = useCallback(
+    async (file: File) => {
+      const c = canvas.current;
+      if (!c) return;
+      const img = resolveTargetImage();
+      if (!img) {
+        toaster.show(t('crop_no_image', 'Add an image to the canvas first'), 'warning');
+        return;
+      }
+      const url = URL.createObjectURL(file);
+      try {
+        await replaceImageOnCanvas(c, img, url, 'cover');
+        c.fire('object:modified', { target: c.getActiveObject()! } as fabric.ModifiedEvent);
+      } catch {
+        toaster.show(t('image_replace_failed', 'Could not load that image.'), 'warning');
+      } finally {
+        URL.revokeObjectURL(url);
+      }
+    },
+    [canvas, resolveTargetImage, t, toaster]
+  );
+
   const removeImageBackground = useCallback(async () => {
     if (!canvas.current || removingBg) return;
     const active = resolveTargetImage();
@@ -215,7 +358,12 @@ export const EditorToolbar: FC<ToolbarProps> = ({ canvas }) => {
     }
   }, [canvas, removingBg, toaster, t, resolveTargetImage]);
 
-  const addText = useCallback(() => {
+  const addText = useCallback(async () => {
+    if (!canvas.current) return;
+    // Fabric measures the textbox as it is created and keeps those metrics. A
+    // font that arrives a moment later would leave the box sized for the
+    // fallback, so wait for the family first.
+    await ensureFontsLoaded([defaultFontFamily]);
     if (!canvas.current) return;
     const cx = canvas.current.getWidth() / canvas.current.getZoom() / 2;
     const cy = canvas.current.getHeight() / canvas.current.getZoom() / 2;
@@ -235,8 +383,12 @@ export const EditorToolbar: FC<ToolbarProps> = ({ canvas }) => {
   }, [canvas, defaultFontFamily, t]);
 
   const applyFontToSelection = useCallback(
-    (family: string) => {
+    async (family: string) => {
       setDefaultFontFamily(family);
+      if (!canvas.current) return;
+      // Same reason as in addText: without the face in the document the
+      // reflow below measures the fallback and caches it.
+      await ensureFontsLoaded([family]);
       if (!canvas.current) return;
       const active = canvas.current.getActiveObjects();
       let touched = false;
@@ -517,6 +669,27 @@ export const EditorToolbar: FC<ToolbarProps> = ({ canvas }) => {
     [canvas, setBgColor]
   );
 
+  /** A flat colour behind a headline reads as unfinished, and every template
+   *  that looks good uses a gradient. This builds one from the colour already
+   *  chosen, so it stays on brand: that colour at the top, a darker version of
+   *  it at the bottom. */
+  const applyGradientBackground = useCallback(() => {
+    const c = canvas.current;
+    if (!c) return;
+    const top = bgColor || '#1a1a2e';
+    c.backgroundColor = new fabric.Gradient({
+      type: 'linear',
+      gradientUnits: 'pixels',
+      coords: { x1: 0, y1: 0, x2: 0, y2: platform.height },
+      colorStops: [
+        { offset: 0, color: top },
+        { offset: 1, color: blend(top, '#000000', 0.55) },
+      ],
+    });
+    c.renderAll();
+    c.fire('object:modified', { target: c.getObjects()[0] } as fabric.ModifiedEvent);
+  }, [canvas, bgColor, platform.height]);
+
   // The colour swatches recolour whatever is selected; only with nothing
   // selected do they fall back to the canvas background. Users kept reading
   // the old always-background behaviour as "these colours do nothing".
@@ -581,7 +754,7 @@ export const EditorToolbar: FC<ToolbarProps> = ({ canvas }) => {
         return;
       }
       setTool(tool);
-      if (tool === 'text' && !wasActive) addText();
+      if (tool === 'text' && !wasActive) void addText();
     },
     [activeTool, setTool, addText, panelOpen, setPanelOpen]
   );
@@ -684,7 +857,7 @@ export const EditorToolbar: FC<ToolbarProps> = ({ canvas }) => {
               ))}
             </select>
             <button
-              onClick={addText}
+              onClick={() => void addText()}
               className="text-xs px-3 py-2 rounded bg-newColColor hover:bg-white/[0.08] text-textColor transition-colors"
             >
               + {t('text_add', 'Add text')}
@@ -712,7 +885,7 @@ export const EditorToolbar: FC<ToolbarProps> = ({ canvas }) => {
                   title={t(shape.titleKey, shape.fallback)}
                   aria-label={t(shape.titleKey, shape.fallback)}
                 >
-                  {shape.icon}
+                  <StudioIcon name={shape.icon} size={20} />
                 </button>
               ))}
             </div>
@@ -748,11 +921,12 @@ export const EditorToolbar: FC<ToolbarProps> = ({ canvas }) => {
             <button
               onClick={removeImageBackground}
               disabled={removingBg}
-              className="text-xs px-3 py-2 rounded bg-newColColor hover:bg-white/[0.08] text-textColor transition-colors disabled:opacity-50 disabled:cursor-wait"
+              className="flex items-center gap-2 text-xs px-3 py-2 rounded bg-newColColor hover:bg-white/[0.08] text-textColor transition-colors disabled:opacity-50 disabled:cursor-wait"
             >
+              <StudioIcon name="eraser" size={16} />
               {removingBg
                 ? `${t('bg_remove_loading', 'Removing…')} ${Math.round(bgProgress * 100)}%`
-                : `✂ ${t('bg_remove_button', 'Remove background')}`}
+                : t('bg_remove_button', 'Remove background')}
             </button>
 
             <button
@@ -761,10 +935,78 @@ export const EditorToolbar: FC<ToolbarProps> = ({ canvas }) => {
                 'crop_smart_hint',
                 'Crops the photo to the current format (bottom bar), keeping the most detailed part of the picture in frame'
               )}
-              className="text-xs px-3 py-2 rounded bg-newColColor hover:bg-white/[0.08] text-textColor transition-colors"
+              className="flex items-center gap-2 text-xs px-3 py-2 rounded bg-newColColor hover:bg-white/[0.08] text-textColor transition-colors"
             >
-              ✂ {t('crop_smart', 'Smart crop to platform')}
+              <StudioIcon name="crop" size={16} />
+              {t('crop_smart', 'Smart crop to platform')}
             </button>
+
+            {/* Manual crop: the smart one guesses, this one lets the user say
+                exactly which part of the photo to keep. */}
+            {!cropping ? (
+              <button
+                onClick={startCrop}
+                className="flex items-center gap-2 text-xs px-3 py-2 rounded bg-newColColor hover:bg-white/[0.08] text-textColor transition-colors"
+              >
+                <StudioIcon name="crop" size={16} />
+                {t('crop_manual', 'Crop by hand')}
+              </button>
+            ) : (
+              <div className="flex flex-col gap-1.5 p-2 rounded bg-white/[0.04] border border-newBorder">
+                <span className="text-[12px] text-textColor/75 leading-snug">
+                  {t(
+                    'crop_manual_hint',
+                    'Drag the frame over the part you want to keep, then apply.'
+                  )}
+                </span>
+                <div className="flex gap-1.5">
+                  <button
+                    onClick={applyCrop}
+                    className="flex-1 text-xs px-3 py-2 rounded bg-newAccent text-[#06222e] font-[600] hover:brightness-110 transition-all"
+                  >
+                    {t('crop_manual_apply', 'Apply crop')}
+                  </button>
+                  <button
+                    onClick={clearCropFrame}
+                    className="text-xs px-3 py-2 rounded bg-newColColor hover:bg-white/[0.08] text-textColor transition-colors"
+                  >
+                    {t('cancel', 'Cancel')}
+                  </button>
+                </div>
+              </div>
+            )}
+
+            <button
+              onClick={undoCrop}
+              title={t('crop_reset_hint', 'Show the whole photo again')}
+              className="flex items-center gap-2 text-xs px-3 py-2 rounded bg-newColColor hover:bg-white/[0.08] text-textColor transition-colors"
+            >
+              <StudioIcon name="undo" size={16} />
+              {t('crop_reset', 'Reset crop')}
+            </button>
+
+            <button
+              onClick={() => replaceRef.current?.click()}
+              title={t(
+                'image_replace_hint',
+                'Swap the picture without touching the layout — the new one fills the same frame'
+              )}
+              className="flex items-center gap-2 text-xs px-3 py-2 rounded bg-newColColor hover:bg-white/[0.08] text-textColor transition-colors"
+            >
+              <StudioIcon name="images" size={16} />
+              {t('image_replace', 'Replace image')}
+            </button>
+            <input
+              ref={replaceRef}
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                if (file) void replaceImage(file);
+                e.target.value = '';
+              }}
+            />
             <p className="text-[11px] text-textColor/65 leading-snug">
               {t(
                 'image_tools_hint',
@@ -776,9 +1018,10 @@ export const EditorToolbar: FC<ToolbarProps> = ({ canvas }) => {
 
             <button
               onClick={() => setTool('stock')}
-              className="text-xs px-3 py-2 rounded bg-newColColor hover:bg-white/[0.08] text-textColor transition-colors text-left"
+              className="flex items-center gap-2 text-xs px-3 py-2 rounded bg-newColColor hover:bg-white/[0.08] text-textColor transition-colors text-left"
             >
-              🏞 {t('image_stock_jump', 'Browse free stock photos')} →
+              <StudioIcon name="stock" size={16} />
+              {t('image_stock_jump', 'Browse free stock photos')}
             </button>
           </div>
         )}
@@ -823,6 +1066,19 @@ export const EditorToolbar: FC<ToolbarProps> = ({ canvas }) => {
                 />
               ))}
             </div>
+            {!hasSelection && (
+              <button
+                onClick={applyGradientBackground}
+                className="flex items-center gap-2 text-xs px-3 py-2 rounded bg-newColColor hover:bg-white/[0.08] text-textColor transition-colors"
+                title={t(
+                  'background_gradient_hint',
+                  'Fades the background colour into a darker shade of itself'
+                )}
+              >
+                <StudioIcon name="gradient" size={16} />
+                {t('background_gradient', 'Gradient background')}
+              </button>
+            )}
             <input
               type="color"
               value={bgColor}
