@@ -11,6 +11,7 @@ import { TrackService } from '@gitroom/nestjs-libraries/track/track.service';
 import { NotificationService } from '@gitroom/nestjs-libraries/database/prisma/notifications/notification.service';
 import { UsersService } from '@gitroom/nestjs-libraries/database/prisma/users/users.service';
 import { TrackEnum } from '@gitroom/nestjs-libraries/user/track.enum';
+import { isMissingCustomerError } from '@gitroom/nestjs-libraries/services/stripe.errors';
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || 'sk_nothing');
 
@@ -244,7 +245,7 @@ export class StripeService {
   }
 
   async createOrGetCustomer(organization: Organization) {
-    if (organization.paymentId) {
+    if (organization.paymentId && (await this.customerExists(organization))) {
       return organization.paymentId;
     }
 
@@ -258,6 +259,35 @@ export class StripeService {
       customer.id
     );
     return customer.id;
+  }
+
+  /**
+   * Is the customer we stored still in this Stripe account?
+   *
+   * Asked before checkout, because a stored id Stripe has forgotten would make
+   * every later call fail the same way and leave the org unable to pay at all.
+   * Only a definitive "no such customer" answers false — a network blip or any
+   * other Stripe failure is re-thrown, so a hiccup never creates a duplicate
+   * customer.
+   */
+  private async customerExists(organization: Organization) {
+    try {
+      const customer = await stripe.customers.retrieve(organization.paymentId!);
+      if (!customer.deleted) {
+        return true;
+      }
+    } catch (err) {
+      if (!isMissingCustomerError(err)) {
+        throw err;
+      }
+    }
+
+    console.warn(
+      `[stripe] organization ${organization.id} points at customer ${
+        organization.paymentId
+      }, which Stripe no longer has — creating a new one`
+    );
+    return false;
   }
 
   // Resolve the Stripe product for a plan tier. Matched by metadata.tier first
@@ -360,13 +390,48 @@ export class StripeService {
     }
   }
 
-  async getCustomerSubscriptions(organizationId: string) {
+  /**
+   * Every subscription Stripe holds for this customer — or none, when Stripe
+   * no longer has the customer at all.
+   *
+   * One place, because three callers ask the same question and all three used
+   * to answer it with a 500: the poll after checkout, cancelling a plan, and
+   * deleting an account.
+   */
+  private async listSubscriptions(
+    customer: string,
+    organizationId: string
+  ): Promise<Stripe.Subscription[]> {
+    try {
+      return (
+        await stripe.subscriptions.list({
+          customer,
+          status: 'all',
+        })
+      ).data;
+    } catch (err) {
+      if (isMissingCustomerError(err)) {
+        console.warn(
+          `[stripe] organization ${organizationId} points at customer ${customer}, which Stripe no longer has — reading it as no subscriptions`
+        );
+        return [];
+      }
+      throw err;
+    }
+  }
+
+  async getCustomerSubscriptions(
+    organizationId: string
+  ): Promise<{ data: Stripe.Subscription[] }> {
     const org = (await this._organizationService.getOrgById(organizationId))!;
     const customer = org.paymentId;
-    return stripe.subscriptions.list({
-      customer: customer!,
-      status: 'all',
-    });
+    // No customer means no subscriptions. Passing an empty one to Stripe asks
+    // for every subscription in the account instead.
+    if (!customer) {
+      return { data: [] };
+    }
+
+    return { data: await this.listSubscriptions(customer, organizationId) };
   }
 
   async setToCancel(organizationId: string) {
@@ -632,14 +697,24 @@ export class StripeService {
   }
 
   async checkDiscount(customer: string) {
-    if (!process.env.STRIPE_DISCOUNT_ID) {
+    if (!process.env.STRIPE_DISCOUNT_ID || !customer) {
       return false;
     }
 
-    const list = await stripe.charges.list({
-      customer,
-      limit: 1,
-    });
+    let list: Stripe.ApiList<Stripe.Charge>;
+    try {
+      list = await stripe.charges.list({
+        customer,
+        limit: 1,
+      });
+    } catch (err) {
+      // Same stale id as in getCustomerSubscriptions: no customer, no charges,
+      // so there is nothing to discount. The billing page must still open.
+      if (isMissingCustomerError(err)) {
+        return false;
+      }
+      throw err;
+    }
 
     if (!list.data.filter((f) => f.amount > 1000).length) {
       return false;
@@ -916,10 +991,20 @@ export class StripeService {
       return [];
     }
 
-    const charges = await stripe.charges.list({
-      customer: org.paymentId,
-      limit: 100,
-    });
+    let charges: Stripe.ApiList<Stripe.Charge>;
+    try {
+      charges = await stripe.charges.list({
+        customer: org.paymentId,
+        limit: 100,
+      });
+    } catch (err) {
+      // A customer Stripe has forgotten has no invoices either — show an empty
+      // billing history instead of breaking the page.
+      if (isMissingCustomerError(err)) {
+        return [];
+      }
+      throw err;
+    }
 
     const chargeList = charges.data
       .filter((f) => f.status === 'succeeded')
@@ -998,11 +1083,8 @@ export class StripeService {
     const customer = org.paymentId;
 
     const subscriptions = (
-      await stripe.subscriptions.list({
-        customer,
-        status: 'all',
-      })
-    ).data.filter((f) => f.status !== 'canceled');
+      await this.listSubscriptions(customer, organizationId)
+    ).filter((f) => f.status !== 'canceled');
 
     if (!subscriptions.length) {
       throw new Error('No active subscription found');
@@ -1026,11 +1108,8 @@ export class StripeService {
     }
 
     const subscriptions = (
-      await stripe.subscriptions.list({
-        customer: org.paymentId,
-        status: 'all',
-      })
-    ).data.filter((f) => f.status !== 'canceled');
+      await this.listSubscriptions(org.paymentId, organizationId)
+    ).filter((f) => f.status !== 'canceled');
 
     for (const subscription of subscriptions) {
       await stripe.subscriptions.cancel(subscription.id);
