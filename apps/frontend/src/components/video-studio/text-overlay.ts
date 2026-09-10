@@ -63,6 +63,25 @@ function wrapLines(
   return out;
 }
 
+/**
+ * How much of the frame the platform's own interface covers.
+ *
+ * Measured against TikTok and Reels at 1080x1920: the caption, handle and the
+ * action rail take roughly the bottom 250-300 px, so a band sitting 4 % from
+ * the bottom (77 px) lands underneath them. Vertical video therefore keeps a
+ * much deeper bottom margin; square and landscape do not have the problem.
+ */
+export function safeAreaMargin(
+  width: number,
+  height: number
+): { top: number; bottom: number } {
+  const vertical = height / width >= 1.5;
+  return {
+    top: Math.round(height * (vertical ? 0.08 : 0.04)),
+    bottom: Math.round(height * (vertical ? 0.13 : 0.04)),
+  };
+}
+
 export interface BrandTextStyle {
   text: string;
   position: TextPosition;
@@ -101,19 +120,27 @@ export function drawBrandText(
 
   const padY = Math.round(fontSize * 0.6);
   const blockHeight = lines.length * lineHeight + padY * 2;
-  const margin = Math.round(height * 0.04);
+  const margin = safeAreaMargin(width, height);
 
   let top: number;
-  if (style.position === 'top') top = margin;
+  if (style.position === 'top') top = margin.top;
   else if (style.position === 'middle') top = Math.round((height - blockHeight) / 2);
-  else top = height - blockHeight - margin;
+  else top = height - blockHeight - margin.bottom;
 
   ctx.fillStyle = style.bandColor;
   ctx.fillRect(0, top, width, blockHeight);
 
+  // The band is translucent, so on a bright frame the text was competing with
+  // whatever showed through. An outline costs nothing and survives any
+  // background.
+  const outline = Math.max(2, Math.round(fontSize * 0.08));
+  ctx.lineWidth = outline;
+  ctx.lineJoin = 'round';
+  ctx.strokeStyle = 'rgba(0,0,0,0.55)';
   ctx.fillStyle = style.color;
   let y = top + padY + lineHeight / 2;
   for (const line of lines) {
+    ctx.strokeText(line, width / 2, y);
     ctx.fillText(line, width / 2, y);
     y += lineHeight;
   }
