@@ -1,6 +1,7 @@
 'use client';
 
 import * as fabric from 'fabric';
+import { fitReplacement } from './image-crop';
 
 let cachedModule: typeof import('@imgly/background-removal') | null = null;
 
@@ -45,10 +46,18 @@ export const removeBackgroundFromImage = async (
   return blobToDataUrl(blob);
 };
 
+/**
+ * 'stretch' keeps the old behaviour: the new pixels are squeezed into the box
+ * whatever their aspect ratio (right for a background removal, which returns
+ * the same picture). 'cover' fills the box and crops the overflow, which is
+ * what swapping the photo inside a template needs — a portrait photo dropped
+ * into a landscape frame must not turn into a squashed portrait.
+ */
 export const replaceImageOnCanvas = async (
   canvas: fabric.Canvas,
   targetImage: fabric.FabricImage,
-  newSrc: string
+  newSrc: string,
+  fit: 'stretch' | 'cover' = 'stretch'
 ): Promise<void> => {
   const imgEl = new Image();
   imgEl.crossOrigin = 'anonymous';
@@ -60,15 +69,36 @@ export const replaceImageOnCanvas = async (
   });
 
   const replacement = new fabric.FabricImage(imgEl);
+  const sourceWidth = imgEl.naturalWidth || imgEl.width || 1;
+  const sourceHeight = imgEl.naturalHeight || imgEl.height || 1;
+  const cover =
+    fit === 'cover'
+      ? fitReplacement(
+          {
+            width: targetImage.width || 1,
+            height: targetImage.height || 1,
+            scaleX: targetImage.scaleX || 1,
+            scaleY: targetImage.scaleY || 1,
+          },
+          { width: sourceWidth, height: sourceHeight }
+        )
+      : null;
   replacement.set({
     left: targetImage.left,
     top: targetImage.top,
-    scaleX:
-      ((targetImage.width || 1) * (targetImage.scaleX || 1)) /
-      (imgEl.naturalWidth || imgEl.width || 1),
-    scaleY:
-      ((targetImage.height || 1) * (targetImage.scaleY || 1)) /
-      (imgEl.naturalHeight || imgEl.height || 1),
+    ...(cover
+      ? {
+          scaleX: cover.scaleX,
+          scaleY: cover.scaleY,
+          cropX: cover.cropX,
+          cropY: cover.cropY,
+          width: cover.width,
+          height: cover.height,
+        }
+      : {
+          scaleX: ((targetImage.width || 1) * (targetImage.scaleX || 1)) / sourceWidth,
+          scaleY: ((targetImage.height || 1) * (targetImage.scaleY || 1)) / sourceHeight,
+        }),
     angle: targetImage.angle,
     originX: targetImage.originX,
     originY: targetImage.originY,
