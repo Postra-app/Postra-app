@@ -3,16 +3,11 @@ import { createTool } from '@mastra/core/tools';
 import { z } from 'zod';
 import { Injectable } from '@nestjs/common';
 import { MediaService } from '@gitroom/nestjs-libraries/database/prisma/media/media.service';
-import { BrandKitService } from '@gitroom/nestjs-libraries/database/prisma/brand-kit/brand-kit.service';
 import { checkAuth } from '@gitroom/nestjs-libraries/chat/auth.context';
-import { buildBrandImagePrompt } from '@gitroom/nestjs-libraries/openai/brand-prompt';
 
 @Injectable()
 export class GenerateImageTool implements AgentToolInterface {
-  constructor(
-    private _mediaService: MediaService,
-    private _brandKitService: BrandKitService
-  ) {}
+  constructor(private _mediaService: MediaService) {}
   name = 'generateImageTool';
 
   run() {
@@ -42,19 +37,18 @@ export class GenerateImageTool implements AgentToolInterface {
         checkAuth(inputData, context);
         const org = JSON.parse((context?.requestContext as any)?.get('organization') as string);
 
-        // Reflect the org's Brand Kit in generated visuals so the agent's
-        // images come out on-brand, not just whatever the model picks.
-        const brandKit = await this._brandKitService.getNormalized(org.id);
-        const brandStyle = buildBrandImagePrompt(brandKit);
-        const prompt = brandStyle
-          ? `${inputData.prompt}. ${brandStyle}`
-          : inputData.prompt;
-
+        // The Brand Kit is applied inside MediaService.generateImage now, so
+        // every AI image surface gets the same palette — this tool used to be
+        // the only one that did it, and the composer's images went unbranded.
+        //
         // generateImage already uploads the image and returns its CDN URL, so
         // just persist that. (It used to re-wrap the returned URL as a base64
         // data URL and re-upload it — decoding a URL as base64 yielded garbage
         // bytes and an "Unsupported file type" error.)
-        const url = await this._mediaService.generateImage(prompt, org);
+        const url = await this._mediaService.generateImage(
+          inputData.prompt,
+          org
+        );
         if (!url) {
           throw new Error('Image generation returned no image.');
         }

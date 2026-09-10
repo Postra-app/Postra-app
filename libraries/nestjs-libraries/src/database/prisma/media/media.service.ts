@@ -14,6 +14,7 @@ import {
 } from '@gitroom/nestjs-libraries/dtos/media/generate.post.design.dto';
 import { GeneratePostCarouselDto } from '@gitroom/nestjs-libraries/dtos/media/generate.post.carousel.dto';
 import { BrandKitService } from '@gitroom/nestjs-libraries/database/prisma/brand-kit/brand-kit.service';
+import { buildBrandContext } from '@gitroom/nestjs-libraries/openai/brand-prompt';
 import { PostsRepository } from '@gitroom/nestjs-libraries/database/prisma/posts/posts.repository';
 import { ioRedis } from '@gitroom/nestjs-libraries/redis/redis.service';
 import {
@@ -86,11 +87,28 @@ export class MediaService {
     return this._mediaRepository.getMediaByIdOrg(org, id);
   }
 
+  /**
+   * Every raw AI image in the product goes through here — the composer's AI
+   * Image, Studio's "AI Img" tab and the agent's generateImageTool — so this is
+   * where the Brand Kit is applied. It used to be applied by the agent tool
+   * alone, which is why an image asked for in the composer came back in
+   * whatever palette the model felt like.
+   *
+   * The brand block is appended AFTER `generatePromptForPicture` expands the
+   * prompt: the expander rewrites its input into a long scene description and
+   * would paraphrase the hex colours away.
+   */
   async generateImage(
     prompt: string,
     org: Organization,
     generatePromptFirst?: boolean
   ) {
+    const brandKit = await this._brandKitService.getNormalized(org.id);
+    const brand = buildBrandContext(brandKit, {
+      palette: true,
+      logoHint: true,
+    });
+
     const generating = await this._subscriptionService.useCredit(
       org,
       'ai_images',
@@ -99,7 +117,7 @@ export class MediaService {
           prompt = await this._openAi.generatePromptForPicture(prompt, org.id);
         }
         const dataUrl = await this._openAi.generateImage(
-          prompt,
+          brand ? `${prompt}\n\n${brand}` : prompt,
           !!generatePromptFirst
         );
         return dataUrl ? await this.storage.uploadSimple(dataUrl) : dataUrl;
