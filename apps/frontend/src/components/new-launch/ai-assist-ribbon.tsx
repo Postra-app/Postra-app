@@ -1,6 +1,7 @@
 'use client';
 
-import { FC, useCallback, useRef, useState } from 'react';
+import { FC, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import clsx from 'clsx';
 import { useFetch } from '@gitroom/helpers/utils/custom.fetch';
 import { useToaster } from '@gitroom/react/toaster/toaster';
 import { useT } from '@gitroom/react/translation/get.transation.service.client';
@@ -10,6 +11,10 @@ import {
   aiPlainText,
   aiTextToHtml,
 } from '@gitroom/frontend/components/new-launch/ai-text.utils';
+import {
+  diffSimilarity,
+  diffWords,
+} from '@gitroom/frontend/components/new-launch/ai-word-diff';
 
 interface Props {
   content: string;
@@ -44,6 +49,35 @@ const LANGUAGES: { code: string; label: string }[] = [
   { code: 'pl', label: 'Polski' },
 ];
 
+interface Variant {
+  action: string;
+  language?: string;
+  /** Plain text the model was given — Retry re-runs on this, not on a result. */
+  from: string;
+  text: string;
+}
+
+// Enough to compare "the shorter one" with "the one before it" without turning
+// the ribbon into a history browser.
+const MAX_VARIANTS = 3;
+
+// Below this share of shared words an inline diff is noise rather than help —
+// Translate replaces every word — so the preview opens on the new text.
+const DIFF_USEFUL_ABOVE = 0.3;
+
+// Only used to tell "the user typed something" from "we put this here". The
+// editor may hand the same text back with different entities or a non-breaking
+// space, and that must not count as an edit.
+const normalize = (html: string) =>
+  aiPlainText(html)
+    .replace(/&nbsp;/g, ' ')
+    .replace(/&amp;/g, '&')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/\u00a0/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+
 export const AiAssistRibbon: FC<Props> = ({ content, platform, onReplace }) => {
   const fetch = useFetch();
   const toaster = useToaster();
@@ -55,12 +89,48 @@ export const AiAssistRibbon: FC<Props> = ({ content, platform, onReplace }) => {
   const [picked, setPicked] = useState<Set<string>>(new Set());
   const abortRef = useRef<AbortController | null>(null);
 
+  // A rewrite lands here first. Nothing reaches the post until Apply.
+  const [variants, setVariants] = useState<Variant[]>([]);
+  const [index, setIndex] = useState(0);
+  const [view, setView] = useState<'diff' | 'new'>('diff');
+  /** What the post said before the first Apply — where Restore goes back to. */
+  const [baseline, setBaseline] = useState<string | null>(null);
+  const [applied, setApplied] = useState<{
+    html: string;
+    variant: Variant;
+  } | null>(null);
+
   const plainText = aiPlainText(content);
   const ready = plainText.length >= AI_MIN_CONTENT_LEN;
+  const variant = variants[index] ?? null;
+
+  const segments = useMemo(
+    () => (variant ? diffWords(variant.from, variant.text) : []),
+    [variant]
+  );
+
+  const close = useCallback(() => {
+    setVariants([]);
+    setIndex(0);
+    setBaseline(null);
+    setApplied(null);
+  }, []);
+
+  // A preview describes one exact pair of texts. Once the post says something
+  // else — the user kept typing, or switched channel tab — it would be
+  // describing a change that can no longer be applied honestly.
+  useEffect(() => {
+    if (!variant || busy) return;
+    const expected = applied ? applied.html : variant.from;
+    if (normalize(content) !== normalize(expected)) close();
+  }, [content, variant, applied, busy, close]);
 
   const run = useCallback(
-    async (action: string, language?: string) => {
-      if (!ready || busy) return;
+    async (action: string, language?: string, retryFrom?: string) => {
+      if (busy) return;
+      const source = retryFrom ?? plainText;
+      if (source.length < AI_MIN_CONTENT_LEN) return;
+
       abortRef.current?.abort();
       const ctrl = new AbortController();
       abortRef.current = ctrl;
@@ -70,7 +140,7 @@ export const AiAssistRibbon: FC<Props> = ({ content, platform, onReplace }) => {
       try {
         const res = await fetch('/media/ai-edit', {
           method: 'POST',
-          body: JSON.stringify({ text: plainText, action, platform, language }),
+          body: JSON.stringify({ text: source, action, platform, language }),
           signal: ctrl.signal,
         });
 
@@ -83,7 +153,24 @@ export const AiAssistRibbon: FC<Props> = ({ content, platform, onReplace }) => {
         }
 
         const data = (await res.json()) as { text: string };
-        if (data?.text) onReplace(aiTextToHtml(data.text));
+        if (!data?.text) return;
+
+        // Remember what the post said before AI touched it, so Restore has
+        // somewhere to go even after Apply.
+        setBaseline((prev) => (prev === null ? content : prev));
+        setVariants((prev) => {
+          const next = [
+            ...prev,
+            { action, language, from: source, text: data.text },
+          ].slice(-MAX_VARIANTS);
+          setIndex(next.length - 1);
+          return next;
+        });
+        setView(
+          diffSimilarity(diffWords(source, data.text)) >= DIFF_USEFUL_ABOVE
+            ? 'diff'
+            : 'new'
+        );
       } catch (err) {
         if ((err as { name?: string })?.name !== 'AbortError') {
           toaster.show(
@@ -99,18 +186,21 @@ export const AiAssistRibbon: FC<Props> = ({ content, platform, onReplace }) => {
         setBusy(null);
       }
     },
-    [
-      ready,
-      busy,
-      plainText,
-      platform,
-      fetch,
-      t,
-      toaster,
-      showAiError,
-      onReplace,
-    ]
+    [busy, plainText, content, platform, fetch, t, toaster, showAiError]
   );
+
+  const apply = useCallback(() => {
+    if (!variant) return;
+    const html = aiTextToHtml(variant.text);
+    onReplace(html);
+    setApplied({ html, variant });
+  }, [variant, onReplace]);
+
+  const restore = useCallback(() => {
+    if (baseline === null) return;
+    onReplace(baseline);
+    close();
+  }, [baseline, onReplace, close]);
 
   const suggest = useCallback(async () => {
     if (!ready || busy) return;
@@ -158,6 +248,12 @@ export const AiAssistRibbon: FC<Props> = ({ content, platform, onReplace }) => {
   }, [tags, picked, content, onReplace]);
 
   if (!ready) return null;
+
+  const definition = ACTIONS.find((a) => a.key === variant?.action);
+  const actionLabel = definition
+    ? t(definition.labelKey, definition.fallback)
+    : t('ai_edit_translate', 'Translate');
+  const isApplied = applied?.variant === variant;
 
   return (
     <div className="flex flex-wrap items-center gap-1 mt-1.5">
@@ -214,6 +310,133 @@ export const AiAssistRibbon: FC<Props> = ({ content, platform, onReplace }) => {
             {t('dismiss', 'Dismiss')}
           </button>
         </>
+      )}
+
+      {/* The rewrite, before it touches the post: what changed, then Apply.
+          Restore puts back the text that was written by hand. */}
+      {variant && (
+        <div className="basis-full mt-1 rounded border border-newBorder bg-newColColor/60 p-2 text-[11px]">
+          <div className="flex flex-wrap items-center gap-2 mb-1.5">
+            <span className="font-[600] text-newTextColor/90">
+              {isApplied
+                ? t('ai_preview_applied', 'Applied')
+                : t('ai_preview_title', 'Preview')}
+              {' · '}
+              {actionLabel}
+            </span>
+
+            {variants.length > 1 && (
+              <span className="flex items-center gap-1 text-newTextColor/60">
+                <button
+                  onClick={() => setIndex((i) => Math.max(0, i - 1))}
+                  disabled={index === 0}
+                  className="px-1 hover:text-newTextColor disabled:opacity-40"
+                  aria-label={t('ai_preview_prev', 'Previous version')}
+                >
+                  ‹
+                </button>
+                {t('ai_preview_counter', 'version {{n}} of {{total}}', {
+                  n: index + 1,
+                  total: variants.length,
+                })}
+                <button
+                  onClick={() =>
+                    setIndex((i) => Math.min(variants.length - 1, i + 1))
+                  }
+                  disabled={index === variants.length - 1}
+                  className="px-1 hover:text-newTextColor disabled:opacity-40"
+                  aria-label={t('ai_preview_next', 'Next version')}
+                >
+                  ›
+                </button>
+              </span>
+            )}
+
+            <span className="ms-auto flex items-center gap-1">
+              {(['diff', 'new'] as const).map((mode) => (
+                <button
+                  key={mode}
+                  onClick={() => setView(mode)}
+                  className={clsx(
+                    'px-1.5 py-0.5 rounded transition-colors',
+                    view === mode
+                      ? 'bg-newAccent text-[#06222e] font-[600]'
+                      : 'text-newTextColor/60 hover:text-newTextColor'
+                  )}
+                >
+                  {mode === 'diff'
+                    ? t('ai_preview_changes', 'Changes')
+                    : t('ai_preview_new', 'New text')}
+                </button>
+              ))}
+            </span>
+          </div>
+
+          <div className="max-h-[180px] overflow-y-auto whitespace-pre-wrap leading-relaxed text-newTextColor/90">
+            {view === 'new'
+              ? variant.text
+              : segments.map((segment, i) => (
+                  <span
+                    key={i}
+                    className={clsx(
+                      segment.kind === 'add' && 'bg-emerald-500/25 rounded-sm',
+                      segment.kind === 'del' &&
+                        'bg-rose-500/25 line-through rounded-sm text-newTextColor/60'
+                    )}
+                  >
+                    {segment.text}
+                  </span>
+                ))}
+          </div>
+
+          <div className="flex flex-wrap items-center gap-1.5 mt-2">
+            {!isApplied && (
+              <button
+                onClick={apply}
+                disabled={!!busy}
+                className="px-2 py-1 rounded bg-newAccent text-[#06222e] font-[600] hover:bg-forth transition-colors disabled:opacity-50"
+              >
+                {t('ai_preview_apply', 'Apply')}
+              </button>
+            )}
+
+            <button
+              onClick={() =>
+                run(variant.action, variant.language, variant.from)
+              }
+              disabled={!!busy}
+              className="px-2 py-1 rounded bg-newColColor hover:bg-white/[0.08] text-newTextColor/80 transition-colors disabled:opacity-50"
+            >
+              {busy
+                ? t('ai_edit_running', 'Rewriting…')
+                : t('ai_preview_retry', 'Retry')}
+            </button>
+
+            {applied && (
+              <button
+                onClick={restore}
+                disabled={!!busy}
+                className="px-2 py-1 rounded bg-newColColor hover:bg-white/[0.08] text-newTextColor/80 transition-colors disabled:opacity-50"
+              >
+                {t('ai_preview_restore', 'Restore original')}
+              </button>
+            )}
+
+            <button
+              onClick={close}
+              className="px-2 py-1 rounded text-newTextColor/60 hover:text-newTextColor transition-colors"
+            >
+              {t('dismiss', 'Dismiss')}
+            </button>
+
+            <span className="ms-auto text-newTextColor/50">
+              {t('ai_preview_chars', '{{before}} → {{after}} characters', {
+                before: variant.from.length,
+                after: variant.text.length,
+              })}
+            </span>
+          </div>
+        </div>
       )}
 
       {tags !== null && (

@@ -1418,5 +1418,16 @@
   "agent_confirm_declined": "Odrzucone — nic nie zostało zmienione.",
   "agent_confirm_expired": "To potwierdzenie już nie działa. Poproś asystenta jeszcze raz.",
   "ai_edit_translate": "Przetłumacz",
-  "ai_translate_running": "Tłumaczę…"
+  "ai_translate_running": "Tłumaczę…",
+  "ai_preview_title": "Podgląd",
+  "ai_preview_applied": "Zastosowano",
+  "ai_preview_apply": "Zastosuj",
+  "ai_preview_retry": "Spróbuj ponownie",
+  "ai_preview_restore": "Przywróć oryginał",
+  "ai_preview_changes": "Zmiany",
+  "ai_preview_new": "Nowy tekst",
+  "ai_preview_counter": "wersja {{n}} z {{total}}",
+  "ai_preview_chars": "{{before}} → {{after}} znaków",
+  "ai_preview_prev": "Poprzednia wersja",
+  "ai_preview_next": "Następna wersja"
 }

@@ -1418,5 +1418,16 @@
   "agent_confirm_declined": "Declined — nothing was changed.",
   "agent_confirm_expired": "That confirmation is no longer valid. Ask the assistant again.",
   "ai_edit_translate": "Translate",
-  "ai_translate_running": "Translating…"
+  "ai_translate_running": "Translating…",
+  "ai_preview_title": "Preview",
+  "ai_preview_applied": "Applied",
+  "ai_preview_apply": "Apply",
+  "ai_preview_retry": "Retry",
+  "ai_preview_restore": "Restore original",
+  "ai_preview_changes": "Changes",
+  "ai_preview_new": "New text",
+  "ai_preview_counter": "version {{n}} of {{total}}",
+  "ai_preview_chars": "{{before}} → {{after}} characters",
+  "ai_preview_prev": "Previous version",
+  "ai_preview_next": "Next version"
 }
