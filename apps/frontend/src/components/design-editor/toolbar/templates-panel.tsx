@@ -27,12 +27,27 @@ import {
 } from '../templates/template-types';
 import { withHistoryPaused } from '../utils/canvas-history';
 import { StudioIcon } from '@gitroom/frontend/components/studio/studio-icons';
+import { loadCanvasFonts } from '../utils/font-loading';
+import { EmptyState } from '@gitroom/frontend/components/ui/empty-state';
+import { Skeleton } from '@gitroom/frontend/components/ui/skeleton';
+import { templateCorpus } from '@gitroom/nestjs-libraries/studio/template-corpus';
 
 interface TemplatesPanelProps {
   canvas: MutableRefObject<fabric.Canvas | null>;
 }
 
 const SEARCH_DEBOUNCE_MS = 350;
+/** Same digest the server computes, so both name the catalogue identically. */
+const sha256Hex = async (text: string): Promise<string> => {
+  const digest = await crypto.subtle.digest(
+    'SHA-256',
+    new TextEncoder().encode(text)
+  );
+  return [...new Uint8Array(digest)]
+    .map((b) => b.toString(16).padStart(2, '0'))
+    .join('');
+};
+
 const MIN_SEARCH_LEN = 3;
 
 export const TemplatesPanel: FC<TemplatesPanelProps> = ({ canvas }) => {
@@ -117,6 +132,9 @@ export const TemplatesPanel: FC<TemplatesPanelProps> = ({ canvas }) => {
         // is what buried the pre-template canvas under a dozen undo steps.
         await withHistoryPaused(canvas.current, async () => {
           await canvas.current!.loadFromJSON(data.canvasJson);
+          // The template names its fonts; without them the text is laid out in
+          // the fallback and keeps those line breaks for good.
+          await loadCanvasFonts(canvas.current!);
           canvas.current!.renderAll();
         });
       } catch {
@@ -161,19 +179,31 @@ export const TemplatesPanel: FC<TemplatesPanelProps> = ({ canvas }) => {
     const id = window.setTimeout(async () => {
       setSearching(true);
       try {
-        const res = await fetch('/media/search-templates', {
-          method: 'POST',
-          signal: ctrl.signal,
-          body: JSON.stringify({
-            query: query.trim(),
-            templates: BUILT_IN_TEMPLATES.map((tpl) => ({
-              id: tpl.key,
-              text: isPl
-                ? `${tpl.labelPl}. ${tpl.descriptionPl}. Kategoria: ${tpl.category}.`
-                : `${tpl.label}. ${tpl.description}. Category: ${tpl.category}.`,
-            })),
-          }),
-        });
+        const entries = BUILT_IN_TEMPLATES.map((tpl) => ({
+          id: tpl.key,
+          text: isPl
+            ? `${tpl.labelPl}. ${tpl.descriptionPl}. Kategoria: ${tpl.category}.`
+            : `${tpl.label}. ${tpl.description}. Category: ${tpl.category}.`,
+        }));
+        // The catalogue only changes when we ship a new template, so send its
+        // hash and let the server say if it needs the texts. That is ~3KB off
+        // every search after the first one in a month.
+        const corpusHash = await sha256Hex(templateCorpus(entries));
+        const search = (withTexts: boolean) =>
+          fetch('/media/search-templates', {
+            method: 'POST',
+            signal: ctrl.signal,
+            body: JSON.stringify({
+              query: query.trim(),
+              corpusHash,
+              ...(withTexts ? { templates: entries } : {}),
+            }),
+          });
+        let res = await search(false);
+        if (res.ok) {
+          const first = await res.clone().json();
+          if (first?.needTemplates) res = await search(true);
+        }
         if (!res.ok) {
           setSearchHits([]);
           // Search runs on embeddings, so a plan without AI is turned away
@@ -187,7 +217,11 @@ export const TemplatesPanel: FC<TemplatesPanelProps> = ({ canvas }) => {
           return;
         }
         const hits = (await res.json()) as { id: string; score: number }[];
-        setSearchHits(hits.filter((h) => h.score > 0.2).map((h) => h.id));
+        setSearchHits(
+          Array.isArray(hits)
+            ? hits.filter((h) => h.score > 0.2).map((h) => h.id)
+            : []
+        );
       } catch (err) {
         if ((err as { name?: string })?.name !== 'AbortError') {
           setSearchHits([]);
@@ -281,7 +315,7 @@ export const TemplatesPanel: FC<TemplatesPanelProps> = ({ canvas }) => {
           'template_search_placeholder',
           'Search templates (e.g. "holiday promo")'
         )}
-        className="text-xs px-2 py-1.5 rounded bg-newColColor border border-newBorder text-textColor placeholder-textColor/40 focus:outline-none focus:border-forth"
+        className="text-xs px-2 py-1.5 rounded bg-newColColor border border-newBorder text-textColor placeholder-textColor/60 focus:outline-none focus:border-forth"
       />
       {!searchHits && myTemplates.length > 0 && (
         <div className="flex flex-col gap-1.5">
@@ -329,29 +363,40 @@ export const TemplatesPanel: FC<TemplatesPanelProps> = ({ canvas }) => {
               key={c.key}
               onClick={() => setCategory(c.key)}
               className={clsx(
-                'text-[11px] px-2 py-1 rounded transition-colors',
+                'flex items-center gap-1 text-[11px] px-2 py-1 rounded transition-colors',
                 category === c.key
                   ? 'bg-newAccent text-[#06222e] font-[600]'
                   : 'bg-newColColor text-textColor/70 hover:text-textColor'
               )}
               title={t(c.labelKey, c.fallback)}
             >
-              {c.emoji} {t(c.labelKey, c.fallback)}
+              <StudioIcon name={c.icon} size={14} />
+              {t(c.labelKey, c.fallback)}
             </button>
           ))}
         </div>
       )}
+      {/* A search that looks like nothing is happening reads as a broken
+          search; skeletons in the shape of the results say "wait". */}
       {searching && (
-        <div className="text-[11px] text-textColor/65">
-          {t('template_searching', 'Searching…')}
+        <div className="grid grid-cols-2 gap-1.5" aria-label={t('template_searching', 'Searching…')} role="status">
+          {[0, 1, 2, 3].map((i) => (
+            <Skeleton key={i} className="aspect-[4/5] w-full" />
+          ))}
         </div>
       )}
 
       <div className="grid grid-cols-2 gap-1.5">
-        {filtered.length === 0 && (
-          <div className="col-span-2 text-center text-[11px] text-textColor/65 py-4">
-            {t('template_coming_soon', 'More templates coming soon in this category')}
-          </div>
+        {!searching && filtered.length === 0 && (
+          <EmptyState
+            className="col-span-2 py-[20px] gap-[6px]"
+            icon={<StudioIcon name="templates" size={28} />}
+            title={t('template_none_title', 'Nothing here yet')}
+            description={t(
+              'template_coming_soon',
+              'More templates coming soon in this category'
+            )}
+          />
         )}
         {filtered.map((tpl) => {
           const thumb = thumbs[templateThumbnailKey(tpl, platform, brand, lang)];
