@@ -251,6 +251,46 @@ export class AdminController {
   }
 
   /**
+   * Put an organization on a paid tier without a payment — a test account, a
+   * compensation, an account we owe a plan to.
+   *
+   * The only thing an admin could grant was lifetime Business; there was no way
+   * to seat an org on Starter or Pro, which is an ordinary request. The control
+   * that existed rendered only while impersonating, inside a panel that is
+   * hidden while impersonating, so it could never be reached — and that was the
+   * only thing standing between a click and E2E-09-09 (E2E-09-02). The endpoint
+   * behind it is safe now, and this one names the organization outright instead
+   * of inferring it from whoever the session is wearing.
+   */
+  @Post('/comp-subscription')
+  async compSubscription(
+    @GetUserFromRequest() user: User,
+    @Body('organizationId') organizationId: string,
+    @Body('subscription') subscription: string
+  ) {
+    this.assertSuperAdmin(user);
+    if (!organizationId?.trim()) {
+      throw new HttpException('Missing organizationId', 400);
+    }
+
+    const org = await this._prisma.organization.findUnique({
+      where: { id: organizationId },
+      select: { id: true },
+    });
+    if (!org) {
+      throw new HttpException('Organization not found', 400);
+    }
+
+    await this._subscriptionService.addSubscription(
+      organizationId,
+      user.id,
+      subscription
+    );
+
+    return { organizationId, subscription };
+  }
+
+  /**
    * Take a comp or a lifetime grant back.
    *
    * Until now, comping an account was a one-way street: the only route out was

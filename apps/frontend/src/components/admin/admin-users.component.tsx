@@ -1,62 +1,105 @@
 'use client';
 
-import { useCallback, useState } from 'react';
+import React, { FC, useCallback, useState } from 'react';
 import useSWR from 'swr';
 import { useFetch } from '@gitroom/helpers/utils/custom.fetch';
 import { useUser } from '@gitroom/frontend/components/layout/user.context';
-import { useVariables } from '@gitroom/react/helpers/variable.context';
 import { useT } from '@gitroom/react/translation/get.transation.service.client';
 import { Input } from '@gitroom/react/form/input';
 import { Select } from '@gitroom/react/form/select';
 import { AdminButton as Button } from './admin-ui';
-import { setCookie } from '@gitroom/frontend/components/layout/layout.context';
-import { pricing } from '@gitroom/nestjs-libraries/database/prisma/subscriptions/pricing';
+import { COMPABLE_TIERS } from '@gitroom/nestjs-libraries/database/prisma/subscriptions/pricing';
 import { deleteDialog } from '@gitroom/react/helpers/delete.dialog';
 import { useModals } from '@gitroom/frontend/components/layout/new-modal';
 import { ImportDebugPostModal } from '@gitroom/frontend/components/launches/import-debug-post.modal';
 import { useToaster } from '@gitroom/react/toaster/toaster';
 import { useDebouncedSearch } from '@gitroom/frontend/components/admin/use-debounced-search';
 
-const Subscription = () => {
+/**
+ * Put an org on a paid tier without a payment.
+ *
+ * This used to render only while impersonating, inside a panel that is hidden
+ * while impersonating, so it was unreachable — and that was the only thing
+ * standing between one click and an organization losing its Stripe customer id
+ * (E2E-09-02, E2E-09-09). Both are fixed, and the control now names the
+ * organization instead of inferring it from whoever the session is wearing.
+ */
+const CompSubscription: FC<{
+  org: UserOrgItem;
+  showOrgName: boolean;
+  onDone: () => void;
+}> = ({ org, showOrgName, onDone }) => {
   const fetch = useFetch();
+  const toaster = useToaster();
   const t = useT();
 
-  const addSubscription: React.ChangeEventHandler<HTMLSelectElement> =
-    useCallback(async (e) => {
+  const comp: React.ChangeEventHandler<HTMLSelectElement> = useCallback(
+    async (e) => {
       const value = e.target.value;
-      if (
-        await deleteDialog(
-          'Are you sure you want to add a user subscription?',
-          'Add'
-        )
-      ) {
-        await fetch('/billing/add-subscription', {
-          method: 'POST',
-          body: JSON.stringify({ subscription: value }),
-        });
-        window.location.reload();
+      if (!value) {
+        return;
       }
-    }, []);
+      e.target.value = '';
+
+      if (
+        !(await deleteDialog(
+          t(
+            'admin_comp_subscription_confirm',
+            `Put ${org.organization.name} on ${value} without a payment?`
+          ),
+          t('admin_comp', 'Comp')
+        ))
+      ) {
+        return;
+      }
+
+      const res = await fetch('/admin/comp-subscription', {
+        method: 'POST',
+        body: JSON.stringify({
+          organizationId: org.organization.id,
+          subscription: value,
+        }),
+      });
+
+      if (!res.ok) {
+        toaster.show(
+          t('admin_comp_subscription_failed', 'Failed to add the subscription'),
+          'warning'
+        );
+        return;
+      }
+
+      toaster.show(
+        t('admin_comp_subscription_done', 'Subscription added'),
+        'success'
+      );
+      onDone();
+    },
+    [fetch, toaster, t, org, onDone]
+  );
 
   return (
     <Select
-      onChange={addSubscription}
+      onChange={comp}
       hideErrors={true}
       disableForm={true}
-      name="sub"
+      name={`comp-${org.id}`}
       label=""
+      aria-label={t('admin_comp_subscription', 'Comp a subscription')}
       value=""
     >
-      <option>
-        {t('admin_add_free_subscription', '-- ADD FREE SUBSCRIPTION --')}
+      <option value="">
+        {showOrgName
+          ? `${t('admin_comp_subscription', 'Comp a plan')} · ${
+              org.organization.name
+            }`
+          : t('admin_comp_subscription', 'Comp a plan')}
       </option>
-      {Object.keys(pricing)
-        .filter((f) => !f.includes('FREE'))
-        .map((key) => (
-          <option key={key} value={key}>
-            {key}
-          </option>
-        ))}
+      {COMPABLE_TIERS.map((key) => (
+        <option key={key} value={key}>
+          {key}
+        </option>
+      ))}
     </Select>
   );
 };
@@ -101,7 +144,6 @@ export const AdminUsersComponent = () => {
   // 0-indexed: the backend computes skip = page * limit
   const [page, setPage] = useState(0);
   const limit = 20;
-  const { isSecured } = useVariables();
   const user = useUser();
   const t = useT();
   const { openModal } = useModals();
@@ -138,28 +180,6 @@ export const AdminUsersComponent = () => {
     },
     [setSearchInput]
   );
-
-  const stopImpersonating = useCallback(async () => {
-    if (!isSecured) {
-      setCookie('impersonate', '', -10);
-    } else {
-      const res = await fetch(`/user/impersonate`, {
-        method: 'POST',
-        body: JSON.stringify({ id: '' }),
-      });
-      // Reloading regardless meant a failed stop looked exactly like a
-      // successful one — the page came back still wearing the other identity
-      // (E2E-09-08).
-      if (!res.ok) {
-        toaster.show(
-          t('admin_stop_impersonating_failed', 'Could not stop impersonating.'),
-          'warning'
-        );
-        return;
-      }
-    }
-    window.location.reload();
-  }, [toaster, t]);
 
   const impersonate = useCallback(
     (userOrgId: string) => async () => {
@@ -316,17 +336,10 @@ export const AdminUsersComponent = () => {
         {t('admin_users', 'Users')}
       </h1>
 
-      {user?.impersonate && (
-        <div className="flex items-center gap-[12px] p-[12px] rounded-[10px] bg-[rgba(56,189,248,0.12)] border border-[rgba(56,189,248,0.3)]">
-          <span className="text-[14px]">
-            {t('admin_currently_impersonating', 'Currently Impersonating')}
-          </span>
-          <Button onClick={stopImpersonating} className="!bg-red-600 rounded-[8px] text-[12px]">
-            {t('admin_stop_impersonating', 'Stop')}
-          </Button>
-          {user?.tier?.current === 'FREE' && <Subscription />}
-        </div>
-      )}
+      {/* The "Currently Impersonating / Stop" strip that used to live here was
+          unreachable for the same reason the comp control was: the layout
+          blocks this whole panel while impersonating. The global banner is the
+          Stop button (E2E-09-02, E2E-09-18). */}
 
       <div className="flex items-center gap-[12px]">
         <div className="flex-1 max-w-[500px]">
@@ -478,6 +491,19 @@ export const AdminUsersComponent = () => {
                         {t('admin_grant_lifetime', 'Grant lifetime')}
                       </button>
                     )}
+                    {u.organizations
+                      .filter(
+                        (o) =>
+                          o.role === 'SUPERADMIN' && !o.organization.subscription
+                      )
+                      .map((o) => (
+                        <CompSubscription
+                          key={`comp-${o.id}`}
+                          org={o}
+                          showOrgName={u.organizations.length > 1}
+                          onDone={mutate}
+                        />
+                      ))}
                     {u.organizations
                       .filter(
                         (o) =>
