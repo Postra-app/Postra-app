@@ -27,6 +27,8 @@ import {
   parseDayCount,
   parsePaging,
 } from '@gitroom/backend/api/routes/admin.query';
+import { StripeService } from '@gitroom/nestjs-libraries/services/stripe.service';
+import { UsersService } from '@gitroom/nestjs-libraries/database/prisma/users/users.service';
 
 @ApiTags('Admin')
 @Controller('/admin')
@@ -37,7 +39,9 @@ export class AdminController {
     private _prisma: PrismaService,
     private _subscriptionService: SubscriptionService,
     private _auditService: AuditService,
-    private _aiUsageService: AiUsageService
+    private _aiUsageService: AiUsageService,
+    private _stripeService: StripeService,
+    private _userService: UsersService
   ) {}
 
   private assertSuperAdmin(user: User) {
@@ -857,4 +861,288 @@ export class AdminController {
       ),
     };
   }
+
+  /**
+   * An organization named outright, or a 400.
+   *
+   * Every action below used to be reachable only from inside an impersonated
+   * session, which meant the organization was whoever the session happened to
+   * be wearing — the pattern that made E2E-09-09 possible. comp-subscription
+   * and revoke-subscription already take the id in the body; these do the
+   * same.
+   */
+  private async requireOrganization(organizationId: string) {
+    if (!organizationId?.trim()) {
+      throw new HttpException('Missing organizationId', 400);
+    }
+    const org = await this._prisma.organization.findUnique({
+      where: { id: organizationId },
+      select: { id: true, name: true, paymentId: true },
+    });
+    if (!org) {
+      throw new HttpException('Organization not found', 400);
+    }
+    return org;
+  }
+
+  /**
+   * The audit trail, readable.
+   *
+   * Paging and dates go through the shared parsers, so a bad parameter here
+   * answers 400 or clamps rather than handing the string to Prisma
+   * (E2E-09-36/37/38).
+   */
+  @Get('/audit')
+  async listAudit(
+    @GetUserFromRequest() user: User,
+    @Query('page') page?: string,
+    @Query('limit') limit?: string,
+    @Query('action') action?: string,
+    @Query('userId') userId?: string,
+    @Query('organizationId') organizationId?: string,
+    @Query('from') from?: string,
+    @Query('to') to?: string
+  ) {
+    this.assertSuperAdmin(user);
+    const paging = parsePaging(page, limit);
+    const fromDay = parseDay(from, 'from');
+    const toDay = parseDay(to, 'to');
+
+    const result = await this._auditService.list({
+      skip: paging.skip,
+      limit: paging.limit,
+      action: action || undefined,
+      userId: userId || undefined,
+      organizationId: organizationId || undefined,
+      from: fromDay?.startOf('day').toDate(),
+      to: toDay?.endOf('day').toDate(),
+    });
+
+    return {
+      ...result,
+      page: paging.page,
+      limit: paging.limit,
+      hasMore: paging.skip + result.items.length < result.total,
+    };
+  }
+
+  /** The actions actually present, for the filter. */
+  @Get('/audit/actions')
+  async listAuditActions(@GetUserFromRequest() user: User) {
+    this.assertSuperAdmin(user);
+    return this._auditService.listActions();
+  }
+
+  /**
+   * Successful charges for one organization, with links to the invoice PDFs.
+   *
+   * The service behind this was written, tested and then orphaned: its only
+   * caller was the impersonation panel Postra replaced during a layout
+   * rebuild, so the first thing a paying customer can ask for — "what have I
+   * been charged, and can I have some of it back" — had no answer anywhere in
+   * the product (05-gaps §1b, §2). Nothing about the service needed changing;
+   * it always took an organization id.
+   */
+  @Get('/charges')
+  async listCharges(
+    @GetUserFromRequest() user: User,
+    @Query('organizationId') organizationId: string
+  ) {
+    this.assertSuperAdmin(user);
+    const org = await this.requireOrganization(organizationId);
+    const charges = await this._stripeService.getCharges(org.id);
+    return {
+      organizationId: org.id,
+      organizationName: org.name,
+      hasStripeCustomer: !!org.paymentId,
+      charges,
+    };
+  }
+
+  /**
+   * Refund selected charges.
+   *
+   * The service verifies every charge belongs to this organization's Stripe
+   * customer before refunding it, so an id that came from the page cannot be
+   * used to refund somebody else's payment. Money moves here, so the result
+   * says which ones went through and which did not, and the trail records it.
+   */
+  @Post('/refund-charges')
+  async refundCharges(
+    @GetUserFromRequest() user: User,
+    @Body('organizationId') organizationId: string,
+    @Body('chargeIds') chargeIds: string[]
+  ) {
+    this.assertSuperAdmin(user);
+    const org = await this.requireOrganization(organizationId);
+
+    if (!Array.isArray(chargeIds) || !chargeIds.length) {
+      throw new HttpException('No charges selected', 400);
+    }
+    if (chargeIds.some((id) => typeof id !== 'string' || !id.trim())) {
+      throw new HttpException('Invalid charge id', 400);
+    }
+    if (!org.paymentId) {
+      throw new HttpException(
+        'This organization has no Stripe customer, so it has no charges to refund.',
+        400
+      );
+    }
+
+    const result = await this._stripeService.refundCharges(org.id, chargeIds);
+
+    this._auditService.record({
+      action: 'billing.refund',
+      userId: user.id,
+      organizationId: org.id,
+      metadata: {
+        requested: chargeIds.length,
+        refunded: result.refunded,
+        failed: result.failed,
+      },
+    });
+
+    return result;
+  }
+
+  /**
+   * Cancel an organization's subscription immediately.
+   *
+   * Distinct from revoke-subscription, which takes back a comp or a lifetime
+   * grant and never touches Stripe. This one is for a paying customer who
+   * wants out now.
+   */
+  @Post('/cancel-subscription')
+  async cancelSubscriptionForOrg(
+    @GetUserFromRequest() user: User,
+    @Body('organizationId') organizationId: string
+  ) {
+    this.assertSuperAdmin(user);
+    const org = await this.requireOrganization(organizationId);
+
+    if (!org.paymentId) {
+      throw new HttpException(
+        'This organization has no Stripe customer. Use Revoke subscription for a comp or a lifetime grant.',
+        400
+      );
+    }
+
+    let result: { cancelled: boolean };
+    try {
+      result = await this._stripeService.cancelSubscription(org.id);
+    } catch (e) {
+      // The service throws plain Errors for "no customer" and "no active
+      // subscription"; both are answers an operator needs to see, not 500s.
+      throw new HttpException(
+        e instanceof Error ? e.message : 'Could not cancel the subscription',
+        400
+      );
+    }
+
+    this._auditService.record({
+      action: 'subscription.cancel',
+      userId: user.id,
+      organizationId: org.id,
+      metadata: { organizationName: org.name },
+    });
+
+    return result;
+  }
+
+  /**
+   * Erase a user on their behalf.
+   *
+   * The right to erasure had exactly one route: the customer clicking Delete
+   * in their own settings. When the request arrives by email — which is how it
+   * arrives — the operator had to impersonate the account and press the button
+   * as them, which is both a worse audit record and a worse failure mode
+   * (05-gaps §1c). Same engine as the self-serve path, including the S3 sweep
+   * added in E2E-09-58, with Stripe cancelled first while the customer can
+   * still be looked up.
+   */
+  @Post('/delete-user')
+  async deleteUser(
+    @GetUserFromRequest() user: User,
+    @Body('userId') userId: string
+  ) {
+    this.assertSuperAdmin(user);
+    if (!userId?.trim()) {
+      throw new HttpException('Missing userId', 400);
+    }
+    if (userId === user.id) {
+      throw new HttpException(
+        'Delete your own account from Settings, not from here.',
+        400
+      );
+    }
+
+    const target = await this._prisma.user.findUnique({
+      where: { id: userId },
+      select: { id: true, email: true },
+    });
+    if (!target) {
+      throw new HttpException('User not found', 400);
+    }
+
+    const soleOrgIds = await this._userService.getSoleOwnedOrganizations(
+      userId
+    );
+    for (const organizationId of soleOrgIds) {
+      await this._stripeService.cancelAllSubscriptionsForDeletedAccount(
+        organizationId
+      );
+    }
+
+    // Written before the delete: afterwards the id resolves to nobody, and an
+    // audit row naming an account that no longer exists is the only record
+    // there will ever be of this.
+    this._auditService.record({
+      action: 'admin.delete-user',
+      userId: user.id,
+      metadata: {
+        targetUserId: userId,
+        email: target.email,
+        organizationsDeleted: soleOrgIds,
+      },
+    });
+
+    await this._userService.deleteAccount(userId);
+
+    return { deleted: true, organizationsDeleted: soleOrgIds.length };
+  }
+
+  /**
+   * Delete one organization, leaving its members' accounts alone.
+   *
+   * Cascades take the integrations, posts and media rows with it; the objects
+   * behind those media rows are removed here for the same reason they are
+   * removed on account deletion — a deleted org's uploads stayed public on the
+   * CDN (E2E-09-58).
+   */
+  @Post('/delete-organization')
+  async deleteOrganization(
+    @GetUserFromRequest() user: User,
+    @Body('organizationId') organizationId: string
+  ) {
+    this.assertSuperAdmin(user);
+    const org = await this.requireOrganization(organizationId);
+
+    const members = await this._prisma.userOrganization.count({
+      where: { organizationId: org.id },
+    });
+
+    await this._stripeService.cancelAllSubscriptionsForDeletedAccount(org.id);
+
+    this._auditService.record({
+      action: 'admin.delete-organization',
+      userId: user.id,
+      organizationId: org.id,
+      metadata: { organizationName: org.name, members },
+    });
+
+    const result = await this._userService.deleteOrganization(org.id);
+
+    return { deleted: true, ...result };
+  }
+
 }

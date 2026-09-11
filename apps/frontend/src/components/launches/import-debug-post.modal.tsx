@@ -207,7 +207,10 @@ export const ImportDebugPostModal: FC<{ close: () => void }> = ({ close }) => {
           </div>
 
           <div className="flex flex-col gap-[8px]">
-            <div className="text-[13px] font-[600] text-textColor">
+            <div
+              id="import-debug-integration-label"
+              className="text-[13px] font-[600] text-textColor"
+            >
               {t('select_local_integration', 'Select Local Integration')}
               <span className="text-[12px] font-[400] text-textColor/60 ml-[8px]">
                 ({parsed._debug.providerIdentifier})
@@ -222,12 +225,28 @@ export const ImportDebugPostModal: FC<{ close: () => void }> = ({ close }) => {
                 )}
               </div>
             ) : (
-              <div className="flex flex-col gap-[6px]">
+              /* A radio group, not a list of divs with onClick. Measured in the
+                 live DOM on production: the whole modal offered exactly two
+                 interactive elements — the close button and "Import as Draft" —
+                 and the channel rows were neither. Since the button stays
+                 disabled until a channel is picked, somebody using a keyboard
+                 reached a control that could never unlock (E2E-09-60). Same
+                 defect as the three divs that used to be the announcement
+                 colour picker (E2E-09-13), in the control that gates the only
+                 action this modal has. */
+              <div
+                role="radiogroup"
+                aria-labelledby="import-debug-integration-label"
+                className="flex flex-col gap-[6px]"
+              >
                 {matchingIntegrations.map((integration) => (
-                  <div
+                  <button
                     key={integration.id}
+                    type="button"
+                    role="radio"
+                    aria-checked={selectedIntegrationId === integration.id}
                     className={clsx(
-                      'flex items-center gap-[10px] p-[10px] rounded-[8px] border cursor-pointer transition-all',
+                      'flex items-center gap-[10px] p-[10px] rounded-[8px] border cursor-pointer transition-all text-start w-full',
                       selectedIntegrationId === integration.id
                         ? 'border-forth bg-forth/10'
                         : 'border-tableBorder hover:border-textColor/30'
@@ -247,7 +266,7 @@ export const ImportDebugPostModal: FC<{ close: () => void }> = ({ close }) => {
                       className="w-[14px] h-[14px] rounded-[4px] ml-auto"
                       alt={integration.identifier}
                     />
-                  </div>
+                  </button>
                 ))}
               </div>
             )}

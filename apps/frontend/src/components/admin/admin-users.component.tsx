@@ -7,11 +7,12 @@ import { useUser } from '@gitroom/frontend/components/layout/user.context';
 import { useT } from '@gitroom/react/translation/get.transation.service.client';
 import { Input } from '@gitroom/react/form/input';
 import { Select } from '@gitroom/react/form/select';
-import { AdminButton as Button } from './admin-ui';
+import { AdminButton as Button, withReason } from './admin-ui';
 import { COMPABLE_TIERS } from '@gitroom/nestjs-libraries/database/prisma/subscriptions/pricing';
 import { deleteDialog } from '@gitroom/react/helpers/delete.dialog';
 import { useModals } from '@gitroom/frontend/components/layout/new-modal';
 import { ImportDebugPostModal } from '@gitroom/frontend/components/launches/import-debug-post.modal';
+import { AdminBillingModal } from './admin-billing.modal';
 import { useToaster } from '@gitroom/react/toaster/toaster';
 import { useDebouncedSearch } from '@gitroom/frontend/components/admin/use-debounced-search';
 
@@ -63,7 +64,10 @@ const CompSubscription: FC<{
 
       if (!res.ok) {
         toaster.show(
-          t('admin_comp_subscription_failed', 'Failed to add the subscription'),
+          await withReason(
+            res,
+            t('admin_comp_subscription_failed', 'Failed to add the subscription')
+          ),
           'warning'
         );
         return;
@@ -189,7 +193,10 @@ export const AdminUsersComponent = () => {
       });
       if (!res.ok) {
         toaster.show(
-          t('admin_impersonate_failed', 'Could not impersonate this user.'),
+          await withReason(
+            res,
+            t('admin_impersonate_failed', 'Could not impersonate this user.')
+          ),
           'warning'
         );
         return;
@@ -206,6 +213,85 @@ export const AdminUsersComponent = () => {
       children: (close) => <ImportDebugPostModal close={close} />,
     });
   }, []);
+
+  /**
+   * Billing history for one organization, and the two actions that cost
+   * money. Opened per organization rather than per user: charges belong to the
+   * organization's Stripe customer, and a user can be in more than one.
+   */
+  const openBilling = useCallback(
+    (org: UserOrgItem) => () => {
+      openModal({
+        title: t('admin_billing', 'Billing'),
+        maxSize: 760,
+        children: (close) => (
+          <AdminBillingModal
+            organizationId={org.organization.id}
+            organizationName={org.organization.name}
+            close={close}
+          />
+        ),
+      });
+    },
+    [openModal, t]
+  );
+
+  /**
+   * Erasure on the customer's behalf.
+   *
+   * The right to erasure had one route: the customer pressing Delete in their
+   * own settings. A request that arrives by email — which is how it arrives —
+   * left the operator impersonating the account to press it as them (05-gaps
+   * §1c). Two confirmations, because this is the one action in the panel with
+   * nothing behind it.
+   */
+  const deleteUser = useCallback(
+    (u: UserItem) => async () => {
+      if (
+        !(await deleteDialog(
+          t(
+            'admin_delete_user_confirm',
+            `Permanently delete ${u.email}, the organizations they solely own, and every file they uploaded? Any Stripe subscription is cancelled first. This cannot be undone.`
+          ),
+          t('admin_delete_user', 'Delete account')
+        ))
+      ) {
+        return;
+      }
+      if (
+        !(await deleteDialog(
+          t(
+            'admin_delete_user_confirm_again',
+            'Last check: this is an erasure, not a suspension. Continue?'
+          ),
+          t('admin_delete_user_yes', 'Yes, erase it')
+        ))
+      ) {
+        return;
+      }
+
+      const res = await fetch('/admin/delete-user', {
+        method: 'POST',
+        body: JSON.stringify({ userId: u.id }),
+      });
+      if (!res.ok) {
+        toaster.show(
+          await withReason(res, t('admin_delete_user_failed', 'Delete failed')),
+          'warning'
+        );
+        return;
+      }
+      const result = (await res.json()) as { organizationsDeleted: number };
+      toaster.show(
+        `${t('admin_delete_user_done', 'Account deleted')} · ${
+          result.organizationsDeleted
+        } ${t('admin_organizations_lower', 'organization(s)')}`,
+        'success'
+      );
+      await mutate();
+    },
+    [fetch, toaster, t, mutate]
+  );
 
   const grantLifetime = useCallback(
     (u: UserItem) => async () => {
@@ -226,7 +312,10 @@ export const AdminUsersComponent = () => {
       });
       if (!res.ok) {
         toaster.show(
-          t('admin_grant_lifetime_failed', 'Failed to grant lifetime'),
+          await withReason(
+            res,
+            t('admin_grant_lifetime_failed', 'Failed to grant lifetime')
+          ),
           'warning'
         );
         return;
@@ -267,7 +356,10 @@ export const AdminUsersComponent = () => {
       });
       if (!res.ok) {
         toaster.show(
-          t('admin_revoke_subscription_failed', 'Failed to revoke'),
+          await withReason(
+            res,
+            t('admin_revoke_subscription_failed', 'Failed to revoke')
+          ),
           'warning'
         );
         return;
@@ -312,9 +404,12 @@ export const AdminUsersComponent = () => {
       });
       if (!res.ok) {
         toaster.show(
-          grant
-            ? t('admin_grant_admin_failed', 'Failed to grant admin')
-            : t('admin_revoke_admin_failed', 'Failed to revoke admin'),
+          await withReason(
+            res,
+            grant
+              ? t('admin_grant_admin_failed', 'Failed to grant admin')
+              : t('admin_revoke_admin_failed', 'Failed to revoke admin')
+          ),
           'warning'
         );
         return;
@@ -527,6 +622,31 @@ export const AdminUsersComponent = () => {
                               )}
                         </button>
                       ))}
+                    {u.organizations
+                      .filter((o) => o.role === 'SUPERADMIN')
+                      .map((o) => (
+                        <button
+                          key={`billing-${o.id}`}
+                          type="button"
+                          onClick={openBilling(o)}
+                          className="px-[12px] h-[30px] rounded-[8px] text-[12px] border border-white/15 bg-white/[0.03] text-newTextColor/80 hover:bg-white/[0.07] cursor-pointer transition-colors"
+                        >
+                          {u.organizations.length > 1
+                            ? `${t('admin_billing', 'Billing')} · ${
+                                o.organization.name
+                              }`
+                            : t('admin_billing', 'Billing')}
+                        </button>
+                      ))}
+                    {u.id !== user?.id && (
+                      <button
+                        type="button"
+                        onClick={deleteUser(u)}
+                        className="px-[12px] h-[30px] rounded-[8px] text-[12px] border border-[rgba(248,113,113,0.4)] text-[#f87171] hover:bg-[rgba(248,113,113,0.1)] cursor-pointer transition-colors"
+                      >
+                        {t('admin_delete_user', 'Delete account')}
+                      </button>
+                    )}
                     {u.id !== user?.id && (
                       <button
                         type="button"

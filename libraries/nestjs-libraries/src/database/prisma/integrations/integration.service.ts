@@ -425,19 +425,45 @@ export class IntegrationService {
    */
   async refreshTokens(apply = true) {
     const integrations = await this._integrationRepository.needsToBeRefreshed();
-    const refreshed: Array<{ id: string; name: string; provider: string }> = [];
+    const refreshed: Array<{
+      id: string;
+      name: string;
+      provider: string;
+      expiredFor?: number;
+      scheduled?: boolean;
+    }> = [];
     const failed: Array<{ id: string; name: string; provider: string }> = [];
 
     for (const integration of integrations) {
+      const provider0 = this._integrationManager.getSocialIntegration(
+        integration.providerIdentifier
+      );
+      // `needsToBeRefreshed` selects tokenExpiration <= now + 24h, which for a
+      // provider whose access token lives an hour (YouTube) or a day (TikTok)
+      // is the permanent steady state, not a problem. Reported separately, so
+      // "3 channels due" stops reading as an incident: what an operator has to
+      // act on is a token that is *already* expired on a channel no scheduled
+      // workflow watches.
+      const expiration = integration.tokenExpiration
+        ? new Date(integration.tokenExpiration).getTime()
+        : null;
+      const expiredFor = expiration
+        ? Math.max(0, Math.round((Date.now() - expiration) / 1000))
+        : 0;
+
       const describe = {
         id: integration.id,
         name: integration.name,
         provider: integration.providerIdentifier,
+        expiredFor,
+        // refreshCron is what puts a channel under refreshTokenWorkflow, which
+        // is started once, at connect time. Without it, the only refresh is the
+        // reactive one on a 401 during publishing — by design for short-lived
+        // tokens, but it means an idle channel stays stale until someone posts.
+        scheduled: !!provider0?.refreshCron,
       };
 
-      const provider = this._integrationManager.getSocialIntegration(
-        integration.providerIdentifier
-      );
+      const provider = provider0;
 
       if (!apply) {
         refreshed.push(describe);

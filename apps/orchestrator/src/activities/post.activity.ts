@@ -182,7 +182,17 @@ export class PostActivity {
       }
     }
     const post = await this._postService.getPostById(postId, orgId);
-    if (post.deletedAt) {
+    // `!post`, not `post.deletedAt`. getPostById is a findUnique whose where
+    // clause already carries `deletedAt: null` and the organization id, so it
+    // answers null for a post that was deleted, or that belongs to somebody
+    // else — and `post.deletedAt` on null threw an unhandled TypeError inside
+    // the activity. The workflow right above this already has the correct
+    // guard (`if (!firstPost) changeState('ERROR', 'No Post')`), and it could
+    // never be reached: Temporal retried a throwing activity instead of taking
+    // the path written for exactly this case. The old condition was also dead
+    // by construction — a non-null row here always has deletedAt null
+    // (E2E-05-03).
+    if (!post) {
       return false;
     }
 

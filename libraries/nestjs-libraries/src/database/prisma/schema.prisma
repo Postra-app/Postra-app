@@ -1024,6 +1024,15 @@ model Announcement {
   description String
   color       AnnouncementColor @default(INFO)
   createdAt   DateTime          @default(now())
+  // A banner every signed-in session fetches, with no way to stop showing it
+  // except an operator remembering to delete it. An outage notice that
+  // outlives the outage is worse than none (E2E-09-26).
+  expiresAt   DateTime?
+  // Soft delete, so the audit row that says who removed it still points at
+  // something. Nothing outside the panel ever reads a deleted announcement.
+  deletedAt   DateTime?
+
+  @@index([deletedAt, createdAt])
 }
 
 // Observational text-AI usage metering (tokens / whisper seconds) per org and

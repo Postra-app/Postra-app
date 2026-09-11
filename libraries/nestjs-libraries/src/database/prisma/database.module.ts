@@ -1,3 +1,4 @@
+import { MaintenanceService } from '@gitroom/nestjs-libraries/database/prisma/maintenance/maintenance.service';
 import { Global, Module } from '@nestjs/common';
 import { PrismaRepository, PrismaService, PrismaTransaction } from './prisma.service';
 import { OrganizationRepository } from '@gitroom/nestjs-libraries/database/prisma/organizations/organization.repository';
@@ -60,6 +61,7 @@ import { AiUsageService } from '@gitroom/nestjs-libraries/database/prisma/ai-usa
     PrismaService,
     PrismaRepository,
     PrismaTransaction,
+    MaintenanceService,
     UsersService,
     UsersRepository,
     OrganizationService,

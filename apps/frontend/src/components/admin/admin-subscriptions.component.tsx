@@ -4,6 +4,7 @@ import { useCallback } from 'react';
 import useSWR from 'swr';
 import { useFetch } from '@gitroom/helpers/utils/custom.fetch';
 import { useT } from '@gitroom/react/translation/get.transation.service.client';
+import { tierBadgeClass } from './admin-ui';
 
 interface SubscriptionOrg {
   id: string;
@@ -211,8 +212,6 @@ export const AdminSubscriptionsComponent = () => {
                 </tr>
               ) : (
                 data.recent.map((sub) => {
-                  const tierColor =
-                    TIER_COLORS[sub.subscriptionTier]?.bar ?? 'bg-white/40';
                   return (
                     <tr
                       key={sub.id}
@@ -222,9 +221,7 @@ export const AdminSubscriptionsComponent = () => {
                         {sub.organization.name}
                       </td>
                       <td className="p-[12px] text-[13px]">
-                        <span
-                          className={`inline-block px-[8px] py-[2px] rounded-full text-[11px] font-[500] ${tierColor} text-white`}
-                        >
+                        <span className={tierBadgeClass(sub.subscriptionTier)}>
                           {sub.subscriptionTier}
                         </span>
                       </td>

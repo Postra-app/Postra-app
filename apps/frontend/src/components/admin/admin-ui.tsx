@@ -58,6 +58,104 @@ export const AdminButton: FC<
   );
 };
 
+/**
+ * The reason the server gave, so the operator can act on it.
+ *
+ * Every failure path in the panel showed its own generic line and dropped the
+ * response body. Measured on production: comping an organization that has a
+ * live Stripe customer answers 400 "This organization has a live Stripe
+ * customer — change the plan in Stripe instead", and the operator saw only
+ * "Failed to add the subscription" — the actionable half never arrived.
+ *
+ * Nest sends `message` as a string, or as an array when class-validator
+ * rejects a DTO. Both collapse to one line here.
+ */
+export const serverReason = async (res: Response): Promise<string | null> => {
+  try {
+    const body = await res.clone().json();
+    const message = body?.message;
+    if (typeof message === 'string' && message.trim()) {
+      return message.trim();
+    }
+    if (Array.isArray(message) && message.length) {
+      return message.filter((m) => typeof m === 'string').join('; ') || null;
+    }
+    return null;
+  } catch {
+    return null;
+  }
+};
+
+/** Generic line, plus the server's reason when it gave one. */
+export const withReason = async (res: Response, generic: string) => {
+  const reason = await serverReason(res);
+  return reason ? `${generic}: ${reason}` : generic;
+};
+
+/**
+ * What actually happened to a delete, as three named outcomes.
+ *
+ * A pure function rather than three branches inside the handler, because the
+ * interesting one is easy to get wrong and impossible to reach by clicking:
+ * removing a row that is already gone answers 200 with `{deleted:false}` —
+ * the repository stopped throwing so the endpoint would stop answering 500
+ * (E2E-09-46) — and a handler that checks only `res.ok` reports that as a
+ * success for a delete that removed nothing (E2E-09-14). The FREE badge
+ * taught the same lesson the hard way: a branch nobody can reach is a branch
+ * nobody tested.
+ */
+export const deleteOutcome = (
+  ok: boolean,
+  body: unknown
+): 'failed' | 'already-gone' | 'deleted' => {
+  if (!ok) {
+    return 'failed';
+  }
+  if (
+    body &&
+    typeof body === 'object' &&
+    (body as { deleted?: unknown }).deleted === false
+  ) {
+    return 'already-gone';
+  }
+  return 'deleted';
+};
+
+/**
+ * Tier pill — one definition for the whole panel.
+ *
+ * Organizations and Subscriptions each kept their own map for the same tiers,
+ * and the Subscriptions one put white text on a pastel fill. Measured on
+ * production against its own background: 2.64:1, where 11px text needs 4.5:1
+ * (E2E-09-55 again — the first pass fixed the /30 opacities and never looked
+ * at this pill). The accessible pairing is a tinted fill with saturated text,
+ * which is what Organizations already used, so that is the one that stays.
+ *
+ * An organization with no subscription row IS on FREE, so the label and the
+ * colour come from the same call — reading the tier directly let the
+ * missing-tier branch fire first and paint every free account with the error
+ * colour (E2E-09-29).
+ */
+export const tierLabel = (tier?: string | null) => tier || 'FREE';
+
+const tierBadgeColors: Record<string, string> = {
+  ULTIMATE: 'bg-purple-500/20 text-purple-400 border-purple-500/30',
+  PRO: 'bg-blue-500/20 text-blue-400 border-blue-500/30',
+  TEAM: 'bg-green-500/20 text-green-400 border-green-500/30',
+  STANDARD: 'bg-gray-500/20 text-gray-400 border-gray-500/30',
+  FREE: 'bg-white/10 text-newTextColor/70 border-white/15',
+};
+
+// Red stays for a tier this map genuinely does not know, which is a real
+// signal that something is wrong, rather than for the commonest tier there is.
+const unknownTierBadgeColor = 'bg-red-500/20 text-red-400 border-red-500/30';
+
+export const tierBadgeClass = (tier?: string | null) =>
+  clsx(
+    'inline-block px-[8px] py-[2px] rounded-[6px] text-[11px] font-[500] border',
+    tierBadgeColors[tierLabel(tier)] ?? unknownTierBadgeColor
+  );
+
 /** Shared control styles — rounded glass, accent focus. */
 export const adminInput =
   'bg-white/[0.04] h-[38px] border border-white/[0.12] rounded-[10px] px-[12px] text-[14px] text-newTextColor placeholder:text-newTextColor/70 outline-none focus:border-[rgba(56,189,248,0.5)] transition-colors';

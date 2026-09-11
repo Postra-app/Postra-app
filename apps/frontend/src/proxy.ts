@@ -111,6 +111,47 @@ export async function proxy(request: NextRequest) {
     );
   }
 
+  /**
+   * /admin, refused at the edge.
+   *
+   * The panel was gated by a client component, which is enough to keep the
+   * data in: every /admin/* endpoint asserts the flag server-side, and the
+   * layout renders nothing until /user/self resolves, so there was no leak and
+   * no flash of content. What did leak was the map — any signed-in account got
+   * the route skeleton and the panel's JS chunks, and with them every admin
+   * endpoint path, the Sentry, Grafana and CloudWatch identifiers and the
+   * dashboard names (E2E-09-10). Reconnaissance, not access, but free.
+   *
+   * One backend call, on this prefix only.
+   *
+   * A failure here must not log anybody out. The catch below this turns a
+   * failed internalFetch into a redirect to /auth/logout, which for a wrong
+   * answer on this check would throw the admin out of their own session — the
+   * same shape as the 403-that-became-a-401 in auth.middleware. So this has
+   * its own try/catch and falls through to the client gate, which is exactly
+   * where we were before.
+   */
+  if (nextUrl.pathname.startsWith('/admin')) {
+    try {
+      const self = await internalFetch('/user/self');
+      if (self.ok) {
+        const me = await self.json();
+        if (!me?.isSuperAdmin || me?.impersonate) {
+          // Same landing page the root redirect uses, so this does not become
+          // a second opinion about where "home" is.
+          return NextResponse.redirect(
+            new URL(
+              !!process.env.IS_GENERAL ? '/launches' : '/analytics',
+              nextUrl.href
+            )
+          );
+        }
+      }
+    } catch (err) {
+      console.error('[Postra:proxy] /admin check failed, letting the client gate decide', err);
+    }
+  }
+
   // If the url is /auth and the cookie exists, redirect to / — EXCEPT the
   // email-token pages (password reset + account activation). Those links are
   // opened from an inbox and must work even when another session is already

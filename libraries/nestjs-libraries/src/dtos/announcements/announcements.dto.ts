@@ -1,4 +1,5 @@
 import {
+  IsDateString,
   IsDefined,
   IsIn,
   IsOptional,
@@ -29,4 +30,13 @@ export class AnnouncementDto {
   @IsString()
   @IsIn(['INFO', 'WARNING', 'ERROR'])
   color?: string;
+
+  /**
+   * When the banner should stop showing itself. Optional: an announcement with
+   * no expiry behaves exactly as every announcement did before, which is to
+   * say it stays until somebody deletes it (E2E-09-26).
+   */
+  @IsOptional()
+  @IsDateString()
+  expiresAt?: string;
 }

@@ -1,6 +1,7 @@
 import { PrismaRepository } from '@gitroom/nestjs-libraries/database/prisma/prisma.service';
 import { Injectable } from '@nestjs/common';
 import {
+  censusSecrets,
   hasSecrets,
   redactSecretsInJson,
 } from '@gitroom/nestjs-libraries/services/redact.secrets';
@@ -223,7 +224,17 @@ export class ErrorsRepository {
     const BATCH = 500;
     let cursor: string | undefined;
     let scanned = 0;
-    const dirty: { id: string; platform: string; createdAt: Date }[] = [];
+    // `plaintext` is the number that matters: a secret-named field whose value
+    // is not encrypted at rest, i.e. one that would work for whoever read it.
+    // Encrypted values are redacted too, but reporting both as one figure told
+    // the operator there were twice as many leaks as there were.
+    const dirty: {
+      id: string;
+      platform: string;
+      createdAt: Date;
+      plaintext: number;
+      encrypted: number;
+    }[] = [];
 
     for (;;) {
       const rows = await this._errors.model.errors.findMany({
@@ -251,10 +262,15 @@ export class ErrorsRepository {
           continue;
         }
 
+        const census = censusSecrets(row.body);
+        const messageCensus = censusSecrets(row.message);
+
         dirty.push({
           id: row.id,
           platform: row.platform,
           createdAt: row.createdAt,
+          plaintext: census.plaintext + messageCensus.plaintext,
+          encrypted: census.encrypted + messageCensus.encrypted,
         });
 
         if (apply) {

@@ -1,6 +1,7 @@
 import {
   BadRequestException,
   Injectable,
+  NotFoundException,
   ValidationPipe,
 } from '@nestjs/common';
 import { PostsRepository } from '@gitroom/nestjs-libraries/database/prisma/posts/posts.repository';
@@ -601,10 +602,23 @@ export class PostsService {
 
   async getPost(orgId: string, id: string, convertToJPEG = false) {
     const posts = await this.getPostsRecursively(id, true, orgId, true);
-    const list = {
-      group: posts?.[0]?.group,
+
+    // An id that resolves to nothing used to reach `posts[0].integrationId` and
+    // throw an unhandled TypeError — a 500 and a Sentry event for what is just
+    // a stale or foreign id. `getPostsRecursively` is org-scoped, so any id
+    // belonging to another organization lands here too. Two of the four
+    // properties below already had optional chaining, which is how it survived:
+    // the hardening stopped halfway. Optional chaining on the other two would
+    // be worse than a 404 — it answers with an empty post and the composer
+    // renders a blank editor as though the post existed (E2E-05-02).
+    if (!posts?.length) {
+      throw new NotFoundException('Post not found');
+    }
+
+    return {
+      group: posts[0].group,
       posts: await Promise.all(
-        (posts || []).map(async (post) => ({
+        posts.map(async (post) => ({
           ...this.stripIntegrationSecrets(post),
           image: await this.updateMedia(
             orgId,
@@ -614,12 +628,10 @@ export class PostsService {
           ),
         }))
       ),
-      integrationPicture: posts[0]?.integration?.picture,
+      integrationPicture: posts[0].integration?.picture,
       integration: posts[0].integrationId,
       settings: JSON.parse(posts[0].settings || '{}'),
     };
-
-    return list;
   }
 
   async getOldPosts(orgId: string, date: string) {
