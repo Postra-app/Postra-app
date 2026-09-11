@@ -6,6 +6,9 @@ import { useFetch } from '@gitroom/helpers/utils/custom.fetch';
 import { useT } from '@gitroom/react/translation/get.transation.service.client';
 import { Input } from '@gitroom/react/form/input';
 import { useDebouncedSearch } from '@gitroom/frontend/components/admin/use-debounced-search';
+import { tierBadgeClass, tierLabel, withReason } from './admin-ui';
+import { deleteDialog } from '@gitroom/react/helpers/delete.dialog';
+import { useToaster } from '@gitroom/react/toaster/toaster';
 
 interface OrgSubscription {
   subscriptionTier: string;
@@ -34,22 +37,10 @@ interface OrgResponse {
   limit: number;
 }
 
-const tierBadgeColors: Record<string, string> = {
-  ULTIMATE: 'bg-purple-500/20 text-purple-400 border-purple-500/30',
-  PRO: 'bg-blue-500/20 text-blue-400 border-blue-500/30',
-  TEAM: 'bg-green-500/20 text-green-400 border-green-500/30',
-  STANDARD: 'bg-gray-500/20 text-gray-400 border-gray-500/30',
-};
-
-// FREE is the commonest tier there is, and it was falling through to the
-// error colour — a panel full of red badges for accounts that are perfectly
-// fine. Red is kept for a tier the map genuinely does not know (E2E-09-29).
-const freeBadgeColor = 'bg-white/10 text-newTextColor/70 border-white/15';
-const defaultBadgeColor = 'bg-red-500/20 text-red-400 border-red-500/30';
-
 export const AdminOrganizationsComponent = () => {
   const fetch = useFetch();
   const t = useT();
+  const toaster = useToaster();
   const [searchInput, setSearchInput, search] = useDebouncedSearch();
   // 0-indexed: the backend computes skip = page * limit
   const [page, setPage] = useState(0);
@@ -69,7 +60,7 @@ export const AdminOrganizationsComponent = () => {
     [page, search]
   );
 
-  const { data, isLoading, error } = useSWR<OrgResponse>(
+  const { data, isLoading, error, mutate } = useSWR<OrgResponse>(
     `/admin/organizations-${page}-${search}`,
     load,
     {
@@ -93,21 +84,50 @@ export const AdminOrganizationsComponent = () => {
     [setSearchInput]
   );
 
-  const tierLabel = (sub: OrgSubscription | null) =>
-    sub?.subscriptionTier ?? 'FREE';
+  /**
+   * Delete one organization, leaving its members' logins alone.
+   *
+   * Account deletion already removed the organizations a user solely owns;
+   * this is the other half — a workspace a customer wants gone, or one created
+   * by mistake — which previously meant the database (05-gaps §1c). The
+   * objects behind its media rows go too, for the reason E2E-09-58 exists.
+   */
+  const deleteOrganization = useCallback(
+    (org: OrgItem) => async () => {
+      if (
+        !(await deleteDialog(
+          t(
+            'admin_delete_organization_confirm',
+            `Permanently delete ${org.name}, its ${org._count.Integration} channel(s), ${org._count.post} post(s) and every file it holds? Members keep their accounts. This cannot be undone.`
+          ),
+          t('admin_delete_organization', 'Delete')
+        ))
+      ) {
+        return;
+      }
 
-  // Same source of truth as the label. An org with no subscription row *is*
-  // FREE, and reading `sub?.subscriptionTier` directly meant the missing-tier
-  // branch fired first and painted every such org with the error colour — the
-  // exact thing E2E-09-29 was about, which the first attempt at this left in
-  // place because its FREE branch could never be reached.
-  const tierColor = (sub: OrgSubscription | null) => {
-    const tier = tierLabel(sub);
-    if (tier === 'FREE') {
-      return freeBadgeColor;
-    }
-    return tierBadgeColors[tier] ?? defaultBadgeColor;
-  };
+      const res = await fetch('/admin/delete-organization', {
+        method: 'POST',
+        body: JSON.stringify({ organizationId: org.id }),
+      });
+      if (!res.ok) {
+        toaster.show(
+          await withReason(
+            res,
+            t('admin_delete_organization_failed', 'Delete failed')
+          ),
+          'warning'
+        );
+        return;
+      }
+      toaster.show(
+        t('admin_delete_organization_done', 'Organization deleted'),
+        'success'
+      );
+      await mutate();
+    },
+    [fetch, toaster, t, mutate]
+  );
 
   return (
     <div className="flex flex-col gap-[20px]">
@@ -167,13 +187,14 @@ export const AdminOrganizationsComponent = () => {
               <th className="p-[12px] text-[13px] font-[500] text-newTextColor/60">
                 {t('admin_created', 'Created')}
               </th>
+              <th className="p-[12px]" />
             </tr>
           </thead>
           <tbody>
             {isLoading && !data && (
               <tr>
                 <td
-                  colSpan={7}
+                  colSpan={8}
                   className="p-[20px] text-center text-[13px] text-newTextColor/70"
                 >
                   {t('admin_loading', 'Loading...')}
@@ -183,7 +204,7 @@ export const AdminOrganizationsComponent = () => {
             {error && (
               <tr>
                 <td
-                  colSpan={7}
+                  colSpan={8}
                   className="p-[20px] text-center text-[13px] text-red-400"
                 >
                   {t(
@@ -196,7 +217,7 @@ export const AdminOrganizationsComponent = () => {
             {!error && data?.items.length === 0 && (
               <tr>
                 <td
-                  colSpan={7}
+                  colSpan={8}
                   className="p-[20px] text-center text-[13px] text-newTextColor/70"
                 >
                   {t('admin_no_organizations_found', 'No organizations found')}
@@ -213,9 +234,11 @@ export const AdminOrganizationsComponent = () => {
                 </td>
                 <td className="p-[12px] text-[13px]">
                   <span
-                    className={`inline-block px-[8px] py-[2px] rounded-[6px] text-[11px] font-[500] border ${tierColor(org.subscription)}`}
+                    className={tierBadgeClass(
+                      org.subscription?.subscriptionTier
+                    )}
                   >
-                    {tierLabel(org.subscription)}
+                    {tierLabel(org.subscription?.subscriptionTier)}
                   </span>
                 </td>
                 <td className="p-[12px] text-[13px] text-newTextColor/60">
@@ -234,6 +257,15 @@ export const AdminOrganizationsComponent = () => {
                 </td>
                 <td className="p-[12px] text-[13px] text-newTextColor/60">
                   {new Date(org.createdAt).toLocaleDateString()}
+                </td>
+                <td className="p-[12px] text-[13px]">
+                  <button
+                    type="button"
+                    onClick={deleteOrganization(org)}
+                    className="px-[12px] h-[30px] rounded-[8px] text-[12px] border border-[rgba(248,113,113,0.4)] text-[#f87171] hover:bg-[rgba(248,113,113,0.1)] cursor-pointer transition-colors whitespace-nowrap"
+                  >
+                    {t('admin_delete_organization', 'Delete')}
+                  </button>
                 </td>
               </tr>
             ))}

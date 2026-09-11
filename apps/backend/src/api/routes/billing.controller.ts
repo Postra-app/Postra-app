@@ -198,42 +198,14 @@ export class BillingController {
     return this._stripeService.lifetimeDeal(org.id, body.code);
   }
 
-  @Get('/charges')
-  async getCharges(
-    @GetUserFromRequest() user: User,
-    @GetOrgFromRequest() org: Organization
-  ) {
-    if (!user.isSuperAdmin) {
-      throw new HttpException('Unauthorized', 400);
-    }
-
-    return this._stripeService.getCharges(org.id);
-  }
-
-  @Post('/refund-charges')
-  async refundCharges(
-    @GetUserFromRequest() user: User,
-    @GetOrgFromRequest() org: Organization,
-    @Body() body: { chargeIds: string[] }
-  ) {
-    if (!user.isSuperAdmin) {
-      throw new HttpException('Unauthorized', 400);
-    }
-
-    return this._stripeService.refundCharges(org.id, body.chargeIds);
-  }
-
-  @Post('/cancel-subscription')
-  async cancelSubscription(
-    @GetUserFromRequest() user: User,
-    @GetOrgFromRequest() org: Organization
-  ) {
-    if (!user.isSuperAdmin) {
-      throw new HttpException('Unauthorized', 400);
-    }
-
-    return this._stripeService.cancelSubscription(org.id);
-  }
+  // The admin-only charge, refund and cancel routes used to live here, reading
+  // the organization from the session. That made them usable only from inside
+  // an impersonated session — the pattern that let add-subscription overwrite
+  // an organization's Stripe customer id with a user id (E2E-09-09) — and they
+  // had no caller at all once the impersonation panel was replaced. They are
+  // now GET /admin/charges, POST /admin/refund-charges and POST
+  // /admin/cancel-subscription, each naming the organization in the request
+  // and each writing an audit row.
 
   @Post('/add-subscription')
   async addSubscription(

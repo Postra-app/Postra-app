@@ -128,6 +128,31 @@ export class UsersService {
   }
 
   /**
+   * Delete one organization and nothing else.
+   *
+   * Account deletion removes the organizations a user solely owns; this is the
+   * other half an operator needs — a customer who wants one workspace gone, or
+   * an organization created by mistake — without touching anybody's login.
+   * Members simply lose the membership, which cascades with the organization.
+   *
+   * The media objects are collected before the delete for the same reason as
+   * in deleteAccount: afterwards no row remembers which files were theirs, and
+   * the bucket keeps serving them through the CDN (E2E-09-58).
+   */
+  async deleteOrganization(organizationId: string) {
+    const media = await this._prisma.media.findMany({
+      where: { organizationId },
+      select: { path: true, thumbnail: true },
+    });
+
+    await this._prisma.organization.delete({ where: { id: organizationId } });
+
+    await this.removeStoredFiles(media);
+
+    return { mediaRemoved: media.length };
+  }
+
+  /**
    * Best-effort removal of the objects behind deleted media rows.
    *
    * Deliberately after the transaction and never inside it: the database delete
