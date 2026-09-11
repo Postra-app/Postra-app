@@ -1263,8 +1263,14 @@ export class AdminController {
       throw new HttpException(`Unknown state: ${state}`, 400);
     }
 
+    // Asking for deleted channels by state is asking to see them. Without
+    // this, picking "Deleted" from the filter returns nothing at all unless
+    // the separate checkbox happens to be ticked too — a filter that answers
+    // an honest question with an empty table (found by running it).
+    const showDeleted = withDeleted || state === 'deleted';
+
     const base: Record<string, unknown> = {
-      ...(withDeleted ? {} : { deletedAt: null }),
+      ...(showDeleted ? {} : { deletedAt: null }),
       ...(organizationId ? { organizationId } : {}),
       ...(provider ? { providerIdentifier: provider } : {}),
       ...(search
@@ -1396,10 +1402,23 @@ export class AdminController {
   ): Promise<Record<string, number>> {
     const notScheduled = notScheduledWhere(this.scheduledProviders());
 
+    // The counts sit beside the filter options, so the one for deleted has to
+    // be the real number rather than the zero that `deletedAt: null` in the
+    // base would force. Everything else the operator filtered by still
+    // applies — this drops only the visibility rule.
+    const { deletedAt: _hidden, ...baseIgnoringDeleted } = base as {
+      deletedAt?: unknown;
+    };
+
     const counts = await Promise.all(
       CHANNEL_STATES.map((state) =>
         this._prisma.integration.count({
-          where: { AND: [base, channelStateWhere(state, now)] },
+          where: {
+            AND: [
+              state === 'deleted' ? baseIgnoringDeleted : base,
+              channelStateWhere(state, now),
+            ],
+          },
         })
       )
     );

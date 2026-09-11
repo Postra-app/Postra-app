@@ -54,7 +54,7 @@ const build = (rows: any[] = [row()], counts: number[] = [], errorRows: any[] = 
     findMany: jest.fn(async (_args?: any) => rows),
     // First call is the list total; the rest are the summary's per-state
     // counts, in CHANNEL_STATES order, then expired-and-unwatched.
-    count: jest.fn(async () => counts[countCall++] ?? rows.length),
+    count: jest.fn(async (_args?: any) => counts[countCall++] ?? rows.length),
     groupBy: jest.fn(async () => [
       { providerIdentifier: 'instagram', _count: { _all: 2 } },
       { providerIdentifier: 'threads', _count: { _all: 1 } },
@@ -210,6 +210,29 @@ describe('GET /admin/integrations', () => {
     expect(
       await status(() => controller.listIntegrations(admin, '0', '25', '', '', 'broken'))
     ).toBe(400);
+  });
+
+  it('shows deleted channels when the filter asks for them by name', async () => {
+    // Found by running it: picking "Deleted" answered with an empty table,
+    // because the visibility rule and the state filter contradicted each
+    // other and only the separate checkbox could reconcile them.
+    const { controller, integration } = build();
+    await controller.listIntegrations(admin, '0', '25', '', '', 'deleted');
+    expect(
+      integration.findMany.mock.calls[0][0].where.AND[0].deletedAt
+    ).toBeUndefined();
+  });
+
+  it('counts the deleted ones truthfully beside the filter', async () => {
+    // The count sits next to the option. Leaving the visibility rule in would
+    // print "Deleted (0)" over a table that does have deleted channels.
+    const { controller, integration } = build();
+    await controller.listIntegrations(admin);
+
+    const deletedCount = integration.count.mock.calls.find(
+      (call: any) => call[0].where.AND[1]?.deletedAt?.not === null
+    );
+    expect(deletedCount[0].where.AND[0].deletedAt).toBeUndefined();
   });
 
   it('hides deleted channels unless asked for them', async () => {
