@@ -5,6 +5,8 @@ import { UserDetailDto } from '@gitroom/nestjs-libraries/dtos/users/user.details
 import { EmailNotificationsDto } from '@gitroom/nestjs-libraries/dtos/users/email-notifications.dto';
 import { OrganizationRepository } from '@gitroom/nestjs-libraries/database/prisma/organizations/organization.repository';
 import { PrismaService } from '@gitroom/nestjs-libraries/database/prisma/prisma.service';
+import { UploadFactory } from '@gitroom/nestjs-libraries/upload/upload.factory';
+import { Logger } from '@nestjs/common';
 
 @Injectable()
 export class UsersService {
@@ -91,11 +93,26 @@ export class UsersService {
   // posts, media, comments, ...). Organizations shared with other members are
   // kept; the user is simply detached (their UserOrganization row cascades away
   // when the user is deleted). See Plan/app_review.md §1B (B2).
-  // NOTE: MobilePushToken (mobile companion) has no FK relation, so it is not
-  // cascaded. When the mobile push feature ships, give it an onDelete: Cascade
-  // relation to User, or delete it here.
+  // MobilePushToken cascades from both User and Organization (schema.prisma);
+  // an older comment here said it did not.
+  //
+  // The database rows were only ever half of it. The files themselves stayed in
+  // the bucket and stayed publicly readable through the CDN, because removeFile
+  // is implemented three times over and was called from nowhere: after someone
+  // exercised their right to erasure, every photo and video they had uploaded
+  // was still a working URL. Postra is registered with the ICO, so that is an
+  // obligation, not a tidy-up (E2E-09-58).
   async deleteAccount(userId: string) {
     const soleOrgIds = await this.getSoleOwnedOrganizations(userId);
+
+    // Collected before the delete: the rows cascade away with the org, and
+    // then there is nothing left to say which objects were theirs.
+    const media = soleOrgIds.length
+      ? await this._prisma.media.findMany({
+          where: { organizationId: { in: soleOrgIds } },
+          select: { path: true, thumbnail: true },
+        })
+      : [];
 
     await this._prisma.$transaction(async (tx) => {
       for (const id of soleOrgIds) {
@@ -105,6 +122,46 @@ export class UsersService {
       await tx.user.delete({ where: { id: userId } });
     });
 
+    await this.removeStoredFiles(media);
+
     return { deleted: true };
+  }
+
+  /**
+   * Best-effort removal of the objects behind deleted media rows.
+   *
+   * Deliberately after the transaction and never inside it: the database delete
+   * is the erasure that must not be rolled back by a storage hiccup. A file the
+   * bucket no longer has is not an error — the same object can be referenced by
+   * a row and its thumbnail.
+   */
+  private async removeStoredFiles(
+    media: { path: string; thumbnail: string | null }[]
+  ) {
+    const paths = [
+      ...new Set(
+        media.flatMap((m) => [m.path, m.thumbnail]).filter(Boolean) as string[]
+      ),
+    ];
+
+    if (!paths.length) {
+      return;
+    }
+
+    const storage = UploadFactory.createStorage();
+    let failed = 0;
+    for (const path of paths) {
+      try {
+        await storage.removeFile(path);
+      } catch {
+        failed++;
+      }
+    }
+
+    if (failed) {
+      Logger.warn(
+        `deleteAccount: ${failed}/${paths.length} stored file(s) could not be removed`
+      );
+    }
   }
 }
