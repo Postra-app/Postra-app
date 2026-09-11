@@ -37,6 +37,7 @@ export const AdminAnnouncementsComponent = () => {
   const [saving, setSaving] = useState(false);
   const [success, setSuccess] = useState(false);
   const [submitError, setSubmitError] = useState(false);
+  const [deleteError, setDeleteError] = useState(false);
 
   const {
     data: announcements,
@@ -99,9 +100,15 @@ export const AdminAnnouncementsComponent = () => {
       const res = await fetch(`/announcements/${announcement.id}`, {
         method: 'DELETE',
       });
-      if (res.ok) {
-        await mutate();
+      // A failed delete used to do nothing at all — no refresh, no message —
+      // so the announcement stayed on screen and the operator could not tell
+      // whether it had gone (E2E-09-14).
+      if (!res.ok) {
+        setDeleteError(true);
+        return;
       }
+      setDeleteError(false);
+      await mutate();
     },
     [mutate, t]
   );
@@ -190,6 +197,14 @@ export const AdminAnnouncementsComponent = () => {
         {listError && (
           <span className="text-[13px] text-red-400">
             {t('announcements_load_failed', 'Failed to load announcements.')}
+          </span>
+        )}
+        {deleteError && (
+          <span className="text-[13px] text-red-400" role="alert">
+            {t(
+              'announcement_delete_failed',
+              'Failed to delete announcement — it is still visible to users.'
+            )}
           </span>
         )}
         {!isLoading && !listError && announcements?.length === 0 && (

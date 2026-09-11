@@ -712,6 +712,12 @@ export class AdminController {
       byPeriod: byPeriod.map((p) => ({ period: p.period, count: p._count._all })),
       lifetime: lifetimeCount,
       recent: recentSubs,
+      // The panel built every "open in Stripe" link against the live
+      // dashboard, so on test keys each one led to a customer that does not
+      // exist there (E2E-09-21). Only the server knows which mode we are in.
+      stripeTestMode: (process.env.STRIPE_SECRET_KEY || '').startsWith(
+        'sk_test_'
+      ),
     };
   }
 }

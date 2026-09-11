@@ -30,6 +30,7 @@ interface SubscriptionsResponse {
   byPeriod: Array<{ period: string; count: number }>;
   lifetime: number;
   recent: RecentSubscription[];
+  stripeTestMode?: boolean;
 }
 
 const TIER_COLORS: Record<string, { bg: string; bar: string }> = {
@@ -247,7 +248,9 @@ export const AdminSubscriptionsComponent = () => {
                       <td className="p-[12px] text-[13px]">
                         {sub.organization.paymentId ? (
                           <a
-                            href={`https://dashboard.stripe.com/customers/${sub.organization.paymentId}`}
+                            href={`https://dashboard.stripe.com/${
+                              data?.stripeTestMode ? 'test/' : ''
+                            }customers/${sub.organization.paymentId}`}
                             target="_blank"
                             rel="noopener noreferrer"
                             className="text-[#38bdf8] hover:underline whitespace-nowrap"

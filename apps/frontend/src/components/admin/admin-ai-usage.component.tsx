@@ -59,6 +59,16 @@ interface AiUsageResponse {
   };
 }
 
+// The credit ledger stores a raw enum; capitalising it gave "Ai_images".
+const CREDIT_TYPE_LABELS: Record<string, string> = {
+  ai_images: 'AI images',
+  generate_videos: 'Video generation',
+};
+
+const creditTypeLabel = (type: string) =>
+  CREDIT_TYPE_LABELS[type] ??
+  type.replace(/_/g, ' ').replace(/^./, (c) => c.toUpperCase());
+
 const PERIODS = [7, 30, 90] as const;
 
 // A row's amount means whatever its unit says: audio seconds for Whisper,
@@ -146,43 +156,60 @@ export const AdminAiUsageComponent = () => {
       null
     );
 
+  // The period switch stays mounted through loading and failure. Returning
+  // early used to take it off the page, so the only way out of a failed range
+  // was a full reload (E2E-09-17).
+  const header = (
+    <div className="flex items-start justify-between flex-wrap gap-[8px]">
+      <div>
+        <h1 className="text-[22px] font-[600]">{t('AI Usage')}</h1>
+        {data && (
+          <p className="text-[13px] opacity-60 mt-[4px]">
+            {new Date(data.from).toLocaleDateString()} —{' '}
+            {new Date(data.to).toLocaleDateString()}
+          </p>
+        )}
+      </div>
+      <div className="flex gap-[6px]">
+        {PERIODS.map((p) => (
+          <button
+            key={p}
+            type="button"
+            onClick={() => setDays(p)}
+            className={adminSegment(days === p)}
+          >
+            {p}d
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center py-[40px] text-newTextColor opacity-60">
-        Loading...
+      <div className="flex flex-col gap-[20px] text-newTextColor">
+        {header}
+        <div className="flex items-center justify-center py-[40px] opacity-60">
+          Loading...
+        </div>
       </div>
     );
   }
 
   if (error || !data) {
     return (
-      <div className="text-red-400 p-[20px]">Failed to load AI usage data.</div>
+      <div className="flex flex-col gap-[20px] text-newTextColor">
+        {header}
+        <div className="text-red-400" role="alert">
+          Failed to load AI usage data.
+        </div>
+      </div>
     );
   }
 
   return (
     <div className="flex flex-col gap-[20px] text-newTextColor">
-      <div className="flex items-start justify-between flex-wrap gap-[8px]">
-        <div>
-          <h1 className="text-[22px] font-[600]">{t('AI Usage')}</h1>
-          <p className="text-[13px] opacity-60 mt-[4px]">
-            {new Date(data.from).toLocaleDateString()} —{' '}
-            {new Date(data.to).toLocaleDateString()}
-          </p>
-        </div>
-        <div className="flex gap-[6px]">
-          {PERIODS.map((p) => (
-            <button
-              key={p}
-              type="button"
-              onClick={() => setDays(p)}
-              className={adminSegment(days === p)}
-            >
-              {p}d
-            </button>
-          ))}
-        </div>
-      </div>
+      {header}
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-[12px]">
         {data.byType.map((entry) => (
@@ -190,12 +217,17 @@ export const AdminAiUsageComponent = () => {
             key={entry.type}
             className="bg-white/[0.03] border border-white/10 rounded-[12px] p-[16px]"
           >
-            <div className="text-[12px] opacity-60 capitalize">{entry.type}</div>
+            {/* The raw enum was rendered capitalised, so ai_images read as
+                "Ai_images", and `count` is the number of ledger rows, not of
+                model calls (E2E-09-33). */}
+            <div className="text-[12px] opacity-60">
+              {creditTypeLabel(entry.type)}
+            </div>
             <div className="text-[28px] font-[600] mt-[4px]">
               {entry.totalCredits.toLocaleString()}
             </div>
             <div className="text-[12px] opacity-50 mt-[2px]">
-              {entry.count.toLocaleString()} calls
+              {entry.count.toLocaleString()} charges
             </div>
           </div>
         ))}

@@ -40,6 +40,10 @@ const tierBadgeColors: Record<string, string> = {
   STANDARD: 'bg-gray-500/20 text-gray-400 border-gray-500/30',
 };
 
+// FREE is the commonest tier there is, and it was falling through to the
+// error colour — a panel full of red badges for accounts that are perfectly
+// fine. Red is kept for a tier the map genuinely does not know (E2E-09-29).
+const freeBadgeColor = 'bg-white/10 text-newTextColor/70 border-white/15';
 const defaultBadgeColor = 'bg-red-500/20 text-red-400 border-red-500/30';
 
 export const AdminOrganizationsComponent = () => {
@@ -94,6 +98,9 @@ export const AdminOrganizationsComponent = () => {
   const tierColor = (sub: OrgSubscription | null) => {
     const tier = sub?.subscriptionTier;
     if (!tier) return defaultBadgeColor;
+    if (tier === 'FREE') {
+      return freeBadgeColor;
+    }
     return tierBadgeColors[tier] ?? defaultBadgeColor;
   };
 
@@ -221,13 +228,19 @@ export const AdminOrganizationsComponent = () => {
         </table>
       </div>
 
-      {totalPages > 1 && (
+      {/* The whole block, count included, used to be hidden when everything
+          fitted on one page — so the number of organizations was invisible in
+          the one state where it is easiest to read (E2E-09-29). */}
+      {!!data && (
         <div className="flex items-center justify-between text-[13px]">
           <span className="text-newTextColor/60">
-            {t('page', 'Page')} {page + 1} / {totalPages} ({data?.total}{' '}
-            {t('total', 'total')})
+            {totalPages > 1
+              ? `${t('page', 'Page')} ${page + 1} / ${totalPages} (${
+                  data.total
+                } ${t('total', 'total')})`
+              : `${data.total} ${t('total', 'total')}`}
           </span>
-          <div className="flex gap-[8px]">
+          <div className={totalPages > 1 ? 'flex gap-[8px]' : 'hidden'}>
             <button
               type="button"
               disabled={page <= 0}

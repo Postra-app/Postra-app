@@ -12,6 +12,8 @@ export type AuditAction =
   | 'admin.grant-lifetime'
   | 'admin.grant-admin'
   | 'admin.revoke-admin'
+  | 'admin.announcement.create'
+  | 'admin.announcement.delete'
   | 'integration.connect'
   | 'integration.disconnect'
   | 'subscription.comp'

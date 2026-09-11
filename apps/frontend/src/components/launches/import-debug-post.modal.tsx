@@ -97,10 +97,17 @@ export const ImportDebugPostModal: FC<{ close: () => void }> = ({ close }) => {
         })),
       };
 
-      await fetch('/posts', {
+      // customFetch does not throw on 4xx, so without this a rejected import
+      // still reported "imported successfully" and closed the modal
+      // (E2E-09-07).
+      const res = await fetch('/posts', {
         method: 'POST',
         body: JSON.stringify(importPayload),
       });
+
+      if (!res.ok) {
+        throw new Error(`Import rejected with ${res.status}`);
+      }
 
       await mutate(
         (key: string) =>

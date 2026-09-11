@@ -8,6 +8,7 @@ import { useModals } from '@gitroom/frontend/components/layout/new-modal';
 import { useT } from '@gitroom/react/translation/get.transation.service.client';
 import { Button } from '@gitroom/frontend/components/ui/button';
 import { deleteDialog } from '@gitroom/react/helpers/delete.dialog';
+import { useToaster } from '@gitroom/react/toaster/toaster';
 
 type AnnouncementColor = 'INFO' | 'WARNING' | 'ERROR';
 
@@ -96,16 +97,30 @@ export const AnnouncementBanner: FC = () => {
   const user = useUser();
   const fetch = useFetch();
   const { openModal } = useModals();
+  const toaster = useToaster();
   const t = useT();
 
   const handleDelete = useCallback(
     async (id: string) => {
-      await fetch(`/announcements/${id}`, {
+      const res = await fetch(`/announcements/${id}`, {
         method: 'DELETE',
       });
+      // customFetch does not throw on 4xx, so a failed delete used to refresh
+      // the list and leave the announcement in place with no explanation
+      // (E2E-09-14).
+      if (!res.ok) {
+        toaster.show(
+          t(
+            'announcement_delete_failed',
+            'Failed to delete announcement — it is still visible to users.'
+          ),
+          'warning'
+        );
+        return;
+      }
       await mutate();
     },
-    [fetch, mutate]
+    [fetch, mutate, toaster, t]
   );
 
   const handleClick = useCallback(
