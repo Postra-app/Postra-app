@@ -641,11 +641,26 @@ export class AdminController {
     // gave "Wed Sep 09 2026 00:00:00 GMT+0000" and slicing ten characters left
     // "Wed Sep 09". The front end reads this as ISO, so the twelve-month chart
     // ended up labelled with bare day numbers — no month, no year (E2E-09-04).
-    const serialize = (rows: Array<{ day: string; count: bigint }>) =>
-      rows.map((r) => ({
-        day: dayjs(r.day).format('YYYY-MM-DD'),
-        count: Number(r.count),
-      }));
+    //
+    // Days with no rows are filled in with zero. GROUP BY only returns the days
+    // that have something, so the axis was not linear in time: two bars side by
+    // side could be a month apart, and a range with no activity at all drew
+    // nothing rather than a flat line (E2E-09-19).
+    const serialize = (rows: Array<{ day: string; count: bigint }>) => {
+      const counts = new Map(
+        rows.map((r) => [dayjs(r.day).format('YYYY-MM-DD'), Number(r.count)])
+      );
+
+      const out: Array<{ day: string; count: number }> = [];
+      // Guard the span: a hand-typed range could otherwise ask for a series of
+      // hundreds of thousands of points.
+      const span = Math.min(Math.max(numDays, 1), 1100);
+      for (let i = 0; i < span; i++) {
+        const day = sinceDay.add(i, 'day').format('YYYY-MM-DD');
+        out.push({ day, count: counts.get(day) ?? 0 });
+      }
+      return out;
+    };
 
     return {
       totals: { users: totalUsers, organizations: totalOrgs },

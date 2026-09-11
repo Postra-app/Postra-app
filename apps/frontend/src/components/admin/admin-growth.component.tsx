@@ -102,6 +102,14 @@ export const AdminGrowthComponent = () => {
     to: string;
   } | null>(null);
 
+  const rangeError = !fromInput
+    ? t('admin.growthFromRequired', 'Pick a start date.')
+    : !toInput
+    ? t('admin.growthToRequired', 'Pick an end date.')
+    : fromInput > toInput
+    ? t('admin.growthRangeBackwards', 'The start date is after the end date.')
+    : '';
+
   const query = customRange
     ? `/admin/growth?from=${customRange.from}&to=${customRange.to}`
     : `/admin/growth?days=${days}`;
@@ -161,11 +169,25 @@ export const AdminGrowthComponent = () => {
         </div>
         <button
           type="button"
-          onClick={() => setCustomRange({ from: fromInput, to: toInput })}
+          disabled={!!rangeError}
+          onClick={() => {
+            // A cleared field used to send an empty from or to, the backend
+            // quietly fell back to thirty days, and the button stayed lit as
+            // if a custom range were in force (E2E-09-20).
+            if (rangeError) {
+              return;
+            }
+            setCustomRange({ from: fromInput, to: toInput });
+          }}
           className={adminSegment(!!customRange)}
         >
           {t('apply', 'Apply')}
         </button>
+        {rangeError && (
+          <span className="text-[12px] text-red-400 self-center" role="alert">
+            {rangeError}
+          </span>
+        )}
       </div>
 
       {error ? (

@@ -5,6 +5,7 @@ import useSWR from 'swr';
 import { useFetch } from '@gitroom/helpers/utils/custom.fetch';
 import { useT } from '@gitroom/react/translation/get.transation.service.client';
 import { Input } from '@gitroom/react/form/input';
+import { useDebouncedSearch } from '@gitroom/frontend/components/admin/use-debounced-search';
 
 interface OrgSubscription {
   subscriptionTier: string;
@@ -49,7 +50,7 @@ const defaultBadgeColor = 'bg-red-500/20 text-red-400 border-red-500/30';
 export const AdminOrganizationsComponent = () => {
   const fetch = useFetch();
   const t = useT();
-  const [search, setSearch] = useState('');
+  const [searchInput, setSearchInput, search] = useDebouncedSearch();
   // 0-indexed: the backend computes skip = page * limit
   const [page, setPage] = useState(0);
   const limit = 20;
@@ -86,10 +87,10 @@ export const AdminOrganizationsComponent = () => {
 
   const handleSearch = useCallback(
     (e: React.ChangeEvent<HTMLInputElement>) => {
-      setSearch(e.target.value);
+      setSearchInput(e.target.value);
       setPage(0);
     },
-    []
+    [setSearchInput]
   );
 
   const tierLabel = (sub: OrgSubscription | null) =>
@@ -121,7 +122,7 @@ export const AdminOrganizationsComponent = () => {
           disableForm={true}
           label=""
           removeError={true}
-          value={search}
+          value={searchInput}
           onChange={handleSearch}
         />
       </div>

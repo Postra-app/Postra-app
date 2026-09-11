@@ -4,7 +4,6 @@ import React, { FC, useCallback, useMemo, useState } from 'react';
 import useSWR from 'swr';
 import copy from 'copy-to-clipboard';
 import { useFetch } from '@gitroom/helpers/utils/custom.fetch';
-import { useUser } from '@gitroom/frontend/components/layout/user.context';
 import { useToaster } from '@gitroom/react/toaster/toaster';
 import { useModals } from '@gitroom/frontend/components/layout/new-modal';
 import {
@@ -177,7 +176,6 @@ const useErrorsList = (params: {
 };
 
 export const AdminErrorsComponent: FC = () => {
-  const user = useUser();
   const modal = useModals();
   const toaster = useToaster();
 
@@ -243,14 +241,6 @@ export const AdminErrorsComponent: FC = () => {
     },
     [toaster]
   );
-
-  if (!user?.isSuperAdmin) {
-    return (
-      <div className="text-textColor p-[20px]">
-        You do not have access to this page.
-      </div>
-    );
-  }
 
   const totalPages = data ? Math.max(1, Math.ceil(data.total / limit)) : 1;
 

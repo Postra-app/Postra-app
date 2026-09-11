@@ -15,6 +15,7 @@ import { deleteDialog } from '@gitroom/react/helpers/delete.dialog';
 import { useModals } from '@gitroom/frontend/components/layout/new-modal';
 import { ImportDebugPostModal } from '@gitroom/frontend/components/launches/import-debug-post.modal';
 import { useToaster } from '@gitroom/react/toaster/toaster';
+import { useDebouncedSearch } from '@gitroom/frontend/components/admin/use-debounced-search';
 
 const Subscription = () => {
   const fetch = useFetch();
@@ -96,7 +97,7 @@ interface UsersResponse {
 
 export const AdminUsersComponent = () => {
   const fetch = useFetch();
-  const [search, setSearch] = useState('');
+  const [searchInput, setSearchInput, search] = useDebouncedSearch();
   // 0-indexed: the backend computes skip = page * limit
   const [page, setPage] = useState(0);
   const limit = 20;
@@ -132,10 +133,10 @@ export const AdminUsersComponent = () => {
 
   const handleSearch = useCallback(
     (e: React.ChangeEvent<HTMLInputElement>) => {
-      setSearch(e.target.value);
+      setSearchInput(e.target.value);
       setPage(0);
     },
-    []
+    [setSearchInput]
   );
 
   const stopImpersonating = useCallback(async () => {
@@ -297,7 +298,7 @@ export const AdminUsersComponent = () => {
             disableForm={true}
             label=""
             removeError={true}
-            value={search}
+            value={searchInput}
             onChange={handleSearch}
           />
         </div>

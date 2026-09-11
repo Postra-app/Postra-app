@@ -3,7 +3,6 @@
 import React, { FC, useCallback, useState } from 'react';
 import useSWR from 'swr';
 import { useFetch } from '@gitroom/helpers/utils/custom.fetch';
-import { useUser } from '@gitroom/frontend/components/layout/user.context';
 import { AdminButton as Button, adminInput, adminSegment } from './admin-ui';
 import { LoadingComponent } from '@gitroom/frontend/components/layout/loading';
 import {
@@ -109,7 +108,6 @@ const PerSocialTable: FC<{ title: string; block: StatsBlock }> = ({
 );
 
 export const AdminStatsComponent: FC = () => {
-  const user = useUser();
 
   const [fromInput, setFromInput] = useState(today());
   const [toInput, setToInput] = useState(today());
@@ -130,14 +128,6 @@ export const AdminStatsComponent: FC = () => {
     },
     []
   );
-
-  if (!user?.isSuperAdmin) {
-    return (
-      <div className="text-textColor p-[20px]">
-        You do not have access to this page.
-      </div>
-    );
-  }
 
   return (
     <div className="flex flex-col gap-[16px] text-textColor">
