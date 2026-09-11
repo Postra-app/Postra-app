@@ -10,6 +10,10 @@ export class AnnouncementsService {
     return this._announcementsRepository.getAnnouncements();
   }
 
+  listAnnouncements(paging: { skip: number; limit: number }) {
+    return this._announcementsRepository.listAnnouncements(paging);
+  }
+
   createAnnouncement(body: AnnouncementDto) {
     return this._announcementsRepository.createAnnouncement(body);
   }

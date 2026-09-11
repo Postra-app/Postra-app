@@ -6,6 +6,7 @@ import {
   HttpException,
   Param,
   Post,
+  Query,
 } from '@nestjs/common';
 import { GetUserFromRequest } from '@gitroom/nestjs-libraries/user/user.from.request';
 import { User } from '@prisma/client';
@@ -13,6 +14,7 @@ import { ApiTags } from '@nestjs/swagger';
 import { AnnouncementsService } from '@gitroom/nestjs-libraries/database/prisma/announcements/announcements.service';
 import { AnnouncementDto } from '@gitroom/nestjs-libraries/dtos/announcements/announcements.dto';
 import { AuditService } from '@gitroom/nestjs-libraries/database/prisma/audit/audit.service';
+import { parsePaging } from '@gitroom/backend/api/routes/admin.query';
 
 @ApiTags('Announcements')
 @Controller('/announcements')
@@ -22,9 +24,40 @@ export class AnnouncementsController {
     private _auditService: AuditService
   ) {}
 
+  // The banner: live announcements only, capped. Every signed-in session hits
+  // this on every page load.
   @Get('/')
   async getAnnouncements() {
     return this._announcementsService.getAnnouncements();
+  }
+
+  /**
+   * The panel's list, paged, expired entries included so the operator can see
+   * what has stopped showing. A literal path, declared before `/:id` has any
+   * say — a `@Get('/:id')` above this would swallow it (the ordering trap that
+   * hid /errors/platforms).
+   */
+  @Get('/list')
+  async listAnnouncements(
+    @GetUserFromRequest() user: User,
+    @Query('page') page?: string,
+    @Query('limit') limit?: string
+  ) {
+    if (!user.isSuperAdmin) {
+      throw new HttpException('Unauthorized', 400);
+    }
+    const paging = parsePaging(page, limit);
+    const result = await this._announcementsService.listAnnouncements({
+      skip: paging.skip,
+      limit: paging.limit,
+    });
+
+    return {
+      ...result,
+      page: paging.page,
+      limit: paging.limit,
+      hasMore: paging.skip + result.items.length < result.total,
+    };
   }
 
   @Post('/')
@@ -43,7 +76,11 @@ export class AnnouncementsController {
     this._auditService.record({
       action: 'admin.announcement.create',
       userId: user.id,
-      metadata: { announcementId: created.id, title: created.title },
+      metadata: {
+        announcementId: created.id,
+        title: created.title,
+        expiresAt: created.expiresAt?.toISOString() ?? null,
+      },
     });
 
     return created;
