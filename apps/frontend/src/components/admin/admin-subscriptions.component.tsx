@@ -30,6 +30,7 @@ interface SubscriptionsResponse {
   byPeriod: Array<{ period: string; count: number }>;
   lifetime: number;
   recent: RecentSubscription[];
+  stripeTestMode?: boolean;
 }
 
 const TIER_COLORS: Record<string, { bg: string; bar: string }> = {
@@ -62,7 +63,7 @@ export const AdminSubscriptionsComponent = () => {
 
   if (isLoading) {
     return (
-      <div className="text-newTextColor/40 py-[40px] text-center text-[14px]">
+      <div className="text-newTextColor/70 py-[40px] text-center text-[14px]">
         Loading...
       </div>
     );
@@ -80,26 +81,26 @@ export const AdminSubscriptionsComponent = () => {
 
   return (
     <div className="flex flex-col gap-[20px] text-newTextColor">
-      <h2 className="text-[20px] font-[600]">
+      <h1 className="text-[20px] font-[600]">
         {t('admin_subscriptions', 'Subscriptions')}
-      </h2>
+      </h1>
 
       {/* Metric cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-[12px]">
         <MetricCard
-          label={t('active_subscriptions', 'Active Subscriptions')}
+          label={t('admin_active_subscriptions', 'Active Subscriptions')}
           value={data.totalActive}
         />
         <MetricCard
-          label={t('cancel_pending', 'Cancel Pending')}
+          label={t('admin_cancel_pending', 'Cancel Pending')}
           value={data.cancelPending}
         />
         <MetricCard
-          label={t('free_no_sub', 'Free (no sub)')}
+          label={t('admin_free_no_sub', 'Free (no sub)')}
           value={data.noSubscription}
         />
         <MetricCard
-          label={t('lifetime', 'Lifetime')}
+          label={t('admin_lifetime', 'Lifetime')}
           value={data.lifetime}
         />
       </div>
@@ -109,10 +110,10 @@ export const AdminSubscriptionsComponent = () => {
         {/* By Tier */}
         <div className="border border-white/10 rounded-[12px] bg-white/[0.03] p-[16px] flex flex-col gap-[12px]">
           <div className="text-[14px] font-[500] text-newTextColor/60">
-            {t('by_tier', 'By Tier')}
+            {t('admin_by_tier', 'By Tier')}
           </div>
           {data.byTier.length === 0 ? (
-            <div className="text-[13px] text-newTextColor/30">No data</div>
+            <div className="text-[13px] text-newTextColor/70">No data</div>
           ) : (
             data.byTier.map((entry) => {
               const colors = TIER_COLORS[entry.tier] ?? fallbackColor;
@@ -140,7 +141,7 @@ export const AdminSubscriptionsComponent = () => {
         {/* By Period */}
         <div className="border border-white/10 rounded-[12px] bg-white/[0.03] p-[16px] flex flex-col gap-[12px]">
           <div className="text-[14px] font-[500] text-newTextColor/60">
-            {t('by_period', 'By Period')}
+            {t('admin_by_period', 'By Period')}
           </div>
           <div className="grid grid-cols-2 gap-[12px]">
             {data.byPeriod.map((entry) => (
@@ -157,7 +158,7 @@ export const AdminSubscriptionsComponent = () => {
               </div>
             ))}
             {data.byPeriod.length === 0 && (
-              <div className="text-[13px] text-newTextColor/30 col-span-2">
+              <div className="text-[13px] text-newTextColor/70 col-span-2">
                 No data
               </div>
             )}
@@ -168,32 +169,32 @@ export const AdminSubscriptionsComponent = () => {
       {/* Recent Subscriptions table */}
       <div className="border border-white/10 rounded-[12px] overflow-hidden">
         <div className="px-[16px] py-[12px] bg-white/[0.03] border-b border-white/10 text-[14px] font-[500]">
-          {t('recent_subscriptions', 'Recent Subscriptions')}
+          {t('admin_recent_subscriptions', 'Recent Subscriptions')}
         </div>
         <div className="overflow-x-auto">
           <table className="w-full">
             <thead>
               <tr className="text-left border-b border-white/10 bg-white/[0.03]">
                 <th className="p-[12px] text-[13px] font-[500] text-newTextColor/60">
-                  {t('organization', 'Organization')}
+                  {t('admin_organization', 'Organization')}
                 </th>
                 <th className="p-[12px] text-[13px] font-[500] text-newTextColor/60">
-                  {t('tier', 'Tier')}
+                  {t('admin_tier', 'Tier')}
                 </th>
                 <th className="p-[12px] text-[13px] font-[500] text-newTextColor/60">
-                  {t('period', 'Period')}
+                  {t('admin_period', 'Period')}
                 </th>
                 <th className="p-[12px] text-[13px] font-[500] text-newTextColor/60 text-right">
-                  {t('channels', 'Channels')}
+                  {t('admin_channels', 'Channels')}
                 </th>
                 <th className="p-[12px] text-[13px] font-[500] text-newTextColor/60 text-center">
-                  {t('lifetime', 'Lifetime')}
+                  {t('admin_lifetime', 'Lifetime')}
                 </th>
                 <th className="p-[12px] text-[13px] font-[500] text-newTextColor/60">
-                  {t('cancel_at', 'Cancel At')}
+                  {t('admin_cancel_at', 'Cancel At')}
                 </th>
                 <th className="p-[12px] text-[13px] font-[500] text-newTextColor/60">
-                  {t('created', 'Created')}
+                  {t('admin_created', 'Created')}
                 </th>
                 <th className="p-[12px]" />
               </tr>
@@ -203,9 +204,9 @@ export const AdminSubscriptionsComponent = () => {
                 <tr>
                   <td
                     colSpan={8}
-                    className="p-[20px] text-center text-[13px] text-newTextColor/30"
+                    className="p-[20px] text-center text-[13px] text-newTextColor/70"
                   >
-                    {t('no_recent_subscriptions', 'No recent subscriptions')}
+                    {t('admin_no_recent_subscriptions', 'No recent subscriptions')}
                   </td>
                 </tr>
               ) : (
@@ -247,15 +248,17 @@ export const AdminSubscriptionsComponent = () => {
                       <td className="p-[12px] text-[13px]">
                         {sub.organization.paymentId ? (
                           <a
-                            href={`https://dashboard.stripe.com/customers/${sub.organization.paymentId}`}
+                            href={`https://dashboard.stripe.com/${
+                              data?.stripeTestMode ? 'test/' : ''
+                            }customers/${sub.organization.paymentId}`}
                             target="_blank"
                             rel="noopener noreferrer"
                             className="text-[#38bdf8] hover:underline whitespace-nowrap"
                           >
-                            {t('open_in_stripe', 'Stripe')} ↗
+                            {t('admin_open_in_stripe', 'Stripe')} ↗
                           </a>
                         ) : (
-                          <span className="text-newTextColor/30">-</span>
+                          <span className="text-newTextColor/70">-</span>
                         )}
                       </td>
                     </tr>

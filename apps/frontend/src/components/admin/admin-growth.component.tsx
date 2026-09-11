@@ -4,7 +4,12 @@ import { useCallback, useState } from 'react';
 import useSWR from 'swr';
 import { useFetch } from '@gitroom/helpers/utils/custom.fetch';
 import { useT } from '@gitroom/react/translation/get.transation.service.client';
-import { adminSegment } from './admin-ui';
+import { adminSegmentProps } from './admin-ui';
+import {
+  axisLabel,
+  fullLabel,
+  today,
+} from '@gitroom/frontend/components/admin/admin-dates';
 
 interface ChartPoint {
   day: string;
@@ -29,7 +34,7 @@ const PERIODS: { label: string; days: number }[] = [
   { label: '12m', days: 365 },
 ];
 
-const isoToday = () => new Date().toISOString().slice(0, 10);
+
 
 const MetricCard = ({ label, value }: { label: string; value: number }) => (
   <div className="border border-white/10 rounded-[12px] p-[16px] bg-white/[0.03]">
@@ -63,10 +68,7 @@ const BarChart = ({
           // switch to month/day so the axis stays readable.
           const labelEvery = Math.max(1, Math.ceil(data.length / 24));
           const showLabel = index % labelEvery === 0;
-          const dayLabel =
-            data.length > 40
-              ? point.day.slice(5).replace('-', '/')
-              : point.day.slice(-2).replace(/^0/, '');
+          const dayLabel = axisLabel(point.day, data.length);
           return (
             <div
               key={point.day}
@@ -75,7 +77,7 @@ const BarChart = ({
               <div
                 className={`w-full min-h-[2px] rounded-t-[2px] ${color}`}
                 style={{ height: `${height}%` }}
-                title={`${point.day}: ${point.count}`}
+                title={`${fullLabel(point.day)}: ${point.count}`}
               />
               <div className="text-[9px] text-newTextColor opacity-50 mt-[4px] whitespace-nowrap">
                 {showLabel ? dayLabel : ' '}
@@ -92,13 +94,21 @@ export const AdminGrowthComponent = () => {
   const fetch = useFetch();
   const t = useT();
   const [days, setDays] = useState<number>(30);
-  const [fromInput, setFromInput] = useState(isoToday());
-  const [toInput, setToInput] = useState(isoToday());
+  const [fromInput, setFromInput] = useState(today());
+  const [toInput, setToInput] = useState(today());
   // null = preset mode (days); set = custom from/to range
   const [customRange, setCustomRange] = useState<{
     from: string;
     to: string;
   } | null>(null);
+
+  const rangeError = !fromInput
+    ? t('admin_growth_from_required', 'Pick a start date.')
+    : !toInput
+    ? t('admin_growth_to_required', 'Pick an end date.')
+    : fromInput > toInput
+    ? t('admin_growth_range_backwards', 'The start date is after the end date.')
+    : '';
 
   const query = customRange
     ? `/admin/growth?from=${customRange.from}&to=${customRange.to}`
@@ -120,7 +130,7 @@ export const AdminGrowthComponent = () => {
   return (
     <div className="flex flex-col gap-[16px] text-newTextColor">
       <div className="flex items-center justify-between flex-wrap gap-[8px]">
-        <div className="text-[20px] font-[600]">{t('admin.growth', 'Growth')}</div>
+        <h1 className="text-[20px] font-[600]">{t('admin_growth', 'Growth')}</h1>
         <div className="flex gap-[6px]">
           {PERIODS.map((p) => (
             <button
@@ -130,7 +140,7 @@ export const AdminGrowthComponent = () => {
                 setDays(p.days);
                 setCustomRange(null);
               }}
-              className={adminSegment(!customRange && days === p.days)}
+              {...adminSegmentProps(!customRange && days === p.days)}
             >
               {p.label}
             </button>
@@ -140,8 +150,14 @@ export const AdminGrowthComponent = () => {
 
       <div className="flex items-end flex-wrap gap-[12px] border border-white/10 rounded-[12px] p-[12px] bg-white/[0.03]">
         <div className="flex flex-col gap-[4px]">
-          <label className="text-[12px] opacity-70">{t('from', 'From')}</label>
+          <label
+            htmlFor="admin-growth-from"
+            className="text-[12px] opacity-70"
+          >
+            {t('admin_from', 'From')}
+          </label>
           <input
+            id="admin-growth-from"
             type="date"
             value={fromInput}
             onChange={(e) => setFromInput(e.target.value)}
@@ -149,8 +165,11 @@ export const AdminGrowthComponent = () => {
           />
         </div>
         <div className="flex flex-col gap-[4px]">
-          <label className="text-[12px] opacity-70">{t('to', 'To')}</label>
+          <label htmlFor="admin-growth-to" className="text-[12px] opacity-70">
+            {t('admin_to', 'To')}
+          </label>
           <input
+            id="admin-growth-to"
             type="date"
             value={toInput}
             onChange={(e) => setToInput(e.target.value)}
@@ -159,44 +178,58 @@ export const AdminGrowthComponent = () => {
         </div>
         <button
           type="button"
-          onClick={() => setCustomRange({ from: fromInput, to: toInput })}
-          className={adminSegment(!!customRange)}
+          disabled={!!rangeError}
+          onClick={() => {
+            // A cleared field used to send an empty from or to, the backend
+            // quietly fell back to thirty days, and the button stayed lit as
+            // if a custom range were in force (E2E-09-20).
+            if (rangeError) {
+              return;
+            }
+            setCustomRange({ from: fromInput, to: toInput });
+          }}
+          {...adminSegmentProps(!!customRange)}
         >
-          {t('apply', 'Apply')}
+          {t('admin_apply', 'Apply')}
         </button>
+        {rangeError && (
+          <span className="text-[12px] text-red-400 self-center" role="alert">
+            {rangeError}
+          </span>
+        )}
       </div>
 
       {error ? (
         <div className="text-[13px] text-red-400">
-          {t('admin.growthLoadFailed', 'Failed to load growth data.')}
+          {t('admin_growth_load_failed', 'Failed to load growth data.')}
         </div>
       ) : isLoading || !data ? (
         <div className="text-[13px] opacity-50">Loading...</div>
       ) : (
         <>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-[12px]">
-            <MetricCard label={t('admin.totalUsers', 'Total Users')} value={data.totals.users} />
-            <MetricCard label={t('admin.totalOrgs', 'Total Orgs')} value={data.totals.organizations} />
-            <MetricCard label={t('admin.newUsers', 'New Users')} value={data.period.newUsers} />
-            <MetricCard label={t('admin.newOrgs', 'New Orgs')} value={data.period.newOrgs} />
+            <MetricCard label={t('admin_total_users', 'Total Users')} value={data.totals.users} />
+            <MetricCard label={t('admin_total_orgs', 'Total Orgs')} value={data.totals.organizations} />
+            <MetricCard label={t('admin_new_users', 'New Users')} value={data.period.newUsers} />
+            <MetricCard label={t('admin_new_orgs', 'New Orgs')} value={data.period.newOrgs} />
           </div>
 
           <div className="grid grid-cols-3 gap-[12px]">
-            <MetricCard label={t('admin.dau', 'DAU')} value={data.activity.dau} />
-            <MetricCard label={t('admin.wau', 'WAU')} value={data.activity.wau} />
-            <MetricCard label={t('admin.mau', 'MAU')} value={data.activity.mau} />
+            <MetricCard label={t('admin_dau', 'DAU')} value={data.activity.dau} />
+            <MetricCard label={t('admin_wau', 'WAU')} value={data.activity.wau} />
+            <MetricCard label={t('admin_mau', 'MAU')} value={data.activity.mau} />
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-[12px]">
             <BarChart
               data={data.charts.signups}
               color="bg-sky-400"
-              title={t('admin.signups', 'Signups')}
+              title={t('admin_signups', 'Signups')}
             />
             <BarChart
               data={data.charts.posts}
               color="bg-violet-400"
-              title={t('admin.publishedPosts', 'Published Posts')}
+              title={t('admin_published_posts', 'Published Posts')}
             />
           </div>
         </>

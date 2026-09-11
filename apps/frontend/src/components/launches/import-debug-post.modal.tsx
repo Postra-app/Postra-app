@@ -91,16 +91,29 @@ export const ImportDebugPostModal: FC<{ close: () => void }> = ({ close }) => {
         type: 'draft',
         date: new Date().toISOString(),
         tags: [] as { value: string; label: string }[],
-        posts: payload.posts.map((post) => ({
+        // `group` is dropped on purpose. The debug export carries the original
+        // group id, and POST /posts treats a known group as "replace this" —
+        // it soft-deletes every post in it and writes the new ones. Importing
+        // an export back into the org it came from would therefore overwrite
+        // the post being investigated, rather than making the draft copy the
+        // button promises (E2E-09-47).
+        posts: payload.posts.map(({ group: _group, ...post }) => ({
           ...post,
           integration: { id: selectedIntegrationId },
         })),
       };
 
-      await fetch('/posts', {
+      // customFetch does not throw on 4xx, so without this a rejected import
+      // still reported "imported successfully" and closed the modal
+      // (E2E-09-07).
+      const res = await fetch('/posts', {
         method: 'POST',
         body: JSON.stringify(importPayload),
       });
+
+      if (!res.ok) {
+        throw new Error(`Import rejected with ${res.status}`);
+      }
 
       await mutate(
         (key: string) =>

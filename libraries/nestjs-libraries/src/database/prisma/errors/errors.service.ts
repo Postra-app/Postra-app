@@ -16,7 +16,15 @@ export class ErrorsService {
     return this._errorsRepository.listErrors(params);
   }
 
+  getError(id: string) {
+    return this._errorsRepository.getError(id);
+  }
+
   listPlatforms() {
     return this._errorsRepository.listPlatforms();
+  }
+
+  scrubSecrets(apply: boolean) {
+    return this._errorsRepository.scrubSecrets(apply);
   }
 }

@@ -5,6 +5,7 @@ import useSWR from 'swr';
 import { useFetch } from '@gitroom/helpers/utils/custom.fetch';
 import { useT } from '@gitroom/react/translation/get.transation.service.client';
 import { Input } from '@gitroom/react/form/input';
+import { useDebouncedSearch } from '@gitroom/frontend/components/admin/use-debounced-search';
 
 interface OrgSubscription {
   subscriptionTier: string;
@@ -40,12 +41,16 @@ const tierBadgeColors: Record<string, string> = {
   STANDARD: 'bg-gray-500/20 text-gray-400 border-gray-500/30',
 };
 
+// FREE is the commonest tier there is, and it was falling through to the
+// error colour — a panel full of red badges for accounts that are perfectly
+// fine. Red is kept for a tier the map genuinely does not know (E2E-09-29).
+const freeBadgeColor = 'bg-white/10 text-newTextColor/70 border-white/15';
 const defaultBadgeColor = 'bg-red-500/20 text-red-400 border-red-500/30';
 
 export const AdminOrganizationsComponent = () => {
   const fetch = useFetch();
   const t = useT();
-  const [search, setSearch] = useState('');
+  const [searchInput, setSearchInput, search] = useDebouncedSearch();
   // 0-indexed: the backend computes skip = page * limit
   const [page, setPage] = useState(0);
   const limit = 20;
@@ -68,9 +73,12 @@ export const AdminOrganizationsComponent = () => {
     `/admin/organizations-${page}-${search}`,
     load,
     {
+      // revalidateIfStale stays on: with it off, coming back to this tab
+      // inside the same SPA session re-used the cached page and made no
+      // request at all, so a tier changed from Users showed the old value
+      // until a full reload (E2E-09-15). Measured: two returns, zero fetches.
       revalidateOnFocus: false,
       revalidateOnReconnect: false,
-      revalidateIfStale: false,
       refreshInterval: 0,
     }
   );
@@ -79,10 +87,10 @@ export const AdminOrganizationsComponent = () => {
 
   const handleSearch = useCallback(
     (e: React.ChangeEvent<HTMLInputElement>) => {
-      setSearch(e.target.value);
+      setSearchInput(e.target.value);
       setPage(0);
     },
-    []
+    [setSearchInput]
   );
 
   const tierLabel = (sub: OrgSubscription | null) =>
@@ -91,55 +99,69 @@ export const AdminOrganizationsComponent = () => {
   const tierColor = (sub: OrgSubscription | null) => {
     const tier = sub?.subscriptionTier;
     if (!tier) return defaultBadgeColor;
+    if (tier === 'FREE') {
+      return freeBadgeColor;
+    }
     return tierBadgeColors[tier] ?? defaultBadgeColor;
   };
 
   return (
     <div className="flex flex-col gap-[20px]">
-      <h2 className="text-[20px] font-[600]">
+      <h1 className="text-[20px] font-[600]">
         {t('admin_organizations', 'Organizations')}
-      </h2>
+      </h1>
 
       <div className="max-w-[500px]">
         <Input
           autoComplete="off"
           placeholder={t(
-            'search_organization_placeholder',
+            'admin_search_organization_placeholder',
             'Search by name...'
           )}
           name="org-search"
           disableForm={true}
+          // label="" makes the shared Input skip its label block entirely, so
+          // the field reached a screen reader with nothing but a placeholder
+          // (E2E-09-13).
           label=""
+          aria-label={t('admin_search_organizations', 'Search organizations')}
           removeError={true}
-          value={search}
+          value={searchInput}
           onChange={handleSearch}
         />
       </div>
 
-      <div className="rounded-[8px] border border-white/10 overflow-hidden">
-        <table className="w-full">
+      <div className="rounded-[8px] border border-white/10 overflow-hidden overflow-x-auto">
+        {/* overflow-x-auto, not overflow-hidden: the app shell clips its own
+            overflow, so anything past the edge was unreachable rather than
+            scrollable (E2E-09-49). */}
+        <table className="w-full min-w-[560px]">
           <thead>
             <tr className="text-left border-b border-white/10 bg-white/[0.03]">
               <th className="p-[12px] text-[13px] font-[500] text-newTextColor/60">
-                {t('name', 'Name')}
+                {t('admin_name', 'Name')}
               </th>
               <th className="p-[12px] text-[13px] font-[500] text-newTextColor/60">
-                {t('tier', 'Tier')}
+                {t('admin_tier', 'Tier')}
               </th>
               <th className="p-[12px] text-[13px] font-[500] text-newTextColor/60">
-                {t('period', 'Period')}
+                {t('admin_period', 'Period')}
               </th>
               <th className="p-[12px] text-[13px] font-[500] text-newTextColor/60">
-                {t('channels', 'Channels')}
+                {t('admin_channels', 'Channels')}
               </th>
               <th className="p-[12px] text-[13px] font-[500] text-newTextColor/60">
-                {t('users', 'Users')}
+                {t('admin_users', 'Users')}
               </th>
               <th className="p-[12px] text-[13px] font-[500] text-newTextColor/60">
-                {t('posts', 'Posts')}
+                {/* Every post the org has ever created, drafts and failures
+                    included. Stats and Growth both count published posts under
+                    the same word, and the two numbers never agree
+                    (E2E-09-25). */}
+                {t('admin_posts_all', 'Posts (all)')}
               </th>
               <th className="p-[12px] text-[13px] font-[500] text-newTextColor/60">
-                {t('created', 'Created')}
+                {t('admin_created', 'Created')}
               </th>
             </tr>
           </thead>
@@ -148,9 +170,9 @@ export const AdminOrganizationsComponent = () => {
               <tr>
                 <td
                   colSpan={7}
-                  className="p-[20px] text-center text-[13px] text-newTextColor/40"
+                  className="p-[20px] text-center text-[13px] text-newTextColor/70"
                 >
-                  {t('loading', 'Loading...')}
+                  {t('admin_loading', 'Loading...')}
                 </td>
               </tr>
             )}
@@ -161,7 +183,7 @@ export const AdminOrganizationsComponent = () => {
                   className="p-[20px] text-center text-[13px] text-red-400"
                 >
                   {t(
-                    'organizations_load_failed',
+                    'admin_organizations_load_failed',
                     'Failed to load organizations.'
                   )}
                 </td>
@@ -171,9 +193,9 @@ export const AdminOrganizationsComponent = () => {
               <tr>
                 <td
                   colSpan={7}
-                  className="p-[20px] text-center text-[13px] text-newTextColor/40"
+                  className="p-[20px] text-center text-[13px] text-newTextColor/70"
                 >
-                  {t('no_organizations_found', 'No organizations found')}
+                  {t('admin_no_organizations_found', 'No organizations found')}
                 </td>
               </tr>
             )}
@@ -215,20 +237,26 @@ export const AdminOrganizationsComponent = () => {
         </table>
       </div>
 
-      {totalPages > 1 && (
+      {/* The whole block, count included, used to be hidden when everything
+          fitted on one page — so the number of organizations was invisible in
+          the one state where it is easiest to read (E2E-09-29). */}
+      {!!data && (
         <div className="flex items-center justify-between text-[13px]">
           <span className="text-newTextColor/60">
-            {t('page', 'Page')} {page + 1} / {totalPages} ({data?.total}{' '}
-            {t('total', 'total')})
+            {totalPages > 1
+              ? `${t('admin_page', 'Page')} ${page + 1} / ${totalPages} (${
+                  data.total
+                } ${t('admin_total', 'total')})`
+              : `${data.total} ${t('admin_total', 'total')}`}
           </span>
-          <div className="flex gap-[8px]">
+          <div className={totalPages > 1 ? 'flex gap-[8px]' : 'hidden'}>
             <button
               type="button"
               disabled={page <= 0}
               onClick={() => setPage((p) => p - 1)}
               className="px-[14px] h-[34px] rounded-[10px] text-[13px] border border-white/10 bg-white/[0.03] hover:bg-white/[0.06] hover:border-white/25 disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer transition-colors"
             >
-              {t('prev', 'Prev')}
+              {t('admin_prev', 'Prev')}
             </button>
             <button
               type="button"
@@ -236,7 +264,7 @@ export const AdminOrganizationsComponent = () => {
               onClick={() => setPage((p) => p + 1)}
               className="px-[14px] h-[34px] rounded-[10px] text-[13px] border border-white/10 bg-white/[0.03] hover:bg-white/[0.06] hover:border-white/25 disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer transition-colors"
             >
-              {t('next', 'Next')}
+              {t('admin_next', 'Next')}
             </button>
           </div>
         </div>

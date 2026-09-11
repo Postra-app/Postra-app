@@ -4,6 +4,7 @@ import { StripeService } from '@gitroom/nestjs-libraries/services/stripe.service
 import { GetOrgFromRequest } from '@gitroom/nestjs-libraries/user/org.from.request';
 import { Organization, User } from '@prisma/client';
 import { BillingSubscribeDto } from '@gitroom/nestjs-libraries/dtos/billing/billing.subscribe.dto';
+import { BillingAddSubscriptionDto } from '@gitroom/nestjs-libraries/dtos/billing/billing.add.subscription.dto';
 import { ApiTags } from '@nestjs/swagger';
 import { GetUserFromRequest } from '@gitroom/nestjs-libraries/user/user.from.request';
 import { NotificationService } from '@gitroom/nestjs-libraries/database/prisma/notifications/notification.service';
@@ -236,12 +237,12 @@ export class BillingController {
 
   @Post('/add-subscription')
   async addSubscription(
-    @Body() body: { subscription: string },
+    @Body() body: BillingAddSubscriptionDto,
     @GetUserFromRequest() user: User,
     @GetOrgFromRequest() org: Organization
   ) {
     if (!user.isSuperAdmin) {
-      throw new Error('Unauthorized');
+      throw new HttpException('Unauthorized', 400);
     }
 
     await this._subscriptionService.addSubscription(

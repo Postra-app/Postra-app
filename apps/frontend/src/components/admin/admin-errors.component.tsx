@@ -4,21 +4,22 @@ import React, { FC, useCallback, useMemo, useState } from 'react';
 import useSWR from 'swr';
 import copy from 'copy-to-clipboard';
 import { useFetch } from '@gitroom/helpers/utils/custom.fetch';
-import { useUser } from '@gitroom/frontend/components/layout/user.context';
 import { useToaster } from '@gitroom/react/toaster/toaster';
 import { useModals } from '@gitroom/frontend/components/layout/new-modal';
 import {
   AdminButton as Button,
   adminInput,
-  adminSegment,
+  adminSegmentProps,
   adminSelect,
 } from './admin-ui';
 import { LoadingComponent } from '@gitroom/frontend/components/layout/loading';
 
+// The list no longer carries `body` or the post content: they were most of its
+// 151 KB per twenty rows, and both are only ever looked at one row at a time
+// (E2E-09-30). They come from GET /admin/errors/:id instead.
 interface ErrorRow {
   id: string;
   message: string;
-  body: string;
   platform: string;
   postId: string;
   createdAt: string;
@@ -27,6 +28,11 @@ interface ErrorRow {
     name: string;
     users: { user: { id: string; email: string; name: string | null } }[];
   };
+  post: { id: string };
+}
+
+interface ErrorDetail extends ErrorRow {
+  body: string;
   post: { id: string; content: string | null };
 }
 
@@ -46,22 +52,38 @@ const safeParse = (value: string) => {
   }
 };
 
+const useErrorDetail = (id: string) => {
+  const fetch = useFetch();
+  return useSWR<ErrorDetail>(`/admin/errors/${id}`, async (url: string) => {
+    const res = await fetch(url);
+    if (!res.ok) throw new Error('Failed to load error');
+    return res.json();
+  });
+};
+
 const ErrorDetailsModal: FC<{ row: ErrorRow }> = ({ row }) => {
   const modal = useModals();
   const toaster = useToaster();
+  const { data: detail, error: detailError } = useErrorDetail(row.id);
   const parsedMessage = useMemo(() => safeParse(row.message), [row.message]);
-  const parsedBody = useMemo(() => safeParse(row.body), [row.body]);
+  const parsedBody = useMemo(
+    () => (detail ? safeParse(detail.body) : null),
+    [detail]
+  );
 
   const copyAll = useCallback(() => {
+    if (!detail) {
+      return;
+    }
     copy(
       JSON.stringify(
-        { message: parsedMessage, body: parsedBody, meta: row },
+        { message: parsedMessage, body: parsedBody, meta: detail },
         null,
         2
       )
     );
     toaster.show('Debug code copied to clipboard', 'success');
-  }, [parsedMessage, parsedBody, row, toaster]);
+  }, [parsedMessage, parsedBody, detail, toaster]);
 
   return (
     <div className="rounded-[12px] border border-white/10 bg-white/[0.03] px-[16px] pb-[16px] relative w-full max-h-[80vh] overflow-auto">
@@ -132,7 +154,11 @@ const ErrorDetailsModal: FC<{ row: ErrorRow }> = ({ row }) => {
 
       <div className="text-[13px] font-[600] mb-[6px] mt-[12px]">body</div>
       <pre className="text-[12px] bg-white/[0.05] p-[12px] rounded-[8px] overflow-auto max-h-[40vh] whitespace-pre-wrap break-all">
-        {typeof parsedBody === 'string'
+        {detailError
+          ? 'Failed to load the full error.'
+          : !detail
+          ? 'Loading...'
+          : typeof parsedBody === 'string'
           ? parsedBody
           : JSON.stringify(parsedBody, null, 2)}
       </pre>
@@ -177,7 +203,6 @@ const useErrorsList = (params: {
 };
 
 export const AdminErrorsComponent: FC = () => {
-  const user = useUser();
   const modal = useModals();
   const toaster = useToaster();
 
@@ -231,33 +256,36 @@ export const AdminErrorsComponent: FC = () => {
   );
 
   const copyRow = useCallback(
-    (row: ErrorRow) => {
+    async (row: ErrorRow) => {
+      // The body is fetched on demand now, so Copy has to go and get it.
+      const res = await fetch(`/admin/errors/${row.id}`);
+      if (!res.ok) {
+        toaster.show('Could not load the error to copy', 'warning');
+        return;
+      }
+      const detail: ErrorDetail = await res.json();
       copy(
         JSON.stringify(
-          { message: safeParse(row.message), body: safeParse(row.body), meta: row },
+          {
+            message: safeParse(detail.message),
+            body: safeParse(detail.body),
+            meta: detail,
+          },
           null,
           2
         )
       );
       toaster.show('Debug code copied to clipboard', 'success');
     },
-    [toaster]
+    [toaster, fetch]
   );
-
-  if (!user?.isSuperAdmin) {
-    return (
-      <div className="text-textColor p-[20px]">
-        You do not have access to this page.
-      </div>
-    );
-  }
 
   const totalPages = data ? Math.max(1, Math.ceil(data.total / limit)) : 1;
 
   return (
     <div className="flex flex-col gap-[16px] text-textColor">
       <div className="flex items-center justify-between flex-wrap gap-[8px]">
-        <div className="text-[20px] font-[600]">Errors</div>
+        <h1 className="text-[20px] font-[600]">Errors</h1>
         <div className="flex items-center gap-[12px]">
           <div className="text-[13px] opacity-70">
             {data
@@ -273,7 +301,7 @@ export const AdminErrorsComponent: FC = () => {
                   setPage(0);
                   setRangeDays(d);
                 }}
-                className={adminSegment(rangeDays === d)}
+                {...adminSegmentProps(rangeDays === d)}
               >
                 {d > 0 ? `${d}d` : 'All'}
               </button>
@@ -361,8 +389,15 @@ export const AdminErrorsComponent: FC = () => {
       ) : !data || data.items.length === 0 ? (
         <div className="opacity-70">No errors found.</div>
       ) : (
-        <div className="border border-newTableBorder rounded-[8px] overflow-hidden">
-          <div className="grid grid-cols-[170px_120px_220px_1fr_220px] gap-[12px] px-[12px] py-[10px] bg-white/[0.03] text-[12px] uppercase opacity-70 border-b border-newTableBorder">
+        <div className="border border-newTableBorder rounded-[8px] overflow-hidden overflow-x-auto">
+          {/* overflow-x-auto, not overflow-hidden: the app shell clips its own
+              overflow, so the columns past the edge were unreachable rather
+              than scrollable. At 390px that hid 458px of every row — the View
+              and Copy buttons among them (E2E-09-48). The min-width sits on an
+              inner wrapper so the header and rows stay aligned while
+              scrolling. */}
+          <div className="min-w-[810px]">
+            <div className="grid grid-cols-[170px_120px_220px_1fr_220px] gap-[12px] px-[12px] py-[10px] bg-white/[0.03] text-[12px] uppercase opacity-70 border-b border-newTableBorder">
             <div>Created</div>
             <div>Platform</div>
             <div>User / Org</div>
@@ -417,6 +452,7 @@ export const AdminErrorsComponent: FC = () => {
               </div>
             );
           })}
+          </div>
         </div>
       )}
 

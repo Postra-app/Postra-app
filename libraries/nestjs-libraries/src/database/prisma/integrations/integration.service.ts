@@ -297,8 +297,8 @@ export class IntegrationService {
     return this._integrationRepository.getIntegrationsList(org);
   }
 
-  backfillTokenEncryption() {
-    return this._integrationRepository.backfillTokenEncryption();
+  backfillTokenEncryption(apply = true) {
+    return this._integrationRepository.backfillTokenEncryption(apply);
   }
 
   getIntegrationForOrder(id: string, order: string, user: string, org: string) {
@@ -412,12 +412,37 @@ export class IntegrationService {
     return this._integrationRepository.setBetweenRefreshSteps(id);
   }
 
-  async refreshTokens() {
+  /**
+   * Refresh every channel whose token is due.
+   *
+   * The failure branch used to `return`, not `continue`, so one expired
+   * channel anywhere in the list silently skipped the refresh of every channel
+   * after it — and printed nothing, so the operator assumed they had all been
+   * refreshed. This is the manual rescue path for expired tokens, which means
+   * it failed at exactly the moment it was needed (E2E-09-43).
+   *
+   * Returns a per-channel outcome so a partial run is visible.
+   */
+  async refreshTokens(apply = true) {
     const integrations = await this._integrationRepository.needsToBeRefreshed();
+    const refreshed: Array<{ id: string; name: string; provider: string }> = [];
+    const failed: Array<{ id: string; name: string; provider: string }> = [];
+
     for (const integration of integrations) {
+      const describe = {
+        id: integration.id,
+        name: integration.name,
+        provider: integration.providerIdentifier,
+      };
+
       const provider = this._integrationManager.getSocialIntegration(
         integration.providerIdentifier
       );
+
+      if (!apply) {
+        refreshed.push(describe);
+        continue;
+      }
 
       const data = await this.refreshToken(provider, integration.refreshToken!);
 
@@ -430,7 +455,8 @@ export class IntegrationService {
           integration.organizationId,
           integration.id
         );
-        return;
+        failed.push(describe);
+        continue;
       }
 
       const { refreshToken, accessToken, expiresIn } = data;
@@ -448,7 +474,11 @@ export class IntegrationService {
         refreshToken,
         expiresIn
       );
+
+      refreshed.push(describe);
     }
+
+    return { total: integrations.length, refreshed, failed };
   }
 
   async disableChannel(org: string, id: string) {

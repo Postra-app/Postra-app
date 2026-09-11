@@ -33,14 +33,23 @@ export const AdminButton: FC<
   }
 > = ({ children, variant, secondary, loading, className, ...props }) => {
   const v: Variant = variant ?? (secondary ? 'secondary' : 'primary');
+  // `loading` used to set only opacity and pointer-events, which stops a mouse
+  // and not a keyboard: Enter on a focused button fired onClick again. The
+  // announcement form uses exactly this pattern, and an announcement is shown
+  // to every user of the product (E2E-09-54).
+  const busy = !!loading;
   return (
     <button
       {...props}
       type={props.type || 'button'}
+      disabled={props.disabled || busy}
+      aria-busy={busy || undefined}
       className={clsx(
         'inline-flex items-center justify-center gap-[7px] rounded-[10px] px-[18px] h-[38px] text-[13.5px] font-[600] cursor-pointer transition-all duration-150 whitespace-nowrap',
         variantClass[v],
-        (props.disabled || loading) && 'opacity-40 pointer-events-none',
+        // /60 rather than /40: the disabled label measured 2.23:1 against the
+        // panel background, well under the 4.5:1 floor (E2E-09-55).
+        (props.disabled || busy) && 'opacity-60 pointer-events-none',
         className
       )}
     >
@@ -51,7 +60,7 @@ export const AdminButton: FC<
 
 /** Shared control styles — rounded glass, accent focus. */
 export const adminInput =
-  'bg-white/[0.04] h-[38px] border border-white/[0.12] rounded-[10px] px-[12px] text-[14px] text-newTextColor placeholder:text-newTextColor/40 outline-none focus:border-[rgba(56,189,248,0.5)] transition-colors';
+  'bg-white/[0.04] h-[38px] border border-white/[0.12] rounded-[10px] px-[12px] text-[14px] text-newTextColor placeholder:text-newTextColor/70 outline-none focus:border-[rgba(56,189,248,0.5)] transition-colors';
 
 export const adminSelect = `${adminInput} cursor-pointer`;
 
@@ -67,3 +76,28 @@ export const adminSegment = (active: boolean) =>
       ? 'bg-[rgba(56,189,248,0.16)] border-[rgba(56,189,248,0.5)] text-[#7dd3fc] font-[600]'
       : 'bg-white/[0.03] text-newTextColor/70 border-white/10 hover:border-white/25 hover:text-newTextColor'
   );
+
+/**
+ * Props every segmented pill should spread, so a screen reader is told which
+ * one is chosen. None of the call sites set aria-pressed (E2E-09-13).
+ */
+export const adminSegmentProps = (active: boolean) => ({
+  className: adminSegment(active),
+  'aria-pressed': active,
+});
+
+/**
+ * The admin panel is English only, by decision rather than by accident.
+ *
+ * It used to borrow the product's generic translation keys — `name`,
+ * `channels`, `posts`, `next`, `loading`, `from`, `to` — which do have Polish
+ * entries, while the admin-specific keys have entries in no locale at all. On
+ * PL the Organizations header therefore read "Nazwa | Tier | Period | Kanaly |
+ * Users | Posty | Created" and the pager "Prev / Dalej" (E2E-09-12).
+ *
+ * Rule: every t() key inside /admin is admin-specific, and no locale file
+ * carries an entry for one — the seventeen that had been translated were
+ * removed. The English fallback at the call site always renders, and the panel
+ * can still be translated later as a deliberate act rather than by leaking in
+ * through borrowed keys.
+ */

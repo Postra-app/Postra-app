@@ -4,7 +4,7 @@ import { useCallback, useMemo, useState } from 'react';
 import useSWR from 'swr';
 import { useFetch } from '@gitroom/helpers/utils/custom.fetch';
 import { useT } from '@gitroom/react/translation/get.transation.service.client';
-import { adminSegment } from './admin-ui';
+import { adminSegmentProps } from './admin-ui';
 
 interface AiUsageByType {
   type: string;
@@ -58,6 +58,16 @@ interface AiUsageResponse {
     topOrgs: AiTextTopOrg[];
   };
 }
+
+// The credit ledger stores a raw enum; capitalising it gave "Ai_images".
+const CREDIT_TYPE_LABELS: Record<string, string> = {
+  ai_images: 'AI images',
+  generate_videos: 'Video generation',
+};
+
+const creditTypeLabel = (type: string) =>
+  CREDIT_TYPE_LABELS[type] ??
+  type.replace(/_/g, ' ').replace(/^./, (c) => c.toUpperCase());
 
 const PERIODS = [7, 30, 90] as const;
 
@@ -146,43 +156,60 @@ export const AdminAiUsageComponent = () => {
       null
     );
 
+  // The period switch stays mounted through loading and failure. Returning
+  // early used to take it off the page, so the only way out of a failed range
+  // was a full reload (E2E-09-17).
+  const header = (
+    <div className="flex items-start justify-between flex-wrap gap-[8px]">
+      <div>
+        <h1 className="text-[22px] font-[600]">{t('admin_ai_usage_title', 'AI Usage')}</h1>
+        {data && (
+          <p className="text-[13px] opacity-60 mt-[4px]">
+            {new Date(data.from).toLocaleDateString()} —{' '}
+            {new Date(data.to).toLocaleDateString()}
+          </p>
+        )}
+      </div>
+      <div className="flex gap-[6px]">
+        {PERIODS.map((p) => (
+          <button
+            key={p}
+            type="button"
+            onClick={() => setDays(p)}
+            {...adminSegmentProps(days === p)}
+          >
+            {p}d
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center py-[40px] text-newTextColor opacity-60">
-        Loading...
+      <div className="flex flex-col gap-[20px] text-newTextColor">
+        {header}
+        <div className="flex items-center justify-center py-[40px] opacity-60">
+          Loading...
+        </div>
       </div>
     );
   }
 
   if (error || !data) {
     return (
-      <div className="text-red-400 p-[20px]">Failed to load AI usage data.</div>
+      <div className="flex flex-col gap-[20px] text-newTextColor">
+        {header}
+        <div className="text-red-400" role="alert">
+          Failed to load AI usage data.
+        </div>
+      </div>
     );
   }
 
   return (
     <div className="flex flex-col gap-[20px] text-newTextColor">
-      <div className="flex items-start justify-between flex-wrap gap-[8px]">
-        <div>
-          <h1 className="text-[22px] font-[600]">{t('AI Usage')}</h1>
-          <p className="text-[13px] opacity-60 mt-[4px]">
-            {new Date(data.from).toLocaleDateString()} —{' '}
-            {new Date(data.to).toLocaleDateString()}
-          </p>
-        </div>
-        <div className="flex gap-[6px]">
-          {PERIODS.map((p) => (
-            <button
-              key={p}
-              type="button"
-              onClick={() => setDays(p)}
-              className={adminSegment(days === p)}
-            >
-              {p}d
-            </button>
-          ))}
-        </div>
-      </div>
+      {header}
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-[12px]">
         {data.byType.map((entry) => (
@@ -190,12 +217,17 @@ export const AdminAiUsageComponent = () => {
             key={entry.type}
             className="bg-white/[0.03] border border-white/10 rounded-[12px] p-[16px]"
           >
-            <div className="text-[12px] opacity-60 capitalize">{entry.type}</div>
+            {/* The raw enum was rendered capitalised, so ai_images read as
+                "Ai_images", and `count` is the number of ledger rows, not of
+                model calls (E2E-09-33). */}
+            <div className="text-[12px] opacity-60">
+              {creditTypeLabel(entry.type)}
+            </div>
             <div className="text-[28px] font-[600] mt-[4px]">
               {entry.totalCredits.toLocaleString()}
             </div>
             <div className="text-[12px] opacity-50 mt-[2px]">
-              {entry.count.toLocaleString()} calls
+              {entry.count.toLocaleString()} charges
             </div>
           </div>
         ))}
@@ -205,11 +237,11 @@ export const AdminAiUsageComponent = () => {
         <div className="bg-white/[0.03] border border-white/10 rounded-[12px] p-[16px]">
           <div className="flex items-baseline justify-between flex-wrap gap-[8px] mb-[12px]">
             <div className="text-[14px] font-[500]">
-              {t('ai_usage_per_day', 'Credits used per day')}
+              {t('admin_ai_usage_per_day', 'Credits used per day')}
             </div>
             <div className="text-[11px] opacity-50">
               {t(
-                'ai_usage_per_day_hint',
+                'admin_ai_usage_per_day_hint',
                 'Local time — click a day for its hourly breakdown'
               )}
             </div>
@@ -218,14 +250,20 @@ export const AdminAiUsageComponent = () => {
             {dayBuckets.map((day) => {
               const max = Math.max(...dayBuckets.map((d) => d.total), 1);
               return (
+                // An empty button carrying only `title` has no accessible
+                // name and no pressed state, so the selected day was invisible
+                // to a screen reader — and at 1.27:1 against its neighbours,
+                // very nearly invisible to everyone (E2E-09-13, E2E-09-55).
                 <button
                   key={day.key}
                   type="button"
                   onClick={() => setSelectedDayKey(day.key)}
                   title={`${day.date.toLocaleDateString()}: ${day.total.toLocaleString()}`}
+                  aria-label={`${day.date.toLocaleDateString()}: ${day.total.toLocaleString()} credits`}
+                  aria-pressed={selectedDay?.key === day.key}
                   className={`flex-1 min-h-[2px] rounded-t-[2px] cursor-pointer transition-colors ${
                     selectedDay?.key === day.key
-                      ? 'bg-violet-400'
+                      ? 'bg-violet-300 outline outline-[2px] outline-offset-[1px] outline-violet-200'
                       : 'bg-sky-400 hover:bg-sky-300'
                   }`}
                   style={{ height: `${(day.total / max) * 100}%` }}
@@ -262,22 +300,29 @@ export const AdminAiUsageComponent = () => {
                 })}
                 {' · '}
                 {selectedDay.total.toLocaleString()}{' '}
-                {t('ai_usage_credits', 'credits')}
+                {t('admin_ai_usage_credits', 'credits')}
               </div>
-              <div className="flex items-end gap-[2px] h-[60px]">
+              {/* The histogram is a picture of numbers, not a control: a list
+                  with per-bar labels is readable, where a row of bare divs
+                  carrying only `title` is not (E2E-09-13). */}
+              <ul
+                className="flex items-end gap-[2px] h-[60px] list-none m-0 p-0"
+                aria-label="Credits by hour"
+              >
                 {selectedDay.hours.map((count, hour) => {
                   const hourMax = Math.max(...selectedDay.hours, 1);
                   const label = `${String(hour).padStart(2, '0')}:00`;
                   return (
-                    <div
+                    <li
                       key={hour}
                       title={`${label} — ${count.toLocaleString()}`}
+                      aria-label={`${label}: ${count.toLocaleString()} credits`}
                       className="flex-1 bg-sky-400/80 min-h-[1px] rounded-t-[2px]"
                       style={{ height: `${(count / hourMax) * 100}%` }}
                     />
                   );
                 })}
-              </div>
+              </ul>
               <div className="flex gap-[2px] mt-[4px]">
                 {selectedDay.hours.map((_, hour) => (
                   <div
@@ -296,7 +341,7 @@ export const AdminAiUsageComponent = () => {
       <div className="bg-white/[0.03] border border-white/10 rounded-[12px] overflow-hidden">
         <div className="px-[16px] py-[12px] border-b border-white/10 text-[14px] font-[500]">
           {t(
-            'ai_text_usage',
+            'admin_ai_text_usage',
             'Model usage (observational metering — not billed)'
           )}
         </div>
@@ -309,7 +354,7 @@ export const AdminAiUsageComponent = () => {
         </div>
         {!data.text?.byEngine?.length ? (
           <div className="px-[16px] py-[12px] text-[13px] opacity-50">
-            {t('ai_text_none', 'No text-AI usage recorded in this range yet.')}
+            {t('admin_ai_text_none', 'No text-AI usage recorded in this range yet.')}
           </div>
         ) : (
           data.text.byEngine.map((row) => (
@@ -322,7 +367,7 @@ export const AdminAiUsageComponent = () => {
               <div className="text-right">{row.calls.toLocaleString()}</div>
               <div className="text-right">
                 {row.inputAmount.toLocaleString()}
-                <span className="opacity-40 ml-[3px]">
+                <span className="opacity-70 ml-[3px]">
                   {UNIT_LABEL[row.unit] ?? 'tok'}
                 </span>
               </div>
@@ -337,7 +382,7 @@ export const AdminAiUsageComponent = () => {
         {!!data.text?.topOrgs?.length && (
           <>
             <div className="px-[16px] py-[8px] text-[11px] uppercase opacity-50 border-t border-b border-white/10">
-              {t('ai_text_top_orgs', 'Top organizations by tokens')}
+              {t('admin_ai_text_top_orgs', 'Top organizations by tokens')}
             </div>
             {data.text.topOrgs.map((o) => (
               <div
@@ -357,7 +402,7 @@ export const AdminAiUsageComponent = () => {
 
       <div className="bg-white/[0.03] border border-white/10 rounded-[12px] overflow-hidden">
         <div className="px-[16px] py-[12px] border-b border-white/10 text-[14px] font-[500]">
-          {t('Top Organizations by Usage')}
+          {t('admin_ai_usage_top_orgs', 'Top Organizations by Usage')}
         </div>
         <div className="grid grid-cols-[1fr_140px] gap-[12px] px-[16px] py-[8px] text-[11px] uppercase opacity-50 border-b border-white/10">
           <div>Organization</div>

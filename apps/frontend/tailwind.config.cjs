@@ -285,12 +285,19 @@ module.exports = {
         xs: {
           max: '401px',
         },
-        // Telefon = poniżej `md` (768px), spójne z app-shellem.
-        // Używamy własnego screena (a nie wbudowanego `max-md:`), bo customowe
-        // screeny z `raw` powyżej sprawiają, że Tailwind nie generuje
-        // wariantów `max-*`. `phone:` to działający odpowiednik `max-md:`.
+        // Phone = below `md` (768px), matching the app shell. This is a custom
+        // screen rather than the built-in `max-md:` because the `raw` screens
+        // above stop Tailwind generating `max-*` variants at all; `phone:` is
+        // the working equivalent of `max-md:`.
         phone: {
           max: '767px',
+        },
+        // Below this the admin panel cannot be used: the sidebar is a fixed
+        // 230px with no way to collapse it, and the narrowest table still
+        // needs ~810px. At 390px that left 92px of content, clipped rather
+        // than scrollable (E2E-09-48).
+        adminNarrow: {
+          max: '899px',
         },
       },
     },

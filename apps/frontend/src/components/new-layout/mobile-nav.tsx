@@ -11,6 +11,10 @@ import { MenuItem } from '@gitroom/frontend/components/new-layout/menu-item';
 import { useUser } from '@gitroom/frontend/components/layout/user.context';
 import { useVariables } from '@gitroom/react/helpers/variable.context';
 import { useT } from '@gitroom/react/translation/get.transation.service.client';
+import {
+  MenuEntry,
+  canSeeMenuEntry,
+} from '@gitroom/frontend/components/layout/menu.visibility';
 
 const BottomNavItem: FC<{
   path: string;
@@ -173,18 +177,7 @@ const MobileDrawerMenu: FC = () => {
   const { firstMenu, secondMenu } = useMenuItem();
   const { isGeneral, billingEnabled } = useVariables();
 
-  const filter = (f: {
-    hide?: boolean;
-    requireBilling?: boolean;
-    role?: string[];
-    name: React.ReactNode;
-  }) => {
-    if (f.hide) return false;
-    if (f.requireBilling && !billingEnabled) return false;
-    if (f.name === 'Billing' && user?.isLifetime) return false;
-    if (f.role) return f.role.includes(user?.role!);
-    return true;
-  };
+  const filter = (f: MenuEntry) => canSeeMenuEntry(f, user, billingEnabled);
 
   return (
     <>

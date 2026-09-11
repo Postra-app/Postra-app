@@ -25,11 +25,16 @@ export class AnnouncementsRepository {
     });
   }
 
-  deleteAnnouncement(id: string) {
-    return this._announcements.model.announcement.delete({
-      where: {
-        id,
-      },
+  /**
+   * deleteMany, not delete: Prisma throws on a row that is not there, and the
+   * controller turned that into a 500 for what is really "already gone"
+   * (E2E-09-46). Returns whether anything was removed, so the caller can say
+   * so.
+   */
+  async deleteAnnouncement(id: string) {
+    const { count } = await this._announcements.model.announcement.deleteMany({
+      where: { id },
     });
+    return { deleted: count > 0 };
   }
 }

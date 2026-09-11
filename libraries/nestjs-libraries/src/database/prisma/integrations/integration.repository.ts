@@ -805,7 +805,7 @@ export class IntegrationRepository {
 
   // One-off backfill: encrypt any integration tokens still stored as plaintext.
   // Idempotent — already-encrypted rows (marker prefix) are skipped.
-  async backfillTokenEncryption() {
+  async backfillTokenEncryption(apply = true) {
     const all = await this._integration.model.integration.findMany({
       select: { id: true, token: true, refreshToken: true },
     });
@@ -824,11 +824,16 @@ export class IntegrationRepository {
         continue;
       }
 
+      updated++;
+
+      if (!apply) {
+        continue;
+      }
+
       await this._integration.model.integration.update({
         where: { id: integration.id },
         data: { token, refreshToken },
       });
-      updated++;
     }
 
     return { total: all.length, updated };

@@ -3,9 +3,15 @@
 import React, { FC, useCallback, useState } from 'react';
 import useSWR from 'swr';
 import { useFetch } from '@gitroom/helpers/utils/custom.fetch';
-import { useUser } from '@gitroom/frontend/components/layout/user.context';
-import { AdminButton as Button, adminInput, adminSegment } from './admin-ui';
+import { AdminButton as Button, adminInput, adminSegmentProps } from './admin-ui';
 import { LoadingComponent } from '@gitroom/frontend/components/layout/loading';
+import {
+  formatDay,
+  isoDaysAgo,
+  startOfMonth,
+  startOfWeek,
+  today,
+} from '@gitroom/frontend/components/admin/admin-dates';
 
 interface PerSocial {
   provider: string;
@@ -25,35 +31,15 @@ interface StatsResponse {
   connected: StatsBlock;
 }
 
-const isoDaysAgo = (days: number) => {
-  const d = new Date();
-  d.setDate(d.getDate() - days);
-  return d.toISOString().slice(0, 10);
-};
-
-const today = () => new Date().toISOString().slice(0, 10);
-
-const startOfWeek = () => {
-  const d = new Date();
-  // ISO week: Monday = 0
-  const day = (d.getDay() + 6) % 7;
-  d.setDate(d.getDate() - day);
-  return d.toISOString().slice(0, 10);
-};
-
-const startOfMonth = () => {
-  const d = new Date();
-  d.setDate(1);
-  return d.toISOString().slice(0, 10);
-};
-
+// Both ends are inclusive, so "last 7 days" reaches back six — it used to
+// reach back seven and cover eight days (E2E-09-22).
 const PRESETS: { label: string; range: () => { from: string; to: string } }[] = [
   { label: 'Today', range: () => ({ from: today(), to: today() }) },
   { label: 'This week', range: () => ({ from: startOfWeek(), to: today() }) },
   { label: 'This month', range: () => ({ from: startOfMonth(), to: today() }) },
-  { label: 'Last 7 days', range: () => ({ from: isoDaysAgo(7), to: today() }) },
-  { label: 'Last 30 days', range: () => ({ from: isoDaysAgo(30), to: today() }) },
-  { label: 'Last year', range: () => ({ from: isoDaysAgo(365), to: today() }) },
+  { label: 'Last 7 days', range: () => ({ from: isoDaysAgo(6), to: today() }) },
+  { label: 'Last 30 days', range: () => ({ from: isoDaysAgo(29), to: today() }) },
+  { label: 'Last year', range: () => ({ from: isoDaysAgo(364), to: today() }) },
 ];
 
 const useStats = (params: {
@@ -122,51 +108,47 @@ const PerSocialTable: FC<{ title: string; block: StatsBlock }> = ({
 );
 
 export const AdminStatsComponent: FC = () => {
-  const user = useUser();
 
   const [fromInput, setFromInput] = useState(today());
   const [toInput, setToInput] = useState(today());
   const [range, setRange] = useState({ from: today(), to: today() });
   const [unknownOnly, setUnknownOnly] = useState(false);
+  // Tracked by name, not by comparing ranges: on a Monday "Today" and "This
+  // week" describe the same days, and both lit up (E2E-09-22).
+  const [activePreset, setActivePreset] = useState<string | null>('Today');
 
   const { data, isLoading, error } = useStats({ ...range, unknownOnly });
 
-  const applyRange = useCallback((next: { from: string; to: string }) => {
-    setFromInput(next.from);
-    setToInput(next.to);
-    setRange(next);
-  }, []);
-
-  if (!user?.isSuperAdmin) {
-    return (
-      <div className="text-textColor p-[20px]">
-        You do not have access to this page.
-      </div>
-    );
-  }
+  const applyRange = useCallback(
+    (next: { from: string; to: string }, preset: string | null = null) => {
+      setFromInput(next.from);
+      setToInput(next.to);
+      setRange(next);
+      setActivePreset(preset);
+    },
+    []
+  );
 
   return (
     <div className="flex flex-col gap-[16px] text-textColor">
       <div className="flex items-center justify-between">
-        <div className="text-[20px] font-[600]">Admin Stats</div>
-        {data && (
-          <div className="text-[13px] opacity-70">
-            {new Date(data.from).toLocaleDateString()} —{' '}
-            {new Date(data.to).toLocaleDateString()}
-          </div>
-        )}
+        <h1 className="text-[20px] font-[600]">Admin Stats</h1>
+        {/* The range that was asked for. Rendering data.to instead showed the
+            server's 23:59:59 UTC read back in local time, i.e. tomorrow. */}
+        <div className="text-[13px] opacity-70">
+          {formatDay(range.from)} — {formatDay(range.to)}
+        </div>
       </div>
 
       <div className="flex flex-wrap gap-[8px]">
         {PRESETS.map((preset) => {
-          const next = preset.range();
-          const active = range.from === next.from && range.to === next.to;
+          const active = activePreset === preset.label;
           return (
             <button
               key={preset.label}
               type="button"
-              onClick={() => applyRange(next)}
-              className={adminSegment(active)}
+              onClick={() => applyRange(preset.range(), preset.label)}
+              {...adminSegmentProps(active)}
             >
               {preset.label}
             </button>
@@ -175,9 +157,14 @@ export const AdminStatsComponent: FC = () => {
       </div>
 
       <div className="flex flex-wrap gap-[12px] items-end bg-white/[0.03] border border-newTableBorder rounded-[8px] p-[12px]">
+        {/* label/htmlFor pairs: these were bare divs, so both date fields
+            reached a screen reader with no name at all (E2E-09-13). */}
         <div className="flex flex-col gap-[6px]">
-          <div className="text-[12px] opacity-70">From</div>
+          <label htmlFor="admin-stats-from" className="text-[12px] opacity-70">
+            From
+          </label>
           <input
+            id="admin-stats-from"
             type="date"
             value={fromInput}
             max={toInput}
@@ -186,8 +173,11 @@ export const AdminStatsComponent: FC = () => {
           />
         </div>
         <div className="flex flex-col gap-[6px]">
-          <div className="text-[12px] opacity-70">To</div>
+          <label htmlFor="admin-stats-to" className="text-[12px] opacity-70">
+            To
+          </label>
           <input
+            id="admin-stats-to"
             type="date"
             value={toInput}
             min={fromInput}
@@ -197,7 +187,10 @@ export const AdminStatsComponent: FC = () => {
           />
         </div>
         <Button
-          onClick={() => setRange({ from: fromInput, to: toInput })}
+          onClick={() => {
+            setRange({ from: fromInput, to: toInput });
+            setActivePreset(null);
+          }}
           disabled={!fromInput || !toInput || fromInput > toInput}
         >
           Apply

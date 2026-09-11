@@ -21,6 +21,7 @@ import { shuffle } from 'lodash';
 import { CreateGeneratedPostsDto } from '@gitroom/nestjs-libraries/dtos/generator/create.generated.posts.dto';
 import { IntegrationService } from '@gitroom/nestjs-libraries/database/prisma/integrations/integration.service';
 import { makeId } from '@gitroom/nestjs-libraries/services/make.is';
+import { redactSecretsInJson } from '@gitroom/nestjs-libraries/services/redact.secrets';
 import { AuthService } from '@gitroom/helpers/auth/auth.service';
 import utc from 'dayjs/plugin/utc';
 import { MediaService } from '@gitroom/nestjs-libraries/database/prisma/media/media.service';
@@ -523,10 +524,13 @@ export class PostsService {
         providerName: rootPost.integration?.name,
         state: rootPost.state,
         error: rootPost.error,
+        // Second line of defence: rows written before E2E-09-01 was fixed
+        // still hold plaintext tokens, and this export goes straight to a
+        // clipboard and into a support thread.
         errors: errors.map((e) => ({
-          message: e.message,
+          message: redactSecretsInJson(e.message),
           platform: e.platform,
-          body: e.body,
+          body: redactSecretsInJson(e.body),
           createdAt: e.createdAt,
         })),
         originalGroup: group,

@@ -3,6 +3,7 @@ import {
   Controller,
   Get,
   HttpException,
+  Param,
   Post,
   Query,
 } from '@nestjs/common';
@@ -21,6 +22,11 @@ import { fetch } from 'undici';
 // the compiled dist and crashes at runtime (Cannot find module).
 import { ioRedis } from '@gitroom/nestjs-libraries/redis/redis.service';
 import { bustAuthContextCache } from '@gitroom/nestjs-libraries/redis/auth-context.cache';
+import {
+  parseDay,
+  parseDayCount,
+  parsePaging,
+} from '@gitroom/backend/api/routes/admin.query';
 
 @ApiTags('Admin')
 @Controller('/admin')
@@ -51,15 +57,16 @@ export class AdminController {
     @Query('days') days?: string
   ) {
     this.assertSuperAdmin(user);
-    const parsedDays = days ? parseInt(days, 10) : 0;
+    const paging = parsePaging(page, limit);
+    const parsedDays = parseDayCount(days, 'days');
     return this._errorsService.listErrors({
-      page: page ? parseInt(page, 10) : 0,
-      limit: limit ? parseInt(limit, 10) : 20,
+      page: paging.page,
+      limit: paging.limit,
       platform: platform || undefined,
       email: email || undefined,
       unknownFirst: unknownFirst === 'true' || unknownFirst === '1',
-      // 0 / missing / NaN = all time
-      days: Number.isFinite(parsedDays) && parsedDays > 0 ? parsedDays : undefined,
+      // 0 / missing = all time
+      days: parsedDays && parsedDays > 0 ? parsedDays : undefined,
     });
   }
 
@@ -67,6 +74,21 @@ export class AdminController {
   async listPlatforms(@GetUserFromRequest() user: User) {
     this.assertSuperAdmin(user);
     return this._errorsService.listPlatforms();
+  }
+
+  /**
+   * One error in full. The list stopped shipping `body`, which was most of its
+   * 151 KB per twenty rows and is only ever looked at one row at a time
+   * (E2E-09-30).
+   */
+  @Get('/errors/:id')
+  async getError(@GetUserFromRequest() user: User, @Param('id') id: string) {
+    this.assertSuperAdmin(user);
+    const row = await this._errorsService.getError(id);
+    if (!row) {
+      throw new HttpException('Error not found', 404);
+    }
+    return row;
   }
 
   @Get('/stats')
@@ -78,8 +100,8 @@ export class AdminController {
   ) {
     this.assertSuperAdmin(user);
 
-    const fromDate = from ? dayjs(from) : dayjs().subtract(30, 'day');
-    const toDate = to ? dayjs(to) : dayjs();
+    const fromDate = parseDay(from, 'from') ?? dayjs().subtract(30, 'day');
+    const toDate = parseDay(to, 'to') ?? dayjs();
 
     return this._adminStatsService.getStats({
       from: fromDate.startOf('day').toDate(),
@@ -96,8 +118,7 @@ export class AdminController {
     @Query('search') search?: string
   ) {
     this.assertSuperAdmin(user);
-    const take = limit ? parseInt(limit, 10) : 20;
-    const skip = page ? parseInt(page, 10) * take : 0;
+    const { limit: take, skip } = parsePaging(page, limit);
 
     const where = search
       ? { name: { contains: search, mode: 'insensitive' as const } }
@@ -145,8 +166,7 @@ export class AdminController {
     @Query('search') search?: string
   ) {
     this.assertSuperAdmin(user);
-    const take = limit ? parseInt(limit, 10) : 20;
-    const skip = page ? parseInt(page, 10) * take : 0;
+    const { limit: take, skip } = parsePaging(page, limit);
 
     const where = search
       ? {
@@ -230,6 +250,79 @@ export class AdminController {
     return report;
   }
 
+  /**
+   * Put an organization on a paid tier without a payment — a test account, a
+   * compensation, an account we owe a plan to.
+   *
+   * The only thing an admin could grant was lifetime Business; there was no way
+   * to seat an org on Starter or Pro, which is an ordinary request. The control
+   * that existed rendered only while impersonating, inside a panel that is
+   * hidden while impersonating, so it could never be reached — and that was the
+   * only thing standing between a click and E2E-09-09 (E2E-09-02). The endpoint
+   * behind it is safe now, and this one names the organization outright instead
+   * of inferring it from whoever the session is wearing.
+   */
+  @Post('/comp-subscription')
+  async compSubscription(
+    @GetUserFromRequest() user: User,
+    @Body('organizationId') organizationId: string,
+    @Body('subscription') subscription: string
+  ) {
+    this.assertSuperAdmin(user);
+    if (!organizationId?.trim()) {
+      throw new HttpException('Missing organizationId', 400);
+    }
+
+    const org = await this._prisma.organization.findUnique({
+      where: { id: organizationId },
+      select: { id: true },
+    });
+    if (!org) {
+      throw new HttpException('Organization not found', 400);
+    }
+
+    await this._subscriptionService.addSubscription(
+      organizationId,
+      user.id,
+      subscription
+    );
+
+    return { organizationId, subscription };
+  }
+
+  /**
+   * Take a comp or a lifetime grant back.
+   *
+   * Until now, comping an account was a one-way street: the only route out was
+   * POST /billing/cancel-subscription, which needs a resolvable Stripe customer
+   * and a live subscription, and which bails on any lifetime row before it
+   * deletes anything. A grant for a tester, or the wrong tier on the wrong org,
+   * could only be undone in the database (E2E-09-41).
+   */
+  @Post('/revoke-subscription')
+  async revokeSubscription(
+    @GetUserFromRequest() user: User,
+    @Body('organizationId') organizationId: string
+  ) {
+    this.assertSuperAdmin(user);
+    if (!organizationId?.trim()) {
+      throw new HttpException('Missing organizationId', 400);
+    }
+
+    const org = await this._prisma.organization.findUnique({
+      where: { id: organizationId },
+      select: { id: true, name: true },
+    });
+    if (!org) {
+      throw new HttpException('Organization not found', 400);
+    }
+
+    return this._subscriptionService.revokeSubscription(
+      organizationId,
+      user.id
+    );
+  }
+
   // God-mode toggle, deliberately separate from grant-lifetime: lifetime is
   // an ULTIMATE subscription (full product, no admin panel), whereas this flips
   // the global isSuperAdmin flag that gates /admin. isSuperAdmin is re-read from
@@ -309,14 +402,43 @@ export class AdminController {
       range: false,
     });
 
+    // Grafana Cloud answers 502/503/504 now and then, and a single attempt
+    // turned that into a card of raw error text on a page an admin refreshes
+    // all day (E2E-09-31).
+    const queryGrafana = async (body: string) => {
+      let lastError: Error | undefined;
+      for (let attempt = 0; attempt < 3; attempt++) {
+        if (attempt > 0) {
+          await new Promise((r) => setTimeout(r, 250 * attempt));
+        }
+        try {
+          const res = await fetch(`${grafanaUrl}/api/ds/query`, {
+            method: 'POST',
+            headers: {
+              Authorization: `Bearer ${token}`,
+              'Content-Type': 'application/json',
+            },
+            body,
+          });
+          if (res.ok) {
+            return res;
+          }
+          lastError = new Error(`Grafana responded ${res.status}`);
+          // Only a transient status is worth another go; 401 or 403 will
+          // answer the same way every time.
+          if (res.status < 500 && res.status !== 429) {
+            break;
+          }
+        } catch (e: any) {
+          lastError = e;
+        }
+      }
+      throw lastError ?? new Error('Grafana did not respond');
+    };
+
     try {
-      const res = await fetch(`${grafanaUrl}/api/ds/query`, {
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
+      const res = await queryGrafana(
+        JSON.stringify({
           from: 'now-24h',
           to: 'now',
           queries: [
@@ -328,11 +450,8 @@ export class AdminController {
             instant('C', 'sum(increase(temporal_workflow_completed[24h]))'),
             instant('D', 'sum(increase(temporal_workflow_failed[24h]))'),
           ],
-        }),
-      });
-      if (!res.ok) {
-        throw new Error(`Grafana responded ${res.status}`);
-      }
+        })
+      );
       const data: any = await res.json();
 
       const series = (refId: string): [number, number][] => {
@@ -359,7 +478,14 @@ export class AdminController {
         aiCalls24h,
       };
     } catch (e: any) {
-      return { enabled: false, error: e.message, aiCalls24h };
+      // `enabled: false` is the "not configured" answer; this is "configured
+      // and currently unreachable", which reads differently on the card.
+      return {
+        enabled: true,
+        unavailable: true,
+        error: e?.message ?? 'Grafana is not responding',
+        aiCalls24h,
+      };
     }
   }
 
@@ -477,8 +603,8 @@ export class AdminController {
   ) {
     this.assertSuperAdmin(user);
 
-    const fromDate = from ? dayjs(from).toDate() : dayjs().subtract(30, 'day').toDate();
-    const toDate = to ? dayjs(to).toDate() : new Date();
+    const fromDate = (parseDay(from, 'from') ?? dayjs().subtract(30, 'day')).toDate();
+    const toDate = (parseDay(to, 'to') ?? dayjs()).toDate();
 
     // NOTE: AI usage is reported from `credits` (real, billable usage). Mastra's
     // own span tables (mastra_ai_spans) are @@ignore'd in the Prisma schema (no @id),
@@ -578,12 +704,10 @@ export class AdminController {
   ) {
     this.assertSuperAdmin(user);
 
-    const untilDay = to ? dayjs(to).endOf('day') : dayjs().endOf('day');
-    const sinceDay = from
-      ? dayjs(from).startOf('day')
-      : untilDay
-          .subtract(days ? parseInt(days, 10) : 30, 'day')
-          .startOf('day');
+    const untilDay = (parseDay(to, 'to') ?? dayjs()).endOf('day');
+    const sinceDay =
+      parseDay(from, 'from')?.startOf('day') ??
+      untilDay.subtract(parseDayCount(days, 'days') ?? 30, 'day').startOf('day');
     const numDays = untilDay.diff(sinceDay, 'day') + 1;
     const since = sinceDay.toDate();
     const until = untilDay.toDate();
@@ -635,8 +759,30 @@ export class AdminController {
       }),
     ]);
 
-    const serialize = (rows: Array<{ day: string; count: bigint }>) =>
-      rows.map((r) => ({ day: String(r.day).slice(0, 10), count: Number(r.count) }));
+    // Prisma deserialises a `date` column into a Date object, so `String(...)`
+    // gave "Wed Sep 09 2026 00:00:00 GMT+0000" and slicing ten characters left
+    // "Wed Sep 09". The front end reads this as ISO, so the twelve-month chart
+    // ended up labelled with bare day numbers — no month, no year (E2E-09-04).
+    //
+    // Days with no rows are filled in with zero. GROUP BY only returns the days
+    // that have something, so the axis was not linear in time: two bars side by
+    // side could be a month apart, and a range with no activity at all drew
+    // nothing rather than a flat line (E2E-09-19).
+    const serialize = (rows: Array<{ day: string; count: bigint }>) => {
+      const counts = new Map(
+        rows.map((r) => [dayjs(r.day).format('YYYY-MM-DD'), Number(r.count)])
+      );
+
+      const out: Array<{ day: string; count: number }> = [];
+      // Guard the span: a hand-typed range could otherwise ask for a series of
+      // hundreds of thousands of points.
+      const span = Math.min(Math.max(numDays, 1), 1100);
+      for (let i = 0; i < span; i++) {
+        const day = sinceDay.add(i, 'day').format('YYYY-MM-DD');
+        out.push({ day, count: counts.get(day) ?? 0 });
+      }
+      return out;
+    };
 
     return {
       totals: { users: totalUsers, organizations: totalOrgs },
@@ -703,6 +849,12 @@ export class AdminController {
       byPeriod: byPeriod.map((p) => ({ period: p.period, count: p._count._all })),
       lifetime: lifetimeCount,
       recent: recentSubs,
+      // The panel built every "open in Stripe" link against the live
+      // dashboard, so on test keys each one led to a customer that does not
+      // exist there (E2E-09-21). Only the server knows which mode we are in.
+      stripeTestMode: (process.env.STRIPE_SECRET_KEY || '').startsWith(
+        'sk_test_'
+      ),
     };
   }
 }

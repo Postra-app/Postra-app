@@ -10,7 +10,9 @@ import React, {
   useContext,
   useEffect,
   useMemo,
+  useRef,
 } from 'react';
+import { useFocusTrap } from '@gitroom/frontend/components/ui/use-focus-trap';
 import { Button } from '@gitroom/frontend/components/ui/button';
 import { useHotkeys } from 'react-hotkeys-hook';
 import clsx from 'clsx';
@@ -119,15 +121,46 @@ export const Component: FC<{
       : modal.children;
   }, [modal, closeModalFunction]);
 
+  // enableOnFormTags: without it the hotkey is ignored while the cursor is in
+  // an input, so a modal that opens straight into a large textarea — the debug
+  // post import is the one in the admin panel — could not be left with the
+  // keyboard at all (E2E-09-53).
   useHotkeys(
     'Escape',
     () => {
-      if (isLast) {
+      if (isLast && modal.closeOnEscape !== false) {
         closeModalFunction();
       }
     },
-    [isLast, closeModalFunction]
+    { enableOnFormTags: true },
+    [isLast, closeModalFunction, modal.closeOnEscape]
   );
+
+  // Focus moves into the dialog and comes back to whatever opened it. It used
+  // to stay on the triggering button: the page behind stayed keyboard-reachable
+  // under an overlay that could not be seen past (E2E-09-53).
+  const panelRef = useRef<HTMLDivElement>(null);
+  useFocusTrap(panelRef, isLast);
+  useEffect(() => {
+    const panel = panelRef.current;
+    if (!panel) {
+      return;
+    }
+    const opener = document.activeElement as HTMLElement | null;
+    // A field first, the close button only as a fallback: landing on Close is
+    // correct but unhelpful when the dialog is a form.
+    const target =
+      panel.querySelector<HTMLElement>(
+        'input:not([type="hidden"]):not([disabled]), textarea:not([disabled]), select:not([disabled])'
+      ) ??
+      panel.querySelector<HTMLElement>(
+        'button:not([disabled]), a[href], [tabindex]:not([tabindex="-1"])'
+      );
+    target?.focus();
+    return () => opener?.focus?.();
+  }, []);
+
+  const titleId = `modal-title-${modal.id}`;
 
   if (modal.removeLayout) {
     return (
@@ -168,7 +201,9 @@ export const Component: FC<{
   return (
     <CurrentModalContext.Provider value={{ id: modal.id }}>
       <div
-        onClick={closeModalFunction}
+        onClick={
+          modal.closeOnClickOutside === false ? undefined : closeModalFunction
+        }
         style={{ zIndex }}
         className={clsx(
           'fixed flex left-0 top-0 min-w-full min-h-full bg-popup transition-all animate-fadeIn overflow-y-auto text-newTextColor',
@@ -202,6 +237,10 @@ export const Component: FC<{
             )}
           >
             <div
+              ref={panelRef}
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby={titleId}
               className={clsx(
                 !modal.removeLayout && 'gap-[40px] p-[32px]',
                 'bg-[rgba(15,23,42,0.92)] backdrop-blur-xl border border-white/10 mx-auto flex flex-col w-fit rounded-[24px] relative animate-modalIn phone:!min-w-0 phone:!w-full phone:!max-w-full',
@@ -219,7 +258,7 @@ export const Component: FC<{
               onClick={(e) => e.stopPropagation()}
             >
               <div className="flex items-center">
-                <div className="text-[24px] font-[600] flex-1">
+                <div id={titleId} className="text-[24px] font-[600] flex-1">
                   {modal.title}
                 </div>
                 {typeof modal.withCloseButton === 'undefined' ||
@@ -228,6 +267,7 @@ export const Component: FC<{
                     <button
                       className="outline-none absolute end-[20px] top-[20px] mantine-UnstyledButton-root mantine-ActionIcon-root hover:bg-tableBorder cursor-pointer mantine-Modal-close mantine-1dcetaa"
                       type="button"
+                      aria-label="Close"
                       onClick={closeModalFunction}
                     >
                       <svg

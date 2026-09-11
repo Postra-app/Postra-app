@@ -74,7 +74,7 @@ export const AdminHealthComponent: FC = () => {
   if (isLoading) {
     return (
       <div className="text-textColor p-[20px] opacity-70">
-        {t('health_loading', 'Loading health data...')}
+        {t('admin_health_loading', 'Loading health data...')}
       </div>
     );
   }
@@ -82,33 +82,33 @@ export const AdminHealthComponent: FC = () => {
   if (error || !data) {
     return (
       <div className="text-red-400 p-[20px]">
-        {t('health_error', 'Failed to load system health.')}
+        {t('admin_health_error', 'Failed to load system health.')}
       </div>
     );
   }
 
   const isHealthy = data.overall === 'healthy';
   const services: { key: keyof HealthResponse['services']; label: string }[] = [
-    { key: 'database', label: t('health_service_database', 'Database') },
-    { key: 'redis', label: t('health_service_redis', 'Redis') },
-    { key: 'temporal', label: t('health_service_temporal', 'Temporal') },
+    { key: 'database', label: t('admin_health_service_database', 'Database') },
+    { key: 'redis', label: t('admin_health_service_redis', 'Redis') },
+    { key: 'temporal', label: t('admin_health_service_temporal', 'Temporal') },
   ];
 
   const metrics: { label: string; value: string; warn?: boolean }[] = [
     {
-      label: t('health_metric_users', 'Users'),
+      label: t('admin_health_metric_users', 'Users'),
       value: data.counts.users.toLocaleString(),
     },
     {
-      label: t('health_metric_orgs', 'Organizations'),
+      label: t('admin_health_metric_orgs', 'Organizations'),
       value: data.counts.organizations.toLocaleString(),
     },
     {
-      label: t('health_metric_posts', 'Posts'),
+      label: t('admin_health_metric_posts', 'Posts'),
       value: data.counts.posts.toLocaleString(),
     },
     {
-      label: t('health_metric_errors_24h', 'Errors (24h / total)'),
+      label: t('admin_health_metric_errors_24h', 'Errors (24h / total)'),
       value: `${data.errors24h.toLocaleString()} / ${data.counts.errors.toLocaleString()}`,
       warn: data.errors24h > 0,
     },
@@ -116,6 +116,7 @@ export const AdminHealthComponent: FC = () => {
 
   return (
     <div className="flex flex-col gap-[16px] text-textColor">
+      <h1 className="text-[20px] font-[600]">System Health</h1>
       {/* Overall status banner */}
       <div
         className={`flex items-center gap-[12px] px-[20px] py-[14px] rounded-[12px] border ${
@@ -131,8 +132,8 @@ export const AdminHealthComponent: FC = () => {
         />
         <span className="text-[18px] font-[600]">
           {isHealthy
-            ? t('health_status_healthy', 'Healthy')
-            : t('health_status_degraded', 'Degraded')}
+            ? t('admin_health_status_healthy', 'Healthy')
+            : t('admin_health_status_degraded', 'Degraded')}
         </span>
       </div>
 
@@ -183,7 +184,7 @@ export const AdminHealthComponent: FC = () => {
       <div className="grid grid-cols-1 md:grid-cols-3 gap-[12px]">
         <div className="bg-white/[0.03] border border-white/10 rounded-[12px] p-[16px]">
           <div className="text-[12px] opacity-60">
-            {t('health_disk', 'Host disk')}
+            {t('admin_health_disk', 'Host disk')}
           </div>
           {data.disk ? (
             <div
@@ -197,12 +198,12 @@ export const AdminHealthComponent: FC = () => {
               </span>
             </div>
           ) : (
-            <div className="text-[20px] font-[600] opacity-40">-</div>
+            <div className="text-[20px] font-[600] opacity-70">-</div>
           )}
         </div>
         <div className="bg-white/[0.03] border border-white/10 rounded-[12px] p-[16px]">
           <div className="text-[12px] opacity-60">
-            {t('health_host_ram', 'Host RAM free / swap used')}
+            {t('admin_health_host_ram', 'Host RAM free / swap used')}
           </div>
           {data.hostMemory ? (
             <div className="text-[20px] font-[600]">
@@ -212,17 +213,17 @@ export const AdminHealthComponent: FC = () => {
               </span>
             </div>
           ) : (
-            <div className="text-[20px] font-[600] opacity-40">-</div>
+            <div className="text-[20px] font-[600] opacity-70">-</div>
           )}
         </div>
         <div className="bg-white/[0.03] border border-white/10 rounded-[12px] p-[16px]">
           <div className="text-[12px] opacity-60">
-            {t('health_last_publish', 'Last published post')}
+            {t('admin_health_last_publish', 'Last published post')}
           </div>
           <div className="text-[20px] font-[600]">
             {data.lastPublishedAt
               ? new Date(data.lastPublishedAt).toLocaleString()
-              : t('health_never', 'never')}
+              : t('admin_health_never', 'never')}
           </div>
         </div>
       </div>
@@ -230,18 +231,18 @@ export const AdminHealthComponent: FC = () => {
       {/* System info */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-[12px]">
         <div className="bg-white/[0.03] border border-white/10 rounded-[12px] p-[16px]">
-          <div className="text-[12px] opacity-60">{t('health_uptime', 'Uptime')}</div>
+          <div className="text-[12px] opacity-60">{t('admin_health_uptime', 'Uptime')}</div>
           <div className="text-[20px] font-[600]">{formatUptime(data.uptime)}</div>
         </div>
         <div className="bg-white/[0.03] border border-white/10 rounded-[12px] p-[16px]">
-          <div className="text-[12px] opacity-60">{t('health_memory', 'Memory')}</div>
+          <div className="text-[12px] opacity-60">{t('admin_health_memory', 'Memory')}</div>
           <div className="text-[20px] font-[600]">
             {data.memoryMB}
             <span className="text-[13px] font-[400] opacity-60 ml-[4px]">MB</span>
           </div>
         </div>
         <div className="bg-white/[0.03] border border-white/10 rounded-[12px] p-[16px]">
-          <div className="text-[12px] opacity-60">{t('health_node', 'Node Version')}</div>
+          <div className="text-[12px] opacity-60">{t('admin_health_node', 'Node Version')}</div>
           <div className="text-[20px] font-[600]">{data.nodeVersion}</div>
         </div>
       </div>
