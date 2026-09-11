@@ -116,7 +116,7 @@ export const AdminHealthComponent: FC = () => {
 
   return (
     <div className="flex flex-col gap-[16px] text-textColor">
-      <h1 className="text-[20px] font-[600]">System Health</h1>
+      <h2 className="text-[20px] font-[600]">System Health</h2>
       {/* Overall status banner */}
       <div
         className={`flex items-center gap-[12px] px-[20px] py-[14px] rounded-[12px] border ${

@@ -132,7 +132,7 @@ export const AdminStatsComponent: FC = () => {
   return (
     <div className="flex flex-col gap-[16px] text-textColor">
       <div className="flex items-center justify-between">
-        <h1 className="text-[20px] font-[600]">Admin Stats</h1>
+        <h2 className="text-[20px] font-[600]">Admin Stats</h2>
         {/* The range that was asked for. Rendering data.to instead showed the
             server's 23:59:59 UTC read back in local time, i.e. tomorrow. */}
         <div className="text-[13px] opacity-70">

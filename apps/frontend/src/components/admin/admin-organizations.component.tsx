@@ -96,9 +96,13 @@ export const AdminOrganizationsComponent = () => {
   const tierLabel = (sub: OrgSubscription | null) =>
     sub?.subscriptionTier ?? 'FREE';
 
+  // Same source of truth as the label. An org with no subscription row *is*
+  // FREE, and reading `sub?.subscriptionTier` directly meant the missing-tier
+  // branch fired first and painted every such org with the error colour — the
+  // exact thing E2E-09-29 was about, which the first attempt at this left in
+  // place because its FREE branch could never be reached.
   const tierColor = (sub: OrgSubscription | null) => {
-    const tier = sub?.subscriptionTier;
-    if (!tier) return defaultBadgeColor;
+    const tier = tierLabel(sub);
     if (tier === 'FREE') {
       return freeBadgeColor;
     }
@@ -107,9 +111,9 @@ export const AdminOrganizationsComponent = () => {
 
   return (
     <div className="flex flex-col gap-[20px]">
-      <h1 className="text-[20px] font-[600]">
+      <h2 className="text-[20px] font-[600]">
         {t('admin_organizations', 'Organizations')}
-      </h1>
+      </h2>
 
       <div className="max-w-[500px]">
         <Input

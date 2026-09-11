@@ -240,7 +240,12 @@ export const Component: FC<{
               ref={panelRef}
               role="dialog"
               aria-modal="true"
-              aria-labelledby={titleId}
+              // Only when there is a title to point at. Several modals render
+              // their own header and open with no `title`, and a labelledby
+              // aimed at an empty node leaves the dialog with no name at all.
+              {...(modal.title
+                ? { 'aria-labelledby': titleId }
+                : { 'aria-label': 'Dialog' })}
               className={clsx(
                 !modal.removeLayout && 'gap-[40px] p-[32px]',
                 'bg-[rgba(15,23,42,0.92)] backdrop-blur-xl border border-white/10 mx-auto flex flex-col w-fit rounded-[24px] relative animate-modalIn phone:!min-w-0 phone:!w-full phone:!max-w-full',

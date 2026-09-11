@@ -162,7 +162,7 @@ export const AdminAiUsageComponent = () => {
   const header = (
     <div className="flex items-start justify-between flex-wrap gap-[8px]">
       <div>
-        <h1 className="text-[22px] font-[600]">{t('admin_ai_usage_title', 'AI Usage')}</h1>
+        <h2 className="text-[22px] font-[600]">{t('admin_ai_usage_title', 'AI Usage')}</h2>
         {data && (
           <p className="text-[13px] opacity-60 mt-[4px]">
             {new Date(data.from).toLocaleDateString()} —{' '}

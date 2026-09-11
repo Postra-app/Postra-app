@@ -18,18 +18,18 @@ describe('every admin tab', () => {
     expect(tabs).toHaveLength(10);
   });
 
-  it.each(tabs)('%s opens with a top-level heading', (file) => {
-    expect(read(file)).toMatch(/<h1[\s>]/);
+  // Four of them had no heading element at all, and the rest mixed h1 with h2
+  // (E2E-09-56). Every one opens with a heading now — an h2, because the app
+  // shell's topbar already renders the page's h1 (its <Title/>), so a tab
+  // adding its own h1 puts two on the page. Measured in the live DOM: with
+  // tab headings as h1 the admin pages carried "Admin" and "Admin Stats" both
+  // at level one.
+  it.each(tabs)('%s opens with a heading', (file) => {
+    expect(read(file)).toMatch(/<h2[\s>]/);
   });
 
-  it.each(tabs)('%s uses no second-level heading as its title', (file) => {
-    const source = read(file);
-    const firstH1 = source.search(/<h1[\s>]/);
-    const firstH2 = source.search(/<h2[\s>]/);
-    if (firstH2 === -1) {
-      return;
-    }
-    expect(firstH1).toBeLessThan(firstH2);
+  it.each(tabs)('%s leaves the h1 to the app shell', (file) => {
+    expect(read(file)).not.toMatch(/<h1[\s>]/);
   });
 });
 
@@ -83,5 +83,30 @@ describe('translation keys', () => {
     // The English fallback at the call site is the panel's only copy, by
     // decision. A locale entry would bring half-translated tables back.
     expect(translated).toEqual({});
+  });
+});
+
+// E2E-09-29: FREE fell through the tier colour map to the error red, so
+// perfectly ordinary accounts looked broken. The first attempt at this added a
+// FREE branch that could never run: an org with no subscription row *is* FREE,
+// and the missing-tier guard above it returned the error colour first.
+// Measured in the live DOM before this fix: the FREE badge still rendered with
+// a red-* class.
+describe('the tier badge', () => {
+  const source = read('admin-organizations.component.tsx');
+
+  it('reads the tier through the same helper the label uses', () => {
+    expect(source).toMatch(/const tierColor[\s\S]{0,200}?tierLabel\(sub\)/);
+  });
+
+  it('has no guard that can shadow the FREE branch', () => {
+    const body = source.slice(
+      source.indexOf('const tierColor'),
+      source.indexOf('const tierColor') + 400
+    );
+    const freeAt = body.indexOf("=== 'FREE'");
+    const guardAt = body.indexOf('if (!tier)');
+    expect(freeAt).toBeGreaterThan(-1);
+    expect(guardAt === -1 || freeAt < guardAt).toBe(true);
   });
 });
