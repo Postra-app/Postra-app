@@ -21,18 +21,40 @@ export class MobilePushService {
     if (!token) {
       return;
     }
+
+    // The token string is the only proof of device we have, and it leaks —
+    // into logs, device backups and support tickets. Do not let a caller claim
+    // a token already registered to a different account: that let any signed-in
+    // user push their organization's notifications onto someone else's device
+    // and silence its real owner. Legitimate device hand-off still works,
+    // because the previous user's logout unregisters the token first, freeing
+    // it for whoever signs in next on that device.
+    const existing = await this._pushToken.model.mobilePushToken.findUnique({
+      where: { token },
+      select: { userId: true },
+    });
+    if (existing && existing.userId !== userId) {
+      return;
+    }
+
     return this._pushToken.model.mobilePushToken.upsert({
       where: { token },
       create: { userId, organizationId, token, platform: platform || 'unknown' },
-      update: { userId, organizationId, platform: platform || 'unknown' },
+      // userId is never changed here: a different owner is rejected above, so
+      // this only ever refreshes the same user's org and platform.
+      update: { organizationId, platform: platform || 'unknown' },
     });
   }
 
-  async removeToken(token: string) {
-    if (!token) {
+  async removeToken(token: string, userId: string) {
+    if (!token || !userId) {
       return;
     }
-    await this._pushToken.model.mobilePushToken.deleteMany({ where: { token } });
+    // Scope to the caller: a user may only unregister their own device, never
+    // someone else's device by knowing the token string.
+    await this._pushToken.model.mobilePushToken.deleteMany({
+      where: { token, userId },
+    });
   }
 
   /** Best-effort push to every device registered for an organization. */
