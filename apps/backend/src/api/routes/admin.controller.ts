@@ -29,6 +29,19 @@ import {
 } from '@gitroom/backend/api/routes/admin.query';
 import { StripeService } from '@gitroom/nestjs-libraries/services/stripe.service';
 import { UsersService } from '@gitroom/nestjs-libraries/database/prisma/users/users.service';
+import { IntegrationManager } from '@gitroom/nestjs-libraries/integrations/integration.manager';
+import {
+  channelState,
+  isActionable,
+  expiresInSeconds,
+  CHANNEL_STATES,
+  ChannelState,
+} from '@gitroom/nestjs-libraries/database/prisma/integrations/channel.state';
+import {
+  channelStateWhere,
+  notScheduledWhere,
+} from '@gitroom/nestjs-libraries/database/prisma/integrations/channel.state.query';
+import { canPostComments, grantedScopesOf } from '@gitroom/nestjs-libraries/integrations/social/comment.capability';
 
 @ApiTags('Admin')
 @Controller('/admin')
@@ -41,7 +54,8 @@ export class AdminController {
     private _auditService: AuditService,
     private _aiUsageService: AiUsageService,
     private _stripeService: StripeService,
-    private _userService: UsersService
+    private _userService: UsersService,
+    private _integrationManager: IntegrationManager
   ) {}
 
   private assertSuperAdmin(user: User) {
@@ -1143,6 +1157,227 @@ export class AdminController {
     const result = await this._userService.deleteOrganization(org.id);
 
     return { deleted: true, ...result };
+  }
+
+  /**
+   * Which providers put a channel under a scheduled refresh workflow.
+   *
+   * Read off the providers rather than listed here, so `refreshCron = true` on
+   * a new provider is enough — today it is instagram-standalone, threads and
+   * whop, and a list in a comment would be wrong the first time that changes.
+   */
+  private scheduledProviders(): string[] {
+    return this._integrationManager
+      .getAllowedSocialsIntegrations()
+      .filter(
+        (identifier) =>
+          !!this._integrationManager.getSocialIntegration(identifier)
+            ?.refreshCron
+      );
+  }
+
+  /**
+   * Every channel, with the state of its token — and none of its token.
+   *
+   * The one customer request out of six the panel still could not answer:
+   * "my channel keeps disconnecting" (05-gaps §1e). The panel showed no token
+   * state at all — not `tokenExpiration`, not `refreshNeeded`, not `disabled`
+   * — so the only way to see it was running the refresh command over SSM, and
+   * that output conflated a short-lived token with a dead one (E2E-09-59).
+   *
+   * ⛔ `token` and `refreshToken` are absent from the select, not selected and
+   * then deleted. There is no code path here that could leak one by being
+   * edited carelessly later, and `admin.integrations.spec.ts` asserts it on
+   * the serialised response.
+   */
+  @Get('/integrations')
+  async listIntegrations(
+    @GetUserFromRequest() user: User,
+    @Query('page') page?: string,
+    @Query('limit') limit?: string,
+    @Query('organizationId') organizationId?: string,
+    @Query('provider') provider?: string,
+    @Query('state') state?: string,
+    @Query('search') search?: string,
+    @Query('includeDeleted') includeDeleted?: string
+  ) {
+    this.assertSuperAdmin(user);
+    const paging = parsePaging(page, limit);
+    const now = new Date();
+    const withDeleted = includeDeleted === 'true';
+
+    if (state && !CHANNEL_STATES.includes(state as ChannelState)) {
+      throw new HttpException(`Unknown state: ${state}`, 400);
+    }
+
+    const base: Record<string, unknown> = {
+      ...(withDeleted ? {} : { deletedAt: null }),
+      ...(organizationId ? { organizationId } : {}),
+      ...(provider ? { providerIdentifier: provider } : {}),
+      ...(search
+        ? {
+            OR: [
+              { name: { contains: search, mode: 'insensitive' as const } },
+              {
+                organization: {
+                  name: { contains: search, mode: 'insensitive' as const },
+                },
+              },
+            ],
+          }
+        : {}),
+    };
+
+    // The state filter carries its own `deletedAt`, and two `OR` keys in one
+    // object would overwrite each other — so the pieces are ANDed rather than
+    // spread together.
+    const where = {
+      AND: [base, ...(state ? [channelStateWhere(state as ChannelState, now)] : [])],
+    };
+
+    const [rows, total, summary] = await Promise.all([
+      this._prisma.integration.findMany({
+        where,
+        take: paging.limit,
+        skip: paging.skip,
+        // Worst first: a channel the customer is complaining about should not
+        // be on page three.
+        orderBy: [{ refreshNeeded: 'desc' }, { tokenExpiration: 'asc' }],
+        select: {
+          id: true,
+          internalId: true,
+          name: true,
+          picture: true,
+          providerIdentifier: true,
+          profile: true,
+          disabled: true,
+          inBetweenSteps: true,
+          refreshNeeded: true,
+          tokenExpiration: true,
+          grantedScopes: true,
+          createdAt: true,
+          updatedAt: true,
+          deletedAt: true,
+          customer: { select: { id: true, name: true } },
+          organization: { select: { id: true, name: true } },
+        },
+      }),
+      this._prisma.integration.count({ where }),
+      this.channelSummary(base, now),
+    ]);
+
+    const scheduled = new Set(this.scheduledProviders());
+
+    return {
+      items: rows.map((row) => {
+        const rowState = channelState(row, now.getTime());
+        const isScheduled = scheduled.has(row.providerIdentifier);
+        const socialProvider = (() => {
+          try {
+            return this._integrationManager.getSocialIntegration(
+              row.providerIdentifier
+            );
+          } catch {
+            return null;
+          }
+        })();
+
+        return {
+          id: row.id,
+          internalId: row.internalId,
+          name: row.name,
+          picture: row.picture,
+          provider: row.providerIdentifier,
+          profile: row.profile,
+          state: rowState,
+          scheduled: isScheduled,
+          actionable: isActionable(rowState, isScheduled),
+          tokenExpiration: row.tokenExpiration,
+          expiresInSeconds: expiresInSeconds(row.tokenExpiration, now.getTime()),
+          // null means the column predates this channel, which is not the same
+          // as a platform that granted nothing — the difference decides
+          // whether a reconnect would actually help (05-gaps §8.1).
+          grantedScopes: row.grantedScopes ? grantedScopesOf(row) : null,
+          commentScope: socialProvider?.commentScope ?? null,
+          commentCapable: canPostComments(socialProvider, row),
+          customer: row.customer,
+          organization: row.organization,
+          createdAt: row.createdAt,
+          updatedAt: row.updatedAt,
+          deletedAt: row.deletedAt,
+        };
+      }),
+      total,
+      page: paging.page,
+      limit: paging.limit,
+      hasMore: paging.skip + rows.length < total,
+      summary,
+    };
+  }
+
+  /**
+   * The headline counts, over the whole filtered set rather than the page.
+   *
+   * Counting the page is how a header ends up saying "3 need a reconnect"
+   * while page two holds a fourth — the same class of mistake as the scrub
+   * report and the refresh counter, both of which summarised the part they
+   * happened to be holding.
+   */
+  private async channelSummary(
+    base: Record<string, unknown>,
+    now: Date
+  ): Promise<Record<string, number>> {
+    const notScheduled = notScheduledWhere(this.scheduledProviders());
+
+    const counts = await Promise.all(
+      CHANNEL_STATES.map((state) =>
+        this._prisma.integration.count({
+          where: { AND: [base, channelStateWhere(state, now)] },
+        })
+      )
+    );
+
+    const byState = CHANNEL_STATES.reduce<Record<string, number>>(
+      (all, state, index) => ({ ...all, [state]: counts[index] }),
+      {}
+    );
+
+    // The only count an operator should act on, and the one the CLI prints:
+    // a reconnect, an unfinished setup, or a token already dead on a channel
+    // no workflow is watching.
+    const expiredUnwatched = await this._prisma.integration.count({
+      where: {
+        AND: [base, channelStateWhere('expired', now), notScheduled],
+      },
+    });
+
+    return {
+      ...byState,
+      actionable:
+        byState['needs-reconnect'] +
+        byState['setup-incomplete'] +
+        expiredUnwatched,
+      expiredUnwatched,
+    };
+  }
+
+  /** The providers actually connected, so the filter cannot offer an empty result. */
+  @Get('/integrations/providers')
+  async listIntegrationProviders(@GetUserFromRequest() user: User) {
+    this.assertSuperAdmin(user);
+    const rows = await this._prisma.integration.groupBy({
+      by: ['providerIdentifier'],
+      _count: { _all: true },
+      orderBy: { providerIdentifier: 'asc' },
+    });
+
+    const scheduled = new Set(this.scheduledProviders());
+
+    return rows.map((row) => ({
+      provider: row.providerIdentifier,
+      channels: row._count._all,
+      scheduled: scheduled.has(row.providerIdentifier),
+    }));
   }
 
 }
