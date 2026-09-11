@@ -1,5 +1,9 @@
-import { Injectable } from '@nestjs/common';
-import { pricing } from '@gitroom/nestjs-libraries/database/prisma/subscriptions/pricing';
+import { HttpException, Injectable } from '@nestjs/common';
+import {
+  COMPABLE_TIERS,
+  isCompableTier,
+  pricing,
+} from '@gitroom/nestjs-libraries/database/prisma/subscriptions/pricing';
 import { SubscriptionRepository } from '@gitroom/nestjs-libraries/database/prisma/subscriptions/subscription.repository';
 import { IntegrationService } from '@gitroom/nestjs-libraries/database/prisma/integrations/integration.service';
 import { OrganizationService } from '@gitroom/nestjs-libraries/database/prisma/organizations/organization.service';
@@ -280,11 +284,13 @@ export class SubscriptionService {
   ) {
     if (!code) {
       try {
-        const load = await this.modifySubscription(
-          customerId,
-          totalChannels,
-          billing
-        );
+        // Addressed by org (an admin comp) rather than by Stripe customer:
+        // modifySubscription resolves the org through paymentId and would bail
+        // on an org that has never paid.
+        const load =
+          org && !customerId
+            ? await this.modifySubscriptionByOrg(org, totalChannels, billing)
+            : await this.modifySubscription(customerId, totalChannels, billing);
         if (!load) {
           return {};
         }
@@ -509,12 +515,58 @@ export class SubscriptionService {
     };
   }
 
-  async addSubscription(orgId: string, userId: string, subscription: any) {
-    await this._subscriptionRepository.setCustomerId(orgId, userId);
+  /**
+   * Put an organization on a paid tier without a payment — a test account, a
+   * compensation, an account we owe a plan to.
+   *
+   * This used to open with `setCustomerId(orgId, userId)`, which wrote the
+   * *user's* id into `organization.paymentId`. That column is the org's only
+   * handle on Stripe, so one call replaced a live `cus_…` with a value Stripe
+   * has never heard of, and every later webhook for that org — renewal, failed
+   * payment, cancellation — silently matched no organization. It was the root
+   * cause of the "No such customer" class (E2E-09-09). Nothing writes
+   * paymentId here any more.
+   */
+  async addSubscription(
+    orgId: string,
+    userId: string,
+    subscription: string
+  ): Promise<any> {
+    // Validate before the first write. The tier used to be an unvalidated
+    // string indexed straight into `pricing`: an unknown key threw a 500 and
+    // `__proto__` resolved to Object.prototype and returned a quiet 200 — both
+    // of them *after* the destructive write above (E2E-09-40).
+    if (!isCompableTier(subscription)) {
+      throw new HttpException(
+        `Unknown subscription tier "${subscription}". Expected one of ${COMPABLE_TIERS.join(
+          ', '
+        )}.`,
+        400
+      );
+    }
+
+    // An org that pays through Stripe must be changed in Stripe. Comping it
+    // here would leave the two disagreeing, and the next webhook would
+    // overwrite whatever we wrote.
+    const paymentId = await this._subscriptionRepository.getPaymentId(orgId);
+    if (paymentId?.startsWith('cus_')) {
+      throw new HttpException(
+        'This organization has a live Stripe customer — change the plan in Stripe instead.',
+        400
+      );
+    }
+
+    this._auditService.record({
+      action: 'subscription.comp',
+      organizationId: orgId,
+      userId,
+      metadata: { tier: subscription },
+    });
+
     return this.createOrUpdateSubscription(
       false,
       makeId(5),
-      userId,
+      '', // no Stripe customer: this grant is addressed by org id
       pricing[subscription].channel!,
       subscription,
       'MONTHLY',

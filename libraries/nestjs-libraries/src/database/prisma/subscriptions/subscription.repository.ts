@@ -210,6 +210,14 @@ export class SubscriptionRepository {
     });
   }
 
+  async getPaymentId(orgId: string) {
+    const org = await this._organization.model.organization.findUnique({
+      where: { id: orgId },
+      select: { paymentId: true },
+    });
+    return org?.paymentId ?? null;
+  }
+
   async getOrganizationByCustomerId(customerId: string) {
     return this._organization.model.organization.findFirst({
       where: {
@@ -241,7 +249,12 @@ export class SubscriptionRepository {
       this._subscription.model.subscription.upsert({
       where: {
         organizationId: findOrg.id,
-        ...(!code
+        // Narrowing by paymentId is the guard that a Stripe webhook is writing
+        // to the org that customer really owns. When the caller named the org
+        // outright — an admin comp, a lifetime grant — there is no customer to
+        // match, and demanding one is what pushed `addSubscription` into
+        // overwriting paymentId to make its own upsert fit (E2E-09-09).
+        ...(!code && !org
           ? {
               organization: {
                 paymentId: customerId,
@@ -405,14 +418,4 @@ export class SubscriptionRepository {
     }
   }
 
-  setCustomerId(orgId: string, customerId: string) {
-    return this._organization.model.organization.update({
-      where: {
-        id: orgId,
-      },
-      data: {
-        paymentId: customerId,
-      },
-    });
-  }
 }

@@ -204,3 +204,24 @@ export const channelLimitFor = (org?: {
   const base = org?.subscription?.totalChannels || pricing.FREE.channel || 0;
   return org?.isTrailing ? Math.min(base, TRIAL_CHANNEL_CAP) : base;
 };
+
+/**
+ * The tiers an admin may put an organization on without a payment.
+ *
+ * `pricing` also holds FREE, but FREE is not a `SubscriptionTier` in the
+ * database — Prisma rejects the value, and the only route to FREE is deleting
+ * the subscription row. Anything outside this list reaching the comp path used
+ * to be a 500, or, for `__proto__`, a quiet 200 (E2E-09-40).
+ *
+ * TEAM is left out for the same reason it is not purchasable: it is a hidden
+ * legacy plan that undercuts Business, and "give them everything" is what
+ * ULTIMATE is for.
+ */
+export const COMPABLE_TIERS = ['STANDARD', 'PRO', 'ULTIMATE'] as const;
+
+export type CompableTier = (typeof COMPABLE_TIERS)[number];
+
+export const isCompableTier = (value: unknown): value is CompableTier =>
+  typeof value === 'string' &&
+  (COMPABLE_TIERS as readonly string[]).includes(value) &&
+  Object.prototype.hasOwnProperty.call(pricing, value);

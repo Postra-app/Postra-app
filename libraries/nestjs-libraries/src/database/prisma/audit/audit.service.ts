@@ -12,6 +12,7 @@ export type AuditAction =
   | 'admin.revoke-admin'
   | 'integration.connect'
   | 'integration.disconnect'
+  | 'subscription.comp'
   | 'subscription.change'
   | 'subscription.delete'
   | 'security.apikey.rotate';

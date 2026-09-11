@@ -3,13 +3,19 @@ const listCharges = jest.fn();
 const retrieveCustomer = jest.fn();
 const createCustomer = jest.fn();
 
-jest.mock('stripe', () =>
-  jest.fn().mockImplementation(() => ({
+jest.mock('stripe', () => {
+  // Keep the real `errors` namespace on the mock: the rejections below have to
+  // be built by the SDK, or they carry a shape production never produces
+  // (E2E-07-02).
+  const actual = jest.requireActual('stripe');
+  const mock: any = jest.fn().mockImplementation(() => ({
     subscriptions: { list: listSubscriptions },
     charges: { list: listCharges },
     customers: { retrieve: retrieveCustomer, create: createCustomer },
-  }))
-);
+  }));
+  mock.errors = actual.errors ?? actual.default?.errors;
+  return mock;
+});
 
 // The services below are only ever injected here, but importing them for real
 // drags in integration.manager → nostr-tools, which is ESM and stops jest dead.
@@ -35,10 +41,13 @@ jest.mock('@gitroom/nestjs-libraries/track/track.service', () => ({
 
 import { StripeService } from '@gitroom/nestjs-libraries/services/stripe.service';
 
-const noSuchCustomer = Object.assign(new Error("No such customer: 'cus_dead'"), {
+// eslint-disable-next-line @typescript-eslint/no-var-requires
+const noSuchCustomer = (require('stripe') as any).errors.StripeError.generate({
   type: 'invalid_request_error',
   code: 'resource_missing',
   param: 'customer',
+  message: "No such customer: 'cus_dead'",
+  statusCode: 400,
 });
 
 const org = (paymentId: string | null) => ({ id: 'org-1', paymentId, name: 'Acme' });

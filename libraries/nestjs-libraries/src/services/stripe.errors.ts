@@ -15,6 +15,7 @@
 export function isMissingCustomerError(err: unknown): boolean {
   const e = err as {
     type?: string;
+    rawType?: string;
     code?: string;
     param?: string;
     message?: string;
@@ -24,7 +25,14 @@ export function isMissingCustomerError(err: unknown): boolean {
     return false;
   }
 
-  if (e.type !== 'invalid_request_error' || e.code !== 'resource_missing') {
+  // The SDK puts the API's error type in `rawType`; `type` holds the *class*
+  // name (`StripeInvalidRequestError`). Reading `type` alone matched an object
+  // built by hand in a spec and never matched a real rejection, which is how
+  // this shipped with ten green tests and no effect on production
+  // (e2e/bugs.md — E2E-07-02). Verified against stripe@20.4.0.
+  const apiType = e.rawType ?? e.type;
+
+  if (apiType !== 'invalid_request_error' || e.code !== 'resource_missing') {
     return false;
   }
 
