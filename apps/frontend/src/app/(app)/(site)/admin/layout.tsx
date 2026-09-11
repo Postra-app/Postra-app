@@ -42,7 +42,32 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
   }
 
   return (
-    <div className="flex-1 flex min-w-0" style={{ background: ADMIN_BG }}>
+    <>
+      {/* The panel is a desktop tool and says so, rather than rendering a
+          layout it cannot fit. Below ~900px the fixed 230px sidebar leaves
+          less room than the narrowest table needs, and the app shell clips
+          the overflow instead of scrolling it — at 390px that hid 458px of
+          every row, the View and Copy buttons included (E2E-09-48,
+          E2E-09-52). */}
+      <div
+        className="hidden adminNarrow:flex flex-1 flex-col items-center justify-center gap-[8px] text-center px-[24px] py-[48px]"
+        style={{ background: ADMIN_BG }}
+      >
+        <div className="text-[15px] font-[600] text-newTextColor">
+          {t('admin_needs_wider_screen', 'The admin panel needs a wider screen')}
+        </div>
+        <div className="text-[13px] text-newTextColor/60 max-w-[320px]">
+          {t(
+            'admin_needs_wider_screen_note',
+            'Its tables do not fit on a phone. Open it on a laptop or a desktop.'
+          )}
+        </div>
+      </div>
+
+      <div
+        className="adminNarrow:hidden flex-1 flex min-w-0"
+        style={{ background: ADMIN_BG }}
+      >
       {/* Sidebar */}
       <aside className="w-[230px] shrink-0 border-r border-white/10 bg-white/[0.02] py-[18px] px-[12px]">
         <div className="flex items-center gap-[9px] px-[10px] pb-[16px] font-[700] text-[15px] text-newTextColor">
@@ -78,6 +103,7 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
 
       {/* Content */}
       <div className="flex-1 flex flex-col min-w-0">{children}</div>
-    </div>
+      </div>
+    </>
   );
 }

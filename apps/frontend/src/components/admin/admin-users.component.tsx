@@ -306,8 +306,8 @@ export const AdminUsersComponent = () => {
         </Button>
       </div>
 
-      <div className="rounded-[8px] border border-white/10 overflow-hidden">
-        <table className="w-full">
+      <div className="rounded-[8px] border border-white/10 overflow-hidden overflow-x-auto">
+        <table className="w-full min-w-[810px]">
           <thead>
             <tr className="text-left border-b border-white/10 bg-white/[0.03]">
               <th className="p-[12px] text-[13px] font-[500] text-newTextColor/60">

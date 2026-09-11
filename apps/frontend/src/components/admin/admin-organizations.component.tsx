@@ -119,8 +119,11 @@ export const AdminOrganizationsComponent = () => {
         />
       </div>
 
-      <div className="rounded-[8px] border border-white/10 overflow-hidden">
-        <table className="w-full">
+      <div className="rounded-[8px] border border-white/10 overflow-hidden overflow-x-auto">
+        {/* overflow-x-auto, not overflow-hidden: the app shell clips its own
+            overflow, so anything past the edge was unreachable rather than
+            scrollable (E2E-09-49). */}
+        <table className="w-full min-w-[560px]">
           <thead>
             <tr className="text-left border-b border-white/10 bg-white/[0.03]">
               <th className="p-[12px] text-[13px] font-[500] text-newTextColor/60">

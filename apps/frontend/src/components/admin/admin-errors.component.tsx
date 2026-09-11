@@ -361,8 +361,15 @@ export const AdminErrorsComponent: FC = () => {
       ) : !data || data.items.length === 0 ? (
         <div className="opacity-70">No errors found.</div>
       ) : (
-        <div className="border border-newTableBorder rounded-[8px] overflow-hidden">
-          <div className="grid grid-cols-[170px_120px_220px_1fr_220px] gap-[12px] px-[12px] py-[10px] bg-white/[0.03] text-[12px] uppercase opacity-70 border-b border-newTableBorder">
+        <div className="border border-newTableBorder rounded-[8px] overflow-hidden overflow-x-auto">
+          {/* overflow-x-auto, not overflow-hidden: the app shell clips its own
+              overflow, so the columns past the edge were unreachable rather
+              than scrollable. At 390px that hid 458px of every row — the View
+              and Copy buttons among them (E2E-09-48). The min-width sits on an
+              inner wrapper so the header and rows stay aligned while
+              scrolling. */}
+          <div className="min-w-[810px]">
+            <div className="grid grid-cols-[170px_120px_220px_1fr_220px] gap-[12px] px-[12px] py-[10px] bg-white/[0.03] text-[12px] uppercase opacity-70 border-b border-newTableBorder">
             <div>Created</div>
             <div>Platform</div>
             <div>User / Org</div>
@@ -417,6 +424,7 @@ export const AdminErrorsComponent: FC = () => {
               </div>
             );
           })}
+          </div>
         </div>
       )}
 

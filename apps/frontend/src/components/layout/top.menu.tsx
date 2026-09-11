@@ -5,6 +5,7 @@ import { useUser } from '@gitroom/frontend/components/layout/user.context';
 import { useVariables } from '@gitroom/react/helpers/variable.context';
 import { useT } from '@gitroom/react/translation/get.transation.service.client';
 import { MenuItem } from '@gitroom/frontend/components/new-layout/menu-item';
+import { canSeeMenuEntry } from '@gitroom/frontend/components/layout/menu.visibility';
 
 interface MenuItemInterface {
   name: ReactNode;
@@ -321,31 +322,7 @@ export const TopMenu: FC = () => {
             // @ts-expect-error user.tier is typed as PricingInnerInterface, compared to a string literal
             (user.tier !== 'FREE' || !isGeneral || !billingEnabled) &&
             firstMenu
-              .filter((f) => {
-                if (f.hide) {
-                  return false;
-                }
-                // While impersonating, the backend keeps isSuperAdmin=true on
-                // the session (so the admin can un-impersonate), but the whole
-                // point is to see the app as the real user does — so hide the
-                // admin-only entries here.
-                if (f.superAdminOnly && (!user?.isSuperAdmin || user?.impersonate)) {
-                  return false;
-                }
-                if (f.requireBilling && !billingEnabled) {
-                  return false;
-                }
-                // Compare by path, not name — the name is translated (PL:
-                // "Rozliczenia"), so a name check silently stops working
-                // outside the English locale.
-                if (f.path === '/billing' && user?.isLifetime) {
-                  return false;
-                }
-                if (f.role) {
-                  return f.role.includes(user?.role!);
-                }
-                return true;
-              })
+              .filter((f) => canSeeMenuEntry(f, user, billingEnabled))
               .map((item, index) => (
                 <MenuItem
                   path={item.path}
@@ -359,26 +336,7 @@ export const TopMenu: FC = () => {
       </div>
       <div className="flex flex-col minCustom:gap-[16px] blurMe w-full items-center pt-[4px]">
         {secondMenu
-          .filter((f) => {
-            if (f.hide) {
-              return false;
-            }
-            // Impersonation hides admin-only entries — see the firstMenu note.
-            if (f.superAdminOnly && (!user?.isSuperAdmin || user?.impersonate)) {
-              return false;
-            }
-            if (f.requireBilling && !billingEnabled) {
-              return false;
-            }
-            // Path, not translated name — see the firstMenu filter above.
-            if (f.path === '/billing' && user?.isLifetime) {
-              return false;
-            }
-            if (f.role) {
-              return f.role.includes(user?.role!);
-            }
-            return true;
-          })
+          .filter((f) => canSeeMenuEntry(f, user, billingEnabled))
           .map((item, index) => (
             <MenuItem
               path={item.path}
