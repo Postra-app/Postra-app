@@ -11,6 +11,7 @@ import {
   AUTH_CACHE_TTL_SECONDS,
   authContextCacheKey,
   bustAuthContextCache,
+  claimLastOnlineWrite,
 } from '@gitroom/nestjs-libraries/redis/auth-context.cache';
 import {
   AuditActor,
@@ -79,6 +80,20 @@ export class AuthMiddleware implements NestMiddleware {
       if (!payload?.id) {
         throw new HttpForbiddenException();
       }
+
+      // Mark the authenticated human as seen — the admin, when a session is
+      // impersonating, since an admin looking around is not the customer being
+      // active. Throttled to one write per user per window and never awaited.
+      claimLastOnlineWrite(payload.id)
+        .then((claimed) => {
+          if (claimed) {
+            return this._userService.touchLastOnline(payload.id!);
+          }
+          return undefined;
+        })
+        // Nothing about being seen is worth failing a request, or an
+        // unhandled rejection, over.
+        .catch(() => undefined);
 
       const cacheKey = authContextCacheKey(payload.id);
       const cached = await ioRedis.get(cacheKey).catch(() => null);

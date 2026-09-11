@@ -12,6 +12,19 @@ export class UsersRepository {
     private _media: PrismaRepository<'media'>
   ) {}
 
+  /**
+   * Mark a user as seen. Fire-and-forget and already throttled by the caller:
+   * a failure here must never touch the request it rode in on.
+   */
+  touchLastOnline(id: string) {
+    return this._user.model.user
+      .update({
+        where: { id },
+        data: { lastOnline: new Date() },
+      })
+      .catch(() => undefined);
+  }
+
   getImpersonateUser(name: string) {
     return this._user.model.user.findMany({
       where: {

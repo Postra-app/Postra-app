@@ -635,8 +635,15 @@ export class AdminController {
       }),
     ]);
 
+    // Prisma deserialises a `date` column into a Date object, so `String(...)`
+    // gave "Wed Sep 09 2026 00:00:00 GMT+0000" and slicing ten characters left
+    // "Wed Sep 09". The front end reads this as ISO, so the twelve-month chart
+    // ended up labelled with bare day numbers — no month, no year (E2E-09-04).
     const serialize = (rows: Array<{ day: string; count: bigint }>) =>
-      rows.map((r) => ({ day: String(r.day).slice(0, 10), count: Number(r.count) }));
+      rows.map((r) => ({
+        day: dayjs(r.day).format('YYYY-MM-DD'),
+        count: Number(r.count),
+      }));
 
     return {
       totals: { users: totalUsers, organizations: totalOrgs },

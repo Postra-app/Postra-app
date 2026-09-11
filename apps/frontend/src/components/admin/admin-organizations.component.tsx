@@ -68,9 +68,12 @@ export const AdminOrganizationsComponent = () => {
     `/admin/organizations-${page}-${search}`,
     load,
     {
+      // revalidateIfStale stays on: with it off, coming back to this tab
+      // inside the same SPA session re-used the cached page and made no
+      // request at all, so a tier changed from Users showed the old value
+      // until a full reload (E2E-09-15). Measured: two returns, zero fetches.
       revalidateOnFocus: false,
       revalidateOnReconnect: false,
-      revalidateIfStale: false,
       refreshInterval: 0,
     }
   );

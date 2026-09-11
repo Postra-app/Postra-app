@@ -5,6 +5,11 @@ import useSWR from 'swr';
 import { useFetch } from '@gitroom/helpers/utils/custom.fetch';
 import { useT } from '@gitroom/react/translation/get.transation.service.client';
 import { adminSegment } from './admin-ui';
+import {
+  axisLabel,
+  fullLabel,
+  today,
+} from '@gitroom/frontend/components/admin/admin-dates';
 
 interface ChartPoint {
   day: string;
@@ -29,7 +34,7 @@ const PERIODS: { label: string; days: number }[] = [
   { label: '12m', days: 365 },
 ];
 
-const isoToday = () => new Date().toISOString().slice(0, 10);
+
 
 const MetricCard = ({ label, value }: { label: string; value: number }) => (
   <div className="border border-white/10 rounded-[12px] p-[16px] bg-white/[0.03]">
@@ -63,10 +68,7 @@ const BarChart = ({
           // switch to month/day so the axis stays readable.
           const labelEvery = Math.max(1, Math.ceil(data.length / 24));
           const showLabel = index % labelEvery === 0;
-          const dayLabel =
-            data.length > 40
-              ? point.day.slice(5).replace('-', '/')
-              : point.day.slice(-2).replace(/^0/, '');
+          const dayLabel = axisLabel(point.day, data.length);
           return (
             <div
               key={point.day}
@@ -75,7 +77,7 @@ const BarChart = ({
               <div
                 className={`w-full min-h-[2px] rounded-t-[2px] ${color}`}
                 style={{ height: `${height}%` }}
-                title={`${point.day}: ${point.count}`}
+                title={`${fullLabel(point.day)}: ${point.count}`}
               />
               <div className="text-[9px] text-newTextColor opacity-50 mt-[4px] whitespace-nowrap">
                 {showLabel ? dayLabel : ' '}
@@ -92,8 +94,8 @@ export const AdminGrowthComponent = () => {
   const fetch = useFetch();
   const t = useT();
   const [days, setDays] = useState<number>(30);
-  const [fromInput, setFromInput] = useState(isoToday());
-  const [toInput, setToInput] = useState(isoToday());
+  const [fromInput, setFromInput] = useState(today());
+  const [toInput, setToInput] = useState(today());
   // null = preset mode (days); set = custom from/to range
   const [customRange, setCustomRange] = useState<{
     from: string;

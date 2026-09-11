@@ -52,7 +52,10 @@ const build = (target: any) => {
     ]),
     updateApiKey: jest.fn(),
   };
-  const userService = { getUserById: jest.fn().mockResolvedValue({ ...admin }) };
+  const userService = {
+    getUserById: jest.fn().mockResolvedValue({ ...admin }),
+    touchLastOnline: jest.fn().mockResolvedValue(undefined),
+  };
   return {
     middleware: new AuthMiddleware(
       organizationService as any,

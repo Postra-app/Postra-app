@@ -14,6 +14,10 @@ export class UsersService {
     private _prisma: PrismaService
   ) {}
 
+  touchLastOnline(id: string) {
+    return this._usersRepository.touchLastOnline(id);
+  }
+
   getUserByEmail(email: string) {
     return this._usersRepository.getUserByEmail(email);
   }
