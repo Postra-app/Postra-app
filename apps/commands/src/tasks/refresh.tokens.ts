@@ -27,6 +27,32 @@ export class RefreshTokens {
       }, ${failed.length} failed`
     );
 
+    // "Due" means the token expires inside 24 hours, which for YouTube (about
+    // an hour) and TikTok (23 hours) is the permanent steady state rather than
+    // a problem — those refresh reactively on a 401 while publishing. Reported
+    // apart, so the headline count stops reading as an incident: what an
+    // operator acts on is a token already expired on a channel that no
+    // scheduled workflow is watching (E2E-09-59).
+    const expired = refreshed.filter((c) => (c.expiredFor ?? 0) > 0);
+    const unwatched = expired.filter((c) => !c.scheduled);
+    const hours = (seconds: number) => Math.round(seconds / 3600);
+
+    console.log(
+      `  already expired: ${expired.length}, of which not on a scheduled refresh: ${unwatched.length}`
+    );
+    for (const channel of expired) {
+      console.log(
+        `  ${channel.scheduled ? 'SCHEDULED' : 'REACTIVE '} ${
+          channel.provider
+        } expired ${hours(channel.expiredFor ?? 0)}h ago — ${channel.name}`
+      );
+    }
+    if (!expired.length) {
+      console.log(
+        '  nothing is overdue — the rest expire within the next 24h, which is normal for short-lived tokens'
+      );
+    }
+
     // Printed per channel, because the loop used to stop at the first failure
     // and say nothing at all (E2E-09-43).
     for (const channel of failed) {
