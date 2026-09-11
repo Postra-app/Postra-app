@@ -25,6 +25,11 @@ interface ChannelItem {
   provider: string;
   profile: string | null;
   state: ChannelState;
+  flags: {
+    refreshNeeded: boolean;
+    disabled: boolean;
+    inBetweenSteps: boolean;
+  };
   scheduled: boolean;
   actionable: boolean;
   tokenExpiration: string | null;
@@ -69,6 +74,29 @@ interface ProviderRow {
  * why a channel expiring within the day is usually nothing — the sentence is
  * the feature, not decoration.
  */
+/**
+ * What else is set on this channel beyond the one word on the badge.
+ *
+ * `state` reports the first rule that matched, by design — the order is the
+ * order of what to tell the customer. That makes a second flag invisible: a
+ * channel switched off after a downgrade that also failed its refresh reads
+ * only as "Disabled". The advice is still right, but the operator should be
+ * able to see the rest.
+ */
+const alsoTrue = (item: ChannelItem): string[] => {
+  const also: string[] = [];
+  if (item.flags?.disabled && item.state !== 'disabled') {
+    also.push('switched off');
+  }
+  if (item.flags?.refreshNeeded && item.state !== 'needs-reconnect') {
+    also.push('a refresh has failed');
+  }
+  if (item.flags?.inBetweenSteps && item.state !== 'setup-incomplete') {
+    also.push('the connect flow never finished');
+  }
+  return also;
+};
+
 export const AdminChannelsComponent = () => {
   const fetch = useFetch();
   const t = useT();
@@ -419,6 +447,15 @@ export const AdminChannelsComponent = () => {
                       <td colSpan={7} className="p-[12px]">
                         <div className="flex flex-col gap-[8px] text-[12px] text-newTextColor/70">
                           <div>{CHANNEL_STATE_COPY[item.state]?.hint}</div>
+                          {/* The badge shows the first rule that matched, so
+                              anything else that is also true says so here
+                              rather than disappearing behind it. */}
+                          {alsoTrue(item).length > 0 && (
+                            <div>
+                              {t('admin_channels_also', 'Also true')}:{' '}
+                              {alsoTrue(item).join(', ')}
+                            </div>
+                          )}
                           <div>
                             {t('admin_channels_expires_at', 'Expires')}:{' '}
                             {item.tokenExpiration

@@ -1353,6 +1353,16 @@ export class AdminController {
           provider: row.providerIdentifier,
           profile: row.profile,
           state: rowState,
+          // The raw flags travel beside the verdict, because `state` reports
+          // only the first one that matched. A channel switched off after a
+          // downgrade AND carrying a failed refresh reads as "Disabled" —
+          // correct as advice, since the answer is the plan, but it would
+          // hide the second flag entirely if these did not come with it.
+          flags: {
+            refreshNeeded: !!row.refreshNeeded,
+            disabled: !!row.disabled,
+            inBetweenSteps: !!row.inBetweenSteps,
+          },
           scheduled: isScheduled,
           actionable: isActionable(rowState, isScheduled),
           tokenExpiration: row.tokenExpiration,

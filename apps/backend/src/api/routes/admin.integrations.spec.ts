@@ -150,6 +150,24 @@ describe('GET /admin/integrations', () => {
     expect(byId.d.actionable).toBe(true);
   });
 
+  it('carries the raw flags, so the badge cannot hide a second one', async () => {
+    // The brief asked for refreshNeeded and disabled by name. `state` reports
+    // only the first rule that matched — correct as advice, since a channel
+    // switched off after a downgrade needs the plan rather than a reconnect —
+    // but the second flag would otherwise be invisible.
+    const { controller } = build([
+      row({ id: 'both', disabled: true, refreshNeeded: true }),
+    ]);
+    const result: any = await controller.listIntegrations(admin);
+
+    expect(result.items[0].state).toBe('disabled');
+    expect(result.items[0].flags).toEqual({
+      refreshNeeded: true,
+      disabled: true,
+      inBetweenSteps: false,
+    });
+  });
+
   it('renders a missing expiry as no expiry rather than as unknown', async () => {
     const { controller } = build([row({ tokenExpiration: null })]);
     const result: any = await controller.listIntegrations(admin);
