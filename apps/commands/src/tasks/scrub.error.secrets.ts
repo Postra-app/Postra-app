@@ -15,21 +15,41 @@ export class ScrubErrorSecrets {
     const apply = process.argv.includes('--apply');
     const { scanned, dirty } = await this._errorsService.scrubSecrets(apply);
 
+    // Two numbers, not one. The previous version said "N still carrying
+    // credentials" for every row with a secret-named field, encrypted ones
+    // included — on production that read 111 of 111 where the plaintext
+    // exposure was about half, and an operator acts on the number they read.
+    const withPlaintext = dirty.filter((row) => row.plaintext > 0);
+    const plaintextFields = dirty.reduce((sum, row) => sum + row.plaintext, 0);
+    const encryptedFields = dirty.reduce((sum, row) => sum + row.encrypted, 0);
+
     console.log(
       `[scrub-error-secrets] ${
         apply ? 'APPLY' : 'DRY-RUN'
-      } — ${scanned} row(s) scanned, ${dirty.length} still carrying credentials`
+      } — ${scanned} row(s) scanned, ${dirty.length} with a credential field`
+    );
+    console.log(
+      `  leaking: ${withPlaintext.length} row(s), ${plaintextFields} plaintext field(s)`
+    );
+    console.log(
+      `  encrypted at rest (redacted anyway, not a leak): ${encryptedFields} field(s)`
     );
 
-    const byPlatform = dirty.reduce<Record<string, number>>((acc, row) => {
-      acc[row.platform] = (acc[row.platform] || 0) + 1;
-      return acc;
-    }, {});
+    const byPlatform = withPlaintext.reduce<Record<string, number>>(
+      (acc, row) => {
+        acc[row.platform] = (acc[row.platform] || 0) + 1;
+        return acc;
+      },
+      {}
+    );
 
-    for (const [platform, count] of Object.entries(byPlatform).sort(
-      (a, b) => b[1] - a[1]
-    )) {
-      console.log(`  ${platform}: ${count}`);
+    if (withPlaintext.length) {
+      console.log('  plaintext by platform:');
+      for (const [platform, count] of Object.entries(byPlatform).sort(
+        (a, b) => b[1] - a[1]
+      )) {
+        console.log(`    ${platform}: ${count}`);
+      }
     }
 
     if (!apply) {

@@ -111,3 +111,90 @@ export function hasSecrets(body: string | null | undefined): boolean {
     return false;
   }
 }
+
+// Integration tokens are stored encrypted, with this marker in front. Redaction
+// covers them anyway — an encrypted token is no use in a diagnosis either — but
+// they are not a leak, and counting them as one is how a clean-up report ends
+// up claiming a hundred leaks where there were fifty.
+const INTEGRATION_TOKEN_MARKER = 'enc::';
+
+export interface SecretCensus {
+  /** Secret-named fields holding a value that is not encrypted at rest. */
+  plaintext: number;
+  /** Secret-named fields whose value carries the at-rest marker. */
+  encrypted: number;
+}
+
+/**
+ * Count secret-named fields, split by whether the value would actually work
+ * for somebody who read it.
+ *
+ * `hasSecrets` answers one question — is there anything here to redact — and
+ * the scrub report presented that as "rows still carrying credentials". On
+ * production that read `111 row(s) scanned, 111 still carrying credentials`
+ * where the real plaintext exposure was about half of those, the rest being
+ * encrypted values that redaction covers for tidiness. An operator reading
+ * that number acts on the wrong figure.
+ */
+export function censusSecrets(body: string | null | undefined): SecretCensus {
+  const census: SecretCensus = { plaintext: 0, encrypted: 0 };
+  if (!body) {
+    return census;
+  }
+
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(body);
+  } catch {
+    return census;
+  }
+
+  const seen = new WeakSet<object>();
+  const walk = (value: unknown, keyName?: string) => {
+    if (keyName && isSecretKey(keyName)) {
+      if (typeof value === 'string') {
+        // An empty string is a field somebody cleared, not a credential.
+        if (value.length) {
+          if (value.startsWith(INTEGRATION_TOKEN_MARKER)) {
+            census.encrypted++;
+          } else {
+            census.plaintext++;
+          }
+        }
+        return;
+      }
+      if (value !== null && value !== undefined && typeof value !== 'object') {
+        census.plaintext++;
+        return;
+      }
+    }
+
+    if (Array.isArray(value)) {
+      if (seen.has(value)) {
+        return;
+      }
+      seen.add(value);
+      for (const item of value) {
+        walk(item);
+      }
+      return;
+    }
+
+    if (!value || typeof value !== 'object') {
+      return;
+    }
+    if (seen.has(value as object)) {
+      return;
+    }
+    seen.add(value as object);
+
+    for (const [key, item] of Object.entries(
+      value as Record<string, unknown>
+    )) {
+      walk(item, key);
+    }
+  };
+
+  walk(parsed);
+  return census;
+}
