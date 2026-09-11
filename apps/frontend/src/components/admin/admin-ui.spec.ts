@@ -1,9 +1,12 @@
 import {
+  channelStateBadgeClass,
+  formatExpiry,
   serverReason,
   tierBadgeClass,
   tierLabel,
   withReason,
 } from '@gitroom/frontend/components/admin/admin-ui';
+import { CHANNEL_STATES } from '@gitroom/nestjs-libraries/database/prisma/integrations/channel.state';
 
 /**
  * The tier pill was defined twice for the same six tiers, and the copy in
@@ -116,5 +119,50 @@ describe('serverReason', () => {
     await expect(withReason(res, 'Failed to add the subscription')).resolves.toBe(
       'Failed to add the subscription'
     );
+  });
+});
+
+describe('the channel state pill', () => {
+  it('does not paint a normal short-lived token as a warning', () => {
+    // The whole tab exists because "expires within 24 hours" was read as an
+    // incident. Amber or red here would say the same wrong thing in colour.
+    const expiring = channelStateBadgeClass('expiring');
+    expect(expiring).toContain('sky');
+    expect(expiring).not.toMatch(/red|amber|orange/);
+  });
+
+  it('keeps red for the one state that needs a phone call', () => {
+    expect(channelStateBadgeClass('needs-reconnect')).toContain('red');
+  });
+
+  it('gives every state its own pairing, with no blank fallback', () => {
+    const seen = CHANNEL_STATES.map((state) => channelStateBadgeClass(state));
+    for (const classes of seen) {
+      expect(classes).toMatch(/bg-/);
+      expect(classes).toMatch(/text-/);
+      expect(classes).toMatch(/border-/);
+    }
+  });
+});
+
+describe('formatExpiry', () => {
+  it('says a provider does not expire rather than leaving the cell blank', () => {
+    // Four providers never report an expiry. A blank cell reads as a fault.
+    expect(formatExpiry(null)).toBe('Does not expire');
+    expect(formatExpiry(undefined)).toBe('Does not expire');
+  });
+
+  it('says how long ago a dead token died', () => {
+    expect(formatExpiry(-3600)).toBe('Expired 1h ago');
+    expect(formatExpiry(-60 * 60 * 24 * 3)).toBe('Expired 3d ago');
+  });
+
+  it('reads in minutes while that is still the useful unit', () => {
+    expect(formatExpiry(600)).toBe('in 10m');
+    expect(formatExpiry(3600 * 5)).toBe('in 5h');
+  });
+
+  it('never rounds a live token down to zero', () => {
+    expect(formatExpiry(20)).toBe('in 1m');
   });
 });

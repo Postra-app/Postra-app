@@ -18,6 +18,7 @@ const tabs = [
   { key: 'users', path: '/admin/users', icon: '👤', i18n: 'admin_users', fallback: 'Users' },
   { key: 'announcements', path: '/admin/announcements', icon: '📣', i18n: 'admin_announcements', fallback: 'Announcements' },
   { key: 'audit', path: '/admin/audit', icon: '🧾', i18n: 'admin_audit', fallback: 'Audit', isNew: true },
+  { key: 'channels', path: '/admin/channels', icon: '🔗', i18n: 'admin_channels', fallback: 'Channels', isNew: true },
   { key: 'dashboards', path: '/admin/dashboards', icon: '🖥️', i18n: 'admin_dashboards', fallback: 'Dashboards', isNew: true },
 ] as const;
 
