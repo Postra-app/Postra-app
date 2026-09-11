@@ -74,10 +74,22 @@ export class OrganizationRepository {
     return this._organization.model.organization.count();
   }
 
+  /**
+   * Only used to resolve an impersonation target.
+   *
+   * The impersonation branch in the auth middleware calls `next()` and returns
+   * before the checks the normal path runs, so without these two conditions a
+   * deactivated account, or a seat disabled by a downgrade, came back fully
+   * operational — publishing included — as soon as an admin stepped into it
+   * (E2E-09-27). The disabled-seat case is the realistic one: it is exactly the
+   * state an admin would be looking into after reconcileTeamSeats.
+   */
   getUserOrg(id: string) {
     return this._userOrg.model.userOrganization.findFirst({
       where: {
         id,
+        disabled: false,
+        user: { activated: true },
       },
       select: {
         user: true,

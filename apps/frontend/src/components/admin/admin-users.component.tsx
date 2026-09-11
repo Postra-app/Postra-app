@@ -142,23 +142,40 @@ export const AdminUsersComponent = () => {
     if (!isSecured) {
       setCookie('impersonate', '', -10);
     } else {
-      await fetch(`/user/impersonate`, {
+      const res = await fetch(`/user/impersonate`, {
         method: 'POST',
         body: JSON.stringify({ id: '' }),
       });
+      // Reloading regardless meant a failed stop looked exactly like a
+      // successful one — the page came back still wearing the other identity
+      // (E2E-09-08).
+      if (!res.ok) {
+        toaster.show(
+          t('stop_impersonating_failed', 'Could not stop impersonating.'),
+          'warning'
+        );
+        return;
+      }
     }
     window.location.reload();
-  }, []);
+  }, [toaster, t]);
 
   const impersonate = useCallback(
     (userOrgId: string) => async () => {
-      await fetch(`/user/impersonate`, {
+      const res = await fetch(`/user/impersonate`, {
         method: 'POST',
         body: JSON.stringify({ id: userOrgId }),
       });
+      if (!res.ok) {
+        toaster.show(
+          t('impersonate_failed', 'Could not impersonate this user.'),
+          'warning'
+        );
+        return;
+      }
       window.location.reload();
     },
-    []
+    [toaster, t]
   );
 
   const handleImportDebugPost = useCallback(() => {

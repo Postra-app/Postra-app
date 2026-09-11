@@ -1,6 +1,6 @@
 'use client';
 
-import { FC, useCallback } from 'react';
+import { FC, useCallback, useState } from 'react';
 import { useFetch } from '@gitroom/helpers/utils/custom.fetch';
 import { useT } from '@gitroom/react/translation/get.transation.service.client';
 
@@ -11,11 +11,19 @@ export const ImpersonationBanner: FC<{ email?: string }> = ({ email }) => {
   const fetch = useFetch();
   const t = useT();
 
+  const [failed, setFailed] = useState(false);
+
   const stop = useCallback(async () => {
-    await fetch('/user/impersonate', {
+    const res = await fetch('/user/impersonate', {
       method: 'POST',
       body: JSON.stringify({ id: '' }),
     });
+    // Navigating regardless would land on a page that looks like the admin's
+    // own while the session is still the customer's (E2E-09-08).
+    if (!res.ok) {
+      setFailed(true);
+      return;
+    }
     window.location.href = '/admin/users';
   }, []);
 
@@ -25,6 +33,11 @@ export const ImpersonationBanner: FC<{ email?: string }> = ({ email }) => {
         {t('impersonating_as', 'Impersonating')}
         {email ? ` ${email}` : ''} — {t('impersonating_note', 'actions are real')}
       </span>
+      {failed && (
+        <span role="alert">
+          {t('stop_impersonating_failed', 'Could not stop — try again.')}
+        </span>
+      )}
       <button
         type="button"
         onClick={stop}

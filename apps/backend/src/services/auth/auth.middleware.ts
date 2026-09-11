@@ -6,13 +6,26 @@ import { OrganizationService } from '@gitroom/nestjs-libraries/database/prisma/o
 import { UsersService } from '@gitroom/nestjs-libraries/database/prisma/users/users.service';
 import { getCookieUrlFromDomain } from '@gitroom/helpers/subdomain/subdomain.management';
 import { HttpForbiddenException } from '@gitroom/nestjs-libraries/services/exception.filter';
-import { MastraService } from '@gitroom/nestjs-libraries/chat/mastra.service';
 import { ioRedis } from '@gitroom/nestjs-libraries/redis/redis.service';
 import {
   AUTH_CACHE_TTL_SECONDS,
   authContextCacheKey,
   bustAuthContextCache,
 } from '@gitroom/nestjs-libraries/redis/auth-context.cache';
+import {
+  AuditActor,
+  runWithAuditActor,
+} from '@gitroom/nestjs-libraries/database/prisma/audit/audit.actor';
+import { setImpersonateCookie } from '@gitroom/backend/services/auth/impersonate.cookie';
+
+/**
+ * Routes a session wearing someone else's identity may not reach.
+ *
+ * The admin surface acts on everybody, so reaching it from inside an
+ * impersonated session means the action lands under the customer's name. The
+ * one exception is `/user/impersonate`, which is how the session gets out.
+ */
+const FORBIDDEN_WHILE_IMPERSONATING = ['/admin', '/billing/add-subscription'];
 
 // Re-exported so existing callers keep importing the buster from the middleware.
 export { authContextCacheKey, bustAuthContextCache };
@@ -33,6 +46,17 @@ export const removeAuth = (res: Response) => {
   res.header('logout', 'true');
 };
 
+// Audit rows had no ip and no userAgent on any action (E2E-09-34); the columns
+// existed and nothing filled them.
+const requestFingerprint = (req: Request) => ({
+  ip: (
+    (req.headers['x-forwarded-for'] as string)?.split(',')[0] ||
+    req.ip ||
+    ''
+  ).trim(),
+  userAgent: (req.headers['user-agent'] as string) || '',
+});
+
 @Injectable()
 export class AuthMiddleware implements NestMiddleware {
   constructor(
@@ -40,6 +64,7 @@ export class AuthMiddleware implements NestMiddleware {
     private _userService: UsersService
   ) {}
   async use(req: Request, res: Response, next: NextFunction) {
+    let actor: AuditActor = {};
     const auth = req.headers.auth || req.cookies.auth;
     if (!auth) {
       throw new HttpForbiddenException();
@@ -96,9 +121,19 @@ export class AuthMiddleware implements NestMiddleware {
         );
 
         if (loadImpersonate) {
+          const admin = user;
           user = loadImpersonate.user;
-          user.isSuperAdmin = true;
           delete user.password;
+
+          // The session carries the target's own permissions, not the admin's.
+          // Forcing isSuperAdmin=true here meant every `user.isSuperAdmin` gate
+          // in the product kept opening while the identity behind the request
+          // was the customer's — grant-admin, add-subscription and the debug
+          // export all worked, and every audit row named the customer
+          // (E2E-09-23). The real admin travels separately.
+          // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+          // @ts-expect-error
+          req.impersonatedBy = admin.id;
 
           // eslint-disable-next-line @typescript-eslint/ban-ts-comment
           // @ts-expect-error
@@ -112,7 +147,24 @@ export class AuthMiddleware implements NestMiddleware {
           // eslint-disable-next-line @typescript-eslint/ban-ts-comment
           // @ts-expect-error
           req.org = loadImpersonate.organization;
-          next();
+
+          const path = req.path || req.url || '';
+          if (FORBIDDEN_WHILE_IMPERSONATING.some((p) => path.startsWith(p))) {
+            throw new HttpForbiddenException();
+          }
+
+          // Sliding window: the impersonation lapses after inactivity rather
+          // than running for a year (E2E-09-28).
+          setImpersonateCookie(res, impersonate);
+
+          runWithAuditActor(
+            {
+              userId: admin.id,
+              impersonatedUserId: user.id,
+              ...requestFingerprint(req),
+            },
+            next
+          );
           return;
         }
       }
@@ -150,9 +202,11 @@ export class AuthMiddleware implements NestMiddleware {
       // eslint-disable-next-line @typescript-eslint/ban-ts-comment
       // @ts-expect-error
       req.org = setOrg;
+
+      actor = { userId: user.id, ...requestFingerprint(req) };
     } catch (err) {
       throw new HttpForbiddenException();
     }
-    next();
+    runWithAuditActor(actor, next);
   }
 }

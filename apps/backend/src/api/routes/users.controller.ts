@@ -33,6 +33,10 @@ import { makeId } from '@gitroom/nestjs-libraries/services/make.is';
 import { AuthorizationActions, Sections } from '@gitroom/backend/services/auth/permissions/permission.exception.class';
 import { MobilePushService } from '@gitroom/nestjs-libraries/database/prisma/mobile-push/mobile.push.service';
 import { AuditService } from '@gitroom/nestjs-libraries/database/prisma/audit/audit.service';
+import {
+  clearImpersonateCookie,
+  setImpersonateCookie,
+} from '@gitroom/backend/services/auth/impersonate.cookie';
 import { bustAuthContextCache } from '@gitroom/backend/services/auth/auth.middleware';
 import { StripeService } from '@gitroom/nestjs-libraries/services/stripe.service';
 import { NotificationService } from '@gitroom/nestjs-libraries/database/prisma/notifications/notification.service';
@@ -100,7 +104,10 @@ export class UsersController {
       throw new HttpForbiddenException();
     }
 
-    const impersonate = req.cookies.impersonate || req.headers.impersonate;
+    // Resolved state, not the presence of a cookie: an id that matches nothing
+    // used to light up the banner while the session was still the admin's own
+    // (E2E-09-06b).
+    const impersonate = !!(req as any).impersonatedBy;
     // @ts-ignore
     return {
       ...user,
@@ -114,7 +121,7 @@ export class UsersController {
       // @ts-ignore
       isLifetime: !!organization?.subscription?.isLifetime,
       admin: !!user.isSuperAdmin,
-      impersonate: !!impersonate,
+      impersonate,
       isTrailing: !process.env.STRIPE_PUBLISHABLE_KEY ? false : organization?.isTrailing,
       allowTrial: organization?.allowTrial,
       streakSince: organization?.streakSince || null,
@@ -144,33 +151,58 @@ export class UsersController {
   async setImpersonate(
     @GetUserFromRequest() user: User,
     @Body('id') id: string,
-    @Res({ passthrough: true }) response: Response
+    @Res({ passthrough: true }) response: Response,
+    @Req() req: Request
   ) {
-    if (!user.isSuperAdmin) {
+    // A session that is already impersonating carries the target's
+    // permissions, not the admin's — but it still has to be able to stop, and
+    // the admin behind it passed the same gate to get here.
+    const impersonatedBy = (req as any).impersonatedBy as string | undefined;
+    if (!user.isSuperAdmin && !impersonatedBy) {
       throw new HttpException('Unauthorized', 400);
+    }
+
+    // An empty id is "stop", not "impersonate nobody". It used to travel the
+    // same path as a start: an empty cookie written for another year, and an
+    // `admin.impersonate` row indistinguishable from the row that began it
+    // (E2E-09-06c).
+    if (!id) {
+      clearImpersonateCookie(response);
+      this._auditService.record({ action: 'admin.impersonate.stop' });
+
+      if (process.env.NOT_SECURED) {
+        response.header('impersonate', '');
+      }
+      return { stopped: true };
+    }
+
+    // Validate before writing anything. Any id at all used to set a year-long
+    // cookie; when it resolved to nothing the middleware quietly carried on as
+    // the admin, while /user/self read the cookie's mere presence and showed a
+    // banner saying they were impersonating themselves — for up to a year
+    // (E2E-09-06a, E2E-09-06b).
+    const target = await this._orgService.getUserOrg(id);
+    if (!target) {
+      throw new HttpException('No such user organization', 404);
     }
 
     this._auditService.record({
       action: 'admin.impersonate',
       userId: user.id,
-      metadata: { impersonatedUserOrg: id },
+      organizationId: target.organization.id,
+      metadata: {
+        impersonatedUserOrg: id,
+        impersonatedUserId: target.user.id,
+      },
     });
 
-    response.cookie('impersonate', id, {
-      domain: getCookieUrlFromDomain(process.env.FRONTEND_URL!),
-      ...(!process.env.NOT_SECURED
-        ? {
-            secure: true,
-            httpOnly: true,
-            sameSite: 'lax',
-          }
-        : {}),
-      expires: new Date(Date.now() + 1000 * 60 * 60 * 24 * 365),
-    });
+    setImpersonateCookie(response, id);
 
     if (process.env.NOT_SECURED) {
       response.header('impersonate', id);
     }
+
+    return { impersonating: target.user.email };
   }
 
   @Post('/personal')
