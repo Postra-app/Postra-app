@@ -48,7 +48,7 @@ const Subscription = () => {
       value=""
     >
       <option>
-        {t('add_free_subscription', '-- ADD FREE SUBSCRIPTION --')}
+        {t('admin_add_free_subscription', '-- ADD FREE SUBSCRIPTION --')}
       </option>
       {Object.keys(pricing)
         .filter((f) => !f.includes('FREE'))
@@ -152,7 +152,7 @@ export const AdminUsersComponent = () => {
       // (E2E-09-08).
       if (!res.ok) {
         toaster.show(
-          t('stop_impersonating_failed', 'Could not stop impersonating.'),
+          t('admin_stop_impersonating_failed', 'Could not stop impersonating.'),
           'warning'
         );
         return;
@@ -169,7 +169,7 @@ export const AdminUsersComponent = () => {
       });
       if (!res.ok) {
         toaster.show(
-          t('impersonate_failed', 'Could not impersonate this user.'),
+          t('admin_impersonate_failed', 'Could not impersonate this user.'),
           'warning'
         );
         return;
@@ -181,7 +181,7 @@ export const AdminUsersComponent = () => {
 
   const handleImportDebugPost = useCallback(() => {
     openModal({
-      title: t('import_debug_post', 'Import Debug Post'),
+      title: t('admin_import_debug_post', 'Import Debug Post'),
       maxSize: 800,
       children: (close) => <ImportDebugPostModal close={close} />,
     });
@@ -192,10 +192,10 @@ export const AdminUsersComponent = () => {
       if (
         !(await deleteDialog(
           t(
-            'grant_lifetime_confirm',
+            'admin_grant_lifetime_confirm',
             `Grant lifetime Business (100 channels, no paywall) to every org owned by ${u.email}?`
           ),
-          t('grant', 'Grant')
+          t('admin_grant', 'Grant')
         ))
       ) {
         return;
@@ -206,14 +206,14 @@ export const AdminUsersComponent = () => {
       });
       if (!res.ok) {
         toaster.show(
-          t('grant_lifetime_failed', 'Failed to grant lifetime'),
+          t('admin_grant_lifetime_failed', 'Failed to grant lifetime'),
           'warning'
         );
         return;
       }
       const report = await res.json();
       toaster.show(
-        `${t('grant_lifetime_done', 'Lifetime granted')}: ${
+        `${t('admin_grant_lifetime_done', 'Lifetime granted')}: ${
           report.granted.length
         } org(s), ${report.skipped.length} skipped`,
         'success'
@@ -233,16 +233,16 @@ export const AdminUsersComponent = () => {
         !(await deleteDialog(
           grant
             ? t(
-                'grant_admin_confirm',
+                'admin_grant_admin_confirm',
                 `Grant super-admin to ${u.email}? This unlocks the Admin panel and god-mode across every org — it takes effect on their next page load.`
               )
             : t(
-                'revoke_admin_confirm',
+                'admin_revoke_admin_confirm',
                 `Revoke super-admin from ${u.email}? They lose the Admin panel on their next request.`
               ),
           grant
-            ? t('grant_admin', 'Grant admin')
-            : t('revoke_admin', 'Revoke admin')
+            ? t('admin_grant_admin', 'Grant admin')
+            : t('admin_revoke_admin', 'Revoke admin')
         ))
       ) {
         return;
@@ -254,16 +254,16 @@ export const AdminUsersComponent = () => {
       if (!res.ok) {
         toaster.show(
           grant
-            ? t('grant_admin_failed', 'Failed to grant admin')
-            : t('revoke_admin_failed', 'Failed to revoke admin'),
+            ? t('admin_grant_admin_failed', 'Failed to grant admin')
+            : t('admin_revoke_admin_failed', 'Failed to revoke admin'),
           'warning'
         );
         return;
       }
       toaster.show(
         grant
-          ? t('grant_admin_done', 'Admin granted')
-          : t('revoke_admin_done', 'Admin revoked'),
+          ? t('admin_grant_admin_done', 'Admin granted')
+          : t('admin_revoke_admin_done', 'Admin revoked'),
         'success'
       );
       await mutate();
@@ -273,17 +273,17 @@ export const AdminUsersComponent = () => {
 
   return (
     <div className="flex flex-col gap-[20px]">
-      <h2 className="text-[20px] font-[600]">
+      <h1 className="text-[20px] font-[600]">
         {t('admin_users', 'Users')}
-      </h2>
+      </h1>
 
       {user?.impersonate && (
         <div className="flex items-center gap-[12px] p-[12px] rounded-[10px] bg-[rgba(56,189,248,0.12)] border border-[rgba(56,189,248,0.3)]">
           <span className="text-[14px]">
-            {t('currently_impersonating', 'Currently Impersonating')}
+            {t('admin_currently_impersonating', 'Currently Impersonating')}
           </span>
           <Button onClick={stopImpersonating} className="!bg-red-600 rounded-[8px] text-[12px]">
-            {t('stop_impersonating', 'Stop')}
+            {t('admin_stop_impersonating', 'Stop')}
           </Button>
           {user?.tier?.current === 'FREE' && <Subscription />}
         </div>
@@ -293,17 +293,18 @@ export const AdminUsersComponent = () => {
         <div className="flex-1 max-w-[500px]">
           <Input
             autoComplete="off"
-            placeholder={t('search_user_placeholder', 'Search by name or email...')}
+            placeholder={t('admin_search_user_placeholder', 'Search by name or email...')}
             name="user-search"
             disableForm={true}
             label=""
+            aria-label={t('admin_search_users', 'Search users')}
             removeError={true}
             value={searchInput}
             onChange={handleSearch}
           />
         </div>
         <Button onClick={handleImportDebugPost} className="rounded-[8px] text-[12px]">
-          {t('import_debug_post', 'Import Debug Post')}
+          {t('admin_import_debug_post', 'Import Debug Post')}
         </Button>
       </div>
 
@@ -312,22 +313,22 @@ export const AdminUsersComponent = () => {
           <thead>
             <tr className="text-left border-b border-white/10 bg-white/[0.03]">
               <th className="p-[12px] text-[13px] font-[500] text-newTextColor/60">
-                {t('email', 'Email')}
+                {t('admin_email', 'Email')}
               </th>
               <th className="p-[12px] text-[13px] font-[500] text-newTextColor/60">
-                {t('name', 'Name')}
+                {t('admin_name', 'Name')}
               </th>
               <th className="p-[12px] text-[13px] font-[500] text-newTextColor/60">
-                {t('activated', 'Activated')}
+                {t('admin_activated', 'Activated')}
               </th>
               <th className="p-[12px] text-[13px] font-[500] text-newTextColor/60">
-                {t('organizations', 'Organizations')}
+                {t('admin_organizations', 'Organizations')}
               </th>
               <th className="p-[12px] text-[13px] font-[500] text-newTextColor/60">
-                {t('created', 'Created')}
+                {t('admin_created', 'Created')}
               </th>
               <th className="p-[12px] text-[13px] font-[500] text-newTextColor/60">
-                {t('last_online', 'Last online')}
+                {t('admin_last_online', 'Last online')}
               </th>
               <th className="p-[12px] text-[13px] font-[500] text-newTextColor/60" />
             </tr>
@@ -337,9 +338,9 @@ export const AdminUsersComponent = () => {
               <tr>
                 <td
                   colSpan={7}
-                  className="p-[20px] text-center text-[13px] text-newTextColor/40"
+                  className="p-[20px] text-center text-[13px] text-newTextColor/70"
                 >
-                  {t('loading', 'Loading...')}
+                  {t('admin_loading', 'Loading...')}
                 </td>
               </tr>
             )}
@@ -349,7 +350,7 @@ export const AdminUsersComponent = () => {
                   colSpan={7}
                   className="p-[20px] text-center text-[13px] text-red-400"
                 >
-                  {t('users_load_failed', 'Failed to load users.')}
+                  {t('admin_users_load_failed', 'Failed to load users.')}
                 </td>
               </tr>
             )}
@@ -357,9 +358,9 @@ export const AdminUsersComponent = () => {
               <tr>
                 <td
                   colSpan={7}
-                  className="p-[20px] text-center text-[13px] text-newTextColor/40"
+                  className="p-[20px] text-center text-[13px] text-newTextColor/70"
                 >
-                  {t('no_users_found', 'No users found')}
+                  {t('admin_no_users_found', 'No users found')}
                 </td>
               </tr>
             )}
@@ -384,7 +385,7 @@ export const AdminUsersComponent = () => {
                     <span className="text-green-400">✓</span>
                   ) : (
                     <span className="text-amber-400">
-                      {t('pending', 'pending')}
+                      {t('admin_pending', 'pending')}
                     </span>
                   )}
                 </td>
@@ -396,7 +397,7 @@ export const AdminUsersComponent = () => {
                         className="inline-flex items-center gap-[6px] px-[8px] py-[2px] rounded-[6px] text-[11px] border border-white/10 bg-white/[0.03]"
                       >
                         {o.organization.name}
-                        <span className="text-newTextColor/40">
+                        <span className="text-newTextColor/70">
                           {o.organization.subscription?.isLifetime
                             ? 'LIFETIME'
                             : o.organization.subscription?.subscriptionTier ??
@@ -421,8 +422,8 @@ export const AdminUsersComponent = () => {
                         className="rounded-[8px] text-[12px]"
                       >
                         {u.organizations.length > 1
-                          ? `${t('impersonate', 'Impersonate')} · ${o.organization.name}`
-                          : t('impersonate', 'Impersonate')}
+                          ? `${t('admin_impersonate', 'Impersonate')} · ${o.organization.name}`
+                          : t('admin_impersonate', 'Impersonate')}
                       </Button>
                     ))}
                     {u.organizations.some(
@@ -435,7 +436,7 @@ export const AdminUsersComponent = () => {
                         onClick={grantLifetime(u)}
                         className="px-[12px] h-[30px] rounded-[8px] text-[12px] border border-[rgba(167,139,250,0.4)] text-[#a78bfa] hover:bg-[rgba(167,139,250,0.1)] cursor-pointer transition-colors"
                       >
-                        {t('grant_lifetime', 'Grant lifetime')}
+                        {t('admin_grant_lifetime', 'Grant lifetime')}
                       </button>
                     )}
                     {u.id !== user?.id && (
@@ -449,8 +450,8 @@ export const AdminUsersComponent = () => {
                         }`}
                       >
                         {u.isSuperAdmin
-                          ? t('revoke_admin', 'Revoke admin')
-                          : t('grant_admin', 'Grant admin')}
+                          ? t('admin_revoke_admin', 'Revoke admin')
+                          : t('admin_grant_admin', 'Grant admin')}
                       </button>
                     )}
                   </div>
@@ -464,8 +465,8 @@ export const AdminUsersComponent = () => {
       {totalPages > 1 && (
         <div className="flex items-center justify-between text-[13px]">
           <span className="text-newTextColor/60">
-            {t('page', 'Page')} {page + 1} / {totalPages} ({data?.total}{' '}
-            {t('total', 'total')})
+            {t('admin_page', 'Page')} {page + 1} / {totalPages} ({data?.total}{' '}
+            {t('admin_total', 'total')})
           </span>
           <div className="flex gap-[8px]">
             <button
@@ -474,7 +475,7 @@ export const AdminUsersComponent = () => {
               onClick={() => setPage((p) => p - 1)}
               className="px-[14px] h-[34px] rounded-[10px] text-[13px] border border-white/10 bg-white/[0.03] hover:bg-white/[0.06] hover:border-white/25 disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer transition-colors"
             >
-              {t('prev', 'Prev')}
+              {t('admin_prev', 'Prev')}
             </button>
             <button
               type="button"
@@ -482,7 +483,7 @@ export const AdminUsersComponent = () => {
               onClick={() => setPage((p) => p + 1)}
               className="px-[14px] h-[34px] rounded-[10px] text-[13px] border border-white/10 bg-white/[0.03] hover:bg-white/[0.06] hover:border-white/25 disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer transition-colors"
             >
-              {t('next', 'Next')}
+              {t('admin_next', 'Next')}
             </button>
           </div>
         </div>

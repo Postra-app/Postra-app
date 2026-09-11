@@ -107,20 +107,24 @@ export const AdminOrganizationsComponent = () => {
 
   return (
     <div className="flex flex-col gap-[20px]">
-      <h2 className="text-[20px] font-[600]">
+      <h1 className="text-[20px] font-[600]">
         {t('admin_organizations', 'Organizations')}
-      </h2>
+      </h1>
 
       <div className="max-w-[500px]">
         <Input
           autoComplete="off"
           placeholder={t(
-            'search_organization_placeholder',
+            'admin_search_organization_placeholder',
             'Search by name...'
           )}
           name="org-search"
           disableForm={true}
+          // label="" makes the shared Input skip its label block entirely, so
+          // the field reached a screen reader with nothing but a placeholder
+          // (E2E-09-13).
           label=""
+          aria-label={t('admin_search_organizations', 'Search organizations')}
           removeError={true}
           value={searchInput}
           onChange={handleSearch}
@@ -135,25 +139,25 @@ export const AdminOrganizationsComponent = () => {
           <thead>
             <tr className="text-left border-b border-white/10 bg-white/[0.03]">
               <th className="p-[12px] text-[13px] font-[500] text-newTextColor/60">
-                {t('name', 'Name')}
+                {t('admin_name', 'Name')}
               </th>
               <th className="p-[12px] text-[13px] font-[500] text-newTextColor/60">
-                {t('tier', 'Tier')}
+                {t('admin_tier', 'Tier')}
               </th>
               <th className="p-[12px] text-[13px] font-[500] text-newTextColor/60">
-                {t('period', 'Period')}
+                {t('admin_period', 'Period')}
               </th>
               <th className="p-[12px] text-[13px] font-[500] text-newTextColor/60">
-                {t('channels', 'Channels')}
+                {t('admin_channels', 'Channels')}
               </th>
               <th className="p-[12px] text-[13px] font-[500] text-newTextColor/60">
-                {t('users', 'Users')}
+                {t('admin_users', 'Users')}
               </th>
               <th className="p-[12px] text-[13px] font-[500] text-newTextColor/60">
-                {t('posts', 'Posts')}
+                {t('admin_posts', 'Posts')}
               </th>
               <th className="p-[12px] text-[13px] font-[500] text-newTextColor/60">
-                {t('created', 'Created')}
+                {t('admin_created', 'Created')}
               </th>
             </tr>
           </thead>
@@ -162,9 +166,9 @@ export const AdminOrganizationsComponent = () => {
               <tr>
                 <td
                   colSpan={7}
-                  className="p-[20px] text-center text-[13px] text-newTextColor/40"
+                  className="p-[20px] text-center text-[13px] text-newTextColor/70"
                 >
-                  {t('loading', 'Loading...')}
+                  {t('admin_loading', 'Loading...')}
                 </td>
               </tr>
             )}
@@ -175,7 +179,7 @@ export const AdminOrganizationsComponent = () => {
                   className="p-[20px] text-center text-[13px] text-red-400"
                 >
                   {t(
-                    'organizations_load_failed',
+                    'admin_organizations_load_failed',
                     'Failed to load organizations.'
                   )}
                 </td>
@@ -185,9 +189,9 @@ export const AdminOrganizationsComponent = () => {
               <tr>
                 <td
                   colSpan={7}
-                  className="p-[20px] text-center text-[13px] text-newTextColor/40"
+                  className="p-[20px] text-center text-[13px] text-newTextColor/70"
                 >
-                  {t('no_organizations_found', 'No organizations found')}
+                  {t('admin_no_organizations_found', 'No organizations found')}
                 </td>
               </tr>
             )}
@@ -236,10 +240,10 @@ export const AdminOrganizationsComponent = () => {
         <div className="flex items-center justify-between text-[13px]">
           <span className="text-newTextColor/60">
             {totalPages > 1
-              ? `${t('page', 'Page')} ${page + 1} / ${totalPages} (${
+              ? `${t('admin_page', 'Page')} ${page + 1} / ${totalPages} (${
                   data.total
-                } ${t('total', 'total')})`
-              : `${data.total} ${t('total', 'total')}`}
+                } ${t('admin_total', 'total')})`
+              : `${data.total} ${t('admin_total', 'total')}`}
           </span>
           <div className={totalPages > 1 ? 'flex gap-[8px]' : 'hidden'}>
             <button
@@ -248,7 +252,7 @@ export const AdminOrganizationsComponent = () => {
               onClick={() => setPage((p) => p - 1)}
               className="px-[14px] h-[34px] rounded-[10px] text-[13px] border border-white/10 bg-white/[0.03] hover:bg-white/[0.06] hover:border-white/25 disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer transition-colors"
             >
-              {t('prev', 'Prev')}
+              {t('admin_prev', 'Prev')}
             </button>
             <button
               type="button"
@@ -256,7 +260,7 @@ export const AdminOrganizationsComponent = () => {
               onClick={() => setPage((p) => p + 1)}
               className="px-[14px] h-[34px] rounded-[10px] text-[13px] border border-white/10 bg-white/[0.03] hover:bg-white/[0.06] hover:border-white/25 disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer transition-colors"
             >
-              {t('next', 'Next')}
+              {t('admin_next', 'Next')}
             </button>
           </div>
         </div>

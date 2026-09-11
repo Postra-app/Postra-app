@@ -58,7 +58,7 @@ const MetricCard: FC<{
   <div className="bg-white/[0.03] border border-white/10 rounded-[16px] p-[16px]">
     <div className="text-[12px] text-newTextColor/60">{label}</div>
     <div className="text-[20px] font-[650] mt-[4px]">{value}</div>
-    {sub && <div className={`text-[11px] mt-[2px] ${subClass ?? 'text-newTextColor/40'}`}>{sub}</div>}
+    {sub && <div className={`text-[11px] mt-[2px] ${subClass ?? 'text-newTextColor/70'}`}>{sub}</div>}
     {spark && <Sparkline points={spark} />}
   </div>
 );

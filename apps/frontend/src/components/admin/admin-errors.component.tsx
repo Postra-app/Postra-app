@@ -9,7 +9,7 @@ import { useModals } from '@gitroom/frontend/components/layout/new-modal';
 import {
   AdminButton as Button,
   adminInput,
-  adminSegment,
+  adminSegmentProps,
   adminSelect,
 } from './admin-ui';
 import { LoadingComponent } from '@gitroom/frontend/components/layout/loading';
@@ -247,7 +247,7 @@ export const AdminErrorsComponent: FC = () => {
   return (
     <div className="flex flex-col gap-[16px] text-textColor">
       <div className="flex items-center justify-between flex-wrap gap-[8px]">
-        <div className="text-[20px] font-[600]">Errors</div>
+        <h1 className="text-[20px] font-[600]">Errors</h1>
         <div className="flex items-center gap-[12px]">
           <div className="text-[13px] opacity-70">
             {data
@@ -263,7 +263,7 @@ export const AdminErrorsComponent: FC = () => {
                   setPage(0);
                   setRangeDays(d);
                 }}
-                className={adminSegment(rangeDays === d)}
+                {...adminSegmentProps(rangeDays === d)}
               >
                 {d > 0 ? `${d}d` : 'All'}
               </button>

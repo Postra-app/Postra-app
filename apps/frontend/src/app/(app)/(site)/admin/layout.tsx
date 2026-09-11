@@ -74,13 +74,16 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
           <span className="w-[9px] h-[9px] rounded-full bg-[#38bdf8] shadow-[0_0_10px_#38bdf8]" />
           Postra · Admin
         </div>
-        <nav className="flex flex-col gap-[2px]">
+        {/* A screen reader was getting ten anonymous links with no indication
+            of which one it was standing on (E2E-09-56). */}
+        <nav className="flex flex-col gap-[2px]" aria-label="Admin sections">
           {tabs.map((tab) => {
             const isActive = pathname.startsWith(tab.path);
             return (
               <Link
                 key={tab.key}
                 href={tab.path}
+                aria-current={isActive ? 'page' : undefined}
                 className={clsx(
                   'flex items-center gap-[10px] px-[11px] py-[9px] rounded-[10px] text-[13px] font-[500] transition-all duration-150',
                   isActive

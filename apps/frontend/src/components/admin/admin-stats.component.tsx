@@ -3,7 +3,7 @@
 import React, { FC, useCallback, useState } from 'react';
 import useSWR from 'swr';
 import { useFetch } from '@gitroom/helpers/utils/custom.fetch';
-import { AdminButton as Button, adminInput, adminSegment } from './admin-ui';
+import { AdminButton as Button, adminInput, adminSegmentProps } from './admin-ui';
 import { LoadingComponent } from '@gitroom/frontend/components/layout/loading';
 import {
   formatDay,
@@ -132,7 +132,7 @@ export const AdminStatsComponent: FC = () => {
   return (
     <div className="flex flex-col gap-[16px] text-textColor">
       <div className="flex items-center justify-between">
-        <div className="text-[20px] font-[600]">Admin Stats</div>
+        <h1 className="text-[20px] font-[600]">Admin Stats</h1>
         {/* The range that was asked for. Rendering data.to instead showed the
             server's 23:59:59 UTC read back in local time, i.e. tomorrow. */}
         <div className="text-[13px] opacity-70">
@@ -148,7 +148,7 @@ export const AdminStatsComponent: FC = () => {
               key={preset.label}
               type="button"
               onClick={() => applyRange(preset.range(), preset.label)}
-              className={adminSegment(active)}
+              {...adminSegmentProps(active)}
             >
               {preset.label}
             </button>
@@ -157,9 +157,14 @@ export const AdminStatsComponent: FC = () => {
       </div>
 
       <div className="flex flex-wrap gap-[12px] items-end bg-white/[0.03] border border-newTableBorder rounded-[8px] p-[12px]">
+        {/* label/htmlFor pairs: these were bare divs, so both date fields
+            reached a screen reader with no name at all (E2E-09-13). */}
         <div className="flex flex-col gap-[6px]">
-          <div className="text-[12px] opacity-70">From</div>
+          <label htmlFor="admin-stats-from" className="text-[12px] opacity-70">
+            From
+          </label>
           <input
+            id="admin-stats-from"
             type="date"
             value={fromInput}
             max={toInput}
@@ -168,8 +173,11 @@ export const AdminStatsComponent: FC = () => {
           />
         </div>
         <div className="flex flex-col gap-[6px]">
-          <div className="text-[12px] opacity-70">To</div>
+          <label htmlFor="admin-stats-to" className="text-[12px] opacity-70">
+            To
+          </label>
           <input
+            id="admin-stats-to"
             type="date"
             value={toInput}
             min={fromInput}

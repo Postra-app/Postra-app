@@ -89,10 +89,10 @@ export const AdminAnnouncementsComponent = () => {
       if (
         !(await deleteDialog(
           t(
-            'delete_announcement_confirm',
+            'admin_delete_announcement_confirm',
             'This will remove the announcement for all users.'
           ),
-          t('delete', 'Delete')
+          t('admin_delete', 'Delete')
         ))
       ) {
         return;
@@ -115,51 +115,61 @@ export const AdminAnnouncementsComponent = () => {
 
   return (
     <div className="flex flex-col gap-[20px] max-w-[640px]">
-      <h2 className="text-[20px] font-[600]">
+      <h1 className="text-[20px] font-[600]">
         {t('admin_announcements', 'Announcements')}
-      </h2>
+      </h1>
 
       <Input
-        label={t('announcement_title', 'Title')}
+        label={t('admin_announcement_title', 'Title')}
         name="title"
         disableForm={true}
         value={title}
         onChange={(e) => setTitle(e.target.value)}
-        placeholder={t('announcement_title_placeholder', 'Announcement title')}
+        placeholder={t('admin_announcement_title_placeholder', 'Announcement title')}
       />
 
       <div className="flex flex-col gap-[6px]">
         <label className="text-[14px]">
-          {t('announcement_description', 'Description')}
+          {t('admin_announcement_description', 'Description')}
         </label>
         <textarea
           className="bg-input border border-tableBorder rounded-[8px] p-[10px] text-newTextColor min-h-[120px] outline-none resize-y"
           value={description}
           onChange={(e) => setDescription(e.target.value)}
           placeholder={t(
-            'announcement_description_placeholder',
+            'admin_announcement_description_placeholder',
             'Announcement description'
           )}
         />
       </div>
 
       <div className="flex flex-col gap-[6px]">
-        <label className="text-[14px]">
-          {t('announcement_color', 'Color')}
-        </label>
-        <div className="flex gap-[8px]">
+        <span id="admin-announcement-color" className="text-[14px]">
+          {t('admin_announcement_color', 'Color')}
+        </span>
+        {/* A radio group, not three divs with onClick: as divs they took no
+            focus, answered no keyboard, and said nothing about which one was
+            chosen (E2E-09-13). */}
+        <div
+          role="radiogroup"
+          aria-labelledby="admin-announcement-color"
+          className="flex gap-[8px]"
+        >
           {colorOptions.map((opt) => (
-            <div
+            <button
               key={opt.value}
+              type="button"
+              role="radio"
+              aria-checked={color === opt.value}
               onClick={() => setColor(opt.value)}
               className={`flex-1 text-center py-[8px] rounded-[8px] text-white text-[13px] cursor-pointer transition-opacity ${opt.className} ${
                 color === opt.value
                   ? 'opacity-100 ring-2 ring-white'
-                  : 'opacity-40'
+                  : 'opacity-70'
               }`}
             >
               {opt.label}
-            </div>
+            </button>
           ))}
         </div>
       </div>
@@ -171,45 +181,45 @@ export const AdminAnnouncementsComponent = () => {
           disabled={!title.trim() || !description.trim()}
           className="rounded-[8px]"
         >
-          {t('create_announcement', 'Create Announcement')}
+          {t('admin_create_announcement', 'Create Announcement')}
         </Button>
         {success && (
           <span className="text-green-400 text-[13px]">
-            {t('announcement_created', 'Announcement created successfully')}
+            {t('admin_announcement_created', 'Announcement created successfully')}
           </span>
         )}
         {submitError && (
           <span className="text-red-400 text-[13px]">
-            {t('announcement_create_failed', 'Failed to create announcement')}
+            {t('admin_announcement_create_failed', 'Failed to create announcement')}
           </span>
         )}
       </div>
 
       <div className="flex flex-col gap-[10px] mt-[10px]">
         <h3 className="text-[15px] font-[600]">
-          {t('existing_announcements', 'Existing announcements')}
+          {t('admin_existing_announcements', 'Existing announcements')}
         </h3>
         {isLoading && (
-          <span className="text-[13px] text-newTextColor/40">
-            {t('loading', 'Loading...')}
+          <span className="text-[13px] text-newTextColor/70">
+            {t('admin_loading', 'Loading...')}
           </span>
         )}
         {listError && (
           <span className="text-[13px] text-red-400">
-            {t('announcements_load_failed', 'Failed to load announcements.')}
+            {t('admin_announcements_load_failed', 'Failed to load announcements.')}
           </span>
         )}
         {deleteError && (
           <span className="text-[13px] text-red-400" role="alert">
             {t(
-              'announcement_delete_failed',
+              'admin_announcement_delete_failed',
               'Failed to delete announcement — it is still visible to users.'
             )}
           </span>
         )}
         {!isLoading && !listError && announcements?.length === 0 && (
-          <span className="text-[13px] text-newTextColor/40">
-            {t('no_announcements', 'No announcements yet')}
+          <span className="text-[13px] text-newTextColor/70">
+            {t('admin_no_announcements', 'No announcements yet')}
           </span>
         )}
         {announcements?.map((a) => (
@@ -233,7 +243,7 @@ export const AdminAnnouncementsComponent = () => {
               <span className="text-[13px] text-newTextColor/60 break-words">
                 {a.description}
               </span>
-              <span className="text-[11px] text-newTextColor/40">
+              <span className="text-[11px] text-newTextColor/70">
                 {new Date(a.createdAt).toLocaleString()}
               </span>
             </div>
@@ -242,7 +252,7 @@ export const AdminAnnouncementsComponent = () => {
               onClick={() => handleDelete(a)}
               className="px-[12px] h-[30px] rounded-[8px] text-[12px] border border-red-500/30 text-red-400 hover:bg-red-500/10 cursor-pointer transition-colors shrink-0"
             >
-              {t('delete', 'Delete')}
+              {t('admin_delete', 'Delete')}
             </button>
           </div>
         ))}
