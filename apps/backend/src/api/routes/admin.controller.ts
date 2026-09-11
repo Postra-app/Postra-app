@@ -21,6 +21,11 @@ import { fetch } from 'undici';
 // the compiled dist and crashes at runtime (Cannot find module).
 import { ioRedis } from '@gitroom/nestjs-libraries/redis/redis.service';
 import { bustAuthContextCache } from '@gitroom/nestjs-libraries/redis/auth-context.cache';
+import {
+  parseDay,
+  parseDayCount,
+  parsePaging,
+} from '@gitroom/backend/api/routes/admin.query';
 
 @ApiTags('Admin')
 @Controller('/admin')
@@ -51,15 +56,16 @@ export class AdminController {
     @Query('days') days?: string
   ) {
     this.assertSuperAdmin(user);
-    const parsedDays = days ? parseInt(days, 10) : 0;
+    const paging = parsePaging(page, limit);
+    const parsedDays = parseDayCount(days, 'days');
     return this._errorsService.listErrors({
-      page: page ? parseInt(page, 10) : 0,
-      limit: limit ? parseInt(limit, 10) : 20,
+      page: paging.page,
+      limit: paging.limit,
       platform: platform || undefined,
       email: email || undefined,
       unknownFirst: unknownFirst === 'true' || unknownFirst === '1',
-      // 0 / missing / NaN = all time
-      days: Number.isFinite(parsedDays) && parsedDays > 0 ? parsedDays : undefined,
+      // 0 / missing = all time
+      days: parsedDays && parsedDays > 0 ? parsedDays : undefined,
     });
   }
 
@@ -78,8 +84,8 @@ export class AdminController {
   ) {
     this.assertSuperAdmin(user);
 
-    const fromDate = from ? dayjs(from) : dayjs().subtract(30, 'day');
-    const toDate = to ? dayjs(to) : dayjs();
+    const fromDate = parseDay(from, 'from') ?? dayjs().subtract(30, 'day');
+    const toDate = parseDay(to, 'to') ?? dayjs();
 
     return this._adminStatsService.getStats({
       from: fromDate.startOf('day').toDate(),
@@ -96,8 +102,7 @@ export class AdminController {
     @Query('search') search?: string
   ) {
     this.assertSuperAdmin(user);
-    const take = limit ? parseInt(limit, 10) : 20;
-    const skip = page ? parseInt(page, 10) * take : 0;
+    const { limit: take, skip } = parsePaging(page, limit);
 
     const where = search
       ? { name: { contains: search, mode: 'insensitive' as const } }
@@ -145,8 +150,7 @@ export class AdminController {
     @Query('search') search?: string
   ) {
     this.assertSuperAdmin(user);
-    const take = limit ? parseInt(limit, 10) : 20;
-    const skip = page ? parseInt(page, 10) * take : 0;
+    const { limit: take, skip } = parsePaging(page, limit);
 
     const where = search
       ? {
@@ -477,8 +481,8 @@ export class AdminController {
   ) {
     this.assertSuperAdmin(user);
 
-    const fromDate = from ? dayjs(from).toDate() : dayjs().subtract(30, 'day').toDate();
-    const toDate = to ? dayjs(to).toDate() : new Date();
+    const fromDate = (parseDay(from, 'from') ?? dayjs().subtract(30, 'day')).toDate();
+    const toDate = (parseDay(to, 'to') ?? dayjs()).toDate();
 
     // NOTE: AI usage is reported from `credits` (real, billable usage). Mastra's
     // own span tables (mastra_ai_spans) are @@ignore'd in the Prisma schema (no @id),
@@ -578,12 +582,10 @@ export class AdminController {
   ) {
     this.assertSuperAdmin(user);
 
-    const untilDay = to ? dayjs(to).endOf('day') : dayjs().endOf('day');
-    const sinceDay = from
-      ? dayjs(from).startOf('day')
-      : untilDay
-          .subtract(days ? parseInt(days, 10) : 30, 'day')
-          .startOf('day');
+    const untilDay = (parseDay(to, 'to') ?? dayjs()).endOf('day');
+    const sinceDay =
+      parseDay(from, 'from')?.startOf('day') ??
+      untilDay.subtract(parseDayCount(days, 'days') ?? 30, 'day').startOf('day');
     const numDays = untilDay.diff(sinceDay, 'day') + 1;
     const since = sinceDay.toDate();
     const until = untilDay.toDate();
