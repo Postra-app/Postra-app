@@ -19,6 +19,10 @@ import isSameOrAfter from 'dayjs/plugin/isSameOrAfter';
 import utc from 'dayjs/plugin/utc';
 import { v4 as uuidv4 } from 'uuid';
 import { CreateTagDto } from '@gitroom/nestjs-libraries/dtos/posts/create.tag.dto';
+import {
+  redactSecrets,
+  redactSecretsInJson,
+} from '@gitroom/nestjs-libraries/services/redact.secrets';
 
 dayjs.extend(isoWeek);
 dayjs.extend(weekOfYear);
@@ -501,13 +505,25 @@ export class PostsRepository {
 
     if (state === 'ERROR' && err && body) {
       try {
+        // `body` is the post list the workflow was holding when publishing
+        // failed, and every post in it carries its full Integration row because
+        // publishing needs the token. Providers that refresh (Instagram,
+        // YouTube) write a plaintext access token back onto that same object,
+        // so the row would otherwise land here as a working credential — shown
+        // by "View" and copied by "Copy Debug Code" in the admin panel.
+        // E2E-09-01.
         await this._errors.model.errors.create({
           data: {
-            message: typeof err === 'string' ? err : JSON.stringify(err),
+            message: redactSecretsInJson(
+              typeof err === 'string' ? err : JSON.stringify(err)
+            ),
             organizationId: update.organizationId,
             platform: update.integration.providerIdentifier,
             postId: update.id,
-            body: typeof body === 'string' ? body : JSON.stringify(body),
+            body:
+              typeof body === 'string'
+                ? redactSecretsInJson(body)
+                : JSON.stringify(redactSecrets(body)),
           },
         });
       } catch (err) {}

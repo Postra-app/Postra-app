@@ -19,4 +19,8 @@ export class ErrorsService {
   listPlatforms() {
     return this._errorsRepository.listPlatforms();
   }
+
+  scrubSecrets(apply: boolean) {
+    return this._errorsRepository.scrubSecrets(apply);
+  }
 }
