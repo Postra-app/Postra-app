@@ -9,6 +9,7 @@ import { SyncChannelSlots } from './tasks/sync.channel.slots';
 import { BackfillGrantedScopes } from './tasks/backfill.granted.scopes';
 import { BackfillMediaType } from './tasks/backfill.media.type';
 import { ScrubErrorSecrets } from './tasks/scrub.error.secrets';
+import { PurgeOldRecords } from './tasks/purge.old.records';
 import { AgentModule } from '@gitroom/nestjs-libraries/agent/agent.module';
 import { TemporalStubModule } from './temporal.stub.module';
 
@@ -47,6 +48,7 @@ import { TemporalStubModule } from './temporal.stub.module';
     BackfillGrantedScopes,
     BackfillMediaType,
     ScrubErrorSecrets,
+    PurgeOldRecords,
   ],
   get exports() {
     return [...this.imports, ...this.providers];
