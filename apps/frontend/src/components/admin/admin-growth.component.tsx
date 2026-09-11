@@ -130,7 +130,7 @@ export const AdminGrowthComponent = () => {
   return (
     <div className="flex flex-col gap-[16px] text-newTextColor">
       <div className="flex items-center justify-between flex-wrap gap-[8px]">
-        <h1 className="text-[20px] font-[600]">{t('admin_growth', 'Growth')}</h1>
+        <h2 className="text-[20px] font-[600]">{t('admin_growth', 'Growth')}</h2>
         <div className="flex gap-[6px]">
           {PERIODS.map((p) => (
             <button

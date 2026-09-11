@@ -81,9 +81,9 @@ export const AdminSubscriptionsComponent = () => {
 
   return (
     <div className="flex flex-col gap-[20px] text-newTextColor">
-      <h1 className="text-[20px] font-[600]">
+      <h2 className="text-[20px] font-[600]">
         {t('admin_subscriptions', 'Subscriptions')}
-      </h1>
+      </h2>
 
       {/* Metric cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-[12px]">

@@ -285,7 +285,7 @@ export const AdminErrorsComponent: FC = () => {
   return (
     <div className="flex flex-col gap-[16px] text-textColor">
       <div className="flex items-center justify-between flex-wrap gap-[8px]">
-        <h1 className="text-[20px] font-[600]">Errors</h1>
+        <h2 className="text-[20px] font-[600]">Errors</h2>
         <div className="flex items-center gap-[12px]">
           <div className="text-[13px] opacity-70">
             {data

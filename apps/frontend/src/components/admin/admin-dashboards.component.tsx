@@ -161,9 +161,9 @@ export const AdminDashboardsComponent: FC = () => {
   return (
     <div className="flex flex-col gap-[4px] text-newTextColor">
       <div>
-        <h1 className="text-[22px] font-[650] tracking-[-0.2px]">
+        <h2 className="text-[22px] font-[650] tracking-[-0.2px]">
           {t('admin_dashboards', 'Dashboards')}
-        </h1>
+        </h2>
         <p className="text-[12.5px] text-newTextColor/55 mt-[3px]">
           {t('admin_dashboards_sub', 'Monitoring & observability — one place for every dashboard')}
         </p>

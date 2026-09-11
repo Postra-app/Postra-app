@@ -115,9 +115,9 @@ export const AdminAnnouncementsComponent = () => {
 
   return (
     <div className="flex flex-col gap-[20px] max-w-[640px]">
-      <h1 className="text-[20px] font-[600]">
+      <h2 className="text-[20px] font-[600]">
         {t('admin_announcements', 'Announcements')}
-      </h1>
+      </h2>
 
       <Input
         label={t('admin_announcement_title', 'Title')}

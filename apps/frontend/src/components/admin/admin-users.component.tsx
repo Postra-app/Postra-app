@@ -332,9 +332,9 @@ export const AdminUsersComponent = () => {
 
   return (
     <div className="flex flex-col gap-[20px]">
-      <h1 className="text-[20px] font-[600]">
+      <h2 className="text-[20px] font-[600]">
         {t('admin_users', 'Users')}
-      </h1>
+      </h2>
 
       {/* The "Currently Impersonating / Stop" strip that used to live here was
           unreachable for the same reason the comp control was: the layout
