@@ -1,4 +1,4 @@
-import { Injectable, NestMiddleware } from '@nestjs/common';
+import { HttpException, Injectable, NestMiddleware } from '@nestjs/common';
 import { Request, Response, NextFunction } from 'express';
 import { AuthService } from '@gitroom/helpers/auth/auth.service';
 import { User } from '@prisma/client';
@@ -27,6 +27,20 @@ import { setImpersonateCookie } from '@gitroom/backend/services/auth/impersonate
  * one exception is `/user/impersonate`, which is how the session gets out.
  */
 const FORBIDDEN_WHILE_IMPERSONATING = ['/admin', '/billing/add-subscription'];
+
+/**
+ * Refusing a route while impersonating must not log the admin out.
+ *
+ * HttpForbiddenException is caught by the global filter, which clears the auth
+ * cookie and answers 401 — right for "your session is not valid", and very
+ * wrong here: opening /admin in a stale tab would end the admin's own session
+ * on an account whose password they may not have. This one is a plain 403.
+ */
+class ImpersonationForbiddenException extends HttpException {
+  constructor() {
+    super('Not available while impersonating', 403);
+  }
+}
 
 // Re-exported so existing callers keep importing the buster from the middleware.
 export { authContextCacheKey, bustAuthContextCache };
@@ -165,7 +179,7 @@ export class AuthMiddleware implements NestMiddleware {
 
           const path = req.path || req.url || '';
           if (FORBIDDEN_WHILE_IMPERSONATING.some((p) => path.startsWith(p))) {
-            throw new HttpForbiddenException();
+            throw new ImpersonationForbiddenException();
           }
 
           // Sliding window: the impersonation lapses after inactivity rather
@@ -220,6 +234,12 @@ export class AuthMiddleware implements NestMiddleware {
 
       actor = { userId: user.id, ...requestFingerprint(req) };
     } catch (err) {
+      // An answer we chose stands as it is. Everything else — a JWT that will
+      // not verify, a database that will not answer — becomes the forbidden
+      // response, which also clears the session cookie.
+      if (err instanceof HttpException) {
+        throw err;
+      }
       throw new HttpForbiddenException();
     }
     runWithAuditActor(actor, next);

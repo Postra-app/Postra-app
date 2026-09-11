@@ -125,6 +125,38 @@ describe('a session that is impersonating', () => {
     expect(next).not.toHaveBeenCalled();
   });
 
+  it('is refused there with a 403, not logged out of the admin account', async () => {
+    // HttpForbiddenException is caught by the global filter, which clears the
+    // auth cookie and answers 401. Opening /admin in a stale tab would then end
+    // the admin's own session, on an account whose password they may not have.
+    const { middleware } = build(impersonatedTarget);
+
+    try {
+      await middleware.use(
+        request('/admin/users') as any,
+        response() as any,
+        jest.fn()
+      );
+      fail('should have been refused');
+    } catch (e: any) {
+      expect(e.getStatus()).toBe(403);
+      expect(e.constructor.name).not.toBe('HttpForbiddenException');
+    }
+  });
+
+  it('still clears the session when the token itself is bad', async () => {
+    const { middleware } = build(impersonatedTarget);
+    const req: any = request('/posts');
+    req.cookies.auth = 'not-a-jwt';
+
+    try {
+      await middleware.use(req, response() as any, jest.fn());
+      fail('should have been refused');
+    } catch (e: any) {
+      expect(e.constructor.name).toBe('HttpForbiddenException');
+    }
+  });
+
   it('cannot comp a subscription to the org it is wearing', async () => {
     const { middleware } = build(impersonatedTarget);
     const next = jest.fn();
