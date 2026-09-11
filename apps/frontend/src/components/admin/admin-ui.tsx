@@ -199,3 +199,55 @@ export const adminSegmentProps = (active: boolean) => ({
  * can still be translated later as a deliberate act rather than by leaking in
  * through borrowed keys.
  */
+
+/**
+ * Channel state pill — one definition, beside the tier pill, for the same
+ * reason (E2E-09-55).
+ *
+ * The colours carry the verdict, so they are chosen against what the operator
+ * should do rather than against how alarming the word sounds. `expiring` is
+ * deliberately informational blue and not amber: for YouTube and TikTok it is
+ * the resting state, and painting it as a warning would rebuild the misreading
+ * this whole tab exists to prevent (E2E-09-59).
+ *
+ * Saturated text on a tinted fill, which is the pairing that measured clean
+ * the last time this was audited.
+ */
+const channelStateBadgeColors: Record<string, string> = {
+  'needs-reconnect': 'bg-red-500/20 text-red-400 border-red-500/40',
+  'setup-incomplete': 'bg-amber-500/15 text-amber-300 border-amber-500/40',
+  disabled: 'bg-white/10 text-newTextColor/70 border-white/15',
+  expired: 'bg-orange-500/15 text-orange-300 border-orange-500/40',
+  expiring: 'bg-sky-500/15 text-sky-300 border-sky-500/40',
+  ok: 'bg-green-500/20 text-green-400 border-green-500/30',
+  deleted: 'bg-white/[0.06] text-newTextColor/60 border-white/10',
+};
+
+export const channelStateBadgeClass = (state: string) =>
+  clsx(
+    'inline-block px-[8px] py-[2px] rounded-[6px] text-[11px] font-[500] border whitespace-nowrap',
+    channelStateBadgeColors[state] ??
+      'bg-red-500/20 text-red-400 border-red-500/30'
+  );
+
+/**
+ * How long a token has left, in words.
+ *
+ * `null` is a provider that never reports an expiry — four of them do not
+ * (E2E-09-59) — and it has to say so outright. An empty cell is read as a
+ * fault, which is the opposite of the truth here.
+ */
+export const formatExpiry = (seconds: number | null | undefined): string => {
+  if (seconds === null || seconds === undefined) {
+    return 'Does not expire';
+  }
+  const abs = Math.abs(seconds);
+  const unit =
+    abs < 3600
+      ? `${Math.max(1, Math.round(abs / 60))}m`
+      : abs < 48 * 3600
+      ? `${Math.round(abs / 3600)}h`
+      : `${Math.round(abs / 86400)}d`;
+
+  return seconds < 0 ? `Expired ${unit} ago` : `in ${unit}`;
+};

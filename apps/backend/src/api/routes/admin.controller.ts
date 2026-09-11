@@ -8,7 +8,7 @@ import {
   Query,
 } from '@nestjs/common';
 import { GetUserFromRequest } from '@gitroom/nestjs-libraries/user/user.from.request';
-import { User } from '@prisma/client';
+import { Prisma, User } from '@prisma/client';
 import { ApiTags } from '@nestjs/swagger';
 import { ErrorsService } from '@gitroom/nestjs-libraries/database/prisma/errors/errors.service';
 import { AdminStatsService } from '@gitroom/nestjs-libraries/database/prisma/admin-stats/admin-stats.service';
@@ -29,6 +29,20 @@ import {
 } from '@gitroom/backend/api/routes/admin.query';
 import { StripeService } from '@gitroom/nestjs-libraries/services/stripe.service';
 import { UsersService } from '@gitroom/nestjs-libraries/database/prisma/users/users.service';
+import { IntegrationManager } from '@gitroom/nestjs-libraries/integrations/integration.manager';
+import {
+  channelState,
+  isActionable,
+  expiresInSeconds,
+  CHANNEL_STATES,
+  ChannelState,
+} from '@gitroom/nestjs-libraries/database/prisma/integrations/channel.state';
+import {
+  channelStateWhere,
+  notScheduledWhere,
+} from '@gitroom/nestjs-libraries/database/prisma/integrations/channel.state.query';
+import { canPostComments, grantedScopesOf } from '@gitroom/nestjs-libraries/integrations/social/comment.capability';
+import { redactSecretsInJson } from '@gitroom/nestjs-libraries/services/redact.secrets';
 
 @ApiTags('Admin')
 @Controller('/admin')
@@ -41,7 +55,8 @@ export class AdminController {
     private _auditService: AuditService,
     private _aiUsageService: AiUsageService,
     private _stripeService: StripeService,
-    private _userService: UsersService
+    private _userService: UsersService,
+    private _integrationManager: IntegrationManager
   ) {}
 
   private assertSuperAdmin(user: User) {
@@ -1143,6 +1158,339 @@ export class AdminController {
     const result = await this._userService.deleteOrganization(org.id);
 
     return { deleted: true, ...result };
+  }
+
+  /**
+   * Which providers put a channel under a scheduled refresh workflow.
+   *
+   * Read off the providers rather than listed here, so `refreshCron = true` on
+   * a new provider is enough — today it is instagram-standalone, threads and
+   * whop, and a list in a comment would be wrong the first time that changes.
+   */
+  private scheduledProviders(): string[] {
+    return this._integrationManager
+      .getAllowedSocialsIntegrations()
+      .filter(
+        (identifier) =>
+          !!this._integrationManager.getSocialIntegration(identifier)
+            ?.refreshCron
+      );
+  }
+
+  /** How far back the per-channel failure history goes. */
+  private static readonly CHANNEL_ERROR_DAYS = 30;
+
+  /**
+   * Recent publish failures, counted per channel rather than per provider.
+   *
+   * `Errors` carries `platform` and `organizationId` but no foreign key to the
+   * channel, so counting from that side lumps every Instagram channel in an
+   * organization together and makes one bad channel look like five. The post
+   * is the join that makes it exact.
+   *
+   * One statement for the whole page: a window count for the total, DISTINCT
+   * ON for the newest message beside it. The message is redacted on the way
+   * out for the same reason the errors tab redacts it — refreshed tokens have
+   * reached that column before (E2E-09-01).
+   */
+  private async channelErrors(integrationIds: string[], now: Date) {
+    if (!integrationIds.length) {
+      return new Map<string, { count: number; message: string; at: Date }>();
+    }
+
+    const since = dayjs(now)
+      .subtract(AdminController.CHANNEL_ERROR_DAYS, 'day')
+      .toDate();
+
+    const rows = await this._prisma.$queryRaw<
+      Array<{ integrationId: string; message: string; at: Date; count: bigint }>
+    >`
+      SELECT DISTINCT ON (p."integrationId")
+             p."integrationId" AS "integrationId",
+             e."message" AS message,
+             e."createdAt" AS at,
+             COUNT(*) OVER (PARTITION BY p."integrationId")::bigint AS count
+      FROM "Errors" e
+      JOIN "Post" p ON p."id" = e."postId"
+      WHERE p."integrationId" IN (${Prisma.join(integrationIds)})
+        AND e."createdAt" >= ${since}
+      ORDER BY p."integrationId", e."createdAt" DESC
+    `;
+
+    return new Map(
+      rows.map((row) => [
+        row.integrationId,
+        {
+          count: Number(row.count),
+          message: redactSecretsInJson(row.message),
+          at: row.at,
+        },
+      ])
+    );
+  }
+
+  /**
+   * Every channel, with the state of its token — and none of its token.
+   *
+   * The one customer request out of six the panel still could not answer:
+   * "my channel keeps disconnecting" (05-gaps §1e). The panel showed no token
+   * state at all — not `tokenExpiration`, not `refreshNeeded`, not `disabled`
+   * — so the only way to see it was running the refresh command over SSM, and
+   * that output conflated a short-lived token with a dead one (E2E-09-59).
+   *
+   * ⛔ `token` and `refreshToken` are absent from the select, not selected and
+   * then deleted. There is no code path here that could leak one by being
+   * edited carelessly later, and `admin.integrations.spec.ts` asserts it on
+   * the serialised response.
+   */
+  @Get('/integrations')
+  async listIntegrations(
+    @GetUserFromRequest() user: User,
+    @Query('page') page?: string,
+    @Query('limit') limit?: string,
+    @Query('organizationId') organizationId?: string,
+    @Query('provider') provider?: string,
+    @Query('state') state?: string,
+    @Query('search') search?: string,
+    @Query('includeDeleted') includeDeleted?: string
+  ) {
+    this.assertSuperAdmin(user);
+    const paging = parsePaging(page, limit);
+    const now = new Date();
+    const withDeleted = includeDeleted === 'true';
+
+    if (state && !CHANNEL_STATES.includes(state as ChannelState)) {
+      throw new HttpException(`Unknown state: ${state}`, 400);
+    }
+
+    // Asking for deleted channels by state is asking to see them. Without
+    // this, picking "Deleted" from the filter returns nothing at all unless
+    // the separate checkbox happens to be ticked too — a filter that answers
+    // an honest question with an empty table (found by running it).
+    const showDeleted = withDeleted || state === 'deleted';
+
+    const base: Record<string, unknown> = {
+      ...(showDeleted ? {} : { deletedAt: null }),
+      ...(organizationId ? { organizationId } : {}),
+      ...(provider ? { providerIdentifier: provider } : {}),
+      ...(search
+        ? {
+            OR: [
+              { name: { contains: search, mode: 'insensitive' as const } },
+              {
+                organization: {
+                  name: { contains: search, mode: 'insensitive' as const },
+                },
+              },
+            ],
+          }
+        : {}),
+    };
+
+    // The state filter carries its own `deletedAt`, and two `OR` keys in one
+    // object would overwrite each other — so the pieces are ANDed rather than
+    // spread together.
+    const where = {
+      AND: [base, ...(state ? [channelStateWhere(state as ChannelState, now)] : [])],
+    };
+
+    const [rows, total, summary] = await Promise.all([
+      this._prisma.integration.findMany({
+        where,
+        take: paging.limit,
+        skip: paging.skip,
+        // Worst first: a channel the customer is complaining about should not
+        // be on page three.
+        orderBy: [{ refreshNeeded: 'desc' }, { tokenExpiration: 'asc' }],
+        select: {
+          id: true,
+          internalId: true,
+          name: true,
+          picture: true,
+          providerIdentifier: true,
+          profile: true,
+          disabled: true,
+          inBetweenSteps: true,
+          refreshNeeded: true,
+          tokenExpiration: true,
+          grantedScopes: true,
+          createdAt: true,
+          updatedAt: true,
+          deletedAt: true,
+          customer: { select: { id: true, name: true } },
+          organization: { select: { id: true, name: true } },
+        },
+      }),
+      this._prisma.integration.count({ where }),
+      this.channelSummary(base, now),
+    ]);
+
+    const scheduled = new Set(this.scheduledProviders());
+    const errors = await this.channelErrors(
+      rows.map((row) => row.id),
+      now
+    );
+
+    return {
+      items: rows.map((row) => {
+        const rowState = channelState(row, now.getTime());
+        const isScheduled = scheduled.has(row.providerIdentifier);
+        const socialProvider = (() => {
+          try {
+            return this._integrationManager.getSocialIntegration(
+              row.providerIdentifier
+            );
+          } catch {
+            return null;
+          }
+        })();
+
+        return {
+          id: row.id,
+          internalId: row.internalId,
+          name: row.name,
+          picture: row.picture,
+          provider: row.providerIdentifier,
+          profile: row.profile,
+          state: rowState,
+          // The raw flags travel beside the verdict, because `state` reports
+          // only the first one that matched. A channel switched off after a
+          // downgrade AND carrying a failed refresh reads as "Disabled" —
+          // correct as advice, since the answer is the plan, but it would
+          // hide the second flag entirely if these did not come with it.
+          flags: {
+            refreshNeeded: !!row.refreshNeeded,
+            disabled: !!row.disabled,
+            inBetweenSteps: !!row.inBetweenSteps,
+          },
+          scheduled: isScheduled,
+          actionable: isActionable(rowState, isScheduled),
+          tokenExpiration: row.tokenExpiration,
+          expiresInSeconds: expiresInSeconds(row.tokenExpiration, now.getTime()),
+          // null means the column predates this channel, which is not the same
+          // as a platform that granted nothing — the difference decides
+          // whether a reconnect would actually help (05-gaps §8.1).
+          grantedScopes: row.grantedScopes ? grantedScopesOf(row) : null,
+          commentScope: socialProvider?.commentScope ?? null,
+          commentCapable: canPostComments(socialProvider, row),
+          customer: row.customer,
+          organization: row.organization,
+          // A channel that fails every day and a channel that failed once are
+          // the same row without this.
+          recentErrors: errors.get(row.id)?.count ?? 0,
+          recentErrorDays: AdminController.CHANNEL_ERROR_DAYS,
+          lastError: errors.get(row.id)
+            ? {
+                message: errors.get(row.id)!.message,
+                at: errors.get(row.id)!.at,
+              }
+            : null,
+          createdAt: row.createdAt,
+          updatedAt: row.updatedAt,
+          deletedAt: row.deletedAt,
+        };
+      }),
+      total,
+      page: paging.page,
+      limit: paging.limit,
+      hasMore: paging.skip + rows.length < total,
+      summary,
+    };
+  }
+
+  /**
+   * The headline counts, over the whole filtered set rather than the page.
+   *
+   * Counting the page is how a header ends up saying "3 need a reconnect"
+   * while page two holds a fourth — the same class of mistake as the scrub
+   * report and the refresh counter, both of which summarised the part they
+   * happened to be holding.
+   */
+  private async channelSummary(
+    base: Record<string, unknown>,
+    now: Date
+  ): Promise<Record<string, number>> {
+    const notScheduled = notScheduledWhere(this.scheduledProviders());
+
+    // The counts sit beside the filter options, so the one for deleted has to
+    // be the real number rather than the zero that `deletedAt: null` in the
+    // base would force. Everything else the operator filtered by still
+    // applies — this drops only the visibility rule.
+    const { deletedAt: _hidden, ...baseIgnoringDeleted } = base as {
+      deletedAt?: unknown;
+    };
+
+    const counts = await Promise.all(
+      CHANNEL_STATES.map((state) =>
+        this._prisma.integration.count({
+          where: {
+            AND: [
+              state === 'deleted' ? baseIgnoringDeleted : base,
+              channelStateWhere(state, now),
+            ],
+          },
+        })
+      )
+    );
+
+    const byState = CHANNEL_STATES.reduce<Record<string, number>>(
+      (all, state, index) => ({ ...all, [state]: counts[index] }),
+      {}
+    );
+
+    // The only count an operator should act on, and the one the CLI prints:
+    // a reconnect, an unfinished setup, or a token already dead on a channel
+    // no workflow is watching.
+    const expiredUnwatched = await this._prisma.integration.count({
+      where: {
+        AND: [base, channelStateWhere('expired', now), notScheduled],
+      },
+    });
+
+    return {
+      ...byState,
+      actionable:
+        byState['needs-reconnect'] +
+        byState['setup-incomplete'] +
+        expiredUnwatched,
+      expiredUnwatched,
+    };
+  }
+
+  /**
+   * The providers actually connected, so the filter cannot offer an empty
+   * result.
+   *
+   * Scoped the same way the table is. Counting every organization while the
+   * table showed one offered "facebook (2)" to an operator looking at a
+   * customer who has no Facebook channel, and counted deleted channels the
+   * table was hiding — the same trap as the deleted state filter, in the
+   * control right next to it (found by clicking).
+   */
+  @Get('/integrations/providers')
+  async listIntegrationProviders(
+    @GetUserFromRequest() user: User,
+    @Query('organizationId') organizationId?: string,
+    @Query('includeDeleted') includeDeleted?: string
+  ) {
+    this.assertSuperAdmin(user);
+    const rows = await this._prisma.integration.groupBy({
+      by: ['providerIdentifier'],
+      where: {
+        ...(includeDeleted === 'true' ? {} : { deletedAt: null }),
+        ...(organizationId ? { organizationId } : {}),
+      },
+      _count: { _all: true },
+      orderBy: { providerIdentifier: 'asc' },
+    });
+
+    const scheduled = new Set(this.scheduledProviders());
+
+    return rows.map((row) => ({
+      provider: row.providerIdentifier,
+      channels: row._count._all,
+      scheduled: scheduled.has(row.providerIdentifier),
+    }));
   }
 
 }

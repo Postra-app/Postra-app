@@ -14,10 +14,11 @@ const tabs = readdirSync(ADMIN).filter((f) => f.endsWith('.component.tsx'));
 const read = (file: string) => readFileSync(join(ADMIN, file), 'utf8');
 
 describe('every admin tab', () => {
-  // Eleven since the audit reader got a tab of its own: the trail was made
-  // truthful in #227 and nothing read it (E2E-09-34).
-  it('there are eleven of them', () => {
-    expect(tabs).toHaveLength(11);
+  // Twelve since channels got a tab of its own: the panel showed no token
+  // state at all, so "my channel keeps disconnecting" could only be answered
+  // by running a command over SSM (E2E-09-59, 05-gaps §1e).
+  it('there are twelve of them', () => {
+    expect(tabs).toHaveLength(12);
   });
 
   // Four of them had no heading element at all, and the rest mixed h1 with h2

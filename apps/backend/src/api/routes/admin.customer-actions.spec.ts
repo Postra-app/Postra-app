@@ -64,7 +64,11 @@ const build = (overrides: any = {}) => {
     audit as any,
     {} as any,
     stripe as any,
-    users as any
+    users as any,
+    {
+      getAllowedSocialsIntegrations: (): string[] => [],
+      getSocialIntegration: (): null => null,
+    } as any
   );
 
   return { controller, audit, stripe, users, prisma };

@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useState } from 'react';
+import Link from 'next/link';
 import useSWR from 'swr';
 import { useFetch } from '@gitroom/helpers/utils/custom.fetch';
 import { useT } from '@gitroom/react/translation/get.transation.service.client';
@@ -246,8 +247,24 @@ export const AdminOrganizationsComponent = () => {
                     ? 'Lifetime'
                     : org.subscription?.period ?? '-'}
                 </td>
+                {/* The count is the way in: "my channel keeps disconnecting"
+                    starts with the organization, and the drill-down is this
+                    link rather than a second panel of its own. */}
                 <td className="p-[12px] text-[13px] text-newTextColor/60">
-                  {org._count.Integration}
+                  {org._count.Integration ? (
+                    <Link
+                      href={`/admin/channels?organizationId=${org.id}`}
+                      className="text-[#7dd3fc] hover:underline"
+                      title={t(
+                        'admin_organization_channels_link',
+                        'Token state for this organization'
+                      )}
+                    >
+                      {org._count.Integration}
+                    </Link>
+                  ) : (
+                    org._count.Integration
+                  )}
                 </td>
                 <td className="p-[12px] text-[13px] text-newTextColor/60">
                   {org._count.users}
