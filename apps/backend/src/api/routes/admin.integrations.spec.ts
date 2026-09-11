@@ -48,10 +48,10 @@ const row = (overrides: any = {}) => ({
   ...overrides,
 });
 
-const build = (rows: any[] = [row()], counts: number[] = []) => {
+const build = (rows: any[] = [row()], counts: number[] = [], errorRows: any[] = []) => {
   let countCall = 0;
   const integration = {
-    findMany: jest.fn(async () => rows),
+    findMany: jest.fn(async (_args?: any) => rows),
     // First call is the list total; the rest are the summary's per-state
     // counts, in CHANNEL_STATES order, then expired-and-unwatched.
     count: jest.fn(async () => counts[countCall++] ?? rows.length),
@@ -71,10 +71,12 @@ const build = (rows: any[] = [row()], counts: number[] = []) => {
       }[id] ?? null),
   };
 
+  const queryRaw = jest.fn(async (..._args: any[]) => errorRows);
+
   const controller = new AdminController(
     {} as any,
     {} as any,
-    { integration } as any,
+    { integration, $queryRaw: queryRaw } as any,
     {} as any,
     {} as any,
     {} as any,
@@ -83,7 +85,7 @@ const build = (rows: any[] = [row()], counts: number[] = []) => {
     manager as any
   );
 
-  return { controller, integration };
+  return { controller, integration, queryRaw };
 };
 
 const status = async (fn: () => Promise<unknown>) => {
@@ -236,6 +238,67 @@ describe('GET /admin/integrations', () => {
     expect(where.AND[0].organizationId).toBe('org-1');
     expect(where.AND[0].OR).toHaveLength(2);
     expect(where.AND[1].refreshNeeded).toBe(true);
+  });
+});
+
+describe('the failure history beside each channel', () => {
+  it('counts failures for this channel, not for every channel on the provider', async () => {
+    // Errors carries the provider name and the organization, not the channel,
+    // so counting from that side makes one bad channel look like five.
+    const { controller } = build(
+      [row({ id: 'noisy' }), row({ id: 'quiet' })],
+      [],
+      [
+        {
+          integrationId: 'noisy',
+          message: 'The session has been invalidated',
+          at: hours(-3),
+          count: BigInt(14),
+        },
+      ]
+    );
+    const result: any = await controller.listIntegrations(admin);
+    const byId = Object.fromEntries(result.items.map((i: any) => [i.id, i]));
+
+    expect(byId.noisy.recentErrors).toBe(14);
+    expect(byId.noisy.lastError.message).toContain('invalidated');
+    expect(byId.quiet.recentErrors).toBe(0);
+    expect(byId.quiet.lastError).toBeNull();
+  });
+
+  it('redacts the message, because refreshed tokens have reached that column', async () => {
+    const { controller } = build(
+      [row({ id: 'leaky' })],
+      [],
+      [
+        {
+          integrationId: 'leaky',
+          message: '{"error":"bad","token":"EAAG-real-secret"}',
+          at: hours(-1),
+          count: BigInt(1),
+        },
+      ]
+    );
+    const result: any = await controller.listIntegrations(admin);
+    expect(result.items[0].lastError.message).not.toContain('EAAG-real-secret');
+  });
+
+  it('asks for the history once for the whole page, not once per channel', async () => {
+    const { controller, queryRaw } = build([
+      row({ id: 'a' }),
+      row({ id: 'b' }),
+      row({ id: 'c' }),
+    ]);
+    await controller.listIntegrations(admin);
+    expect(queryRaw).toHaveBeenCalledTimes(1);
+  });
+
+  it('does not query at all when the page is empty', async () => {
+    // Prisma.join on an empty list produces `IN ()`, which is a syntax error.
+    const { controller, queryRaw } = build([]);
+    const result: any = await controller.listIntegrations(admin);
+    expect(result.items).toEqual([]);
+    expect(queryRaw).not.toHaveBeenCalled();
   });
 });
 

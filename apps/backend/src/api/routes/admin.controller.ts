@@ -8,7 +8,7 @@ import {
   Query,
 } from '@nestjs/common';
 import { GetUserFromRequest } from '@gitroom/nestjs-libraries/user/user.from.request';
-import { User } from '@prisma/client';
+import { Prisma, User } from '@prisma/client';
 import { ApiTags } from '@nestjs/swagger';
 import { ErrorsService } from '@gitroom/nestjs-libraries/database/prisma/errors/errors.service';
 import { AdminStatsService } from '@gitroom/nestjs-libraries/database/prisma/admin-stats/admin-stats.service';
@@ -42,6 +42,7 @@ import {
   notScheduledWhere,
 } from '@gitroom/nestjs-libraries/database/prisma/integrations/channel.state.query';
 import { canPostComments, grantedScopesOf } from '@gitroom/nestjs-libraries/integrations/social/comment.capability';
+import { redactSecretsInJson } from '@gitroom/nestjs-libraries/services/redact.secrets';
 
 @ApiTags('Admin')
 @Controller('/admin')
@@ -1176,6 +1177,58 @@ export class AdminController {
       );
   }
 
+  /** How far back the per-channel failure history goes. */
+  private static readonly CHANNEL_ERROR_DAYS = 30;
+
+  /**
+   * Recent publish failures, counted per channel rather than per provider.
+   *
+   * `Errors` carries `platform` and `organizationId` but no foreign key to the
+   * channel, so counting from that side lumps every Instagram channel in an
+   * organization together and makes one bad channel look like five. The post
+   * is the join that makes it exact.
+   *
+   * One statement for the whole page: a window count for the total, DISTINCT
+   * ON for the newest message beside it. The message is redacted on the way
+   * out for the same reason the errors tab redacts it — refreshed tokens have
+   * reached that column before (E2E-09-01).
+   */
+  private async channelErrors(integrationIds: string[], now: Date) {
+    if (!integrationIds.length) {
+      return new Map<string, { count: number; message: string; at: Date }>();
+    }
+
+    const since = dayjs(now)
+      .subtract(AdminController.CHANNEL_ERROR_DAYS, 'day')
+      .toDate();
+
+    const rows = await this._prisma.$queryRaw<
+      Array<{ integrationId: string; message: string; at: Date; count: bigint }>
+    >`
+      SELECT DISTINCT ON (p."integrationId")
+             p."integrationId" AS "integrationId",
+             e."message" AS message,
+             e."createdAt" AS at,
+             COUNT(*) OVER (PARTITION BY p."integrationId")::bigint AS count
+      FROM "Errors" e
+      JOIN "Post" p ON p."id" = e."postId"
+      WHERE p."integrationId" IN (${Prisma.join(integrationIds)})
+        AND e."createdAt" >= ${since}
+      ORDER BY p."integrationId", e."createdAt" DESC
+    `;
+
+    return new Map(
+      rows.map((row) => [
+        row.integrationId,
+        {
+          count: Number(row.count),
+          message: redactSecretsInJson(row.message),
+          at: row.at,
+        },
+      ])
+    );
+  }
+
   /**
    * Every channel, with the state of its token — and none of its token.
    *
@@ -1267,6 +1320,10 @@ export class AdminController {
     ]);
 
     const scheduled = new Set(this.scheduledProviders());
+    const errors = await this.channelErrors(
+      rows.map((row) => row.id),
+      now
+    );
 
     return {
       items: rows.map((row) => {
@@ -1302,6 +1359,16 @@ export class AdminController {
           commentCapable: canPostComments(socialProvider, row),
           customer: row.customer,
           organization: row.organization,
+          // A channel that fails every day and a channel that failed once are
+          // the same row without this.
+          recentErrors: errors.get(row.id)?.count ?? 0,
+          recentErrorDays: AdminController.CHANNEL_ERROR_DAYS,
+          lastError: errors.get(row.id)
+            ? {
+                message: errors.get(row.id)!.message,
+                at: errors.get(row.id)!.at,
+              }
+            : null,
           createdAt: row.createdAt,
           updatedAt: row.updatedAt,
           deletedAt: row.deletedAt,
