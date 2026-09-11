@@ -14,8 +14,10 @@ const tabs = readdirSync(ADMIN).filter((f) => f.endsWith('.component.tsx'));
 const read = (file: string) => readFileSync(join(ADMIN, file), 'utf8');
 
 describe('every admin tab', () => {
-  it('there are ten of them', () => {
-    expect(tabs).toHaveLength(10);
+  // Eleven since the audit reader got a tab of its own: the trail was made
+  // truthful in #227 and nothing read it (E2E-09-34).
+  it('there are eleven of them', () => {
+    expect(tabs).toHaveLength(11);
   });
 
   // Four of them had no heading element at all, and the rest mixed h1 with h2
@@ -86,27 +88,52 @@ describe('translation keys', () => {
   });
 });
 
-// E2E-09-29: FREE fell through the tier colour map to the error red, so
-// perfectly ordinary accounts looked broken. The first attempt at this added a
-// FREE branch that could never run: an org with no subscription row *is* FREE,
-// and the missing-tier guard above it returned the error colour first.
-// Measured in the live DOM before this fix: the FREE badge still rendered with
-// a red-* class.
-describe('the tier badge', () => {
-  const source = read('admin-organizations.component.tsx');
+// E2E-09-60: the "Import Debug Post" modal gates its only action behind a
+// channel picker that was a list of divs with onClick — no role, no tabIndex,
+// no aria-checked. Measured in the live DOM on production: the whole modal
+// offered two interactive elements, the close button and the disabled
+// "Import as Draft", and the channel rows were neither. A keyboard user
+// therefore reached a button that could never unlock.
+describe('the debug-import channel picker', () => {
+  const source = readFileSync(
+    join(__dirname, '..', 'launches', 'import-debug-post.modal.tsx'),
+    'utf8'
+  );
 
-  it('reads the tier through the same helper the label uses', () => {
-    expect(source).toMatch(/const tierColor[\s\S]{0,200}?tierLabel\(sub\)/);
+  it('is a radio group, not a list of clickable divs', () => {
+    expect(source).toContain('role="radiogroup"');
+    expect(source).toContain('role="radio"');
+    expect(source).toContain('aria-checked={selectedIntegrationId');
   });
 
-  it('has no guard that can shadow the FREE branch', () => {
-    const body = source.slice(
-      source.indexOf('const tierColor'),
-      source.indexOf('const tierColor') + 400
+  it('names the group for a screen reader', () => {
+    expect(source).toContain('aria-labelledby="import-debug-integration-label"');
+    expect(source).toContain('id="import-debug-integration-label"');
+  });
+
+  it('uses a real button, so it takes focus without a tabIndex', () => {
+    const picker = source.slice(
+      source.indexOf('role="radiogroup"'),
+      source.indexOf('role="radiogroup"') + 900
     );
-    const freeAt = body.indexOf("=== 'FREE'");
-    const guardAt = body.indexOf('if (!tier)');
-    expect(freeAt).toBeGreaterThan(-1);
-    expect(guardAt === -1 || freeAt < guardAt).toBe(true);
+    expect(picker).toMatch(/<button/);
+    expect(picker).not.toMatch(/<div[^>]*onClick/);
+  });
+});
+
+// E2E-09-29 and E2E-09-55: the tier pill was defined twice, FREE fell through
+// one copy to the error red, and the other put white text on a pastel fill at
+// 2.64:1. There is one definition now, in admin-ui, and it is tested by
+// calling it — see admin-ui.spec.ts. Asserting on source text is what let the
+// first attempt pass with a FREE branch that could never run, so what remains
+// here is only the claim that neither tab has grown its own copy back.
+describe('the tier badge', () => {
+  it('is not redefined inside a tab', () => {
+    for (const file of ['admin-organizations.component.tsx', 'admin-subscriptions.component.tsx']) {
+      const source = read(file);
+      expect(source).toContain('tierBadgeClass');
+      expect(source).not.toMatch(/const tierBadgeColors/);
+      expect(source).not.toMatch(/rounded-full[^`'"]*text-white/);
+    }
   });
 });
