@@ -44,6 +44,14 @@ export class ErrorsRepository {
     return where;
   }
 
+  /**
+   * What the list needs, and no more.
+   *
+   * It used to include the raw `body` and the post content on every row:
+   * 151 KB for twenty rows, 8.7 KB each, most of it a serialised post list
+   * nothing on screen renders. Both now come from the detail endpoint, when
+   * somebody actually opens a row (E2E-09-30).
+   */
   private get include() {
     return {
       organization: {
@@ -57,8 +65,43 @@ export class ErrorsRepository {
           },
         },
       },
-      post: { select: { id: true, content: true } },
+      post: { select: { id: true } },
     } as const;
+  }
+
+  private get listSelect() {
+    return {
+      id: true,
+      message: true,
+      platform: true,
+      postId: true,
+      organizationId: true,
+      createdAt: true,
+      ...this.include,
+    } as const;
+  }
+
+  /** One row in full, body included. */
+  async getError(id: string) {
+    const row = await this._errors.model.errors.findUnique({
+      where: { id },
+      include: {
+        organization: {
+          select: {
+            id: true,
+            name: true,
+            users: {
+              select: {
+                user: { select: { id: true, email: true, name: true } },
+              },
+            },
+          },
+        },
+        post: { select: { id: true, content: true } },
+      },
+    });
+
+    return row ? this.redact([row as any])[0] : null;
   }
 
   async listPlatforms() {
@@ -77,11 +120,13 @@ export class ErrorsRepository {
    * waiting for the backfill, and keeps the guarantee if anything ever writes
    * to this table without going through `changeState`.
    */
-  private redact<T extends { message: string; body: string }>(rows: T[]): T[] {
+  private redact<T extends { message: string; body?: string }>(rows: T[]): T[] {
     return rows.map((row) => ({
       ...row,
       message: redactSecretsInJson(row.message),
-      body: redactSecretsInJson(row.body),
+      ...(row.body === undefined
+        ? {}
+        : { body: redactSecretsInJson(row.body) }),
     }));
   }
 
@@ -90,7 +135,7 @@ export class ErrorsRepository {
     const limit = Math.min(Math.max(1, params.limit || 20), 100);
     const skip = page * limit;
     const where = this.buildWhere(params);
-    const include = this.include;
+    const select = this.listSelect;
 
     if (!params.unknownFirst) {
       const [items, total] = await Promise.all([
@@ -99,7 +144,7 @@ export class ErrorsRepository {
           orderBy: { createdAt: 'desc' },
           skip,
           take: limit,
-          include,
+          select,
         }),
         this._errors.model.errors.count({ where }),
       ]);
@@ -133,7 +178,7 @@ export class ErrorsRepository {
         orderBy: { createdAt: 'desc' },
         skip,
         take: takeUnknown,
-        include,
+        select,
       });
       const remaining = limit - unknownItems.length;
       if (remaining > 0) {
@@ -142,7 +187,7 @@ export class ErrorsRepository {
           orderBy: { createdAt: 'desc' },
           skip: 0,
           take: remaining,
-          include,
+          select,
         });
       }
     } else {
@@ -151,7 +196,7 @@ export class ErrorsRepository {
         orderBy: { createdAt: 'desc' },
         skip: skip - unknownTotal,
         take: limit,
-        include,
+        select,
       });
     }
 

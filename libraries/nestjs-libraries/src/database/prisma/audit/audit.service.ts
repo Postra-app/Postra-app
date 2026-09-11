@@ -17,6 +17,7 @@ export type AuditAction =
   | 'integration.connect'
   | 'integration.disconnect'
   | 'subscription.comp'
+  | 'subscription.revoke'
   | 'subscription.change'
   | 'subscription.delete'
   | 'security.apikey.rotate';

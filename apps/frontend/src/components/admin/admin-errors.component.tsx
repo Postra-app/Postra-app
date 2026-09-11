@@ -14,10 +14,12 @@ import {
 } from './admin-ui';
 import { LoadingComponent } from '@gitroom/frontend/components/layout/loading';
 
+// The list no longer carries `body` or the post content: they were most of its
+// 151 KB per twenty rows, and both are only ever looked at one row at a time
+// (E2E-09-30). They come from GET /admin/errors/:id instead.
 interface ErrorRow {
   id: string;
   message: string;
-  body: string;
   platform: string;
   postId: string;
   createdAt: string;
@@ -26,6 +28,11 @@ interface ErrorRow {
     name: string;
     users: { user: { id: string; email: string; name: string | null } }[];
   };
+  post: { id: string };
+}
+
+interface ErrorDetail extends ErrorRow {
+  body: string;
   post: { id: string; content: string | null };
 }
 
@@ -45,22 +52,38 @@ const safeParse = (value: string) => {
   }
 };
 
+const useErrorDetail = (id: string) => {
+  const fetch = useFetch();
+  return useSWR<ErrorDetail>(`/admin/errors/${id}`, async (url: string) => {
+    const res = await fetch(url);
+    if (!res.ok) throw new Error('Failed to load error');
+    return res.json();
+  });
+};
+
 const ErrorDetailsModal: FC<{ row: ErrorRow }> = ({ row }) => {
   const modal = useModals();
   const toaster = useToaster();
+  const { data: detail, error: detailError } = useErrorDetail(row.id);
   const parsedMessage = useMemo(() => safeParse(row.message), [row.message]);
-  const parsedBody = useMemo(() => safeParse(row.body), [row.body]);
+  const parsedBody = useMemo(
+    () => (detail ? safeParse(detail.body) : null),
+    [detail]
+  );
 
   const copyAll = useCallback(() => {
+    if (!detail) {
+      return;
+    }
     copy(
       JSON.stringify(
-        { message: parsedMessage, body: parsedBody, meta: row },
+        { message: parsedMessage, body: parsedBody, meta: detail },
         null,
         2
       )
     );
     toaster.show('Debug code copied to clipboard', 'success');
-  }, [parsedMessage, parsedBody, row, toaster]);
+  }, [parsedMessage, parsedBody, detail, toaster]);
 
   return (
     <div className="rounded-[12px] border border-white/10 bg-white/[0.03] px-[16px] pb-[16px] relative w-full max-h-[80vh] overflow-auto">
@@ -131,7 +154,11 @@ const ErrorDetailsModal: FC<{ row: ErrorRow }> = ({ row }) => {
 
       <div className="text-[13px] font-[600] mb-[6px] mt-[12px]">body</div>
       <pre className="text-[12px] bg-white/[0.05] p-[12px] rounded-[8px] overflow-auto max-h-[40vh] whitespace-pre-wrap break-all">
-        {typeof parsedBody === 'string'
+        {detailError
+          ? 'Failed to load the full error.'
+          : !detail
+          ? 'Loading...'
+          : typeof parsedBody === 'string'
           ? parsedBody
           : JSON.stringify(parsedBody, null, 2)}
       </pre>
@@ -229,17 +256,28 @@ export const AdminErrorsComponent: FC = () => {
   );
 
   const copyRow = useCallback(
-    (row: ErrorRow) => {
+    async (row: ErrorRow) => {
+      // The body is fetched on demand now, so Copy has to go and get it.
+      const res = await fetch(`/admin/errors/${row.id}`);
+      if (!res.ok) {
+        toaster.show('Could not load the error to copy', 'warning');
+        return;
+      }
+      const detail: ErrorDetail = await res.json();
       copy(
         JSON.stringify(
-          { message: safeParse(row.message), body: safeParse(row.body), meta: row },
+          {
+            message: safeParse(detail.message),
+            body: safeParse(detail.body),
+            meta: detail,
+          },
           null,
           2
         )
       );
       toaster.show('Debug code copied to clipboard', 'success');
     },
-    [toaster]
+    [toaster, fetch]
   );
 
   const totalPages = data ? Math.max(1, Math.ceil(data.total / limit)) : 1;

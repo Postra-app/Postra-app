@@ -154,7 +154,11 @@ export const AdminOrganizationsComponent = () => {
                 {t('admin_users', 'Users')}
               </th>
               <th className="p-[12px] text-[13px] font-[500] text-newTextColor/60">
-                {t('admin_posts', 'Posts')}
+                {/* Every post the org has ever created, drafts and failures
+                    included. Stats and Growth both count published posts under
+                    the same word, and the two numbers never agree
+                    (E2E-09-25). */}
+                {t('admin_posts_all', 'Posts (all)')}
               </th>
               <th className="p-[12px] text-[13px] font-[500] text-newTextColor/60">
                 {t('admin_created', 'Created')}

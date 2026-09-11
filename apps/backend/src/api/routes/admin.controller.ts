@@ -3,6 +3,7 @@ import {
   Controller,
   Get,
   HttpException,
+  Param,
   Post,
   Query,
 } from '@nestjs/common';
@@ -73,6 +74,21 @@ export class AdminController {
   async listPlatforms(@GetUserFromRequest() user: User) {
     this.assertSuperAdmin(user);
     return this._errorsService.listPlatforms();
+  }
+
+  /**
+   * One error in full. The list stopped shipping `body`, which was most of its
+   * 151 KB per twenty rows and is only ever looked at one row at a time
+   * (E2E-09-30).
+   */
+  @Get('/errors/:id')
+  async getError(@GetUserFromRequest() user: User, @Param('id') id: string) {
+    this.assertSuperAdmin(user);
+    const row = await this._errorsService.getError(id);
+    if (!row) {
+      throw new HttpException('Error not found', 404);
+    }
+    return row;
   }
 
   @Get('/stats')
@@ -234,6 +250,39 @@ export class AdminController {
     return report;
   }
 
+  /**
+   * Take a comp or a lifetime grant back.
+   *
+   * Until now, comping an account was a one-way street: the only route out was
+   * POST /billing/cancel-subscription, which needs a resolvable Stripe customer
+   * and a live subscription, and which bails on any lifetime row before it
+   * deletes anything. A grant for a tester, or the wrong tier on the wrong org,
+   * could only be undone in the database (E2E-09-41).
+   */
+  @Post('/revoke-subscription')
+  async revokeSubscription(
+    @GetUserFromRequest() user: User,
+    @Body('organizationId') organizationId: string
+  ) {
+    this.assertSuperAdmin(user);
+    if (!organizationId?.trim()) {
+      throw new HttpException('Missing organizationId', 400);
+    }
+
+    const org = await this._prisma.organization.findUnique({
+      where: { id: organizationId },
+      select: { id: true, name: true },
+    });
+    if (!org) {
+      throw new HttpException('Organization not found', 400);
+    }
+
+    return this._subscriptionService.revokeSubscription(
+      organizationId,
+      user.id
+    );
+  }
+
   // God-mode toggle, deliberately separate from grant-lifetime: lifetime is
   // an ULTIMATE subscription (full product, no admin panel), whereas this flips
   // the global isSuperAdmin flag that gates /admin. isSuperAdmin is re-read from
@@ -313,14 +362,43 @@ export class AdminController {
       range: false,
     });
 
+    // Grafana Cloud answers 502/503/504 now and then, and a single attempt
+    // turned that into a card of raw error text on a page an admin refreshes
+    // all day (E2E-09-31).
+    const queryGrafana = async (body: string) => {
+      let lastError: Error | undefined;
+      for (let attempt = 0; attempt < 3; attempt++) {
+        if (attempt > 0) {
+          await new Promise((r) => setTimeout(r, 250 * attempt));
+        }
+        try {
+          const res = await fetch(`${grafanaUrl}/api/ds/query`, {
+            method: 'POST',
+            headers: {
+              Authorization: `Bearer ${token}`,
+              'Content-Type': 'application/json',
+            },
+            body,
+          });
+          if (res.ok) {
+            return res;
+          }
+          lastError = new Error(`Grafana responded ${res.status}`);
+          // Only a transient status is worth another go; 401 or 403 will
+          // answer the same way every time.
+          if (res.status < 500 && res.status !== 429) {
+            break;
+          }
+        } catch (e: any) {
+          lastError = e;
+        }
+      }
+      throw lastError ?? new Error('Grafana did not respond');
+    };
+
     try {
-      const res = await fetch(`${grafanaUrl}/api/ds/query`, {
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
+      const res = await queryGrafana(
+        JSON.stringify({
           from: 'now-24h',
           to: 'now',
           queries: [
@@ -332,11 +410,8 @@ export class AdminController {
             instant('C', 'sum(increase(temporal_workflow_completed[24h]))'),
             instant('D', 'sum(increase(temporal_workflow_failed[24h]))'),
           ],
-        }),
-      });
-      if (!res.ok) {
-        throw new Error(`Grafana responded ${res.status}`);
-      }
+        })
+      );
       const data: any = await res.json();
 
       const series = (refId: string): [number, number][] => {
@@ -363,7 +438,14 @@ export class AdminController {
         aiCalls24h,
       };
     } catch (e: any) {
-      return { enabled: false, error: e.message, aiCalls24h };
+      // `enabled: false` is the "not configured" answer; this is "configured
+      // and currently unreachable", which reads differently on the card.
+      return {
+        enabled: true,
+        unavailable: true,
+        error: e?.message ?? 'Grafana is not responding',
+        aiCalls24h,
+      };
     }
   }
 

@@ -223,6 +223,45 @@ export const AdminUsersComponent = () => {
     [t, mutate]
   );
 
+  // The way back out of a comp or a lifetime grant. Until this existed,
+  // granting was a one-way street: the only other route is
+  // /billing/cancel-subscription, which needs a live Stripe customer and bails
+  // on any lifetime row (E2E-09-41).
+  const revokeSubscription = useCallback(
+    (u: UserItem, org: UserOrgItem) => async () => {
+      if (
+        !(await deleteDialog(
+          t(
+            'admin_revoke_subscription_confirm',
+            `Remove the subscription from ${org.organization.name}? It drops to the free tier: channels over the cap are disabled and team seats are reconciled.`
+          ),
+          t('admin_revoke', 'Revoke')
+        ))
+      ) {
+        return;
+      }
+
+      const res = await fetch('/admin/revoke-subscription', {
+        method: 'POST',
+        body: JSON.stringify({ organizationId: org.organization.id }),
+      });
+      if (!res.ok) {
+        toaster.show(
+          t('admin_revoke_subscription_failed', 'Failed to revoke'),
+          'warning'
+        );
+        return;
+      }
+
+      toaster.show(
+        t('admin_revoke_subscription_done', 'Subscription revoked'),
+        'success'
+      );
+      await mutate();
+    },
+    [t, mutate, toaster]
+  );
+
   // Super-admin toggle — deliberately separate from Grant lifetime. Lifetime is
   // a full-product subscription with NO admin panel; this flips isSuperAdmin,
   // which is the only thing that unlocks /admin and god-mode.
@@ -439,6 +478,29 @@ export const AdminUsersComponent = () => {
                         {t('admin_grant_lifetime', 'Grant lifetime')}
                       </button>
                     )}
+                    {u.organizations
+                      .filter(
+                        (o) =>
+                          o.role === 'SUPERADMIN' && !!o.organization.subscription
+                      )
+                      .map((o) => (
+                        <button
+                          key={`revoke-${o.id}`}
+                          type="button"
+                          onClick={revokeSubscription(u, o)}
+                          className="px-[12px] h-[30px] rounded-[8px] text-[12px] border border-[rgba(248,113,113,0.4)] text-[#f87171] hover:bg-[rgba(248,113,113,0.1)] cursor-pointer transition-colors"
+                        >
+                          {u.organizations.length > 1
+                            ? `${t(
+                                'admin_revoke_subscription',
+                                'Revoke subscription'
+                              )} · ${o.organization.name}`
+                            : t(
+                                'admin_revoke_subscription',
+                                'Revoke subscription'
+                              )}
+                        </button>
+                      ))}
                     {u.id !== user?.id && (
                       <button
                         type="button"

@@ -527,6 +527,42 @@ export class SubscriptionService {
    * cause of the "No such customer" class (E2E-09-09). Nothing writes
    * paymentId here any more.
    */
+  /**
+   * Take back a comp or a lifetime grant. Stripe is not involved: an org that
+   * pays is refused, because it must be changed where it is billed.
+   */
+  async revokeSubscription(orgId: string, actorUserId: string) {
+    const paymentId = await this._subscriptionRepository.getPaymentId(orgId);
+    if (paymentId?.startsWith('cus_')) {
+      throw new HttpException(
+        'This organization has a live Stripe customer — cancel it in Stripe instead.',
+        400
+      );
+    }
+
+    const result = await this._subscriptionRepository.softDeleteSubscriptionByOrg(
+      orgId
+    );
+
+    if (result.revoked) {
+      // Back to the free tier: channels over the cap are disabled and team
+      // seats reconciled, exactly as a downgrade does.
+      await this.modifySubscriptionByOrg(
+        orgId,
+        pricing.FREE.channel || 0,
+        'FREE'
+      );
+      await this.bustMembersAuthCache(orgId, undefined);
+      this._auditService.record({
+        action: 'subscription.revoke',
+        organizationId: orgId,
+        userId: actorUserId,
+      });
+    }
+
+    return result;
+  }
+
   async addSubscription(
     orgId: string,
     userId: string,

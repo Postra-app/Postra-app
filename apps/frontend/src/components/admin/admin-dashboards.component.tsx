@@ -19,6 +19,7 @@ const GRAFANA_URL = 'https://postra.grafana.net';
 
 interface AppMetrics {
   enabled: boolean;
+  unavailable?: boolean;
   error?: string;
   requestRate?: [number, number][];
   latencyP95?: [number, number][];
@@ -92,12 +93,23 @@ const AppMetricsSection: FC = () => {
   }
   if (!data.enabled) {
     return (
-      <div className="text-[13px] text-newTextColor/50">
+      <div className="text-[13px] text-newTextColor/70">
+        {t('admin_metrics_disabled', 'Metrics are not configured')} · AI calls
+        (24h): {data.aiCalls24h}
+      </div>
+    );
+  }
+
+  // Configured but not answering right now, after three tries — different from
+  // not configured at all, and no longer a card of raw error text (E2E-09-31).
+  if (data.unavailable) {
+    return (
+      <div className="text-[13px] text-newTextColor/70">
         {t(
-          'admin_metrics_disabled',
-          'Grafana query unavailable'
-        )}
-        {data.error ? ` — ${data.error}` : ''} · AI calls (24h): {data.aiCalls24h}
+          'admin_metrics_unavailable',
+          'Grafana is not responding — try again in a moment'
+        )}{' '}
+        · AI calls (24h): {data.aiCalls24h}
       </div>
     );
   }
