@@ -1447,12 +1447,29 @@ export class AdminController {
     };
   }
 
-  /** The providers actually connected, so the filter cannot offer an empty result. */
+  /**
+   * The providers actually connected, so the filter cannot offer an empty
+   * result.
+   *
+   * Scoped the same way the table is. Counting every organization while the
+   * table showed one offered "facebook (2)" to an operator looking at a
+   * customer who has no Facebook channel, and counted deleted channels the
+   * table was hiding — the same trap as the deleted state filter, in the
+   * control right next to it (found by clicking).
+   */
   @Get('/integrations/providers')
-  async listIntegrationProviders(@GetUserFromRequest() user: User) {
+  async listIntegrationProviders(
+    @GetUserFromRequest() user: User,
+    @Query('organizationId') organizationId?: string,
+    @Query('includeDeleted') includeDeleted?: string
+  ) {
     this.assertSuperAdmin(user);
     const rows = await this._prisma.integration.groupBy({
       by: ['providerIdentifier'],
+      where: {
+        ...(includeDeleted === 'true' ? {} : { deletedAt: null }),
+        ...(organizationId ? { organizationId } : {}),
+      },
       _count: { _all: true },
       orderBy: { providerIdentifier: 'asc' },
     });

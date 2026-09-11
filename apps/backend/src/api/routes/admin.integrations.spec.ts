@@ -55,7 +55,7 @@ const build = (rows: any[] = [row()], counts: number[] = [], errorRows: any[] = 
     // First call is the list total; the rest are the summary's per-state
     // counts, in CHANNEL_STATES order, then expired-and-unwatched.
     count: jest.fn(async (_args?: any) => counts[countCall++] ?? rows.length),
-    groupBy: jest.fn(async () => [
+    groupBy: jest.fn(async (_args?: any) => [
       { providerIdentifier: 'instagram', _count: { _all: 2 } },
       { providerIdentifier: 'threads', _count: { _all: 1 } },
     ]),
@@ -334,5 +334,24 @@ describe('GET /admin/integrations/providers', () => {
       { provider: 'instagram', channels: 2, scheduled: false },
       { provider: 'threads', channels: 1, scheduled: true },
     ]);
+  });
+
+  it('counts the same set the table is showing', async () => {
+    // Found by clicking: with one organization on screen the options still
+    // described every organization, so the filter offered a provider that
+    // customer has never connected — and counted deleted channels the table
+    // was hiding.
+    const { controller, integration } = build();
+    await controller.listIntegrationProviders(admin, 'org-1');
+    const where = integration.groupBy.mock.calls[0][0].where;
+
+    expect(where.organizationId).toBe('org-1');
+    expect(where.deletedAt).toBeNull();
+  });
+
+  it('counts deleted channels once the table shows them', async () => {
+    const { controller, integration } = build();
+    await controller.listIntegrationProviders(admin, '', 'true');
+    expect(integration.groupBy.mock.calls[0][0].where.deletedAt).toBeUndefined();
   });
 });

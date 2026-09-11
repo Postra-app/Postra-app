@@ -110,16 +110,25 @@ export const AdminChannelsComponent = () => {
     { revalidateOnFocus: false, revalidateOnReconnect: false }
   );
 
+  // Scoped like the table, or the options describe a different set than the
+  // one on screen.
+  const providerQuery = new URLSearchParams({
+    ...(organizationId ? { organizationId } : {}),
+    ...(includeDeleted ? { includeDeleted: 'true' } : {}),
+  }).toString();
+
   const loadProviders = useCallback(async () => {
-    const res = await fetch('/admin/integrations/providers');
+    const res = await fetch(
+      `/admin/integrations/providers${providerQuery ? `?${providerQuery}` : ''}`
+    );
     if (!res.ok) {
       throw new Error('Failed to load providers');
     }
     return res.json() as Promise<ProviderRow[]>;
-  }, []);
+  }, [providerQuery]);
 
   const { data: providers } = useSWR<ProviderRow[]>(
-    '/admin/integrations/providers',
+    `/admin/integrations/providers?${providerQuery}`,
     loadProviders,
     { revalidateOnFocus: false }
   );
