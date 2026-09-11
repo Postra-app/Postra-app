@@ -73,8 +73,11 @@ export class UsersController {
   }
 
   @Delete('/push-token')
-  async removePushToken(@Body() body: { token: string }) {
-    await this._mobilePush.removeToken(body.token);
+  async removePushToken(
+    @GetUserFromRequest() user: User,
+    @Body() body: { token: string }
+  ) {
+    await this._mobilePush.removeToken(body.token, user.id);
     return { success: true };
   }
   @Get('/agent-media-sso')
