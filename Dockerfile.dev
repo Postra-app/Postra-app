@@ -10,6 +10,16 @@ ARG SENTRY_AUTH_TOKEN
 ENV SENTRY_ORG=$SENTRY_ORG
 ENV SENTRY_PROJECT=$SENTRY_PROJECT
 ENV SENTRY_AUTH_TOKEN=$SENTRY_AUTH_TOKEN
+# `procps` is not optional. pm2 starts every app as `pm2 start pnpm -- start`,
+# so the process pm2 owns is a pnpm wrapper and the real Node server is its
+# child. On restart pm2 signals the wrapper and relies on its tree-kill to
+# reach the child — and that tree-kill shells out to `ps --ppid <pid>`, which
+# the slim base image does not ship. Without `ps` the walk finds no children,
+# the wrapper dies, and the Node process is orphaned with its full heap still
+# resident: ~450 MB for the backend, ~1.4 GB for the orchestrator, on a 3.7 GB
+# box. Two such orphans from one `pm2 restart` pushed the instance from a 78%
+# steady state to 87% and tripped postra-dev-ec2-memory (2026-09-13).
+# It also restores `ps` inside the container for diagnosing exactly this.
 RUN apt-get update && apt-get install -y --no-install-recommends \
     g++ \
     make \
@@ -17,6 +27,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     bash \
     nginx \
     ffmpeg \
+    procps \
 && rm -rf /var/lib/apt/lists/*
 
 # Amazon's RDS root CAs for eu-west-2, added to Node's trust store.
