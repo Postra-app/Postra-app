@@ -1,3 +1,4 @@
+import { NotFoundException } from '@nestjs/common';
 import {
   AuthProvider,
   AuthProviderAbstract,
@@ -15,14 +16,28 @@ export class OauthProvider extends AuthProviderAbstract {
       FRONTEND_URL,
     } = process.env;
 
-    if (
-      !POSTRA_OAUTH_USERINFO_URL ||
-      !POSTRA_OAUTH_TOKEN_URL ||
-      !POSTRA_OAUTH_CLIENT_ID ||
-      !POSTRA_OAUTH_CLIENT_SECRET ||
-      !POSTRA_OAUTH_AUTH_URL ||
-      !FRONTEND_URL
-    ) {
+    const oauthVars = [
+      POSTRA_OAUTH_AUTH_URL,
+      POSTRA_OAUTH_CLIENT_ID,
+      POSTRA_OAUTH_CLIENT_SECRET,
+      POSTRA_OAUTH_TOKEN_URL,
+      POSTRA_OAUTH_USERINFO_URL,
+    ];
+
+    // Two different situations that used to collapse into one 500.
+    //
+    // Nothing set at all means generic OAuth is simply not enabled here — we
+    // run without it, and the frontend hides the button behind
+    // POSTRA_GENERIC_OAUTH. The endpoint should then read as absent rather than
+    // broken, so it answers 404 and files nothing in Sentry.
+    if (oauthVars.every((v) => !v)) {
+      throw new NotFoundException('Generic OAuth is not enabled');
+    }
+
+    // A half-filled set is the opposite case: someone meant to turn this on and
+    // missed a variable. That stays a loud 500 with a Sentry issue, because
+    // silently 404-ing it would hide a real misconfiguration.
+    if (oauthVars.some((v) => !v) || !FRONTEND_URL) {
       throw new Error('POSTRA_OAUTH environment variables are not set');
     }
 

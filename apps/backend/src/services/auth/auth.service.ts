@@ -385,10 +385,15 @@ export class AuthService {
   // once in checkExists. The `auth-` prefix is what the frontend social
   // callback page uses to tell a login redirect from a channel-connect one.
   async oauthLink(provider: string, query?: any) {
-    const state = `auth-${randomBytes(16).toString('hex')}`;
-    await ioRedis.set(`auth-state:${state}`, '1', 'EX', 600);
+    // Build the link before persisting the state. The old order wrote the Redis
+    // key first, so every request that then failed — unknown provider, provider
+    // not configured — still left a key behind for its full 10-minute TTL, one
+    // per request, for anyone walking the URL.
     const providerInstance = this._providerManager.getProvider(provider);
-    return providerInstance.generateLink(query, state);
+    const state = `auth-${randomBytes(16).toString('hex')}`;
+    const link = await providerInstance.generateLink(query, state);
+    await ioRedis.set(`auth-state:${state}`, '1', 'EX', 600);
+    return link;
   }
 
   async checkExists(
