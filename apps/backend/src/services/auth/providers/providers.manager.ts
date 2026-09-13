@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { ModuleRef } from '@nestjs/core';
 import { AuthProviderAbstract } from '@gitroom/backend/services/auth/providers.interface';
 
@@ -15,7 +15,10 @@ export class AuthProviderManager {
     );
 
     if (!found) {
-      throw new Error(`Auth provider ${provider} not found`);
+      // A bare Error leaves the route as an unhandled 500, which files a Sentry
+      // issue for every bot that walks /auth/oauth/<anything>. An unknown
+      // provider is a bad URL, not a server fault — say so with a 404.
+      throw new NotFoundException(`Auth provider ${provider} not found`);
     }
 
     return this._moduleRef.get(found.target, { strict: false });
