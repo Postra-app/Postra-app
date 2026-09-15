@@ -764,7 +764,9 @@ export class PostsService {
       } catch (err) {}
     }
 
-    return { error: true };
+    // Used to answer `{ error: true }` whether the delete worked or the group
+    // never existed, so no caller could tell the two apart.
+    return { deleted: !!post?.id, id: post?.id ?? null };
   }
 
   async countPostsFromDay(orgId: string, date: Date) {
