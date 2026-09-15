@@ -18,6 +18,7 @@ import {
   runWithAuditActor,
 } from '@gitroom/nestjs-libraries/database/prisma/audit/audit.actor';
 import { setImpersonateCookie } from '@gitroom/backend/services/auth/impersonate.cookie';
+import { isMobileSessionRevoked } from '@gitroom/nestjs-libraries/redis/mobile-session';
 
 /**
  * Routes a session wearing someone else's identity may not reach.
@@ -140,6 +141,17 @@ export class AuthMiddleware implements NestMiddleware {
       // stolen/leaked one — stops here. Tokens minted before this column
       // existed carry no version and are treated as stale (one forced re-login).
       if ((payload as any).tokenVersion !== user.tokenVersion) {
+        throw new HttpForbiddenException();
+      }
+
+      // Second revocation gate, for the native app only. A mobile token carries
+      // a session id that signing out puts on a deny list, so logging out on the
+      // phone actually ends that session instead of leaving the token valid in
+      // the Keychain for the rest of its life (E2E-10-17). Browser tokens carry
+      // no `sid` and skip this entirely — ending one user's phone session must
+      // not end the tab they left open.
+      const sid = (payload as any).sid as string | undefined;
+      if (sid && (await isMobileSessionRevoked(sid))) {
         throw new HttpForbiddenException();
       }
 

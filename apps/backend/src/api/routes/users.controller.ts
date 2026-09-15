@@ -314,8 +314,31 @@ export class UsersController {
     response.status(200).send();
   }
 
+  /**
+   * Hand the app a fresh token for the session it already holds. Called on
+   * launch, so a phone in regular use never reaches the token's expiry; one
+   * left alone for longer than that asks for the password again. The session id
+   * is carried over, so signing out still ends every token handed out here.
+   */
+  @Post('/refresh-token')
+  refreshToken(@Req() request: Request) {
+    const current = (request.headers.auth as string) || request.cookies?.auth;
+    return { token: this._authService.refreshMobileJwt(current) };
+  }
+
   @Post('/logout')
-  logout(@Res({ passthrough: true }) response: Response) {
+  async logout(
+    @Req() request: Request,
+    @Res({ passthrough: true }) response: Response
+  ) {
+    // Clearing the cookie ends the browser's session, and used to be all that
+    // happened — a token in the app's Keychain kept working for the rest of its
+    // 30 days (E2E-10-17). A mobile token carries a session id, and this is
+    // where it stops being accepted.
+    await this._authService.endMobileSession(
+      (request.headers.auth as string) || request.cookies?.auth
+    );
+
     response.header('logout', 'true');
     response.cookie('auth', '', {
       domain: getCookieUrlFromDomain(process.env.FRONTEND_URL!),

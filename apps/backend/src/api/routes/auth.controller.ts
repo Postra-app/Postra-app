@@ -126,7 +126,7 @@ export class AuthController {
         // Klient mobilny nie odczyta httpOnly cookie — zwróć token w body.
         ...(req.headers['x-client'] === 'mobile'
           ? {
-              token: jwt,
+              token: this._authService.mobileJwt(jwt),
               org:
                 typeof addedOrg !== 'boolean'
                   ? addedOrg?.organizationId
@@ -194,10 +194,12 @@ export class AuthController {
       response.header('reload', 'true');
       response.status(200).json({
         login: true,
-        // Klient mobilny nie odczyta httpOnly cookie — zwróć token w body.
+        // The native client cannot read an httpOnly cookie, so it gets the
+        // token in the body — but not the same one. The app's token is short
+        // and revocable; see AuthService.mobileJwt.
         ...(req.headers['x-client'] === 'mobile'
           ? {
-              token: jwt,
+              token: this._authService.mobileJwt(jwt),
               org:
                 typeof addedOrg !== 'boolean'
                   ? addedOrg?.organizationId

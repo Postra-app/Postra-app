@@ -43,6 +43,14 @@ class MockRedis {
     return 'OK';
   }
 
+  // Callers ask whether a key is there without caring what is in it — the
+  // mobile session deny list does exactly that. Without this the mock throws
+  // "not a function", every caller's catch swallows it, and the check silently
+  // answers "not revoked" for the whole test run.
+  async exists(...keys: string[]) {
+    return keys.filter((key) => this.live(key)).length;
+  }
+
   async del(...keys: string[]) {
     let removed = 0;
     for (const key of keys) {
