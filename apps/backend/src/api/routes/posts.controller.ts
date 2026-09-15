@@ -2,6 +2,7 @@ import { Throttle } from '@nestjs/throttler';
 import { AccountAgeGuard } from '@gitroom/backend/services/auth/account-age.guard';
 import {
   Body,
+  Headers,
   Controller,
   Delete,
   Get,
@@ -183,7 +184,10 @@ export class PostsController {
   @CheckPolicies([AuthorizationActions.Create, Sections.POSTS_PER_MONTH])
   async createPost(
     @GetOrgFromRequest() org: Organization,
-    @Body() rawBody: any
+    @Body() rawBody: any,
+    // The native app sends `x-client: mobile`; without reading it here every
+    // post from a phone was filed as WEB and the two were indistinguishable.
+    @Headers('x-client') client?: string
   ) {
     // Server-side validation — never trust the client to have validated.
     const validation = await this._postsService.validatePosts(
@@ -223,7 +227,11 @@ export class PostsController {
     }
 
     const body = await this._postsService.mapTypeToPost(rawBody, org.id);
-    return this._postsService.createPost(org.id, body, 'WEB');
+    return this._postsService.createPost(
+      org.id,
+      body,
+      client === 'mobile' ? 'MOBILE' : 'WEB'
+    );
   }
 
   @Post('/generator/draft')

@@ -1004,6 +1004,7 @@ enum CreationMethod {
   API
   AUTOPOST
   CLI
+  MOBILE
 }
 
 enum ShortLinkPreference {
