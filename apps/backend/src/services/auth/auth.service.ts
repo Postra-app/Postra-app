@@ -22,7 +22,11 @@ import {
   isPwnedPassword,
   PWNED_PASSWORD_MESSAGE,
 } from '@gitroom/backend/services/auth/pwned.passwords';
-import { randomBytes } from 'crypto';
+import { randomBytes, randomUUID } from 'crypto';
+import {
+  MOBILE_TOKEN_EXPIRES_IN,
+  revokeMobileSession,
+} from '@gitroom/nestjs-libraries/redis/mobile-session';
 
 // Per-account login lockout (brute-force defense, independent of IP throttling).
 const MAX_LOGIN_FAILURES = 10;
@@ -423,6 +427,67 @@ export class AuthService {
     }
 
     return { token };
+  }
+
+  /**
+   * Swap a freshly minted web token for one the native app can be signed out
+   * of. The browser's token can live 30 days because logging out deletes the
+   * cookie holding it; the app keeps its token in the Keychain, where signing
+   * out left it valid for the rest of the month (E2E-10-17). This one expires
+   * in a week and carries a session id the server can revoke on its own —
+   * unlike `tokenVersion`, which would end the browser's session too.
+   *
+   * The claims are copied from the token we just issued, so the two clients
+   * always agree on who the user is; only the lifetime and the id differ.
+   */
+  mobileJwt(webJwt: string): string {
+    const { id, email, tokenVersion } = AuthChecker.verifyJWT(webJwt) as {
+      id: string;
+      email: string;
+      tokenVersion: number;
+    };
+
+    return AuthChecker.signJWT(
+      { id, email, tokenVersion, sid: randomUUID() },
+      { expiresIn: MOBILE_TOKEN_EXPIRES_IN }
+    );
+  }
+
+  /**
+   * Extend a mobile session without starting a new one. The session id is kept
+   * so that signing out still ends every token the app has been handed, however
+   * many times it refreshed.
+   */
+  refreshMobileJwt(currentJwt: string): string {
+    const { id, email, tokenVersion, sid } = AuthChecker.verifyJWT(
+      currentJwt
+    ) as {
+      id: string;
+      email: string;
+      tokenVersion: number;
+      sid?: string;
+    };
+
+    return AuthChecker.signJWT(
+      { id, email, tokenVersion, sid: sid ?? randomUUID() },
+      { expiresIn: MOBILE_TOKEN_EXPIRES_IN }
+    );
+  }
+
+  /** End a mobile session, if the caller is holding one. Web tokens have no id. */
+  async endMobileSession(jwt: string | undefined): Promise<void> {
+    if (!jwt) {
+      return;
+    }
+    try {
+      const { sid } = AuthChecker.verifyJWT(jwt) as { sid?: string };
+      if (sid) {
+        await revokeMobileSession(sid);
+      }
+    } catch {
+      // An unreadable token cannot be revoked and does not need to be — it
+      // fails the signature check on its next request anyway.
+    }
   }
 
   private async jwt(user: User) {
