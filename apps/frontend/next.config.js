@@ -61,6 +61,18 @@ const nextConfig = {
   },
   async rewrites() {
     return [
+      // App Links / Universal Links verification files. They must answer 200 at
+      // these exact paths — Android and iOS follow no redirects and report no
+      // error when they fail, so a wrong answer here is a silently broken app
+      // link. `/.well-known/` is also exempted from the auth gate in proxy.ts.
+      {
+        source: '/.well-known/assetlinks.json',
+        destination: '/api/well-known/assetlinks',
+      },
+      {
+        source: '/.well-known/apple-app-site-association',
+        destination: '/api/well-known/apple-app-site-association',
+      },
       {
         source: '/uploads/:path*',
         destination:

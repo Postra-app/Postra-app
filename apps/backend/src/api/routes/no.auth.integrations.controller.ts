@@ -6,6 +6,7 @@ import {
   Logger,
   Param,
   Post,
+  Query,
   Req,
   UseFilters,
 } from '@nestjs/common';
@@ -31,6 +32,11 @@ import {
   channelLimitFor,
   pricing,
 } from '@gitroom/nestjs-libraries/database/prisma/subscriptions/pricing';
+
+// The native app's URL scheme, registered in Postra-mobile's app.json. The
+// callback page is allowed to hand an OAuth return back to this scheme and no
+// other.
+const APP_SCHEME = 'postra';
 
 @ApiTags('Integrations')
 @Controller('/integrations')
@@ -63,6 +69,52 @@ export class NoAuthIntegrationsController {
     }
 
     return { url };
+  }
+
+  /**
+   * Tells the OAuth callback page whether this flow was started by the native
+   * app, and where to hand it back.
+   *
+   * ⛔ Why this exists (E2E-10-70). The provider always redirects the *browser*
+   * to `app.postra.pl/integrations/social/:provider`, and that page then calls
+   * `POST /social-connect/:provider`. On a phone the browser has no Postra
+   * session — the app signs in with a token in secure storage, not a cookie —
+   * so the callback hit the session gate below and answered
+   * `401 "You must be signed in to connect a channel"`. The gate is correct and
+   * must not be relaxed: without it an attacker mints a `state` for their own
+   * org and has a victim's channel connected into it. What was missing is a way
+   * for the app to finish the exchange itself, with the token it already holds.
+   *
+   * So the page asks here first. For a browser-started flow nothing changes.
+   * For an app-started one it bounces `state` and `code` back over the app's
+   * own scheme and stops — the app then POSTs the callback with its `auth`
+   * header and passes the same gate legitimately.
+   *
+   * Public by necessity (the browser has no session) and deliberately thin: it
+   * reads one Redis key, consumes nothing, and answers about a value the app
+   * supplied itself. `state` stays single-use — this route does not spend it.
+   */
+  @Get('/social-connect/:integration/handoff')
+  async getConnectHandoff(@Query('state') state: string) {
+    const noHandoff = { handoff: false };
+    if (!state) {
+      return noHandoff;
+    }
+
+    const redirectUrl = await ioRedis.get(`redirect:${state}`);
+    if (!redirectUrl) {
+      return noHandoff;
+    }
+
+    // Only ever hand off to our own app. `redirectUrl` arrives from an
+    // authenticated caller, so it cannot be aimed at someone else's account —
+    // but an allowlist keeps the callback page from being turned into a
+    // redirector for any scheme a caller can think of.
+    if (!redirectUrl.startsWith(`${APP_SCHEME}://`)) {
+      return noHandoff;
+    }
+
+    return { handoff: true, url: redirectUrl };
   }
 
   @Post('/social-connect/:integration')

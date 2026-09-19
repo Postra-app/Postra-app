@@ -94,12 +94,84 @@ export const ContinueIntegration: FC<{
     return searchParams;
   }, []);
 
+  /**
+   * ⛔ E2E-10-70 — a phone could not finish connecting a channel at all.
+   *
+   * The provider always redirects the *browser* here, and this page then POSTs
+   * the callback. That POST needs a Postra session, and the browser on a phone
+   * has none: the app signs in with a token in secure storage, not a cookie.
+   * Measured on production 2026-09-19 — the POST answered
+   * `401 "You must be signed in to connect a channel"`, before the code was
+   * ever exchanged, so real consent at the provider changed nothing. A freshly
+   * installed app could not connect a single channel, and a store reviewer
+   * walks that path in the first minute (Guideline 2.1).
+   *
+   * ⛔ The session gate is not the bug and must not be relaxed — it is what
+   * stops an attacker minting a `state` for their own org and having a victim's
+   * channel connected into it. The fix is to let the app finish the exchange
+   * with the token it already holds: ask the server whether this flow came from
+   * the app, and if so hand `state` and `code` straight back over its scheme
+   * and stop. Browser-started flows never take this branch.
+   */
+  const handOffToApp = useCallback(
+    async (params: Record<string, any>) => {
+      // `searchParams` can hold arrays for repeated keys, and undefined for the
+      // ones a given provider does not send — neither belongs in the URL we
+      // hand the app.
+      const query = new URLSearchParams();
+      for (const [key, value] of Object.entries(params ?? {})) {
+        if (value === undefined || value === null || value === '') continue;
+        query.set(key, Array.isArray(value) ? String(value[0]) : String(value));
+      }
+
+      const state = query.get('state');
+      if (!state) return false;
+
+      try {
+        const response = await fetch(
+          `/integrations/social-connect/${provider}/handoff?state=${encodeURIComponent(
+            state
+          )}`
+        );
+        if (!response.ok) return false;
+
+        const { handoff, url } = await response.json();
+        if (!handoff || !url) return false;
+
+        query.set('provider', provider);
+        window.location.href = `${url}${
+          url.includes('?') ? '&' : '?'
+        }${query.toString()}`;
+        return true;
+      } catch {
+        // The page is still able to try the normal flow below; a failed lookup
+        // must not be the reason a connection dies.
+        return false;
+      }
+    },
+    [fetch, provider]
+  );
+
   useEffect(() => {
     (async () => {
       // OAuth providers redirect back with `?error=access_denied` (and an
       // `error_description`) when the user declines consent. Surface that
       // instead of POSTing an empty code and showing a generic failure.
       if (searchParams?.error || searchParams?.error_description) {
+        // ⚠️ A refusal has to reach the app too. Before this, the app was told
+        // nothing: the browser showed "Could not add provider" and nothing came
+        // back over `postra://`, so the app sat on an open tab forever
+        // (E2E-10-71 fixed the app's side of the same loop).
+        if (
+          await handOffToApp({
+            state: searchParams.state || modifiedParams?.state,
+            error: searchParams.error,
+            error_description: searchParams.error_description,
+          })
+        ) {
+          return;
+        }
+
         setErrorMessage(
           searchParams.error_description ||
             (searchParams.error === 'access_denied'
@@ -107,6 +179,11 @@ export const ContinueIntegration: FC<{
               : t('could_not_add_provider', 'Could not add provider'))
         );
         setError(true);
+        return;
+      }
+
+      // Started by the native app? Hand the exchange back to it and stop here.
+      if (await handOffToApp(modifiedParams)) {
         return;
       }
 
