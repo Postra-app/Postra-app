@@ -219,7 +219,13 @@ export class IntegrationsController {
         .getAllowedSocialsIntegrations()
         .includes(integration)
     ) {
-      throw new Error('Integration not allowed');
+      // A bare `Error` here reached the global filter as an unhandled
+      // exception: the client got a 500 and Sentry got an event, for what is
+      // only an unknown platform name in the URL. Measured on production
+      // 2026-09-19: `GET /integrations/social/nieistniejacy` answered
+      // `{"statusCode":500,"message":"Internal server error"}`.
+      // The tier check a few lines below already does this properly.
+      throw new HttpException(`Unknown platform: ${integration}`, 400);
     }
 
     // Per-tier platform gating. Only when billing is on (billing off ⇒ every

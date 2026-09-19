@@ -563,6 +563,16 @@ export class PostsService {
     const loadAll = await this._postRepository.getPostsByGroup(orgId, group);
     const posts = this.arrangePostsByGroup(loadAll, undefined);
 
+    // Same shape as `getPost` below, and it needed the same guard: a group that
+    // resolves to nothing fell through to `posts[0].integrationId` and threw an
+    // unhandled TypeError. Measured on production 2026-09-19: a stale group id
+    // answered `{"statusCode":500,"message":"Internal server error"}` while the
+    // very same id shape on `/posts/:id` already answered 404. The hardening
+    // that fixed `getPost` stopped one function short of its twin.
+    if (!posts?.length) {
+      throw new NotFoundException('Post not found');
+    }
+
     return {
       group: posts?.[0]?.group,
       posts: await Promise.all(
