@@ -99,11 +99,24 @@ describe('apple-app-site-association', () => {
     ]);
   });
 
-  it('reports "not configured" rather than guessing a team id', () => {
+  /**
+   * The team id was read off the Apple Developer account's Membership details
+   * page on 2026-09-20 and hardcoded — it is published verbatim in this very
+   * file, so it is not a secret. The bundle id half has moved once already
+   * (`com.postra.app` turned out to be taken, E2E-10-46), which is the part
+   * worth pinning: a stale one verifies nothing and says nothing.
+   */
+  it('serves the real team id and bundle id with no environment set', () => {
     delete process.env.IOS_APP_ID;
-    expect(iosAppId()).toBeNull();
+    expect(iosAppId()).toBe('5S47VS43RB.uk.co.postra.app');
+  });
+
+  it('ignores a blank override instead of turning the file off', () => {
     process.env.IOS_APP_ID = '   ';
-    expect(iosAppId()).toBeNull();
+    expect(iosAppId()).toBe('5S47VS43RB.uk.co.postra.app');
+  });
+
+  it('lets the environment override the team id, for a team that changed', () => {
     process.env.IOS_APP_ID = ' ABCDE12345.uk.co.postra.app ';
     expect(iosAppId()).toBe('ABCDE12345.uk.co.postra.app');
   });

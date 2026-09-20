@@ -68,16 +68,26 @@ export function assetLinks() {
 }
 
 /**
- * `<TeamID>.uk.co.postra.app`. The team prefix lives in the Apple developer
- * account and nowhere in this repo, so it comes from the environment.
+ * `<TeamID>.<bundle id>`, read from the Apple Developer account's Membership
+ * details page on 2026-09-20.
  *
- * ⚠️ Unset means this route answers 404 rather than publishing a file with a
- * wrong team id. A wrong AASA is worse than a missing one: iOS caches it, and
- * the app silently stops claiming links until the cache expires.
+ * Hardcoded on purpose: this is not a secret. It is published verbatim in the
+ * AASA file this module serves, so every installed copy of every iOS app hands
+ * its team id out to anyone who asks. Keeping it in the repo makes it
+ * reviewable and removes an environment variable that could silently go
+ * missing on a rebuild — and a missing one means a 404 here, which reads as
+ * "not verified" to iOS.
  */
-export function iosAppId(): string | null {
-  const appId = process.env.IOS_APP_ID?.trim();
-  return appId ? appId : null;
+const IOS_APP_ID = '5S47VS43RB.uk.co.postra.app';
+
+/**
+ * ⚠️ `IOS_APP_ID` in the environment overrides the constant above, for the one
+ * case that matters: the team id changing (an Individual enrolment converting
+ * to an Organization one) between deploys. Anything blank falls back to the
+ * constant rather than turning the file off.
+ */
+export function iosAppId(): string {
+  return process.env.IOS_APP_ID?.trim() || IOS_APP_ID;
 }
 
 export function appleAppSiteAssociation(appId: string) {
