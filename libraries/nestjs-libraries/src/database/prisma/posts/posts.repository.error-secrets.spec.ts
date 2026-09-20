@@ -105,3 +105,51 @@ describe('changeState does not write credentials into Errors', () => {
     expect(errorsCreate).not.toHaveBeenCalled();
   });
 });
+
+/**
+ * ⭐ The same leak had a second door, and it stayed open because only one of
+ * the two writes was hardened. `changeState` stores the failure twice: once as
+ * the redacted `Errors.message` covered above, and once straight onto
+ * `Post.error` — that one went in raw.
+ *
+ * It was inert only by accident: no select in the repository asks for `error`,
+ * so it never reached a response. But the web calendar already renders
+ * `post.error` in a tooltip (calendar.tsx), so the field is one `error: true`
+ * away from being shown, and E2E-10-51 is exactly the change that wants to put
+ * a publication failure in front of the user. Redact at the write, so whoever
+ * selects it later cannot reopen this.
+ */
+describe('changeState does not write credentials onto the post either', () => {
+  beforeEach(() => {
+    postUpdate.mockResolvedValue({
+      id: 'post-1',
+      organizationId: 'org-1',
+      integration: { providerIdentifier: 'instagram' },
+    });
+    errorsCreate.mockResolvedValue({});
+  });
+
+  const storedError = () => postUpdate.mock.calls[0][0].data.error;
+
+  it('redacts a token carried by the error object', async () => {
+    await build().changeState(
+      'post-1',
+      'ERROR',
+      { message: 'refresh failed', access_token: 'ya29.PLAINTEXT' },
+      failedPostList
+    );
+
+    expect(storedError()).not.toContain('ya29.PLAINTEXT');
+    expect(storedError()).toContain('refresh failed');
+  });
+
+  it('keeps a plain string failure readable', async () => {
+    await build().changeState('post-1', 'ERROR', 'Session expired', failedPostList);
+    expect(storedError()).toBe('Session expired');
+  });
+
+  it('leaves the column alone when there is no error', async () => {
+    await build().changeState('post-1', 'PUBLISHED');
+    expect(postUpdate.mock.calls[0][0].data.error).toBeUndefined();
+  });
+});

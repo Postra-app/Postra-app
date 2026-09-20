@@ -53,6 +53,15 @@ export async function proxy(request: NextRequest) {
     nextUrl.pathname.startsWith('/provider/') ||
     // Invite links are opened by the customer's client, who has no account here.
     nextUrl.pathname.startsWith('/connect/') ||
+    // App Links / Universal Links verification. Android and iOS fetch these
+    // with no cookies at all, and a redirect is a hard failure for both — the
+    // OS treats anything other than a 200 with the file as "not verified" and
+    // silently stops opening our links in the app. Measured on production
+    // 2026-09-19: /.well-known/assetlinks.json answered 307 to /auth, and so
+    // did apple-app-site-association, so verification could never have passed.
+    // The matcher below does not exclude these: its extension escape hatch is
+    // `[\w-]+\.\w+`, which cannot match a path segment starting with a dot.
+    nextUrl.pathname.startsWith('/.well-known/') ||
     nextUrl.pathname.startsWith('/icons/')
   ) {
     return topResponse;

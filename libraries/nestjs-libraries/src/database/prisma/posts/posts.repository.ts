@@ -274,14 +274,34 @@ export class PostsRepository {
         ? { state: State.DRAFT }
         : stateFilter === 'published'
         ? { state: State.PUBLISHED }
+        : stateFilter === 'error'
+        ? { state: State.ERROR }
         : {
             state: {
               in: [State.QUEUE, State.DRAFT, State.PUBLISHED, State.ERROR],
             },
           };
 
-    const orderDirection: 'asc' | 'desc' =
-      stateFilter === 'published' ? 'desc' : 'asc';
+    // A post is only in PUBLISHED or ERROR once the publish attempt has already
+    // happened, so its publishDate is always in the past. Any filter that can
+    // contain one therefore has to skip the "upcoming" date filter below and
+    // read newest-first.
+    //
+    // ⛔ `all` belongs in that set and did not use to be, which is how a filter
+    // labelled "All" came to answer 55 of 111 rows (E2E-10-73). It already
+    // listed every state — the date filter then cut the past ones straight back
+    // out. Measured on production 2026-09-20: `state=all` → 55, every row QUEUE,
+    // while `state=published` alone returned 53 and three more sat in ERROR.
+    // This is the web's default list tab, so the label was lying to every user,
+    // not just to the phone.
+    const includesThePast =
+      stateFilter === 'published' ||
+      stateFilter === 'error' ||
+      stateFilter === 'all';
+
+    // Newest first once the past is in scope: ascending would put last July on
+    // page 1 and bury everything the user actually has coming up.
+    const orderDirection: 'asc' | 'desc' = includesThePast ? 'desc' : 'asc';
 
     const where = {
       AND: [
@@ -294,11 +314,7 @@ export class PostsRepository {
         },
       ],
       ...stateAndDate,
-      // Published posts were already posted (publishDate in the past), so fetch
-      // all of them; everything else stays upcoming. Ordering handles the rest.
-      ...(stateFilter === 'published'
-        ? {}
-        : { publishDate: { gte: dayjs.utc().toDate() } }),
+      ...(includesThePast ? {} : { publishDate: { gte: dayjs.utc().toDate() } }),
       deletedAt: null as Date | null,
       parentPostId: null as string | null,
       intervalInDays: null as number | null,
@@ -490,8 +506,18 @@ export class PostsRepository {
       },
       data: {
         state,
+        // The twin of this value — `Errors.message`, written a few lines down —
+        // is redacted before it is stored, because a provider's failure payload
+        // can carry the plaintext token the publish was using (E2E-09-01).
+        // `Post.error` was not, and the web calendar already has a tooltip
+        // reading `post.error`, so the moment that field is selected into a
+        // response it becomes the same leak by a different door.
         ...(err
-          ? { error: typeof err === 'string' ? err : JSON.stringify(err) }
+          ? {
+              error: redactSecretsInJson(
+                typeof err === 'string' ? err : JSON.stringify(err)
+              ),
+            }
           : {}),
       },
       include: {
