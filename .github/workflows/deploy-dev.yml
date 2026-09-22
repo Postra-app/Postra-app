@@ -110,6 +110,7 @@ jobs:
               "docker pull \($image)",
               "aws ssm get-parameters-by-path --path /postra/dev/ --with-decryption --recursive --region \($region) --query \"Parameters[*].[Name,Value]\" --output text | while read -r n v; do echo \"${n#/postra/dev/}=$v\"; done > .env.new",
               "test -s .env.new && mv .env.new .env",
+              "PREV=$(awk \"/image:/ {print \\$2; exit}\" docker-compose.override.yml 2>/dev/null || true); if [ -n \"$PREV\" ] && [ \"$PREV\" != \"\($image)\" ]; then echo \"$PREV\" > .previous-image; fi",
               "cat > docker-compose.override.yml <<EOF\nservices:\n  app:\n    image: \($image)\nEOF",
               "docker compose up -d --force-recreate app",
               "sleep 3 && docker exec -u root postra-app chown -R www:www /uploads || true",
@@ -205,6 +206,7 @@ jobs:
           exit 1
 
       - name: Health check
+        id: health
         env:
           INSTANCE_ID: ${{ steps.resolve.outputs.instance_id }}
         run: |
@@ -240,4 +242,66 @@ jobs:
           done
 
           echo "Health check failed after 10 min (including post-restart retries)"
+          exit 1
+
+      # A deploy that never turns healthy used to leave the broken image
+      # running: the restart above is the only recovery the old workflow had
+      # (E2E-01-08). Put the previous image back and say so. The job still
+      # fails — the new version did not ship. ⚠️ Migrations the new image ran
+      # on boot stay applied; the previous image has to cope with the newer
+      # schema, which holds for additive migrations only.
+      - name: Roll back to the previous image
+        if: failure() && steps.health.outcome == 'failure'
+        env:
+          INSTANCE_ID: ${{ steps.resolve.outputs.instance_id }}
+        run: |
+          COMMANDS_JSON=$(jq -nc --arg region "${AWS_REGION}" --arg registry "${ECR_REGISTRY}" '{
+            commands: [
+              "set -e",
+              "cd /opt/postra",
+              "test -s .previous-image || { echo \"No previous image recorded\"; exit 1; }",
+              "PREV=$(cat .previous-image)",
+              "echo \"Rolling back to $PREV\"",
+              "aws ecr get-login-password --region \($region) | docker login --username AWS --password-stdin \($registry)",
+              "docker pull \"$PREV\"",
+              "printf \"services:\\n  app:\\n    image: %s\\n\" \"$PREV\" > docker-compose.override.yml",
+              "docker compose up -d --force-recreate app",
+              "sleep 3 && docker exec -u root postra-app chown -R www:www /uploads || true"
+            ]
+          }')
+          COMMAND_ID=$(aws ssm send-command \
+            --instance-ids "$INSTANCE_ID" \
+            --document-name "AWS-RunShellScript" \
+            --comment "Roll back ${GITHUB_SHA} on app-dev.postra.pl" \
+            --parameters "${COMMANDS_JSON}" \
+            --query "Command.CommandId" \
+            --output text)
+
+          for attempt in $(seq 1 60); do
+            STATUS=$(aws ssm get-command-invocation \
+              --command-id "$COMMAND_ID" \
+              --instance-id "$INSTANCE_ID" \
+              --query "Status" \
+              --output text 2>/dev/null || true)
+            echo "Rollback attempt ${attempt}: ${STATUS}"
+            [ "$STATUS" = "Success" ] && break
+            if [ "$STATUS" = "Cancelled" ] || [ "$STATUS" = "TimedOut" ] || [ "$STATUS" = "Failed" ]; then
+              aws ssm get-command-invocation --command-id "$COMMAND_ID" --instance-id "$INSTANCE_ID" --output json
+              echo "Rollback command failed — the broken version is still running"
+              exit 1
+            fi
+            sleep 10
+          done
+
+          for attempt in $(seq 1 30); do
+            STATUS=$(curl -s -o /tmp/postra-health.txt -w "%{http_code}" https://app-dev.postra.pl/api/monitor/queue/main || true)
+            if [ "$STATUS" = "200" ]; then
+              echo "Rolled back: the previous version is healthy. This deploy did not ship."
+              exit 1
+            fi
+            echo "Post-rollback health attempt ${attempt}: ${STATUS}"
+            sleep 10
+          done
+
+          echo "Rolled back, but the previous version is not healthy either"
           exit 1
