@@ -188,6 +188,9 @@ export const VideoTrimmer: FC<VideoTrimmerProps> = ({ file, onTrimmed }) => {
           input,
           output,
           trim: { start: trimStart, end: trimEnd },
+          // An iPhone clip is HEVC, which X and LinkedIn refuse; an H.264
+          // clip is copied as before (E2E-06-15).
+          video: { codec: 'avc' },
         });
         registerCancel(() => conversion.cancel());
         // A clip whose video we can't decode still converts "successfully" as
