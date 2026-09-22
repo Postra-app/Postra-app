@@ -452,6 +452,9 @@ importers:
       mime-types:
         specifier: ^2.1.35
         version: 2.1.35
+      mobx-react-lite:
+        specifier: 4.1.1
+        version: 4.1.1(mobx@6.15.0)(react-dom@19.2.4(react@19.2.4))(react-native@0.84.1(@babel/core@7.29.0)(@types/react@19.1.8)(bufferutil@4.1.0)(react@19.2.4)(utf-8-validate@5.0.10))(react@19.2.4)
       multer:
         specifier: ^1.4.5-lts.1
         version: 1.4.5-lts.2
@@ -495,7 +498,7 @@ importers:
         specifier: ^6.0.1
         version: 6.0.1
       polotno:
-        specifier: ^3.0.0-beta.25
+        specifier: 3.0.0-beta.25
         version: 3.0.0-beta.25(@types/react@19.1.8)(@types/sortablejs@1.15.9)(konva@10.2.0)(react-dom@19.2.4(react@19.2.4))(react-native@0.84.1(@babel/core@7.29.0)(@types/react@19.1.8)(bufferutil@4.1.0)(react@19.2.4)(utf-8-validate@5.0.10))(react@19.2.4)(typescript@5.5.4)
       posthog-js:
         specifier: ^1.178.0
