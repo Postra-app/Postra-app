@@ -1077,6 +1077,7 @@
   "clip_text_download": "Download",
   "slideshow_intro": "Got product photos but no footage? Drop in a few — we turn them into a vertical clip with subtle motion and text in your brand.",
   "slideshow_max": "Maximum {n} photos per clip.",
+  "slideshow_max_dropped": "Maximum {n} photos per clip. Left out: {files}.",
   "slideshow_failed": "Failed to build the video from these photos. Try removing the last one you added.",
   "slideshow_add": "Add photos",
   "slideshow_format": "Format",

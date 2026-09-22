@@ -58,6 +58,11 @@ type UploadResult = {
   reason: UploadFailure | null;
 };
 
+const hasWebCodecs = () =>
+  typeof window !== 'undefined' &&
+  typeof (window as unknown as { VideoEncoder?: unknown }).VideoEncoder !==
+    'undefined';
+
 export const VideoStudio: FC<VideoStudioProps> = ({
   setMedia,
   closeModal,
@@ -143,7 +148,7 @@ export const VideoStudio: FC<VideoStudioProps> = ({
   }, []);
 
   useEffect(() => {
-    if (typeof window !== 'undefined' && typeof (window as unknown as { VideoEncoder?: unknown }).VideoEncoder === 'undefined') {
+    if (!hasWebCodecs()) {
       setBrowserSupported(false);
     }
   }, []);
@@ -202,6 +207,10 @@ export const VideoStudio: FC<VideoStudioProps> = ({
       return;
     }
     if (!draft?.id) return;
+    // A browser without WebCodecs gets the "not supported" panel anyway, so
+    // downloading up to 200 MB of clip it cannot edit only cost the user
+    // their data plan (E2E-06-16).
+    if (!hasWebCodecs()) return;
     (async () => {
       setRestoringClip(true);
       try {
@@ -619,7 +628,6 @@ export const VideoStudio: FC<VideoStudioProps> = ({
 
       {(isUploading || restoringClip || isImportingLibrary || isConverting) && (
         <div className="shrink-0 px-4 py-1.5 bg-forth/10 border-b border-forth/30 text-xs text-textColor">
-          ⏳{' '}
           {restoringClip
             ? t('video_restoring_clip', 'Restoring the clip from your last session…')
             : isImportingLibrary

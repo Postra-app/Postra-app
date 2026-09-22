@@ -1077,6 +1077,7 @@
   "clip_text_download": "Pobierz",
   "slideshow_intro": "Masz zdjęcia produktów, nie filmy? Wrzuć kilka — złożymy z nich pionowy klip z delikatnym ruchem i tekstem w Twoim brandzie.",
   "slideshow_max": "Maksymalnie {n} zdjęć na klip.",
+  "slideshow_max_dropped": "Maksymalnie {n} zdjęć w klipie. Pominięte: {files}.",
   "slideshow_failed": "Nie udało się zbudować wideo z tych zdjęć. Spróbuj usunąć ostatnio dodane.",
   "slideshow_add": "Dodaj zdjęcia",
   "slideshow_format": "Format",

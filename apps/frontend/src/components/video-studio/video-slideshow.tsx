@@ -150,6 +150,25 @@ export const VideoSlideshow: FC<VideoSlideshowProps> = ({ onReady }) => {
           );
           return prev;
         }
+        // Eleven photos picked at once used to become ten without a word, so
+        // nobody knew which one was missing from the clip (E2E-06-12).
+        if (incoming.length > room) {
+          toaster.show(
+            t(
+              'slideshow_max_dropped',
+              'Maximum {n} photos per clip. Left out: {files}.'
+            )
+              .replace('{n}', String(MAX_IMAGES))
+              .replace(
+                '{files}',
+                incoming
+                  .slice(room)
+                  .map((f) => f.name)
+                  .join(', ')
+              ),
+            'warning'
+          );
+        }
         const next = incoming.slice(0, room).map((file) => ({
           id: `img-${pickedSeq++}`,
           file,
