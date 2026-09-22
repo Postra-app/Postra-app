@@ -9,6 +9,7 @@ import {
   MinLength,
   ValidateIf,
 } from 'class-validator';
+import { NormalizeEmail } from './email.transform';
 import { Provider } from '@prisma/client';
 
 export class CreateOrgUserDto {
@@ -28,6 +29,7 @@ export class CreateOrgUserDto {
   @ValidateIf((o) => !o.password)
   providerToken: string;
 
+  @NormalizeEmail()
   @IsEmail()
   @IsDefined()
   @ValidateIf((o) => !o.providerToken)
