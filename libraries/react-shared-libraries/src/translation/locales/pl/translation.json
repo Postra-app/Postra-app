@@ -242,6 +242,7 @@
   "the_post_should_be_at_least_6_characters_long": "Post powinien mieć minimum 6 znaków",
   "are_you_sure_you_want_to_delete_post": "Czy na pewno chcesz usunąć ten post?",
   "post_deleted_successfully": "Post został pomyślnie usunięty",
+  "post_already_deleted": "Ten post został już wcześniej usunięty",
   "delete_post": "Usuń post",
   "save_as_draft": "Zapisz jako wersję roboczą",
   "post_now": "Opublikuj teraz",

@@ -376,15 +376,23 @@ export class PostsRepository {
   }
 
   async deletePost(orgId: string, group: string) {
-    await this._post.model.post.updateMany({
+    // Only live rows: without `deletedAt: null` a second delete of the same
+    // group re-stamped deletedAt and still returned the post, so the caller
+    // was told "deleted" for a post that had been gone for hours.
+    const { count } = await this._post.model.post.updateMany({
       where: {
         organizationId: orgId,
         group,
+        deletedAt: null,
       },
       data: {
         deletedAt: new Date(),
       },
     });
+
+    if (!count) {
+      return null;
+    }
 
     return this._post.model.post.findFirst({
       where: {

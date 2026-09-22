@@ -53,3 +53,35 @@ describe('PostsService.deletePost', () => {
     });
   });
 });
+
+describe('PostsRepository.deletePost (E2E-05-01)', () => {
+  // Imported here so the service mocks above stay the only ones in play.
+  // eslint-disable-next-line @typescript-eslint/no-var-requires
+  const { PostsRepository } = require('@gitroom/nestjs-libraries/database/prisma/posts/posts.repository');
+
+  const repoWith = (count: number) => {
+    const updateMany = jest.fn().mockResolvedValue({ count });
+    const findFirst = jest.fn().mockResolvedValue({ id: 'post-1' });
+    const prisma = { model: { post: { updateMany, findFirst } } };
+    const repo = new PostsRepository(prisma, {}, {}, {}, {}, {}, {});
+    return { repo, updateMany, findFirst };
+  };
+
+  it('touches only posts that are still live', async () => {
+    const { repo, updateMany } = repoWith(1);
+    await expect(repo.deletePost('org-1', 'group-1')).resolves.toEqual({
+      id: 'post-1',
+    });
+    expect(updateMany.mock.calls[0][0].where).toEqual({
+      organizationId: 'org-1',
+      group: 'group-1',
+      deletedAt: null,
+    });
+  });
+
+  it('a group that was already deleted reports nothing deleted', async () => {
+    const { repo, findFirst } = repoWith(0);
+    await expect(repo.deletePost('org-1', 'group-1')).resolves.toBeNull();
+    expect(findFirst).not.toHaveBeenCalled();
+  });
+});
