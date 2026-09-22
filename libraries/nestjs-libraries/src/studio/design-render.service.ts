@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import sharp from 'sharp';
+import sharp, { type OverlayOptions, type Sharp } from 'sharp';
 import {
   PostDesignSpec,
   DesignSize,
@@ -95,8 +95,8 @@ export class DesignRenderService {
     // transparent; otherwise it carries the gradient placeholder itself.
     const overlay = Buffer.from(this.buildSvg(spec, size, !bgBuffer));
 
-    const composites: sharp.OverlayOptions[] = [];
-    let base: sharp.Sharp;
+    const composites: OverlayOptions[] = [];
+    let base: Sharp;
     if (bgBuffer) {
       // Cap decode size so a pathologically large image can't blow up memory;
       // our backgrounds are ~1–2 MP, so 30 MP is a generous safety limit.
@@ -107,7 +107,10 @@ export class DesignRenderService {
       );
       composites.push({ input: overlay, top: 0, left: 0 });
     } else {
-      base = sharp(overlay, { density: 96 });
+      // Default density (72) rasterises the SVG at its declared pixel size.
+      // A density of 96 scaled it by 96/72, so a 1080x1350 draft came out
+      // 1440x1800 and the logo, positioned for 1080, landed in the wrong place.
+      base = sharp(overlay);
     }
 
     const logo = await this.loadLogo(spec, size);
@@ -229,7 +232,7 @@ export class DesignRenderService {
   private async loadLogo(
     spec: PostDesignSpec,
     size: DesignSize
-  ): Promise<sharp.OverlayOptions | null> {
+  ): Promise<OverlayOptions | null> {
     const logoPath = spec.brandKit?.logoPath;
     if (!logoPath) return null;
 

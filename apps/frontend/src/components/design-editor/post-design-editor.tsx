@@ -19,6 +19,7 @@ import {
   installStudioFabricMetadata,
   wireStudioIds,
 } from './utils/fabric-studio-metadata';
+import { markAiGenerated } from './utils/ai-provenance';
 import { installStudioFabricControls } from './utils/fabric-controls';
 import { computeSnap, edgesOf, SnapGuide } from './utils/canvas-snapping';
 import { ExportMenu } from './export-menu';
@@ -610,8 +611,19 @@ const PostDesignEditor: FC<PostDesignEditorProps> = ({
     restoreState(useEditorStore.getState().redo());
   }, [restoreState]);
 
-  const renderSlideToBlob = useCallback(
-    async (canvasJson: string, width: number, height: number): Promise<Blob> => {
+  /**
+   * Draw a design at exactly the format's size. Scaling the on-screen canvas
+   * by 1/zoom rounds through the displayed width, so a 1600×900 design came
+   * out 1599×900 (E2E-06-09); the carousel and "All formats" already went
+   * through a canvas of the right size, now every export does.
+   */
+  const renderJsonToDataUrl = useCallback(
+    async (
+      canvasJson: string,
+      width: number,
+      height: number,
+      format: 'jpeg' | 'png'
+    ): Promise<string> => {
       const tempEl = document.createElement('canvas');
       tempEl.width = width;
       tempEl.height = height;
@@ -627,13 +639,38 @@ const PostDesignEditor: FC<PostDesignEditorProps> = ({
         // JPEG, not PNG: photo backgrounds make PNGs several MB and the upload
         // dominates export time. The canvas is always opaque, platforms
         // recompress anyway — only "Download PNG" keeps the lossless format.
-        const dataUrl = c.toDataURL({ format: 'jpeg', quality: 0.92, multiplier: 1 });
-        return await (await window.fetch(dataUrl)).blob();
+        return c.toDataURL({
+          format,
+          quality: format === 'jpeg' ? 0.92 : 1,
+          multiplier: 1,
+        });
       } finally {
         c.dispose();
       }
     },
     []
+  );
+
+  const renderSlideToBlob = useCallback(
+    async (canvasJson: string, width: number, height: number): Promise<Blob> => {
+      const dataUrl = await renderJsonToDataUrl(canvasJson, width, height, 'jpeg');
+      return (await window.fetch(dataUrl)).blob();
+    },
+    [renderJsonToDataUrl]
+  );
+
+  /** The design on screen, at the format's exact size. */
+  const exportCurrent = useCallback(
+    (format: 'jpeg' | 'png') => {
+      const { width, height } = useEditorStore.getState().platform;
+      return renderJsonToDataUrl(
+        JSON.stringify(fabricRef.current!.toJSON()),
+        width,
+        height,
+        format
+      );
+    },
+    [renderJsonToDataUrl]
   );
 
   // In the composer the export lands in the open post; in standalone /studio
@@ -682,6 +719,7 @@ const PostDesignEditor: FC<PostDesignEditorProps> = ({
           const blob = await renderSlideToBlob(slide.canvasJson, platform.width, platform.height);
           const formData = new FormData();
           formData.append('file', blob, `slide-${i + 1}.jpg`);
+          markAiGenerated(formData, slide.canvasJson);
           const data = await (
             await fetch('/media/upload-simple', {
               method: 'POST',
@@ -700,17 +738,17 @@ const PostDesignEditor: FC<PostDesignEditorProps> = ({
         return;
       }
 
-      const scale = 1 / fabricRef.current.getZoom();
       // JPEG for the same reason as renderSlideToBlob — upload size dominates.
-      const dataUrl = fabricRef.current.toDataURL({
-        format: 'jpeg',
-        quality: 0.92,
-        multiplier: scale,
-      });
+      const dataUrl = await exportCurrent('jpeg');
 
+      const canvasJson = stampPlatform(
+        JSON.stringify(fabricRef.current.toJSON()),
+        useEditorStore.getState().platform
+      );
       const blob = await (await window.fetch(dataUrl)).blob();
       const formData = new FormData();
       formData.append('file', blob, 'design.jpg');
+      markAiGenerated(formData, canvasJson);
 
       const data = await (
         await fetch('/media/upload-simple', {
@@ -719,10 +757,6 @@ const PostDesignEditor: FC<PostDesignEditorProps> = ({
         })
       ).json();
 
-      const canvasJson = stampPlatform(
-        JSON.stringify(fabricRef.current.toJSON()),
-        useEditorStore.getState().platform
-      );
       await fetch(`/media/${data.id}/canvas`, {
         method: 'PUT',
         body: JSON.stringify({ canvasJson }),
@@ -734,23 +768,18 @@ const PostDesignEditor: FC<PostDesignEditorProps> = ({
     } finally {
       setExporting(false);
     }
-  }, [fetch, finishExport, toaster, t, platform.width, platform.height, renderSlideToBlob]);
+  }, [fetch, finishExport, toaster, t, platform.width, platform.height, renderSlideToBlob, exportCurrent]);
 
-  const handleDownload = useCallback(() => {
+  const handleDownload = useCallback(async () => {
     if (!fabricRef.current) return;
-    const scale = 1 / fabricRef.current.getZoom();
-    const dataUrl = fabricRef.current.toDataURL({
-      format: 'png',
-      quality: 1,
-      multiplier: scale,
-    });
+    const dataUrl = await exportCurrent('png');
     const link = document.createElement('a');
     link.download = `postra-design-${Date.now()}.png`;
     link.href = dataUrl;
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
-  }, []);
+  }, [exportCurrent]);
 
   // Save the design into the media library (so it's reusable in any post)
   // WITHOUT attaching to a post or closing — this is the "get it out" action
@@ -761,23 +790,19 @@ const PostDesignEditor: FC<PostDesignEditorProps> = ({
   const saveDesignToLibrary = useCallback(
     async (asTemplate: boolean) => {
       if (!fabricRef.current) return;
-      const scale = 1 / fabricRef.current.getZoom();
       // JPEG for the same reason as renderSlideToBlob — upload size dominates.
-      const dataUrl = fabricRef.current.toDataURL({
-        format: 'jpeg',
-        quality: 0.92,
-        multiplier: scale,
-      });
-      const blob = await (await window.fetch(dataUrl)).blob();
-      const formData = new FormData();
-      formData.append('file', blob, asTemplate ? 'template.jpg' : 'design.jpg');
-      const data = await (
-        await fetch('/media/upload-simple', { method: 'POST', body: formData })
-      ).json();
+      const dataUrl = await exportCurrent('jpeg');
       const canvasJson = stampPlatform(
         JSON.stringify(fabricRef.current.toJSON()),
         useEditorStore.getState().platform
       );
+      const blob = await (await window.fetch(dataUrl)).blob();
+      const formData = new FormData();
+      formData.append('file', blob, asTemplate ? 'template.jpg' : 'design.jpg');
+      markAiGenerated(formData, canvasJson);
+      const data = await (
+        await fetch('/media/upload-simple', { method: 'POST', body: formData })
+      ).json();
       await fetch(`/media/${data.id}/canvas`, {
         method: 'PUT',
         body: JSON.stringify({ canvasJson }),
@@ -791,7 +816,7 @@ const PostDesignEditor: FC<PostDesignEditorProps> = ({
       draftDoneRef.current = true;
       clearDraft(orgIdRef.current);
     },
-    [fetch]
+    [fetch, exportCurrent]
   );
 
   const handleSaveToLibrary = useCallback(async () => {
@@ -1039,7 +1064,6 @@ const PostDesignEditor: FC<PostDesignEditorProps> = ({
           {restoringDraft && (
             <div className="shrink-0 flex items-center gap-2 px-4 py-2 bg-forth/10 border-b border-forth/30 text-xs text-textColor">
               <span>
-                ⏳{' '}
                 {t(
                   'studio_draft_restoring',
                   'Restoring your last design…'

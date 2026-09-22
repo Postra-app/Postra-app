@@ -297,6 +297,20 @@ export class IntegrationService {
     return this._integrationRepository.getIntegrationsList(org);
   }
 
+  /**
+   * Whether the org has a live channel with this provider account. A reconnect
+   * (`refresh`) skips the plan and channel-limit gates, so it is only a
+   * reconnect when this is true (E2E-01-19).
+   */
+  async hasChannel(org: string, provider: string, internalId: string) {
+    const list = await this._integrationRepository.getIntegrationsList(org);
+    return list.some(
+      (i) =>
+        i.providerIdentifier === provider &&
+        String(i.internalId) === String(internalId)
+    );
+  }
+
   backfillTokenEncryption(apply = true) {
     return this._integrationRepository.backfillTokenEncryption(apply);
   }

@@ -71,7 +71,15 @@ export const VideoMultiFormat: FC<VideoMultiFormatProps> = ({ source, onReady })
           const conversion = await Conversion.init({
             input,
             output,
-            video: { width: fmt.width, height: fmt.height, fit: 'cover' },
+            // H.264 always. A HEVC clip already at the target size used to
+            // pass through untouched, so one export gave H.264 files next to
+            // a HEVC one — and X and LinkedIn take H.264 only (E2E-06-15).
+            video: {
+              width: fmt.width,
+              height: fmt.height,
+              fit: 'cover',
+              codec: 'avc',
+            },
           });
           registerCancel(() => conversion.cancel());
           // Resizing forces a decode. If the source codec can't be decoded the

@@ -34,6 +34,9 @@ export const VideoTrimmer: FC<VideoTrimmerProps> = ({ file, onTrimmed }) => {
   const waveContainerRef = useRef<HTMLDivElement>(null);
   const wavesurferRef = useRef<WaveSurfer | null>(null);
   const regionRef = useRef<Region | null>(null);
+  // Set while a clip's audio could not be decoded and the flat waveform is
+  // still waiting for the video's duration.
+  const flatWaveRef = useRef<(() => void) | null>(null);
 
   const [videoUrl, setVideoUrl] = useState<string | null>(null);
   const [duration, setDuration] = useState(0);
@@ -78,12 +81,28 @@ export const VideoTrimmer: FC<VideoTrimmerProps> = ({ file, onTrimmed }) => {
       barGap: 1,
       plugins: [regions],
     });
-    // The waveform is decorative. Many clips — stock B-roll, photo→video
-    // slideshows — have no decodable audio track, and switching files mid-load
-    // aborts the decode. Either way WaveSurfer rejects; swallow it so it never
-    // surfaces as an unhandled rejection / dev error overlay. Trim still works:
-    // duration falls back to the <video> element's onLoadedMetadata.
-    ws.on('error', () => {});
+    // Many clips — screen recordings, muted exports, photo→video slideshows —
+    // have no decodable audio track. WaveSurfer then errors and never reaches
+    // `ready`, where the region is made, and the region is the only way to set
+    // start and end: such a clip could not be trimmed at all (E2E-06-10).
+    // Load it again with a flat waveform of the video's length instead; given
+    // peaks, WaveSurfer skips decoding and `ready` follows. The video may not
+    // know its duration yet, in which case onLoadedMetadata finishes the job.
+    // Switching files mid-load also errors; the rejection is swallowed so it
+    // never surfaces as an unhandled rejection / dev error overlay.
+    let flatLoaded = false;
+    const loadFlat = () => {
+      const d = videoRef.current?.duration;
+      if (flatLoaded || !d || !Number.isFinite(d)) return;
+      flatLoaded = true;
+      flatWaveRef.current = null;
+      ws.load(videoUrl, [[0, 0]], d).catch(() => {});
+    };
+    ws.on('error', () => {
+      if (flatLoaded) return;
+      flatWaveRef.current = loadFlat;
+      loadFlat();
+    });
     ws.load(videoUrl).catch(() => {});
     ws.on('ready', () => {
       const d = ws.getDuration();
@@ -110,6 +129,7 @@ export const VideoTrimmer: FC<VideoTrimmerProps> = ({ file, onTrimmed }) => {
     wavesurferRef.current = ws;
     return () => {
       regionRef.current = null;
+      flatWaveRef.current = null;
       ws.destroy();
       wavesurferRef.current = null;
     };
@@ -122,6 +142,7 @@ export const VideoTrimmer: FC<VideoTrimmerProps> = ({ file, onTrimmed }) => {
       setDuration(v.duration);
       setTrimEnd(v.duration);
     }
+    flatWaveRef.current?.();
   }, [duration]);
 
   // The <video> element is the first thing that knows the browser cannot read
@@ -167,6 +188,9 @@ export const VideoTrimmer: FC<VideoTrimmerProps> = ({ file, onTrimmed }) => {
           input,
           output,
           trim: { start: trimStart, end: trimEnd },
+          // An iPhone clip is HEVC, which X and LinkedIn refuse; an H.264
+          // clip is copied as before (E2E-06-15).
+          video: { codec: 'avc' },
         });
         registerCancel(() => conversion.cancel());
         // A clip whose video we can't decode still converts "successfully" as

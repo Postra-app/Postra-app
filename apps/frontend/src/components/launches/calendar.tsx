@@ -66,6 +66,7 @@ import { CreationMethodBadge } from '@gitroom/frontend/components/launches/creat
 import { deleteDialog } from '@gitroom/react/helpers/delete.dialog';
 import { useVariables } from '@gitroom/react/helpers/variable.context';
 import copy from 'copy-to-clipboard';
+import { readResponseError } from '@gitroom/helpers/utils/response.error';
 import { stripHtmlValidation } from '@gitroom/helpers/utils/strip.html.validation';
 import { newDayjs } from '@gitroom/frontend/components/layout/set.timezone';
 import { Button } from '@gitroom/frontend/components/ui/button';
@@ -228,14 +229,37 @@ const usePostActions = (onMutate?: () => void) => {
         return;
       }
 
-      await fetch(`/posts/${post.group}`, {
-        method: 'DELETE',
-      });
-
-      toaster.show(
-        t('post_deleted_successfully', 'Post deleted successfully'),
-        'success'
-      );
+      try {
+        const response = await fetch(`/posts/${post.group}`, {
+          method: 'DELETE',
+        });
+        // This used to toast success without looking at the answer, so a 403,
+        // a 500 or a dropped connection all said "deleted" and left the post
+        // in the calendar (E2E-05-01).
+        if (!response.ok) {
+          toaster.show(
+            `${t(
+              'post_delete_failed',
+              'Could not delete the post'
+            )}: ${await readResponseError(response)}`,
+            'warning'
+          );
+          return;
+        }
+        const { deleted } = await response.json();
+        toaster.show(
+          deleted
+            ? t('post_deleted_successfully', 'Post deleted successfully')
+            : t('post_already_deleted', 'This post had already been deleted'),
+          deleted ? 'success' : 'warning'
+        );
+      } catch (e) {
+        console.error('[Postra:posts] delete failed', e);
+        toaster.show(
+          t('post_delete_failed', 'Could not delete the post'),
+          'warning'
+        );
+      }
 
       mutate();
     },

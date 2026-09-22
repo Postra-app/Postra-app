@@ -7,6 +7,7 @@ import {
   MinLength,
   ValidateIf,
 } from 'class-validator';
+import { NormalizeEmail } from './email.transform';
 import { Provider } from '@prisma/client';
 
 export class LoginUserDto {
@@ -30,6 +31,7 @@ export class LoginUserDto {
   @ValidateIf((o) => !o.password)
   providerToken: string;
 
+  @NormalizeEmail()
   @IsEmail()
   @IsDefined()
   email: string;

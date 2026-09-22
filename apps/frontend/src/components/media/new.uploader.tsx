@@ -16,7 +16,8 @@ export class CompressionWrapper<M = any, B = any> extends Compressor<any, any> {
   override async prepareUpload(fileIDs: string[]) {
     const { files } = this.uppy.getState();
 
-    // 1) Skip GIFs (and anything missing)
+    // 1) Only images, and not GIFs. The compressor announces "Compressing
+    //    images…" for every file it is handed, videos included (E2E-06-14).
     const filteredIDs = fileIDs.filter((id) => {
       const f = files[id];
       if (!f) return false;
@@ -25,13 +26,24 @@ export class CompressionWrapper<M = any, B = any> extends Compressor<any, any> {
       const name = (f.name ?? '').toLowerCase();
       const isGif = type === 'image/gif' || name.endsWith('.gif');
 
-      return !isGif;
+      return type.startsWith('image/') && !isGif;
     });
 
     // 2) Let @uppy/compressor do its work (convert/resize/etc)
     return super.prepareUpload(filteredIDs);
   }
 }
+
+/** "image/*,video/mp4" in words a person uses. */
+const describeAllowed = (allowed: string) => {
+  const kinds = allowed.split(',').map((t) => t.trim());
+  const images = kinds.some((t) => t.startsWith('image/'));
+  const videos = kinds.some((t) => t.startsWith('video/'));
+  if (images && videos) return 'Upload an image or an MP4 video.';
+  if (videos) return 'Upload an MP4 video.';
+  if (images) return 'Upload an image (JPG, PNG, WebP or GIF).';
+  return '';
+};
 
 export function useUppyUploader(props: {
   // @ts-expect-error UploadResult is generic; Uppy's types require its 2 type args
@@ -52,12 +64,25 @@ export function useUppyUploader(props: {
 
     const uppy2 = new Uppy({
       autoProceed: true,
-      restrictions: {
-        // maxNumberOfFiles: 5,
-        // allowedFileTypes: allowedFileTypes.split(','),
-        maxFileSize: 1000000000, // Default 1GB, but we'll override with custom validation
-      },
+      // No maxFileSize here: Uppy reported its own limit in MiB ("exceeds
+      // maximum allowed size of 954 MB"), a number that appears nowhere else,
+      // before our 1 GB message could show. The size checks below are the only
+      // ones (E2E-06-14).
+      locale: {
+        strings: {
+          // The stock string ended in a dangling "?" when S3 gave no reason.
+          failedToUpload: 'Could not upload %{file}',
+        },
+      } as any,
     });
+
+    // A file our own checks refuse has already been explained in a toast; the
+    // generic "Upload failed" that followed contradicted it (E2E-06-14).
+    let refusalShown = false;
+    const refuse = (message: string) => {
+      refusalShown = true;
+      toast.show(message, 'warning');
+    };
 
     // check for valid file types it can be something like this image/*,video/mp4.
     // If it's an image, I need to replace image/* with image/png, image/jpeg, image/jpeg, image/gif (separately)
@@ -106,10 +131,10 @@ export function useUppyUploader(props: {
                 `File type "${fileType}" is not allowed for file "${file.name}". Allowed types: ${allowedFileTypes}`
               );
               uppy2.log(error.message, 'error');
-              uppy2.info(error.message, 'error', 5000);
-              toast.show(
-                `File type "${fileType}" is not allowed. Allowed types: ${allowedFileTypes}`,
-                'warning'
+              refuse(
+                `${file.name} can't be uploaded here. ${describeAllowed(
+                  allowedFileTypes
+                )}`
               );
               uppy2.removeFile(file.id);
               return reject(error);
@@ -138,10 +163,7 @@ export function useUppyUploader(props: {
                 `Image file "${file.name}" is too large. Maximum size allowed is 30MB.`
               );
               uppy2.log(error.message, 'error');
-              uppy2.info(error.message, 'error', 5000);
-              toast.show(
-                `Image file is too large. Maximum size allowed is 30MB.`
-              );
+              refuse(`${file.name} is too large. Images can be up to 30 MB.`);
               uppy2.removeFile(file.id); // Remove file from queue
               return reject(error);
             }
@@ -151,10 +173,7 @@ export function useUppyUploader(props: {
                 `Video file "${file.name}" is too large. Maximum size allowed is 1GB.`
               );
               uppy2.log(error.message, 'error');
-              uppy2.info(error.message, 'error', 5000);
-              toast.show(
-                `Video file is too large. Maximum size allowed is 1GB.`
-              );
+              refuse(`${file.name} is too large. Videos can be up to 1 GB.`);
               uppy2.removeFile(file.id); // Remove file from queue
               return reject(error);
             }
@@ -192,7 +211,10 @@ export function useUppyUploader(props: {
     });
     uppy2.on('error', (result) => {
       console.error('[Postra:upload] upload failed', result);
-      toast.show('Upload failed — please try again.', 'warning');
+      if (!refusalShown) {
+        toast.show('Upload failed — please try again.', 'warning');
+      }
+      refusalShown = false;
       uppy2.clear();
       setLocked(false);
       props.onEnd();

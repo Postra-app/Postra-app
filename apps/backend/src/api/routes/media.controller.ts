@@ -65,6 +65,11 @@ const queryPage = (value: unknown): number => {
   return Number.isFinite(parsed) && parsed >= 1 ? Math.floor(parsed) : 1;
 };
 
+// A model that answers without an image used to come back as 201 with the
+// body `false`, which the design editor took for a result and showed as an
+// empty picture (E2E-02-16).
+const NO_IMAGE_MESSAGE = 'The image could not be generated, please try again';
+
 @ApiTags('Media')
 @Controller('/media')
 export class MediaController {
@@ -121,7 +126,7 @@ export class MediaController {
       isPicturePrompt
     );
     if (!output) {
-      return false;
+      throw new HttpException(NO_IMAGE_MESSAGE, 502);
     }
     return { output };
   }
@@ -154,7 +159,7 @@ export class MediaController {
     // frontend onChange adds it to the post, saveFile records it in the library.
     const file = await this._mediaService.generateImage(prompt, org, true);
     if (!file) {
-      return false;
+      throw new HttpException(NO_IMAGE_MESSAGE, 502);
     }
 
     return this._mediaService.saveFile(
@@ -473,7 +478,11 @@ export class MediaController {
   async uploadSimple(
     @GetOrgFromRequest() org: Organization,
     @UploadedFile('file') file: Express.Multer.File,
-    @Body('preventSave') preventSave: string = 'false'
+    @Body('preventSave') preventSave: string = 'false',
+    // Studio exports come through here, and only the canvas knows whether an
+    // image model drew any of it (E2E-06-04). A client can only ever make its
+    // own upload carry the AI label, never take it off something we generated.
+    @Body('aiGenerated') aiGenerated: string = 'false'
   ) {
     const originalName = file.originalname;
     const getFile = await this.storage.uploadFile(file);
@@ -487,7 +496,8 @@ export class MediaController {
       org.id,
       getFile.originalname,
       getFile.path,
-      originalName
+      originalName,
+      aiGenerated === 'true'
     );
   }
 

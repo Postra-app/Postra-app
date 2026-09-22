@@ -63,21 +63,25 @@ export class UsersRepository {
     });
   }
 
-  getUserByEmail(email: string) {
-    return this._user.model.user.findFirst({
-      where: {
-        email,
-        providerName: Provider.LOCAL,
-      },
-      include: {
-        picture: {
-          select: {
-            id: true,
-            path: true,
-          },
+  async getUserByEmail(email: string) {
+    const include = { picture: { select: { id: true, path: true } } };
+    // Exact match first, so an address stored exactly as asked always wins.
+    // The case-insensitive fallback covers accounts saved before registration
+    // lower-cased emails: the DTOs now lower-case what people type, which on
+    // its own would lock those accounts out (E2E-03-01).
+    return (
+      (await this._user.model.user.findFirst({
+        where: { email, providerName: Provider.LOCAL },
+        include,
+      })) ??
+      this._user.model.user.findFirst({
+        where: {
+          email: { equals: email, mode: 'insensitive' },
+          providerName: Provider.LOCAL,
         },
-      },
-    });
+        include,
+      })
+    );
   }
 
   getUserByNormalizedEmail(normalizedEmail: string) {
