@@ -308,17 +308,31 @@ export const EditorToolbar: FC<ToolbarProps> = ({ canvas }) => {
         toaster.show(t('crop_no_image', 'Add an image to the canvas first'), 'warning');
         return;
       }
-      const url = URL.createObjectURL(file);
+      // Upload first, like addImage. Fabric serialises the image's `src`, and
+      // this used to be a blob: URL revoked right after the swap, so the saved
+      // project kept a dead link and reopened without its photo (E2E-06-02).
+      setUploading(true);
       try {
-        await replaceImageOnCanvas(c, img, url, 'cover');
+        const formData = new FormData();
+        formData.append('file', file);
+        const res = await fetch('/media/upload-simple', {
+          method: 'POST',
+          body: formData,
+        });
+        if (!res.ok) {
+          toaster.show(t('upload_failed', 'Image upload failed'), 'warning');
+          return;
+        }
+        const { path } = await res.json();
+        await replaceImageOnCanvas(c, img, path, 'cover');
         c.fire('object:modified', { target: c.getActiveObject()! } as fabric.ModifiedEvent);
       } catch {
         toaster.show(t('image_replace_failed', 'Could not load that image.'), 'warning');
       } finally {
-        URL.revokeObjectURL(url);
+        setUploading(false);
       }
     },
-    [canvas, resolveTargetImage, t, toaster]
+    [canvas, fetch, resolveTargetImage, t, toaster]
   );
 
   const removeImageBackground = useCallback(async () => {
