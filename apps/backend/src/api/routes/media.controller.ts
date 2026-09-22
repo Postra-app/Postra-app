@@ -478,7 +478,11 @@ export class MediaController {
   async uploadSimple(
     @GetOrgFromRequest() org: Organization,
     @UploadedFile('file') file: Express.Multer.File,
-    @Body('preventSave') preventSave: string = 'false'
+    @Body('preventSave') preventSave: string = 'false',
+    // Studio exports come through here, and only the canvas knows whether an
+    // image model drew any of it (E2E-06-04). A client can only ever make its
+    // own upload carry the AI label, never take it off something we generated.
+    @Body('aiGenerated') aiGenerated: string = 'false'
   ) {
     const originalName = file.originalname;
     const getFile = await this.storage.uploadFile(file);
@@ -492,7 +496,8 @@ export class MediaController {
       org.id,
       getFile.originalname,
       getFile.path,
-      originalName
+      originalName,
+      aiGenerated === 'true'
     );
   }
 

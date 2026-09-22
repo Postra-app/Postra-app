@@ -13,6 +13,7 @@ import {
   dataUrlToBlob,
   FormatRender,
 } from './utils/multi-format-renderer';
+import { markAiGenerated } from './utils/ai-provenance';
 
 interface MultiFormatModalProps {
   canvasRef: MutableRefObject<fabric.Canvas | null>;
@@ -130,6 +131,7 @@ export const MultiFormatModal: FC<MultiFormatModalProps> = ({
         const blob = await dataUrlToBlob(r.uploadDataUrl);
         const formData = new FormData();
         formData.append('file', blob, `${r.platform.key}.jpg`);
+        markAiGenerated(formData, r.canvasJson);
         // eslint-disable-next-line no-await-in-loop
         const data = await (
           await fetch('/media/upload-simple', {
