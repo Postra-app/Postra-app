@@ -65,6 +65,11 @@ const queryPage = (value: unknown): number => {
   return Number.isFinite(parsed) && parsed >= 1 ? Math.floor(parsed) : 1;
 };
 
+// A model that answers without an image used to come back as 201 with the
+// body `false`, which the design editor took for a result and showed as an
+// empty picture (E2E-02-16).
+const NO_IMAGE_MESSAGE = 'The image could not be generated, please try again';
+
 @ApiTags('Media')
 @Controller('/media')
 export class MediaController {
@@ -121,7 +126,7 @@ export class MediaController {
       isPicturePrompt
     );
     if (!output) {
-      return false;
+      throw new HttpException(NO_IMAGE_MESSAGE, 502);
     }
     return { output };
   }
@@ -154,7 +159,7 @@ export class MediaController {
     // frontend onChange adds it to the post, saveFile records it in the library.
     const file = await this._mediaService.generateImage(prompt, org, true);
     if (!file) {
-      return false;
+      throw new HttpException(NO_IMAGE_MESSAGE, 502);
     }
 
     return this._mediaService.saveFile(
