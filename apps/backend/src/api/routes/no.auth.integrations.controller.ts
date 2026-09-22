@@ -311,6 +311,16 @@ export class NoAuthIntegrationsController {
       );
     }
 
+    // Matching the provider account id is not enough: anyone knows their own.
+    // A reconnect skips the plan and channel-limit gates below, so it has to
+    // be a channel this org already has (E2E-01-19).
+    if (
+      refresh &&
+      !(await this._integrationService.hasChannel(org.id, integration, refresh))
+    ) {
+      throw new HttpException('The channel to reconnect was not found', 404);
+    }
+
     let validName = name;
     if (!validName) {
       if (username) {

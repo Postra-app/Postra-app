@@ -228,6 +228,18 @@ export class IntegrationsController {
       throw new HttpException(`Unknown platform: ${integration}`, 400);
     }
 
+    // `refresh` skips the plan gates below, so it has to name a channel this
+    // org already has on this platform. It used to be any string: the callback
+    // only compares it with the provider account id, so a FREE org could pass
+    // its own X or Discord id and connect a platform outside its plan, past
+    // the channel limit too (E2E-01-19). The callback checks this again.
+    if (
+      refresh &&
+      !(await this._integrationService.hasChannel(org.id, integration, refresh))
+    ) {
+      throw new HttpException('The channel to reconnect was not found', 404);
+    }
+
     // Per-tier platform gating. Only when billing is on (billing off ⇒ every
     // platform); skipped on reconnect (`refresh`) so an existing channel can
     // always be re-authenticated even if it now sits above the org's tier.
