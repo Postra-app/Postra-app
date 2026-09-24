@@ -90,7 +90,16 @@ export class AuthMiddleware implements NestMiddleware {
       // claims (id, isSuperAdmin, activated) from the token body — always
       // re-resolve the user from the database using the id.
       const payload = AuthService.verifyJWT(auth) as User | null;
-      const orgHeader = req.cookies.showorg || req.headers.showorg;
+      // An explicit header wins over the cookie (E2E-10-82). The browser never
+      // sends one in production — the cookie is HttpOnly, and server-side
+      // fetches copy the cookie into it — so for the web nothing changes. The
+      // mobile app selects its organization with the header, but its native
+      // HTTP client also keeps the year-long cookie from /user/change-org; with
+      // the cookie first, every switch served the PREVIOUS organization's
+      // channels and posts until change-org overwrote it (measured 2026-09-24:
+      // cookie A + header B → organization A).
+      const orgHeader = req.headers.showorg;
+      const orgCookie = req.cookies.showorg;
 
       if (!payload?.id) {
         throw new HttpForbiddenException();
@@ -224,7 +233,9 @@ export class AuthMiddleware implements NestMiddleware {
       }
       organization = organization.filter((f: any) => !f.users[0].disabled);
       const setOrg =
-        organization.find((org) => org.id === orgHeader) || organization[0];
+        organization.find((org) => org.id === orgHeader) ||
+        organization.find((org) => org.id === orgCookie) ||
+        organization[0];
 
       if (!organization) {
         throw new HttpForbiddenException();
