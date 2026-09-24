@@ -1,6 +1,7 @@
 import * as Sentry from '@sentry/nestjs';
 import { nodeProfilingIntegration } from '@sentry/profiling-node';
 import { capitalize } from 'lodash';
+import { isClientAbort } from './client.abort';
 
 export const initializeSentry = (appName: string, allowLogs = false) => {
   if (!process.env.NEXT_PUBLIC_SENTRY_DSN) {
@@ -42,6 +43,8 @@ export const initializeSentry = (appName: string, allowLogs = false) => {
           recordOutputs: false,
         }),
       ],
+      // A client hanging up mid-upload is not a server error (see isClientAbort).
+      beforeSend: (event) => (isClientAbort(event) ? null : event),
       tracesSampleRate,
       enableLogs: true,
 
