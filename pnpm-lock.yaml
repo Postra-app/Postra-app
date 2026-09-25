@@ -636,8 +636,8 @@ importers:
         specifier: ^3.1.0
         version: 3.1.0
       undici:
-        specifier: ^8.11.0
-        version: 8.11.0
+        specifier: ^8.11.2
+        version: 8.11.2
       use-debounce:
         specifier: ^10.0.0
         version: 10.1.0(react@19.2.4)
@@ -16583,8 +16583,8 @@ packages:
     resolution: {integrity: sha512-RYONW2MeafgYlkVOKYKkA/Ag7BmXqgIWCa8t1m0JcxrQg9pI9lEqRhAOruOBCbAohOa/gkCF+iPi9hrgvTzu6Q==}
     engines: {node: '>=20.18.1'}
 
-  undici@8.11.0:
-    resolution: {integrity: sha512-AdzuGcAkzhbha3GgCSoUBx2P0quwym6qdFNCQz/fDGZc8w9XJ741wHUbt2kTmfPz+ZIOMkySFkiY7RXmiDDC8w==}
+  undici@8.11.2:
+    resolution: {integrity: sha512-u4UB2/IrKdU6lFxumHmmo1a3fCQO5tzQllRorfoRS63txhrB7xTpSn1PftwC4qEHkOaqP95fCWW4lJzwErwzhQ==}
     engines: {node: '>=22.19.0'}
 
   unicode-canonical-property-names-ecmascript@2.0.1:
@@ -36244,7 +36244,7 @@ snapshots:
 
   undici@7.29.1: {}
 
-  undici@8.11.0: {}
+  undici@8.11.2: {}
 
   unicode-canonical-property-names-ecmascript@2.0.1: {}
 
