@@ -251,7 +251,7 @@
     "tweetnacl": "^1.0.3",
     "twitter-api-v2": "^1.29.0",
     "twitter-text": "^3.1.0",
-    "undici": "^8.11.0",
+    "undici": "^8.11.2",
     "use-debounce": "^10.0.0",
     "utf-8-validate": "^5.0.10",
     "uuid": "^10.0.0",

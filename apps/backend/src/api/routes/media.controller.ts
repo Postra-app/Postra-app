@@ -40,7 +40,6 @@ import { GeneratePostDesignDto } from '@gitroom/nestjs-libraries/dtos/media/gene
 import { GeneratePostCarouselDto } from '@gitroom/nestjs-libraries/dtos/media/generate.post.carousel.dto';
 import { CaptionsService } from '@gitroom/nestjs-libraries/videos/captions/captions.service';
 import { createHash } from 'crypto';
-import { gunzipSync } from 'zlib';
 import { ioRedis } from '@gitroom/nestjs-libraries/redis/redis.service';
 import {
   BrandVoiceCheckDto,
@@ -64,26 +63,6 @@ const queryString = (value: unknown): string => {
 const queryPage = (value: unknown): number => {
   const parsed = Number(queryString(value));
   return Number.isFinite(parsed) && parsed >= 1 ? Math.floor(parsed) : 1;
-};
-
-// Pixabay's CDN once answered 200 with a gzipped body that fetch handed over
-// still compressed, so `res.json()` threw and the stock panel got a 500. Take
-// the bytes, inflate them if they still carry the gzip magic, and turn any
-// other unreadable body into the same 502 as an upstream error.
-const readPixabayJson = async (res: globalThis.Response) => {
-  let body = Buffer.from(await res.arrayBuffer());
-  if (body[0] === 0x1f && body[1] === 0x8b) {
-    try {
-      body = gunzipSync(body);
-    } catch {
-      throw new HttpException('Pixabay returned an unreadable response', 502);
-    }
-  }
-  try {
-    return JSON.parse(body.toString('utf8'));
-  } catch {
-    throw new HttpException('Pixabay returned an unreadable response', 502);
-  }
 };
 
 // A model that answers without an image used to come back as 201 with the
@@ -265,7 +244,7 @@ export class MediaController {
       throw new HttpException(`Pixabay error ${res.status}`, 502);
     }
     const remaining = Number(res.headers.get('x-ratelimit-remaining') ?? '999');
-    const data = await readPixabayJson(res);
+    const data = await res.json();
     // 24h cache per Pixabay TOS. Tighten when rate limit is nearly exhausted.
     const ttl = remaining < 5 ? 60 * 60 * 48 : 60 * 60 * 24;
     await ioRedis.set(cacheKey, JSON.stringify(data), 'EX', ttl);
@@ -295,7 +274,7 @@ export class MediaController {
       throw new HttpException(`Pixabay error ${res.status}`, 502);
     }
     const remaining = Number(res.headers.get('x-ratelimit-remaining') ?? '999');
-    const data = await readPixabayJson(res);
+    const data = await res.json();
     // 24h cache per Pixabay TOS. Tighten when rate limit is nearly exhausted.
     const ttl = remaining < 5 ? 60 * 60 * 48 : 60 * 60 * 24;
     await ioRedis.set(cacheKey, JSON.stringify(data), 'EX', ttl);
