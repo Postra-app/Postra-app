@@ -28,6 +28,7 @@ import { Response } from 'express';
 import { GetUserFromRequest } from '@gitroom/nestjs-libraries/user/user.from.request';
 import { ShortLinkService } from '@gitroom/nestjs-libraries/short-linking/short.link.service';
 import { CreateTagDto } from '@gitroom/nestjs-libraries/dtos/posts/create.tag.dto';
+import { CreateCommentDto } from '@gitroom/nestjs-libraries/dtos/posts/create.comment.dto';
 import {
   AuthorizationActions,
   Sections,
@@ -78,7 +79,7 @@ export class PostsController {
     @GetOrgFromRequest() org: Organization,
     @GetUserFromRequest() user: User,
     @Param('id') id: string,
-    @Body() body: { comment: string }
+    @Body() body: CreateCommentDto
   ) {
     return this._postsService.createComment(org.id, user.id, id, body.comment);
   }

@@ -1296,7 +1296,8 @@ export class PostsService {
     // shared preview).
     const post = await this._postRepository.getPostById(postId, orgId);
     if (!post) {
-      throw new Error('Post not found');
+      // A plain Error here answered 500 for another org's post (E2E-05-16).
+      throw new NotFoundException('Post not found');
     }
     return this._postRepository.createComment(orgId, userId, postId, comment);
   }

@@ -75,3 +75,27 @@ describe('PublicController.getPreview', () => {
     expect(out.content).toBe('<p>hello</p>');
   });
 });
+
+describe('PublicController.getComments (E2E-05-16)', () => {
+  const rows: any[] = [
+    { id: 'c1', content: 'hi', createdAt: new Date(), userId: 'user-a', organizationId: 'org-1', postId: 'p1', deletedAt: null, updatedAt: new Date() },
+    { id: 'c2', content: 'yo', createdAt: new Date(), userId: 'user-b', organizationId: 'org-1', postId: 'p1', deletedAt: null, updatedAt: new Date() },
+    { id: 'c3', content: 'again', createdAt: new Date(), userId: 'user-a', organizationId: 'org-1', postId: 'p1', deletedAt: null, updatedAt: new Date() },
+  ];
+  const ctrl = () =>
+    new PublicController({} as any, {} as any, { getComments: jest.fn().mockResolvedValue(rows) } as any, {} as any);
+
+  it('sends no real user or organization id', async () => {
+    const body = JSON.stringify(await ctrl().getComments('p1'));
+    for (const leak of ['user-a', 'user-b', 'org-1', 'organizationId']) {
+      expect(body).not.toContain(leak);
+    }
+  });
+
+  it('keeps authors groupable: same person, same alias; different people differ', async () => {
+    const { comments } = await ctrl().getComments('p1');
+    expect(comments[0].userId).toBe(comments[2].userId);
+    expect(comments[0].userId).not.toBe(comments[1].userId);
+    expect(Object.keys(comments[0]).sort()).toEqual(['content', 'createdAt', 'id', 'userId']);
+  });
+});

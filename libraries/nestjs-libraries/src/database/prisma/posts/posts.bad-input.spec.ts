@@ -70,3 +70,15 @@ describe('PostsService.changeDate — bad input', () => {
     );
   });
 });
+
+describe('PostsService.createComment (E2E-05-16)', () => {
+  it('404s a post from another org instead of throwing a plain Error', async () => {
+    const repository = { getPostById: jest.fn().mockResolvedValue(null), createComment: jest.fn() };
+    const s = Object.create(PostsService.prototype) as PostsService;
+    Object.assign(s, { _postRepository: repository });
+    await expect(s.createComment('org', 'user', 'foreign', 'hi')).rejects.toBeInstanceOf(
+      NotFoundException
+    );
+    expect(repository.createComment).not.toHaveBeenCalled();
+  });
+});
