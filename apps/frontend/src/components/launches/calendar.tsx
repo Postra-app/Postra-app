@@ -361,7 +361,7 @@ export const DayView = () => {
       <div className="absolute start-0 top-0 w-full h-full flex flex-col overflow-auto scrollbar scrollbar-thumb-fifth scrollbar-track-newBgColor">
         {options.map((option) => (
           <Fragment key={option[0].time}>
-            <div className="text-center text-[14px] min-h-[21px]">
+            <div className="text-center text-[14px] min-h-[21px] shrink-0">
               {newDayjs()
                 .utc()
                 .startOf('day')
@@ -371,7 +371,10 @@ export const DayView = () => {
             </div>
             <div
               key={option[0].time}
-              className="min-h-[60px] rounded-[10px] flex justify-center items-center gap-[10px] mb-[20px]"
+              // shrink-0: this list is a height-capped flex column, so a slot with
+              // several posts was squeezed back to 60px and its tiles spilled over
+              // the neighbouring slots, hiding a failed post (E2E-05-11).
+              className="min-h-[60px] shrink-0 rounded-[10px] flex justify-center items-center gap-[10px] mb-[20px]"
             >
               <CalendarContext.Provider
                 value={{

@@ -767,6 +767,9 @@ html[dir='rtl'] [dir='ltr'] {
 
 .ProseMirror {
   font-family: Arial;
+  // A link with UTM parameters is one unbreakable word; without this it
+  // pushed the whole composer sideways (E2E-05-09).
+  overflow-wrap: anywhere;
 }
 
 .ProseMirror:focus {
