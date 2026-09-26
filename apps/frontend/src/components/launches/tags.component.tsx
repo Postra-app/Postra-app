@@ -96,14 +96,23 @@ export const TagsComponentInner: FC<{
     if (newTag) {
       const modify = [...tagValue, newTag];
       setTagValue(modify);
+      // Same shape as selecting a tag from the list: the server matches tags
+      // by `label`. The raw tag objects sent here had no label, so a tag
+      // created from the composer was shown on the post and silently not
+      // saved (E2E-05-22).
       onChange({
         target: {
-          value: modify,
+          value: modify.map((p: any) => ({
+            label: p.name,
+            value: p.name,
+          })),
           name,
         },
       });
     }
-  }, []);
+    // tagValue: with no deps this kept the first render's selection, so a
+    // tag created after picking another one dropped the earlier pick.
+  }, [tagValue, mutate, onChange, name, modals, t]);
 
   const deleteTag = useCallback(
     async (tag: any, e: React.MouseEvent) => {

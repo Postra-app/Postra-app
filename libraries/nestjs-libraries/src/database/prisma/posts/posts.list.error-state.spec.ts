@@ -76,10 +76,13 @@ describe('getPostsList — failed posts have to be reachable', () => {
     expect(args.orderBy.publishDate).toBe('desc');
   });
 
-  it('state=draft still only returns upcoming drafts', async () => {
+  // Changed by E2E-05-21: this used to pin "upcoming drafts only", which hid
+  // a past-dated draft from the Draft tab while "All" still listed it.
+  it('state=draft lists drafts whatever their date, newest first', async () => {
     const args = await callWith('draft');
     expect(args.where.state).toBe(State.DRAFT);
-    expect(args.where.publishDate.gte).toBeInstanceOf(Date);
+    expect(args.where.publishDate).toBeUndefined();
+    expect(args.orderBy.publishDate).toBe('desc');
   });
 });
 
@@ -126,5 +129,26 @@ describe('getPostsList — "all" has to mean all', () => {
     const args = findMany.mock.calls[0][0];
     expect(args.where.publishDate).toBeUndefined();
     expect(args.where.state.in).toContain(State.ERROR);
+  });
+});
+
+describe('getPostsList — drafts and repeating posts (E2E-05-21)', () => {
+  it('state=draft keeps drafts dated in the past', async () => {
+    const args = await callWith('draft');
+    expect(args.where.state).toBe(State.DRAFT);
+    expect(args.where.publishDate).toBeUndefined();
+  });
+
+  it.each(['all', 'scheduled', 'draft', 'published', 'error'])(
+    'state=%s does not hide repeating posts',
+    async (state) => {
+      const args = await callWith(state);
+      expect(args.where).not.toHaveProperty('intervalInDays');
+    }
+  );
+
+  it('state=scheduled still only lists what is upcoming', async () => {
+    const args = await callWith('scheduled');
+    expect(args.where.publishDate).toBeDefined();
   });
 });
