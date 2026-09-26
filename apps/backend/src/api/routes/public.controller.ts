@@ -55,11 +55,19 @@ export class PublicController {
     return this._agentGraphInsertService.newPost(body.text);
   }
 
+  // Unauthenticated: the id travels in the /p/<id> link an agency sends to its
+  // client. Return only what that page renders — the whole row used to go out,
+  // including Post.error (stack traces, and on rows older than the write-side
+  // redaction, possibly provider tokens) and internal ids (E2E-05-13).
   @Get(`/posts/:id`)
   async getPreview(@Param('id') id: string) {
     return (await this._postsService.getPostsRecursively(id, true)).map(
-      ({ childrenPost, ...p }) => ({
-        ...p,
+      (p) => ({
+        id: p.id,
+        content: p.content,
+        image: p.image,
+        publishDate: p.publishDate,
+        creationMethod: p.creationMethod,
         ...(p.integration
           ? {
               integration: {

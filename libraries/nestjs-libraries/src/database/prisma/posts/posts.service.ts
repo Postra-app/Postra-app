@@ -49,13 +49,14 @@ import { AnalyticsData } from '@gitroom/nestjs-libraries/integrations/social/soc
 import { timer } from '@gitroom/helpers/utils/timer';
 import { ioRedis } from '@gitroom/nestjs-libraries/redis/redis.service';
 import { RefreshToken } from '@gitroom/nestjs-libraries/integrations/social.abstract';
+import { readablePostError } from '@gitroom/nestjs-libraries/database/prisma/posts/post.error.message';
 import { RefreshIntegrationService } from '@gitroom/nestjs-libraries/integrations/refresh.integration.service';
 import { hasExtension } from '@gitroom/helpers/utils/has.extension';
 import { stripLinks } from '@gitroom/helpers/utils/strip.links';
 import { validate } from 'class-validator';
 import { plainToInstance } from 'class-transformer';
 import { stripHtmlValidation } from '@gitroom/helpers/utils/strip.html.validation';
-import { weightedLength } from '@gitroom/helpers/utils/count.length';
+import { providerTextLength } from '@gitroom/helpers/utils/count.length';
 
 type PostWithConditionals = Post & {
   integration?: Integration;
@@ -542,20 +543,25 @@ export class PostsService {
   }
 
   // The repository includes the full Integration row (publishing needs the
-  // token); the editor API response must not carry credential material.
-  private stripIntegrationSecrets<T extends { integration?: any }>(
-    post: T
-  ): T {
-    if (!post?.integration) {
-      return post;
+  // token); the editor API response must not carry credential material — nor
+  // the raw Temporal failure in Post.error, only its sentence (E2E-05-10).
+  private stripIntegrationSecrets<
+    T extends { integration?: any; error?: string | null }
+  >(post: T): T {
+    const readable =
+      post && 'error' in post
+        ? { ...post, error: readablePostError(post.error) }
+        : post;
+    if (!readable?.integration) {
+      return readable;
     }
     const {
       token,
       refreshToken,
       customInstanceDetails,
       ...integration
-    } = post.integration;
-    return { ...post, integration };
+    } = readable.integration;
+    return { ...readable, integration };
   }
 
   async getPostsByGroup(orgId: string, group: string) {
@@ -866,6 +872,12 @@ export class PostsService {
       settings?: any;
     }>
   ) {
+    // Both routes read the body as `any`, so a non-array here used to die on
+    // `.map` as a 500 (E2E-05-08).
+    if (posts != null && !Array.isArray(posts)) {
+      throw new BadRequestException('posts must be an array');
+    }
+
     const integrationsById = new Map(
       (
         await this._integrationService.getIntegrationsByIds(orgId, [
@@ -927,20 +939,20 @@ export class PostsService {
         }
 
         const maximumCharacters = provider.maxLength(additionalSettings);
-        const isX = integration.providerIdentifier === 'x';
-
         const emptyContent = (post.value || []).some((a) => {
           const strip = stripHtmlValidation('normal', a.content || '', true);
-          const length = isX ? weightedLength(strip) : strip.length;
-          return length === 0 && (a.image || []).length === 0;
+          return strip.length === 0 && (a.image || []).length === 0;
         });
 
+        // Counted the way the platform counts (links as 23 on X/Mastodon,
+        // graphemes on Bluesky). This used to take max(weighted, raw length),
+        // which threw the link weighting away (E2E-05-04, E2E-05-07).
         const tooLong = (post.value || []).some((a) => {
           const strip = stripHtmlValidation('normal', a.content || '', true);
-          const weighted = isX ? weightedLength(strip) : strip.length;
-          const totalCharacters =
-            weighted > strip.length ? weighted : strip.length;
-          return totalCharacters > (maximumCharacters || 1000000);
+          return (
+            providerTextLength(integration.providerIdentifier, strip) >
+            (maximumCharacters || 1000000)
+          );
         });
 
         return {
@@ -1073,7 +1085,16 @@ export class PostsService {
     date: string,
     action: 'schedule' | 'update' = 'schedule'
   ) {
+    // Both used to surface as 500s: garbage reached Prisma as Invalid Date, and
+    // a post from another org (or none) came back null (E2E-05-12).
+    if (typeof date !== 'string' || !dayjs(date).isValid()) {
+      throw new BadRequestException('Invalid date');
+    }
+
     const getPostById = await this._postRepository.getPostById(id, orgId);
+    if (!getPostById) {
+      throw new NotFoundException('Post not found');
+    }
 
     // schedule: Set status to QUEUE and change date (reschedule the post)
     // update: Just change the date without changing the status
