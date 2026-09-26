@@ -6,7 +6,10 @@ import {
 } from '@gitroom/nestjs-libraries/integrations/social/social.integrations.interface';
 import { makeId } from '@gitroom/nestjs-libraries/services/make.is';
 import dayjs from 'dayjs';
-import { SocialAbstract } from '@gitroom/nestjs-libraries/integrations/social.abstract';
+import {
+  BadBody,
+  SocialAbstract,
+} from '@gitroom/nestjs-libraries/integrations/social.abstract';
 //@ts-ignore
 import mime from 'mime';
 import TelegramBot from 'node-telegram-bot-api';
@@ -240,7 +243,37 @@ export class TelegramProvider extends SocialAbstract implements SocialProvider {
     return { ...media, media: Buffer.from(await res.arrayBuffer()) };
   }
 
+  // Telegram's own 4xx (caption too long, chat not found, bot kicked...) will
+  // fail the same way on every attempt; as a plain error Temporal retried it
+  // for minutes before the post turned red. BadBody is non-retryable and
+  // carries Telegram's sentence to the notification (E2E-05-06).
   private async sendMessage(
+    accessToken: string,
+    message: PostDetails,
+    replyToMessageId?: number
+  ): Promise<number | null> {
+    try {
+      return await this.sendMessageUnguarded(
+        accessToken,
+        message,
+        replyToMessageId
+      );
+    } catch (err: any) {
+      const body = err?.response?.body;
+      const status = Number(body?.error_code ?? err?.response?.statusCode);
+      if (err?.code === 'ETELEGRAM' && status >= 400 && status < 500 && status !== 429) {
+        throw new BadBody(
+          'telegram',
+          JSON.stringify(body || {}),
+          '{}',
+          body?.description || err.message
+        );
+      }
+      throw err;
+    }
+  }
+
+  private async sendMessageUnguarded(
     accessToken: string,
     message: PostDetails,
     replyToMessageId?: number
@@ -252,7 +285,12 @@ export class TelegramProvider extends SocialAbstract implements SocialProvider {
       .replace(/<\/strong>/g, '</b>')
       .replace(/<p>(.*?)<\/p>/g, '$1\n');
 
-    console.log(text);
+    // A caption under a photo/video is capped at 1024 characters (a plain
+    // message at 4096). A longer text goes out as its own message right after
+    // the media instead of failing the whole post (E2E-05-06).
+    const captionFits = striptags(text).length <= 1024;
+    const caption = captionFits ? text : undefined;
+
     const processedMedia = await Promise.all(
       this.processMedia(mediaFiles).map((m) => this.resolveMedia(m))
     );
@@ -269,7 +307,7 @@ export class TelegramProvider extends SocialAbstract implements SocialProvider {
     else if (processedMedia.length === 1) {
       const media = processedMedia[0];
       const options = {
-        caption: text,
+        caption,
         parse_mode: 'HTML' as const,
         ...(replyToMessageId ? { reply_to_message_id: replyToMessageId } : {}),
       };
@@ -303,7 +341,7 @@ export class TelegramProvider extends SocialAbstract implements SocialProvider {
         const mediaGroup = mediaGroups[i].map((m, index) => ({
           type: m.type === 'document' ? 'document' : m.type, // Documents are not allowed in media groups
           media: m.media,
-          caption: i === 0 && index === 0 ? text : undefined,
+          caption: i === 0 && index === 0 ? caption : undefined,
           parse_mode: 'HTML',
         }));
 
@@ -320,6 +358,13 @@ export class TelegramProvider extends SocialAbstract implements SocialProvider {
           messageId = response[0].message_id;
         }
       }
+    }
+
+    if (processedMedia.length > 0 && !captionFits && text.trim()) {
+      await telegramBot.sendMessage(accessToken, text, {
+        parse_mode: 'HTML',
+        ...(messageId ? { reply_to_message_id: messageId } : {}),
+      });
     }
 
     return messageId;

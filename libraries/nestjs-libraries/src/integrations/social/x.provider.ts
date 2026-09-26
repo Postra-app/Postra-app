@@ -10,7 +10,10 @@ import {
 import { lookup } from 'mime-types';
 import sharp from 'sharp';
 import { readOrFetch } from '@gitroom/helpers/utils/read.or.fetch';
-import { SocialAbstract } from '@gitroom/nestjs-libraries/integrations/social.abstract';
+import {
+  SocialAbstract,
+  ValidityMedia,
+} from '@gitroom/nestjs-libraries/integrations/social.abstract';
 import { Plug } from '@gitroom/helpers/decorators/plug.decorator';
 import { Integration } from '@prisma/client';
 import { timer } from '@gitroom/helpers/utils/timer';
@@ -42,6 +45,25 @@ export class XProvider extends SocialAbstract implements SocialProvider {
 
   editor = 'normal' as const;
   dto = XDto;
+
+  // Neither X provider had a media check, so a post the platform refuses
+  // was scheduled without a word and failed at publish time (E2E-05-05).
+  override async checkValidity(
+    posts: Array<ValidityMedia[]>
+  ): Promise<string | true> {
+    const isVideoOrGif = (m: ValidityMedia) =>
+      ['mp4', 'mov', 'gif'].some((ext) => hasExtension(m?.path, ext));
+    for (const media of posts || []) {
+      const items = media || [];
+      if (items.length > 1 && items.some(isVideoOrGif)) {
+        return 'X allows one video or GIF per post, without other media.';
+      }
+      if (items.length > 4) {
+        return 'X allows up to 4 images per post.';
+      }
+    }
+    return true;
+  }
 
   maxLength(additionalSettings?: any) {
     // Accepts either the parsed additionalSettings array (from validation) or a
