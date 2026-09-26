@@ -13,6 +13,8 @@ type ShortLinkPreference = 'ASK' | 'YES' | 'NO';
 
 interface ShortlinkPreferenceResponse {
   shortlink: ShortLinkPreference;
+  // false when the server has no link shortener configured
+  available?: boolean;
 }
 
 export const useShortlinkPreference = () => {
@@ -91,6 +93,11 @@ const ShortlinkPreferenceComponent = () => {
         <div className="animate-pulse">{t('loading', 'Loading...')}</div>
       </Card>
     );
+  }
+
+  // Nothing to shorten with: the choice would change nothing (E2E-05-23).
+  if (data?.available === false) {
+    return null;
   }
 
   return (

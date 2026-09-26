@@ -25,6 +25,7 @@ import { AuthService } from '@gitroom/helpers/auth/auth.service';
 import { pricing } from '@gitroom/nestjs-libraries/database/prisma/subscriptions/pricing';
 import { Readable, pipeline } from 'stream';
 import { promisify } from 'util';
+import { createHash } from 'crypto';
 import { OnlyURL } from '@gitroom/nestjs-libraries/dtos/webhooks/webhooks.dto';
 import { isSafePublicHttpsUrl } from '@gitroom/nestjs-libraries/dtos/webhooks/webhook.url.validator';
 import { ssrfSafeDispatcher } from '@gitroom/nestjs-libraries/dtos/webhooks/ssrf.safe.dispatcher';
@@ -55,11 +56,19 @@ export class PublicController {
     return this._agentGraphInsertService.newPost(body.text);
   }
 
+  // Unauthenticated: the id travels in the /p/<id> link an agency sends to its
+  // client. Return only what that page renders — the whole row used to go out,
+  // including Post.error (stack traces, and on rows older than the write-side
+  // redaction, possibly provider tokens) and internal ids (E2E-05-13).
   @Get(`/posts/:id`)
   async getPreview(@Param('id') id: string) {
     return (await this._postsService.getPostsRecursively(id, true)).map(
-      ({ childrenPost, ...p }) => ({
-        ...p,
+      (p) => ({
+        id: p.id,
+        content: p.content,
+        image: p.image,
+        publishDate: p.publishDate,
+        creationMethod: p.creationMethod,
         ...(p.integration
           ? {
               integration: {
@@ -77,7 +86,21 @@ export class PublicController {
 
   @Get(`/posts/:id/comments`)
   async getComments(@Param('id') postId: string) {
-    return { comments: await this._postsService.getComments(postId) };
+    // Unauthenticated, like the preview itself. The page already shows authors
+    // as "User 1, User 2"; it only needs a stable per-post alias to group them,
+    // not the author's real user id or the organization id (E2E-05-16).
+    const comments = await this._postsService.getComments(postId);
+    return {
+      comments: comments.map((c) => ({
+        id: c.id,
+        content: c.content,
+        createdAt: c.createdAt,
+        userId: createHash('sha256')
+          .update(`${postId}:${c.userId}`)
+          .digest('hex')
+          .slice(0, 16),
+      })),
+    };
   }
 
   @Post('/t')

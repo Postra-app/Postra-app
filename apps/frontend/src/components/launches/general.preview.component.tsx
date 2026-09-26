@@ -114,7 +114,12 @@ export const GeneralPreviewComponent: FC<{
                 </div>
               </div>
               <div
-                className={clsx('text-wrap whitespace-pre', 'preview')}
+                // pre-wrap keeps the post's line breaks and still wraps; plain `pre`
+                // ran a long link off the panel (E2E-05-09).
+                className={clsx(
+                  'whitespace-pre-wrap [overflow-wrap:anywhere]',
+                  'preview'
+                )}
                 dangerouslySetInnerHTML={{
                   __html: sanitizePostContent(value.text),
                 }}

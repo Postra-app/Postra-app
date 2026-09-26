@@ -4,6 +4,7 @@ import {
   HttpStatus,
   Inject,
   Injectable,
+  NotFoundException,
 } from '@nestjs/common';
 import { AuditService } from '@gitroom/nestjs-libraries/database/prisma/audit/audit.service';
 import { IntegrationRepository } from '@gitroom/nestjs-libraries/database/prisma/integrations/integration.repository';
@@ -788,6 +789,18 @@ export class IntegrationService {
     integrationId: string,
     body: PlugDto
   ) {
+    // The plug row is keyed on (plugFunction, integrationId) only. Without
+    // this check another org could create it first on someone else's channel:
+    // it never runs (plugs are loaded with the channel owner's org), but it
+    // blocks the owner from setting that plug up — a 500 for them (E2E-05-19).
+    const [integration] =
+      await this._integrationRepository.getIntegrationsByIds(orgId, [
+        integrationId,
+      ]);
+    if (!integration) {
+      throw new NotFoundException('Channel not found');
+    }
+
     const { activated } = await this._integrationRepository.createOrUpdatePlug(
       orgId,
       integrationId,
@@ -800,14 +813,16 @@ export class IntegrationService {
   }
 
   async changePlugActivation(orgId: string, plugId: string, status: boolean) {
-    const { id, integrationId, plugFunction } =
-      await this._integrationRepository.changePlugActivation(
-        orgId,
-        plugId,
-        status
-      );
+    const changed = await this._integrationRepository.changePlugActivation(
+      orgId,
+      plugId,
+      status
+    );
+    if (!changed) {
+      throw new NotFoundException('Plug not found');
+    }
 
-    return { id };
+    return { id: plugId };
   }
 
   async getPlugs(orgId: string, integrationId: string) {

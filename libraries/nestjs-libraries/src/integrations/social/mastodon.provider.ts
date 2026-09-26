@@ -6,7 +6,11 @@ import {
 } from '@gitroom/nestjs-libraries/integrations/social/social.integrations.interface';
 import { makeId } from '@gitroom/nestjs-libraries/services/make.is';
 import { fetchMediaBuffer } from '@gitroom/nestjs-libraries/media/fetch.media.buffer';
-import { SocialAbstract } from '@gitroom/nestjs-libraries/integrations/social.abstract';
+import {
+  SocialAbstract,
+  ValidityMedia,
+} from '@gitroom/nestjs-libraries/integrations/social.abstract';
+import { hasExtension } from '@gitroom/helpers/utils/has.extension';
 import dayjs from 'dayjs';
 import { Integration } from '@prisma/client';
 import { number, string } from 'yup';
@@ -18,6 +22,25 @@ export class MastodonProvider extends SocialAbstract implements SocialProvider {
   isBetweenSteps = false;
   scopes = ['write:statuses', 'profile', 'write:media'];
   editor = 'normal' as const;
+  // Neither Mastodon provider had a media check, so a post the platform refuses
+  // was scheduled without a word and failed at publish time (E2E-05-05).
+  override async checkValidity(
+    posts: Array<ValidityMedia[]>
+  ): Promise<string | true> {
+    const isVideoOrGif = (m: ValidityMedia) =>
+      ['mp4', 'mov', 'gif'].some((ext) => hasExtension(m?.path, ext));
+    for (const media of posts || []) {
+      const items = media || [];
+      if (items.length > 1 && items.some(isVideoOrGif)) {
+        return 'Mastodon allows one video or GIF per post, without other media.';
+      }
+      if (items.length > 4) {
+        return 'Mastodon allows up to 4 images per post.';
+      }
+    }
+    return true;
+  }
+
   maxLength() {
     return 500;
   }

@@ -1,3 +1,4 @@
+import { ShortLinkService } from '@gitroom/nestjs-libraries/short-linking/short.link.service';
 import { Body, Controller, Delete, Get, Param, Post } from '@nestjs/common';
 import { GetOrgFromRequest } from '@gitroom/nestjs-libraries/user/org.from.request';
 import { Organization } from '@prisma/client';
@@ -55,7 +56,13 @@ export class SettingsController {
 
   @Get('/shortlink')
   async getShortlinkPreference(@GetOrgFromRequest() org: Organization) {
-    return this._organizationService.getShortlinkPreference(org.id);
+    // `available`: with no shortener configured (no Dub/Short.io/Kutt/LinkDrip
+    // keys — production today) the preference changes nothing, so the settings
+    // page should not offer "Always shortlink" (E2E-05-23).
+    return {
+      ...(await this._organizationService.getShortlinkPreference(org.id)),
+      available: ShortLinkService.provider.shortLinkDomain !== 'empty',
+    };
   }
 
   @Post('/shortlink')

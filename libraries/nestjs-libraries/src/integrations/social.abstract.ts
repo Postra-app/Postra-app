@@ -86,6 +86,34 @@ export function sanitizeSecrets(text: string) {
   );
 }
 
+// Pulls the human sentence out of a platform's error body, so a provider
+// without its own handleErrors still tells the user why (Mastodon's "Cannot
+// attach more than four files" used to reach the email as "Unknown Error").
+export function providerErrorMessage(json: string): string | undefined {
+  let body: any;
+  try {
+    body = JSON.parse(json || '{}');
+  } catch {
+    return undefined;
+  }
+
+  const candidates = [
+    body?.error?.error_user_msg,
+    body?.error?.message,
+    body?.error,
+    body?.error_description,
+    body?.message,
+    body?.errors?.[0]?.message,
+    body?.errors?.[0]?.detail,
+    body?.detail,
+  ];
+  const found = candidates.find(
+    (c) => typeof c === 'string' && c.trim().length > 0
+  );
+
+  return found ? sanitizeSecrets(found.trim()).slice(0, 300) : undefined;
+}
+
 function safeStringify(obj: any) {
   const seen = new WeakSet();
 
@@ -237,12 +265,15 @@ export abstract class SocialAbstract {
       )}`
     );
 
+    const reason =
+      handleError?.value || providerErrorMessage(json) || 'Unknown Error';
+
     if (totalRetries > 2) {
       throw new BadBody(
         identifier,
         json,
         options.body || '{}',
-        message || handleError?.value || ''
+        reason
       );
     }
 
@@ -259,7 +290,7 @@ export abstract class SocialAbstract {
         identifier,
         totalRetries + 1,
         ignoreConcurrency,
-        handleError?.value || 'Unknown Error'
+        reason
       );
     }
 
@@ -271,7 +302,7 @@ export abstract class SocialAbstract {
         identifier,
         totalRetries + 1,
         ignoreConcurrency,
-        handleError?.value || 'Unknown Error'
+        reason
       );
     }
 
@@ -292,7 +323,7 @@ export abstract class SocialAbstract {
       identifier,
       json,
       options.body!,
-      handleError?.value || 'Unknown Error'
+      reason
     );
   }
 

@@ -294,9 +294,14 @@ export class PostsRepository {
     // while `state=published` alone returned 53 and three more sat in ERROR.
     // This is the web's default list tab, so the label was lying to every user,
     // not just to the phone.
+    //
+    // `draft` too: a draft has not been scheduled, and the date picker lets a
+    // draft carry a past date — under the upcoming filter it vanished from the
+    // Draft tab it was saved into (E2E-05-21).
     const includesThePast =
       stateFilter === 'published' ||
       stateFilter === 'error' ||
+      stateFilter === 'draft' ||
       stateFilter === 'all';
 
     // Newest first once the past is in scope: ascending would put last July on
@@ -317,7 +322,8 @@ export class PostsRepository {
       ...(includesThePast ? {} : { publishDate: { gte: dayjs.utc().toDate() } }),
       deletedAt: null as Date | null,
       parentPostId: null as string | null,
-      intervalInDays: null as number | null,
+      // Repeating posts used to be filtered out here, so a weekly post never
+      // showed in any List tab — the phone's default view (E2E-05-21).
 
       integration: {
         deletedAt: null as any,
@@ -494,17 +500,20 @@ export class PostsRepository {
     });
   }
 
-  updateReleaseId(id: string, orgId: string, releaseId: string) {
-    return this._post.model.post.update({
+  // null unless the post is this org's and still waiting for its release id —
+  // a plain update threw P2025 for every other post, a 500 (E2E-05-20).
+  async updateReleaseId(id: string, orgId: string, releaseId: string) {
+    const { count } = await this._post.model.post.updateMany({
       where: {
         id,
         organizationId: orgId,
         releaseId: 'missing',
       },
       data: {
-        releaseId: String(releaseId),
+        releaseId,
       },
     });
+    return count ? { id, releaseId } : null;
   }
 
   async changeState(id: string, state: State, err?: any, body?: any) {
