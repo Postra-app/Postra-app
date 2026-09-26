@@ -494,17 +494,20 @@ export class PostsRepository {
     });
   }
 
-  updateReleaseId(id: string, orgId: string, releaseId: string) {
-    return this._post.model.post.update({
+  // null unless the post is this org's and still waiting for its release id —
+  // a plain update threw P2025 for every other post, a 500 (E2E-05-20).
+  async updateReleaseId(id: string, orgId: string, releaseId: string) {
+    const { count } = await this._post.model.post.updateMany({
       where: {
         id,
         organizationId: orgId,
         releaseId: 'missing',
       },
       data: {
-        releaseId: String(releaseId),
+        releaseId,
       },
     });
+    return count ? { id, releaseId } : null;
   }
 
   async changeState(id: string, state: State, err?: any, body?: any) {

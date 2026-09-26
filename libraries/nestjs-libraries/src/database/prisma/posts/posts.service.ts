@@ -162,7 +162,22 @@ export class PostsService {
   }
 
   async updateReleaseId(orgId: string, postId: string, releaseId: string) {
-    return this._postRepository.updateReleaseId(postId, orgId, releaseId);
+    if (typeof releaseId !== 'string' && typeof releaseId !== 'number') {
+      throw new BadRequestException('releaseId is required');
+    }
+    const value = String(releaseId).trim();
+    if (!value || value === 'missing' || value.length > 200) {
+      throw new BadRequestException('Invalid releaseId');
+    }
+    const updated = await this._postRepository.updateReleaseId(
+      postId,
+      orgId,
+      value
+    );
+    if (!updated) {
+      throw new NotFoundException('No post waiting for a release id');
+    }
+    return updated;
   }
 
   async checkPostAnalytics(

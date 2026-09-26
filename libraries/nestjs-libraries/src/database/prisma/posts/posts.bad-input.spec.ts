@@ -82,3 +82,29 @@ describe('PostsService.createComment (E2E-05-16)', () => {
     expect(repository.createComment).not.toHaveBeenCalled();
   });
 });
+
+describe('PostsService.updateReleaseId (E2E-05-20)', () => {
+  const svc = (updated: any) => {
+    const repository = { updateReleaseId: jest.fn().mockResolvedValue(updated) };
+    const s = Object.create(PostsService.prototype) as PostsService;
+    Object.assign(s, { _postRepository: repository });
+    return { s, repository };
+  };
+
+  it('404s a post that is not waiting for a release id (or not this org’s)', async () => {
+    const { s } = svc(null);
+    await expect(s.updateReleaseId('org', 'p1', '123')).rejects.toBeInstanceOf(NotFoundException);
+  });
+
+  it.each([undefined, '', '  ', 'missing', 'x'.repeat(201)])('400s releaseId=%p', async (v) => {
+    const { s, repository } = svc({ id: 'p1' });
+    await expect(s.updateReleaseId('org', 'p1', v as any)).rejects.toBeInstanceOf(BadRequestException);
+    expect(repository.updateReleaseId).not.toHaveBeenCalled();
+  });
+
+  it('connects a real id', async () => {
+    const { s, repository } = svc({ id: 'p1', releaseId: '7290' });
+    await s.updateReleaseId('org', 'p1', ' 7290 ');
+    expect(repository.updateReleaseId).toHaveBeenCalledWith('p1', 'org', '7290');
+  });
+});
