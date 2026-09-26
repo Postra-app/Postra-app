@@ -802,6 +802,8 @@ export const Editor: FC<{
                       isPicture={pictures?.length > 0}
                       chars={chars}
                       totalChars={valueWithoutHtml.length}
+                      countText={valueWithoutHtml}
+                      text={valueWithoutHtml}
                       totalAllowedChars={props.totalChars}
                     />
                   }

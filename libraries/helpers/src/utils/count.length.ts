@@ -37,3 +37,43 @@ export const textSlicer = (
 export const weightedLength = (text: string): number => {
   return twitter.parseTweet(text).weightedLength;
 };
+
+const graphemeCount = (text: string): number => {
+  const Segmenter = (Intl as any).Segmenter;
+  if (typeof Segmenter === 'function') {
+    let n = 0;
+    for (const _ of new Segmenter(undefined, { granularity: 'grapheme' }).segment(
+      text
+    )) {
+      n++;
+    }
+    return n;
+  }
+  return Array.from(text).length;
+};
+
+const URL_RE = /https?:\/\/\S+/gi;
+
+// How each platform itself counts a post against its limit, so the composer
+// counter and the server check agree with the platform instead of rejecting
+// posts it would accept (E2E-05-04, E2E-05-07):
+// - X: twitter-text weighting — every link is 23, emoji and CJK weigh 2;
+// - Mastodon: every link is 23, the rest in characters (graphemes);
+// - Bluesky: graphemes, links in full (no shortener);
+// - everyone else: plain string length, as before.
+export const providerTextLength = (
+  identifier: string | undefined,
+  text: string
+): number => {
+  const value = text || '';
+  switch ((identifier || '').split('-')[0]) {
+    case 'x':
+      return weightedLength(value);
+    case 'mastodon':
+      return graphemeCount(value.replace(URL_RE, 'x'.repeat(23)));
+    case 'bluesky':
+      return graphemeCount(value);
+    default:
+      return value.length;
+  }
+};
