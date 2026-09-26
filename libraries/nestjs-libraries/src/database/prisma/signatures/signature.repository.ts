@@ -1,6 +1,5 @@
 import { PrismaRepository } from '@gitroom/nestjs-libraries/database/prisma/prisma.service';
 import { Injectable } from '@nestjs/common';
-import { v4 as uuidv4 } from 'uuid';
 import { SignatureDto } from '@gitroom/nestjs-libraries/dtos/signature/signature.dto';
 
 @Injectable()
@@ -19,22 +18,35 @@ export class SignatureRepository {
     });
   }
 
+  // Both return null when the id isn't a live signature of this org. The
+  // upsert used to create a brand-new signature when handed a foreign or
+  // deleted id (and make it the default), and the delete threw P2025 — a 500
+  // (E2E-05-18).
   async createOrUpdateSignature(
     orgId: string,
     signature: SignatureDto,
     id?: string
   ) {
     const values = {
-      organizationId: orgId,
       content: signature.content,
       autoAdd: signature.autoAdd,
     };
 
-    const { id: updatedId } = await this._signatures.model.signatures.upsert({
-      where: { id: id || uuidv4(), organizationId: orgId },
-      update: values,
-      create: values,
-    });
+    let updatedId: string;
+    if (id) {
+      const { count } = await this._signatures.model.signatures.updateMany({
+        where: { id, organizationId: orgId, deletedAt: null },
+        data: values,
+      });
+      if (!count) {
+        return null;
+      }
+      updatedId = id;
+    } else {
+      ({ id: updatedId } = await this._signatures.model.signatures.create({
+        data: { ...values, organizationId: orgId },
+      }));
+    }
 
     if (values.autoAdd) {
       await this._signatures.model.signatures.updateMany({
@@ -46,10 +58,11 @@ export class SignatureRepository {
     return { id: updatedId };
   }
 
-  deleteSignature(orgId: string, id: string) {
-    return this._signatures.model.signatures.update({
-      where: { id, organizationId: orgId },
+  async deleteSignature(orgId: string, id: string) {
+    const { count } = await this._signatures.model.signatures.updateMany({
+      where: { id, organizationId: orgId, deletedAt: null },
       data: { deletedAt: new Date() },
     });
+    return count ? { id } : null;
   }
 }

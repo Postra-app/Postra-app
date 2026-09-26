@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { SetsRepository } from '@gitroom/nestjs-libraries/database/prisma/sets/sets.repository';
 import { SetsDto } from '@gitroom/nestjs-libraries/dtos/sets/sets.dto';
 
@@ -14,11 +14,19 @@ export class SetsService {
     return this._setsRepository.getSets(orgId);
   }
 
-  createSet(orgId: string, body: SetsDto) {
-    return this._setsRepository.createSet(orgId, body);
+  async createSet(orgId: string, body: SetsDto) {
+    const set = await this._setsRepository.createSet(orgId, body);
+    if (!set) {
+      throw new NotFoundException('Set not found');
+    }
+    return set;
   }
 
-  deleteSet(orgId: string, id: string) {
-    return this._setsRepository.deleteSet(orgId, id);
+  async deleteSet(orgId: string, id: string) {
+    const set = await this._setsRepository.deleteSet(orgId, id);
+    if (!set) {
+      throw new NotFoundException('Set not found');
+    }
+    return set;
   }
 } 
