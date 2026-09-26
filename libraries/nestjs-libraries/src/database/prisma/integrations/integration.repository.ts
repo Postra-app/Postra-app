@@ -747,8 +747,9 @@ export class IntegrationRepository {
     });
   }
 
-  changePlugActivation(orgId: string, plugId: string, status: boolean) {
-    return this._plugs.model.plugs.update({
+  // null when the plug isn't this org's — a plain update threw P2025 (500).
+  async changePlugActivation(orgId: string, plugId: string, status: boolean) {
+    const { count } = await this._plugs.model.plugs.updateMany({
       where: {
         organizationId: orgId,
         id: plugId,
@@ -757,6 +758,7 @@ export class IntegrationRepository {
         activated: !!status,
       },
     });
+    return count ? { id: plugId } : null;
   }
 
   async loadExisingData(
