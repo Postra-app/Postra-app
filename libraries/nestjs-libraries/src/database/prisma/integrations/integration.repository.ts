@@ -661,6 +661,8 @@ export class IntegrationRepository {
     });
   }
 
+  // The row stays so old posts keep their channel, but the tokens go: nothing
+  // reads a deleted channel's tokens, and reconnecting creates a new row.
   deleteChannel(org: string, id: string) {
     return this._integration.model.integration.update({
       where: {
@@ -669,6 +671,9 @@ export class IntegrationRepository {
       },
       data: {
         deletedAt: new Date(),
+        token: '',
+        refreshToken: null,
+        tokenExpiration: null,
       },
     });
   }
