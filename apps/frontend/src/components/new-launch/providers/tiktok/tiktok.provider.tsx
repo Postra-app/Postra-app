@@ -116,6 +116,7 @@ const TikTokSettings: FC<{
   const brand_organic_toggle = watch('brand_organic_toggle');
   const brand_content_toggle = watch('brand_content_toggle');
   const content_posting_method = watch('content_posting_method');
+  const privacy_level = watch('privacy_level');
   const isUploadMode = content_posting_method === 'UPLOAD';
 
   // Direct Post must honour the creator's max video length (creator_info).
@@ -245,7 +246,12 @@ const TikTokSettings: FC<{
             : t('loading_tiktok_settings', 'Loading your TikTok settings…')}
         </option>
         {privacyLevel.map((item) => (
-          <option key={item.value} value={item.value}>
+          <option
+            key={item.value}
+            value={item.value}
+            // TikTok: branded content can't be private.
+            disabled={item.value === 'SELF_ONLY' && !!brand_content_toggle}
+          >
             {item.label}
           </option>
         ))}
@@ -298,7 +304,7 @@ const TikTokSettings: FC<{
           </option>
         ))}
       </Select>
-      {isUploadMode && <div className="-mt-[23px] mb-[23px] text-red-600">After posting you fill find a notification inside your Inbox about your post (not content studio)</div>}
+      {isUploadMode && <div className="-mt-[23px] mb-[23px] text-red-600">After posting you will find a notification inside your Inbox about your post (not content studio)</div>}
       <Select
         label={t('label_auto_add_music', 'Auto add music')}
         {...register('autoAddMusic', {
@@ -328,7 +334,7 @@ const TikTokSettings: FC<{
           variant="hollow"
           disabled={isUploadMode || !!creatorInfo?.commentDisabled}
           {...register('comment', {
-            value: true,
+            value: false,
           })}
         />
         <Checkbox
@@ -382,10 +388,15 @@ const TikTokSettings: FC<{
               </svg>
             </div>
             <div>
-              {t(
-                'your_video_will_be_labeled_promotional',
-                'Your video will be labeled "Promotional Content".'
-              )}
+              {brand_content_toggle
+                ? t(
+                    'your_video_will_be_labeled_paid_partnership',
+                    'Your video will be labeled "Paid partnership".'
+                  )
+                : t(
+                    'your_video_will_be_labeled_promotional',
+                    'Your video will be labeled "Promotional Content".'
+                  )}
               <br />
               {t(
                 'this_cannot_be_changed_once_posted',
@@ -424,7 +435,7 @@ const TikTokSettings: FC<{
         <Checkbox
           variant="hollow"
           label={t('label_branded_content', 'Branded content')}
-          disabled={isUploadMode}
+          disabled={isUploadMode || privacy_level === 'SELF_ONLY'}
           {...register('brand_content_toggle', {
             value: false,
           })}
@@ -440,36 +451,49 @@ const TikTokSettings: FC<{
             'This video will be classified as Branded Content.'
           )}
         </div>
-        {(brand_organic_toggle || brand_content_toggle) && (
-          <div className="my-[10px] text-[14px] text-balance">
+        {disclose && !brand_organic_toggle && !brand_content_toggle && (
+          <div className="my-[10px] text-[14px] text-balance text-red-600">
             {t(
-              'by_posting_you_agree_to_tiktoks',
-              "By posting, you agree to TikTok's"
+              'tiktok_disclosure_choice_required',
+              'You need to indicate if your content promotes yourself, a third party, or both.'
             )}
-            {[
-              brand_organic_toggle || brand_content_toggle ? (
-                <a
-                  target="_blank"
-                  className="text-[#B69DEC] hover:underline"
-                  href="https://www.tiktok.com/legal/page/global/music-usage-confirmation/en"
-                >
-                  {t('music_usage_confirmation', 'Music Usage Confirmation')}
-                </a>
-              ) : undefined,
-              brand_content_toggle ? <> {t('and', 'and')} </> : undefined,
-              brand_content_toggle ? (
-                <a
-                  target="_blank"
-                  className="text-[#B69DEC] hover:underline"
-                  href="https://www.tiktok.com/legal/page/global/bc-policy/en"
-                >
-                  {t('branded_content_policy', 'Branded Content Policy')}
-                </a>
-              ) : undefined,
-            ].filter((f) => f)}
+          </div>
+        )}
+        {privacy_level === 'SELF_ONLY' && (
+          <div className="my-[10px] text-[14px] text-balance opacity-70">
+            {t(
+              'tiktok_branded_content_not_private',
+              'Branded content visibility cannot be set to private.'
+            )}
           </div>
         )}
       </div>
+      {!isUploadMode && (
+        <div className="mt-[20px] text-[14px] text-balance">
+          {t('by_posting_you_agree_to_tiktoks', "By posting, you agree to TikTok's")}{' '}
+          <a
+            target="_blank"
+            className="text-[#B69DEC] hover:underline"
+            href="https://www.tiktok.com/legal/page/global/music-usage-confirmation/en"
+          >
+            {t('music_usage_confirmation', 'Music Usage Confirmation')}
+          </a>
+          {brand_content_toggle && (
+            <>
+              {' '}
+              {t('and', 'and')}{' '}
+              <a
+                target="_blank"
+                className="text-[#B69DEC] hover:underline"
+                href="https://www.tiktok.com/legal/page/global/bc-policy/en"
+              >
+                {t('branded_content_policy', 'Branded Content Policy')}
+              </a>
+            </>
+          )}
+          .
+        </div>
+      )}
     </div>
   );
 };
