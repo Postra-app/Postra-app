@@ -244,6 +244,39 @@ jobs:
           echo "Health check failed after 10 min (including post-restart retries)"
           exit 1
 
+      # A healthy /api/monitor/queue/main does not mean a customer can use the
+      # app. Sign in as the test account and walk calendar → composer → draft
+      # saved → draft deleted (e2e/playwright). Drafts only — nothing publishes.
+      # ⚠️ Report-only until it has passed three deploys in a row; then drop
+      # continue-on-error and a failure rolls back like a failed health check.
+      - name: Smoke test (Playwright)
+        id: smoke
+        continue-on-error: true
+        env:
+          E2E_BASE_URL: https://app.postra.pl
+          E2E_EMAIL: ${{ secrets.E2E_EMAIL }}
+          E2E_PASSWORD: ${{ secrets.E2E_PASSWORD }}
+          E2E_ORG: ${{ secrets.E2E_ORG }}
+        run: |
+          if [ -z "$E2E_EMAIL" ] || [ -z "$E2E_PASSWORD" ]; then
+            echo "::warning::E2E_EMAIL / E2E_PASSWORD not set — smoke test skipped"
+            exit 0
+          fi
+          # Only the test runner, not the whole monorepo. Keep the version in
+          # step with the root devDependency.
+          npm install --prefix e2e/playwright --no-save --no-package-lock @playwright/test@1.58.2
+          e2e/playwright/node_modules/.bin/playwright install --with-deps chromium
+          e2e/playwright/node_modules/.bin/playwright test -c e2e/playwright
+
+      # Screenshots only: traces are off in CI (they carry the session cookie).
+      - name: Upload smoke test screenshots
+        if: steps.smoke.outcome == 'failure'
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-smoke
+          path: e2e/playwright/.results/
+          retention-days: 7
+
       # A deploy that never turns healthy used to leave the broken image
       # running: the restart above is the only recovery the old workflow had
       # (E2E-01-08). Put the previous image back and say so. The job still
@@ -251,7 +284,7 @@ jobs:
       # on boot stay applied; the previous image has to cope with the newer
       # schema, which holds for additive migrations only.
       - name: Roll back to the previous image
-        if: failure() && steps.health.outcome == 'failure'
+        if: failure() && (steps.health.outcome == 'failure' || steps.smoke.outcome == 'failure')
         env:
           INSTANCE_ID: ${{ steps.resolve.outputs.instance_id }}
         run: |
