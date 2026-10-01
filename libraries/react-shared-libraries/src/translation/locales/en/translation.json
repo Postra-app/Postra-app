@@ -43,6 +43,8 @@
   "add_channel_named": "Add {{name}}",
   "instance_url": "Instance URL",
   "connect_invite_title": "Connect {{provider}}",
+  "connect_invite_title_from": "{{organization}} invited you to connect {{provider}}",
+  "invite_client_title": "Invite a client to connect a channel",
   "connect_invite_generic": "You are about to sign in to {{provider}} so this channel can be managed from Postra. You can disconnect it at any time from the platform itself.",
   "connect_invite_continue": "Continue to {{provider}}",
   "connect_invite_expired": "This invite link has expired — they are valid for one hour. Ask whoever sent it for a fresh one.",

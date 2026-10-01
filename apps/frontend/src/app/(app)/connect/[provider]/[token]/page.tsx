@@ -12,15 +12,17 @@ export const metadata: Metadata = {
   description: '',
 };
 
+type Invite = { organization: string | null };
+
 /**
- * Resolves an invite token to the provider's OAuth URL. Returns null when the
- * backend cannot answer (it is unreachable for a minute or two on every deploy —
+ * Checks an invite token and finds who sent it. Returns null when the backend
+ * cannot answer (it is unreachable for a minute or two on every deploy —
  * single EC2, no blue-green) so a transient 502 reads as "try again" rather than
  * as an expired link, and undefined when the token is genuinely gone.
  */
-const loadInviteUrl = async (
+const loadInvite = async (
   token: string
-): Promise<string | null | undefined> => {
+): Promise<Invite | null | undefined> => {
   try {
     const response = await internalFetch(`/integrations/invite/${token}`);
     if (response.status >= 500) {
@@ -29,7 +31,9 @@ const loadInviteUrl = async (
       return null;
     }
     const body = await response.json().catch(() => null);
-    return typeof body?.url === 'string' ? body.url : undefined;
+    return body?.valid
+      ? { organization: body.organization || null }
+      : undefined;
   } catch (e) {
     // eslint-disable-next-line no-console
     console.error('[Postra:invite] lookup failed', e);
@@ -42,7 +46,7 @@ export default async function ConnectInvitePage(props: {
 }) {
   const { provider, token } = await props.params;
   const t = await getT();
-  const url = await loadInviteUrl(token);
+  const invite = await loadInvite(token);
   const providerName = capitalize(provider.split('-')[0]);
 
   return (
@@ -53,20 +57,26 @@ export default async function ConnectInvitePage(props: {
             Postra
           </div>
           <h1 className="text-[20px] font-[600]">
-            {t('connect_invite_title', 'Connect {{provider}}', {
-              provider: providerName,
-            })}
+            {invite?.organization
+              ? t(
+                  'connect_invite_title_from',
+                  '{{organization}} invited you to connect {{provider}}',
+                  { organization: invite.organization, provider: providerName }
+                )
+              : t('connect_invite_title', 'Connect {{provider}}', {
+                  provider: providerName,
+                })}
           </h1>
         </div>
-        {url ? (
+        {invite ? (
           <ConnectInviteClient
             provider={provider}
             providerName={providerName}
-            url={url}
+            token={token}
           />
         ) : (
           <p className="text-[14px] text-textColor/80">
-            {url === null
+            {invite === null
               ? t(
                   'connect_invite_unavailable',
                   'We could not reach the server just now. Refresh the page in a minute and the link will work again.'

@@ -6,6 +6,9 @@
 //   POST /api/v1/statuses   accept a status, like Mastodon does
 //   GET  /__received        every status received so far
 //   POST /__fail            the next status answers 422 with a Mastodon error
+//   POST /oauth/token       exchange any code for a token — the account is
+//   GET  /api/v1/accounts/verify_credentials   named after the code, so each
+//                           connect in a test can be a different account
 import { createServer } from 'node:http';
 
 const PORT = Number(process.env.FAKE_MASTODON_PORT || 58080);
@@ -50,6 +53,21 @@ createServer(async (req, res) => {
   if (req.method === 'POST' && req.url === '/__fail') {
     failNext = true;
     return json(res, 200, { failNext });
+  }
+
+  if (req.method === 'POST' && req.url === '/oauth/token') {
+    const { code } = formFields(body, req.headers['content-type']);
+    return json(res, 200, { access_token: `fake-${code || 'none'}`, token_type: 'Bearer' });
+  }
+  if (req.method === 'GET' && req.url === '/api/v1/accounts/verify_credentials') {
+    const code = String(req.headers.authorization || '').replace(/^Bearer fake-/, '');
+    return json(res, 200, {
+      id: `acct-${code}`,
+      username: code,
+      acct: code,
+      display_name: `Invited ${code}`,
+      avatar: '',
+    });
   }
 
   if (req.method === 'POST' && req.url === '/api/v1/statuses') {
