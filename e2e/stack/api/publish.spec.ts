@@ -26,8 +26,9 @@ test.afterAll(async () => {
 });
 
 // Publishing touches shared state (the fake's failure switch), so these run
-// one after another.
-test.describe.configure({ mode: 'serial' });
+// one after another. A fresh Temporal worker on a CI runner takes ~25 s to
+// pick up the first post (11 s locally), hence the generous limits.
+test.describe.configure({ mode: 'serial', timeout: 120_000 });
 
 const received = async (): Promise<Received[]> =>
   (await (await api.get(`${FAKE}/__received`)).json()) as Received[];
@@ -59,7 +60,7 @@ const stored = async (id: string): Promise<StoredPost> =>
 
 const settledState = (id: string) =>
   expect.poll(async () => (await stored(id)).state, {
-    timeout: 45_000,
+    timeout: 90_000,
     intervals: [500, 1_000, 2_000],
   });
 

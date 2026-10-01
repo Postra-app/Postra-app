@@ -59,6 +59,8 @@ test('a draft saved in the composer appears in the calendar', async ({ page }) =
 });
 
 test('"Post Now" from the composer publishes to the platform', async ({ page }) => {
+  // The first publish waits for the Temporal worker: ~25 s on a CI runner.
+  test.setTimeout(120_000);
   const problems = watchForErrors(page);
   const text = `[stack ui] post now ${Date.now()}`;
   await openComposer(page, 'mastodon', text);
@@ -75,7 +77,7 @@ test('"Post Now" from the composer publishes to the platform', async ({ page }) 
         ).json();
         return received.some((r) => r.status.includes(text));
       },
-      { timeout: 45_000, intervals: [1_000, 2_000] }
+      { timeout: 90_000, intervals: [1_000, 2_000] }
     )
     .toBe(true);
   expect(problems).toEqual([]);
