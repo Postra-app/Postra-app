@@ -279,6 +279,9 @@ jobs:
           name: playwright-smoke
           path: e2e/playwright/.results/
           retention-days: 7
+          # The result folders start with a dot, which upload-artifact skips
+          # unless told otherwise.
+          include-hidden-files: true
 
       # A deploy that never turns healthy used to leave the broken image
       # running: the restart above is the only recovery the old workflow had

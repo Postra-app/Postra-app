@@ -126,6 +126,9 @@ jobs:
             e2e/stack/.logs/
             e2e/stack/.results/
           retention-days: 7
+          # The result folders start with a dot, which upload-artifact skips
+          # unless told otherwise.
+          include-hidden-files: true
 
   # Boot applies migration files (prisma migrate deploy), so the schema is only
   # real once a migration carries it. `db push` used to reconcile the difference

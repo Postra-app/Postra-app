@@ -66,6 +66,9 @@ jobs:
           name: e2e-canary
           path: e2e/playwright/.results/
           retention-days: 7
+          # The result folders start with a dot, which upload-artifact skips
+          # unless told otherwise.
+          include-hidden-files: true
 
       - name: Open or update the canary issue
         if: failure()
