@@ -244,6 +244,31 @@ jobs:
           echo "Health check failed after 10 min (including post-restart retries)"
           exit 1
 
+      # One healthy answer does not mean the app has settled: on 2026-10-01
+      # the smoke started seconds after the health check and one request got a
+      # 502 from a backend still warming up, which rolled a good deploy back.
+      # Wait for five healthy answers in a row (API and the page customers
+      # open) before judging the deploy.
+      - name: Wait for the app to settle
+        run: |
+          ok=0
+          for attempt in $(seq 1 60); do
+            API=$(curl -s -o /dev/null -w "%{http_code}" https://app.postra.pl/api/monitor/queue/main || true)
+            WEB=$(curl -s -o /dev/null -w "%{http_code}" https://app.postra.pl/auth/login || true)
+            if [ "$API" = "200" ] && [ "$WEB" = "200" ]; then
+              ok=$((ok + 1))
+              if [ "$ok" -ge 5 ]; then
+                echo "Settled after $attempt checks"
+                exit 0
+              fi
+            else
+              echo "Check $attempt: api=$API web=$WEB — starting the count again"
+              ok=0
+            fi
+            sleep 3
+          done
+          echo "::warning::The app did not answer 5 times in a row within 3 minutes — running the smoke anyway"
+
       # A healthy /api/monitor/queue/main does not mean a customer can use the
       # app. Sign in as the test account and walk calendar → composer → draft
       # saved → draft deleted (e2e/playwright). Drafts only — nothing publishes.
