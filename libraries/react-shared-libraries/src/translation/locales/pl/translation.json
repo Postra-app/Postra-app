@@ -1478,5 +1478,6 @@
   "icon_no_results_hint": "Spróbuj jednego słowa, na przykład „strzałka” albo „gwiazda”.",
   "carousel_first_slide_used": "Slajd 1 trafił tutaj. Pozostałe slajdy są zapisane w bibliotece mediów.",
   "background_gradient": "Tło z gradientem",
-  "background_gradient_hint": "Przechodzi z wybranego koloru tła w jego ciemniejszy odcień"
+  "background_gradient_hint": "Przechodzi z wybranego koloru tła w jego ciemniejszy odcień",
+  "channel_options": "Opcje kanału"
 }

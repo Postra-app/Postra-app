@@ -1478,5 +1478,6 @@
   "icon_no_results_hint": "Try a single word, like \"arrow\" or \"star\".",
   "carousel_first_slide_used": "Slide 1 was added here. The other slides are saved in your media library.",
   "background_gradient": "Gradient background",
-  "background_gradient_hint": "Fades the background colour into a darker shade of itself"
+  "background_gradient_hint": "Fades the background colour into a darker shade of itself",
+  "channel_options": "Channel options"
 }

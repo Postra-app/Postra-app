@@ -46,3 +46,18 @@ test('a forged or expired callback shows why it failed', async ({ page }) => {
   await page.goto('/integrations/social/mastodon?code=forged&state=unknown-state');
   await expect(page.getByText(/connection attempt has expired/)).toBeVisible();
 });
+
+test("the channel menu opens from the keyboard and its items are readable", async ({ page }) => {
+  // The trigger was a div with onClick: no keyboard, no name. And
+  // text-textColor/78 generated no CSS, so the items took the body's grey
+  // rgb(69, 69, 69) — about 1.9:1 against the dark panel.
+  await page.goto('/launches');
+  const trigger = page.getByRole('button', { name: 'Channel options' }).first();
+  await trigger.focus();
+  await page.keyboard.press('Enter');
+  const item = page.getByText('Edit Time Slots', { exact: true });
+  await expect(item).toBeVisible();
+  const color = await item.evaluate((el) => getComputedStyle(el).color);
+  expect(color).not.toBe('rgb(69, 69, 69)');
+  expect(color).toMatch(/rgba?\(255, 255, 255/);
+});
