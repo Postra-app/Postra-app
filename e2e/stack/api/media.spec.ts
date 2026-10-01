@@ -60,6 +60,14 @@ test('a file that is not an image or video is refused', async () => {
   expect(res.status()).toBeLessThan(500);
 });
 
+test('literal media routes are not swallowed by /media/:id', async () => {
+  // /media/video-options sat below @Get('/:id') and never ran (an empty 200
+  // from /:id instead); after /:id learnt to say 404 the composer got a 404.
+  const res = await a.get('/media/video-options');
+  expect(res.status()).toBe(200);
+  expect(Array.isArray(await res.json())).toBe(true);
+});
+
 test('an unknown media id is 404 to read, describe and delete', async () => {
   expect((await a.get(`/media/${UNKNOWN}`)).status()).toBe(404);
   expect((await a.delete(`/media/${UNKNOWN}`)).status()).toBe(404);

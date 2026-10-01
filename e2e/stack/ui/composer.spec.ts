@@ -13,11 +13,14 @@ const FAKE = 'http://localhost:58080';
 const watchForErrors = (page: Page) => {
   const problems: string[] = [];
   page.on('console', (msg) => {
-    if (msg.type() === 'error') problems.push(`console: ${msg.text()}`);
+    // The failed response itself is recorded below, with its URL.
+    if (msg.type() === 'error' && !msg.text().startsWith('Failed to load resource')) {
+      problems.push(`console: ${msg.text()}`);
+    }
   });
   page.on('pageerror', (err) => problems.push(`pageerror: ${err.message}`));
   page.on('response', (res) => {
-    if (res.status() >= 500 && res.url().includes('/api/')) {
+    if (res.status() >= 400) {
       problems.push(`${res.status()} ${res.request().method()} ${res.url()}`);
     }
   });
