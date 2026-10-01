@@ -1,6 +1,7 @@
 import {
   Body,
   Controller,
+  ForbiddenException,
   Get,
   HttpException,
   Param,
@@ -61,7 +62,7 @@ export class AdminController {
 
   private assertSuperAdmin(user: User) {
     if (!user?.isSuperAdmin) {
-      throw new HttpException('Unauthorized', 400);
+      throw new ForbiddenException('Only Postra administrators can do this');
     }
   }
 
