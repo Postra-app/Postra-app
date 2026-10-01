@@ -212,7 +212,7 @@ export const CHANNEL_GUIDES: ChannelGuide[] = [
     name: 'LinkedIn',
     connectType: 'oauth',
     steps: [
-      'This channel is your personal profile — posts are published under your own name. To post as a company, use "LinkedIn Page" instead.',
+      'This channel is your personal profile — posts are published under your own name. Posting as a company page ("LinkedIn Page") is coming soon.',
       'Click "Add Channel", pick LinkedIn and sign in.',
       'Approve the requested permissions.',
     ],
@@ -231,6 +231,7 @@ export const CHANNEL_GUIDES: ChannelGuide[] = [
     connectType: 'oauth',
     steps: [
       'This channel is a company (business) page — posts are published as the company, not under your name.',
+      'Coming soon: new LinkedIn Page connections open once LinkedIn approves our full API access. Pages you have already connected keep working.',
       'Click "Add Channel", pick LinkedIn Page and sign in with the personal account that administers the page.',
       'After approving, choose the company page you want to publish to from the list.',
     ],
