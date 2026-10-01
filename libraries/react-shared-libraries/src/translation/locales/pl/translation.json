@@ -43,6 +43,8 @@
   "add_channel_named": "Dodaj {{name}}",
   "instance_url": "Adres instancji",
   "connect_invite_title": "Podłącz {{provider}}",
+  "connect_invite_title_from": "{{organization}} zaprasza Cię do podłączenia {{provider}}",
+  "invite_client_title": "Zaproś klienta do podłączenia kanału",
   "connect_invite_generic": "Za chwilę zalogujesz się do {{provider}}, żeby ten kanał dało się prowadzić z Postry. W każdej chwili możesz go odłączyć po stronie samej platformy.",
   "connect_invite_continue": "Przejdź do {{provider}}",
   "connect_invite_expired": "Ten link wygasł — są ważne przez godzinę. Poproś osobę, która go wysłała, o nowy.",

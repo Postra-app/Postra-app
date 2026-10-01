@@ -43,7 +43,9 @@ export const useAddProvider = (update?: () => void, invite?: boolean) => {
     try {
       const data = await (await fetch('/integrations')).json();
       modal.openModal({
-        title: 'Add channel',
+        title: invite
+          ? t('invite_client_title', 'Invite a client to connect a channel')
+          : t('add_channel', 'Add channel'),
         withCloseButton: true,
         classNames: {
           modal: 'launches-modal-surface text-textColor',
@@ -103,7 +105,12 @@ export const AddProviderButton: FC<{
         </div>
       </button>
       <button
+        type="button"
         onClick={invite}
+        aria-label={t(
+          'invite_link',
+          'Send your client an invite link to add a channel'
+        )}
         data-tooltip-id="tooltip"
         data-tooltip-content={t(
           'invite_link',
@@ -504,7 +511,9 @@ export const AddProviderComponent: FC<{
             // provider OAuth URL, so the client following it is told what the
             // platform requires before they meet the platform.
             invite ? 'invite=true' : '',
-            isMobile
+            // Not for an invite: the client finishes in their own browser,
+            // and handing that back to our app would strand them.
+            isMobile && !invite
               ? `redirectUrl=${encodeURIComponent('postra://integrations')}`
               : '',
           ]

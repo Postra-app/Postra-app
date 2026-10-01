@@ -3,6 +3,7 @@
 import { FC, useCallback } from 'react';
 import { Button } from '@gitroom/frontend/components/ui/button';
 import { useT } from '@gitroom/react/translation/get.transation.service.client';
+import { useVariables } from '@gitroom/react/helpers/variable.context';
 import {
   hasMetaChecklist,
   MetaConnectChecklist,
@@ -17,12 +18,18 @@ import {
 export const ConnectInviteClient: FC<{
   provider: string;
   providerName: string;
-  url: string;
-}> = ({ provider, providerName, url }) => {
+  token: string;
+}> = ({ provider, providerName, token }) => {
   const t = useT();
+  const { backendUrl } = useVariables();
+  // Through the backend, not straight to the provider: that hop marks this
+  // browser as the one the invite was opened in, which is what lets the
+  // callback finish without a Postra account.
   const go = useCallback(() => {
-    window.location.href = url;
-  }, [url]);
+    window.location.href = `${backendUrl}/integrations/invite/${encodeURIComponent(
+      token
+    )}/go?provider=${encodeURIComponent(provider)}`;
+  }, [backendUrl, token, provider]);
 
   if (hasMetaChecklist(provider)) {
     return <MetaConnectChecklist provider={provider} onConfirm={go} />;

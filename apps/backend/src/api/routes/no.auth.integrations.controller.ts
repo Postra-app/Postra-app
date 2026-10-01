@@ -8,9 +8,12 @@ import {
   Post,
   Query,
   Req,
+  Res,
   UseFilters,
 } from '@nestjs/common';
-import { Request } from 'express';
+import { Request, Response } from 'express';
+import { randomBytes } from 'crypto';
+import { getCookieUrlFromDomain } from '@gitroom/helpers/subdomain/subdomain.management';
 import { ioRedis } from '@gitroom/nestjs-libraries/redis/redis.service';
 import { ConnectIntegrationDto } from '@gitroom/nestjs-libraries/dtos/integrations/connect.integration.dto';
 import { IntegrationManager } from '@gitroom/nestjs-libraries/integrations/integration.manager';
@@ -38,6 +41,23 @@ import {
 // other.
 const APP_SCHEME = 'postra';
 
+// The browser that followed an invite link carries this cookie back to the
+// OAuth callback; see followInvite.
+const INVITE_COOKIE = 'postra_invite';
+
+type StoredInvite = { url: string; state?: string; provider?: string };
+
+// Invites minted before the state was stored hold the bare provider URL.
+const readInvite = async (token: string): Promise<StoredInvite | null> => {
+  const raw = token ? await ioRedis.get(`invite:${token}`) : null;
+  if (!raw) return null;
+  try {
+    return JSON.parse(raw);
+  } catch {
+    return { url: raw };
+  }
+};
+
 @ApiTags('Integrations')
 @Controller('/integrations')
 export class NoAuthIntegrationsController {
@@ -55,20 +75,76 @@ export class NoAuthIntegrationsController {
   }
 
   /**
-   * Resolves an invite token to the provider URL it stands for. Necessarily
+   * Says whether an invite token is still valid, and who sent it. Necessarily
    * public: the person following an invite link is a client of the customer,
-   * has no Postra account and no session. The token carries no organisation
-   * data — that binding lives in the OAuth state inside the stored URL — and
-   * expires with the invite after an hour.
+   * has no Postra account and no session. The organisation's name is the one
+   * thing the page shows them before they hand over their account — an invite
+   * is "connect your channel to <them>", and they should see who <them> is.
+   * The provider URL is not returned: only followInvite hands it out, because
+   * only it binds the browser to the flow.
    */
   @Get('/invite/:token')
-  async getInviteUrl(@Param('token') token: string) {
-    const url = await ioRedis.get(`invite:${token}`);
-    if (!url) {
+  async getInvite(@Param('token') token: string) {
+    const invite = await readInvite(token);
+    if (!invite) {
       return { err: true };
     }
 
-    return { url };
+    const orgId = invite.state
+      ? await ioRedis.get(`organization:${invite.state}`)
+      : null;
+    const org = orgId ? await this._organizationService.getOrgById(orgId) : null;
+
+    return { valid: true, organization: org?.name || null };
+  }
+
+  /**
+   * ⛔ Why this exists. The OAuth callback below refuses a completion without a
+   * signed-in member of the target organisation — the guard against an
+   * attacker minting a `state` for their own org and getting a victim to
+   * consent at the provider. An invited client has no account at all, so every
+   * invite ended in `401 "You must be signed in to connect a channel"` after
+   * the client had already consented (measured on production 2026-10-01).
+   *
+   * The two cases look the same to the provider; what differs is that an
+   * invitee came through our page, which names the inviting organisation. So
+   * the invite's "Continue" lands here: a fresh nonce goes into an httpOnly
+   * cookie in this browser and into Redis against the flow's `state`, and the
+   * browser is sent on to the provider. The callback accepts a sessionless
+   * completion only when the cookie it carries matches — once. Whoever lifts
+   * the provider URL out of this redirect and forwards it gets nothing: the
+   * cookie stays in their own browser.
+   */
+  @Get('/invite/:token/go')
+  async followInvite(
+    @Param('token') token: string,
+    @Query('provider') provider: string,
+    @Res() res: Response
+  ) {
+    const invite = await readInvite(token);
+    if (!invite) {
+      // Back to the invite page, which says the link has expired.
+      const name = /^[a-z0-9-]{1,40}$/.test(provider || '') ? provider : 'channel';
+      return res.redirect(
+        302,
+        `${process.env.FRONTEND_URL}/connect/${name}/${encodeURIComponent(token)}`
+      );
+    }
+
+    if (invite.state) {
+      const nonce = randomBytes(32).toString('hex');
+      await ioRedis.set(`invited:${invite.state}`, nonce, 'EX', 3600);
+      res.cookie(INVITE_COOKIE, nonce, {
+        domain: getCookieUrlFromDomain(process.env.FRONTEND_URL!),
+        path: '/',
+        maxAge: 3600 * 1000,
+        ...(!process.env.NOT_SECURED
+          ? { secure: true, httpOnly: true, sameSite: 'lax' as const }
+          : {}),
+      });
+    }
+
+    return res.redirect(302, invite.url);
   }
 
   /**
@@ -164,30 +240,41 @@ export class NoAuthIntegrationsController {
     // the attacker's org (login-CSRF / channel hijack). Require an authenticated
     // session and verify it is a member of the org the channel connects to —
     // the victim is not a member of the attacker's org, so the flow is rejected.
-    const authToken = (req.headers.auth as string) || req.cookies?.auth;
-    let sessionUser: { id?: string } | null = null;
-    try {
-      sessionUser = authToken
-        ? (AuthService.verifyJWT(authToken) as { id?: string })
-        : null;
-    } catch {
-      sessionUser = null;
-    }
-    if (!sessionUser?.id) {
-      throw new HttpException(
-        'You must be signed in to connect a channel',
-        401
+    // An invitee whose browser came through followInvite for this very state
+    // may finish without being a member — with or without a Postra account of
+    // their own — and only once. Everyone else needs a member's session.
+    const inviteNonce = req.cookies?.[INVITE_COOKIE];
+    const invited =
+      !!inviteNonce &&
+      inviteNonce === (await ioRedis.get(`invited:${body.state}`));
+    if (invited) {
+      await ioRedis.del(`invited:${body.state}`);
+    } else {
+      const authToken = (req.headers.auth as string) || req.cookies?.auth;
+      let sessionUser: { id?: string } | null = null;
+      try {
+        sessionUser = authToken
+          ? (AuthService.verifyJWT(authToken) as { id?: string })
+          : null;
+      } catch {
+        sessionUser = null;
+      }
+      if (!sessionUser?.id) {
+        throw new HttpException(
+          'You must be signed in to connect a channel',
+          401
+        );
+      }
+      const membership = await this._organizationService.getUserOrgMembership(
+        sessionUser.id,
+        organization
       );
-    }
-    const membership = await this._organizationService.getUserOrgMembership(
-      sessionUser.id,
-      organization
-    );
-    if (!membership) {
-      throw new HttpException(
-        'This connection does not belong to your organization',
-        403
-      );
+      if (!membership) {
+        throw new HttpException(
+          'This connection does not belong to your organization',
+          403
+        );
+      }
     }
 
     const org = await this._organizationService.getOrgById(organization);

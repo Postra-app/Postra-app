@@ -1,3 +1,4 @@
+import { randomBytes } from 'crypto';
 import {
   Body,
   Controller,
@@ -11,7 +12,6 @@ import {
   Query,
 } from '@nestjs/common';
 import { ioRedis } from '@gitroom/nestjs-libraries/redis/redis.service';
-import { makeId } from '@gitroom/nestjs-libraries/services/make.is';
 import { IntegrationManager } from '@gitroom/nestjs-libraries/integrations/integration.manager';
 import { IntegrationService } from '@gitroom/nestjs-libraries/database/prisma/integrations/integration.service';
 import { GetOrgFromRequest } from '@gitroom/nestjs-libraries/user/org.from.request';
@@ -304,9 +304,17 @@ export class IntegrationsController {
       // empty picker as everyone else, minus every screen we use to explain it.
       // Point the link at a page of ours and keep the provider URL server-side,
       // behind a token of its own rather than the 6-character OAuth state.
+      // `state` rides along so the browser that follows the link can be bound
+      // to it (see NoAuthIntegrationsController.followInvite).
       if (invite === 'true') {
-        const inviteToken = makeId(32);
-        await ioRedis.set(`invite:${inviteToken}`, url, 'EX', 3600);
+        // Unguessable: whoever holds it can connect a channel into this org.
+        const inviteToken = randomBytes(32).toString('hex');
+        await ioRedis.set(
+          `invite:${inviteToken}`,
+          JSON.stringify({ url, state, provider: integration }),
+          'EX',
+          3600
+        );
         return {
           url: `${process.env.FRONTEND_URL}/connect/${integration}/${inviteToken}`,
         };
