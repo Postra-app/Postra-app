@@ -1,17 +1,30 @@
-import { mkdirSync, readFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync } from 'node:fs';
 import { defineConfig } from '@playwright/test';
 
 // Tests against a whole Postra running locally on throwaway stores
 // (docker-compose.yml). Unlike e2e/playwright, which only ever drafts on
 // production, these may create, publish and delete anything. See README.md.
 
+const envKeys = (file: string) =>
+  existsSync(file)
+    ? readFileSync(file, 'utf8')
+        .split('\n')
+        .map((line) => line.match(/^\s*([A-Z0-9_]+)\s*=(.*)$/))
+        .filter((match): match is RegExpMatchArray => !!match)
+    : [];
+
 // stack.env holds only local fakes; load it so the backend and the seed see
 // the same values whether the run starts from a shell or from CI.
-for (const line of readFileSync(`${__dirname}/stack.env`, 'utf8').split('\n')) {
-  const match = line.match(/^([A-Z_]+)=(.*)$/);
-  if (match && process.env[match[1]] === undefined) {
-    process.env[match[1]] = match[2];
-  }
+for (const [, key, value] of envKeys(`${__dirname}/stack.env`)) {
+  if (process.env[key] === undefined) process.env[key] = value;
+}
+
+// Prisma Client loads the repo's .env into process.env for every variable not
+// already set — so on a developer's machine the stack quietly ran with their
+// Stripe, OpenAI and SMTP credentials, and behaved unlike CI (which has no
+// .env). Blank every key it would add; a set variable, even empty, wins.
+for (const [, key] of envKeys(`${__dirname}/../../.env`)) {
+  if (process.env[key] === undefined) process.env[key] = '';
 }
 
 const repo = `${__dirname}/../..`;
