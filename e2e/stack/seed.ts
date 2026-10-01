@@ -9,6 +9,7 @@ export const USERS = {
     email: 'owner-a@example.com',
     password: 'Stack-tests-A-1',
     org: 'Stack Org A',
+    apiKey: 'stack-api-key-a',
     channel: { id: 'stack-channel-a', name: 'Stack Bluesky A' },
     // Publishes for real — to e2e/stack/fake-mastodon.mjs.
     mastodon: { id: 'stack-mastodon-a', name: 'Stack Mastodon A' },
@@ -17,6 +18,7 @@ export const USERS = {
     email: 'owner-b@example.com',
     password: 'Stack-tests-B-1',
     org: 'Stack Org B',
+    apiKey: 'stack-api-key-b',
     channel: { id: 'stack-channel-b', name: 'Stack Bluesky B' },
   },
 } as const;
@@ -51,7 +53,7 @@ export const resetAndSeed = async (databaseUrl: string, redisUrl: string) => {
 
     for (const user of Object.values(USERS)) {
       const org = await prisma.organization.create({
-        data: { name: user.org },
+        data: { name: user.org, apiKey: user.apiKey },
       });
       const created = await prisma.user.create({
         data: {
