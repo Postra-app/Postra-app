@@ -17,6 +17,13 @@ export const GlobalErrorLogger = (): null => {
   useEffect(() => {
     /* eslint-disable no-console */
     const onError = (event: ErrorEvent): void => {
+      // The browser's own notice that a ResizeObserver callback changed layout
+      // again in the same frame. Harmless and frequent (removing a channel
+      // from a customer reflows the sidebar: ~10 at once), and as a
+      // console.error it reached Sentry as a burst of errors.
+      if (/^ResizeObserver loop/.test(event.message || '')) {
+        return;
+      }
       console.error('[Postra:window-error]', {
         message: event.message,
         source: event.filename,
