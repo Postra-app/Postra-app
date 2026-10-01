@@ -1,0 +1,37 @@
+# Throwaway stores for the stack tests (e2e/stack). Ports are offset so the
+# stack never collides with a developer's own Postgres/Redis/Temporal.
+# Nothing is persisted: every `up` starts from an empty database.
+name: postra-e2e-stack
+
+services:
+  postgres:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_USER: postra
+      POSTGRES_PASSWORD: postra
+      POSTGRES_DB: postra
+    ports:
+      - 55432:5432
+    tmpfs:
+      - /var/lib/postgresql/data
+    healthcheck:
+      test: pg_isready -U postra -d postra
+      interval: 2s
+      timeout: 3s
+      retries: 30
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - 56379:6379
+    healthcheck:
+      test: redis-cli ping
+      interval: 2s
+      timeout: 3s
+      retries: 30
+
+  temporal:
+    image: temporalio/temporal:1.5.1
+    command: ['server', 'start-dev', '--ip', '0.0.0.0', '--headless']
+    ports:
+      - 57233:7233

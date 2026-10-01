@@ -77,6 +77,56 @@ jobs:
       - name: Type-check
         run: pnpm typecheck
 
+  # The whole app on throwaway Postgres, Redis and Temporal (e2e/stack):
+  # API contracts and organisation isolation over HTTP, publishing end to end
+  # through the real Mastodon provider to a fake instance, and the composer in
+  # Chromium. Catches what unit tests mock away and what production may never
+  # be used for (publishing, destructive cases).
+  stack-e2e:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10.6.1
+          run_install: false
+
+      - name: Setup Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build backend, orchestrator and frontend
+        run: pnpm build
+        env:
+          NODE_OPTIONS: '--max-old-space-size=4096'
+
+      - name: Install Chromium
+        run: pnpm exec playwright install --with-deps chromium
+
+      - name: Stack tests (API + UI)
+        run: pnpm e2e:stack:ui
+
+      # Only local fakes in here: stack.env values, example.com users.
+      - name: Upload logs and screenshots
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: stack-e2e
+          path: |
+            e2e/stack/.logs/
+            e2e/stack/.results/
+          retention-days: 7
+
   # Boot applies migration files (prisma migrate deploy), so the schema is only
   # real once a migration carries it. `db push` used to reconcile the difference
   # silently; nothing does now, and a schema change without a migration would
