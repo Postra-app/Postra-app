@@ -693,7 +693,7 @@
   "are_you_sure_disable_channel": "Czy na pewno chcesz wyłączyć ten kanał?",
   "disable_channel_title": "Wyłącz kanał",
   "channel_disabled": "Kanał wyłączony",
-  "are_you_sure_delete_channel": "Usunięcie tego kanału trwale skasuje też wszystkie jego zaplanowane i opublikowane posty. Tej operacji nie można cofnąć.",
+  "are_you_sure_delete_channel": "Usunięcie kanału usuwa z Postry jego wszystkie posty, zaplanowane i wcześniejsze. Posty już opublikowane zostają na platformie. Tego nie da się cofnąć.",
   "delete_channel_title": "Usuń kanał",
   "delete_posts_before_channel": "Przed usunięciem musisz usunąć wszystkie posty powiązane z tym kanałem",
   "channel_deleted": "Kanał usunięty",
@@ -1479,5 +1479,8 @@
   "carousel_first_slide_used": "Slajd 1 trafił tutaj. Pozostałe slajdy są zapisane w bibliotece mediów.",
   "background_gradient": "Tło z gradientem",
   "background_gradient_hint": "Przechodzi z wybranego koloru tła w jego ciemniejszy odcień",
-  "channel_options": "Opcje kanału"
+  "channel_options": "Opcje kanału",
+  "remove_time_slot": "Usuń {{time}}",
+  "change_bot_nickname_title": "Zmień nazwę bota",
+  "change_bot_picture_and_nickname_title": "Zmień zdjęcie i nazwę bota"
 }

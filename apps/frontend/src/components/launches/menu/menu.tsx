@@ -173,7 +173,7 @@ export const Menu: FC<{
       !(await deleteDialog(
         t(
           'are_you_sure_delete_channel',
-          'Deleting this channel also permanently deletes all its scheduled and published posts. This cannot be undone.'
+          'Deleting this channel removes it and all its posts from Postra, scheduled and past. Posts already published stay on the platform. This cannot be undone.'
         ),
         t('delete_channel_title', 'Delete Channel')
       ))
@@ -331,10 +331,14 @@ export const Menu: FC<{
       classNames: {
         modal: 'w-[100%] max-w-[600px] bg-transparent text-textColor',
       },
-      size: '100%',
+      // Without the modal frame the size is the card's width.
+      size: 'min(600px, 100%)',
       withCloseButton: false,
       closeOnEscape: true,
       closeOnClickOutside: true,
+      // BotPicture draws its own card and close button; the modal's frame
+      // around it made a box in a box.
+      removeLayout: true,
       children: (
         <BotPicture
           canChangeProfilePicture={canChangeProfilePicture}

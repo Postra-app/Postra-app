@@ -616,7 +616,6 @@
   "are_you_sure_disable_channel": "本当にこのチャンネルを無効にしますか？",
   "disable_channel_title": "チャンネルを無効化",
   "channel_disabled": "チャンネルが無効になりました",
-  "are_you_sure_delete_channel": "本当にこのチャンネルを削除しますか？",
   "delete_channel_title": "チャンネルを削除",
   "delete_posts_before_channel": "このチャンネルを削除する前に、関連するすべての投稿を削除する必要があります",
   "channel_deleted": "チャンネルが削除されました",

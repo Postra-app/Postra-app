@@ -616,7 +616,6 @@
   "are_you_sure_disable_channel": "¿Estás seguro de que deseas deshabilitar este canal?",
   "disable_channel_title": "Deshabilitar canal",
   "channel_disabled": "Canal deshabilitado",
-  "are_you_sure_delete_channel": "¿Estás seguro de que deseas eliminar este canal?",
   "delete_channel_title": "Eliminar canal",
   "delete_posts_before_channel": "Debes eliminar todas las publicaciones asociadas a este canal antes de eliminarlo",
   "channel_deleted": "Canal eliminado",

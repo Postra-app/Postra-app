@@ -15,6 +15,8 @@ export const USERS = {
     channel: { id: 'stack-channel-a', name: 'Stack Bluesky A' },
     // Publishes for real — to e2e/stack/fake-mastodon.mjs.
     mastodon: { id: 'stack-mastodon-a', name: 'Stack Mastodon A' },
+    // A bot channel, for the bot nickname dialog. Never published to.
+    discord: { id: 'stack-discord-a', name: 'Stack Discord A' },
   },
   b: {
     email: 'owner-b@example.com',
@@ -123,6 +125,19 @@ export const resetAndSeed = async (databaseUrl: string, redisUrl: string) => {
     });
     await prisma.userOrganization.create({
       data: { userId: member.id, organizationId: orgOfA.id, role: 'USER' },
+    });
+
+    await prisma.integration.create({
+      data: {
+        id: USERS.a.discord.id,
+        internalId: `${USERS.a.discord.id}-internal`,
+        organizationId: orgOfA.id,
+        name: USERS.a.discord.name,
+        providerIdentifier: 'discord',
+        type: 'social',
+        token: 'stack-discord-token',
+        profile: 'stack-discord',
+      },
     });
 
     const { mastodon } = USERS.a;

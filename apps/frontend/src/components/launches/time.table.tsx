@@ -67,8 +67,11 @@ export const TimeTable: FC<{
 
   useKeypress('Escape', askClose);
 
+  // By value, not by index: the list on screen is sorted and currentTimes is
+  // not (a new slot is appended), so the bin next to 09:00 removed whatever
+  // sat at that position in the unsorted array — another slot entirely.
   const removeSlot = useCallback(
-    (index: number) => async () => {
+    (value: number) => async () => {
       if (
         !(await deleteDialog(
           t(
@@ -79,7 +82,10 @@ export const TimeTable: FC<{
       ) {
         return;
       }
-      setCurrentTimes((prev) => prev.filter((_, i) => i !== index));
+      setCurrentTimes((prev) => {
+        const at = prev.findIndex(({ time }) => time === value);
+        return at === -1 ? prev : prev.filter((_, i) => i !== at);
+      });
     },
     []
   );
@@ -93,10 +99,13 @@ export const TimeTable: FC<{
         .add(minute, 'minutes')
         .diff(newDayjs().utc().startOf('day'), 'minutes') -
       dayjs.tz().utcOffset();
+    // Local time minus the UTC offset can leave the day (00:30 in London in
+    // summer is -30); keep it within 0..1439 like the server does.
+    const DAY = 24 * 60;
     setCurrentTimes((prev) => [
       ...prev,
       {
-        time: calculateMinutes,
+        time: ((calculateMinutes % DAY) + DAY) % DAY,
       },
     ]);
   }, [hour, minute]);
@@ -210,8 +219,13 @@ export const TimeTable: FC<{
                 </div>
                 <button
                   type="button"
-                  onClick={removeSlot(index)}
-                  className="rounded-[10px] p-[8px] text-red-300/70 opacity-0 transition-all hover:bg-red-500/10 hover:text-red-400 group-hover:opacity-100"
+                  onClick={removeSlot(timeSlot.value)}
+                  // Hover-only and nameless, it was invisible to keyboard and
+                  // touch users and silent to screen readers.
+                  aria-label={t('remove_time_slot', 'Remove {{time}}', {
+                    time: timeSlot.formatted,
+                  })}
+                  className="rounded-[10px] p-[8px] text-red-300/70 opacity-0 transition-all hover:bg-red-500/10 hover:text-red-400 group-hover:opacity-100 focus-visible:opacity-100 phone:opacity-100"
                 >
                   <TrashIcon size={16} />
                 </button>

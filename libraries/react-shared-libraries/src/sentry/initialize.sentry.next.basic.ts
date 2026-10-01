@@ -35,6 +35,9 @@ export const initializeSentryBasic = (environment: string, dsn: string, extensio
       integrations: [
         Sentry.consoleLoggingIntegration({ levels: ['warn', 'error'] }),
       ],
+      // The browser's harmless ResizeObserver notice arrives in bursts (ten
+      // at once when the channel sidebar reflows) and is never actionable.
+      ignoreErrors: [/^ResizeObserver loop/],
       environment: environment || 'development',
       // Without a release the uploaded source maps have nothing to attach to,
       // and every frontend stack trace in Sentry stays minified. This is the

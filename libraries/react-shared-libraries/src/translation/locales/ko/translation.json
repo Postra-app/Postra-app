@@ -616,7 +616,6 @@
   "are_you_sure_disable_channel": "이 채널을 비활성화하시겠습니까?",
   "disable_channel_title": "채널 비활성화",
   "channel_disabled": "채널이 비활성화되었습니다",
-  "are_you_sure_delete_channel": "이 채널을 삭제하시겠습니까?",
   "delete_channel_title": "채널 삭제",
   "delete_posts_before_channel": "이 채널을 삭제하기 전에 관련된 모든 게시물을 삭제해야 합니다",
   "channel_deleted": "채널이 삭제되었습니다",

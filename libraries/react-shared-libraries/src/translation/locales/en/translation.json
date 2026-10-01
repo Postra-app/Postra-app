@@ -693,7 +693,7 @@
   "are_you_sure_disable_channel": "Are you sure you want to disable this channel?",
   "disable_channel_title": "Disable Channel",
   "channel_disabled": "Channel Disabled",
-  "are_you_sure_delete_channel": "Deleting this channel also permanently deletes all its scheduled and published posts. This cannot be undone.",
+  "are_you_sure_delete_channel": "Deleting this channel removes it and all its posts from Postra, scheduled and past. Posts already published stay on the platform. This cannot be undone.",
   "delete_channel_title": "Delete Channel",
   "delete_posts_before_channel": "You have to delete all the posts associated with this channel before deleting it",
   "channel_deleted": "Channel Deleted",
@@ -1479,5 +1479,8 @@
   "carousel_first_slide_used": "Slide 1 was added here. The other slides are saved in your media library.",
   "background_gradient": "Gradient background",
   "background_gradient_hint": "Fades the background colour into a darker shade of itself",
-  "channel_options": "Channel options"
+  "channel_options": "Channel options",
+  "remove_time_slot": "Remove {{time}}",
+  "change_bot_nickname_title": "Change Bot Nickname",
+  "change_bot_picture_and_nickname_title": "Change Bot Picture and Nickname"
 }

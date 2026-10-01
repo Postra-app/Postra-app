@@ -104,6 +104,8 @@ export default defineConfig({
               browserName: 'chromium' as const,
               viewport: { width: 1440, height: 900 },
               locale: 'en-GB',
+              // Where Postra's customers are; makes times deterministic.
+              timezoneId: 'Europe/London',
               storageState: `${__dirname}/.auth/a.json`,
               screenshot: 'only-on-failure' as const,
               trace: 'retain-on-failure' as const,

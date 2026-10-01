@@ -616,7 +616,6 @@
   "are_you_sure_disable_channel": "您确定要禁用此频道吗？",
   "disable_channel_title": "禁用频道",
   "channel_disabled": "频道已禁用",
-  "are_you_sure_delete_channel": "您确定要删除此频道吗？",
   "delete_channel_title": "删除频道",
   "delete_posts_before_channel": "您需要先删除与此频道相关的所有帖子，然后才能删除该频道",
   "channel_deleted": "频道已删除",

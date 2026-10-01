@@ -616,7 +616,6 @@
   "are_you_sure_disable_channel": "Bu kanalı devre dışı bırakmak istediğinizden emin misiniz?",
   "disable_channel_title": "Kanalı Devre Dışı Bırak",
   "channel_disabled": "Kanal Devre Dışı",
-  "are_you_sure_delete_channel": "Bu kanalı silmek istediğinizden emin misiniz?",
   "delete_channel_title": "Kanalı Sil",
   "delete_posts_before_channel": "Bu kanalı silmeden önce bu kanala ait tüm gönderileri silmelisiniz",
   "channel_deleted": "Kanal Silindi",
