@@ -368,7 +368,9 @@ export class XProvider extends SocialAbstract implements SocialProvider {
       name,
       refreshToken: '',
       expiresIn: 999999999,
-      picture: profile_image_url || '',
+      // X hands out the 48×48 "_normal" variant; the same URL without the
+      // suffix size serves 400×400, sharp in the channel list and composer.
+      picture: (profile_image_url || '').replace('_normal.', '_400x400.'),
       username,
       additionalSettings: [
         {

@@ -172,11 +172,14 @@ export const ContinueIntegration: FC<{
           return;
         }
 
+        // A decline gets our sentence: the platform's own description is
+        // OAuth jargon ("The resource owner or authorization server denied
+        // the request"). Other errors keep it — there it is the only clue.
         setErrorMessage(
-          searchParams.error_description ||
-            (searchParams.error === 'access_denied'
-              ? t('oauth_access_denied', 'You declined the connection request.')
-              : t('could_not_add_provider', 'Could not add provider'))
+          searchParams.error === 'access_denied'
+            ? t('oauth_access_denied', 'You declined the connection request.')
+            : searchParams.error_description ||
+                t('could_not_add_provider', 'Could not add provider')
         );
         setError(true);
         return;
@@ -197,7 +200,15 @@ export const ContinueIntegration: FC<{
 
       // If public endpoint fails with specific errors, try authenticated endpoint
       if (data.status === HttpStatusCode.BadRequest) {
-        const errorData = await data.json().catch(() => ({}));
+        // Read a clone: when this is not a retry case, the same response goes
+        // on to the error branch below, and a body read twice is empty there —
+        // the customer saw "Could not add provider" instead of the backend's
+        // "This connection attempt has expired. Please start adding the
+        // channel again."
+        const errorData = await data
+          .clone()
+          .json()
+          .catch(() => ({}));
         // "Invalid connection type" means this wasn't started as a public flow
         if (
           errorData.message?.includes('Invalid connection type') ||
@@ -283,12 +294,15 @@ export const ContinueIntegration: FC<{
         return;
       }
 
+      // One message for both flows: which flow ran says nothing about whether
+      // the channel is new — a first X connect said "Updated", a Facebook
+      // reconnect said "Added".
       navigateOrShow(
-        `/launches?added=${provider}&msg=Channel Updated${
+        `/launches?added=${provider}&msg=Channel connected${
           onboarding ? '&onboarding=true' : ''
         }`,
         returnURL,
-        'Channel Updated'
+        'Channel connected'
       );
     })();
   }, []);
@@ -323,11 +337,11 @@ export const ContinueIntegration: FC<{
         }
 
         navigateOrShow(
-          `/launches?added=${provider}&msg=Channel Added${
+          `/launches?added=${provider}&msg=Channel connected${
             twoStepState.onboarding ? '&onboarding=true' : ''
           }`,
           twoStepState.returnURL,
-          'Channel Added'
+          'Channel connected'
         );
       } finally {
         setIsSaving(false);

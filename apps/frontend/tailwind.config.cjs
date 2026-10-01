@@ -4,6 +4,27 @@ module.exports = {
   content: ['./src/**/*.{ts,tsx,html}', '../../libraries/**/*.{ts,tsx,html}'],
   theme: {
     extend: {
+      // Tailwind 3 only generates colour-opacity modifiers on its own scale
+      // (steps of 5). Off-scale ones used across the app — text-textColor/78,
+      // border-white/8, … (73 uses in 17 files) — emitted no CSS at all: the
+      // channel menu's items fell back to the body's grey, about 1.9:1 on the
+      // dark panel. Adding the values makes every one of them real.
+      opacity: {
+        4: '0.04',
+        6: '0.06',
+        8: '0.08',
+        12: '0.12',
+        52: '0.52',
+        58: '0.58',
+        62: '0.62',
+        64: '0.64',
+        66: '0.66',
+        68: '0.68',
+        72: '0.72',
+        78: '0.78',
+        82: '0.82',
+        92: '0.92',
+      },
       colors: {
         primary: 'var(--color-primary)',
         secondary: 'var(--color-secondary)',

@@ -412,6 +412,18 @@ export const Menu: FC<{
       className="cursor-pointer relative select-none flex"
       onClick={changeShow}
       ref={triggerRef}
+      // A div with onClick was unreachable from the keyboard and nameless to
+      // screen readers.
+      role="button"
+      tabIndex={0}
+      aria-label={t('channel_options', 'Channel options')}
+      aria-haspopup="menu"
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          changeShow(e as any);
+        }
+      }}
     >
       <svg
         xmlns="http://www.w3.org/2000/svg"

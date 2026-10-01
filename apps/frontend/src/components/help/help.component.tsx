@@ -1,6 +1,6 @@
 'use client';
 
-import { FC, ReactNode, useMemo, useState } from 'react';
+import { FC, ReactNode, useEffect, useMemo, useState } from 'react';
 import { useT } from '@gitroom/react/translation/get.transation.service.client';
 import {
   APP_TABS,
@@ -38,6 +38,15 @@ const Section: FC<{ id: string; title: string; children: ReactNode }> = ({
 export const HelpComponent = () => {
   const t = useT();
   const [filter, setFilter] = useState('');
+
+  // The sections render on the client, after the browser has already tried
+  // and failed to scroll to the #anchor in the URL. Links into a section from
+  // elsewhere (the Meta checklist, the channel picker) landed at the top of a
+  // long page; jump there once the section exists.
+  useEffect(() => {
+    const id = decodeURIComponent(window.location.hash.slice(1));
+    if (id) document.getElementById(id)?.scrollIntoView();
+  }, []);
 
   const toc = [
     { id: 'getting-started', label: t('help_getting_started', 'Getting started') },

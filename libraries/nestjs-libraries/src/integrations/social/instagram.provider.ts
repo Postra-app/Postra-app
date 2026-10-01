@@ -557,7 +557,7 @@ export class InstagramProvider
             pageId: p.id,
             ...(await (
               await fetch(
-                `https://graph.facebook.com/v20.0/${p.instagram_business_account.id}?fields=name,profile_picture_url&access_token=${accessToken}`
+                `https://graph.facebook.com/v20.0/${p.instagram_business_account.id}?fields=name,username,profile_picture_url&access_token=${accessToken}`
               )
             ).json()),
             id: p.instagram_business_account.id,
@@ -565,10 +565,14 @@ export class InstagramProvider
         })
     );
 
+    // `name` is the profile's optional display name and came back empty on
+    // production, leaving the account picker with bare pictures. The handle is
+    // always there; send both.
     return onlyConnectedAccounts.map((p: any) => ({
       pageId: p.pageId,
       id: p.id,
-      name: p.name,
+      name: p.name || p.username || '',
+      username: p.username || '',
       picture: { data: { url: p.profile_picture_url } },
     }));
   }

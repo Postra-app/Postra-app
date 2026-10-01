@@ -13,6 +13,20 @@ const stamp = `${new Date().toISOString().slice(0, 16)}Z ${
   process.env.GITHUB_SHA?.slice(0, 7) || 'local'
 }`;
 
+// These posts are public, so they read as Postra ads (Krzysztof, 2026-10-01).
+// One line per weekday; the stamp at the end keeps every night's post unique
+// so the test can find it.
+const PROMO = [
+  'Plan a whole month of posts in one afternoon. Write once, publish to every channel — postra.co.uk',
+  'Your calendar, your channels, one place. Schedule posts everywhere with Postra — postra.co.uk',
+  'Stop copy-pasting the same post into five apps. Postra publishes it everywhere for you — postra.co.uk',
+  'AI that writes in your brand voice, a calendar your whole team shares. Meet Postra — postra.co.uk',
+  'From idea to published post on every channel in minutes. Try Postra — postra.co.uk',
+  'Agencies: every client, every channel, one calendar. Postra — postra.co.uk',
+  'Write it once, Postra adapts it for each platform and posts it on time — postra.co.uk',
+];
+const promo = (n = 0) => `${PROMO[(new Date().getUTCDay() + n) % PROMO.length]} · ${stamp}`;
+
 type Channel = { id: string; identifier: string; name: string; display?: string };
 type Stored = { id: string; state: string; releaseURL: string | null; error: string | null };
 
@@ -118,7 +132,9 @@ const onPlatform = async (api: APIRequestContext, releaseURL: string, content: s
     const id = url.pathname.split('/').pop();
     const status = await api.get(`${url.origin}/api/v1/statuses/${id}`);
     expect(status.status(), 'Mastodon has the post').toBe(200);
-    expect((await status.json()).content).toContain(content);
+    // Mastodon returns HTML and turns postra.co.uk into a link.
+    const text = String((await status.json()).content).replace(/<[^>]+>/g, '');
+    expect(text).toContain(content);
     return 'read back from Mastodon';
   }
   // Telegram's channel has no public web preview and Discord has no
@@ -135,7 +151,7 @@ test('"Post now" lands on every technical channel', async ({ request }) => {
     expect.arrayContaining(TECHNICAL)
   );
 
-  const content = `[E2E canary] post now ${stamp}`;
+  const content = promo();
   await publish(request, targets, content, 'now', new Date());
   const ids = await findPosts(request, content);
   expect(ids.length, 'one post per channel').toBe(targets.length);
@@ -153,7 +169,7 @@ test('a post scheduled two minutes ahead waits, then lands', async ({ request })
   const mastodon = (await channels(request)).filter((c) => c.identifier === 'mastodon');
   expect(mastodon.length).toBeGreaterThan(0);
 
-  const content = `[E2E canary] scheduled ${stamp}`;
+  const content = promo(1);
   const at = new Date(Date.now() + 120_000);
   await publish(request, mastodon.slice(0, 1), content, 'schedule', at);
   const [id] = await findPosts(request, content);
