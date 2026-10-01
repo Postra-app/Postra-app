@@ -40,18 +40,18 @@ export class WebhooksRepository {
     });
   }
 
-  deleteWebhook(orgId: string, id: string) {
-    return this._webhooks.model.webhooks.update({
-      where: {
-        id,
-        organizationId: orgId,
-      },
-      data: {
-        deletedAt: new Date(),
-      },
+  // updateMany, not update: update throws on a missing row (an unknown id or
+  // another org's webhook answered 500) and re-deleted a deleted one. Null
+  // when nothing of this org matched.
+  async deleteWebhook(orgId: string, id: string) {
+    const { count } = await this._webhooks.model.webhooks.updateMany({
+      where: { id, organizationId: orgId, deletedAt: null },
+      data: { deletedAt: new Date() },
     });
+    return count ? { id } : null;
   }
 
+  // Null on an update of a webhook this org does not have (or deleted).
   async createWebhook(orgId: string, body: WebhooksDto) {
     let id: string;
     if (body.id) {
@@ -60,11 +60,11 @@ export class WebhooksRepository {
       // turning the (un-policy-checked) update route into an uncapped
       // create that bypassed the per-plan webhook limit enforced on POST.
       const updated = await this._webhooks.model.webhooks.updateMany({
-        where: { id: body.id, organizationId: orgId },
+        where: { id: body.id, organizationId: orgId, deletedAt: null },
         data: { url: body.url, name: body.name },
       });
       if (updated.count === 0) {
-        throw new Error('Webhook not found');
+        return null;
       }
       id = body.id;
     } else {

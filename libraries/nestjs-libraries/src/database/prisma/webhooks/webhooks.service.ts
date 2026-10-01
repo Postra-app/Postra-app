@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { WebhooksRepository } from '@gitroom/nestjs-libraries/database/prisma/webhooks/webhooks.repository';
 import { WebhooksDto } from '@gitroom/nestjs-libraries/dtos/webhooks/webhooks.dto';
 
@@ -14,11 +14,19 @@ export class WebhooksService {
     return this._webhooksRepository.getWebhooks(orgId);
   }
 
-  createWebhook(orgId: string, body: WebhooksDto) {
-    return this._webhooksRepository.createWebhook(orgId, body);
+  async createWebhook(orgId: string, body: WebhooksDto) {
+    const saved = await this._webhooksRepository.createWebhook(orgId, body);
+    if (!saved) {
+      throw new NotFoundException('Webhook not found');
+    }
+    return saved;
   }
 
-  deleteWebhook(orgId: string, id: string) {
-    return this._webhooksRepository.deleteWebhook(orgId, id);
+  async deleteWebhook(orgId: string, id: string) {
+    const deleted = await this._webhooksRepository.deleteWebhook(orgId, id);
+    if (!deleted) {
+      throw new NotFoundException('Webhook not found');
+    }
+    return deleted;
   }
 }
