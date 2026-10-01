@@ -616,7 +616,6 @@
   "are_you_sure_disable_channel": "Êtes-vous sûr de vouloir désactiver ce canal ?",
   "disable_channel_title": "Désactiver le canal",
   "channel_disabled": "Canal désactivé",
-  "are_you_sure_delete_channel": "Êtes-vous sûr de vouloir supprimer ce canal ?",
   "delete_channel_title": "Supprimer le canal",
   "delete_posts_before_channel": "Vous devez supprimer tous les messages associés à ce canal avant de le supprimer",
   "channel_deleted": "Canal supprimé",

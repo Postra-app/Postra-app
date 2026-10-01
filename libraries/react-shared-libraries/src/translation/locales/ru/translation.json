@@ -616,7 +616,6 @@
   "are_you_sure_disable_channel": "Вы уверены, что хотите отключить этот канал?",
   "disable_channel_title": "Отключить канал",
   "channel_disabled": "Канал отключён",
-  "are_you_sure_delete_channel": "Вы уверены, что хотите удалить этот канал?",
   "delete_channel_title": "Удалить канал",
   "delete_posts_before_channel": "Вам нужно удалить все публикации, связанные с этим каналом, прежде чем его удалить",
   "channel_deleted": "Канал удалён",

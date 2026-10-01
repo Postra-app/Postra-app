@@ -616,7 +616,6 @@
   "are_you_sure_disable_channel": "আপনি কি নিশ্চিত যে আপনি এই চ্যানেলটি নিষ্ক্রিয় করতে চান?",
   "disable_channel_title": "চ্যানেল নিষ্ক্রিয় করুন",
   "channel_disabled": "চ্যানেল নিষ্ক্রিয় হয়েছে",
-  "are_you_sure_delete_channel": "আপনি কি নিশ্চিত যে আপনি এই চ্যানেলটি মুছে ফেলতে চান?",
   "delete_channel_title": "চ্যানেল মুছে ফেলুন",
   "delete_posts_before_channel": "এই চ্যানেলটি মুছে ফেলার আগে আপনাকে এর সাথে যুক্ত সব পোস্ট মুছে ফেলতে হবে",
   "channel_deleted": "চ্যানেল মুছে ফেলা হয়েছে",

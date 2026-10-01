@@ -102,6 +102,7 @@ test('removing a time slot removes that slot, not its neighbour', async ({ page 
   await page.getByRole('button', { name: 'Remove 05:00' }).click();
   await page.getByRole('button', { name: 'Yes, delete it!' }).click();
   await page.getByRole('button', { name: 'Save Changes' }).click();
+  await expect(page.getByText('Time Table Slots')).toBeHidden();
 
   await expect.poll(slots).toEqual(before);
   await api.dispose();

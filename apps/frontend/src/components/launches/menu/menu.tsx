@@ -173,7 +173,7 @@ export const Menu: FC<{
       !(await deleteDialog(
         t(
           'are_you_sure_delete_channel',
-          'Deleting this channel also permanently deletes all its scheduled and published posts. This cannot be undone.'
+          'Deleting this channel removes it and all its posts from Postra, scheduled and past. Posts already published stay on the platform. This cannot be undone.'
         ),
         t('delete_channel_title', 'Delete Channel')
       ))
