@@ -469,8 +469,11 @@ export const AddProviderComponent: FC<{
             }),
             withCloseButton: true,
             ...(isMobile ? { removeLayout: true, fullScreen: true } : {}),
+            // The surface every other add-channel dialog uses: with
+            // bg-transparent the picker's tiles showed through the Telegram
+            // instructions.
             classNames: {
-              modal: 'bg-transparent text-textColor',
+              modal: 'launches-modal-surface text-textColor',
             },
             children: (
               <div
@@ -702,16 +705,21 @@ export const AddProviderComponent: FC<{
               title: t(checklist.title.key, checklist.title.text),
               withCloseButton: true,
               onClose: () => resolve(false),
-              children: (
+              // `close` closes this checklist. modal.closeCurrent() closed the
+              // modal this hook runs in — the channel picker — so "show me how"
+              // left the checklist on screen with its answer already given, and
+              // "Done — continue" afterwards did nothing at all. Resolve before
+              // closing: closing runs onClose, which answers false.
+              children: (close: () => void) => (
                 <MetaConnectChecklist
                   provider={identifier}
                   onConfirm={() => {
-                    modal.closeCurrent();
                     resolve(true);
+                    close();
                   }}
                   onCancel={() => {
-                    modal.closeCurrent();
                     resolve(false);
+                    close();
                     window.open(`/help#channel-${identifier}`, '_blank');
                   }}
                 />
