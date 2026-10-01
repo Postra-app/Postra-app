@@ -87,9 +87,10 @@ export class MediaRepository {
     });
   }
 
+  // Deleted media stays out: Studio reopened a deleted clip from its draft.
   getMediaByIdForOrg(org: string, id: string) {
     return this._media.model.media.findFirst({
-      where: { id, organizationId: org },
+      where: { id, organizationId: org, deletedAt: null },
       select: { id: true, path: true, canvasJson: true, designSpec: true },
     });
   }
@@ -152,29 +153,30 @@ export class MediaRepository {
     });
   }
 
-  deleteMedia(org: string, id: string) {
-    return this._media.model.media.update({
-      where: {
-        id,
-        organizationId: org,
-      },
-      data: {
-        deletedAt: new Date(),
-      },
+  // updateMany, not update: update throws on a missing row, so an unknown id
+  // or another org's media answered 500. Null when nothing of this org matched.
+  async deleteMedia(org: string, id: string) {
+    const { count } = await this._media.model.media.updateMany({
+      where: { id, organizationId: org, deletedAt: null },
+      data: { deletedAt: new Date() },
     });
+    return count ? { id } : null;
   }
 
-  saveMediaInformation(org: string, data: SaveMediaInformationDto) {
-    return this._media.model.media.update({
-      where: {
-        id: data.id,
-        organizationId: org,
-      },
+  async saveMediaInformation(org: string, data: SaveMediaInformationDto) {
+    const { count } = await this._media.model.media.updateMany({
+      where: { id: data.id, organizationId: org, deletedAt: null },
       data: {
         alt: data.alt,
         thumbnail: data.thumbnail,
         thumbnailTimestamp: data.thumbnailTimestamp,
       },
+    });
+    if (!count) {
+      return null;
+    }
+    return this._media.model.media.findUnique({
+      where: { id: data.id },
       select: {
         id: true,
         name: true,

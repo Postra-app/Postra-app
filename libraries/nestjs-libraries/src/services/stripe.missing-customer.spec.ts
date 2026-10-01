@@ -41,7 +41,7 @@ jest.mock('@gitroom/nestjs-libraries/track/track.service', () => ({
 
 import { StripeService } from '@gitroom/nestjs-libraries/services/stripe.service';
 
-// eslint-disable-next-line @typescript-eslint/no-var-requires
+// eslint-disable-next-line @typescript-eslint/no-require-imports
 const noSuchCustomer = (require('stripe') as any).errors.StripeError.generate({
   type: 'invalid_request_error',
   code: 'resource_missing',

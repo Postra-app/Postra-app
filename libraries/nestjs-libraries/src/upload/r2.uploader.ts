@@ -14,7 +14,7 @@ import { Request, Response } from 'express';
 import crypto from 'crypto';
 import path from 'path';
 import { makeId } from '@gitroom/nestjs-libraries/services/make.is';
-// eslint-disable-next-line @typescript-eslint/no-var-requires
+// eslint-disable-next-line @typescript-eslint/no-require-imports
 const { fromBuffer } = require('file-type');
 
 const ALLOWED_EXT_TO_MIME: Record<string, string> = {

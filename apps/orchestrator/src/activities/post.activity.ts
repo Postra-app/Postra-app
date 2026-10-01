@@ -30,7 +30,6 @@ import {
 import { SubscriptionService } from '@gitroom/nestjs-libraries/database/prisma/subscriptions/subscription.service';
 import { lookup } from 'node:dns/promises';
 import { isIP } from 'node:net';
-// eslint-disable-next-line @nx/enforce-module-boundaries
 import { fetch } from 'undici';
 import { ssrfSafeDispatcher } from '@gitroom/nestjs-libraries/dtos/webhooks/ssrf.safe.dispatcher';
 

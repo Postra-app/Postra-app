@@ -100,10 +100,10 @@ const status = async (fn: () => Promise<unknown>) => {
 describe('GET /admin/integrations', () => {
   it('is closed to anyone who is not a superadmin', async () => {
     const { controller } = build();
-    expect(await status(() => controller.listIntegrations(notAdmin))).toBe(400);
+    expect(await status(() => controller.listIntegrations(notAdmin))).toBe(403);
     expect(
       await status(() => controller.listIntegrationProviders(notAdmin))
-    ).toBe(400);
+    ).toBe(403);
   });
 
   it('never hands back a token, in the body or anywhere under it', async () => {

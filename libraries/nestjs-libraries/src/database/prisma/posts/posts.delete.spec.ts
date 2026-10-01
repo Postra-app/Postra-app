@@ -56,7 +56,7 @@ describe('PostsService.deletePost', () => {
 
 describe('PostsRepository.deletePost (E2E-05-01)', () => {
   // Imported here so the service mocks above stay the only ones in play.
-  // eslint-disable-next-line @typescript-eslint/no-var-requires
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
   const { PostsRepository } = require('@gitroom/nestjs-libraries/database/prisma/posts/posts.repository');
 
   const repoWith = (count: number) => {

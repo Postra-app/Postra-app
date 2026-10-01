@@ -959,29 +959,23 @@ export class PostsRepository {
     });
   }
 
-  editTag(id: string, orgId: string, body: CreateTagDto) {
-    return this._tags.model.tags.update({
-      where: {
-        id,
-        orgId,
-      },
-      data: {
-        name: body.name,
-        color: body.color,
-      },
+  // updateMany, not update: update throws on a missing row (an unknown id or
+  // another org's tag answered 500) and happily edited a deleted tag. Both
+  // return null when nothing of this org matched.
+  async editTag(id: string, orgId: string, body: CreateTagDto) {
+    const { count } = await this._tags.model.tags.updateMany({
+      where: { id, orgId, deletedAt: null },
+      data: { name: body.name, color: body.color },
     });
+    return count ? this._tags.model.tags.findUnique({ where: { id } }) : null;
   }
 
-  deleteTag(id: string, orgId: string) {
-    return this._tags.model.tags.update({
-      where: {
-        id,
-        orgId,
-      },
-      data: {
-        deletedAt: new Date(),
-      },
+  async deleteTag(id: string, orgId: string) {
+    const { count } = await this._tags.model.tags.updateMany({
+      where: { id, orgId, deletedAt: null },
+      data: { deletedAt: new Date() },
     });
+    return count ? this._tags.model.tags.findUnique({ where: { id } }) : null;
   }
 
   createComment(

@@ -36,7 +36,14 @@ const watchForErrors = (page: Page) => {
   page.on('console', (msg) => {
     if (msg.type() === 'error') problems.push(`console: ${msg.text()}`);
   });
-  page.on('pageerror', (err) => problems.push(`pageerror: ${err.message}`));
+  page.on('pageerror', (err) => {
+    // Safari only: Stripe.js probing its own iframe raises a SecurityError
+    // the user never sees. Exactly this one is ignored.
+    if (/from accessing a frame with origin "https:\/\/js\.stripe\.com"/.test(err.message)) {
+      return;
+    }
+    problems.push(`pageerror: ${err.message}`);
+  });
   page.on('response', (res) => {
     if (res.status() >= 500 && res.url().includes('/api/')) {
       problems.push(`${res.status()} ${res.request().method()} ${res.url()}`);

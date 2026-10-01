@@ -28,12 +28,40 @@ export default defineConfig({
     { name: 'setup', testMatch: /auth\.setup\.ts/ },
     {
       name: 'smoke',
-      testMatch: /\.spec\.ts/,
+      testMatch: /smoke\.spec\.ts/,
       dependencies: ['setup'],
       use: {
         ...devices['Desktop Chrome'],
         viewport: { width: 1440, height: 900 },
         storageState: STATE_FILE,
+      },
+    },
+    // Safari on a desktop: the nightly canary only, the deploy gate stays on
+    // Chromium to stay fast.
+    {
+      name: 'smoke-webkit',
+      testMatch: /smoke\.spec\.ts/,
+      dependencies: ['setup'],
+      use: {
+        ...devices['Desktop Safari'],
+        viewport: { width: 1440, height: 900 },
+        storageState: STATE_FILE,
+      },
+    },
+    // AI on the real OpenAI key: the nightly canary only (it costs tokens).
+    {
+      name: 'ai-canary',
+      testMatch: /ai\.canary\.spec\.ts/,
+      dependencies: ['setup'],
+      use: { storageState: STATE_FILE },
+    },
+    // The UK landing: public, no sign-in.
+    {
+      name: 'landing',
+      testMatch: /landing\.spec\.ts/,
+      use: {
+        ...devices['Desktop Chrome'],
+        baseURL: process.env.E2E_LANDING_URL || 'https://postra.co.uk',
       },
     },
   ],

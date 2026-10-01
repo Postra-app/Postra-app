@@ -31,7 +31,7 @@ describe('GET /integrations/social/:integration — unknown platform', () => {
       source.indexOf('getAllowedSocialsIntegrations'),
       source.indexOf('Per-tier platform gating')
     );
-    expect(guard).toMatch(/throw new HttpException\([^)]*400\s*\)/s);
+    expect(guard).toMatch(/throw new HttpException\([^)]*400\s*\)/);
   });
 });
 

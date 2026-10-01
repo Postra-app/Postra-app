@@ -83,7 +83,11 @@ export class MediaService {
   ) {}
 
   async deleteMedia(org: string, id: string) {
-    return this._mediaRepository.deleteMedia(org, id);
+    const deleted = await this._mediaRepository.deleteMedia(org, id);
+    if (!deleted) {
+      throw new HttpException('Media not found', 404);
+    }
+    return deleted;
   }
 
   getMediaById(id: string) {
@@ -175,7 +179,7 @@ export class MediaService {
       .digest('hex')}`;
 
     let backgroundUrl = await ioRedis.get(cacheKey);
-    let cacheHit = !!backgroundUrl;
+    const cacheHit = !!backgroundUrl;
 
     if (!backgroundUrl) {
       backgroundUrl = await this._subscriptionService.useCredit(
@@ -516,8 +520,12 @@ export class MediaService {
     return this._mediaRepository.getMedia(org, page, search, type);
   }
 
-  saveMediaInformation(org: string, data: SaveMediaInformationDto) {
-    return this._mediaRepository.saveMediaInformation(org, data);
+  async saveMediaInformation(org: string, data: SaveMediaInformationDto) {
+    const saved = await this._mediaRepository.saveMediaInformation(org, data);
+    if (!saved) {
+      throw new HttpException('Media not found', 404);
+    }
+    return saved;
   }
 
   getVideoOptions() {

@@ -2,8 +2,8 @@ import {
   Body,
   Controller,
   Delete,
+  ForbiddenException,
   Get,
-  HttpException,
   Param,
   Post,
   Query,
@@ -44,7 +44,7 @@ export class AnnouncementsController {
     @Query('limit') limit?: string
   ) {
     if (!user.isSuperAdmin) {
-      throw new HttpException('Unauthorized', 400);
+      throw new ForbiddenException('Only Postra administrators can do this');
     }
     const paging = parsePaging(page, limit);
     const result = await this._announcementsService.listAnnouncements({
@@ -66,7 +66,7 @@ export class AnnouncementsController {
     @Body() body: AnnouncementDto
   ) {
     if (!user.isSuperAdmin) {
-      throw new HttpException('Unauthorized', 400);
+      throw new ForbiddenException('Only Postra administrators can do this');
     }
 
     // Announcements are the panel's other mutating surface and the only one
@@ -92,7 +92,7 @@ export class AnnouncementsController {
     @Param('id') id: string
   ) {
     if (!user.isSuperAdmin) {
-      throw new HttpException('Unauthorized', 400);
+      throw new ForbiddenException('Only Postra administrators can do this');
     }
 
     const result = await this._announcementsService.deleteAnnouncement(id);

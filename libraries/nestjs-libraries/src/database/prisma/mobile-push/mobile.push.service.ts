@@ -19,7 +19,7 @@ export class MobilePushService {
     platform: string
   ) {
     if (!token) {
-      return;
+      return undefined;
     }
 
     // The token string is the only proof of device we have, and it leaks —
@@ -34,7 +34,7 @@ export class MobilePushService {
       select: { userId: true },
     });
     if (existing && existing.userId !== userId) {
-      return;
+      return undefined;
     }
 
     return this._pushToken.model.mobilePushToken.upsert({

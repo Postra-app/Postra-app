@@ -2,6 +2,7 @@ import {
   Body,
   Controller,
   Delete,
+  ForbiddenException,
   Get,
   HttpException,
   Post,
@@ -144,7 +145,7 @@ export class UsersController {
     @Query('name') name: string
   ) {
     if (!user.isSuperAdmin) {
-      throw new HttpException('Unauthorized', 400);
+      throw new ForbiddenException('Only Postra administrators can do this');
     }
 
     return this._userService.getImpersonateUser(name);
@@ -162,7 +163,7 @@ export class UsersController {
     // the admin behind it passed the same gate to get here.
     const impersonatedBy = (req as any).impersonatedBy as string | undefined;
     if (!user.isSuperAdmin && !impersonatedBy) {
-      throw new HttpException('Unauthorized', 400);
+      throw new ForbiddenException('Only Postra administrators can do this');
     }
 
     // An empty id is "stop", not "impersonate nobody". It used to travel the

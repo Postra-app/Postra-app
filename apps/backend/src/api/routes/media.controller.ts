@@ -216,6 +216,13 @@ export class MediaController {
   // Literal GET paths (e.g. /pixabay-videos) MUST come BEFORE the
   // parameterized `@Get('/:id')` — otherwise NestJS matches them as an id and
   // they silently return "media not found" (empty body → Stock search failed).
+  // Declared below /:id until 2026-10-01, so it never ran: every composer open
+  // got /:id's empty answer instead of the options.
+  @Get('/video-options')
+  getVideos() {
+    return this._mediaService.getVideoOptions();
+  }
+
   @Get('/my-templates')
   getMyTemplates(@GetOrgFromRequest() org: Organization) {
     return this._mediaService.getTemplates(org.id);
@@ -282,11 +289,16 @@ export class MediaController {
   }
 
   @Get('/:id')
-  getMediaForEdit(
+  async getMediaForEdit(
     @GetOrgFromRequest() org: Organization,
     @Param('id') id: string
   ) {
-    return this._mediaService.getMediaForEdit(org.id, id);
+    // Was 200 with an empty body for an unknown, foreign or deleted id.
+    const media = await this._mediaService.getMediaForEdit(org.id, id);
+    if (!media) {
+      throw new HttpException('Media not found', 404);
+    }
+    return media;
   }
 
   @Post('/:id/auto-caption')
@@ -551,11 +563,6 @@ export class MediaController {
       queryString(search) || undefined,
       asked === 'video' || asked === 'image' ? asked : undefined
     );
-  }
-
-  @Get('/video-options')
-  getVideos() {
-    return this._mediaService.getVideoOptions();
   }
 
   @Post('/video/function')

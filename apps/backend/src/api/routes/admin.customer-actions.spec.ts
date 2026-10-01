@@ -97,7 +97,7 @@ describe('GET /admin/charges', () => {
     const { controller } = build();
     await expect(
       status(() => controller.listCharges(notAdmin, 'org-1'))
-    ).resolves.toBe(400);
+    ).resolves.toBe(403);
   });
 
   it('refuses a missing organization id', async () => {
@@ -324,7 +324,7 @@ describe('POST /admin/delete-organization', () => {
     const { controller, users } = build();
     await expect(
       status(() => controller.deleteOrganization(notAdmin, 'org-1'))
-    ).resolves.toBe(400);
+    ).resolves.toBe(403);
     expect(users.deleteOrganization).not.toHaveBeenCalled();
   });
 });
