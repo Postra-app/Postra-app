@@ -17,19 +17,22 @@ export class SettingsController {
     private _organizationService: OrganizationService
   ) {}
 
+  // Only inviting takes a seat, so only inviting checks for a free one. With
+  // the seat check on all three routes, a full team (Pro: owner + 1, or any
+  // team after a downgrade) could neither see its members nor remove one to
+  // make room.
   @Get('/team')
-  @CheckPolicies(
-    [AuthorizationActions.Create, Sections.TEAM_MEMBERS],
-    [AuthorizationActions.Create, Sections.ADMIN]
-  )
+  @CheckPolicies([AuthorizationActions.Create, Sections.ADMIN])
   async getTeam(@GetOrgFromRequest() org: Organization) {
     return this._organizationService.getTeam(org.id);
   }
 
+  // Role before seats: the guard answers for the first failing policy, and a
+  // plain member must hear "not allowed" (403), not "upgrade your plan" (402).
   @Post('/team')
   @CheckPolicies(
-    [AuthorizationActions.Create, Sections.TEAM_MEMBERS],
-    [AuthorizationActions.Create, Sections.ADMIN]
+    [AuthorizationActions.Create, Sections.ADMIN],
+    [AuthorizationActions.Create, Sections.TEAM_MEMBERS]
   )
   async inviteTeamMember(
     @GetOrgFromRequest() org: Organization,
@@ -39,10 +42,7 @@ export class SettingsController {
   }
 
   @Delete('/team/:id')
-  @CheckPolicies(
-    [AuthorizationActions.Create, Sections.TEAM_MEMBERS],
-    [AuthorizationActions.Create, Sections.ADMIN]
-  )
+  @CheckPolicies([AuthorizationActions.Create, Sections.ADMIN])
   async deleteTeamMember(
     @GetOrgFromRequest() org: Organization,
     @Param('id') id: string

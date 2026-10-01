@@ -23,7 +23,14 @@ export const USERS = {
   },
 } as const;
 
-export type UserKey = keyof typeof USERS;
+// A plain member (role USER) of organisation A: can work, cannot manage the
+// team, billing or the API key.
+export const MEMBER = {
+  email: 'member-a@example.com',
+  password: 'Stack-tests-M-1',
+} as const;
+
+export type UserKey = keyof typeof USERS | 'member';
 
 const refuse = (url: string) => {
   throw new Error(
@@ -91,6 +98,24 @@ export const resetAndSeed = async (databaseUrl: string, redisUrl: string) => {
         },
       });
     }
+
+    const orgOfA = await prisma.organization.findFirstOrThrow({
+      where: { name: USERS.a.org },
+    });
+    const member = await prisma.user.create({
+      data: {
+        email: MEMBER.email,
+        password: hashSync(MEMBER.password, 10),
+        providerName: 'LOCAL',
+        name: 'Stack',
+        lastName: 'Member',
+        timezone: 0,
+        activated: true,
+      },
+    });
+    await prisma.userOrganization.create({
+      data: { userId: member.id, organizationId: orgOfA.id, role: 'USER' },
+    });
 
     const { mastodon } = USERS.a;
     const orgA = await prisma.organization.findFirstOrThrow({
