@@ -1479,5 +1479,6 @@
   "carousel_first_slide_used": "Slajd 1 trafił tutaj. Pozostałe slajdy są zapisane w bibliotece mediów.",
   "background_gradient": "Tło z gradientem",
   "background_gradient_hint": "Przechodzi z wybranego koloru tła w jego ciemniejszy odcień",
-  "channel_options": "Opcje kanału"
+  "channel_options": "Opcje kanału",
+  "remove_time_slot": "Usuń {{time}}"
 }

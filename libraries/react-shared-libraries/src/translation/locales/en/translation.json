@@ -1479,5 +1479,6 @@
   "carousel_first_slide_used": "Slide 1 was added here. The other slides are saved in your media library.",
   "background_gradient": "Gradient background",
   "background_gradient_hint": "Fades the background colour into a darker shade of itself",
-  "channel_options": "Channel options"
+  "channel_options": "Channel options",
+  "remove_time_slot": "Remove {{time}}"
 }

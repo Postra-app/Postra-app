@@ -136,19 +136,20 @@ export class IntegrationRepository {
     });
   }
 
+  // Minutes after midnight UTC, kept within one day: the composer stores
+  // local-time slots minus the UTC offset, so 00:30 in London in summer
+  // arrived as -30. updateMany: update threw on an unknown or foreign id (500).
+  // Null when nothing of this org matched.
   async setTimes(org: string, id: string, times: IntegrationTimeDto) {
-    return this._integration.model.integration.update({
-      select: {
-        id: true,
-      },
-      where: {
-        id,
-        organizationId: org,
-      },
-      data: {
-        postingTimes: JSON.stringify(times.time),
-      },
+    const DAY = 24 * 60;
+    const postingTimes = times.time.map(({ time }) => ({
+      time: ((Math.round(time) % DAY) + DAY) % DAY,
+    }));
+    const { count } = await this._integration.model.integration.updateMany({
+      where: { id, organizationId: org, deletedAt: null },
+      data: { postingTimes: JSON.stringify(postingTimes) },
     });
+    return count ? { id } : null;
   }
 
   async getPlug(plugId: string) {

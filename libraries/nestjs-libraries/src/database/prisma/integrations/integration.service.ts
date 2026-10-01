@@ -74,7 +74,15 @@ export class IntegrationService {
     integrationId: string,
     times: IntegrationTimeDto
   ) {
-    return this._integrationRepository.setTimes(orgId, integrationId, times);
+    const saved = await this._integrationRepository.setTimes(
+      orgId,
+      integrationId,
+      times
+    );
+    if (!saved) {
+      throw new NotFoundException('Channel not found');
+    }
+    return saved;
   }
 
   updateProviderSettings(org: string, id: string, additionalSettings: string) {

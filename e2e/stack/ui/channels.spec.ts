@@ -1,4 +1,6 @@
 import { expect, test } from '@playwright/test';
+import { signedIn } from '../helpers';
+import { USERS } from '../seed';
 
 // Adding a channel. Meta platforms first show a checklist; "Not yet — show me
 // how" opens help, and the customer comes back and continues. That second
@@ -72,4 +74,35 @@ test("a tile's hint does not hang over the dialog its click opens", async ({ pag
   await tile.click();
   await expect(page.getByText('Before you connect Instagram')).toBeVisible();
   await expect(hint).toBeHidden();
+});
+
+test('removing a time slot removes that slot, not its neighbour', async ({ page }) => {
+  // The list is sorted on screen, the stored array is not (a new slot is
+  // appended): the bin next to a slot added later removed another one.
+  const api = await signedIn('a');
+  const slots = async () => {
+    const list = await (await api.get('/integrations/list')).json();
+    return Object.fromEntries(
+      list.integrations.map((i: { id: string; time: { time: number }[] }) => [
+        i.id,
+        i.time.map((s) => s.time).sort((x, y) => x - y),
+      ])
+    );
+  };
+  const before = await slots();
+
+  await page.goto('/launches');
+  await page.getByRole('button', { name: 'Channel options' }).first().click();
+  await page.getByText('Edit Time Slots', { exact: true }).click();
+  // 05:00 in London (04:00 UTC) sits mid-list on screen but is stored last:
+  // the old bin removed the slot at its on-screen position in the stored
+  // array — a different slot.
+  await page.getByRole('combobox').nth(0).selectOption('05');
+  await page.getByRole('button', { name: 'Add', exact: true }).click();
+  await page.getByRole('button', { name: 'Remove 05:00' }).click();
+  await page.getByRole('button', { name: 'Yes, delete it!' }).click();
+  await page.getByRole('button', { name: 'Save Changes' }).click();
+
+  await expect.poll(slots).toEqual(before);
+  await api.dispose();
 });
