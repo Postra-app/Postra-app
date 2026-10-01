@@ -15,10 +15,9 @@ export const Checkbox = forwardRef<
     // component — /auth/register renders the consent sentence itself, links
     // and all, so `label` cannot carry it.
     ariaLabel?: string;
-    // Passed by 8 call sites (TikTok, generator) and, before this, read by
-    // none of them. Click still toggles a disabled box — that is a separate
-    // bug (e2e/bugs.md E2E-03-06). What we must not do is *newly* hand a
-    // disabled control to the keyboard, so it stays out of the tab order.
+    // A disabled box ignores clicks and keys and stays out of the tab order.
+    // TikTok's posting rules depend on it: Branded content must not be
+    // tickable while privacy is Self only (e2e/bugs.md E2E-03-06).
     disabled?: boolean;
     onChange?: (event: {
       target: {
@@ -37,6 +36,9 @@ export const Checkbox = forwardRef<
   const val = watch || checked;
 
   const changeStatus = useCallback(() => {
+    if (disabled) {
+      return;
+    }
     props?.onChange?.({
       target: {
         name: props.name!,
@@ -52,7 +54,7 @@ export const Checkbox = forwardRef<
         },
       });
     }
-  }, [val]);
+  }, [val, disabled]);
   // Space and Enter, because this control is a div and the browser gives a div
   // none of the behaviour it would give an <input type="checkbox">.
   const onKeyDown = useCallback(
@@ -93,6 +95,7 @@ export const Checkbox = forwardRef<
           variant === 'default' || !variant
             ? 'bg-forth'
             : 'border-customColor1 border-2 bg-customColor2',
+          disabled && 'opacity-40 !cursor-not-allowed',
           className
         )}
       >
@@ -115,7 +118,13 @@ export const Checkbox = forwardRef<
         )}
       </div>
       {!!label && (
-        <div className="cursor-pointer select-none" onClick={changeStatus}>
+        <div
+          className={clsx(
+            'select-none',
+            disabled ? 'opacity-40 cursor-not-allowed' : 'cursor-pointer'
+          )}
+          onClick={changeStatus}
+        >
           {label}
         </div>
       )}
