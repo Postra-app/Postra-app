@@ -76,6 +76,9 @@ export const resetAndSeed = async (databaseUrl: string, redisUrl: string) => {
           lastName: 'Tester',
           timezone: 0,
           activated: true,
+          // AI is locked for an hour after sign-up (AccountAgeGuard); the
+          // owners are old accounts, the member stays brand new.
+          createdAt: new Date(Date.now() - 2 * 86_400_000),
         },
       });
       await prisma.userOrganization.create({

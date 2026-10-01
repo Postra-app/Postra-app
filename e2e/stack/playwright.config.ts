@@ -64,6 +64,12 @@ export default defineConfig({
       url: 'http://localhost:58080/health',
       reuseExistingServer: reuse,
     },
+    {
+      command: 'node e2e/stack/fake-openai.mjs',
+      cwd: repo,
+      url: 'http://localhost:58090/health',
+      reuseExistingServer: reuse,
+    },
     nodeApp('backend', 'http://localhost:53000/monitor/queue/main'),
     // The Temporal worker: without it nothing scheduled ever publishes.
     // It has no HTTP port; wait on its Prometheus endpoint (fixed :9464).

@@ -1,7 +1,8 @@
 name: E2E canary
 
 # Every night against production: the post-deploy smoke on Chromium and on
-# desktop Safari (WebKit), AI on the real OpenAI key, and the UK landing.
+# desktop Safari (WebKit), AI on the real OpenAI key, real publishing on the
+# technical channels, and the UK landing.
 # Things break between deploys too — an expired key, a provider change, a
 # landing re-upload — and nobody deploys at night to notice. A failure opens (or comments on) an issue
 # labelled `canary`, which GitHub mails out.
@@ -22,7 +23,7 @@ concurrency:
 jobs:
   canary:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 30
 
     steps:
       - name: Checkout repo
@@ -40,9 +41,10 @@ jobs:
           npm install --prefix e2e/playwright --no-save --no-package-lock @playwright/test@1.58.2
           e2e/playwright/node_modules/.bin/playwright install --with-deps chromium webkit
 
-      # Drafts only on production; one sign-in for both browsers (the login
-      # limit is 5 per 15 minutes per IP).
-      - name: Smoke (Chromium + WebKit), AI and landing
+      # The smoke only drafts; publish-canary publishes for real, on the
+      # technical channels only. One sign-in for everything (the login limit
+      # is 5 per 15 minutes per IP).
+      - name: Smoke (Chromium + WebKit), AI, publishing and landing
         id: canary
         env:
           E2E_BASE_URL: https://app.postra.pl
@@ -56,7 +58,7 @@ jobs:
             exit $?
           fi
           e2e/playwright/node_modules/.bin/playwright test -c e2e/playwright \
-            --project smoke --project smoke-webkit --project ai-canary --project landing
+            --project smoke --project smoke-webkit --project ai-canary --project publish-canary --project landing
 
       # Screenshots only: traces are off in CI (they carry the session cookie).
       - name: Upload screenshots

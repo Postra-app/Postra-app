@@ -55,6 +55,13 @@ export default defineConfig({
       dependencies: ['setup'],
       use: { storageState: STATE_FILE },
     },
+    // Real publishing on the technical channels: the nightly canary only.
+    {
+      name: 'publish-canary',
+      testMatch: /publish\.canary\.spec\.ts/,
+      dependencies: ['setup'],
+      use: { storageState: STATE_FILE },
+    },
     // The UK landing: public, no sign-in.
     {
       name: 'landing',
