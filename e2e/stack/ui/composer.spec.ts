@@ -1,39 +1,13 @@
-import { expect, Page, test } from '@playwright/test';
+import { expect, test } from '@playwright/test';
 import { listPosts, signedIn } from '../helpers';
 import { USERS } from '../seed';
+import { openComposer, watchForErrors } from './ui-helpers';
 
 // The customer's main path in a real browser against the local stack:
 // calendar → composer → draft, and → "Post Now" all the way to the platform
 // (the fake Mastodon). On production only the draft half may ever run.
 
 const FAKE = 'http://localhost:58080';
-
-// Console errors and 5xx from our API fail the test: a page can render and
-// still be broken underneath.
-const watchForErrors = (page: Page) => {
-  const problems: string[] = [];
-  page.on('console', (msg) => {
-    // The failed response itself is recorded below, with its URL.
-    if (msg.type() === 'error' && !msg.text().startsWith('Failed to load resource')) {
-      problems.push(`console: ${msg.text()}`);
-    }
-  });
-  page.on('pageerror', (err) => problems.push(`pageerror: ${err.message}`));
-  page.on('response', (res) => {
-    if (res.status() >= 400) {
-      problems.push(`${res.status()} ${res.request().method()} ${res.url()}`);
-    }
-  });
-  return problems;
-};
-
-const openComposer = async (page: Page, provider: string, text: string) => {
-  await page.goto('/launches');
-  await page.getByRole('button', { name: 'Create Post' }).click();
-  await page.getByRole('img', { name: provider, exact: true }).first().click();
-  await page.getByRole('textbox').first().click();
-  await page.keyboard.type(text);
-};
 
 test('the calendar shows the organisation and its channels', async ({ page }) => {
   const problems = watchForErrors(page);
