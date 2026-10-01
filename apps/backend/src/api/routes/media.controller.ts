@@ -282,11 +282,16 @@ export class MediaController {
   }
 
   @Get('/:id')
-  getMediaForEdit(
+  async getMediaForEdit(
     @GetOrgFromRequest() org: Organization,
     @Param('id') id: string
   ) {
-    return this._mediaService.getMediaForEdit(org.id, id);
+    // Was 200 with an empty body for an unknown, foreign or deleted id.
+    const media = await this._mediaService.getMediaForEdit(org.id, id);
+    if (!media) {
+      throw new HttpException('Media not found', 404);
+    }
+    return media;
   }
 
   @Post('/:id/auto-caption')
