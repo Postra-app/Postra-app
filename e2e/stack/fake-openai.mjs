@@ -4,8 +4,8 @@
 //
 //   POST /v1/chat/completions   answers with JSON that fits the request's
 //                               json_schema (structured outputs), or plain
-//                               text; usage is always reported so metering
-//                               can be checked
+//                               text; usage as OpenAI reports it (streams
+//                               only with stream_options.include_usage)
 //   GET  /__requests            every request received so far
 //   POST /__fail                the next completion answers 500
 import { createServer } from 'node:http';
@@ -71,7 +71,12 @@ createServer((req, res) => {
     }
 
     if (req.method === 'POST' && req.url === '/v1/chat/completions') {
-      requests.push({ path: req.url, model: body.model, stream: !!body.stream });
+      requests.push({
+        path: req.url,
+        model: body.model,
+        stream: !!body.stream,
+        includeUsage: !!body.stream_options?.include_usage,
+      });
       if (failNext) {
         failNext = false;
         return json(res, 500, { error: { message: 'The server had an error', type: 'server_error' } });
@@ -92,7 +97,12 @@ createServer((req, res) => {
             ...extra,
           })}\n\n`;
         res.write(chunk({ role: 'assistant', content }));
-        res.write(chunk({}, 'stop', { usage }));
+        res.write(chunk({}, 'stop'));
+        // Like OpenAI: a stream reports usage only when asked to, in a last
+        // chunk with no choices. Code that forgets to ask meters nothing.
+        if (body.stream_options?.include_usage) {
+          res.write(chunk({}, null, { choices: [], usage }));
+        }
         res.end('data: [DONE]\n\n');
         return;
       }
