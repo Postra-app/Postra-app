@@ -1292,12 +1292,20 @@ export class PostsService {
     return this._postRepository.createTag(orgId, body);
   }
 
-  editTag(id: string, orgId: string, body: CreateTagDto) {
-    return this._postRepository.editTag(id, orgId, body);
+  async editTag(id: string, orgId: string, body: CreateTagDto) {
+    const tag = await this._postRepository.editTag(id, orgId, body);
+    if (!tag) {
+      throw new NotFoundException('Tag not found');
+    }
+    return tag;
   }
 
-  deleteTag(id: string, orgId: string) {
-    return this._postRepository.deleteTag(id, orgId);
+  async deleteTag(id: string, orgId: string) {
+    const tag = await this._postRepository.deleteTag(id, orgId);
+    if (!tag) {
+      throw new NotFoundException('Tag not found');
+    }
+    return tag;
   }
 
   async createComment(
