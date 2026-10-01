@@ -36,7 +36,9 @@ export const GmbContinue = withContinueProvider<GmbItem, GmbSelection>({
     },
     {
       key: 'gmb_try_again',
-      text: 'Please close this dialog, delete the integration and try again.',
+      // The button below removes the unfinished channel; telling people to
+      // delete it themselves contradicted it.
+      text: 'Remove the unfinished channel below, then connect again with the Google account that owns the business profile.',
     },
   ],
   getItemId: (item) => item.id,
