@@ -78,7 +78,11 @@ const enabledProviders = new Set([
   'facebook',
   'instagram',
   'linkedin',
-  'linkedin-page',
+  // 'linkedin-page' shows as "Coming soon" until LinkedIn moves the
+  // "Postra Pages" app from Community Management Development Tier to
+  // Standard: Development Tier caps the whole app at 500 API calls a day, and
+  // the upgrade has sat at stage 1 of 3 since 2026-07-28. Pages connected
+  // before this keep working; the backend does not read this flag.
   'tiktok',
   'youtube',
   'bluesky',
