@@ -294,12 +294,28 @@ export class IntegrationService {
     return report;
   }
 
-  updateIntegrationGroup(org: string, id: string, group: string) {
-    return this._integrationRepository.updateIntegrationGroup(org, id, group);
+  async updateIntegrationGroup(org: string, id: string, group: string) {
+    const updated = await this._integrationRepository.updateIntegrationGroup(
+      org,
+      id,
+      group
+    );
+    if (!updated) {
+      throw new NotFoundException('Channel or customer not found');
+    }
+    return updated;
   }
 
-  updateOnCustomerName(org: string, id: string, name: string) {
-    return this._integrationRepository.updateOnCustomerName(org, id, name);
+  async updateOnCustomerName(org: string, id: string, name: string) {
+    const updated = await this._integrationRepository.updateOnCustomerName(
+      org,
+      id,
+      name
+    );
+    if (!updated) {
+      throw new NotFoundException('Channel not found');
+    }
+    return updated;
   }
 
   getIntegrationsList(org: string) {

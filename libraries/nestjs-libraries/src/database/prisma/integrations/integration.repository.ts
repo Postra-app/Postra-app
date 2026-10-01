@@ -546,7 +546,23 @@ export class IntegrationRepository {
     return integration?.integration;
   }
 
+  // Both return null when the channel is not one of this org's live channels
+  // (update on a missing row answered 500), and updateIntegrationGroup also
+  // when the customer is not this org's: it connected any customer id, so
+  // another organisation could hang its channel on your customer and read the
+  // customer's name back from its own channel list.
+  private ownChannel(org: string, id: string) {
+    return this._integration.model.integration.findFirst({
+      where: { id, organizationId: org, deletedAt: null },
+      select: { id: true },
+    });
+  }
+
   async updateOnCustomerName(org: string, id: string, name: string) {
+    if (!(await this.ownChannel(org, id))) {
+      return null;
+    }
+
     const customer = !name
       ? undefined
       : (await this._customers.model.customer.findFirst({
@@ -580,7 +596,20 @@ export class IntegrationRepository {
     });
   }
 
-  updateIntegrationGroup(org: string, id: string, group: string) {
+  async updateIntegrationGroup(org: string, id: string, group: string) {
+    if (!(await this.ownChannel(org, id))) {
+      return null;
+    }
+    if (
+      group &&
+      !(await this._customers.model.customer.findFirst({
+        where: { id: group, orgId: org, deletedAt: null },
+        select: { id: true },
+      }))
+    ) {
+      return null;
+    }
+
     return this._integration.model.integration.update({
       where: {
         id,
@@ -602,11 +631,14 @@ export class IntegrationRepository {
     });
   }
 
+  // Only customers that still have a channel: a customer emptied by moving
+  // its last channel away has no other way out of the suggestions.
   customers(orgId: string) {
     return this._customers.model.customer.findMany({
       where: {
         orgId,
         deletedAt: null,
+        integrations: { some: { deletedAt: null } },
       },
     });
   }

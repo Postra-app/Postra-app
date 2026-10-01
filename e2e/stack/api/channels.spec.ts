@@ -32,3 +32,44 @@ test('posting times are kept within one day', async () => {
   await a.post(`/integrations/${id}/time`, { data: { time: original } });
   await a.dispose();
 });
+
+test('customers: a channel cannot join another organisation’s customer', async () => {
+  const a = await signedIn('a');
+  const b = await signedIn('b');
+  await a.put(`/integrations/${channelOf('a')}/customer-name`, {
+    data: { name: 'Private client of A' },
+  });
+  const customers = await (await a.get('/integrations/customers')).json();
+  const customerOfA = customers.find((c: { name: string }) => c.name === 'Private client of A');
+  expect(customerOfA).toBeTruthy();
+
+  // B points its own channel at A's customer id.
+  const res = await b.put(`/integrations/${channelOf('b')}/group`, {
+    data: { group: customerOfA.id },
+  });
+  expect(res.status()).toBe(404);
+  const listOfB = JSON.stringify(await (await b.get('/integrations/list')).json());
+  expect(listOfB).not.toContain('Private client of A');
+
+  await a.put(`/integrations/${channelOf('a')}/customer-name`, { data: { name: '' } });
+  await a.dispose();
+  await b.dispose();
+});
+
+test('customers: unknown or foreign channels are 404, and an emptied customer is not offered again', async () => {
+  const a = await signedIn('a');
+  const unknown = '00000000-0000-4000-8000-000000000000';
+  expect(
+    (await a.put(`/integrations/${unknown}/customer-name`, { data: { name: 'x' } })).status()
+  ).toBe(404);
+  expect(
+    (await a.put(`/integrations/${channelOf('b')}/customer-name`, { data: { name: 'x' } })).status()
+  ).toBe(404);
+  expect((await a.put(`/integrations/${unknown}/group`, { data: { group: '' } })).status()).toBe(404);
+
+  await a.put(`/integrations/${channelOf('a')}/customer-name`, { data: { name: 'Short-lived client' } });
+  await a.put(`/integrations/${channelOf('a')}/customer-name`, { data: { name: '' } });
+  const names = (await (await a.get('/integrations/customers')).json()).map((c: { name: string }) => c.name);
+  expect(names).not.toContain('Short-lived client');
+  await a.dispose();
+});
