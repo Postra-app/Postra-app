@@ -10,6 +10,8 @@ export const USERS = {
     password: 'Stack-tests-A-1',
     org: 'Stack Org A',
     apiKey: 'stack-api-key-a',
+    tier: 'PRO',
+    channels: 6,
     channel: { id: 'stack-channel-a', name: 'Stack Bluesky A' },
     // Publishes for real — to e2e/stack/fake-mastodon.mjs.
     mastodon: { id: 'stack-mastodon-a', name: 'Stack Mastodon A' },
@@ -19,6 +21,9 @@ export const USERS = {
     password: 'Stack-tests-B-1',
     org: 'Stack Org B',
     apiKey: 'stack-api-key-b',
+    // Starter: the cheapest paid plan, the one with the most plan gates.
+    tier: 'STANDARD',
+    channels: 3,
     channel: { id: 'stack-channel-b', name: 'Stack Bluesky B' },
   },
 } as const;
@@ -79,9 +84,9 @@ export const resetAndSeed = async (databaseUrl: string, redisUrl: string) => {
       await prisma.subscription.create({
         data: {
           organizationId: org.id,
-          subscriptionTier: 'PRO',
+          subscriptionTier: user.tier,
           period: 'MONTHLY',
-          totalChannels: 6,
+          totalChannels: user.channels,
           isLifetime: false,
         },
       });
