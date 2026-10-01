@@ -15,14 +15,14 @@ export const signedIn = (user: UserKey) =>
 
 export const anonymous = () => pwRequest.newContext({ baseURL: BACKEND_URL });
 
-export const channelOf = (user: UserKey) => USERS[user].channel.id;
+export const channelOf = (user: 'a' | 'b') => USERS[user].channel.id;
 
 const inDays = (days: number) =>
   new Date(Date.now() + days * 86_400_000).toISOString();
 
 // The body the composer sends for "Save as draft" on one channel.
 export const draftBody = (
-  user: UserKey,
+  user: 'a' | 'b',
   content: string,
   overrides: Record<string, unknown> = {}
 ) => ({
@@ -55,7 +55,7 @@ export const listPosts = async (api: APIRequestContext) => {
 
 export const createDraft = async (
   api: APIRequestContext,
-  user: UserKey,
+  user: 'a' | 'b',
   content: string
 ) => {
   const res = await api.post('/posts', { data: draftBody(user, content) });

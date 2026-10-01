@@ -9,6 +9,9 @@ export const USERS = {
     email: 'owner-a@example.com',
     password: 'Stack-tests-A-1',
     org: 'Stack Org A',
+    apiKey: 'stack-api-key-a',
+    tier: 'PRO',
+    channels: 6,
     channel: { id: 'stack-channel-a', name: 'Stack Bluesky A' },
     // Publishes for real — to e2e/stack/fake-mastodon.mjs.
     mastodon: { id: 'stack-mastodon-a', name: 'Stack Mastodon A' },
@@ -17,11 +20,22 @@ export const USERS = {
     email: 'owner-b@example.com',
     password: 'Stack-tests-B-1',
     org: 'Stack Org B',
+    apiKey: 'stack-api-key-b',
+    // Starter: the cheapest paid plan, the one with the most plan gates.
+    tier: 'STANDARD',
+    channels: 3,
     channel: { id: 'stack-channel-b', name: 'Stack Bluesky B' },
   },
 } as const;
 
-export type UserKey = keyof typeof USERS;
+// A plain member (role USER) of organisation A: can work, cannot manage the
+// team, billing or the API key.
+export const MEMBER = {
+  email: 'member-a@example.com',
+  password: 'Stack-tests-M-1',
+} as const;
+
+export type UserKey = keyof typeof USERS | 'member';
 
 const refuse = (url: string) => {
   throw new Error(
@@ -51,7 +65,7 @@ export const resetAndSeed = async (databaseUrl: string, redisUrl: string) => {
 
     for (const user of Object.values(USERS)) {
       const org = await prisma.organization.create({
-        data: { name: user.org },
+        data: { name: user.org, apiKey: user.apiKey },
       });
       const created = await prisma.user.create({
         data: {
@@ -70,9 +84,9 @@ export const resetAndSeed = async (databaseUrl: string, redisUrl: string) => {
       await prisma.subscription.create({
         data: {
           organizationId: org.id,
-          subscriptionTier: 'PRO',
+          subscriptionTier: user.tier,
           period: 'MONTHLY',
-          totalChannels: 6,
+          totalChannels: user.channels,
           isLifetime: false,
         },
       });
@@ -89,6 +103,24 @@ export const resetAndSeed = async (databaseUrl: string, redisUrl: string) => {
         },
       });
     }
+
+    const orgOfA = await prisma.organization.findFirstOrThrow({
+      where: { name: USERS.a.org },
+    });
+    const member = await prisma.user.create({
+      data: {
+        email: MEMBER.email,
+        password: hashSync(MEMBER.password, 10),
+        providerName: 'LOCAL',
+        name: 'Stack',
+        lastName: 'Member',
+        timezone: 0,
+        activated: true,
+      },
+    });
+    await prisma.userOrganization.create({
+      data: { userId: member.id, organizationId: orgOfA.id, role: 'USER' },
+    });
 
     const { mastodon } = USERS.a;
     const orgA = await prisma.organization.findFirstOrThrow({

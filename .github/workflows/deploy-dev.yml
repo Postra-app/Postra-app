@@ -247,11 +247,11 @@ jobs:
       # A healthy /api/monitor/queue/main does not mean a customer can use the
       # app. Sign in as the test account and walk calendar → composer → draft
       # saved → draft deleted (e2e/playwright). Drafts only — nothing publishes.
-      # ⚠️ Report-only until it has passed three deploys in a row; then drop
-      # continue-on-error and a failure rolls back like a failed health check.
+      # A failure rolls back like a failed health check. (Report-only until it
+      # passed three deploys in a row: runs 36776530438, 36852451434,
+      # 36893338653.)
       - name: Smoke test (Playwright)
         id: smoke
-        continue-on-error: true
         env:
           E2E_BASE_URL: https://app.postra.pl
           E2E_EMAIL: ${{ secrets.E2E_EMAIL }}
@@ -272,8 +272,10 @@ jobs:
           e2e/playwright/node_modules/.bin/playwright test -c e2e/playwright --project smoke
 
       # Screenshots only: traces are off in CI (they carry the session cookie).
+      # failure() is needed: an `if` without a status function gets an implicit
+      # success(), and after a failed smoke nothing is successful any more.
       - name: Upload smoke test screenshots
-        if: steps.smoke.outcome == 'failure'
+        if: failure() && steps.smoke.outcome == 'failure'
         uses: actions/upload-artifact@v4
         with:
           name: playwright-smoke
