@@ -61,3 +61,15 @@ test("the channel menu opens from the keyboard and its items are readable", asyn
   expect(color).not.toBe('rgb(69, 69, 69)');
   expect(color).toMatch(/rgba?\(255, 255, 255/);
 });
+
+test("a tile's hint does not hang over the dialog its click opens", async ({ page }) => {
+  await page.goto('/launches');
+  await page.getByRole('button', { name: 'Add Channel' }).click();
+  const tile = page.getByText('Instagram', { exact: false }).filter({ hasText: 'Facebook Business' });
+  await tile.hover();
+  const hint = page.locator('#tooltip');
+  await expect(hint).toBeVisible();
+  await tile.click();
+  await expect(page.getByText('Before you connect Instagram')).toBeVisible();
+  await expect(hint).toBeHidden();
+});
