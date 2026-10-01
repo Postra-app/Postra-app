@@ -58,7 +58,10 @@ export const InstagramContinue = withContinueProvider<
           alt="profile"
         />
       </div>
-      <div>{item.name}</div>
+      <div className="text-newTextColor">{item.name}</div>
+      {!!item.username && item.username !== item.name && (
+        <div className="text-[13px] text-newTextColor/70">@{item.username}</div>
+      )}
     </>
   ),
 });
