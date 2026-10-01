@@ -107,3 +107,18 @@ test('removing a time slot removes that slot, not its neighbour', async ({ page 
   await expect.poll(slots).toEqual(before);
   await api.dispose();
 });
+
+test('the bot dialog says what it changes and is a single card', async ({ page }) => {
+  // Discord bots only take a nickname: the dialog was titled "Change Bot
+  // Picture" and sat in a second frame (a box in a box).
+  await page.goto('/launches');
+  await page
+    .getByText('Stack Discord A', { exact: true })
+    .locator('xpath=ancestor::*[.//*[@aria-label="Channel options"]][1]')
+    .getByRole('button', { name: 'Channel options' })
+    .click();
+  await page.getByText('Change Bot Nickname', { exact: true }).click();
+  await expect(page.getByText('Change Bot Nickname', { exact: true }).last()).toBeVisible();
+  await expect(page.getByText('Change Bot Picture', { exact: true })).toHaveCount(0);
+  await expect(page.locator('.animate-modalIn')).toHaveCount(0);
+});

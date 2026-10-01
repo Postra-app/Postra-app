@@ -1480,5 +1480,7 @@
   "background_gradient": "Gradient background",
   "background_gradient_hint": "Fades the background colour into a darker shade of itself",
   "channel_options": "Channel options",
-  "remove_time_slot": "Remove {{time}}"
+  "remove_time_slot": "Remove {{time}}",
+  "change_bot_nickname_title": "Change Bot Nickname",
+  "change_bot_picture_and_nickname_title": "Change Bot Picture and Nickname"
 }

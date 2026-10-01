@@ -1480,5 +1480,7 @@
   "background_gradient": "Tło z gradientem",
   "background_gradient_hint": "Przechodzi z wybranego koloru tła w jego ciemniejszy odcień",
   "channel_options": "Opcje kanału",
-  "remove_time_slot": "Usuń {{time}}"
+  "remove_time_slot": "Usuń {{time}}",
+  "change_bot_nickname_title": "Zmień nazwę bota",
+  "change_bot_picture_and_nickname_title": "Zmień zdjęcie i nazwę bota"
 }
