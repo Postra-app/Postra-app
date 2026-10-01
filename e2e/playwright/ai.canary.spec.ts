@@ -55,7 +55,7 @@ test('the post Creator runs its whole graph on the real model', async ({ request
 test('the Agent answers "list my channels" with the real channels', async ({ page }) => {
   test.setTimeout(180_000);
   await page.goto('/agents');
-  const input = page.getByPlaceholder('Write your message...');
+  const input = page.getByPlaceholder(/Write your (post|message)/);
   await expect(input).toBeVisible();
   // The page already shows channel names (and "Postra" everywhere), so count:
   // the answer has to add mentions of a real channel that were not there.

@@ -96,14 +96,17 @@ const waitPublished = async (api: APIRequestContext, ids: string[], timeout: num
 const onPlatform = async (api: APIRequestContext, releaseURL: string, content: string) => {
   const url = new URL(releaseURL);
   if (url.hostname === 'bsky.app') {
-    const [, , handle, , rkey] = url.pathname.split('/');
-    const did = (
-      await (
-        await api.get(
-          `https://public.api.bsky.app/xrpc/com.atproto.identity.resolveHandle?handle=${handle}`
-        )
-      ).json()
-    ).did;
+    // The provider writes the account's DID where bsky.app expects a handle.
+    const [, , actor, , rkey] = url.pathname.split('/');
+    const did = actor.startsWith('did:')
+      ? actor
+      : (
+          await (
+            await api.get(
+              `https://public.api.bsky.app/xrpc/com.atproto.identity.resolveHandle?handle=${actor}`
+            )
+          ).json()
+        ).did;
     const thread = await api.get(
       `https://public.api.bsky.app/xrpc/app.bsky.feed.getPostThread?uri=at://${did}/app.bsky.feed.post/${rkey}`
     );
