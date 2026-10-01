@@ -6,7 +6,7 @@ import { parseDataUrl } from '@gitroom/nestjs-libraries/upload/data.url';
 // Use undici's fetch (not Node's global fetch): the `dispatcher` option only
 // interoperates with an Agent from the same undici instance.
 import { fetch } from 'undici';
-// eslint-disable-next-line @typescript-eslint/no-var-requires
+// eslint-disable-next-line @typescript-eslint/no-require-imports
 const { fromBuffer } = require('file-type');
 
 const LOCAL_STORAGE_ALLOWED_MIME = new Set<string>([

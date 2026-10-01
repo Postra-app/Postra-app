@@ -175,7 +175,7 @@ export class MediaService {
       .digest('hex')}`;
 
     let backgroundUrl = await ioRedis.get(cacheKey);
-    let cacheHit = !!backgroundUrl;
+    const cacheHit = !!backgroundUrl;
 
     if (!backgroundUrl) {
       backgroundUrl = await this._subscriptionService.useCredit(

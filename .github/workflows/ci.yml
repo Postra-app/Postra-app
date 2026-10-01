@@ -45,6 +45,38 @@ jobs:
         timeout-minutes: 5
         run: pnpm test --passWithNoTests
 
+  # Lint and type-check gate. `pnpm build` is not a type gate (Next skips files
+  # no route imports, Nest never compiles specs), and lint never ran in CI
+  # before this job (E2E-01-06).
+  quality:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10.6.1
+          run_install: false
+
+      - name: Setup Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Lint
+        run: pnpm lint --quiet
+
+      - name: Type-check
+        run: pnpm typecheck
+
   # Boot applies migration files (prisma migrate deploy), so the schema is only
   # real once a migration carries it. `db push` used to reconcile the difference
   # silently; nothing does now, and a schema change without a migration would

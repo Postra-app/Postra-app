@@ -39,7 +39,7 @@ import { ssrfSafeDispatcher } from '@gitroom/nestjs-libraries/dtos/webhooks/ssrf
 // undici's own fetch — Node's global fetch can't drive the undici-package
 // dispatcher below (throws "invalid onRequestStart method"); see design-render.
 import { fetch } from 'undici';
-// eslint-disable-next-line @typescript-eslint/no-var-requires
+// eslint-disable-next-line @typescript-eslint/no-require-imports
 const { fromBuffer } = require('file-type');
 
 const PUBLIC_API_ALLOWED_MIME = new Set<string>([

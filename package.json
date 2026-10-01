@@ -40,6 +40,8 @@
     "docker-create": "./var/docker/docker-create.sh",
     "postinstall": "pnpm run prisma-generate",
     "test": "jest --coverage --forceExit --reporters=default --reporters=jest-junit",
+    "lint": "eslint apps libraries e2e",
+    "typecheck": "node scripts/typecheck.mjs",
     "e2e:smoke": "playwright test -c e2e/playwright",
     "db:seed": "pnpm dlx tsx prisma/seed.ts"
   },
@@ -296,7 +298,7 @@
     "autoprefixer": "^10.4.17",
     "babel-jest": "29.7.0",
     "cross-env": "^10.0.0",
-    "eslint": "8.57.0",
+    "eslint": "9.39.5",
     "eslint-config-next": "16.3.6",
     "eslint-config-prettier": "^9.0.0",
     "eslint-plugin-import": "2.27.5",

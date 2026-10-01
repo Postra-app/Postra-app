@@ -12,7 +12,7 @@ import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { Request, Response } from 'express';
 import path from 'path';
 import { makeId } from '@gitroom/nestjs-libraries/services/make.is';
-// eslint-disable-next-line @typescript-eslint/no-var-requires
+// eslint-disable-next-line @typescript-eslint/no-require-imports
 const { fromBuffer } = require('file-type');
 
 // Mirror of r2.uploader.ts but pointed at AWS S3 (postra-dev-media via the

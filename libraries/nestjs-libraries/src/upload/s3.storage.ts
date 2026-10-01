@@ -14,7 +14,7 @@ import { parseDataUrl } from '@gitroom/nestjs-libraries/upload/data.url';
 // undici@8 Agent to Node 22's bundled-undici global fetch throws
 // "invalid onRequestStart method", so every remote upload silently failed.
 import { fetch } from 'undici';
-// eslint-disable-next-line @typescript-eslint/no-var-requires
+// eslint-disable-next-line @typescript-eslint/no-require-imports
 const { fromBuffer } = require('file-type');
 
 const ALLOWED_MIME_TYPES = new Set<string>([

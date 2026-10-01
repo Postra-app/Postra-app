@@ -13,9 +13,9 @@ Object.assign(globalThis, {
 
 import React, { FC } from 'react';
 import { FormProvider, useForm } from 'react-hook-form';
-// eslint-disable-next-line @typescript-eslint/no-var-requires
+// eslint-disable-next-line @typescript-eslint/no-require-imports
 const { act, fireEvent, render, screen } = require('@testing-library/react');
-// eslint-disable-next-line @typescript-eslint/no-var-requires
+// eslint-disable-next-line @typescript-eslint/no-require-imports
 const { Checkbox } = require('./checkbox');
 
 let form: ReturnType<typeof useForm>;

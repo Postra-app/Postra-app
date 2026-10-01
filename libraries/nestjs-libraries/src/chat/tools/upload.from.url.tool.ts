@@ -10,7 +10,7 @@ import { Readable } from 'stream';
 // Use undici's fetch (not Node's global fetch): the `dispatcher` option only
 // interoperates with an Agent from the same undici instance.
 import { fetch } from 'undici';
-// eslint-disable-next-line @typescript-eslint/no-var-requires
+// eslint-disable-next-line @typescript-eslint/no-require-imports
 const { fromBuffer } = require('file-type');
 
 // Same allow-list as the public API /upload-from-url route.
