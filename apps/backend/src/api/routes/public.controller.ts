@@ -247,8 +247,7 @@ export class PublicController {
     }
 
     if (!r.ok && r.status !== 206) {
-      res.status(r.status);
-      throw new Error(`Upstream error: ${r.statusText}`);
+      return res.status(r.status).send(`Upstream error: ${r.statusText}`);
     }
 
     const type = r.headers.get('content-type') ?? 'application/octet-stream';

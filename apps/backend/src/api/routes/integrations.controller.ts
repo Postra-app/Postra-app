@@ -10,6 +10,8 @@ import {
   Post,
   Put,
   Query,
+  BadRequestException,
+  NotFoundException,
 } from '@nestjs/common';
 import { ioRedis } from '@gitroom/nestjs-libraries/redis/redis.service';
 import { IntegrationManager } from '@gitroom/nestjs-libraries/integrations/integration.manager';
@@ -146,7 +148,7 @@ export class IntegrationsController {
     @Body('additionalSettings') body: string
   ) {
     if (typeof body !== 'string') {
-      throw new Error('Invalid body');
+      throw new BadRequestException('Invalid body');
     }
 
     await this._integrationService.updateProviderSettings(org.id, id, body);
@@ -162,14 +164,14 @@ export class IntegrationsController {
       id
     );
     if (!integration) {
-      throw new Error('Invalid integration');
+      throw new NotFoundException('Channel not found');
     }
 
     const manager = this._integrationManager.getSocialIntegration(
       integration.providerIdentifier
     );
     if (!manager.changeProfilePicture && !manager.changeNickname) {
-      throw new Error('Invalid integration');
+      throw new NotFoundException('Channel not found');
     }
 
     const { url } = manager.changeProfilePicture
@@ -265,7 +267,7 @@ export class IntegrationsController {
       this._integrationManager.getSocialIntegration(integration);
 
     if (integrationProvider.externalUrl && !externalUrl) {
-      throw new Error('Missing external url');
+      throw new BadRequestException('Missing external url');
     }
 
     try {
@@ -348,7 +350,7 @@ export class IntegrationsController {
       body.id
     );
     if (!getIntegration) {
-      throw new Error('Invalid integration');
+      throw new NotFoundException('Channel not found');
     }
 
     let newList: any[] | { none: true } = [];
@@ -404,14 +406,14 @@ export class IntegrationsController {
       body.id
     );
     if (!getIntegration) {
-      throw new Error('Invalid integration');
+      throw new NotFoundException('Channel not found');
     }
 
     const integrationProvider = this._integrationManager.getSocialIntegration(
       getIntegration.providerIdentifier
     );
     if (!integrationProvider) {
-      throw new Error('Invalid provider');
+      throw new BadRequestException('Invalid provider');
     }
 
     // @ts-ignore
@@ -451,7 +453,7 @@ export class IntegrationsController {
         return false;
       }
     }
-    throw new Error('Function not found');
+    throw new NotFoundException('Function not found');
   }
 
   @Post('/disable')

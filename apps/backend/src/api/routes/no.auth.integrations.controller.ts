@@ -13,6 +13,8 @@ import {
   Req,
   Res,
   UseFilters,
+  BadRequestException,
+  NotFoundException,
 } from '@nestjs/common';
 import { Request, Response } from 'express';
 import { randomBytes } from 'crypto';
@@ -209,7 +211,7 @@ export class NoAuthIntegrationsController {
         .getAllowedSocialsIntegrations()
         .includes(integration)
     ) {
-      throw new Error('Integration not allowed');
+      throw new BadRequestException('Integration not allowed');
     }
 
     const integrationProvider =
@@ -593,12 +595,12 @@ export class NoAuthIntegrationsController {
   @Post('/public/provider/:id/connect')
   async saveProviderPage(@Param('id') id: string, @Body() body: any) {
     if (!body.state) {
-      throw new Error('Invalid state');
+      throw new BadRequestException('Invalid state');
     }
 
     const organization = await ioRedis.get(`organization:${body.state}`);
     if (!organization) {
-      throw new Error('Organization not found');
+      throw new NotFoundException('Organization not found');
     }
 
     const org = await this._organizationService.getOrgById(organization);

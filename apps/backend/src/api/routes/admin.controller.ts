@@ -7,6 +7,7 @@ import {
   Param,
   Post,
   Query,
+  ServiceUnavailableException,
 } from '@nestjs/common';
 import { GetUserFromRequest } from '@gitroom/nestjs-libraries/user/user.from.request';
 import { Prisma, User } from '@prisma/client';
@@ -527,7 +528,7 @@ export class AdminController {
     // not just that the port accepts TCP.
     const redisStart = Date.now();
     try {
-      if (!ioRedis) throw new Error('REDIS_URL not configured');
+      if (!ioRedis) throw new ServiceUnavailableException('REDIS_URL not configured');
       await ioRedis.ping();
       checks.redis = { status: 'ok', latencyMs: Date.now() - redisStart };
     } catch (e: any) {
