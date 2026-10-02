@@ -112,8 +112,10 @@ jobs:
               "test -s .env.new && mv .env.new .env",
               "PREV=$(awk \"/image:/ {print \\$2; exit}\" docker-compose.override.yml 2>/dev/null || true); if [ -n \"$PREV\" ] && [ \"$PREV\" != \"\($image)\" ]; then echo \"$PREV\" > .previous-image; fi",
               "cat > docker-compose.override.yml <<EOF\nservices:\n  app:\n    image: \($image)\nEOF",
+              "mkdir -p /var/lib/postra-watchdog && date +%s > /var/lib/postra-watchdog/last-action && echo deploy > /var/lib/postra-watchdog/last-action.by",
               "docker compose up -d --force-recreate app",
               "sleep 3 && docker exec -u root postra-app chown -R www:www /uploads || true",
+              "PREV=$(cat .previous-image 2>/dev/null || true); if [ -n \"$PREV\" ] && [ \"$PREV\" != \"\($image)\" ]; then docker rm postra-app-previous >/dev/null 2>&1 || true; docker create --name postra-app-previous \"$PREV\" >/dev/null || true; fi",
               "docker image prune -af || true"
             ]
           }')
@@ -229,7 +231,7 @@ jobs:
                 --instance-ids "$INSTANCE_ID" \
                 --document-name "AWS-RunShellScript" \
                 --comment "Auto-recover pm2 first-boot hang" \
-                --parameters 'commands=["docker restart postra-app"]' \
+                --parameters "$(jq -nc '{commands: ["mkdir -p /var/lib/postra-watchdog && flock -w 90 /var/lib/postra-watchdog/lock sh -c '"'"'D=/var/lib/postra-watchdog; AGO=$(( $(date +%s) - $(cat $D/last-action 2>/dev/null || echo 0) )); if [ $AGO -lt 120 ]; then echo \"$(cat $D/last-action.by) restarted $AGO s ago - skip\"; else date +%s > $D/last-action; echo deploy-health > $D/last-action.by; docker restart postra-app; fi'"'"'"]}')" \
                 --query "Command.CommandId" \
                 --output text)
               echo "Restart SSM command: ${RESTART_CMD}"
@@ -331,6 +333,7 @@ jobs:
               "aws ecr get-login-password --region \($region) | docker login --username AWS --password-stdin \($registry)",
               "docker pull \"$PREV\"",
               "printf \"services:\\n  app:\\n    image: %s\\n\" \"$PREV\" > docker-compose.override.yml",
+              "mkdir -p /var/lib/postra-watchdog && date +%s > /var/lib/postra-watchdog/last-action && echo rollback > /var/lib/postra-watchdog/last-action.by",
               "docker compose up -d --force-recreate app",
               "sleep 3 && docker exec -u root postra-app chown -R www:www /uploads || true"
             ]
