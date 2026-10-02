@@ -44,6 +44,7 @@
     "e2e:stack": "docker compose -f e2e/stack/docker-compose.yml up -d --wait && dotenv -e e2e/stack/stack.env -- node scripts/db-migrate.mjs && playwright test -c e2e/stack",
     "e2e:stack:ui": "STACK_UI=1 pnpm e2e:stack",
     "e2e:stack:restart": "STACK_RESTART=1 pnpm e2e:stack --project restart",
+    "e2e:stack:billing": "STACK_BILLING=1 pnpm e2e:stack --project billing",
     "e2e:stack:down": "docker compose -f e2e/stack/docker-compose.yml down",
     "db:seed": "pnpm dlx tsx prisma/seed.ts"
   },

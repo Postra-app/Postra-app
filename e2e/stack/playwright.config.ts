@@ -98,6 +98,10 @@ export default defineConfig({
     ...(process.env.STACK_RESTART
       ? [{ name: 'restart', testMatch: /restart\/.*\.spec\.ts/ }]
       : []),
+    // Stripe TEST mode billing paths: `pnpm e2e:stack:billing`.
+    ...(process.env.STACK_BILLING
+      ? [{ name: 'billing', testMatch: /billing\/.*\.spec\.ts/ }]
+      : []),
     ...(withUi
       ? [
           {
