@@ -1,11 +1,28 @@
+// Boot stages with time and RSS, for the start that hangs before Nest's first
+// log line (e2e/backend/01-boot-hang.md, B0): the last [boot] line before a
+// hang names the step. writeSync because a hung event loop never flushes an
+// async write to the pm2 pipe.
+import { writeSync } from 'fs';
+const bootStep = (step: string) =>
+  writeSync(
+    1,
+    `[boot] ${new Date().toISOString()} ${step} rss=${Math.round(
+      process.memoryUsage().rss / 1e6
+    )}MB\n`
+  );
+bootStep('start');
 import { initializeSentry } from '@gitroom/nestjs-libraries/sentry/initialize.sentry';
+bootStep('sentry imported');
 initializeSentry('backend', true);
+bootStep('sentry initialised');
 import compression from 'compression';
 
 import { loadSwagger } from '@gitroom/helpers/swagger/load.swagger';
 import { json } from 'express';
 import { Runtime } from '@temporalio/worker';
+bootStep('temporal worker imported');
 Runtime.install({ shutdownSignals: [] });
+bootStep('temporal runtime installed');
 
 process.env.TZ = 'UTC';
 
@@ -14,6 +31,7 @@ import cookieParser from 'cookie-parser';
 import { Logger, ValidationPipe } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
+bootStep('app module imported');
 
 import {
   PermissionDeniedExceptionFilter,
@@ -28,6 +46,7 @@ import { ioRedis } from '@gitroom/nestjs-libraries/redis/redis.service';
 import { startMetricsServer } from './metrics/metrics';
 
 async function start() {
+  bootStep('nest create');
   const app = await NestFactory.create(AppModule, {
     rawBody: true,
     cors: {
@@ -133,7 +152,9 @@ async function start() {
   const port = process.env.PORT || 3000;
 
   try {
+    bootStep('listen');
     await app.listen(port);
+    bootStep('listening');
     Logger.log(`Backend started successfully on port ${port}`, 'Bootstrap');
 
     // Prometheus /metrics on a dedicated internal port (not behind the app's

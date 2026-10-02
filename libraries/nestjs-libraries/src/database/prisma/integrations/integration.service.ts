@@ -1,3 +1,4 @@
+import { META_GRAPH_API_VERSION } from '@gitroom/nestjs-libraries/integrations/social/meta.graph.version';
 import {
   HttpException,
   HttpStatus,
@@ -246,7 +247,7 @@ export class IntegrationService {
         // resolves to the Page, which has no permissions edge. debug_token
         // reports the scopes of the authorization behind any of them.
         const response = await fetch(
-          `https://graph.facebook.com/v20.0/debug_token?input_token=${
+          `https://graph.facebook.com/${META_GRAPH_API_VERSION}/debug_token?input_token=${
             integration.token.split('___')[0]
           }&access_token=${appToken}`
         );

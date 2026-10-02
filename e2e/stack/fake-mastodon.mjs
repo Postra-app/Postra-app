@@ -28,7 +28,7 @@ const readBody = (req) =>
 
 // The provider sends multipart form data; only the text fields matter here.
 const formFields = (body, contentType) => {
-  const boundary = /boundary=(.+)$/.exec(contentType || '')?.[1];
+  const boundary = (contentType || '').split('boundary=')[1];
   if (!boundary) {
     try {
       return JSON.parse(body.toString() || '{}');

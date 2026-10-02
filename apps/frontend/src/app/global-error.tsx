@@ -2,17 +2,18 @@
 import * as Sentry from '@sentry/nextjs';
 import NextError from 'next/error';
 import { useEffect } from 'react';
-import { useVariables } from '@gitroom/react/helpers/variable.context';
 
 export default function GlobalError({
   error,
 }: {
   error: Error & { digest?: string };
 }) {
-  const { sentryDsn } = useVariables();
-
   useEffect(() => {
-    if (!sentryDsn) {
+    // This component replaces the root layout, so the variables context is not
+    // mounted here and its DSN was always '' — every React render crash in
+    // production went unreported (upstream c0bd447d). Ask the SDK instead:
+    // no client means Sentry is off.
+    if (!Sentry.getClient()) {
       return;
     }
     const eventId = Sentry.captureException(error);
