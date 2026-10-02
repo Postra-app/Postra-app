@@ -109,8 +109,7 @@ export class UsersController {
     }
 
     // Resolved state, not the presence of a cookie: an id that matches nothing
-    // used to light up the banner while the session was still the admin's own
-    // (E2E-09-06b).
+    // used to light up the banner while the session was still the admin's own.
     const impersonate = !!(req as any).impersonatedBy;
     // @ts-ignore
     return {
@@ -168,8 +167,7 @@ export class UsersController {
 
     // An empty id is "stop", not "impersonate nobody". It used to travel the
     // same path as a start: an empty cookie written for another year, and an
-    // `admin.impersonate` row indistinguishable from the row that began it
-    // (E2E-09-06c).
+    // `admin.impersonate` row indistinguishable from the row that began it.
     if (!id) {
       clearImpersonateCookie(response);
       this._auditService.record({ action: 'admin.impersonate.stop' });
@@ -183,8 +181,7 @@ export class UsersController {
     // Validate before writing anything. Any id at all used to set a year-long
     // cookie; when it resolved to nothing the middleware quietly carried on as
     // the admin, while /user/self read the cookie's mere presence and showed a
-    // banner saying they were impersonating themselves — for up to a year
-    // (E2E-09-06a, E2E-09-06b).
+    // banner saying they were impersonating themselves — for up to a year.
     const target = await this._orgService.getUserOrg(id);
     if (!target) {
       throw new HttpException('No such user organization', 404);
@@ -334,7 +331,7 @@ export class UsersController {
   ) {
     // Clearing the cookie ends the browser's session, and used to be all that
     // happened — a token in the app's Keychain kept working for the rest of its
-    // 30 days (E2E-10-17). A mobile token carries a session id, and this is
+    // 30 days. A mobile token carries a session id, and this is
     // where it stops being accepted.
     await this._authService.endMobileSession(
       (request.headers.auth as string) || request.cookies?.auth

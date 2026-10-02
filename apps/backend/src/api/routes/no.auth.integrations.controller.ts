@@ -156,7 +156,7 @@ export class NoAuthIntegrationsController {
    * Tells the OAuth callback page whether this flow was started by the native
    * app, and where to hand it back.
    *
-   * ⛔ Why this exists (E2E-10-70). The provider always redirects the *browser*
+   * ⛔ Why this exists. The provider always redirects the *browser*
    * to `app.postra.pl/integrations/social/:provider`, and that page then calls
    * `POST /social-connect/:provider`. On a phone the browser has no Postra
    * session — the app signs in with a token in secure storage, not a cookie —
@@ -405,7 +405,7 @@ export class NoAuthIntegrationsController {
 
     // Matching the provider account id is not enough: anyone knows their own.
     // A reconnect skips the plan and channel-limit gates below, so it has to
-    // be a channel this org already has (E2E-01-19).
+    // be a channel this org already has.
     if (
       refresh &&
       !(await this._integrationService.hasChannel(org.id, integration, refresh))

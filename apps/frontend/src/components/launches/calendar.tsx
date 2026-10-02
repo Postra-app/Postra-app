@@ -235,7 +235,7 @@ const usePostActions = (onMutate?: () => void) => {
         });
         // This used to toast success without looking at the answer, so a 403,
         // a 500 or a dropped connection all said "deleted" and left the post
-        // in the calendar (E2E-05-01).
+        // in the calendar.
         if (!response.ok) {
           toaster.show(
             `${t(
@@ -373,7 +373,7 @@ export const DayView = () => {
               key={option[0].time}
               // shrink-0: this list is a height-capped flex column, so a slot with
               // several posts was squeezed back to 60px and its tiles spilled over
-              // the neighbouring slots, hiding a failed post (E2E-05-11).
+              // the neighbouring slots, hiding a failed post.
               className="min-h-[60px] shrink-0 rounded-[10px] flex justify-center items-center gap-[10px] mb-[20px]"
             >
               <CalendarContext.Provider

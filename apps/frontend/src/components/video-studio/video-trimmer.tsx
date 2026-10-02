@@ -84,7 +84,7 @@ export const VideoTrimmer: FC<VideoTrimmerProps> = ({ file, onTrimmed }) => {
     // Many clips — screen recordings, muted exports, photo→video slideshows —
     // have no decodable audio track. WaveSurfer then errors and never reaches
     // `ready`, where the region is made, and the region is the only way to set
-    // start and end: such a clip could not be trimmed at all (E2E-06-10).
+    // start and end: such a clip could not be trimmed at all.
     // Load it again with a flat waveform of the video's length instead; given
     // peaks, WaveSurfer skips decoding and `ready` follows. The video may not
     // know its duration yet, in which case onLoadedMetadata finishes the job.
@@ -189,7 +189,7 @@ export const VideoTrimmer: FC<VideoTrimmerProps> = ({ file, onTrimmed }) => {
           output,
           trim: { start: trimStart, end: trimEnd },
           // An iPhone clip is HEVC, which X and LinkedIn refuse; an H.264
-          // clip is copied as before (E2E-06-15).
+          // clip is copied as before.
           video: { codec: 'avc' },
         });
         registerCancel(() => conversion.cancel());

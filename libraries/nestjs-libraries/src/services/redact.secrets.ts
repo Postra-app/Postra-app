@@ -8,7 +8,7 @@
  * YouTube) hand back a *plaintext* access token that the workflow writes onto
  * the same object, so the row that lands in `Errors` can hold a working
  * credential. The admin panel then shows it under "View" and copies it with
- * "Copy Debug Code" (e2e/bugs.md — E2E-09-01).
+ * "Copy Debug Code".
  *
  * The blocklist is keyed by name rather than by shape on purpose. `body` is an
  * arbitrary error payload — provider responses, nested settings, whatever the

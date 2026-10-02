@@ -115,7 +115,7 @@ export const renderDesignSpec = async (
       evented: false,
     });
     // The background comes from an image model (or the cache of one). Marked
-    // so every export can report it as AI-generated (E2E-06-04).
+    // so every export can report it as AI-generated.
     (bgImg as fabric.FabricImage & { studioAiGenerated?: boolean }).studioAiGenerated =
       true;
     bgImg.scaleToWidth(width);

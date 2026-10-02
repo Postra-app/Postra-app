@@ -43,7 +43,7 @@ const PRESETS: { key: string; label: string }[] = [
 let pickedSeq = 0;
 
 /**
- * "Zdjęcia → wideo" — turn product photos into a branded vertical clip. Same
+ * "Photos → video" — turn product photos into a branded vertical clip. Same
  * compositor output as the rest of Postra Clip; the headline reads the active
  * Brand Kit. Built for the shop owner who has photos, not footage.
  */
@@ -151,7 +151,7 @@ export const VideoSlideshow: FC<VideoSlideshowProps> = ({ onReady }) => {
           return prev;
         }
         // Eleven photos picked at once used to become ten without a word, so
-        // nobody knew which one was missing from the clip (E2E-06-12).
+        // nobody knew which one was missing from the clip.
         if (incoming.length > room) {
           toaster.show(
             t(

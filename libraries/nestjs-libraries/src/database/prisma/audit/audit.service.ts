@@ -52,8 +52,7 @@ export class AuditService {
 
     // While a session is impersonating, the caller's `user` is the target, so
     // an explicit userId here names the wrong person. The authenticated
-    // identity from the JWT wins, and the target is recorded beside it
-    // (E2E-09-35).
+    // identity from the JWT wins, and the target is recorded beside it.
     const impersonatedUserId = actor?.impersonatedUserId;
     const userId = impersonatedUserId
       ? actor?.userId
@@ -90,7 +89,7 @@ export class AuditService {
    * beside them in `metadata`, `ip` and `userAgent` filled in — and then
    * nothing read any of it. An audit nobody can read is a table, not a
    * control: answering "who put this account on Business, and when" still
-   * meant opening a psql session (E2E-09-34).
+   * meant opening a psql session.
    *
    * Actor and target are resolved to email addresses here rather than in the
    * panel, in one query for the whole page, because the id alone tells the

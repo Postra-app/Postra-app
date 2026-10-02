@@ -88,11 +88,8 @@ const enabledProviders = new Set([
   'bluesky',
   'mastodon',
   'telegram',
-  // The "Postra Threads" Meta app is still In development, so only accounts
-  // with a role in it can authorize — but the tile has to be reachable for the
-  // App Review screencast and for the reviewer following it. #188 hid it for
-  // the opposite reason; it stops mattering once that review passes and the
-  // app is published.
+  // Threads uses its own Meta app ("Postra Threads"), which passed App Review
+  // and is published, so any Threads account can authorize.
   'threads',
   'x',
   'discord',

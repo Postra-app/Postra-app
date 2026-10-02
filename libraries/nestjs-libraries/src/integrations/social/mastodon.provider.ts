@@ -23,7 +23,7 @@ export class MastodonProvider extends SocialAbstract implements SocialProvider {
   scopes = ['write:statuses', 'profile', 'write:media'];
   editor = 'normal' as const;
   // Neither Mastodon provider had a media check, so a post the platform refuses
-  // was scheduled without a word and failed at publish time (E2E-05-05).
+  // was scheduled without a word and failed at publish time.
   override async checkValidity(
     posts: Array<ValidityMedia[]>
   ): Promise<string | true> {

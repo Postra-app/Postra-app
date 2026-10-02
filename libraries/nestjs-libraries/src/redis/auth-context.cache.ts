@@ -22,7 +22,7 @@ export const bustAuthContextCacheForUsers = (userIds: string[]) =>
 // the schema was written and nothing ever wrote to it, so DAU/WAU/MAU — which
 // count users whose lastOnline falls inside a window — were counting sign-ups.
 // Measured on production: a full evening of clicking around as a signed-in
-// admin left DAU at 0 (E2E-09-03).
+// admin left DAU at 0.
 //
 // Every authenticated request would otherwise be a write, so the touch is
 // throttled through Redis: one row update per user per window, and none at all

@@ -49,7 +49,7 @@ export class XProvider extends SocialAbstract implements SocialProvider {
   dto = XDto;
 
   // Neither X provider had a media check, so a post the platform refuses
-  // was scheduled without a word and failed at publish time (E2E-05-05).
+  // was scheduled without a word and failed at publish time.
   override async checkValidity(
     posts: Array<ValidityMedia[]>
   ): Promise<string | true> {

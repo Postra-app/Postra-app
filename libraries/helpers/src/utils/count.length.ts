@@ -56,7 +56,7 @@ const URL_RE = /https?:\/\/\S+/gi;
 
 // How each platform itself counts a post against its limit, so the composer
 // counter and the server check agree with the platform instead of rejecting
-// posts it would accept (E2E-05-04, E2E-05-07):
+// posts it would accept:
 // - X: twitter-text weighting — every link is 23, emoji and CJK weigh 2;
 // - Mastodon: every link is 23, the rest in characters (graphemes);
 // - Bluesky: graphemes, links in full (no shortener);

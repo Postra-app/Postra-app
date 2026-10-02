@@ -29,7 +29,7 @@ export class SetsRepository {
   // Both return null when the id isn't a set of this org. They used to hit
   // Prisma directly: a delete of another org's (or a gone) set threw P2025, and
   // an upsert keyed on a client-supplied id collided with another org's
-  // primary key — 500s either way (E2E-05-18).
+  // primary key — 500s either way.
   async deleteSet(orgId: string, id: string) {
     const { count } = await this._sets.model.sets.deleteMany({
       where: { id, organizationId: orgId },

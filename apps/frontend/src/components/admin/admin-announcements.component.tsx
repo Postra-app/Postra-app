@@ -87,7 +87,7 @@ export const AdminAnnouncementsComponent = () => {
   // The panel reads its own paged route, not the banner's. GET /announcements
   // answers what a session should be shown — live entries only, capped — so
   // using it here hid expired entries from the one person who needs to see
-  // them (E2E-09-26).
+  // them.
   const {
     data: list,
     error: listError,
@@ -163,7 +163,7 @@ export const AdminAnnouncementsComponent = () => {
       });
       // A failed delete used to do nothing at all — no refresh, no message —
       // so the announcement stayed on screen and the operator could not tell
-      // whether it had gone (E2E-09-14).
+      // whether it had gone.
       const body = await res.json().catch(() => null);
       const outcome = deleteOutcome(res.ok, body);
       if (outcome === 'failed') {

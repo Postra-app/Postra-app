@@ -4,7 +4,7 @@
  * Every Studio export goes through `/media/upload-simple`, which knows nothing
  * about how the picture was made, so an AI design landed in the library as
  * `aiGenerated: false` and YouTube and TikTok posts went out without their AI
- * label (E2E-06-04). The canvas knows: AI layers carry `studioAiGenerated`,
+ * label. The canvas knows: AI layers carry `studioAiGenerated`,
  * which is serialised with the design, so the answer is read from the same
  * JSON that is saved next to the picture.
  */

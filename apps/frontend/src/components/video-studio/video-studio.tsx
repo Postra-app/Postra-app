@@ -209,7 +209,7 @@ export const VideoStudio: FC<VideoStudioProps> = ({
     if (!draft?.id) return;
     // A browser without WebCodecs gets the "not supported" panel anyway, so
     // downloading up to 200 MB of clip it cannot edit only cost the user
-    // their data plan (E2E-06-16).
+    // their data plan.
     if (!hasWebCodecs()) return;
     (async () => {
       setRestoringClip(true);
@@ -285,8 +285,8 @@ export const VideoStudio: FC<VideoStudioProps> = ({
         const loaded = await fetchLibraryVideoAsFile(mediaDirectory.set(media.path));
         setFile(loaded);
         setTrimmedBlob(null);
-        // It already lives in the library, so remember its id/path — "Użyj w
-        // poście" and captions can then skip re-uploading the same bytes.
+        // It already lives in the library, so remember its id/path — "Use in
+        // post" and captions can then skip re-uploading the same bytes.
         setUploadedMedia({ id: media.id, path: media.path });
         setTab('trim');
         setShowLibrary(false);

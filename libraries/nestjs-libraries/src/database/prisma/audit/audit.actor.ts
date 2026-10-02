@@ -7,7 +7,7 @@ import { AsyncLocalStorage } from 'async_hooks';
  * `@GetUserFromRequest()` — which, during impersonation, is the *target*. Every
  * audited action an admin took while wearing someone's identity was therefore
  * filed against that person's account. Not a gap in the log: a wrong row
- * (E2E-09-35). The sharpest case was chaining — admin impersonates A, then from
+ *. The sharpest case was chaining — admin impersonates A, then from
  * that session impersonates B, and the row reads "A impersonated B".
  *
  * The real identity is in the JWT, but the middleware only ever held it in a

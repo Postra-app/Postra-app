@@ -123,7 +123,7 @@ export class AuthController {
       response.header('onboarding', 'true');
       response.status(200).json({
         register: true,
-        // Klient mobilny nie odczyta httpOnly cookie — zwróć token w body.
+        // The mobile client cannot read an httpOnly cookie — return the token in the body.
         ...(req.headers['x-client'] === 'mobile'
           ? {
               token: this._authService.mobileJwt(jwt),

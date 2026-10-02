@@ -125,8 +125,9 @@ export const MobileNav: FC = () => {
         </svg>
       </button>
 
-      {/* Portal na body: topbar ma backdrop-blur, który robi containing block
-          dla fixed — drawer renderowany w nim byłby przycięty do nagłówka. */}
+      {/* Portal to body: the top bar has backdrop-blur, which makes it the
+          containing block for fixed elements — a drawer rendered inside it
+          would be clipped to the header. */}
       {open &&
         createPortal(
           <div className="md:hidden fixed inset-0 z-[600]">

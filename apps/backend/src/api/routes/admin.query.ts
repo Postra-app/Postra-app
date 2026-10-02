@@ -12,7 +12,7 @@ import dayjs from 'dayjs';
  * database driver. `?limit=999999` on /admin/organizations returned the whole
  * table — every row with its subscription and three correlated counts — with
  * no rate limit in front of it, since /admin is deliberately outside the
- * throttler (E2E-09-36, -37, -38).
+ * throttler.
  *
  * The clamp already existed and was already right, in errors.repository; it is
  * shared here so the other handlers stop reinventing it badly.

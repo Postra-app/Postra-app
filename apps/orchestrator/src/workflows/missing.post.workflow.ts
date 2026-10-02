@@ -17,8 +17,7 @@ const HOURS_PER_RUN = 24;
 // Started once by the backend when RUN_CRON is set (InfiniteWorkflowRegister).
 // It is the only thing that re-pokes a post left in QUEUE past its time, so it
 // must not die: a failed search (a database blip after the three retries) used
-// to fail the whole workflow, and nothing restarted it until the next deploy
-// (E2E-05-24).
+// to fail the whole workflow, and nothing restarted it until the next deploy.
 export async function missingPostWorkflow() {
   for (let hour = 0; hour < HOURS_PER_RUN; hour++) {
     try {

@@ -10,11 +10,11 @@ import { useFetch } from '@gitroom/helpers/utils/custom.fetch';
 import { useT } from '@gitroom/react/translation/get.transation.service.client';
 
 /**
- * Mobilny dostęp do historii rozmów agenta. Na desktopie historia żyje w
- * bocznym panelu (Threads), który na telefonie chowamy — ten komponent
- * wystawia ikonę w górnym pasku (obok dzwonka) otwierającą bottom sheet
- * z listą rozmów + „Nowa rozmowa". Renderowany tylko na `/agents` (i tylko
- * <768px przez `hidden phone:flex` na wyzwalaczu).
+ * The agent's conversation history on mobile. On desktop it lives in the side
+ * panel (Threads), which is hidden on phones — this component puts an icon in
+ * the top bar (next to the bell) that opens a bottom sheet with the list of
+ * conversations and "New conversation". Rendered only on `/agents` (and only
+ * below 768px, via `hidden phone:flex` on the trigger).
  */
 export const AgentHistoryMobile: FC = () => {
   const fetch = useFetch();
@@ -25,7 +25,7 @@ export const AgentHistoryMobile: FC = () => {
   const loader = useCallback(async () => {
     return (await fetch('/copilot/list')).json();
   }, []);
-  // Pobieramy listę dopiero po otwarciu sheetu.
+  // Fetch the list only once the sheet is open.
   const { data } = useSWR(open ? 'threads-mobile' : null, loader);
 
   const close = useCallback(() => setOpen(false), []);

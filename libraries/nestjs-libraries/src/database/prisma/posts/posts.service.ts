@@ -561,7 +561,7 @@ export class PostsService {
 
   // The repository includes the full Integration row (publishing needs the
   // token); the editor API response must not carry credential material — nor
-  // the raw Temporal failure in Post.error, only its sentence (E2E-05-10).
+  // the raw Temporal failure in Post.error, only its sentence.
   private stripIntegrationSecrets<
     T extends { integration?: any; error?: string | null }
   >(post: T): T {
@@ -643,7 +643,7 @@ export class PostsService {
     // properties below already had optional chaining, which is how it survived:
     // the hardening stopped halfway. Optional chaining on the other two would
     // be worse than a 404 — it answers with an empty post and the composer
-    // renders a blank editor as though the post existed (E2E-05-02).
+    // renders a blank editor as though the post existed.
     if (!posts?.length) {
       throw new NotFoundException('Post not found');
     }
@@ -890,7 +890,7 @@ export class PostsService {
     }>
   ) {
     // Both routes read the body as `any`, so a non-array here used to die on
-    // `.map` as a 500 (E2E-05-08).
+    // `.map` as a 500.
     if (posts != null && !Array.isArray(posts)) {
       throw new BadRequestException('posts must be an array');
     }
@@ -963,7 +963,7 @@ export class PostsService {
 
         // Counted the way the platform counts (links as 23 on X/Mastodon,
         // graphemes on Bluesky). This used to take max(weighted, raw length),
-        // which threw the link weighting away (E2E-05-04, E2E-05-07).
+        // which threw the link weighting away.
         const tooLong = (post.value || []).some((a) => {
           const strip = stripHtmlValidation('normal', a.content || '', true);
           return (
@@ -1103,7 +1103,7 @@ export class PostsService {
     action: 'schedule' | 'update' = 'schedule'
   ) {
     // Both used to surface as 500s: garbage reached Prisma as Invalid Date, and
-    // a post from another org (or none) came back null (E2E-05-12).
+    // a post from another org (or none) came back null.
     if (typeof date !== 'string' || !dayjs(date).isValid()) {
       throw new BadRequestException('Invalid date');
     }
@@ -1321,7 +1321,7 @@ export class PostsService {
     // shared preview).
     const post = await this._postRepository.getPostById(postId, orgId);
     if (!post) {
-      // A plain Error here answered 500 for another org's post (E2E-05-16).
+      // A plain Error here answered 500 for another org's post.
       throw new NotFoundException('Post not found');
     }
     return this._postRepository.createComment(orgId, userId, postId, comment);

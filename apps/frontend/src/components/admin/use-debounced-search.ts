@@ -9,7 +9,7 @@ import { useEffect, useState } from 'react';
  * typing an eleven-character email fired eleven queries — each one a paged
  * `findMany` with a `contains` scan and, in Organizations, three correlated
  * counts per row. Untrimmed, a trailing space from a paste also matched
- * nothing (E2E-09-16).
+ * nothing.
  *
  * Returns the value to bind to the input, a setter, and the settled value to
  * put in the query key.

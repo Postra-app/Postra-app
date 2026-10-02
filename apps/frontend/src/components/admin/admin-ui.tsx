@@ -36,7 +36,7 @@ export const AdminButton: FC<
   // `loading` used to set only opacity and pointer-events, which stops a mouse
   // and not a keyboard: Enter on a focused button fired onClick again. The
   // announcement form uses exactly this pattern, and an announcement is shown
-  // to every user of the product (E2E-09-54).
+  // to every user of the product.
   const busy = !!loading;
   return (
     <button
@@ -48,7 +48,7 @@ export const AdminButton: FC<
         'inline-flex items-center justify-center gap-[7px] rounded-[10px] px-[18px] h-[38px] text-[13.5px] font-[600] cursor-pointer transition-all duration-150 whitespace-nowrap',
         variantClass[v],
         // /60 rather than /40: the disabled label measured 2.23:1 against the
-        // panel background, well under the 4.5:1 floor (E2E-09-55).
+        // panel background, well under the 4.5:1 floor.
         (props.disabled || busy) && 'opacity-60 pointer-events-none',
         className
       )}
@@ -99,8 +99,8 @@ export const withReason = async (res: Response, generic: string) => {
  * interesting one is easy to get wrong and impossible to reach by clicking:
  * removing a row that is already gone answers 200 with `{deleted:false}` —
  * the repository stopped throwing so the endpoint would stop answering 500
- * (E2E-09-46) — and a handler that checks only `res.ok` reports that as a
- * success for a delete that removed nothing (E2E-09-14). The FREE badge
+ * — and a handler that checks only `res.ok` reports that as a
+ * success for a delete that removed nothing. The FREE badge
  * taught the same lesson the hard way: a branch nobody can reach is a branch
  * nobody tested.
  */
@@ -134,7 +134,7 @@ export const deleteOutcome = (
  * An organization with no subscription row IS on FREE, so the label and the
  * colour come from the same call — reading the tier directly let the
  * missing-tier branch fire first and paint every free account with the error
- * colour (E2E-09-29).
+ * colour.
  */
 export const tierLabel = (tier?: string | null) => tier || 'FREE';
 
@@ -177,7 +177,7 @@ export const adminSegment = (active: boolean) =>
 
 /**
  * Props every segmented pill should spread, so a screen reader is told which
- * one is chosen. None of the call sites set aria-pressed (E2E-09-13).
+ * one is chosen. None of the call sites set aria-pressed.
  */
 export const adminSegmentProps = (active: boolean) => ({
   className: adminSegment(active),
@@ -191,7 +191,7 @@ export const adminSegmentProps = (active: boolean) => ({
  * `channels`, `posts`, `next`, `loading`, `from`, `to` — which do have Polish
  * entries, while the admin-specific keys have entries in no locale at all. On
  * PL the Organizations header therefore read "Nazwa | Tier | Period | Kanaly |
- * Users | Posty | Created" and the pager "Prev / Dalej" (E2E-09-12).
+ * Users | Posty | Created" and the pager "Prev / Dalej".
  *
  * Rule: every t() key inside /admin is admin-specific, and no locale file
  * carries an entry for one — the seventeen that had been translated were
@@ -202,13 +202,13 @@ export const adminSegmentProps = (active: boolean) => ({
 
 /**
  * Channel state pill — one definition, beside the tier pill, for the same
- * reason (E2E-09-55).
+ * reason.
  *
  * The colours carry the verdict, so they are chosen against what the operator
  * should do rather than against how alarming the word sounds. `expiring` is
  * deliberately informational blue and not amber: for YouTube and TikTok it is
  * the resting state, and painting it as a warning would rebuild the misreading
- * this whole tab exists to prevent (E2E-09-59).
+ * this whole tab exists to prevent.
  *
  * Saturated text on a tinted fill, which is the pairing that measured clean
  * the last time this was audited.
@@ -234,7 +234,7 @@ export const channelStateBadgeClass = (state: string) =>
  * How long a token has left, in words.
  *
  * `null` is a provider that never reports an expiry — four of them do not
- * (E2E-09-59) — and it has to say so outright. An empty cell is read as a
+ * — and it has to say so outright. An empty cell is read as a
  * fault, which is the opposite of the truth here.
  */
 export const formatExpiry = (seconds: number | null | undefined): string => {

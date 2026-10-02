@@ -237,7 +237,7 @@ export class IntegrationsController {
     // org already has on this platform. It used to be any string: the callback
     // only compares it with the provider account id, so a FREE org could pass
     // its own X or Discord id and connect a platform outside its plan, past
-    // the channel limit too (E2E-01-19). The callback checks this again.
+    // the channel limit too. The callback checks this again.
     if (
       refresh &&
       !(await this._integrationService.hasChannel(org.id, integration, refresh))

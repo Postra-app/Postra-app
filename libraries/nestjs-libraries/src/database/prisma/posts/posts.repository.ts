@@ -288,7 +288,7 @@ export class PostsRepository {
     // read newest-first.
     //
     // ⛔ `all` belongs in that set and did not use to be, which is how a filter
-    // labelled "All" came to answer 55 of 111 rows (E2E-10-73). It already
+    // labelled "All" came to answer 55 of 111 rows. It already
     // listed every state — the date filter then cut the past ones straight back
     // out. Measured on production 2026-09-20: `state=all` → 55, every row QUEUE,
     // while `state=published` alone returned 53 and three more sat in ERROR.
@@ -297,7 +297,7 @@ export class PostsRepository {
     //
     // `draft` too: a draft has not been scheduled, and the date picker lets a
     // draft carry a past date — under the upcoming filter it vanished from the
-    // Draft tab it was saved into (E2E-05-21).
+    // Draft tab it was saved into.
     const includesThePast =
       stateFilter === 'published' ||
       stateFilter === 'error' ||
@@ -323,7 +323,7 @@ export class PostsRepository {
       deletedAt: null as Date | null,
       parentPostId: null as string | null,
       // Repeating posts used to be filtered out here, so a weekly post never
-      // showed in any List tab — the phone's default view (E2E-05-21).
+      // showed in any List tab — the phone's default view.
 
       integration: {
         deletedAt: null as any,
@@ -501,7 +501,7 @@ export class PostsRepository {
   }
 
   // null unless the post is this org's and still waiting for its release id —
-  // a plain update threw P2025 for every other post, a 500 (E2E-05-20).
+  // a plain update threw P2025 for every other post, a 500.
   async updateReleaseId(id: string, orgId: string, releaseId: string) {
     const { count } = await this._post.model.post.updateMany({
       where: {
@@ -525,7 +525,7 @@ export class PostsRepository {
         state,
         // The twin of this value — `Errors.message`, written a few lines down —
         // is redacted before it is stored, because a provider's failure payload
-        // can carry the plaintext token the publish was using (E2E-09-01).
+        // can carry the plaintext token the publish was using.
         // `Post.error` was not, and the web calendar already has a tooltip
         // reading `post.error`, so the moment that field is selected into a
         // response it becomes the same leak by a different door.

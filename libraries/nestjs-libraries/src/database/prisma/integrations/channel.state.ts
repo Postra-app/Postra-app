@@ -11,8 +11,7 @@
  *
  * So the classification happens once, here, and both the endpoint filter and
  * the on-screen badge read this module. Two definitions of the same thing is
- * how the tier badge ended up at 2.64:1 in one tab and correct in the other
- * (E2E-09-55).
+ * how the tier badge ended up at 2.64:1 in one tab and correct in the other.
  *
  * No imports on purpose: the frontend bundles this file too.
  */

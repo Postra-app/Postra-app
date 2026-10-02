@@ -20,7 +20,7 @@ import { TemporalStubModule } from './temporal.stub.module';
 // registered, one flag would write ULTIMATE, isLifetime and a hundred channels
 // onto *every* organization whose subscription is empty or soft-deleted —
 // which after launch means the entire free tier, permanently, with no product
-// path to undo it (E2E-09-41, E2E-09-42). Run once, from a stale runbook or
+// path to undo it. Run once, from a stale runbook or
 // the wrong container, and the only way back is the database.
 //
 // The command file is kept for the record; re-register it only for another

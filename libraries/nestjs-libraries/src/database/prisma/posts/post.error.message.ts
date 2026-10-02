@@ -7,7 +7,7 @@ import {
 // ActivityFailure): nested causes, stack traces with container paths, worker
 // identity. The client only needs the sentence — the platform's own reason
 // when the activity kept it, otherwise the failure message. The full trace
-// stays in the Errors table (E2E-05-10).
+// stays in the Errors table.
 export function readablePostError(raw?: string | null): string | null {
   if (!raw) {
     return null;

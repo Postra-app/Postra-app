@@ -8,7 +8,7 @@ import { ioRedis } from '@gitroom/nestjs-libraries/redis/redis.service';
  * The app has no cookie — it keeps the token in the Keychain, and `/user/logout`
  * only ever cleared the cookie. Measured on production: sign in, sign out, and
  * the very same token still answered 200 on /user/self for the rest of the
- * month (E2E-10-17).
+ * month.
  *
  * The obvious lever, bumping `user.tokenVersion`, is too blunt: it ends every
  * session that user has, so signing out on the phone would sign them out of the

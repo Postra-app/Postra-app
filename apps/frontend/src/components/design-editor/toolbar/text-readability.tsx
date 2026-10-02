@@ -33,7 +33,7 @@ const sampleBehind = (
   // getImageData reads the backing buffer, which on a retina screen holds two
   // device pixels per CSS pixel. Scaling by zoom alone read a quarter-sized
   // patch up and to the left of the text, so the warning judged the wrong
-  // spot and did not clear once the shade was added (E2E-06-03).
+  // spot and did not clear once the shade was added.
   const retina = el.width / (canvas.getWidth() || el.width);
   const scale = (canvas.getZoom() || 1) * retina;
   const x = Math.max(0, Math.round(rect.left * scale));

@@ -96,7 +96,7 @@ export const ImportDebugPostModal: FC<{ close: () => void }> = ({ close }) => {
         // it soft-deletes every post in it and writes the new ones. Importing
         // an export back into the org it came from would therefore overwrite
         // the post being investigated, rather than making the draft copy the
-        // button promises (E2E-09-47).
+        // button promises.
         posts: payload.posts.map(({ group: _group, ...post }) => ({
           ...post,
           integration: { id: selectedIntegrationId },
@@ -104,8 +104,7 @@ export const ImportDebugPostModal: FC<{ close: () => void }> = ({ close }) => {
       };
 
       // customFetch does not throw on 4xx, so without this a rejected import
-      // still reported "imported successfully" and closed the modal
-      // (E2E-09-07).
+      // still reported "imported successfully" and closed the modal.
       const res = await fetch('/posts', {
         method: 'POST',
         body: JSON.stringify(importPayload),

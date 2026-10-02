@@ -50,7 +50,7 @@ export const getUppyUploadPlugin = (
         options: {
           shouldUseMultipart: (file: any) => true,
           // One 503 from S3 on part 7 of a 192 MB file aborted the whole upload
-          // (E2E-06-11): the default retries give up after about nine seconds,
+          //: the default retries give up after about nine seconds,
           // and S3 asks callers to slow down for longer than that.
           retryDelays: [0, 1000, 3000, 5000, 10000, 20000, 30000],
           endpoint: '',

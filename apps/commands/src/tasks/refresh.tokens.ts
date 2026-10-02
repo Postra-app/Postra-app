@@ -14,7 +14,7 @@ export class RefreshTokens {
     // Every other mutating command here defaults to a dry-run and wants
     // --apply. This one wrote immediately, so the muscle memory that the
     // commands in this directory are safe to run and read was wrong exactly
-    // twice (E2E-09-44).
+    // twice.
     const apply = process.argv.includes('--apply');
     const { total, refreshed, failed } =
       await this._integrationService.refreshTokens(apply);
@@ -32,7 +32,7 @@ export class RefreshTokens {
     // a problem — those refresh reactively on a 401 while publishing. Reported
     // apart, so the headline count stops reading as an incident: what an
     // operator acts on is a token already expired on a channel that no
-    // scheduled workflow is watching (E2E-09-59).
+    // scheduled workflow is watching.
     const expired = refreshed.filter((c) => (c.expiredFor ?? 0) > 0);
     const unwatched = expired.filter((c) => !c.scheduled);
     const hours = (seconds: number) => Math.round(seconds / 3600);
@@ -54,7 +54,7 @@ export class RefreshTokens {
     }
 
     // Printed per channel, because the loop used to stop at the first failure
-    // and say nothing at all (E2E-09-43).
+    // and say nothing at all.
     for (const channel of failed) {
       console.log(`  FAILED ${channel.provider} ${channel.name} (${channel.id})`);
     }

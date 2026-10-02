@@ -129,7 +129,7 @@ export async function proxy(request: NextRequest) {
    * no flash of content. What did leak was the map — any signed-in account got
    * the route skeleton and the panel's JS chunks, and with them every admin
    * endpoint path, the Sentry, Grafana and CloudWatch identifiers and the
-   * dashboard names (E2E-09-10). Reconnaissance, not access, but free.
+   * dashboard names. Reconnaissance, not access, but free.
    *
    * One backend call, on this prefix only.
    *

@@ -99,7 +99,7 @@ export const TagsComponentInner: FC<{
       // Same shape as selecting a tag from the list: the server matches tags
       // by `label`. The raw tag objects sent here had no label, so a tag
       // created from the composer was shown on the post and silently not
-      // saved (E2E-05-22).
+      // saved.
       onChange({
         target: {
           value: modify.map((p: any) => ({

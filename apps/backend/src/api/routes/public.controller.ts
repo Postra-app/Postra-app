@@ -59,7 +59,7 @@ export class PublicController {
   // Unauthenticated: the id travels in the /p/<id> link an agency sends to its
   // client. Return only what that page renders — the whole row used to go out,
   // including Post.error (stack traces, and on rows older than the write-side
-  // redaction, possibly provider tokens) and internal ids (E2E-05-13).
+  // redaction, possibly provider tokens) and internal ids.
   @Get(`/posts/:id`)
   async getPreview(@Param('id') id: string) {
     return (await this._postsService.getPostsRecursively(id, true)).map(
@@ -88,7 +88,7 @@ export class PublicController {
   async getComments(@Param('id') postId: string) {
     // Unauthenticated, like the preview itself. The page already shows authors
     // as "User 1, User 2"; it only needs a stable per-post alias to group them,
-    // not the author's real user id or the organization id (E2E-05-16).
+    // not the author's real user id or the organization id.
     const comments = await this._postsService.getComments(postId);
     return {
       comments: comments.map((c) => ({

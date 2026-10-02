@@ -246,7 +246,7 @@ export class TelegramProvider extends SocialAbstract implements SocialProvider {
   // Telegram's own 4xx (caption too long, chat not found, bot kicked...) will
   // fail the same way on every attempt; as a plain error Temporal retried it
   // for minutes before the post turned red. BadBody is non-retryable and
-  // carries Telegram's sentence to the notification (E2E-05-06).
+  // carries Telegram's sentence to the notification.
   private async sendMessage(
     accessToken: string,
     message: PostDetails,
@@ -287,7 +287,7 @@ export class TelegramProvider extends SocialAbstract implements SocialProvider {
 
     // A caption under a photo/video is capped at 1024 characters (a plain
     // message at 4096). A longer text goes out as its own message right after
-    // the media instead of failing the whole post (E2E-05-06).
+    // the media instead of failing the whole post.
     const captionFits = striptags(text).length <= 1024;
     const caption = captionFits ? text : undefined;
 

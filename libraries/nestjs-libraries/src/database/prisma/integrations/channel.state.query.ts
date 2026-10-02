@@ -10,7 +10,7 @@ import {
  * every channel back to classify it in memory is the shape that stops working
  * on the day it matters. But a second expression of the same rule is exactly
  * how the tier badge ended up correct in one tab and at 2.64:1 in the other
- * (E2E-09-55), so `channel.state.query.spec.ts` runs both against the same
+ *, so `channel.state.query.spec.ts` runs both against the same
  * rows and fails if they ever disagree about one.
  *
  * Kept out of channel.state.ts because the frontend bundles that file and has

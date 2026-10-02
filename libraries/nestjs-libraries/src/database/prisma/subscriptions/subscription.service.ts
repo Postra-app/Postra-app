@@ -531,7 +531,7 @@ export class SubscriptionService {
    * handle on Stripe, so one call replaced a live `cus_…` with a value Stripe
    * has never heard of, and every later webhook for that org — renewal, failed
    * payment, cancellation — silently matched no organization. It was the root
-   * cause of the "No such customer" class (E2E-09-09). Nothing writes
+   * cause of the "No such customer" class. Nothing writes
    * paymentId here any more.
    */
   /**
@@ -578,7 +578,7 @@ export class SubscriptionService {
     // Validate before the first write. The tier used to be an unvalidated
     // string indexed straight into `pricing`: an unknown key threw a 500 and
     // `__proto__` resolved to Object.prototype and returned a quiet 200 — both
-    // of them *after* the destructive write above (E2E-09-40).
+    // of them *after* the destructive write above.
     if (!isCompableTier(subscription)) {
       throw new HttpException(
         `Unknown subscription tier "${subscription}". Expected one of ${COMPABLE_TIERS.join(

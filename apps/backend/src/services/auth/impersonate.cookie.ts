@@ -8,7 +8,7 @@ import { getCookieUrlFromDomain } from '@gitroom/helpers/subdomain/subdomain.man
  * even running — no time box, no "it ended" event, no way to list or cut a live
  * one. An admin who closed the tab mid-session came back to it a week later,
  * and everything done from that tab was filed under the customer's name
- * (E2E-09-28). The middleware re-issues the cookie on every request, so this is
+ *. The middleware re-issues the cookie on every request, so this is
  * an inactivity window, not a hard stop mid-task.
  */
 export const IMPERSONATE_MAX_AGE_MS = 30 * 60 * 1000;
@@ -35,7 +35,7 @@ export const setImpersonateCookie = (res: Response, id: string) => {
 /**
  * Actually remove it. "Stop" used to post an empty id down the same path that
  * starts an impersonation, which wrote an empty cookie for another year and
- * logged a row indistinguishable from a start (E2E-09-06c).
+ * logged a row indistinguishable from a start.
  */
 export const clearImpersonateCookie = (res: Response) => {
   res.cookie('impersonate', '', {

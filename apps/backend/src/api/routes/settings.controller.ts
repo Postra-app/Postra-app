@@ -58,7 +58,7 @@ export class SettingsController {
   async getShortlinkPreference(@GetOrgFromRequest() org: Organization) {
     // `available`: with no shortener configured (no Dub/Short.io/Kutt/LinkDrip
     // keys — production today) the preference changes nothing, so the settings
-    // page should not offer "Always shortlink" (E2E-05-23).
+    // page should not offer "Always shortlink".
     return {
       ...(await this._organizationService.getShortlinkPreference(org.id)),
       available: ShortLinkService.provider.shortLinkDomain !== 'empty',
