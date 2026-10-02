@@ -241,7 +241,7 @@ export const FirstBillingComponent = () => {
                 >
                   <div>{t('billing_yearly', 'Yearly')}</div>
                   <div className="bg-[#a78bfa] text-[white] px-[8px] rounded-[4px] mobile:hidden">
-                    {t('billing_20_percent_off', '20% Off')}
+                    {t('billing_two_months_free', '2 months free')}
                   </div>
                 </div>
               </div>
@@ -352,13 +352,6 @@ export const BillingFeatures: FC<{ tier: string }> = ({ tier }) => {
         key: 'billing_ai_images_per_month',
         defaultValue: 'AI Images per month',
         prefix: currentPricing?.image_generation_count,
-      });
-    }
-    if (currentPricing?.generate_videos) {
-      list.push({
-        key: 'billing_ai_videos_per_month',
-        defaultValue: 'AI Videos per month',
-        prefix: currentPricing?.generate_videos,
       });
     }
     return list;
