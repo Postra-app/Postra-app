@@ -17,7 +17,7 @@ export class CompressionWrapper<M = any, B = any> extends Compressor<any, any> {
     const { files } = this.uppy.getState();
 
     // 1) Only images, and not GIFs. The compressor announces "Compressing
-    //    images…" for every file it is handed, videos included (E2E-06-14).
+    //    images…" for every file it is handed, videos included.
     const filteredIDs = fileIDs.filter((id) => {
       const f = files[id];
       if (!f) return false;
@@ -67,7 +67,7 @@ export function useUppyUploader(props: {
       // No maxFileSize here: Uppy reported its own limit in MiB ("exceeds
       // maximum allowed size of 954 MB"), a number that appears nowhere else,
       // before our 1 GB message could show. The size checks below are the only
-      // ones (E2E-06-14).
+      // ones.
       locale: {
         strings: {
           // The stock string ended in a dangling "?" when S3 gave no reason.
@@ -77,7 +77,7 @@ export function useUppyUploader(props: {
     });
 
     // A file our own checks refuse has already been explained in a toast; the
-    // generic "Upload failed" that followed contradicted it (E2E-06-14).
+    // generic "Upload failed" that followed contradicted it.
     let refusalShown = false;
     const refuse = (message: string) => {
       refusalShown = true;

@@ -331,7 +331,7 @@ export class AuthService {
     // a server error. verifyJWT throws on a bad signature, and mail clients do
     // mangle links — wrapping, tracking rewrites — so this is a real person
     // meeting a 500 instead of being told to request a new one
-    // (e2e/bugs.md E2E-03-03). getOrgFromCookie in this same file already
+    //. getOrgFromCookie in this same file already
     // handles the same call this way.
     let user: { id: string; activated: boolean; email: string };
     try {
@@ -433,7 +433,7 @@ export class AuthService {
    * Swap a freshly minted web token for one the native app can be signed out
    * of. The browser's token can live 30 days because logging out deletes the
    * cookie holding it; the app keeps its token in the Keychain, where signing
-   * out left it valid for the rest of the month (E2E-10-17). This one expires
+   * out left it valid for the rest of the month. This one expires
    * in a week and carries a session id the server can revoke on its own —
    * unlike `tokenVersion`, which would end the browser's session too.
    *

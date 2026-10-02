@@ -51,3 +51,21 @@ Writing tests:
 - Locally a server already listening on its port is reused; after a code
   change stop it (`lsof -ti tcp:53000 | xargs kill`, same for 9464, 58080,
   54200, 54000) and rebuild, or you test the old code.
+
+## Optional projects
+
+- `pnpm e2e:stack:restart` — kills and restarts the orchestrator mid-publish
+  (post workflow v1.0.9); ~6 min.
+- `pnpm e2e:stack:billing` — billing paths against Stripe **test mode**:
+  upgrade quote vs invoice, downgrade side effects, cancel / reactivate /
+  expiry, portal. Needs the sandbox keys in the environment and webhooks
+  forwarded, e.g.:
+
+  ```
+  set -a; . ./backend.env; set +a          # stack.env + STRIPE_* from /postra/sandbox/
+  stripe listen --api-key "$STRIPE_SECRET_KEY" --forward-to localhost:53000/stripe &
+  pnpm e2e:stack:billing
+  ```
+
+  `STRIPE_SIGNING_KEY` comes from `stripe listen --api-key … --print-secret`.
+  The spec skips itself without an `sk_test_` key. Keep `backend.env` out of git.

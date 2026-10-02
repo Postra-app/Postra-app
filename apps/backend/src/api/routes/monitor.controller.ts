@@ -32,7 +32,7 @@ export class MonitorController {
   /**
    * The deploy gate and Upptime both read this. It used to answer "healthy"
    * without checking anything, so a deploy passed as long as NestJS served a
-   * request, with the database or Redis gone (E2E-01-07).
+   * request, with the database or Redis gone.
    *
    * The timeout matters for Redis: its client retries forever
    * (`maxRetriesPerRequest: null`), so a dead Redis would otherwise hang this

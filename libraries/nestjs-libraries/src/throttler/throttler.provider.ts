@@ -10,8 +10,7 @@ const THROTTLER_LIMIT_DEFAULT = 'THROTTLER:LIMITdefault';
  * The client address as seen by the one proxy we trust (the ALB).
  *
  * Exported so a spec can pin the choice of the last hop: reading the first one
- * lets any caller mint a throttle bucket per request just by sending the header
- * (e2e/bugs.md E2E-02-01).
+ * lets any caller mint a throttle bucket per request just by sending the header.
  */
 export const clientIpFromForwardedFor = (header?: string): string => {
   const hops = (header || '')
@@ -77,7 +76,7 @@ export class ThrottlerBehindProxyGuard extends ThrottlerGuard {
     // send. Reading index 0 handed the bucket key to the caller — sending
     // `X-Forwarded-For: <anything>` produced a fresh bucket on every request
     // and the per-IP limits on login, register and forgot stopped applying
-    // (e2e/bugs.md E2E-02-01). Reaching the app without going through the ALB
+    //. Reaching the app without going through the ALB
     // is not possible: the security group only accepts port 5000 from the
     // load balancer's own group, and a request that arrives with no header at
     // all still falls through to the socket address below.

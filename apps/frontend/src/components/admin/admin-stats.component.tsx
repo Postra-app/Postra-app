@@ -32,7 +32,7 @@ interface StatsResponse {
 }
 
 // Both ends are inclusive, so "last 7 days" reaches back six — it used to
-// reach back seven and cover eight days (E2E-09-22).
+// reach back seven and cover eight days.
 const PRESETS: { label: string; range: () => { from: string; to: string } }[] = [
   { label: 'Today', range: () => ({ from: today(), to: today() }) },
   { label: 'This week', range: () => ({ from: startOfWeek(), to: today() }) },
@@ -114,7 +114,7 @@ export const AdminStatsComponent: FC = () => {
   const [range, setRange] = useState({ from: today(), to: today() });
   const [unknownOnly, setUnknownOnly] = useState(false);
   // Tracked by name, not by comparing ranges: on a Monday "Today" and "This
-  // week" describe the same days, and both lit up (E2E-09-22).
+  // week" describe the same days, and both lit up.
   const [activePreset, setActivePreset] = useState<string | null>('Today');
 
   const { data, isLoading, error } = useStats({ ...range, unknownOnly });

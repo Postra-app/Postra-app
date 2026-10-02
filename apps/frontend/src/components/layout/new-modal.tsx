@@ -124,7 +124,7 @@ export const Component: FC<{
   // enableOnFormTags: without it the hotkey is ignored while the cursor is in
   // an input, so a modal that opens straight into a large textarea — the debug
   // post import is the one in the admin panel — could not be left with the
-  // keyboard at all (E2E-09-53).
+  // keyboard at all.
   useHotkeys(
     'Escape',
     () => {
@@ -138,7 +138,7 @@ export const Component: FC<{
 
   // Focus moves into the dialog and comes back to whatever opened it. It used
   // to stay on the triggering button: the page behind stayed keyboard-reachable
-  // under an overlay that could not be seen past (E2E-09-53).
+  // under an overlay that could not be seen past.
   const panelRef = useRef<HTMLDivElement>(null);
   useFocusTrap(panelRef, isLast);
   useEffect(() => {

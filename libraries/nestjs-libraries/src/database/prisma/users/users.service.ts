@@ -101,7 +101,7 @@ export class UsersService {
   // is implemented three times over and was called from nowhere: after someone
   // exercised their right to erasure, every photo and video they had uploaded
   // was still a working URL. Postra is registered with the ICO, so that is an
-  // obligation, not a tidy-up (E2E-09-58).
+  // obligation, not a tidy-up.
   async deleteAccount(userId: string) {
     const soleOrgIds = await this.getSoleOwnedOrganizations(userId);
 
@@ -137,7 +137,7 @@ export class UsersService {
    *
    * The media objects are collected before the delete for the same reason as
    * in deleteAccount: afterwards no row remembers which files were theirs, and
-   * the bucket keeps serving them through the CDN (E2E-09-58).
+   * the bucket keeps serving them through the CDN.
    */
   async deleteOrganization(organizationId: string) {
     const media = await this._prisma.media.findMany({

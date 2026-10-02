@@ -113,7 +113,7 @@ const iterate = Array.from({ length: 5 });
 //
 // v1.0.8: a publish failure that isn't bad_body (a timeout, a platform 5xx
 // after retries, an SDK error) now tells the user, like bad_body always did,
-// instead of only turning the post red (E2E-05-17).
+// instead of only turning the post red.
 //
 // v1.0.7: a channel that can't take comments (provider has commentsDisabled,
 // i.e. the platform permission isn't granted) no longer drops them in silence.

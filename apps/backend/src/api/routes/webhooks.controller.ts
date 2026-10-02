@@ -16,7 +16,7 @@ import { CheckPolicies } from '@gitroom/backend/services/auth/permissions/permis
 import {
   OnlyURL, UpdateDto, WebhooksDto
 } from '@gitroom/nestjs-libraries/dtos/webhooks/webhooks.dto';
-import { AuthorizationActions, Sections } from '@gitroom/backend/services/auth/permissions/permission.exception.class';
+import { AuthorizationActions, Sections } from '@gitroom/nestjs-libraries/services/auth/permission.exception.class';
 import { fetch } from 'undici';
 import { ssrfSafeDispatcher } from '@gitroom/nestjs-libraries/dtos/webhooks/ssrf.safe.dispatcher';
 import { isSafePublicHttpsUrl } from '@gitroom/nestjs-libraries/dtos/webhooks/webhook.url.validator';

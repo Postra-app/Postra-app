@@ -7,7 +7,7 @@ import { OrganizationService } from '@gitroom/nestjs-libraries/database/prisma/o
 import { AddTeamMemberDto } from '@gitroom/nestjs-libraries/dtos/settings/add.team.member.dto';
 import { ShortlinkPreferenceDto } from '@gitroom/nestjs-libraries/dtos/settings/shortlink-preference.dto';
 import { ApiTags } from '@nestjs/swagger';
-import { AuthorizationActions, Sections } from '@gitroom/backend/services/auth/permissions/permission.exception.class';
+import { AuthorizationActions, Sections } from '@gitroom/nestjs-libraries/services/auth/permission.exception.class';
 import { bustAuthContextCache } from '@gitroom/backend/services/auth/auth.middleware';
 
 @ApiTags('Settings')
@@ -58,7 +58,7 @@ export class SettingsController {
   async getShortlinkPreference(@GetOrgFromRequest() org: Organization) {
     // `available`: with no shortener configured (no Dub/Short.io/Kutt/LinkDrip
     // keys — production today) the preference changes nothing, so the settings
-    // page should not offer "Always shortlink" (E2E-05-23).
+    // page should not offer "Always shortlink".
     return {
       ...(await this._organizationService.getShortlinkPreference(org.id)),
       available: ShortLinkService.provider.shortLinkDomain !== 'empty',

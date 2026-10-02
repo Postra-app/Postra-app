@@ -4,7 +4,6 @@ import { AuthService } from '@gitroom/helpers/auth/auth.service';
 import { User } from '@prisma/client';
 import { OrganizationService } from '@gitroom/nestjs-libraries/database/prisma/organizations/organization.service';
 import { UsersService } from '@gitroom/nestjs-libraries/database/prisma/users/users.service';
-import { getCookieUrlFromDomain } from '@gitroom/helpers/subdomain/subdomain.management';
 import { HttpForbiddenException } from '@gitroom/nestjs-libraries/services/exception.filter';
 import { ioRedis } from '@gitroom/nestjs-libraries/redis/redis.service';
 import {
@@ -46,23 +45,8 @@ class ImpersonationForbiddenException extends HttpException {
 // Re-exported so existing callers keep importing the buster from the middleware.
 export { authContextCacheKey, bustAuthContextCache };
 
-export const removeAuth = (res: Response) => {
-  res.cookie('auth', '', {
-    domain: getCookieUrlFromDomain(process.env.FRONTEND_URL!),
-    ...(!process.env.NOT_SECURED
-      ? {
-          secure: true,
-          httpOnly: true,
-          sameSite: 'lax',
-        }
-      : {}),
-    expires: new Date(0),
-    maxAge: -1,
-  });
-  res.header('logout', 'true');
-};
 
-// Audit rows had no ip and no userAgent on any action (E2E-09-34); the columns
+// Audit rows had no ip and no userAgent on any action; the columns
 // existed and nothing filled them.
 const requestFingerprint = (req: Request) => ({
   ip: (
@@ -90,7 +74,7 @@ export class AuthMiddleware implements NestMiddleware {
       // claims (id, isSuperAdmin, activated) from the token body — always
       // re-resolve the user from the database using the id.
       const payload = AuthService.verifyJWT(auth) as User | null;
-      // An explicit header wins over the cookie (E2E-10-82). The browser never
+      // An explicit header wins over the cookie. The browser never
       // sends one in production — the cookie is HttpOnly, and server-side
       // fetches copy the cookie into it — so for the web nothing changes. The
       // mobile app selects its organization with the header, but its native
@@ -156,7 +140,7 @@ export class AuthMiddleware implements NestMiddleware {
       // Second revocation gate, for the native app only. A mobile token carries
       // a session id that signing out puts on a deny list, so logging out on the
       // phone actually ends that session instead of leaving the token valid in
-      // the Keychain for the rest of its life (E2E-10-17). Browser tokens carry
+      // the Keychain for the rest of its life. Browser tokens carry
       // no `sid` and skip this entirely — ending one user's phone session must
       // not end the tab they left open.
       const sid = (payload as any).sid as string | undefined;
@@ -180,7 +164,7 @@ export class AuthMiddleware implements NestMiddleware {
           // in the product kept opening while the identity behind the request
           // was the customer's — grant-admin, add-subscription and the debug
           // export all worked, and every audit row named the customer
-          // (E2E-09-23). The real admin travels separately.
+          //. The real admin travels separately.
           // eslint-disable-next-line @typescript-eslint/ban-ts-comment
           // @ts-expect-error
           req.impersonatedBy = admin.id;
@@ -204,7 +188,7 @@ export class AuthMiddleware implements NestMiddleware {
           }
 
           // Sliding window: the impersonation lapses after inactivity rather
-          // than running for a year (E2E-09-28).
+          // than running for a year.
           setImpersonateCookie(res, impersonate);
 
           runWithAuditActor(

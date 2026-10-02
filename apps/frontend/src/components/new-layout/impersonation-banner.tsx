@@ -19,7 +19,7 @@ export const ImpersonationBanner: FC<{ email?: string }> = ({ email }) => {
       body: JSON.stringify({ id: '' }),
     });
     // Navigating regardless would land on a page that looks like the admin's
-    // own while the session is still the customer's (E2E-09-08).
+    // own while the session is still the customer's.
     if (!res.ok) {
       setFailed(true);
       return;
@@ -30,7 +30,7 @@ export const ImpersonationBanner: FC<{ email?: string }> = ({ email }) => {
   return (
     // Announced, not just shown. The whole point of this strip is "remember
     // that this is not you", and without a live region someone using a screen
-    // reader was never told (E2E-09-57).
+    // reader was never told.
     <div
       role="status"
       aria-live="polite"

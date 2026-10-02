@@ -95,7 +95,7 @@ const ShortlinkPreferenceComponent = () => {
     );
   }
 
-  // Nothing to shorten with: the choice would change nothing (E2E-05-23).
+  // Nothing to shorten with: the choice would change nothing.
   if (data?.available === false) {
     return null;
   }

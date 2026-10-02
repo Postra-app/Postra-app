@@ -7,6 +7,7 @@ import {
   Param,
   Post,
   Query,
+  ServiceUnavailableException,
 } from '@nestjs/common';
 import { GetUserFromRequest } from '@gitroom/nestjs-libraries/user/user.from.request';
 import { Prisma, User } from '@prisma/client';
@@ -98,8 +99,7 @@ export class AdminController {
 
   /**
    * One error in full. The list stopped shipping `body`, which was most of its
-   * 151 KB per twenty rows and is only ever looked at one row at a time
-   * (E2E-09-30).
+   * 151 KB per twenty rows and is only ever looked at one row at a time.
    */
   @Get('/errors/:id')
   async getError(@GetUserFromRequest() user: User, @Param('id') id: string) {
@@ -278,7 +278,7 @@ export class AdminController {
    * to seat an org on Starter or Pro, which is an ordinary request. The control
    * that existed rendered only while impersonating, inside a panel that is
    * hidden while impersonating, so it could never be reached — and that was the
-   * only thing standing between a click and E2E-09-09 (E2E-09-02). The endpoint
+   * only thing standing between a click and E2E-09-09. The endpoint
    * behind it is safe now, and this one names the organization outright instead
    * of inferring it from whoever the session is wearing.
    */
@@ -317,7 +317,7 @@ export class AdminController {
    * POST /billing/cancel-subscription, which needs a resolvable Stripe customer
    * and a live subscription, and which bails on any lifetime row before it
    * deletes anything. A grant for a tester, or the wrong tier on the wrong org,
-   * could only be undone in the database (E2E-09-41).
+   * could only be undone in the database.
    */
   @Post('/revoke-subscription')
   async revokeSubscription(
@@ -424,7 +424,7 @@ export class AdminController {
 
     // Grafana Cloud answers 502/503/504 now and then, and a single attempt
     // turned that into a card of raw error text on a page an admin refreshes
-    // all day (E2E-09-31).
+    // all day.
     const queryGrafana = async (body: string) => {
       let lastError: Error | undefined;
       for (let attempt = 0; attempt < 3; attempt++) {
@@ -527,7 +527,7 @@ export class AdminController {
     // not just that the port accepts TCP.
     const redisStart = Date.now();
     try {
-      if (!ioRedis) throw new Error('REDIS_URL not configured');
+      if (!ioRedis) throw new ServiceUnavailableException('REDIS_URL not configured');
       await ioRedis.ping();
       checks.redis = { status: 'ok', latencyMs: Date.now() - redisStart };
     } catch (e: any) {
@@ -782,12 +782,12 @@ export class AdminController {
     // Prisma deserialises a `date` column into a Date object, so `String(...)`
     // gave "Wed Sep 09 2026 00:00:00 GMT+0000" and slicing ten characters left
     // "Wed Sep 09". The front end reads this as ISO, so the twelve-month chart
-    // ended up labelled with bare day numbers — no month, no year (E2E-09-04).
+    // ended up labelled with bare day numbers — no month, no year.
     //
     // Days with no rows are filled in with zero. GROUP BY only returns the days
     // that have something, so the axis was not linear in time: two bars side by
     // side could be a month apart, and a range with no activity at all drew
-    // nothing rather than a flat line (E2E-09-19).
+    // nothing rather than a flat line.
     const serialize = (rows: Array<{ day: string; count: bigint }>) => {
       const counts = new Map(
         rows.map((r) => [dayjs(r.day).format('YYYY-MM-DD'), Number(r.count)])
@@ -871,7 +871,7 @@ export class AdminController {
       recent: recentSubs,
       // The panel built every "open in Stripe" link against the live
       // dashboard, so on test keys each one led to a customer that does not
-      // exist there (E2E-09-21). Only the server knows which mode we are in.
+      // exist there. Only the server knows which mode we are in.
       stripeTestMode: (process.env.STRIPE_SECRET_KEY || '').startsWith(
         'sk_test_'
       ),
@@ -905,8 +905,7 @@ export class AdminController {
    * The audit trail, readable.
    *
    * Paging and dates go through the shared parsers, so a bad parameter here
-   * answers 400 or clamps rather than handing the string to Prisma
-   * (E2E-09-36/37/38).
+   * answers 400 or clamps rather than handing the string to Prisma.
    */
   @Get('/audit')
   async listAudit(
@@ -1133,7 +1132,7 @@ export class AdminController {
    * Cascades take the integrations, posts and media rows with it; the objects
    * behind those media rows are removed here for the same reason they are
    * removed on account deletion — a deleted org's uploads stayed public on the
-   * CDN (E2E-09-58).
+   * CDN.
    */
   @Post('/delete-organization')
   async deleteOrganization(
@@ -1192,7 +1191,7 @@ export class AdminController {
    * One statement for the whole page: a window count for the total, DISTINCT
    * ON for the newest message beside it. The message is redacted on the way
    * out for the same reason the errors tab redacts it — refreshed tokens have
-   * reached that column before (E2E-09-01).
+   * reached that column before.
    */
   private async channelErrors(integrationIds: string[], now: Date) {
     if (!integrationIds.length) {
@@ -1237,7 +1236,7 @@ export class AdminController {
    * "my channel keeps disconnecting" (05-gaps §1e). The panel showed no token
    * state at all — not `tokenExpiration`, not `refreshNeeded`, not `disabled`
    * — so the only way to see it was running the refresh command over SSM, and
-   * that output conflated a short-lived token with a dead one (E2E-09-59).
+   * that output conflated a short-lived token with a dead one.
    *
    * ⛔ `token` and `refreshToken` are absent from the select, not selected and
    * then deleted. There is no code path here that could leak one by being

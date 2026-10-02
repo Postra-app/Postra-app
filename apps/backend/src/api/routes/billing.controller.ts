@@ -24,7 +24,7 @@ import { CheckPolicies } from '@gitroom/backend/services/auth/permissions/permis
 import {
   AuthorizationActions,
   Sections,
-} from '@gitroom/backend/services/auth/permissions/permission.exception.class';
+} from '@gitroom/nestjs-libraries/services/auth/permission.exception.class';
 import { bustAuthContextCache } from '@gitroom/backend/services/auth/auth.middleware';
 import dayjs from 'dayjs';
 
@@ -220,7 +220,7 @@ export class BillingController {
   // The admin-only charge, refund and cancel routes used to live here, reading
   // the organization from the session. That made them usable only from inside
   // an impersonated session — the pattern that let add-subscription overwrite
-  // an organization's Stripe customer id with a user id (E2E-09-09) — and they
+  // an organization's Stripe customer id with a user id — and they
   // had no caller at all once the impersonation panel was replaced. They are
   // now GET /admin/charges, POST /admin/refund-charges and POST
   // /admin/cancel-subscription, each naming the organization in the request

@@ -310,7 +310,7 @@ export const EditorToolbar: FC<ToolbarProps> = ({ canvas }) => {
       }
       // Upload first, like addImage. Fabric serialises the image's `src`, and
       // this used to be a blob: URL revoked right after the swap, so the saved
-      // project kept a dead link and reopened without its photo (E2E-06-02).
+      // project kept a dead link and reopened without its photo.
       setUploading(true);
       try {
         const formData = new FormData();

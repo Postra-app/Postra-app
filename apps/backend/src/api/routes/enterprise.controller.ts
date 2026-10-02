@@ -5,6 +5,7 @@ import {
   Param,
   Post,
   Res,
+  BadRequestException,
 } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
 import { AuthService } from '@gitroom/helpers/auth/auth.service';
@@ -81,7 +82,7 @@ export class EnterpriseController {
       const org = await this._organizationService.getOrgByApiKey(load.apiKey);
 
       if (!org) {
-        throw new Error('Organization not found');
+        throw new NotFoundException('Organization not found');
       }
 
       if (
@@ -89,7 +90,7 @@ export class EnterpriseController {
           .getAllowedSocialsIntegrations()
           .includes(load.provider)
       ) {
-        throw new Error('Integration not allowed');
+        throw new BadRequestException('Integration not allowed');
       }
 
       const integrationProvider = this._integrationManager.getSocialIntegration(

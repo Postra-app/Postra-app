@@ -32,7 +32,7 @@ import { CreateCommentDto } from '@gitroom/nestjs-libraries/dtos/posts/create.co
 import {
   AuthorizationActions,
   Sections,
-} from '@gitroom/backend/services/auth/permissions/permission.exception.class';
+} from '@gitroom/nestjs-libraries/services/auth/permission.exception.class';
 import { PostValidationException } from '@gitroom/backend/api/routes/posts.validation.exception';
 
 @ApiTags('Posts')

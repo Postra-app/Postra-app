@@ -68,7 +68,7 @@ export const AdminOrganizationsComponent = () => {
       // revalidateIfStale stays on: with it off, coming back to this tab
       // inside the same SPA session re-used the cached page and made no
       // request at all, so a tier changed from Users showed the old value
-      // until a full reload (E2E-09-15). Measured: two returns, zero fetches.
+      // until a full reload. Measured: two returns, zero fetches.
       revalidateOnFocus: false,
       revalidateOnReconnect: false,
       refreshInterval: 0,
@@ -146,8 +146,7 @@ export const AdminOrganizationsComponent = () => {
           name="org-search"
           disableForm={true}
           // label="" makes the shared Input skip its label block entirely, so
-          // the field reached a screen reader with nothing but a placeholder
-          // (E2E-09-13).
+          // the field reached a screen reader with nothing but a placeholder.
           label=""
           aria-label={t('admin_search_organizations', 'Search organizations')}
           removeError={true}

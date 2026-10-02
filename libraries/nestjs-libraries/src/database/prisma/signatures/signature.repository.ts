@@ -20,8 +20,7 @@ export class SignatureRepository {
 
   // Both return null when the id isn't a live signature of this org. The
   // upsert used to create a brand-new signature when handed a foreign or
-  // deleted id (and make it the default), and the delete threw P2025 — a 500
-  // (E2E-05-18).
+  // deleted id (and make it the default), and the delete threw P2025 — a 500.
   async createOrUpdateSignature(
     orgId: string,
     signature: SignatureDto,

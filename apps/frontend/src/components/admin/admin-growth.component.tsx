@@ -182,7 +182,7 @@ export const AdminGrowthComponent = () => {
           onClick={() => {
             // A cleared field used to send an empty from or to, the backend
             // quietly fell back to thirty days, and the button stayed lit as
-            // if a custom range were in force (E2E-09-20).
+            // if a custom range were in force.
             if (rangeError) {
               return;
             }

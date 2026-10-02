@@ -106,8 +106,7 @@ export const AnnouncementBanner: FC = () => {
         method: 'DELETE',
       });
       // customFetch does not throw on 4xx, so a failed delete used to refresh
-      // the list and leave the announcement in place with no explanation
-      // (E2E-09-14).
+      // the list and leave the announcement in place with no explanation.
       if (!res.ok) {
         toaster.show(
           t(

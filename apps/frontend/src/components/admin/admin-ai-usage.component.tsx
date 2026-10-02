@@ -158,7 +158,7 @@ export const AdminAiUsageComponent = () => {
 
   // The period switch stays mounted through loading and failure. Returning
   // early used to take it off the page, so the only way out of a failed range
-  // was a full reload (E2E-09-17).
+  // was a full reload.
   const header = (
     <div className="flex items-start justify-between flex-wrap gap-[8px]">
       <div>
@@ -253,7 +253,7 @@ export const AdminAiUsageComponent = () => {
                 // An empty button carrying only `title` has no accessible
                 // name and no pressed state, so the selected day was invisible
                 // to a screen reader — and at 1.27:1 against its neighbours,
-                // very nearly invisible to everyone (E2E-09-13, E2E-09-55).
+                // very nearly invisible to everyone.
                 <button
                   key={day.key}
                   type="button"

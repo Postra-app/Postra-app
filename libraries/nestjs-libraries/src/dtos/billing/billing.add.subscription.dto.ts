@@ -10,7 +10,7 @@ import {
  * It used to be an inline `{ subscription: string }` type, which the global
  * validation pipe cannot see: an inline type carries no metadata, so
  * `whitelist: true` had nothing to whitelist and the string went straight into
- * a `pricing[...]` lookup (E2E-09-40).
+ * a `pricing[...]` lookup.
  */
 export class BillingAddSubscriptionDto {
   @IsIn(COMPABLE_TIERS as unknown as string[])

@@ -744,6 +744,11 @@ export class IntegrationRepository {
     });
   }
 
+  // Over the cap after a downgrade: switch off the most recently connected
+  // channels and keep the ones the customer connected first (usually their
+  // main ones). Without an order the database picked any N — a Business ->
+  // Starter downgrade switched off Facebook, Instagram and LinkedIn and kept
+  // TikTok, Mastodon and Bluesky (P2b #5, 2026-10-02).
   async disableIntegrations(org: string, totalChannels: number) {
     const getChannels = await this._integration.model.integration.findMany({
       where: {
@@ -751,6 +756,7 @@ export class IntegrationRepository {
         disabled: false,
         deletedAt: null,
       },
+      orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
       take: totalChannels,
       select: {
         id: true,

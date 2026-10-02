@@ -22,7 +22,7 @@ import { useDebouncedSearch } from '@gitroom/frontend/components/admin/use-debou
  * This used to render only while impersonating, inside a panel that is hidden
  * while impersonating, so it was unreachable — and that was the only thing
  * standing between one click and an organization losing its Stripe customer id
- * (E2E-09-02, E2E-09-09). Both are fixed, and the control now names the
+ *. Both are fixed, and the control now names the
  * organization instead of inferring it from whoever the session is wearing.
  */
 const CompSubscription: FC<{
@@ -335,7 +335,7 @@ export const AdminUsersComponent = () => {
   // The way back out of a comp or a lifetime grant. Until this existed,
   // granting was a one-way street: the only other route is
   // /billing/cancel-subscription, which needs a live Stripe customer and bails
-  // on any lifetime row (E2E-09-41).
+  // on any lifetime row.
   const revokeSubscription = useCallback(
     (u: UserItem, org: UserOrgItem) => async () => {
       if (

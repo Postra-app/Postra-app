@@ -11,7 +11,7 @@ import {
 /**
  * Every signed-in session fetches the announcement banner, so whatever is
  * written here is served to everyone until it is deleted. The lengths were
- * unbounded, which made a mis-paste a payload on every page load (E2E-09-45).
+ * unbounded, which made a mis-paste a payload on every page load.
  */
 export class AnnouncementDto {
   @IsString()
@@ -34,7 +34,7 @@ export class AnnouncementDto {
   /**
    * When the banner should stop showing itself. Optional: an announcement with
    * no expiry behaves exactly as every announcement did before, which is to
-   * say it stays until somebody deletes it (E2E-09-26).
+   * say it stays until somebody deletes it.
    */
   @IsOptional()
   @IsDateString()

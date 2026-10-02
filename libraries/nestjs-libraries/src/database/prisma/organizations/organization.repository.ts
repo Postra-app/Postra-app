@@ -82,7 +82,7 @@ export class OrganizationRepository {
    * before the checks the normal path runs, so without these two conditions a
    * deactivated account, or a seat disabled by a downgrade, came back fully
    * operational — publishing included — as soon as an admin stepped into it
-   * (E2E-09-27). The disabled-seat case is the realistic one: it is exactly the
+   *. The disabled-seat case is the realistic one: it is exactly the
    * state an admin would be looking into after reconcileTeamSeats.
    */
   getUserOrg(id: string) {
@@ -248,7 +248,7 @@ export class OrganizationRepository {
     // Already a member? The guard above only asks whether *this invite* has
     // been redeemed, so a second invite carries a different id, sails past it
     // and lands on the (userId, organizationId) unique constraint — an
-    // unhandled 500 (e2e/bugs.md E2E-03-04). That is an ordinary situation:
+    // unhandled 500. That is an ordinary situation:
     // someone says the mail never arrived, you send another, they click both.
     // Answer it the same way as a spent invite rather than letting the
     // database raise.

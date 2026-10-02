@@ -13,6 +13,8 @@ import {
   Req,
   Res,
   UseFilters,
+  BadRequestException,
+  NotFoundException,
 } from '@nestjs/common';
 import { Request, Response } from 'express';
 import { randomBytes } from 'crypto';
@@ -30,7 +32,7 @@ import { NotEnoughScopes } from '@gitroom/nestjs-libraries/integrations/social.a
 import {
   AuthorizationActions,
   Sections,
-} from '@gitroom/backend/services/auth/permissions/permission.exception.class';
+} from '@gitroom/nestjs-libraries/services/auth/permission.exception.class';
 import { RefreshIntegrationService } from '@gitroom/nestjs-libraries/integrations/refresh.integration.service';
 import { OrganizationService } from '@gitroom/nestjs-libraries/database/prisma/organizations/organization.service';
 import { SubscriptionService } from '@gitroom/nestjs-libraries/database/prisma/subscriptions/subscription.service';
@@ -154,7 +156,7 @@ export class NoAuthIntegrationsController {
    * Tells the OAuth callback page whether this flow was started by the native
    * app, and where to hand it back.
    *
-   * ⛔ Why this exists (E2E-10-70). The provider always redirects the *browser*
+   * ⛔ Why this exists. The provider always redirects the *browser*
    * to `app.postra.pl/integrations/social/:provider`, and that page then calls
    * `POST /social-connect/:provider`. On a phone the browser has no Postra
    * session — the app signs in with a token in secure storage, not a cookie —
@@ -209,7 +211,7 @@ export class NoAuthIntegrationsController {
         .getAllowedSocialsIntegrations()
         .includes(integration)
     ) {
-      throw new Error('Integration not allowed');
+      throw new BadRequestException('Integration not allowed');
     }
 
     const integrationProvider =
@@ -403,7 +405,7 @@ export class NoAuthIntegrationsController {
 
     // Matching the provider account id is not enough: anyone knows their own.
     // A reconnect skips the plan and channel-limit gates below, so it has to
-    // be a channel this org already has (E2E-01-19).
+    // be a channel this org already has.
     if (
       refresh &&
       !(await this._integrationService.hasChannel(org.id, integration, refresh))
@@ -593,12 +595,12 @@ export class NoAuthIntegrationsController {
   @Post('/public/provider/:id/connect')
   async saveProviderPage(@Param('id') id: string, @Body() body: any) {
     if (!body.state) {
-      throw new Error('Invalid state');
+      throw new BadRequestException('Invalid state');
     }
 
     const organization = await ioRedis.get(`organization:${body.state}`);
     if (!organization) {
-      throw new Error('Organization not found');
+      throw new NotFoundException('Organization not found');
     }
 
     const org = await this._organizationService.getOrgById(organization);

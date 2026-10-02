@@ -14,7 +14,7 @@ import {
   PermissionDeniedException,
   Sections,
   SubscriptionException,
-} from './permission.exception.class';
+} from '@gitroom/nestjs-libraries/services/auth/permission.exception.class';
 
 @Injectable()
 export class PoliciesGuard implements CanActivate {
@@ -65,7 +65,7 @@ export class PoliciesGuard implements CanActivate {
       // A role that is too low is a 403, not a 402 — see
       // PermissionDeniedException. Keeping both on 402 made the two cases
       // indistinguishable from the outside, which is also why the role matrix
-      // could not be verified from status codes (e2e/bugs.md E2E-02-02).
+      // could not be verified from status codes.
       throw item[1] === Sections.ADMIN
         ? new PermissionDeniedException(denial)
         : new SubscriptionException(denial);

@@ -1,4 +1,4 @@
-This project is Postra, a tool to schedule social media and chat posts to 28+ channels.
+This project is Postra, a tool to schedule social media and chat posts. The channels offered to customers are listed in `enabledProviders` in `libraries/nestjs-libraries/src/integrations/integration.manager.ts`; the rest of the registered providers show as "Coming soon".
 You can add posts to the calendar, they will be added into a workflow and posted at the right time.
 You can find things like:
 - Schedule posts
@@ -13,7 +13,7 @@ We have 3 important folders
 
 - apps/backend - this is where the API code is (NESTJS)
 - apps/orchestrator - this is temporal, it's for background jobs (NESTJS) it contains all the workflows and activities
-- apps/frontend - this is the code of the frontend (Vite ReactJS)
+- apps/frontend - this is the code of the frontend (Next.js, React)
 - /libraries contains a lot of services shared between backend and orchestrator and frontend components.
 
 We are using only pnpm, don't use any other dependency manager.
@@ -33,8 +33,8 @@ Controller >> Service >> Repository (no shortcuts)
 In some cases we will have
 Controller >> Mananger >> Service >> Repository.
 
-Most of the server logic should be inside of libs/server.
-The backend repository is mostly used to write controller, and import files from libs.server.
+Most of the server logic should be inside of libraries/nestjs-libraries.
+The backend app is mostly used to write controllers, and imports from libraries/nestjs-libraries. A library never imports from an app.
 
 For the frontend follow this:
 - Many of the UI components lives in /apps/frontend/src/components/ui
@@ -59,4 +59,4 @@ const useCommunity = () => {
 
 - Linting of the project can run only from the root.
 - Use only pnpm.
-- The system is in production with many users, if you want to change something, you need to be sure that you are not breaking anything for existing users and a migration might be needed
+- The system runs in production, if you want to change something, you need to be sure that you are not breaking anything for existing users and a migration might be needed

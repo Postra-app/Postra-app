@@ -51,7 +51,7 @@ export class ErrorsRepository {
    * It used to include the raw `body` and the post content on every row:
    * 151 KB for twenty rows, 8.7 KB each, most of it a serialised post list
    * nothing on screen renders. Both now come from the detail endpoint, when
-   * somebody actually opens a row (E2E-09-30).
+   * somebody actually opens a row.
    */
   private get include() {
     return {
@@ -218,7 +218,7 @@ export class ErrorsRepository {
    * Redacting on read (see `redact`) stops the panel handing a token out, but
    * the value is still sitting in the database and in every backup taken since
    * it was written. This is the one-off that removes it. Batched by cursor
-   * because the table has no retention and only grows (E2E-09-58).
+   * because the table has no retention and only grows.
    */
   async scrubSecrets(apply: boolean) {
     const BATCH = 500;

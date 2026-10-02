@@ -9,7 +9,7 @@ import {
   PermissionDeniedException,
   Sections,
   SubscriptionException,
-} from '@gitroom/backend/services/auth/permissions/permission.exception.class';
+} from '@gitroom/nestjs-libraries/services/auth/permission.exception.class';
 
 @Catch(SubscriptionException)
 export class SubscriptionExceptionFilter implements ExceptionFilter {

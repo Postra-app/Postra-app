@@ -10,6 +10,8 @@ import {
   Post,
   Put,
   Query,
+  BadRequestException,
+  NotFoundException,
 } from '@nestjs/common';
 import { ioRedis } from '@gitroom/nestjs-libraries/redis/redis.service';
 import { IntegrationManager } from '@gitroom/nestjs-libraries/integrations/integration.manager';
@@ -32,7 +34,7 @@ import { MoltbookProvider } from '@gitroom/nestjs-libraries/integrations/social/
 import {
   AuthorizationActions,
   Sections,
-} from '@gitroom/backend/services/auth/permissions/permission.exception.class';
+} from '@gitroom/nestjs-libraries/services/auth/permission.exception.class';
 import { uniqBy } from 'lodash';
 import { canPostComments } from '@gitroom/nestjs-libraries/integrations/social/comment.capability';
 import { RefreshIntegrationService } from '@gitroom/nestjs-libraries/integrations/refresh.integration.service';
@@ -146,7 +148,7 @@ export class IntegrationsController {
     @Body('additionalSettings') body: string
   ) {
     if (typeof body !== 'string') {
-      throw new Error('Invalid body');
+      throw new BadRequestException('Invalid body');
     }
 
     await this._integrationService.updateProviderSettings(org.id, id, body);
@@ -162,14 +164,14 @@ export class IntegrationsController {
       id
     );
     if (!integration) {
-      throw new Error('Invalid integration');
+      throw new NotFoundException('Channel not found');
     }
 
     const manager = this._integrationManager.getSocialIntegration(
       integration.providerIdentifier
     );
     if (!manager.changeProfilePicture && !manager.changeNickname) {
-      throw new Error('Invalid integration');
+      throw new NotFoundException('Channel not found');
     }
 
     const { url } = manager.changeProfilePicture
@@ -235,7 +237,7 @@ export class IntegrationsController {
     // org already has on this platform. It used to be any string: the callback
     // only compares it with the provider account id, so a FREE org could pass
     // its own X or Discord id and connect a platform outside its plan, past
-    // the channel limit too (E2E-01-19). The callback checks this again.
+    // the channel limit too. The callback checks this again.
     if (
       refresh &&
       !(await this._integrationService.hasChannel(org.id, integration, refresh))
@@ -265,7 +267,7 @@ export class IntegrationsController {
       this._integrationManager.getSocialIntegration(integration);
 
     if (integrationProvider.externalUrl && !externalUrl) {
-      throw new Error('Missing external url');
+      throw new BadRequestException('Missing external url');
     }
 
     try {
@@ -348,7 +350,7 @@ export class IntegrationsController {
       body.id
     );
     if (!getIntegration) {
-      throw new Error('Invalid integration');
+      throw new NotFoundException('Channel not found');
     }
 
     let newList: any[] | { none: true } = [];
@@ -404,14 +406,14 @@ export class IntegrationsController {
       body.id
     );
     if (!getIntegration) {
-      throw new Error('Invalid integration');
+      throw new NotFoundException('Channel not found');
     }
 
     const integrationProvider = this._integrationManager.getSocialIntegration(
       getIntegration.providerIdentifier
     );
     if (!integrationProvider) {
-      throw new Error('Invalid provider');
+      throw new BadRequestException('Invalid provider');
     }
 
     // @ts-ignore
@@ -451,7 +453,7 @@ export class IntegrationsController {
         return false;
       }
     }
-    throw new Error('Function not found');
+    throw new NotFoundException('Function not found');
   }
 
   @Post('/disable')

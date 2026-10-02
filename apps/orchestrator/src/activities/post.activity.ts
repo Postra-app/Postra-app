@@ -195,8 +195,7 @@ export class PostActivity {
     // guard (`if (!firstPost) changeState('ERROR', 'No Post')`), and it could
     // never be reached: Temporal retried a throwing activity instead of taking
     // the path written for exactly this case. The old condition was also dead
-    // by construction — a non-null row here always has deletedAt null
-    // (E2E-05-03).
+    // by construction — a non-null row here always has deletedAt null.
     if (!post) {
       return false;
     }

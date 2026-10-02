@@ -298,10 +298,10 @@ export const CalendarWeekProvider: FC<{
     []
   );
 
-  // Na telefonie siatki tydzień/miesiąc/dzień są nieczytelne — wymuszamy
-  // widok agendy (list), dokładnie jak robi to apka mobilna. Lista korzysta
-  // z osobnego endpointu (/posts/list), więc to przełącza też dane.
-  // Desktop (isMobile=false) jest nietknięty.
+  // On a phone the week/month/day grids are unreadable, so force the agenda
+  // (list) view, as the mobile app does. The list has its own endpoint
+  // (/posts/list), so this switches the data too. Desktop (isMobile=false)
+  // is untouched.
   const isMobile = useIsMobile();
   useEffect(() => {
     if (isMobile && filters.display !== 'list') {

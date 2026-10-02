@@ -51,7 +51,7 @@ Postra is a social media management platform with AI built in — made for small
 
 ## Platforms
 
-Facebook · Instagram · TikTok · LinkedIn · YouTube — with X (Twitter) and more on the way.
+Facebook · Instagram · Threads · X (Twitter) · LinkedIn · YouTube · TikTok · Bluesky · Mastodon · Telegram · Discord — with LinkedIn Pages and more on the way.
 
 ## Built on Postiz
 

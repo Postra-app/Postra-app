@@ -160,7 +160,7 @@ export class SubscriptionRepository {
    * POST /billing/cancel-subscription, which needs a resolvable Stripe customer
    * and a live subscription, and which bails on any lifetime row before it
    * deletes anything. A comped or granted account therefore could not be taken
-   * back through the product at all (E2E-09-41).
+   * back through the product at all.
    */
   async softDeleteSubscriptionByOrg(orgId: string) {
     const { count } = await this._subscription.model.subscription.updateMany({
@@ -270,7 +270,7 @@ export class SubscriptionRepository {
         // to the org that customer really owns. When the caller named the org
         // outright — an admin comp, a lifetime grant — there is no customer to
         // match, and demanding one is what pushed `addSubscription` into
-        // overwriting paymentId to make its own upsert fit (E2E-09-09).
+        // overwriting paymentId to make its own upsert fit.
         ...(!code && !org
           ? {
               organization: {

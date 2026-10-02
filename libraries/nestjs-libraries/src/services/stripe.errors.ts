@@ -29,7 +29,7 @@ export function isMissingCustomerError(err: unknown): boolean {
   // name (`StripeInvalidRequestError`). Reading `type` alone matched an object
   // built by hand in a spec and never matched a real rejection, which is how
   // this shipped with ten green tests and no effect on production
-  // (e2e/bugs.md — E2E-07-02). Verified against stripe@20.4.0.
+  //. Verified against stripe@20.4.0.
   const apiType = e.rawType ?? e.type;
 
   if (apiType !== 'invalid_request_error' || e.code !== 'resource_missing') {

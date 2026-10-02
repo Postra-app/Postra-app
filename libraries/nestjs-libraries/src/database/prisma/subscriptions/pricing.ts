@@ -229,7 +229,7 @@ export const channelLimitFor = (org?: {
  * `pricing` also holds FREE, but FREE is not a `SubscriptionTier` in the
  * database — Prisma rejects the value, and the only route to FREE is deleting
  * the subscription row. Anything outside this list reaching the comp path used
- * to be a 500, or, for `__proto__`, a quiet 200 (E2E-09-40).
+ * to be a 500, or, for `__proto__`, a quiet 200.
  *
  * TEAM is left out for the same reason it is not purchasable: it is a hidden
  * legacy plan that undercuts Business, and "give them everything" is what

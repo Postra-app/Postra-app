@@ -68,7 +68,7 @@ export class UsersRepository {
     // Exact match first, so an address stored exactly as asked always wins.
     // The case-insensitive fallback covers accounts saved before registration
     // lower-cased emails: the DTOs now lower-case what people type, which on
-    // its own would lock those accounts out (E2E-03-01).
+    // its own would lock those accounts out.
     return (
       (await this._user.model.user.findFirst({
         where: { email, providerName: Provider.LOCAL },

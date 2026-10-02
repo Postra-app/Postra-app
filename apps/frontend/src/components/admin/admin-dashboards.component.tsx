@@ -101,7 +101,7 @@ const AppMetricsSection: FC = () => {
   }
 
   // Configured but not answering right now, after three tries — different from
-  // not configured at all, and no longer a card of raw error text (E2E-09-31).
+  // not configured at all, and no longer a card of raw error text.
   if (data.unavailable) {
     return (
       <div className="text-[13px] text-newTextColor/70">

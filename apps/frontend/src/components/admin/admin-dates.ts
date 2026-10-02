@@ -7,11 +7,11 @@
  * clock in UTC. Under BST that made "today" yesterday for the first hour after
  * midnight, and the header — rendering the server's inclusive 23:59:59 UTC end
  * back through toLocaleDateString — showed tomorrow, on every preset, all
- * summer (E2E-09-24).
+ * summer.
  *
  * Growth sliced the ISO day apart to label its axis, so a twelve-month chart
  * read "22 23 24 25 26 27 28 14 15 26 28 9" — day numbers with no month and no
- * year — and the tooltip never carried a year either (E2E-09-04).
+ * year — and the tooltip never carried a year either.
  */
 
 /** An ISO day built from the local calendar, not from UTC. */

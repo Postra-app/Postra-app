@@ -17,7 +17,7 @@ export const Checkbox = forwardRef<
     ariaLabel?: string;
     // A disabled box ignores clicks and keys and stays out of the tab order.
     // TikTok's posting rules depend on it: Branded content must not be
-    // tickable while privacy is Self only (e2e/bugs.md E2E-03-06).
+    // tickable while privacy is Self only.
     disabled?: boolean;
     onChange?: (event: {
       target: {
@@ -81,7 +81,7 @@ export const Checkbox = forwardRef<
         // Without these three a keyboard or screen-reader user cannot reach
         // this control at all, let alone tick it — and on /auth/register that
         // closed registration to them completely, because the form refuses to
-        // submit until the terms box is checked (e2e/bugs.md E2E-03-05).
+        // submit until the terms box is checked.
         role="checkbox"
         aria-checked={!!val}
         aria-label={ariaLabel || label}

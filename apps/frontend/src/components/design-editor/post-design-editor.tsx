@@ -614,7 +614,7 @@ const PostDesignEditor: FC<PostDesignEditorProps> = ({
   /**
    * Draw a design at exactly the format's size. Scaling the on-screen canvas
    * by 1/zoom rounds through the displayed width, so a 1600×900 design came
-   * out 1599×900 (E2E-06-09); the carousel and "All formats" already went
+   * out 1599×900; the carousel and "All formats" already went
    * through a canvas of the right size, now every export does.
    */
   const renderJsonToDataUrl = useCallback(

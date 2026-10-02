@@ -1,13 +1,13 @@
 import { useEffect, useState } from 'react';
 
 /**
- * Mobilny breakpoint = poniżej `md` (768px), spójny z app-shellem
- * (sidebar znika na `md`, bottom-nav pojawia się na `md`).
+ * Mobile breakpoint = below `md` (768px), matching the app shell (the
+ * sidebar disappears and the bottom nav appears at `md`).
  *
- * SSR-safe: zwraca `false` na serwerze i przy pierwszym renderze klienta
- * (zgodnym z SSR), a po zamontowaniu koryguje wg `matchMedia` — bez
- * hydration mismatch. Tylko do progresywnego włączania zachowań mobilnych;
- * widok desktopowy (>=768px) pozostaje nietknięty.
+ * SSR-safe: returns `false` on the server and on the first client render
+ * (matching SSR), then corrects itself from `matchMedia` after mount — no
+ * hydration mismatch. Only for progressively switching on mobile behaviour;
+ * the desktop view (>=768px) stays untouched.
  */
 export function useIsMobile(maxWidth = 767): boolean {
   const [isMobile, setIsMobile] = useState(false);

@@ -1,3 +1,4 @@
+import { fetchMediaStream } from '@gitroom/nestjs-libraries/media/fetch.media.buffer';
 import {
   AnalyticsData,
   AuthTokenDetails,
@@ -271,12 +272,8 @@ export class PinterestProvider
         })
       ).json();
 
-      const { data, status } = await axios.get(
-        postDetails?.[0]?.media?.[0]?.path!,
-        {
-          responseType: 'stream',
-        }
-      );
+      // client-controlled path: SSRF guard (upstream 6c4a8ca4)
+      const data = await fetchMediaStream(postDetails?.[0]?.media?.[0]?.path!);
 
       const formData = Object.keys(upload_parameters)
         .filter((f) => f)

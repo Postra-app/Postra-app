@@ -1,7 +1,7 @@
 /**
- * E2E-10-35 — `DELETE /posts/:group` odpowiadało `{ error: true }` niezależnie
- * od tego, czy cokolwiek usunęło. Klient nie miał jak odróżnić powodzenia od
- * porażki; web po prostu zawsze pokazywał „usunięto".
+ * E2E-10-35 — `DELETE /posts/:group` answered `{ error: true }` whether or not
+ * it deleted anything. The client could not tell success from failure; the web
+ * app simply always said "deleted".
  */
 // PostsService reaches isomorphic-dompurify through the create-post DTO, and
 // that pulls jsdom, which does not start in this repo (its canvas binding is

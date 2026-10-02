@@ -71,7 +71,7 @@ export class AnnouncementsController {
 
     // Announcements are the panel's other mutating surface and the only one
     // that was not audited — an entry everybody sees, appearing with nothing
-    // recording who put it there (E2E-09-26, E2E-09-34).
+    // recording who put it there.
     const created = await this._announcementsService.createAnnouncement(body);
     this._auditService.record({
       action: 'admin.announcement.create',

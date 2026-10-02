@@ -355,8 +355,6 @@ export class StripeService {
         },
       }));
 
-    const proration_date = Math.floor(Date.now() / 1000);
-
     const currentUserSubscription = {
       data: (
         await stripe.subscriptions.list({
@@ -366,13 +364,17 @@ export class StripeService {
       ).data.filter((f) => f.status === 'active' || f.status === 'trialing'),
     };
 
+    // Preview exactly what subscribe() does — same price, always_invoice, the
+    // billing cycle left where it is — so "Pay today" is the amount charged.
+    // This used to ask for billing_cycle_anchor 'now' together with a
+    // proration_date, which Stripe rejects outright; the error was swallowed and
+    // every upgrade quoted £0 (P2b #4, 2026-10-02).
     try {
       const price = await stripe.invoices.createPreview({
         customer,
         subscription: currentUserSubscription?.data?.[0]?.id,
         subscription_details: {
-          proration_behavior: 'create_prorations',
-          billing_cycle_anchor: 'now',
+          proration_behavior: 'always_invoice',
           items: [
             {
               id: currentUserSubscription?.data?.[0]?.items?.data?.[0]?.id,
@@ -380,7 +382,6 @@ export class StripeService {
               quantity: 1,
             },
           ],
-          proration_date: proration_date,
         },
       });
 
@@ -388,6 +389,9 @@ export class StripeService {
         price: price?.amount_remaining ? price?.amount_remaining / 100 : 0,
       };
     } catch (err) {
+      this._logger.error(
+        `[prorate] preview failed org=${organizationId}: ${(err as Error)?.message ?? err}`
+      );
       return { price: 0 };
     }
   }

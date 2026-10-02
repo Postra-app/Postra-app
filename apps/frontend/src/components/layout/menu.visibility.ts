@@ -7,7 +7,7 @@
  * accounts included, and stayed there while an admin was impersonating, which
  * is precisely what the desktop menu hides. Tapping it only ever answered "You
  * do not have access", so it advertised a panel rather than opening one
- * (E2E-09-05). It also compared the entry's *translated* name against the
+ *. It also compared the entry's *translated* name against the
  * literal 'Billing', a check the desktop copies had already fixed by comparing
  * the path instead.
  *

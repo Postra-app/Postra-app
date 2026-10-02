@@ -1,7 +1,11 @@
 import { expect, test } from '@playwright/test';
-import { channelOf, signedIn } from '../helpers';
+import { anonymous, channelOf, signedIn } from '../helpers';
 
 // Channel settings over the API.
+
+// Several tests change the client of the same seeded channel; in parallel
+// they undo each other's setup.
+test.describe.configure({ mode: 'serial' });
 
 test('posting times: an unknown or foreign channel is 404, not 500', async () => {
   const a = await signedIn('a');
@@ -91,4 +95,28 @@ test('U9: editing a channel never answers with its tokens', async () => {
     expect(Object.keys(body)).not.toContain('internalId');
   }
   await a.dispose();
+});
+
+test('P1a #13: channel endpoints answer 4xx, not 500, for bad input', async () => {
+  const a = await signedIn('a');
+  const unknown = '00000000-0000-4000-8000-000000000000';
+  const cases: [string, Promise<{ status(): number }>, number][] = [
+    ['settings with a non-string body', a.post(`/integrations/${channelOf('a')}/settings`, { data: { additionalSettings: 42 } }), 400],
+    ['nickname of an unknown channel', a.post(`/integrations/${unknown}/nickname`, { data: { name: 'x', picture: '' } }), 404],
+    ['function on an unknown channel', a.post('/integrations/function', { data: { id: unknown, name: 'channels' } }), 404],
+    ['unknown function on a real channel', a.post('/integrations/function', { data: { id: channelOf('a'), name: 'no-such-function' } }), 404],
+    ['mentions on an unknown channel', a.post('/integrations/mentions', { data: { id: unknown, name: 'x' } }), 404],
+    ['connect an unknown provider', a.post('/integrations/social-connect/not-a-provider', { data: { code: 'x', state: 'x' } }), 400],
+  ];
+  for (const [name, call, expected] of cases) {
+    expect((await call).status(), name).toBe(expected);
+  }
+  await a.dispose();
+
+  const anon = await anonymous();
+  expect(
+    (await anon.post('/integrations/public/provider/x/connect', { data: {} })).status(),
+    'public provider connect without state'
+  ).toBe(400);
+  await anon.dispose();
 });

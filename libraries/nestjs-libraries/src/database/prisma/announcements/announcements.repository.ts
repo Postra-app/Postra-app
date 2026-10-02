@@ -18,7 +18,7 @@ export class AnnouncementsRepository {
    *
    * This used to be every row in the table, ordered by date — an announcement
    * stopped only when an operator remembered to delete it, and the endpoint
-   * handed the whole history to every session (E2E-09-26).
+   * handed the whole history to every session.
    */
   getAnnouncements() {
     return this._announcements.model.announcement.findMany({
@@ -67,11 +67,11 @@ export class AnnouncementsRepository {
    * `updateMany` rather than `update`, for the same reason the previous
    * version used `deleteMany`: Prisma throws on a row that is not there and
    * the controller turned that into a 500 for what is really "already gone"
-   * (E2E-09-46). Narrowing on `deletedAt: null` keeps that answer honest when
+   *. Narrowing on `deletedAt: null` keeps that answer honest when
    * the row exists but has already been removed — the count is 0 either way.
    *
    * The row stays so the audit entry naming who removed it still points at
-   * something (E2E-09-26).
+   * something.
    */
   async deleteAnnouncement(id: string) {
     const { count } = await this._announcements.model.announcement.updateMany({

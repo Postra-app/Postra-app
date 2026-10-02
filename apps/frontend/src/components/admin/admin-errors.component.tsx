@@ -16,7 +16,7 @@ import { LoadingComponent } from '@gitroom/frontend/components/layout/loading';
 
 // The list no longer carries `body` or the post content: they were most of its
 // 151 KB per twenty rows, and both are only ever looked at one row at a time
-// (E2E-09-30). They come from GET /admin/errors/:id instead.
+//. They come from GET /admin/errors/:id instead.
 interface ErrorRow {
   id: string;
   message: string;

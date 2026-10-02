@@ -1,3 +1,4 @@
+import { fetchMediaBuffer } from '@gitroom/nestjs-libraries/media/fetch.media.buffer';
 import { createHash, randomBytes } from 'crypto';
 import {
   AuthTokenDetails,
@@ -225,8 +226,8 @@ export class WhopProvider extends SocialAbstract implements SocialProvider {
     const attachments: { id: string }[] = [];
 
     for (const item of media) {
-      const fileResponse = await fetch(item.path);
-      const fileBuffer = await fileResponse.arrayBuffer();
+      // client-controlled path: SSRF guard (upstream 6c4a8ca4)
+      const fileBuffer = await fetchMediaBuffer(item.path);
       const fileName = item.path.split('/').pop() || 'file';
 
       const createFileResponse = await (

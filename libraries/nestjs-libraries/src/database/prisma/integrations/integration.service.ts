@@ -326,7 +326,7 @@ export class IntegrationService {
   /**
    * Whether the org has a live channel with this provider account. A reconnect
    * (`refresh`) skips the plan and channel-limit gates, so it is only a
-   * reconnect when this is true (E2E-01-19).
+   * reconnect when this is true.
    */
   async hasChannel(org: string, provider: string, internalId: string) {
     const list = await this._integrationRepository.getIntegrationsList(org);
@@ -459,7 +459,7 @@ export class IntegrationService {
    * channel anywhere in the list silently skipped the refresh of every channel
    * after it — and printed nothing, so the operator assumed they had all been
    * refreshed. This is the manual rescue path for expired tokens, which means
-   * it failed at exactly the moment it was needed (E2E-09-43).
+   * it failed at exactly the moment it was needed.
    *
    * Returns a per-channel outcome so a partial run is visible.
    */
@@ -827,7 +827,7 @@ export class IntegrationService {
     // The plug row is keyed on (plugFunction, integrationId) only. Without
     // this check another org could create it first on someone else's channel:
     // it never runs (plugs are loaded with the channel owner's org), but it
-    // blocks the owner from setting that plug up — a 500 for them (E2E-05-19).
+    // blocks the owner from setting that plug up — a 500 for them.
     const [integration] =
       await this._integrationRepository.getIntegrationsByIds(orgId, [
         integrationId,

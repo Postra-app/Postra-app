@@ -21,7 +21,7 @@ import { CheckPolicies } from '@gitroom/backend/services/auth/permissions/permis
 import {
   AuthorizationActions,
   Sections,
-} from '@gitroom/backend/services/auth/permissions/permission.exception.class';
+} from '@gitroom/nestjs-libraries/services/auth/permission.exception.class';
 import { Request, Response } from 'express';
 import { GetOrgFromRequest } from '@gitroom/nestjs-libraries/user/org.from.request';
 import { Organization } from '@prisma/client';
@@ -67,7 +67,7 @@ const queryPage = (value: unknown): number => {
 
 // A model that answers without an image used to come back as 201 with the
 // body `false`, which the design editor took for a result and showed as an
-// empty picture (E2E-02-16).
+// empty picture.
 const NO_IMAGE_MESSAGE = 'The image could not be generated, please try again';
 
 @ApiTags('Media')
@@ -492,7 +492,7 @@ export class MediaController {
     @UploadedFile('file') file: Express.Multer.File,
     @Body('preventSave') preventSave: string = 'false',
     // Studio exports come through here, and only the canvas knows whether an
-    // image model drew any of it (E2E-06-04). A client can only ever make its
+    // image model drew any of it. A client can only ever make its
     // own upload carry the AI label, never take it off something we generated.
     @Body('aiGenerated') aiGenerated: string = 'false'
   ) {
