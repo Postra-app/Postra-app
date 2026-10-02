@@ -31,8 +31,13 @@ export class WebhookController {
     return this._webhooksService.getWebhooks(org.id);
   }
 
+  // Webhooks send organisation data to outside URLs: admins only. ADMIN goes
+  // first so a member hears 403, not "upgrade your plan".
   @Post('/')
-  @CheckPolicies([AuthorizationActions.Create, Sections.WEBHOOKS])
+  @CheckPolicies(
+    [AuthorizationActions.Create, Sections.ADMIN],
+    [AuthorizationActions.Create, Sections.WEBHOOKS]
+  )
   async createAWebhook(
     @GetOrgFromRequest() org: Organization,
     @Body() body: WebhooksDto
@@ -41,6 +46,7 @@ export class WebhookController {
   }
 
   @Put('/')
+  @CheckPolicies([AuthorizationActions.Create, Sections.ADMIN])
   async updateWebhook(
     @GetOrgFromRequest() org: Organization,
     @Body() body: UpdateDto
@@ -49,6 +55,7 @@ export class WebhookController {
   }
 
   @Delete('/:id')
+  @CheckPolicies([AuthorizationActions.Create, Sections.ADMIN])
   async deleteWebhook(
     @GetOrgFromRequest() org: Organization,
     @Param('id') id: string
@@ -57,6 +64,7 @@ export class WebhookController {
   }
 
   @Post('/send')
+  @CheckPolicies([AuthorizationActions.Create, Sections.ADMIN])
   async sendWebhook(@Body() body: any, @Query() query: OnlyURL) {
     // User-supplied URL — pin DNS + refuse private ranges so this test call
     // can't be turned into an SSRF probe of the VPC/IMDS.

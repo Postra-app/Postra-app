@@ -547,7 +547,10 @@ export class IntegrationService {
   }
 
   async disableChannel(org: string, id: string) {
-    return this._integrationRepository.disableChannel(org, id);
+    const { count } = await this._integrationRepository.disableChannel(org, id);
+    if (!count) {
+      throw new NotFoundException('Channel not found');
+    }
   }
 
   async enableChannel(org: string, totalChannels: number, id: string) {
@@ -558,10 +561,13 @@ export class IntegrationService {
       !!process.env.STRIPE_PUBLISHABLE_KEY &&
       integrations.length >= totalChannels
     ) {
-      throw new Error('You have reached the maximum number of channels');
+      throw new HttpException('You have reached the maximum number of channels', 402);
     }
 
-    return this._integrationRepository.enableChannel(org, id);
+    const { count } = await this._integrationRepository.enableChannel(org, id);
+    if (!count) {
+      throw new NotFoundException('Channel not found');
+    }
   }
 
   async getPostsForChannel(org: string, id: string) {

@@ -49,9 +49,10 @@ test('Business with five seats taken refuses the sixth, from the owner and an ad
 });
 
 // E2E-02-02: a role that is too low is 403, a plan that is too small is 402.
-// [method, path, body, USER, ADMIN]. A member works with channels, customers
-// and webhooks like anyone in the calendar; the team, billing, the API key
-// and organisation settings are for admins.
+// [method, path, body, USER, ADMIN]. A member works with posts and channels
+// in the calendar; deleting, disabling or moving channels between agency
+// clients, webhooks, the team, billing, the API key and organisation settings
+// are for admins.
 type Row = [
   'get' | 'post' | 'put' | 'delete',
   string,
@@ -76,15 +77,19 @@ const MATRIX: Row[] = [
   ['get', '/user/oauth-app', undefined, 403, 200],
   // channels
   ['get', '/integrations/list', undefined, 200, 200],
-  ['delete', '/integrations', { id: UNKNOWN }, 404, 404],
-  ['delete', '/integrations', { id: channelOf('a') }, 404, 404],
+  ['delete', '/integrations', { id: UNKNOWN }, 403, 404],
+  ['delete', '/integrations', { id: channelOf('a') }, 403, 404],
   // customers
   ['get', '/integrations/customers', undefined, 200, 200],
-  ['put', `/integrations/${UNKNOWN}/customer-name`, { name: 'x' }, 404, 404],
-  ['put', `/integrations/${channelOf('a')}/customer-name`, { name: 'x' }, 404, 404],
+  ['put', `/integrations/${UNKNOWN}/customer-name`, { name: 'x' }, 403, 404],
+  ['put', `/integrations/${channelOf('a')}/customer-name`, { name: 'x' }, 403, 404],
+  ['put', `/integrations/${UNKNOWN}/group`, { group: 'x' }, 403, 404],
+  ['post', '/integrations/disable', { id: UNKNOWN }, 403, 404],
+  ['post', '/integrations/enable', { id: UNKNOWN }, 403, 404],
   // webhooks
   ['get', '/webhooks', undefined, 200, 200],
-  ['delete', `/webhooks/${UNKNOWN}`, undefined, 404, 404],
+  ['delete', `/webhooks/${UNKNOWN}`, undefined, 403, 404],
+  ['post', '/webhooks', { name: 'x', url: 'https://example.com/hook', integrations: [] }, 403, 201],
 ];
 
 for (const [method, path, body, forUser, forAdmin] of MATRIX) {

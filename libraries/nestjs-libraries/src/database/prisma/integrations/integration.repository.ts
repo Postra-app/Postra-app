@@ -659,11 +659,12 @@ export class IntegrationRepository {
     );
   }
 
-  async disableChannel(org: string, id: string) {
-    await this._integration.model.integration.update({
+  disableChannel(org: string, id: string) {
+    return this._integration.model.integration.updateMany({
       where: {
         id,
         organizationId: org,
+        deletedAt: null,
       },
       data: {
         disabled: true,
@@ -671,11 +672,12 @@ export class IntegrationRepository {
     });
   }
 
-  async enableChannel(org: string, id: string) {
-    await this._integration.model.integration.update({
+  enableChannel(org: string, id: string) {
+    return this._integration.model.integration.updateMany({
       where: {
         id,
         organizationId: org,
+        deletedAt: null,
       },
       data: {
         disabled: false,

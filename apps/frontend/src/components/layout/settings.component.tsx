@@ -96,7 +96,8 @@ export const SettingsPopup: FC<{
     if ((user?.tier?.team_members ?? 0) > 1 && isGeneral) {
       arr.push({ tab: 'teams', label: t('teams', 'Teams') });
     }
-    if (user?.tier?.webhooks) {
+    // Webhooks send organisation data out; managing them is for admins.
+    if (user?.tier?.webhooks && user?.role !== 'USER') {
       arr.push({ tab: 'webhooks', label: t('webhooks_1', 'Webhooks') });
     }
     if (user?.tier?.autoPost) {
@@ -175,7 +176,7 @@ export const SettingsPopup: FC<{
                 </div>
               )}
 
-              {tab === 'webhooks' && !!user?.tier?.webhooks && (
+              {tab === 'webhooks' && !!user?.tier?.webhooks && user?.role !== 'USER' && (
                 <div>
                   <Webhooks />
                 </div>
