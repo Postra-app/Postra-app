@@ -1,3 +1,4 @@
+import { fetchMediaBlob } from '@gitroom/nestjs-libraries/media/fetch.media.buffer';
 import {
   AuthTokenDetails,
   PostDetails,
@@ -160,11 +161,12 @@ export class DiscordProvider extends SocialAbstract implements SocialProvider {
 
     let index = 0;
     for (const media of firstPost.media || []) {
-      const loadMedia = await fetch(media.path);
+      // client-controlled path: SSRF guard (upstream 6c4a8ca4)
+      const loadMedia = await fetchMediaBlob(media.path);
 
       form.append(
         `files[${index}]`,
-        await loadMedia.blob(),
+        loadMedia as unknown as Blob,
         media.path.split('/').pop()
       );
       index++;
@@ -252,11 +254,12 @@ export class DiscordProvider extends SocialAbstract implements SocialProvider {
 
     let index = 0;
     for (const media of commentPost.media || []) {
-      const loadMedia = await fetch(media.path);
+      // client-controlled path: SSRF guard (upstream 6c4a8ca4)
+      const loadMedia = await fetchMediaBlob(media.path);
 
       form.append(
         `files[${index}]`,
-        await loadMedia.blob(),
+        loadMedia as unknown as Blob,
         media.path.split('/').pop()
       );
       index++;

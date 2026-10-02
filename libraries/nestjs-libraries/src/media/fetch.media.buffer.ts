@@ -1,3 +1,4 @@
+import { Readable } from 'node:stream';
 import { fetch } from 'undici';
 import { ssrfSafeDispatcher } from '@gitroom/nestjs-libraries/dtos/webhooks/ssrf.safe.dispatcher';
 import { isSafePublicHttpsUrl } from '@gitroom/nestjs-libraries/dtos/webhooks/webhook.url.validator';
@@ -8,7 +9,11 @@ import { isSafePublicHttpsUrl } from '@gitroom/nestjs-libraries/dtos/webhooks/we
 // here: DNS-pinned private-IP guard + pooled SSRF-safe dispatcher + no
 // redirects + a hard timeout so a slow internal host can't pin the worker.
 // Same defence the webhook/autopost/captions surfaces already use.
-async function fetchMediaResponse(url: string, timeoutMs: number) {
+async function fetchMediaResponse(
+  url: string,
+  timeoutMs: number,
+  signal: AbortSignal = AbortSignal.timeout(timeoutMs)
+) {
   if (!(await isSafePublicHttpsUrl(url))) {
     throw new Error('fetchMediaBuffer: blocked request to untrusted URL');
   }
@@ -17,7 +22,7 @@ async function fetchMediaResponse(url: string, timeoutMs: number) {
     method: 'GET',
     dispatcher: ssrfSafeDispatcher,
     redirect: 'error',
-    signal: AbortSignal.timeout(timeoutMs),
+    signal,
   });
 
   if (!response.ok) {
@@ -40,4 +45,25 @@ export async function fetchMediaBuffer(
 export async function fetchMediaBlob(url: string, timeoutMs = 30_000) {
   const response = await fetchMediaResponse(url, timeoutMs);
   return response.blob();
+}
+
+// For large videos handed on as a stream (YouTube upload). The timeout covers
+// only the wait for the response headers: a total timeout would cut a long
+// download off mid-upload, and a stalled body is bounded by the dispatcher's
+// bodyTimeout instead.
+export async function fetchMediaStream(
+  url: string,
+  headersTimeoutMs = 60_000
+): Promise<Readable> {
+  const abort = new AbortController();
+  const timer = setTimeout(() => abort.abort(), headersTimeoutMs);
+  try {
+    const response = await fetchMediaResponse(url, headersTimeoutMs, abort.signal);
+    if (!response.body) {
+      throw new Error('fetchMediaStream: empty response body');
+    }
+    return Readable.fromWeb(response.body as any);
+  } finally {
+    clearTimeout(timer);
+  }
 }

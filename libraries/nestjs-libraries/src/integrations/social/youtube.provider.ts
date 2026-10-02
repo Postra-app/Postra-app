@@ -1,3 +1,4 @@
+import { fetchMediaStream } from '@gitroom/nestjs-libraries/media/fetch.media.buffer';
 import { hasAiGeneratedMedia } from '@gitroom/nestjs-libraries/integrations/social/ai.media';
 import {
   AnalyticsData,
@@ -427,14 +428,11 @@ export class YoutubeProvider extends SocialAbstract implements SocialProvider {
 
     const { settings }: { settings: YoutubeSettingsDto } = firstPost;
 
-    const response = await axios({
-      url: firstPost?.media?.[0]?.path,
-      method: 'GET',
-      responseType: 'stream',
-      // A hung CDN download used to stall the publish into the 10-min
-      // activity timeout, and the Temporal retry re-uploaded the video (H1).
-      timeout: 60000,
-    });
+    // The media path comes from the client, so the download goes through the
+    // SSRF guard (upstream 6c4a8ca4). A hung CDN download used to stall the
+    // publish into the activity timeout, and the retry re-uploaded the video
+    // (H1) — hence the 60 s limit on the response headers.
+    const videoStream = await fetchMediaStream(firstPost?.media?.[0]?.path);
 
     const all: GaxiosResponse<Schema$Video> = await this.runInConcurrent(
       async () =>
@@ -462,7 +460,7 @@ export class YoutubeProvider extends SocialAbstract implements SocialProvider {
             },
           },
           media: {
-            body: response.data,
+            body: videoStream,
           },
         }),
       true

@@ -1,3 +1,6 @@
+import { fetch } from 'undici';
+import { ssrfSafeDispatcher } from '@gitroom/nestjs-libraries/dtos/webhooks/ssrf.safe.dispatcher';
+import { isSafePublicHttpsUrl } from '@gitroom/nestjs-libraries/dtos/webhooks/webhook.url.validator';
 import {
   Body,
   Controller,
@@ -532,9 +535,15 @@ export class NoAuthIntegrationsController {
     }
 
     const webhookUrl = await ioRedis.get(`webhookUrl:${body.state}`);
-    if (webhookUrl) {
+    // Same guard as every other server-side request to a user-supplied URL
+    // (upstream 1e4c8dd5). Only enterprise.controller sets this key, and those
+    // routes are switched off here, but the sink should not rely on that.
+    if (webhookUrl && (await isSafePublicHttpsUrl(webhookUrl))) {
       try {
         await fetch(webhookUrl, {
+          dispatcher: ssrfSafeDispatcher,
+          redirect: 'error',
+          signal: AbortSignal.timeout(10_000),
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({

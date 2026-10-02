@@ -50,18 +50,21 @@ const settingsFor = async (api: APIRequestContext, channel: Channel) => {
   return { __type: 'discord', channel: first.id };
 };
 
+type Media = { id: string; path: string };
+
 const publish = async (
   api: APIRequestContext,
   targets: Channel[],
   content: string,
   type: 'now' | 'schedule',
-  date: Date
+  date: Date,
+  image: Media[] = []
 ) => {
   const posts = [];
   for (const channel of targets) {
     posts.push({
       integration: { id: channel.id },
-      value: [{ content, image: [] }],
+      value: [{ content, image }],
       settings: await settingsFor(api, channel),
     });
   }
@@ -183,4 +186,31 @@ test('a post scheduled two minutes ahead waits, then lands', async ({ request })
   const [post] = await waitPublished(request, [id], 300_000);
   expect(Date.now()).toBeGreaterThanOrEqual(at.getTime());
   await onPlatform(request, post.releaseURL!, content);
+});
+
+// The providers download the post's media from our CDN and upload it to the
+// platform — the path that goes through the SSRF guard (U1). The image is the
+// newest one in the test account's library.
+test('a post with an image lands on Discord and Mastodon', async ({ request }) => {
+  test.setTimeout(240_000);
+  const res = await request.get('/api/media?page=1&type=image');
+  expect(res.status()).toBe(200);
+  const [image]: Media[] = (await res.json()).results;
+  expect(image, 'an image in the media library').toBeTruthy();
+
+  const targets = (await channels(request)).filter((c) =>
+    ['discord', 'mastodon'].includes(c.identifier)
+  );
+  expect(targets.length).toBe(2);
+
+  const content = promo(2);
+  await publish(request, targets, content, 'now', new Date(), [
+    { id: image.id, path: image.path },
+  ]);
+  const ids = await findPosts(request, content);
+  const published = await waitPublished(request, ids, 180_000);
+  for (const post of published) {
+    await onPlatform(request, post.releaseURL!, content);
+    test.info().annotations.push({ type: 'published with image', description: post.releaseURL! });
+  }
 });
