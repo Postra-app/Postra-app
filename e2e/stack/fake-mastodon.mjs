@@ -6,6 +6,9 @@
 //   POST /api/v1/statuses   accept a status, like Mastodon does
 //   GET  /__received        every status received so far
 //   POST /__fail            the next status answers 422 with a Mastodon error
+//   POST /__hold {"ms": n}  the next status is recorded at once but answered
+//                           n ms later — a platform that accepted the post
+//                           while the worker that sent it dies (restart/)
 //   POST /oauth/token       exchange any code for a token — the account is
 //   GET  /api/v1/accounts/verify_credentials   named after the code, so each
 //                           connect in a test can be a different account
@@ -14,6 +17,7 @@ import { createServer } from 'node:http';
 const PORT = Number(process.env.FAKE_MASTODON_PORT || 58080);
 const received = [];
 let failNext = false;
+let holdNextMs = 0;
 
 const readBody = (req) =>
   new Promise((resolve) => {
@@ -55,6 +59,11 @@ createServer(async (req, res) => {
     return json(res, 200, { failNext });
   }
 
+  if (req.method === 'POST' && req.url === '/__hold') {
+    holdNextMs = Number(JSON.parse(body.toString() || '{}').ms) || 0;
+    return json(res, 200, { holdNextMs });
+  }
+
   if (req.method === 'POST' && req.url === '/oauth/token') {
     const { code } = formFields(body, req.headers['content-type']);
     return json(res, 200, { access_token: `fake-${code || 'none'}`, token_type: 'Bearer' });
@@ -83,6 +92,9 @@ createServer(async (req, res) => {
       inReplyTo: fields.in_reply_to_id ?? null,
       authorization: req.headers.authorization ?? null,
     });
+    const hold = holdNextMs;
+    holdNextMs = 0;
+    if (hold) await new Promise((r) => setTimeout(r, hold));
     return json(res, 200, { id, url: `http://localhost:${PORT}/@stack/${id}` });
   }
 

@@ -28,14 +28,18 @@ export const getTemporalModule = (
               workflowsPath: path!,
               activityClasses: activityClasses!,
               autoStart: true,
-              ...(integration.maxConcurrentJob
-                ? {
-                    workerOptions: {
+              workerOptions: {
+                // markPublishing (temporal.heartbeat.ts) must reach the server
+                // within a second; the 60 s default could hold it back long
+                // enough for a dying worker to take it along.
+                maxHeartbeatThrottleInterval: '1 second',
+                ...(integration.maxConcurrentJob
+                  ? {
                       maxConcurrentActivityTaskExecutions:
                         integration.maxConcurrentJob,
-                    },
-                  }
-                : {}),
+                    }
+                  : {}),
+              },
             })),
         }
       : {}),

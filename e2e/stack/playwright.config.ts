@@ -94,6 +94,10 @@ export default defineConfig({
   ],
   projects: [
     { name: 'api', testMatch: /api\/.*\.spec\.ts/ },
+    // Kills and restarts the orchestrator, ~8 min: `pnpm e2e:stack:restart`.
+    ...(process.env.STACK_RESTART
+      ? [{ name: 'restart', testMatch: /restart\/.*\.spec\.ts/ }]
+      : []),
     ...(withUi
       ? [
           {
