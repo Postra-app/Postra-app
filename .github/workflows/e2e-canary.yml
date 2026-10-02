@@ -63,7 +63,7 @@ jobs:
       # Screenshots only: traces are off in CI (they carry the session cookie).
       - name: Upload screenshots
         if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: e2e-canary
           path: e2e/playwright/.results/

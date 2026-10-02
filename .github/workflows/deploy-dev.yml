@@ -301,7 +301,7 @@ jobs:
       # success(), and after a failed smoke nothing is successful any more.
       - name: Upload smoke test screenshots
         if: failure() && steps.smoke.outcome == 'failure'
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: playwright-smoke
           path: e2e/playwright/.results/
