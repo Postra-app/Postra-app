@@ -217,7 +217,9 @@ const AddOrRemoveSignature: FC<{
             <CopilotTextarea
               disableBranding={true}
               className={clsx(
-                '!min-h-40 !max-h-80 p-2 overflow-x-hidden scrollbar scrollbar-thumb-[#38bdf8] bg-bigStrip outline-none'
+                // The modal and the editor share a background: without a border the
+                // field was invisible until clicked (same treatment as AutoPost).
+                '!min-h-40 !max-h-80 p-2 overflow-x-hidden scrollbar scrollbar-thumb-[#38bdf8] bg-bigStrip outline-none border border-white/10 rounded-[8px] focus-within:border-[#38bdf8]'
               )}
               value={text}
               onChange={(e) => {
