@@ -1,3 +1,4 @@
+import { fetchMediaStream } from '@gitroom/nestjs-libraries/media/fetch.media.buffer';
 import {
   AnalyticsData,
   AuthTokenDetails,
@@ -51,43 +52,12 @@ export class DribbbleProvider extends SocialAbstract implements SocialProvider {
     return 'Invalid image size. Requires 400x300 or 800x600 px images.';
   }
 
-  async refreshToken(refreshToken: string): Promise<AuthTokenDetails> {
-    const { access_token, expires_in } = await (
-      await this.fetch('https://api-sandbox.pinterest.com/v5/oauth/token', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/x-www-form-urlencoded',
-          Authorization: `Basic ${Buffer.from(
-            `${process.env.PINTEREST_CLIENT_ID}:${process.env.PINTEREST_CLIENT_SECRET}`
-          ).toString('base64')}`,
-        },
-        body: new URLSearchParams({
-          grant_type: 'refresh_token',
-          refresh_token: refreshToken,
-          scope: `${this.scopes.join(',')}`,
-          redirect_uri: `${process.env.FRONTEND_URL}/integrations/social/pinterest`,
-        }),
-      })
-    ).json();
-
-    const { id, profile_image, username } = await (
-      await this.fetch('https://api-sandbox.pinterest.com/v5/user_account', {
-        method: 'GET',
-        headers: {
-          Authorization: `Bearer ${access_token}`,
-        },
-      })
-    ).json();
-
-    return {
-      id: id,
-      name: username,
-      accessToken: access_token,
-      refreshToken: refreshToken,
-      expiresIn: expires_in,
-      picture: profile_image || '',
-      username,
-    };
+  // Dribbble access tokens do not expire (authenticate sets expiresIn far
+  // ahead) and the API has no refresh grant. This used to be Pinterest's
+  // refresh copied over, which would have sent the token to Pinterest's
+  // sandbox; asking for a reconnect is the honest answer.
+  async refreshToken(): Promise<AuthTokenDetails> {
+    throw new Error('Dribbble tokens cannot be refreshed - reconnect the channel');
   }
 
   @Tool({ description: 'Teams list', dataSchema: [] })
@@ -163,12 +133,8 @@ export class DribbbleProvider extends SocialAbstract implements SocialProvider {
     accessToken: string,
     postDetails: PostDetails<DribbbleDto>[]
   ): Promise<PostResponse[]> {
-    const { data, status } = await axios.get(
-      postDetails?.[0]?.media?.[0]?.path!,
-      {
-        responseType: 'stream',
-      }
-    );
+    // client-controlled path: SSRF guard (upstream 6c4a8ca4)
+    const data = await fetchMediaStream(postDetails?.[0]?.media?.[0]?.path!);
 
     const slash = postDetails?.[0]?.media?.[0]?.path.split('/').at(-1);
 

@@ -1,3 +1,4 @@
+import { fetchMediaBuffer } from '@gitroom/nestjs-libraries/media/fetch.media.buffer';
 import {
   AuthTokenDetails,
   PostDetails,
@@ -13,7 +14,6 @@ import {
   ValidityMedia,
 } from '@gitroom/nestjs-libraries/integrations/social.abstract';
 import { lookup } from 'mime-types';
-import axios from 'axios';
 import WebSocket from 'ws';
 import { Tool } from '@gitroom/nestjs-libraries/integrations/tool.decorator';
 import { Integration } from '@prisma/client';
@@ -177,9 +177,8 @@ export class RedditProvider extends SocialAbstract implements SocialProvider {
       )
     ).json();
 
-    const { data } = await axios.get(path, {
-      responseType: 'arraybuffer',
-    });
+    // client-controlled path: SSRF guard (upstream 6c4a8ca4)
+    const data = await fetchMediaBuffer(path);
 
     const upload = (fields as { name: string; value: string }[]).reduce(
       (acc, value) => {
