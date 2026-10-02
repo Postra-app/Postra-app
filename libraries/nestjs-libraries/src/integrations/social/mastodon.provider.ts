@@ -4,7 +4,7 @@ import {
   PostResponse,
   SocialProvider,
 } from '@gitroom/nestjs-libraries/integrations/social/social.integrations.interface';
-import { makeId } from '@gitroom/nestjs-libraries/services/make.is';
+import { makeSecureId } from '@gitroom/nestjs-libraries/services/make.secure.id';
 import { fetchMediaBuffer } from '@gitroom/nestjs-libraries/media/fetch.media.buffer';
 import {
   SocialAbstract,
@@ -84,7 +84,7 @@ export class MastodonProvider extends SocialAbstract implements SocialProvider {
   }
 
   async generateAuthUrl() {
-    const state = makeId(6);
+    const state = makeSecureId(6);
     const url = this.generateUrlDynamic(
       process.env.MASTODON_URL || 'https://mastodon.social',
       state,
@@ -93,7 +93,7 @@ export class MastodonProvider extends SocialAbstract implements SocialProvider {
     );
     return {
       url,
-      codeVerifier: makeId(10),
+      codeVerifier: makeSecureId(10),
       state,
     };
   }

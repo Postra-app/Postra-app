@@ -4,7 +4,7 @@ import {
   PostResponse,
 } from '@gitroom/nestjs-libraries/integrations/social/social.integrations.interface';
 import { MastodonProvider } from '@gitroom/nestjs-libraries/integrations/social/mastodon.provider';
-import { makeId } from '@gitroom/nestjs-libraries/services/make.is';
+import { makeSecureId } from '@gitroom/nestjs-libraries/services/make.secure.id';
 import { Integration } from '@prisma/client';
 
 export class MastodonCustomProvider extends MastodonProvider {
@@ -38,7 +38,7 @@ export class MastodonCustomProvider extends MastodonProvider {
     refresh?: string,
     external?: ClientInformation
   ) {
-    const state = makeId(6);
+    const state = makeSecureId(6);
     const url = this.generateUrlDynamic(
       external?.instanceUrl!,
       state,
@@ -48,7 +48,7 @@ export class MastodonCustomProvider extends MastodonProvider {
 
     return {
       url,
-      codeVerifier: makeId(10),
+      codeVerifier: makeSecureId(10),
       state,
     };
   }

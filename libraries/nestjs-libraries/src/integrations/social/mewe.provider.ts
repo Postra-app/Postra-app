@@ -6,6 +6,7 @@ import {
   SocialProvider,
 } from '@gitroom/nestjs-libraries/integrations/social/social.integrations.interface';
 import { makeId } from '@gitroom/nestjs-libraries/services/make.is';
+import { makeSecureId } from '@gitroom/nestjs-libraries/services/make.secure.id';
 import { SocialAbstract } from '@gitroom/nestjs-libraries/integrations/social.abstract';
 import { fetchMediaBuffer } from '@gitroom/nestjs-libraries/media/fetch.media.buffer';
 import dayjs from 'dayjs';
@@ -82,7 +83,7 @@ export class MeweProvider extends SocialAbstract implements SocialProvider {
   }
 
   async generateAuthUrl() {
-    const state = makeId(6);
+    const state = makeSecureId(6);
     return {
       url:
         `${this.meweHost}/login` +
@@ -91,7 +92,7 @@ export class MeweProvider extends SocialAbstract implements SocialProvider {
           `${process.env.FRONTEND_URL}/integrations/social/mewe`
         )}` +
         `&state=${state}`,
-      codeVerifier: makeId(10),
+      codeVerifier: makeSecureId(10),
       state,
     };
   }
