@@ -133,7 +133,12 @@ const onPlatform = async (api: APIRequestContext, releaseURL: string, content: s
     const status = await api.get(`${url.origin}/api/v1/statuses/${id}`);
     expect(status.status(), 'Mastodon has the post').toBe(200);
     // Mastodon returns HTML and turns postra.co.uk into a link.
-    const text = String((await status.json()).content).replace(/<[^>]+>/g, '');
+    // Strip until nothing changes: one pass can leave a tag behind (CodeQL #72).
+    let text = String((await status.json()).content);
+    for (let prev = ''; prev !== text; ) {
+      prev = text;
+      text = text.replace(/<[^>]*>/g, '');
+    }
     expect(text).toContain(content);
     return 'read back from Mastodon';
   }

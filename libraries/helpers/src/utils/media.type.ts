@@ -10,13 +10,16 @@
 // `saveFile` now records the type, and readers go through `isVideoMedia`, which
 // still falls back to the path. The fallback is what makes the rollout safe in
 // either order: rows written before the backfill keep resolving correctly.
-const VIDEO_EXTENSION = /\.(mp4|m4v|mov|webm|mkv|avi|qt|ogv)(\?.*)?$/i;
+// Matched against the path with any query string cut off first: an optional
+// `(\?.*)?` group here backtracked polynomially on crafted paths (CodeQL #69).
+const VIDEO_EXTENSION = /\.(mp4|m4v|mov|webm|mkv|avi|qt|ogv)$/i;
 
 export type MediaType = 'image' | 'video';
 
 export const mediaTypeFromPath = (
   path: string | undefined | null
-): MediaType => (path && VIDEO_EXTENSION.test(path) ? 'video' : 'image');
+): MediaType =>
+  path && VIDEO_EXTENSION.test(path.split('?')[0]) ? 'video' : 'image';
 
 export const isVideoMedia = (
   media: { type?: string | null; path?: string | null } | undefined | null

@@ -71,9 +71,10 @@ const DIFF_USEFUL_ABOVE = 0.3;
 const normalize = (html: string) =>
   aiPlainText(html)
     .replace(/&nbsp;/g, ' ')
-    .replace(/&amp;/g, '&')
     .replace(/&lt;/g, '<')
     .replace(/&gt;/g, '>')
+    // last, or "&amp;lt;" would decode twice into "<" (CodeQL #68)
+    .replace(/&amp;/g, '&')
     .replace(/\u00a0/g, ' ')
     .replace(/\s+/g, ' ')
     .trim();
