@@ -2,15 +2,15 @@
 # Quick start:  make dev
 # Full stack:   make dev-full
 
-.PHONY: dev dev-full infra infra-full infra-tools infra-stop db-push db-seed dev-app dev-frontend dev-backend clean
+.PHONY: dev dev-full infra infra-full infra-tools infra-stop db-migrate db-seed dev-app dev-frontend dev-backend clean
 
 # ── Quick workflows ──────────────────────────────────────────────
 
-# Default: Postgres + Redis + Temporal → schema push → frontend + backend
-dev: infra db-push dev-app
+# Default: Postgres + Redis + Temporal → migrations → frontend + backend
+dev: infra db-migrate dev-app
 
-# Full: Postgres + Redis + Temporal + tools → schema push → seed → frontend + backend
-dev-full: infra-full db-push db-seed dev-app
+# Full: Postgres + Redis + Temporal + tools → migrations → seed → frontend + backend
+dev-full: infra-full db-migrate db-seed dev-app
 
 # ── Infrastructure ───────────────────────────────────────────────
 
@@ -40,11 +40,12 @@ infra-stop:
 
 # ── Database ─────────────────────────────────────────────────────
 
-# Push Prisma schema to local DB
-db-push:
+# Apply migrations to the local DB, the same way production boots.
+# Schema changes go through `pnpm prisma-migrate-dev`, never `db push`.
+db-migrate:
 	@echo "Waiting for Postgres..."
 	@until docker exec postra-postgres pg_isready -U postra-local -d postra-db-local > /dev/null 2>&1; do sleep 1; done
-	pnpm prisma-db-push
+	pnpm prisma-db-migrate
 
 # Seed admin user + org (idempotent)
 db-seed:
