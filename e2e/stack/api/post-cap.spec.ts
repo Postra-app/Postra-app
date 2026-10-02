@@ -69,9 +69,6 @@ test('Starter with 400 queued and published posts this cycle cannot schedule ano
 });
 
 test('Starter at 400 posts can still save a draft', async () => {
-  // BUG: POST /posts carries one POSTS_PER_MONTH policy for every type, so a
-  // full org cannot even draft — the agent tool (e13984ed) lets drafts through.
-  test.fail();
   const org = await throwawayOrg(prisma, { tier: 'STANDARD', totalChannels: 3, channels: 1 });
   const [channel] = org.channelIds;
   await fill(org.orgId, channel, 400, { state: 'QUEUE', publishDate: inDays(1) });

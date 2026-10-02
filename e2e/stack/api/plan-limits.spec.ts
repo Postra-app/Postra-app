@@ -84,9 +84,6 @@ test.describe('channel count', () => {
   });
 
   test('a full org can still reconnect a channel it has', async () => {
-    // BUG: the policy looks `refresh` up as Integration.id, the app sends
-    // internalId — so a full org gets 402 on Reconnect of a healthy channel.
-    test.fail();
     // Reconnecting adds nothing, so the cap must not lock a full org out of
     // repairing a token. `refresh` carries the channel's internalId — what
     // launches.component.tsx and render.analytics.tsx send.

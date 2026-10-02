@@ -95,11 +95,7 @@ test('G7: find-slot gives a free time on an own channel', async () => {
   expect(new Date(date).getTime()).toBeGreaterThan(Date.now() - 86_400_000);
 });
 
-test.fixme('G7: find-slot on a foreign or unknown channel is 404', async () => {
-  // BUG: a channel the org does not have yields no posting times, and
-  // findFreeDateTimeRecursive then looks one day further for ever — the request
-  // never answers and keeps querying Postgres. fixme, not fail: running it
-  // leaves that loop going in the backend for the rest of the run.
+test('G7: find-slot on a foreign or unknown channel is 404', async () => {
   for (const id of [channelOf('b'), UNKNOWN]) {
     expect((await a.get(`find-slot/${id}`, { timeout: 5_000 })).status(), id).toBe(404);
   }
@@ -113,8 +109,6 @@ test('G7: integration-settings describes an own channel', async () => {
 });
 
 test('G7: integration-settings for a foreign or unknown channel is 404', async () => {
-  // BUG: getIntegrationById returns null and JSON.parse(null.additionalSettings) throws.
-  test.fail();
   for (const id of [channelOf('b'), UNKNOWN]) {
     const res = await a.get(`integration-settings/${id}`);
     expect(res.status(), `${id}: ${await res.text()}`).toBe(404);
@@ -129,10 +123,6 @@ test('G7: social/:integration starts a connection and refuses unknown platforms'
 });
 
 test('G7: social/:integration keeps platforms outside the plan out, like the app does', async () => {
-  // BUG: the public route checks the channel count but not pricing.ts
-  // allowedProviders, so a Starter key gets a YouTube URL; only the callback
-  // says 402, after the customer has consented at the platform.
-  test.fail();
   for (const platform of ['youtube', 'threads', 'x', 'discord']) {
     expect((await b.get(`social/${platform}`)).status(), platform).toBe(402);
   }
@@ -173,8 +163,6 @@ test('G7: posts/:id/status changes an own post', async () => {
 });
 
 test('G7: posts/:id/status on a foreign or unknown post is 404 and changes nothing', async () => {
-  // BUG: changePostStatus answers BadRequestException('Post not found') — 400.
-  test.fail();
   for (const id of [postOfB, UNKNOWN]) {
     const res = await a.put(`posts/${id}/status`, { data: { status: 'schedule' } });
     expect(res.status(), id).toBe(404);
@@ -189,8 +177,6 @@ test('G7: analytics of an own channel answer', async () => {
 });
 
 test('G7: analytics of a foreign or unknown channel are 404', async () => {
-  // BUG: checkAnalytics throws a bare Error('Invalid integration').
-  test.fail();
   for (const id of [channelOf('b'), UNKNOWN]) {
     const res = await a.get(`analytics/${id}?date=7`);
     expect(res.status(), `${id}: ${await res.text()}`).toBe(404);

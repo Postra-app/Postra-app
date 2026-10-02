@@ -49,7 +49,7 @@ test('Business with five seats taken refuses the sixth, from the owner and an ad
 });
 
 // E2E-02-02: a role that is too low is 403, a plan that is too small is 402.
-// [method, path, body, USER, ADMIN, bug?]. A member works with channels, customers
+// [method, path, body, USER, ADMIN]. A member works with channels, customers
 // and webhooks like anyone in the calendar; the team, billing, the API key
 // and organisation settings are for admins.
 type Row = [
@@ -58,7 +58,6 @@ type Row = [
   Record<string, unknown> | undefined,
   number,
   number,
-  string?,
 ];
 const MATRIX: Row[] = [
   // team (invite: an admin passes the role check and meets the full team)
@@ -69,10 +68,7 @@ const MATRIX: Row[] = [
     `/settings/team/${UNKNOWN}`,
     undefined,
     403,
-    404,
-    // BUG: deleteTeamMember throws a bare Error('User is not part of this organization').
-    'an unknown member is 500',
-  ],
+    404],
   // billing
   ['get', '/user/subscription', undefined, 403, 200],
   // organisation settings and the developer app
@@ -80,9 +76,8 @@ const MATRIX: Row[] = [
   ['get', '/user/oauth-app', undefined, 403, 200],
   // channels
   ['get', '/integrations/list', undefined, 200, 200],
-  // BUG: deleteChannel's prisma update throws P2025 for a channel the org lacks.
-  ['delete', '/integrations', { id: UNKNOWN }, 404, 404, 'an unknown channel is 500'],
-  ['delete', '/integrations', { id: channelOf('a') }, 404, 404, 'a foreign channel is 500'],
+  ['delete', '/integrations', { id: UNKNOWN }, 404, 404],
+  ['delete', '/integrations', { id: channelOf('a') }, 404, 404],
   // customers
   ['get', '/integrations/customers', undefined, 200, 200],
   ['put', `/integrations/${UNKNOWN}/customer-name`, { name: 'x' }, 404, 404],
@@ -92,10 +87,9 @@ const MATRIX: Row[] = [
   ['delete', `/webhooks/${UNKNOWN}`, undefined, 404, 404],
 ];
 
-for (const [method, path, body, forUser, forAdmin, bug] of MATRIX) {
+for (const [method, path, body, forUser, forAdmin] of MATRIX) {
   const target = body && 'id' in body ? `${path} ${body.id}` : path;
   test(`role matrix: ${method.toUpperCase()} ${target} is ${forUser} for a USER, ${forAdmin} for an ADMIN`, async () => {
-    test.fail(!!bug, bug);
     const options = body ? { data: body } : undefined;
     const asUser = await user[method](path, options);
     expect(asUser.status(), `USER: ${await asUser.text()}`).toBe(forUser);
@@ -117,8 +111,6 @@ test('role matrix: only an admin may rotate the API key, and only an admin sees 
 });
 
 test('an admin cannot remove the owner', async () => {
-  // BUG: deleteTeamMember refuses with a bare Error('You do not have permission…') — 500.
-  test.fail();
   const team: { users: { role: string; user: { id: string; email: string } }[] } =
     await (await owner.get('/settings/team')).json();
   const ownerRow = team.users.find((u) => u.user.email === ORG_C.owner.email)!;

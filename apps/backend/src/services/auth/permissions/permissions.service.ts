@@ -52,7 +52,8 @@ export class PermissionsService {
     permission: 'USER' | 'ADMIN' | 'SUPERADMIN',
     requestedPermission: Array<[AuthorizationActions, Sections]>,
     refreshChannelId?: string,
-    isTrailing = false
+    isTrailing = false,
+    isDraft = false
   ) {
     const { can, build } = new AbilityBuilder<
       Ability<[AuthorizationActions, Sections]>
@@ -89,12 +90,16 @@ export class PermissionsService {
       if (section === Sections.CHANNEL) {
         // Refreshing an existing channel doesn't add a new one, so skip the limit check
         // but only if the channel actually belongs to this org
+        // The UI names the channel by its platform id (internalId); the
+        // controller then checks the platform matches (hasChannel).
         if (refreshChannelId) {
-          const existingIntegration =
-            await this._integrationService.getIntegrationById(
-              orgId,
-              refreshChannelId
-            );
+          const existingIntegration = (
+            await this._integrationService.getIntegrationsList(orgId)
+          ).some(
+            (i) =>
+              String(i.internalId) === refreshChannelId ||
+              i.id === refreshChannelId
+          );
           if (existingIntegration) {
             can(action, section);
             continue;
@@ -143,6 +148,11 @@ export class PermissionsService {
       }
 
       // check for posts per month
+      if (section === Sections.POSTS_PER_MONTH && isDraft) {
+        can(action, section);
+        continue;
+      }
+
       if (section === Sections.POSTS_PER_MONTH) {
         const createdAt =
           (await this._subscriptionService.getSubscription(orgId))?.createdAt ||

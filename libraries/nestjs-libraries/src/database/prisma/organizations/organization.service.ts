@@ -1,5 +1,9 @@
 import { CreateOrgUserDto } from '@gitroom/nestjs-libraries/dtos/auth/create.org.user.dto';
-import { Injectable } from '@nestjs/common';
+import {
+  ForbiddenException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { OrganizationRepository } from '@gitroom/nestjs-libraries/database/prisma/organizations/organization.repository';
 import { NotificationService } from '@gitroom/nestjs-libraries/database/prisma/notifications/notification.service';
 import { AddTeamMemberDto } from '@gitroom/nestjs-libraries/dtos/settings/add.team.member.dto';
@@ -105,7 +109,7 @@ export class OrganizationService {
     const userOrgs = await this._organizationRepository.getOrgsByUserId(userId);
     const findOrgToDelete = userOrgs.find((orgUser) => orgUser.id === org.id);
     if (!findOrgToDelete) {
-      throw new Error('User is not part of this organization');
+      throw new NotFoundException('User is not part of this organization');
     }
 
     // @ts-ignore
@@ -115,7 +119,7 @@ export class OrganizationService {
     const userLevel = userRole === 'USER' ? 0 : userRole === 'ADMIN' ? 1 : 2;
 
     if (myLevel < userLevel) {
-      throw new Error('You do not have permission to delete this user');
+      throw new ForbiddenException('You do not have permission to delete this user');
     }
 
     return this._organizationRepository.deleteTeamMember(org.id, userId);
