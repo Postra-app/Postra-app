@@ -283,18 +283,16 @@ export class SubscriptionService {
     org?: string
   ) {
     if (!code) {
-      try {
-        // Addressed by org (an admin comp) rather than by Stripe customer:
-        // modifySubscription resolves the org through paymentId and would bail
-        // on an org that has never paid.
-        const load =
-          org && !customerId
-            ? await this.modifySubscriptionByOrg(org, totalChannels, billing)
-            : await this.modifySubscription(customerId, totalChannels, billing);
-        if (!load) {
-          return {};
-        }
-      } catch (e) {
+      // Addressed by org (an admin comp) rather than by Stripe customer:
+      // modifySubscription resolves the org through paymentId and would bail
+      // on an org that has never paid. `false` means "not ours to write"
+      // (unknown customer, lifetime plan); a thrown error must reach the
+      // webhook so Stripe retries instead of the plan being silently lost.
+      const load =
+        org && !customerId
+          ? await this.modifySubscriptionByOrg(org, totalChannels, billing)
+          : await this.modifySubscription(customerId, totalChannels, billing);
+      if (!load) {
         return {};
       }
     }

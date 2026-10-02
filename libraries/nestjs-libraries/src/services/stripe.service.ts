@@ -1,5 +1,5 @@
 import Stripe from 'stripe';
-import { Injectable, Logger } from '@nestjs/common';
+import { HttpException, Injectable, Logger } from '@nestjs/common';
 import { Organization, User } from '@prisma/client';
 import { SubscriptionService } from '@gitroom/nestjs-libraries/database/prisma/subscriptions/subscription.service';
 import { OrganizationService } from '@gitroom/nestjs-libraries/database/prisma/organizations/organization.service';
@@ -121,49 +121,30 @@ export class StripeService {
     }
   }
 
-  async createSubscription(event: Stripe.CustomerSubscriptionCreatedEvent) {
-    const {
-      uniqueId,
-      billing,
-      period,
-    } = event.data.object.metadata as {
-      billing: 'STANDARD' | 'TEAM' | 'PRO' | 'ULTIMATE';
-      period: 'MONTHLY' | 'YEARLY';
-      uniqueId: string;
-    };
-
-    // A subscription created by hand in the Stripe dashboard can carry
-    // service metadata with a missing/invalid billing tier — indexing
-    // pricing[billing] would 500 and Stripe would retry the event forever.
-    if (!billing || !pricing[billing]) {
-      return { ok: false };
-    }
-
-    try {
-      const check = await this.checkValidCard(event);
-      if (!check) {
-        return { ok: false };
-      }
-    } catch (err) {
-      return { ok: false };
-    }
-
-    return this._subscriptionService.createOrUpdateSubscription(
-      event.data.object.status !== 'active',
-      uniqueId,
-      event.data.object.customer as string,
-      pricing[billing].channel!,
-      billing,
-      period,
-      event.data.object.cancel_at
-    );
+  createSubscription(event: Stripe.CustomerSubscriptionCreatedEvent) {
+    return this.syncSubscription(event);
   }
-  async updateSubscription(event: Stripe.CustomerSubscriptionUpdatedEvent) {
-    const {
-      uniqueId,
-      billing,
-      period,
-    } = event.data.object.metadata as {
+
+  updateSubscription(event: Stripe.CustomerSubscriptionUpdatedEvent) {
+    return this.syncSubscription(event);
+  }
+
+  // Stripe does not deliver events in order and retries failed ones later, so
+  // the payload can be stale: an update queued before a cancellation would
+  // bring a cancelled plan back, an older update would restore an older tier.
+  // The subscription as Stripe holds it now is the only state worth writing.
+  private async syncSubscription(
+    event:
+      | Stripe.CustomerSubscriptionCreatedEvent
+      | Stripe.CustomerSubscriptionUpdatedEvent
+  ) {
+    const current = await stripe.subscriptions.retrieve(event.data.object.id);
+    if (current.status === 'canceled' || current.status === 'incomplete_expired') {
+      // customer.subscription.deleted owns the downgrade.
+      return { ok: true, skipped: current.status };
+    }
+
+    const { uniqueId, billing, period } = current.metadata as {
       billing: 'STANDARD' | 'TEAM' | 'PRO' | 'ULTIMATE';
       period: 'MONTHLY' | 'YEARLY';
       uniqueId: string;
@@ -176,19 +157,26 @@ export class StripeService {
       return { ok: false };
     }
 
-    const check = await this.checkValidCard(event);
-    if (!check) {
+    const fresh = {
+      ...event,
+      data: { ...event.data, object: current },
+    } as typeof event;
+
+    // A thrown error answers 500, and Stripe retries the event.
+    if (!(await this.checkValidCard(fresh))) {
       return { ok: false };
     }
 
+    // past_due is a paid plan in Stripe's retry window, not a trial: keep the
+    // tier until Stripe either collects or deletes the subscription.
     return this._subscriptionService.createOrUpdateSubscription(
-      event.data.object.status !== 'active',
+      current.status === 'trialing',
       uniqueId,
-      event.data.object.customer as string,
+      current.customer as string,
       pricing[billing].channel!,
       billing,
       period,
-      event.data.object.cancel_at
+      current.cancel_at
     );
   }
 
@@ -240,9 +228,22 @@ export class StripeService {
   }
 
   async deleteSubscription(event: Stripe.CustomerSubscriptionDeletedEvent) {
-    await this._subscriptionService.deleteSubscription(
-      event.data.object.customer as string
+    const customer = event.data.object.customer as string;
+    // The plan row is per customer, not per Stripe subscription. If the
+    // customer already bought again, this deletion is for the old one.
+    const stillLive = (
+      await stripe.subscriptions.list({ customer, status: 'all' })
+    ).data.some(
+      (f) =>
+        f.id !== event.data.object.id &&
+        ['active', 'trialing', 'past_due'].includes(f.status)
     );
+    if (stillLive) {
+      return { ok: true, skipped: 'customer has another live subscription' };
+    }
+
+    await this._subscriptionService.deleteSubscription(customer);
+    return { ok: true };
   }
 
   async createOrGetCustomer(organization: Organization) {
@@ -450,6 +451,9 @@ export class StripeService {
     };
 
     const sub = currentUserSubscription.data[0];
+    if (!sub) {
+      throw new HttpException('There is no active subscription to cancel.', 400);
+    }
 
     // If the user is toggling back (un-cancelling), just remove the cancel
     if (sub.cancel_at_period_end) {
@@ -685,16 +689,32 @@ export class StripeService {
     return { url };
   }
 
-  async finishTrial(paymentId: string) {
-    const list = (
-      await stripe.subscriptions.list({
-        customer: paymentId,
-      })
-    ).data.filter((f) => f.status === 'trialing');
+  async finishTrial(
+    paymentId: string
+  ): Promise<{ finish: boolean; reason?: string; url?: string }> {
+    const trialing = (
+      await stripe.subscriptions.list({ customer: paymentId })
+    ).data.find((f) => f.status === 'trialing');
+    if (!trialing) {
+      return { finish: false, reason: 'no-trial' };
+    }
 
-    return stripe.subscriptions.update(list[0].id, {
+    const updated = await stripe.subscriptions.update(trialing.id, {
       trial_end: 'now',
+      expand: ['latest_invoice'],
     });
+    if (updated.status === 'active') {
+      return { finish: true };
+    }
+
+    // Usually the bank wants 3-D Secure for the first real charge; the
+    // hosted invoice page is where the customer completes it.
+    const invoice = updated.latest_invoice as Stripe.Invoice | null;
+    return {
+      finish: false,
+      reason: 'payment-incomplete',
+      url: invoice?.hosted_invoice_url || undefined,
+    };
   }
 
   async checkDiscount(customer: string) {

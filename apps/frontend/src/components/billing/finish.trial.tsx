@@ -8,24 +8,39 @@ import { useT } from '@gitroom/react/translation/get.transation.service.client';
 
 export const FinishTrial: FC<{ close: () => void }> = (props) => {
   const [finished, setFinished] = useState(false);
+  const [problem, setProblem] = useState<{ url?: string } | null>(null);
   const fetch = useFetch();
   const t = useT();
 
   const finishSubscription = useCallback(async () => {
-    await fetch('/billing/finish-trial', {
-      method: 'POST',
-    });
+    const result = await (
+      await fetch('/billing/finish-trial', {
+        method: 'POST',
+      })
+    ).json();
+    // finish:false means Stripe did not take the payment (usually 3-D Secure),
+    // so the plan will not flip and polling would spin forever.
+    if (!result?.finish) {
+      setProblem({ url: result?.url });
+      return;
+    }
     checkFinished();
   }, []);
 
-  const checkFinished = useCallback(async () => {
-    const {finished} = await (await fetch('/billing/is-trial-finished')).json();
-    if (!finished) {
-      await timer(2000);
-      return checkFinished();
+  const checkFinished = useCallback(async (attempt = 0) => {
+    const { finished } = await (
+      await fetch('/billing/is-trial-finished')
+    ).json();
+    if (finished) {
+      setFinished(true);
+      return;
     }
-
-    setFinished(true);
+    if (attempt >= 30) {
+      setProblem({});
+      return;
+    }
+    await timer(2000);
+    return checkFinished(attempt + 1);
   }, []);
 
   useEffect(() => {
@@ -66,7 +81,34 @@ export const FinishTrial: FC<{ close: () => void }> = (props) => {
           <div className="relative h-[400px]">
             <div className="absolute left-0 top-0 w-full h-full overflow-hidden overflow-y-auto">
               <div className="mt-[10px] flex w-full justify-center items-center gap-[10px]">
-                {!finished && <LoadingComponent height={150} width={150} />}
+                {!finished && !problem && (
+                  <LoadingComponent height={150} width={150} />
+                )}
+                {problem && (
+                  <div className="flex flex-col">
+                    <div>
+                      {t(
+                        'trial_finish_payment_pending',
+                        'We could not take the first payment yet. Your bank may need you to confirm it.'
+                      )}
+                    </div>
+                    <div className="flex gap-[10px] mt-[20px]">
+                      <Button
+                        className="flex-1"
+                        onClick={() =>
+                          window.open(problem.url || '/billing', '_blank')
+                        }
+                      >
+                        {problem.url
+                          ? t('confirm_payment', 'Confirm payment')
+                          : t('open_billing', 'Open billing')}
+                      </Button>
+                      <Button className="flex-1" onClick={() => props.close()}>
+                        {t('close_dialog', 'Close')}
+                      </Button>
+                    </div>
+                  </div>
+                )}
                 {finished && (
                   <div className="flex flex-col">
                     <div>

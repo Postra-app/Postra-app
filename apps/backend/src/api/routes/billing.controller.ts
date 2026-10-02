@@ -1,8 +1,10 @@
 import {
+  BadRequestException,
   Body,
   Controller,
   ForbiddenException,
   Get,
+  Logger,
   Param,
   Post,
   Req,
@@ -77,12 +79,18 @@ export class BillingController {
   @Post('/finish-trial')
   @CheckPolicies(BILLING_ADMIN)
   async finishTrial(@GetOrgFromRequest() org: Organization) {
+    if (!org.paymentId) {
+      return { finish: false, reason: 'no-trial' };
+    }
     try {
-      await this._stripeService.finishTrial(org.paymentId);
-    } catch (err) {}
-    return {
-      finish: true,
-    };
+      return await this._stripeService.finishTrial(org.paymentId);
+    } catch (err) {
+      Logger.error(
+        `finish-trial failed for org ${org.id}: ${(err as Error)?.message}`,
+        'Billing'
+      );
+      return { finish: false, reason: 'error' };
+    }
   }
 
   @Get('/is-trial-finished')
@@ -134,6 +142,9 @@ export class BillingController {
     const customer = await this._stripeService.getCustomerByOrganizationId(
       org.id
     );
+    if (!customer) {
+      throw new BadRequestException('This organization has no billing account yet.');
+    }
     const { url } = await this._stripeService.createBillingPortalLink(customer);
     return {
       portal: url,
