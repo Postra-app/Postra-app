@@ -4,6 +4,7 @@ import {
   planLabels,
   pricing,
   TRIAL_CHANNEL_CAP,
+  trialAiAllowance,
 } from './pricing';
 
 // Pins the paid-plan matrix so an upstream sync (Postiz ships different
@@ -195,5 +196,22 @@ describe('channelLimitFor', () => {
       pricing.FREE.channel
     );
     expect(channelLimitFor(undefined)).toBe(pricing.FREE.channel);
+  });
+});
+
+describe('trialAiAllowance', () => {
+  it('runs a trial on Starter’s AI pool, whatever the tier', () => {
+    expect(
+      trialAiAllowance(pricing.ULTIMATE.image_generation_count, true, 'image_generation_count')
+    ).toBe(pricing.STANDARD.image_generation_count);
+    expect(
+      trialAiAllowance(pricing.PRO.agent_tokens, true, 'agent_tokens')
+    ).toBe(pricing.STANDARD.agent_tokens);
+  });
+
+  it('leaves a paid plan its full pool', () => {
+    expect(
+      trialAiAllowance(pricing.ULTIMATE.image_generation_count, false, 'image_generation_count')
+    ).toBe(pricing.ULTIMATE.image_generation_count);
   });
 });

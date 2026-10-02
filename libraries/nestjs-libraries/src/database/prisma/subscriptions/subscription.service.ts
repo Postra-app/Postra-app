@@ -3,6 +3,7 @@ import {
   COMPABLE_TIERS,
   isCompableTier,
   pricing,
+  trialAiAllowance,
 } from '@gitroom/nestjs-libraries/database/prisma/subscriptions/pricing';
 import { SubscriptionRepository } from '@gitroom/nestjs-libraries/database/prisma/subscriptions/subscription.repository';
 import { IntegrationService } from '@gitroom/nestjs-libraries/database/prisma/integrations/integration.service';
@@ -76,11 +77,14 @@ export class SubscriptionService {
       date = date.add(1, 'month');
     }
     const cycleStart = date.subtract(1, 'month');
-    const limit =
-      checkType === 'ai_images'
-        ? pricing[tier as keyof typeof pricing].image_generation_count
-        : pricing[tier as keyof typeof pricing].generate_videos;
-    return { limit: limit || 0, cycleStart: cycleStart.toDate() };
+    const field =
+      checkType === 'ai_images' ? 'image_generation_count' : 'generate_videos';
+    const limit = trialAiAllowance(
+      pricing[tier as keyof typeof pricing][field] || 0,
+      organization.isTrailing,
+      field
+    );
+    return { limit, cycleStart: cycleStart.toDate() };
   }
 
   getCode(code: string) {
@@ -487,12 +491,17 @@ export class SubscriptionService {
     }
 
     const checkFromMonth = date.subtract(1, 'month');
-    const allowance =
+    const field =
       checkType === 'ai_images'
-        ? pricing[type].image_generation_count
+        ? 'image_generation_count'
         : checkType === 'ai_agent'
-        ? pricing[type].agent_tokens
-        : pricing[type].generate_videos;
+        ? 'agent_tokens'
+        : 'generate_videos';
+    const allowance = trialAiAllowance(
+      pricing[type][field] || 0,
+      organization.isTrailing,
+      field
+    );
 
     // Agent chat is measured from AiUsage (weighted tokens written by the
     // metering wrapper), not the Credits ledger the image/video paths use.
