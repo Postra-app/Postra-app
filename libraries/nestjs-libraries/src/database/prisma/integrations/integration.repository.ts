@@ -8,6 +8,17 @@ import { IntegrationTimeDto } from '@gitroom/nestjs-libraries/dtos/integrations/
 import { UploadFactory } from '@gitroom/nestjs-libraries/upload/upload.factory';
 import { PlugDto } from '@gitroom/nestjs-libraries/dtos/plugs/plug.dto';
 
+// What the channel-editing endpoints answer with. A bare update() returns the
+// whole row, encrypted access and refresh tokens included (U9, upstream rule
+// 2407718e); the frontend reads none of it.
+const SAFE_INTEGRATION_FIELDS = {
+  id: true,
+  name: true,
+  picture: true,
+  providerIdentifier: true,
+  customerId: true,
+} as const;
+
 @Injectable()
 export class IntegrationRepository {
   private storage = UploadFactory.createStorage();
@@ -477,6 +488,7 @@ export class IntegrationRepository {
         ...(name ? { name } : {}),
         ...(url ? { picture: url } : {}),
       },
+      select: SAFE_INTEGRATION_FIELDS,
     });
   }
 
@@ -593,6 +605,7 @@ export class IntegrationRepository {
               },
             },
       },
+      select: SAFE_INTEGRATION_FIELDS,
     });
   }
 
@@ -628,6 +641,7 @@ export class IntegrationRepository {
               },
             },
           },
+      select: SAFE_INTEGRATION_FIELDS,
     });
   }
 

@@ -73,3 +73,22 @@ test('customers: unknown or foreign channels are 404, and an emptied customer is
   expect(names).not.toContain('Short-lived client');
   await a.dispose();
 });
+
+test('U9: editing a channel never answers with its tokens', async () => {
+  const a = await signedIn('a');
+  const id = channelOf('a');
+  const answers = [
+    await a.put(`/integrations/${id}/customer-name`, { data: { name: 'Token check client' } }),
+    await a.put(`/integrations/${id}/group`, { data: { group: '' } }),
+    await a.put(`/integrations/${id}/customer-name`, { data: { name: '' } }),
+  ];
+  for (const res of answers) {
+    expect(res.status()).toBe(200);
+    const body = await res.json();
+    expect(body.id).toBe(id);
+    expect(Object.keys(body)).not.toEqual(expect.arrayContaining(['token']));
+    expect(Object.keys(body)).not.toContain('refreshToken');
+    expect(Object.keys(body)).not.toContain('internalId');
+  }
+  await a.dispose();
+});
