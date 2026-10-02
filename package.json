@@ -205,7 +205,7 @@
     "node-fetch": "^3.3.2",
     "node-telegram-bot-api": "^0.66.0",
     "nodemailer": "^7.0.11",
-    "nostr-tools": "^2.18.2",
+    "nostr-tools": "^2.25.2",
     "openai": "^6.2.0",
     "p-limit": "^3.1.0",
     "parse5": "^6.0.1",
