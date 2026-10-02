@@ -37,7 +37,40 @@ export const MEMBER = {
   password: 'Stack-tests-M-1',
 } as const;
 
-export type UserKey = keyof typeof USERS | 'member';
+// A Business (ULTIMATE) agency with every seat taken: the owner, one ADMIN
+// and three USERs (team_members = 5 including the owner). `leaver` is the one
+// team-seats.spec.ts removes; nothing else may rely on them.
+export const ORG_C = {
+  org: 'Stack Org C',
+  apiKey: 'stack-api-key-c',
+  tier: 'ULTIMATE',
+  channels: 12,
+  channel: { id: 'stack-channel-c', name: 'Stack Bluesky C' },
+  owner: { email: 'owner-c@example.com', password: 'Stack-tests-C-1' },
+  admin: { email: 'admin-c@example.com', password: 'Stack-tests-C-2' },
+  user: { email: 'user-c@example.com', password: 'Stack-tests-C-3' },
+  other: { email: 'other-c@example.com', password: 'Stack-tests-C-4' },
+  leaver: { email: 'leaver-c@example.com', password: 'Stack-tests-C-5' },
+} as const;
+
+export type UserKey =
+  | keyof typeof USERS
+  | 'member'
+  | 'c-owner'
+  | 'c-admin'
+  | 'c-user'
+  | 'c-leaver';
+
+// Every seeded account that global-setup signs in once.
+export const ACCOUNTS: [UserKey, { email: string; password: string }][] = [
+  ['a', USERS.a],
+  ['b', USERS.b],
+  ['member', MEMBER],
+  ['c-owner', ORG_C.owner],
+  ['c-admin', ORG_C.admin],
+  ['c-user', ORG_C.user],
+  ['c-leaver', ORG_C.leaver],
+];
 
 const refuse = (url: string) => {
   throw new Error(
@@ -156,6 +189,55 @@ export const resetAndSeed = async (databaseUrl: string, redisUrl: string) => {
         profile: 'stack',
       },
     });
+
+    const orgC = await prisma.organization.create({
+      data: { name: ORG_C.org, apiKey: ORG_C.apiKey },
+    });
+    await prisma.subscription.create({
+      data: {
+        organizationId: orgC.id,
+        subscriptionTier: ORG_C.tier,
+        period: 'MONTHLY',
+        totalChannels: ORG_C.channels,
+        isLifetime: false,
+      },
+    });
+    await prisma.integration.create({
+      data: {
+        id: ORG_C.channel.id,
+        internalId: `${ORG_C.channel.id}-internal`,
+        organizationId: orgC.id,
+        name: ORG_C.channel.name,
+        providerIdentifier: 'bluesky',
+        type: 'social',
+        token: 'fake-token',
+        profile: ORG_C.channel.id,
+      },
+    });
+    const team = [
+      [ORG_C.owner, 'SUPERADMIN'],
+      [ORG_C.admin, 'ADMIN'],
+      [ORG_C.user, 'USER'],
+      [ORG_C.other, 'USER'],
+      [ORG_C.leaver, 'USER'],
+    ] as const;
+    for (const [account, role] of team) {
+      const user = await prisma.user.create({
+        data: {
+          email: account.email,
+          password: hashSync(account.password, 10),
+          providerName: 'LOCAL',
+          name: 'Stack',
+          lastName: role,
+          timezone: 0,
+          activated: true,
+          createdAt: new Date(Date.now() - 2 * 86_400_000),
+        },
+      });
+      await prisma.userOrganization.create({
+        data: { userId: user.id, organizationId: orgC.id, role },
+      });
+    }
   } finally {
     await prisma.$disconnect();
   }

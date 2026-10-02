@@ -1,7 +1,7 @@
 import { mkdirSync } from 'node:fs';
 import { request } from '@playwright/test';
 import { BACKEND_URL, stateFile } from './helpers';
-import { MEMBER, resetAndSeed, UserKey, USERS } from './seed';
+import { ACCOUNTS, resetAndSeed } from './seed';
 
 // Fresh data for every run, then one sign-in per seeded user through the real
 // login endpoint. Specs reuse the saved cookies instead of logging in again.
@@ -9,13 +9,14 @@ export default async function globalSetup() {
   await resetAndSeed(process.env.DATABASE_URL!, process.env.REDIS_URL!);
   mkdirSync(`${__dirname}/.auth`, { recursive: true });
 
-  const accounts: [UserKey, { email: string; password: string }][] = [
-    ['a', USERS.a],
-    ['b', USERS.b],
-    ['member', MEMBER],
-  ];
-  for (const [key, account] of accounts) {
-    const api = await request.newContext({ baseURL: BACKEND_URL });
+  for (const [index, [key, account]] of ACCOUNTS.entries()) {
+    // Login allows 5 attempts per address per 15 minutes, and auth.spec.ts
+    // spends two of its own; each seeded account signs in from its own
+    // (documentation-range) address so the seed never eats that budget.
+    const api = await request.newContext({
+      baseURL: BACKEND_URL,
+      extraHTTPHeaders: { 'x-forwarded-for': `198.51.100.${index + 1}` },
+    });
     const res = await api.post('/auth/login', {
       data: {
         email: account.email,
