@@ -113,3 +113,28 @@ describe('addSubscription validates the tier before the first write', () => {
     expect(repository.createOrUpdateSubscription).toHaveBeenCalled();
   });
 });
+
+describe('createOrUpdateSubscription does not swallow failures', () => {
+  // A swallowed error made the Stripe webhook answer 200 with no plan
+  // written, and Stripe never retried.
+  it('lets a failed plan change reach the caller', async () => {
+    const { service } = build(null);
+    jest
+      .spyOn(service, 'modifySubscription')
+      .mockRejectedValue(new Error('db down'));
+
+    await expect(
+      service.createOrUpdateSubscription(false, 'u1', 'cus_1', 6, 'PRO', 'MONTHLY', null)
+    ).rejects.toThrow('db down');
+  });
+
+  it('still skips a customer that is not ours', async () => {
+    const { service, repository } = build(null);
+    jest.spyOn(service, 'modifySubscription').mockResolvedValue(false);
+
+    await expect(
+      service.createOrUpdateSubscription(false, 'u1', 'cus_other', 6, 'PRO', 'MONTHLY', null)
+    ).resolves.toEqual({});
+    expect(repository.createOrUpdateSubscription).not.toHaveBeenCalled();
+  });
+});

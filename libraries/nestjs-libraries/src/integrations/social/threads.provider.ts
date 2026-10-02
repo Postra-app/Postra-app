@@ -1,3 +1,4 @@
+import { Logger } from '@nestjs/common';
 import {
   AnalyticsData,
   AuthTokenDetails,
@@ -20,6 +21,7 @@ import { hasExtension } from '@gitroom/helpers/utils/has.extension';
 import { percentageChangeFromSeries } from '@gitroom/nestjs-libraries/integrations/social/analytics.utils';
 
 export class ThreadsProvider extends SocialAbstract implements SocialProvider {
+  private readonly _logger = new Logger(ThreadsProvider.name);
   identifier = 'threads';
   name = 'Threads';
   isBetweenSteps = false;
@@ -44,7 +46,6 @@ export class ThreadsProvider extends SocialAbstract implements SocialProvider {
         value: string;
       }
     | undefined {
-    console.log(body);
     if (body.includes('Error validating access token')) {
       return { type: 'refresh-token', value: 'Threads access token expired' };
     }
@@ -627,7 +628,7 @@ export class ThreadsProvider extends SocialAbstract implements SocialProvider {
 
       return result;
     } catch (err) {
-      console.error('Error fetching Threads post analytics:', err);
+      this._logger.warn(`Error fetching Threads post analytics: ${(err as Error)?.message ?? err}`);
       return [];
     }
   }

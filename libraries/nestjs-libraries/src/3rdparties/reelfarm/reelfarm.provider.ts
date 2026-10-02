@@ -66,7 +66,6 @@ export class ReelFarmProvider extends ThirdPartyAbstract {
       if (res.ok) {
         const body = await res.json();
         const videos = body.videos || body.data || [];
-        console.log(body);
         allVideos.push(
           ...videos.map((v: any) => ({
             ...v,
@@ -77,8 +76,6 @@ export class ReelFarmProvider extends ThirdPartyAbstract {
     }
 
     const total = allVideos.length;
-
-    console.log(allVideos);
 
     return {
       results: allVideos.slice(0, limit).map((v: any) => ({

@@ -1,4 +1,6 @@
 import { APIRequestContext, expect, request as pwRequest } from '@playwright/test';
+import { PrismaClient } from '@prisma/client';
+import { hashSync } from 'bcrypt';
 import { UserKey, USERS } from './seed';
 
 export const BACKEND_URL = 'http://localhost:53000';
@@ -63,4 +65,99 @@ export const createDraft = async (
   const post = (await listPosts(api)).find((p) => p.content.includes(content));
   expect(post, 'created draft is listed').toBeTruthy();
   return post!;
+};
+
+// Direct database access for state the API cannot build cheaply (hundreds of
+// posts, a trial). Stack stores only — see seed.ts.
+export const database = () =>
+  new PrismaClient({ datasources: { db: { url: process.env.DATABASE_URL } } });
+
+let throwawayCount = 0;
+
+// A fresh organisation with one signed-in owner, for tests that must push an
+// org to a limit without disturbing the seeded ones other specs share.
+// `channels` Bluesky channels are created up front. Call `remove` in afterAll.
+export const throwawayOrg = async (
+  prisma: PrismaClient,
+  options: {
+    tier: 'STANDARD' | 'PRO' | 'ULTIMATE';
+    totalChannels: number;
+    channels: number;
+    isTrailing?: boolean;
+  }
+) => {
+  const tag = `${process.pid}-${Date.now()}-${++throwawayCount}`;
+  const email = `throwaway-${tag}@example.com`;
+  const password = 'Stack-tests-T-1';
+  const org = await prisma.organization.create({
+    data: {
+      name: `Stack throwaway ${tag}`,
+      apiKey: `stack-api-key-${tag}`,
+      isTrailing: !!options.isTrailing,
+    },
+  });
+  const user = await prisma.user.create({
+    data: {
+      email,
+      password: hashSync(password, 10),
+      providerName: 'LOCAL',
+      name: 'Stack',
+      lastName: 'Throwaway',
+      timezone: 0,
+      activated: true,
+      createdAt: new Date(Date.now() - 2 * 86_400_000),
+    },
+  });
+  await prisma.userOrganization.create({
+    data: { userId: user.id, organizationId: org.id, role: 'SUPERADMIN' },
+  });
+  await prisma.subscription.create({
+    data: {
+      organizationId: org.id,
+      subscriptionTier: options.tier,
+      period: 'MONTHLY',
+      totalChannels: options.totalChannels,
+      isLifetime: false,
+    },
+  });
+  const channelIds: string[] = [];
+  for (let i = 0; i < options.channels; i++) {
+    const id = `stack-throwaway-${tag}-${i}`;
+    await prisma.integration.create({
+      data: {
+        id,
+        internalId: `${id}-internal`,
+        organizationId: org.id,
+        name: `Throwaway Bluesky ${i}`,
+        providerIdentifier: 'bluesky',
+        type: 'social',
+        token: 'fake-token',
+        profile: id,
+      },
+    });
+    channelIds.push(id);
+  }
+
+  // Login allows 5 attempts per address; every throwaway signs in from its own.
+  const api = await pwRequest.newContext({
+    baseURL: BACKEND_URL,
+    extraHTTPHeaders: {
+      'x-forwarded-for': `198.18.${Math.floor(Math.random() * 250)}.${Math.floor(Math.random() * 250) + 1}`,
+    },
+  });
+  const res = await api.post('/auth/login', {
+    data: { email, password, provider: 'LOCAL' },
+  });
+  expect(res.status(), `throwaway sign-in: ${await res.text()}`).toBe(200);
+
+  return {
+    api,
+    orgId: org.id,
+    channelIds,
+    remove: async () => {
+      await api.dispose();
+      await prisma.organization.delete({ where: { id: org.id } });
+      await prisma.user.delete({ where: { id: user.id } });
+    },
+  };
 };

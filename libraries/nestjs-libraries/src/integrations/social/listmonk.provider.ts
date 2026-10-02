@@ -1,3 +1,4 @@
+import { Logger } from '@nestjs/common';
 import { makeId } from '@gitroom/nestjs-libraries/services/make.is';
 import { SocialAbstract } from '../social.abstract';
 import {
@@ -14,6 +15,7 @@ import slugify from 'slugify';
 import { Tool } from '@gitroom/nestjs-libraries/integrations/tool.decorator';
 
 export class ListmonkProvider extends SocialAbstract implements SocialProvider {
+  private readonly _logger = new Logger(ListmonkProvider.name);
   override maxConcurrentJob = 100; // Bluesky has moderate rate limits
   identifier = 'listmonk';
   name = 'ListMonk';
@@ -79,7 +81,6 @@ export class ListmonkProvider extends SocialAbstract implements SocialProvider {
     const body: { url: string; username: string; password: string } =
       JSON.parse(Buffer.from(params.code, 'base64').toString());
 
-    console.log(body);
     try {
       const basic = Buffer.from(body.username + ':' + body.password).toString(
         'base64'
@@ -105,7 +106,7 @@ export class ListmonkProvider extends SocialAbstract implements SocialProvider {
         username: data['app.site_name'],
       };
     } catch (e) {
-      console.log(e);
+      this._logger.warn(`Listmonk login failed: ${(e as Error)?.message ?? e}`);
       return 'Invalid credentials';
     }
   }

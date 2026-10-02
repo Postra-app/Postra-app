@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { signedIn } from '../helpers';
+import { database, signedIn, throwawayOrg } from '../helpers';
 
 // What a plan pays for (pricing.ts allowedProviders). Organisation A is on
 // Pro, B on Starter; billing is on in the stack like in production.
@@ -38,4 +38,58 @@ test('an unknown platform is 400, and reconnecting a channel you lack is 404', a
   expect((await pro.get(connect('not-a-platform'))).status()).toBe(400);
   expect((await pro.get(`${connect('youtube')}?refresh=not-my-channel`)).status()).toBe(404);
   await pro.dispose();
+});
+
+// How many channels a plan holds (subscription.totalChannels: 3/6/12), and
+// the trial cap of 3 whatever the tier (pricing.ts TRIAL_CHANNEL_CAP). Each
+// case gets its own organisation: filling A or B would break other specs.
+
+test.describe('channel count', () => {
+  const prisma = database();
+  const orgs: { remove: () => Promise<void> }[] = [];
+  const org = async (options: Parameters<typeof throwawayOrg>[1]) => {
+    const created = await throwawayOrg(prisma, options);
+    orgs.push(created);
+    return created;
+  };
+  test.afterAll(async () => {
+    for (const created of orgs) await created.remove();
+    await prisma.$disconnect();
+  });
+
+  test('Starter with 3 of 3 channels cannot start connecting a 4th', async () => {
+    const { api } = await org({ tier: 'STANDARD', totalChannels: 3, channels: 3 });
+    const res = await api.get(connect('mastodon'));
+    expect(res.status()).toBe(402);
+    expect((await res.json()).message).toContain('maximum number of channels');
+  });
+
+  test('Starter with 2 of 3 channels can', async () => {
+    const { api } = await org({ tier: 'STANDARD', totalChannels: 3, channels: 2 });
+    expect((await api.get(connect('mastodon'))).status()).toBe(200);
+  });
+
+  test('a Pro trial is capped at 3 channels, the same Pro paid is not', async () => {
+    const trial = await org({ tier: 'PRO', totalChannels: 6, channels: 3, isTrailing: true });
+    expect((await trial.api.get(connect('mastodon'))).status()).toBe(402);
+    expect((await trial.api.get(connect('youtube'))).status()).toBe(402);
+
+    const paid = await org({ tier: 'PRO', totalChannels: 6, channels: 3 });
+    expect((await paid.api.get(connect('mastodon'))).status()).toBe(200);
+  });
+
+  test('a Business trial with 2 channels can still add a 3rd', async () => {
+    const { api } = await org({ tier: 'ULTIMATE', totalChannels: 12, channels: 2, isTrailing: true });
+    expect((await api.get(connect('mastodon'))).status()).toBe(200);
+  });
+
+  test('a full org can still reconnect a channel it has', async () => {
+    // Reconnecting adds nothing, so the cap must not lock a full org out of
+    // repairing a token. `refresh` carries the channel's internalId — what
+    // launches.component.tsx and render.analytics.tsx send.
+    const { api, channelIds } = await org({ tier: 'STANDARD', totalChannels: 3, channels: 3 });
+    const res = await api.get(`${connect('bluesky')}?refresh=${channelIds[0]}-internal`);
+    expect(res.status(), await res.text()).not.toBe(402);
+    expect(res.status()).toBeLessThan(500);
+  });
 });

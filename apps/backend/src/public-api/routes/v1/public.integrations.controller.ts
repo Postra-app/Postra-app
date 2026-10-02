@@ -11,7 +11,9 @@ import {
   UploadedFile,
   UseInterceptors,
   UsePipes,
+  NotFoundException,
 } from '@nestjs/common';
+import { pricing } from '@gitroom/nestjs-libraries/database/prisma/subscriptions/pricing';
 import { CustomFileValidationPipe } from '@gitroom/nestjs-libraries/upload/custom.upload.validation';
 import { Throttle } from '@nestjs/throttler';
 import { ApiTags } from '@nestjs/swagger';
@@ -305,6 +307,22 @@ export class PublicIntegrationsController {
       throw new HttpException({ msg: 'Integration not allowed' }, 400);
     }
 
+    // Same plan gate as the dashboard: without it a key on a lower plan gets
+    // an auth URL, the customer consents at the platform, and only the
+    // callback refuses the channel.
+    if (process.env.STRIPE_PUBLISHABLE_KEY && !refresh) {
+      // @ts-ignore subscription is attached by the public auth middleware
+      const tier = org?.subscription?.subscriptionTier || 'FREE';
+      const allowed =
+        pricing[tier]?.allowedProviders || pricing.FREE.allowedProviders;
+      if (!allowed.includes(integration)) {
+        throw new HttpException(
+          `The ${integration} channel isn't included in your plan — upgrade to connect it.`,
+          402
+        );
+      }
+    }
+
     const integrationProvider =
       this._integrationManager.getSocialIntegration(integration);
 
@@ -396,6 +414,9 @@ export class PublicIntegrationsController {
       org.id,
       id
     );
+    if (!loadIntegration) {
+      throw new NotFoundException('Channel not found');
+    }
 
     const verified =
       JSON.parse(loadIntegration.additionalSettings || '[]')?.find(

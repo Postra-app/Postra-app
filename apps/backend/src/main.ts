@@ -134,7 +134,7 @@ async function start() {
 
   try {
     await app.listen(port);
-    console.log('Backend started successfully on port ' + port);
+    Logger.log(`Backend started successfully on port ${port}`, 'Bootstrap');
 
     // Prometheus /metrics on a dedicated internal port (not behind the app's
     // throttle/auth guards). Internal docker-net only; Alloy scrapes it.

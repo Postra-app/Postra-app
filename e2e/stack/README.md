@@ -25,8 +25,11 @@ What runs:
 | proxy | 54000 | `proxy.mjs`: one origin, `/api/*` → backend, the rest → frontend — what production's nginx does |
 
 `global-setup.ts` empties every table and Redis (the login throttle lives
-there and outlives a backend restart), seeds two organisations (`seed.ts`)
-and signs each user in once through `POST /auth/login`. Server output goes to
+there and outlives a backend restart), seeds three organisations
+(`seed.ts`: A on Pro with a member, B on Starter, C on Business with all five
+seats taken) and signs each user in once through `POST /auth/login`. Specs
+that push an organisation to a limit make their own with `throwawayOrg`
+(`helpers.ts`) instead of filling the shared ones. Server output goes to
 `.logs/<app>.log`; CI uploads it with the screenshots when a run fails.
 
 `stack.env` holds only local fakes and is safe to commit. The seed refuses to

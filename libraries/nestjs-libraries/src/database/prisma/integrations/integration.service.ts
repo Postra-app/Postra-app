@@ -1,10 +1,10 @@
 import {
-  forwardRef,
   HttpException,
   HttpStatus,
   Inject,
   Injectable,
   NotFoundException,
+  forwardRef,
 } from '@nestjs/common';
 import { AuditService } from '@gitroom/nestjs-libraries/database/prisma/audit/audit.service';
 import { IntegrationRepository } from '@gitroom/nestjs-libraries/database/prisma/integrations/integration.repository';
@@ -547,7 +547,10 @@ export class IntegrationService {
   }
 
   async disableChannel(org: string, id: string) {
-    return this._integrationRepository.disableChannel(org, id);
+    const { count } = await this._integrationRepository.disableChannel(org, id);
+    if (!count) {
+      throw new NotFoundException('Channel not found');
+    }
   }
 
   async enableChannel(org: string, totalChannels: number, id: string) {
@@ -558,10 +561,13 @@ export class IntegrationService {
       !!process.env.STRIPE_PUBLISHABLE_KEY &&
       integrations.length >= totalChannels
     ) {
-      throw new Error('You have reached the maximum number of channels');
+      throw new HttpException('You have reached the maximum number of channels', 402);
     }
 
-    return this._integrationRepository.enableChannel(org, id);
+    const { count } = await this._integrationRepository.enableChannel(org, id);
+    if (!count) {
+      throw new NotFoundException('Channel not found');
+    }
   }
 
   async getPostsForChannel(org: string, id: string) {
@@ -569,12 +575,16 @@ export class IntegrationService {
   }
 
   async deleteChannel(org: string, id: string) {
+    const { count } = await this._integrationRepository.deleteChannel(org, id);
+    if (!count) {
+      throw new NotFoundException('Channel not found');
+    }
     this._auditService.record({
       action: 'integration.disconnect',
       organizationId: org,
       metadata: { integrationId: id, deleted: true },
     });
-    return this._integrationRepository.deleteChannel(org, id);
+    return { deleted: true };
   }
 
   async disableIntegrations(org: string, totalChannels: number) {
@@ -639,7 +649,7 @@ export class IntegrationService {
     const getIntegration = await this.getIntegrationById(org.id, integration);
 
     if (!getIntegration) {
-      throw new Error('Invalid integration');
+      throw new NotFoundException('Channel not found');
     }
 
     if (getIntegration.type !== 'social') {

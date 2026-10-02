@@ -1,3 +1,4 @@
+import { Logger } from '@nestjs/common';
 import { hasAiGeneratedMedia } from '@gitroom/nestjs-libraries/integrations/social/ai.media';
 import {
   AnalyticsData,
@@ -23,6 +24,7 @@ import { Rules } from '@gitroom/nestjs-libraries/chat/rules.description.decorato
   'TikTok can have one video or one picture or multiple pictures, it cannot be without an attachment'
 )
 export class TiktokProvider extends SocialAbstract implements SocialProvider {
+  private readonly _logger = new Logger(TiktokProvider.name);
   identifier = 'tiktok';
   name = 'Tiktok';
   isBetweenSteps = false;
@@ -610,10 +612,6 @@ export class TiktokProvider extends SocialAbstract implements SocialProvider {
     const [firstPost] = postDetails;
     const isPhoto = !hasExtension(firstPost?.media?.[0]?.path, 'mp4');
 
-    console.log({
-      ...this.buildTikokPostInfoBody(firstPost),
-      ...this.buildTikokSourceInfoBody(firstPost),
-    });
     const {
       data: { publish_id },
     } = await (
@@ -787,17 +785,17 @@ export class TiktokProvider extends SocialAbstract implements SocialProvider {
       }
 
       if (!result.length) {
-        console.error(
-          '[analytics:tiktok] no metrics for',
-          id,
-          '— user/info said:',
-          JSON.stringify(userStatsData?.error || userStatsData),
-          '(TikTok analytics needs the user.info.stats + video.list scopes, which were cut for App Review in #35 — expected to be empty).'
+        // user.info.stats + video.list scopes were cut for App Review (#35),
+        // so empty metrics are expected.
+        this._logger.warn(
+          `[analytics:tiktok] no metrics for ${id} — user/info error: ${
+            userStatsData?.error?.code ?? 'none'
+          }`
         );
       }
       return result;
     } catch (err) {
-      console.error('[analytics:tiktok] failed for', id, '-', err);
+      this._logger.warn(`[analytics:tiktok] failed for ${id}: ${(err as Error)?.message ?? err}`);
       return [];
     }
   }
@@ -831,7 +829,7 @@ export class TiktokProvider extends SocialAbstract implements SocialProvider {
         url: v.cover_image_url,
       }));
     } catch (err) {
-      console.error('Error fetching TikTok missing content:', err);
+      this._logger.warn(`Error fetching TikTok missing content: ${(err as Error)?.message ?? err}`);
       return [];
     }
   }
@@ -929,7 +927,7 @@ export class TiktokProvider extends SocialAbstract implements SocialProvider {
 
       return result;
     } catch (err) {
-      console.error('Error fetching TikTok post analytics:', err);
+      this._logger.warn(`Error fetching TikTok post analytics: ${(err as Error)?.message ?? err}`);
       return [];
     }
   }

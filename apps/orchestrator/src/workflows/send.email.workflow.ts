@@ -1,4 +1,5 @@
 import {
+  log,
   proxyActivities,
   setHandler,
   condition,
@@ -49,7 +50,9 @@ export async function sendEmailWorkflow({
       await sendEmail(email.to, email.subject, email.html, email.replyTo);
       processedThisRun++;
     } catch (err) {
-      console.log(err);
+      log.error('sendEmail activity failed', {
+        error: (err as Error)?.message,
+      });
     }
 
     await sleep(RATE_LIMIT_MS);

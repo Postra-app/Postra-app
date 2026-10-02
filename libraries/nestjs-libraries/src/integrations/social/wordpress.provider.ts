@@ -1,3 +1,4 @@
+import { Logger } from '@nestjs/common';
 import {
   AuthTokenDetails,
   PostDetails,
@@ -21,6 +22,7 @@ export class WordpressProvider
   extends SocialAbstract
   implements SocialProvider
 {
+  private readonly _logger = new Logger(WordpressProvider.name);
   identifier = 'wordpress';
   name = 'WordPress';
   isBetweenSteps = false;
@@ -136,7 +138,7 @@ export class WordpressProvider
         username: body.username,
       };
     } catch (err) {
-      console.log(err);
+      this._logger.warn(`WordPress login failed: ${(err as Error)?.message ?? err}`);
       return 'Invalid credentials';
     }
   }
@@ -202,10 +204,7 @@ export class WordpressProvider
 
     let mediaId = '';
     if (postDetails?.[0]?.settings?.main_image?.path) {
-      console.log(
-        'Uploading image to WordPress',
-        postDetails[0].settings.main_image.path
-      );
+      this._logger.debug('Uploading main image to WordPress');
 
       // media.path is client-controlled — fetch it through the SSRF-guarded
       // helper (same defence as every other publish-time media fetch, #139).

@@ -1,3 +1,4 @@
+import { Logger } from '@nestjs/common';
 import { TweetV2, TwitterApi } from 'twitter-api-v2';
 import { createHmac, randomBytes } from 'crypto';
 import {
@@ -34,6 +35,7 @@ import { hasExtension } from '@gitroom/helpers/utils/has.extension';
   }`
 )
 export class XProvider extends SocialAbstract implements SocialProvider {
+  private readonly _logger = new Logger(XProvider.name);
   identifier = 'x';
   name = 'X';
   isBetweenSteps = false;
@@ -749,7 +751,7 @@ export class XProvider extends SocialAbstract implements SocialProvider {
         ],
       }));
     } catch (err) {
-      console.log(err);
+      this._logger.warn(`Error fetching X analytics: ${(err as Error)?.message ?? err}`);
     }
     return [];
   }
@@ -838,7 +840,7 @@ export class XProvider extends SocialAbstract implements SocialProvider {
 
       return result;
     } catch (err) {
-      console.log('Error fetching X post analytics:', err);
+      this._logger.warn(`Error fetching X post analytics: ${(err as Error)?.message ?? err}`);
     }
 
     return [];
@@ -870,7 +872,7 @@ export class XProvider extends SocialAbstract implements SocialProvider {
         },
       ];
     } catch (err) {
-      console.log(err);
+      this._logger.warn(`Error looking up X mention: ${(err as Error)?.message ?? err}`);
     }
     return [];
   }

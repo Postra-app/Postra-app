@@ -4,6 +4,11 @@ import { z } from 'zod';
 import { Injectable } from '@nestjs/common';
 import { IntegrationService } from '@gitroom/nestjs-libraries/database/prisma/integrations/integration.service';
 import { PostsService } from '@gitroom/nestjs-libraries/database/prisma/posts/posts.service';
+import { SubscriptionService } from '@gitroom/nestjs-libraries/database/prisma/subscriptions/subscription.service';
+import {
+  postsCycleStart,
+  pricing,
+} from '@gitroom/nestjs-libraries/database/prisma/subscriptions/pricing';
 import { makeId } from '@gitroom/nestjs-libraries/services/make.is';
 import { AllProvidersSettings } from '@gitroom/nestjs-libraries/dtos/posts/providers-settings/all.providers.settings';
 import { Integration } from '@prisma/client';
@@ -31,7 +36,8 @@ const attachmentUrl = z
 export class IntegrationSchedulePostTool implements AgentToolInterface {
   constructor(
     private _postsService: PostsService,
-    private _integrationService: IntegrationService
+    private _integrationService: IntegrationService,
+    private _subscriptionService: SubscriptionService
   ) {}
   name = 'integrationSchedulePostTool';
 
@@ -132,10 +138,24 @@ If the tools return errors, you would need to rerun it with the right parameters
       }),
       execute: async (inputData, context) => {
         checkAuth(inputData, context);
-        const organizationId = JSON.parse(
+        const organization = JSON.parse(
           (context?.requestContext as any)?.get('organization') as string
-        ).id;
+        );
+        const organizationId = organization.id;
         const finalOutput = [];
+
+        // The dashboard and public API enforce the plan's monthly post cap
+        // through CheckPolicies; the agent creates posts directly, so it has
+        // to ask the same question. Drafts do not count towards the cap.
+        if (
+          inputData.socialPost.some((p: { type: string }) => p.type !== 'draft') &&
+          (await this.postLimitReached(organizationId, organization.createdAt))
+        ) {
+          return {
+            errors:
+              'This plan has used all of its posts for this month. Save the post as a draft, or upgrade the plan to schedule more.',
+          };
+        }
 
         const integrations = {} as Record<string, Integration>;
         for (const platform of inputData.socialPost) {
@@ -245,5 +265,18 @@ If the tools return errors, you would need to rerun it with the right parameters
         };
       },
     });
+  }
+
+  private async postLimitReached(orgId: string, orgCreatedAt: string) {
+    if (!process.env.STRIPE_PUBLISHABLE_KEY) {
+      return false;
+    }
+    const subscription = await this._subscriptionService.getSubscription(orgId);
+    const limit = pricing[subscription?.subscriptionTier || 'FREE'].posts_per_month;
+    const count = await this._postsService.countPostsFromDay(
+      orgId,
+      postsCycleStart(subscription?.createdAt || orgCreatedAt)
+    );
+    return count >= limit;
   }
 }

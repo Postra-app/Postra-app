@@ -49,9 +49,11 @@ export class PoliciesGuard implements CanActivate {
     const { org }: { org: Organization } = request;
 
     const refreshChannelId = typeof request.query?.refresh === 'string' ? request.query.refresh : undefined;
+    // Drafts do not count towards the monthly post cap.
+    const isDraft = request.body?.type === 'draft';
 
     // @ts-ignore
-    const ability = await this._authorizationService.check(org.id, org.createdAt, org.users[0].role, policyHandlers, refreshChannelId, org.isTrailing);
+    const ability = await this._authorizationService.check(org.id, org.createdAt, org.users[0].role, policyHandlers, refreshChannelId, org.isTrailing, isDraft);
 
     const item = policyHandlers.find(
       (handler) => !this.execPolicyHandler(handler, ability)

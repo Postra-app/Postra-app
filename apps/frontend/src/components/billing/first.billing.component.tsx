@@ -23,7 +23,6 @@ import {
 import { useT } from '@gitroom/react/translation/get.transation.service.client';
 import { useUser } from '@gitroom/frontend/components/layout/user.context';
 import { useDubClickId } from '@gitroom/frontend/components/layout/dubAnalytics';
-import SafeImage from '@gitroom/react/helpers/safe.image';
 import { useModals } from '@gitroom/frontend/components/layout/new-modal';
 import useCookie from 'react-use-cookie';
 import { LogoutComponent } from '@gitroom/frontend/components/layout/logout.component';
@@ -88,21 +87,6 @@ export const FirstBillingComponent = () => {
     });
   }, [modals, t]);
 
-  const showYouTube = () => {
-    modals.openModal({
-      title: 'Grow Fast With Postra (Play the video)',
-      children: (
-        <div className="min-w-[600px] py-[60px] flex flex-col items-center justify-center gap-[8px] text-center">
-          <div className="text-[40px]">🎬</div>
-          <div className="text-[16px] font-[600]">Video tutorial coming soon</div>
-          <div className="text-[13px] text-textColor/60">
-            We are recording a walkthrough — check back shortly.
-          </div>
-        </div>
-      ),
-    });
-  };
-
   const { data, isLoading } = useSWR(
     `/billing-${tier}-${period}`,
     loadCheckout,
@@ -127,30 +111,10 @@ export const FirstBillingComponent = () => {
     return (
       <>
         <div className="text-[46px] font-[600] leading-[110%] tablet:text-[36px] mobile:!text-[30px] whitespace-pre-line text-balance">
-          {t('billing_join_over', 'Join Over')}{' '}
+          {t('billing_headline_start', 'Create a month of content')}{' '}
           <span className="text-[#a78bfa]">
-            {t('billing_entrepreneurs_count', '20,000+ Entrepreneurs')}
-          </span>{' '}
-          {t('billing_who_use', 'who use')}{' '}
-          {t(
-            'billing_postra_grow_social',
-            'Postra To Grow Their Social Presence'
-          )}
-        </div>
-
-        <div className="flex" onClick={showYouTube}>
-          <div className="tablet:mb-[32px] cursor-pointer mt-[32px] flex gap-[10px] items-center underline hover:font-[700]">
-            <div>
-              <SafeImage
-                className="text-[12px]"
-                src="/icons/platforms/youtube.svg"
-                width={22.5}
-                height={16}
-                alt="YouTube"
-              />
-            </div>
-            <div>See the power of Postra (click here)</div>
-          </div>
+            {t('billing_headline_end', 'in one afternoon')}
+          </span>
         </div>
 
         {!!user?.allowTrial && (
@@ -277,7 +241,7 @@ export const FirstBillingComponent = () => {
                 >
                   <div>{t('billing_yearly', 'Yearly')}</div>
                   <div className="bg-[#a78bfa] text-[white] px-[8px] rounded-[4px] mobile:hidden">
-                    {t('billing_20_percent_off', '20% Off')}
+                    {t('billing_two_months_free', '2 months free')}
                   </div>
                 </div>
               </div>
@@ -388,13 +352,6 @@ export const BillingFeatures: FC<{ tier: string }> = ({ tier }) => {
         key: 'billing_ai_images_per_month',
         defaultValue: 'AI Images per month',
         prefix: currentPricing?.image_generation_count,
-      });
-    }
-    if (currentPricing?.generate_videos) {
-      list.push({
-        key: 'billing_ai_videos_per_month',
-        defaultValue: 'AI Videos per month',
-        prefix: currentPricing?.generate_videos,
       });
     }
     return list;

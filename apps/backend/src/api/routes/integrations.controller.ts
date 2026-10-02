@@ -67,7 +67,9 @@ export class IntegrationsController {
     return this._integrationService.customers(org.id);
   }
 
+  // Agency clients, disabling and deleting channels: organisation admins only.
   @Put('/:id/group')
+  @CheckPolicies([AuthorizationActions.Create, Sections.ADMIN])
   async updateIntegrationGroup(
     @GetOrgFromRequest() org: Organization,
     @Param('id') id: string,
@@ -81,6 +83,7 @@ export class IntegrationsController {
   }
 
   @Put('/:id/customer-name')
+  @CheckPolicies([AuthorizationActions.Create, Sections.ADMIN])
   async updateOnCustomerName(
     @GetOrgFromRequest() org: Organization,
     @Param('id') id: string,
@@ -452,6 +455,7 @@ export class IntegrationsController {
   }
 
   @Post('/disable')
+  @CheckPolicies([AuthorizationActions.Create, Sections.ADMIN])
   disableChannel(
     @GetOrgFromRequest() org: Organization,
     @Body('id') id: string
@@ -460,6 +464,7 @@ export class IntegrationsController {
   }
 
   @Post('/enable')
+  @CheckPolicies([AuthorizationActions.Create, Sections.ADMIN])
   async enableChannel(
     @GetOrgFromRequest() org: Organization,
     @Body('id') id: string
@@ -498,6 +503,7 @@ export class IntegrationsController {
   }
 
   @Delete('/')
+  @CheckPolicies([AuthorizationActions.Create, Sections.ADMIN])
   async deleteChannel(
     @GetOrgFromRequest() org: Organization,
     @Body('id') id: string

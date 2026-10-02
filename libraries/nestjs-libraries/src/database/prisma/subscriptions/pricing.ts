@@ -1,3 +1,5 @@
+import dayjs from 'dayjs';
+
 export interface PricingInnerInterface {
   current: string;
   month_price: number;
@@ -196,6 +198,22 @@ export const planLabel = (tier?: string | null): string =>
 // platform allowlist is intentionally NOT reduced, so e.g. a Pro trial can
 // still evaluate LinkedIn/YouTube on one of its capped slots.
 export const TRIAL_CHANNEL_CAP = 3;
+
+// The monthly post allowance resets on the subscription's anniversary day
+// (or the org's, without one). Shared by the API policy and the agent tool.
+export const postsCycleStart = (anchor: Date | string): Date => {
+  const months = Math.abs(dayjs(anchor).diff(dayjs(), 'month'));
+  return dayjs(anchor).add(months, 'month').toDate();
+};
+
+// AI allowances follow the same rule as channels: a trial runs on Starter's
+// pool, so a Business trial cannot burn 600 images before the first charge.
+export const trialAiAllowance = (
+  allowance: number,
+  isTrailing: boolean | undefined,
+  type: 'image_generation_count' | 'agent_tokens' | 'generate_videos'
+): number =>
+  isTrailing ? Math.min(allowance, pricing.STANDARD[type] || 0) : allowance;
 
 export const channelLimitFor = (org?: {
   isTrailing?: boolean;

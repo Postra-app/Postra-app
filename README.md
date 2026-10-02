@@ -86,7 +86,7 @@ Built with **pnpm**. See `CLAUDE.md` for repo conventions.
 pnpm install
 docker compose -f docker-compose.dev.yaml up -d   # Postgres, Redis, Temporal
 cp .env.example .env                               # fill in required vars
-pnpm run prisma-db-push
+pnpm run prisma-db-migrate
 pnpm run dev                                        # frontend :4200, backend :3000
 ```
 

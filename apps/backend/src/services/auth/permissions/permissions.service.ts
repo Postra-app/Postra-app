@@ -1,10 +1,13 @@
 import { Ability, AbilityBuilder, AbilityClass } from '@casl/ability';
 import { Injectable } from '@nestjs/common';
-import { pricing, TRIAL_CHANNEL_CAP } from '@gitroom/nestjs-libraries/database/prisma/subscriptions/pricing';
+import {
+  postsCycleStart,
+  pricing,
+  TRIAL_CHANNEL_CAP,
+} from '@gitroom/nestjs-libraries/database/prisma/subscriptions/pricing';
 import { SubscriptionService } from '@gitroom/nestjs-libraries/database/prisma/subscriptions/subscription.service';
 import { PostsService } from '@gitroom/nestjs-libraries/database/prisma/posts/posts.service';
 import { IntegrationService } from '@gitroom/nestjs-libraries/database/prisma/integrations/integration.service';
-import dayjs from 'dayjs';
 import { WebhooksService } from '@gitroom/nestjs-libraries/database/prisma/webhooks/webhooks.service';
 import { AutopostService } from '@gitroom/nestjs-libraries/database/prisma/autopost/autopost.service';
 import { OrganizationService } from '@gitroom/nestjs-libraries/database/prisma/organizations/organization.service';
@@ -49,7 +52,8 @@ export class PermissionsService {
     permission: 'USER' | 'ADMIN' | 'SUPERADMIN',
     requestedPermission: Array<[AuthorizationActions, Sections]>,
     refreshChannelId?: string,
-    isTrailing = false
+    isTrailing = false,
+    isDraft = false
   ) {
     const { can, build } = new AbilityBuilder<
       Ability<[AuthorizationActions, Sections]>
@@ -86,12 +90,16 @@ export class PermissionsService {
       if (section === Sections.CHANNEL) {
         // Refreshing an existing channel doesn't add a new one, so skip the limit check
         // but only if the channel actually belongs to this org
+        // The UI names the channel by its platform id (internalId); the
+        // controller then checks the platform matches (hasChannel).
         if (refreshChannelId) {
-          const existingIntegration =
-            await this._integrationService.getIntegrationById(
-              orgId,
-              refreshChannelId
-            );
+          const existingIntegration = (
+            await this._integrationService.getIntegrationsList(orgId)
+          ).some(
+            (i) =>
+              String(i.internalId) === refreshChannelId ||
+              i.id === refreshChannelId
+          );
           if (existingIntegration) {
             can(action, section);
             continue;
@@ -140,17 +148,18 @@ export class PermissionsService {
       }
 
       // check for posts per month
+      if (section === Sections.POSTS_PER_MONTH && isDraft) {
+        can(action, section);
+        continue;
+      }
+
       if (section === Sections.POSTS_PER_MONTH) {
         const createdAt =
           (await this._subscriptionService.getSubscription(orgId))?.createdAt ||
           created_at;
-        const totalMonthPast = Math.abs(
-          dayjs(createdAt).diff(dayjs(), 'month')
-        );
-        const checkFrom = dayjs(createdAt).add(totalMonthPast, 'month');
         const count = await this._postsService.countPostsFromDay(
           orgId,
-          checkFrom.toDate()
+          postsCycleStart(createdAt)
         );
 
         if (count < options.posts_per_month) {

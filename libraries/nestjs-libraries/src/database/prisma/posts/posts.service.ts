@@ -1,6 +1,7 @@
 import {
   BadRequestException,
   Injectable,
+  Logger,
   NotFoundException,
   ValidationPipe,
 } from '@nestjs/common';
@@ -65,6 +66,7 @@ type PostWithConditionals = Post & {
 
 @Injectable()
 export class PostsService {
+  private readonly _logger = new Logger(PostsService.name);
   private storage = UploadFactory.createStorage();
   constructor(
     private _postRepository: PostsRepository,
@@ -148,7 +150,7 @@ export class PostsService {
         getIntegration.token
       );
     } catch (e) {
-      console.log(e);
+      this._logger.warn(`getMissingContent failed: ${(e as Error)?.message ?? e}`);
       if (e instanceof RefreshToken) {
         return this.getMissingContent(orgId, postId, true);
       }
@@ -262,7 +264,7 @@ export class PostsService {
       );
       return loadAnalytics;
     } catch (e) {
-      console.log(e);
+      this._logger.warn(`checkPostAnalytics failed: ${(e as Error)?.message ?? e}`);
       if (e instanceof RefreshToken) {
         return this.checkPostAnalytics(orgId, postId, date, true);
       }
@@ -1076,7 +1078,7 @@ export class PostsService {
   ) {
     const getPostById = await this._postRepository.getPostById(id, orgId);
     if (!getPostById) {
-      throw new BadRequestException('Post not found');
+      throw new NotFoundException('Post not found');
     }
 
     const state: State = status === 'draft' ? 'DRAFT' : 'QUEUE';
@@ -1235,15 +1237,17 @@ export class PostsService {
   }
 
   async findFreeDateTime(orgId: string, integrationId?: string) {
-    const findTimes = await this._integrationService.findFreeDateTime(
+    const times = await this._integrationService.findFreeDateTime(
       orgId,
       integrationId
     );
-    return this.findFreeDateTimeRecursive(
-      orgId,
-      findTimes,
-      dayjs.utc().startOf('day')
-    );
+    // No posting times means a channel outside this org, an unknown id, or an
+    // org without channels. Walking the calendar would then never find a slot
+    // and loop forever, one query per day.
+    if (!times.length) {
+      throw new NotFoundException('No posting times for this channel');
+    }
+    return this.findFreeDateTimeFrom(orgId, times, dayjs.utc().startOf('day'));
   }
 
   async createPopularPosts(post: {
@@ -1255,29 +1259,27 @@ export class PostsService {
     return this._postRepository.createPopularPosts(post);
   }
 
-  private async findFreeDateTimeRecursive(
+  private async findFreeDateTimeFrom(
     orgId: string,
     times: number[],
-    date: dayjs.Dayjs
+    start: dayjs.Dayjs
   ): Promise<string> {
-    const list = await this._postRepository.getPostsCountsByDates(
-      orgId,
-      times,
-      date
-    );
-
-    if (!list.length) {
-      return this.findFreeDateTimeRecursive(orgId, times, date.add(1, 'day'));
-    }
-
-    const num = list.reduce<null | number>((prev, curr) => {
-      if (prev === null || prev > curr) {
-        return curr;
+    // A year ahead is far past any real calendar; stop there rather than spin.
+    for (let day = 0; day < 366; day++) {
+      const date = start.add(day, 'day');
+      const free = await this._postRepository.getPostsCountsByDates(
+        orgId,
+        times,
+        date
+      );
+      if (free.length) {
+        return date
+          .clone()
+          .add(Math.min(...free), 'minutes')
+          .format('YYYY-MM-DDTHH:mm:00');
       }
-      return prev;
-    }, null) as number;
-
-    return date.clone().add(num, 'minutes').format('YYYY-MM-DDTHH:mm:00');
+    }
+    throw new NotFoundException('No free slot in the next year');
   }
 
   getComments(postId: string) {
