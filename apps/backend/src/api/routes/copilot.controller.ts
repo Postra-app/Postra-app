@@ -1,3 +1,4 @@
+import { meterCopilotAdapter } from '@gitroom/nestjs-libraries/services/ai-usage.copilot';
 import { aiUsageOrgContext } from '@gitroom/nestjs-libraries/services/ai-usage.model-wrap';
 import { Throttle } from '@nestjs/throttler';
 import {
@@ -49,7 +50,11 @@ export class CopilotController {
   @Post('/chat')
   @Throttle({ default: { ttl: 300000, limit: 30 } })
   @CheckPolicies([AuthorizationActions.Create, Sections.AI])
-  chatAgent(@Req() req: Request, @Res() res: Response) {
+  chatAgent(
+    @Req() req: Request,
+    @Res() res: Response,
+    @GetOrgFromRequest() organization: Organization
+  ) {
     if (
       process.env.OPENAI_API_KEY === undefined ||
       process.env.OPENAI_API_KEY === ''
@@ -61,9 +66,15 @@ export class CopilotController {
     const copilotRuntimeHandler = copilotRuntimeNodeHttpEndpoint({
       endpoint: '/copilot/chat',
       runtime: new CopilotRuntime(),
-      serviceAdapter: new OpenAIAdapter({
-        model: 'gpt-4.1',
-      }),
+      // Ghost-text suggestions; recorded in AiUsage like every other AI call
+      // (decision 2026-10-02: keep the feature, meter it).
+      serviceAdapter: meterCopilotAdapter(
+        new OpenAIAdapter({
+          model: 'gpt-4.1',
+        }),
+        organization.id,
+        'autocomplete'
+      ),
     });
 
     return copilotRuntimeHandler(req, res);
