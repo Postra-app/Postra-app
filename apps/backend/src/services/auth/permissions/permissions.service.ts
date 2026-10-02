@@ -11,7 +11,7 @@ import { IntegrationService } from '@gitroom/nestjs-libraries/database/prisma/in
 import { WebhooksService } from '@gitroom/nestjs-libraries/database/prisma/webhooks/webhooks.service';
 import { AutopostService } from '@gitroom/nestjs-libraries/database/prisma/autopost/autopost.service';
 import { OrganizationService } from '@gitroom/nestjs-libraries/database/prisma/organizations/organization.service';
-import { AuthorizationActions, Sections } from './permission.exception.class';
+import { AuthorizationActions, Sections } from '@gitroom/nestjs-libraries/services/auth/permission.exception.class';
 
 export type AppAbility = Ability<[AuthorizationActions, Sections]>;
 

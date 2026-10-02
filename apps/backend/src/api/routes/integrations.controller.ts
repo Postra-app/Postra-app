@@ -32,7 +32,7 @@ import { MoltbookProvider } from '@gitroom/nestjs-libraries/integrations/social/
 import {
   AuthorizationActions,
   Sections,
-} from '@gitroom/backend/services/auth/permissions/permission.exception.class';
+} from '@gitroom/nestjs-libraries/services/auth/permission.exception.class';
 import { uniqBy } from 'lodash';
 import { canPostComments } from '@gitroom/nestjs-libraries/integrations/social/comment.capability';
 import { RefreshIntegrationService } from '@gitroom/nestjs-libraries/integrations/refresh.integration.service';

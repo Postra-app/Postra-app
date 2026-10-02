@@ -4,7 +4,6 @@ import { AuthService } from '@gitroom/helpers/auth/auth.service';
 import { User } from '@prisma/client';
 import { OrganizationService } from '@gitroom/nestjs-libraries/database/prisma/organizations/organization.service';
 import { UsersService } from '@gitroom/nestjs-libraries/database/prisma/users/users.service';
-import { getCookieUrlFromDomain } from '@gitroom/helpers/subdomain/subdomain.management';
 import { HttpForbiddenException } from '@gitroom/nestjs-libraries/services/exception.filter';
 import { ioRedis } from '@gitroom/nestjs-libraries/redis/redis.service';
 import {
@@ -46,21 +45,6 @@ class ImpersonationForbiddenException extends HttpException {
 // Re-exported so existing callers keep importing the buster from the middleware.
 export { authContextCacheKey, bustAuthContextCache };
 
-export const removeAuth = (res: Response) => {
-  res.cookie('auth', '', {
-    domain: getCookieUrlFromDomain(process.env.FRONTEND_URL!),
-    ...(!process.env.NOT_SECURED
-      ? {
-          secure: true,
-          httpOnly: true,
-          sameSite: 'lax',
-        }
-      : {}),
-    expires: new Date(0),
-    maxAge: -1,
-  });
-  res.header('logout', 'true');
-};
 
 // Audit rows had no ip and no userAgent on any action (E2E-09-34); the columns
 // existed and nothing filled them.

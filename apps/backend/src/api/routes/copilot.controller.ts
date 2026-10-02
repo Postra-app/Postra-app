@@ -29,7 +29,7 @@ import { PostsService } from '@gitroom/nestjs-libraries/database/prisma/posts/po
 import { Request, Response } from 'express';
 import { RequestContext } from '@mastra/core/di';
 import { CheckPolicies } from '@gitroom/backend/services/auth/permissions/permissions.ability';
-import { AuthorizationActions, Sections } from '@gitroom/backend/services/auth/permissions/permission.exception.class';
+import { AuthorizationActions, Sections } from '@gitroom/nestjs-libraries/services/auth/permission.exception.class';
 
 export type ChannelsContext = {
   integrations: string;

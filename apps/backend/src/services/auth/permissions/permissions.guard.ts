@@ -14,7 +14,7 @@ import {
   PermissionDeniedException,
   Sections,
   SubscriptionException,
-} from './permission.exception.class';
+} from '@gitroom/nestjs-libraries/services/auth/permission.exception.class';
 
 @Injectable()
 export class PoliciesGuard implements CanActivate {

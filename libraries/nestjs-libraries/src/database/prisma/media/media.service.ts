@@ -46,7 +46,7 @@ import {
   AuthorizationActions,
   Sections,
   SubscriptionException,
-} from '@gitroom/backend/services/auth/permissions/permission.exception.class';
+} from '@gitroom/nestjs-libraries/services/auth/permission.exception.class';
 
 const POST_DESIGN_BG_CACHE_TTL = 60 * 60 * 24 * 7; // 7 days
 

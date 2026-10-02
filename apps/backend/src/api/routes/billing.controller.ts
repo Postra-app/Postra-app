@@ -24,7 +24,7 @@ import { CheckPolicies } from '@gitroom/backend/services/auth/permissions/permis
 import {
   AuthorizationActions,
   Sections,
-} from '@gitroom/backend/services/auth/permissions/permission.exception.class';
+} from '@gitroom/nestjs-libraries/services/auth/permission.exception.class';
 import { bustAuthContextCache } from '@gitroom/backend/services/auth/auth.middleware';
 import dayjs from 'dayjs';
 
