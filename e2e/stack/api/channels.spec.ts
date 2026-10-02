@@ -3,6 +3,10 @@ import { anonymous, channelOf, signedIn } from '../helpers';
 
 // Channel settings over the API.
 
+// Several tests change the client of the same seeded channel; in parallel
+// they undo each other's setup.
+test.describe.configure({ mode: 'serial' });
+
 test('posting times: an unknown or foreign channel is 404, not 500', async () => {
   const a = await signedIn('a');
   const data = { time: [{ time: 600 }] };

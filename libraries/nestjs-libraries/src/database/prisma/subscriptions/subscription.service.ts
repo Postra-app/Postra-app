@@ -169,27 +169,46 @@ export class SubscriptionService {
       return false;
     }
 
-    const getCurrentSubscription =
-      (await this._subscriptionRepository.getSubscriptionByOrgId(
-        organizationId
-      ))!;
+    await this.applyTierLimits(organizationId, totalChannels, billing);
+    return true;
+  }
 
+  // What a tier change does to an organisation, whichever way it arrives
+  // (Stripe webhook by customer, admin comp or revoke by org): channels on
+  // platforms the tier does not include are disabled first, then the rest is
+  // capped, then team seats are reconciled. The by-org path used to skip the
+  // platform step, so an admin moving Business -> Starter left X and Discord
+  // running on Starter.
+  private async applyTierLimits(
+    organizationId: string,
+    totalChannels: number,
+    billing: 'FREE' | 'STANDARD' | 'TEAM' | 'PRO' | 'ULTIMATE'
+  ) {
     const to = pricing[billing];
 
-    const currentTotalChannels = (
+    const active = (
       await this._integrationService.getIntegrationsList(organizationId)
     ).filter((f) => !f.disabled);
 
-    if (currentTotalChannels.length > totalChannels) {
+    const disallowedByPlatform = active.filter(
+      (c) => !to.allowedProviders.includes(c.providerIdentifier)
+    );
+    for (const channel of disallowedByPlatform) {
+      await this._integrationService.disableChannel(organizationId, channel.id);
+    }
+
+    const remaining = active.filter((c) =>
+      to.allowedProviders.includes(c.providerIdentifier)
+    );
+    if (remaining.length > totalChannels) {
       await this._integrationService.disableIntegrations(
         organizationId,
-        currentTotalChannels.length - totalChannels
+        remaining.length - totalChannels
       );
     }
 
-    // Reconcile active team seats to the new tier (owner + earliest-joined
-    // members up to the cap stay; overflow is disabled on downgrade and
-    // re-enabled within the cap on upgrade).
+    // Owner + earliest-joined members up to the cap stay; overflow is disabled
+    // on downgrade and re-enabled within the cap on upgrade.
     await this._organizationService.reconcileTeamSeats(
       organizationId,
       to.team_members
@@ -198,8 +217,6 @@ export class SubscriptionService {
     if (billing === 'FREE') {
       await this._integrationService.changeActiveCron(organizationId);
     }
-
-    return true;
   }
 
   async modifySubscription(
@@ -228,49 +245,11 @@ export class SubscriptionService {
       return false;
     }
 
-    const to = pricing[billing];
-
-    const currentTotalChannels = (
-      await this._integrationService.getIntegrationsList(
-        getOrgByCustomerId?.id!
-      )
-    ).filter((f) => !f.disabled);
-
-    // Platform gating: disable any active channel whose platform is not allowed
-    // on the new tier (e.g. downgrading Business→Pro drops X / Mastodon /
-    // Bluesky / Telegram). Do this before the count cap so the remaining set is
-    // the keepers.
-    const disallowedByPlatform = currentTotalChannels.filter(
-      (c) => !to.allowedProviders.includes(c.providerIdentifier)
+    await this.applyTierLimits(
+      getOrgByCustomerId.id,
+      totalChannels,
+      billing
     );
-    for (const channel of disallowedByPlatform) {
-      await this._integrationService.disableChannel(
-        getOrgByCustomerId?.id!,
-        channel.id
-      );
-    }
-
-    const remainingChannels = currentTotalChannels.filter((c) =>
-      to.allowedProviders.includes(c.providerIdentifier)
-    );
-    if (remainingChannels.length > totalChannels) {
-      await this._integrationService.disableIntegrations(
-        getOrgByCustomerId?.id!,
-        remainingChannels.length - totalChannels
-      );
-    }
-
-    // Reconcile active team seats to the new tier (owner + earliest-joined
-    // members up to the cap stay; overflow is disabled on downgrade and
-    // re-enabled within the cap on upgrade).
-    await this._organizationService.reconcileTeamSeats(
-      getOrgByCustomerId?.id!,
-      to.team_members
-    );
-
-    if (billing === 'FREE') {
-      await this._integrationService.changeActiveCron(getOrgByCustomerId?.id!);
-    }
 
     return true;
   }

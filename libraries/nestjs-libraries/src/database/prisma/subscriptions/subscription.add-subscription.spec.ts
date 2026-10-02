@@ -138,3 +138,46 @@ describe('createOrUpdateSubscription does not swallow failures', () => {
     expect(repository.createOrUpdateSubscription).not.toHaveBeenCalled();
   });
 });
+
+// P2b #5: a tier change addressed by org (admin comp, revoke to FREE) skipped
+// the platform step that the Stripe-webhook path has, so Business -> Starter
+// left X and Discord running on Starter.
+describe('tier change by org applies the same limits as the webhook path', () => {
+  const channels = [
+    { id: 'c-fb', providerIdentifier: 'facebook', disabled: false },
+    { id: 'c-ig', providerIdentifier: 'instagram', disabled: false },
+    { id: 'c-x', providerIdentifier: 'x', disabled: false },
+    { id: 'c-dc', providerIdentifier: 'discord', disabled: false },
+  ];
+  const setup = () => {
+    const built = build(null);
+    const integrationService = (built.service as any)._integrationService;
+    integrationService.getIntegrationsList = jest.fn().mockResolvedValue(channels);
+    integrationService.disableChannel = jest.fn().mockResolvedValue(undefined);
+    return { ...built, integrationService };
+  };
+
+  it('Business -> Starter disables the platforms Starter does not include', async () => {
+    const { service, integrationService, organizationService } = setup();
+    await service.modifySubscriptionByOrg('org-1', 3, 'STANDARD');
+
+    const disabled = integrationService.disableChannel.mock.calls.map((c: any[]) => c[1]);
+    expect(disabled).toEqual(expect.arrayContaining(['c-x', 'c-dc']));
+    expect(disabled).not.toContain('c-fb');
+    expect(organizationService.reconcileTeamSeats).toHaveBeenCalledWith('org-1', 1);
+  });
+
+  it('webhook path and by-org path disable the same channels', async () => {
+    const byOrg = setup();
+    await byOrg.service.modifySubscriptionByOrg('org-1', 3, 'STANDARD');
+
+    const byCustomer = setup();
+    byCustomer.repository.getOrganizationByCustomerId = jest.fn().mockResolvedValue({ id: 'org-1' });
+    (byCustomer.repository as any).getSubscriptionByCustomerId = jest.fn().mockResolvedValue(null);
+    await byCustomer.service.modifySubscription('cus_1', 3, 'STANDARD');
+
+    expect(byOrg.integrationService.disableChannel.mock.calls).toEqual(
+      byCustomer.integrationService.disableChannel.mock.calls
+    );
+  });
+});
