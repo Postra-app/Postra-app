@@ -2,6 +2,7 @@ import {
   channelLimitFor,
   planLabel,
   planLabels,
+  postsCycleStart,
   pricing,
   TRIAL_CHANNEL_CAP,
   trialAiAllowance,
@@ -213,5 +214,16 @@ describe('trialAiAllowance', () => {
     expect(
       trialAiAllowance(pricing.ULTIMATE.image_generation_count, false, 'image_generation_count')
     ).toBe(pricing.ULTIMATE.image_generation_count);
+  });
+});
+
+describe('postsCycleStart', () => {
+  it('starts the current cycle on the anniversary day', () => {
+    const anchor = new Date();
+    anchor.setMonth(anchor.getMonth() - 3);
+    anchor.setDate(anchor.getDate() - 1);
+    const start = postsCycleStart(anchor);
+    expect(start.getTime()).toBeLessThanOrEqual(Date.now());
+    expect(Date.now() - start.getTime()).toBeLessThan(32 * 24 * 3600 * 1000);
   });
 });

@@ -1,10 +1,13 @@
 import { Ability, AbilityBuilder, AbilityClass } from '@casl/ability';
 import { Injectable } from '@nestjs/common';
-import { pricing, TRIAL_CHANNEL_CAP } from '@gitroom/nestjs-libraries/database/prisma/subscriptions/pricing';
+import {
+  postsCycleStart,
+  pricing,
+  TRIAL_CHANNEL_CAP,
+} from '@gitroom/nestjs-libraries/database/prisma/subscriptions/pricing';
 import { SubscriptionService } from '@gitroom/nestjs-libraries/database/prisma/subscriptions/subscription.service';
 import { PostsService } from '@gitroom/nestjs-libraries/database/prisma/posts/posts.service';
 import { IntegrationService } from '@gitroom/nestjs-libraries/database/prisma/integrations/integration.service';
-import dayjs from 'dayjs';
 import { WebhooksService } from '@gitroom/nestjs-libraries/database/prisma/webhooks/webhooks.service';
 import { AutopostService } from '@gitroom/nestjs-libraries/database/prisma/autopost/autopost.service';
 import { OrganizationService } from '@gitroom/nestjs-libraries/database/prisma/organizations/organization.service';
@@ -144,13 +147,9 @@ export class PermissionsService {
         const createdAt =
           (await this._subscriptionService.getSubscription(orgId))?.createdAt ||
           created_at;
-        const totalMonthPast = Math.abs(
-          dayjs(createdAt).diff(dayjs(), 'month')
-        );
-        const checkFrom = dayjs(createdAt).add(totalMonthPast, 'month');
         const count = await this._postsService.countPostsFromDay(
           orgId,
-          checkFrom.toDate()
+          postsCycleStart(createdAt)
         );
 
         if (count < options.posts_per_month) {
