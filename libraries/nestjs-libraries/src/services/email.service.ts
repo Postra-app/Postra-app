@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { EmailInterface } from '@gitroom/nestjs-libraries/emails/email.interface';
 import { ResendProvider } from '@gitroom/nestjs-libraries/emails/resend.provider';
 import { EmptyProvider } from '@gitroom/nestjs-libraries/emails/empty.provider';
@@ -6,15 +6,22 @@ import { NodeMailerProvider } from '@gitroom/nestjs-libraries/emails/node.mailer
 import { TemporalService } from 'nestjs-temporal-core';
 import { timer } from '@gitroom/helpers/utils/timer';
 
+// Logs must not carry full recipient addresses.
+const maskEmail = (address: string) => {
+  const [local, domain] = address.split('@');
+  return `${local.slice(0, 1)}***@${domain}`;
+};
+
 @Injectable()
 export class EmailService {
+  private readonly _logger = new Logger(EmailService.name);
   emailService: EmailInterface;
   constructor(private _temporalService: TemporalService) {
     this.emailService = this.selectProvider(process.env.EMAIL_PROVIDER!);
-    console.log('Email service provider:', this.emailService.name);
+    this._logger.log(`Email service provider: ${this.emailService.name}`);
     for (const key of this.emailService.validateEnvKeys) {
       if (!process.env[key]) {
-        console.error(`Missing environment variable: ${key}`);
+        this._logger.error(`Missing environment variable: ${key}`);
       }
     }
   }
@@ -64,7 +71,7 @@ export class EmailService {
     }
 
     if (!process.env.EMAIL_FROM_ADDRESS || !process.env.EMAIL_FROM_NAME) {
-      console.log(
+      this._logger.error(
         'Email sender information not found in environment variables'
       );
       return;
@@ -127,7 +134,7 @@ export class EmailService {
     let lastErr: unknown;
     for (let attempt = 0; attempt < 3; attempt++) {
       try {
-        const sends = await this.emailService.sendEmail(
+        await this.emailService.sendEmail(
           to,
           subject,
           modifiedHtml,
@@ -135,16 +142,23 @@ export class EmailService {
           process.env.EMAIL_FROM_ADDRESS,
           replyTo
         );
-        console.log(sends);
         return;
       } catch (err) {
         lastErr = err;
-        console.log(`Email attempt ${attempt + 1}/3 failed:`, err);
+        this._logger.warn(
+          `Email attempt ${attempt + 1}/3 to ${maskEmail(to)} failed: ${
+            (err as Error)?.message ?? err
+          }`
+        );
         if (attempt < 2) {
           await timer(700);
         }
       }
     }
-    console.log(`Email to ${to} failed after 3 attempts:`, lastErr);
+    this._logger.error(
+      `Email to ${maskEmail(to)} failed after 3 attempts: ${
+        (lastErr as Error)?.message ?? lastErr
+      }`
+    );
   }
 }

@@ -1,3 +1,4 @@
+import { Logger } from '@nestjs/common';
 import {
   AuthTokenDetails,
   PostDetails,
@@ -17,6 +18,7 @@ import { Tool } from '@gitroom/nestjs-libraries/integrations/tool.decorator';
 import { assertSafeInstanceUrl } from '@gitroom/nestjs-libraries/dtos/webhooks/webhook.url.validator';
 
 export class LemmyProvider extends SocialAbstract implements SocialProvider {
+  private readonly _logger = new Logger(LemmyProvider.name);
   override maxConcurrentJob = 3; // Lemmy instances typically have moderate limits
   identifier = 'lemmy';
   name = 'Lemmy';
@@ -136,7 +138,7 @@ export class LemmyProvider extends SocialAbstract implements SocialProvider {
         username: body.identifier || '',
       };
     } catch (e) {
-      console.log(e);
+      this._logger.warn(`Lemmy login failed: ${(e as Error)?.message ?? e}`);
       return 'Invalid credentials';
     }
   }
@@ -175,16 +177,6 @@ export class LemmyProvider extends SocialAbstract implements SocialProvider {
     const valueArray: PostResponse[] = [];
 
     for (const lemmy of firstPost.settings.subreddit) {
-      console.log({
-        community_id: +lemmy.value.id,
-        name: lemmy.value.title,
-        body: firstPost.message,
-        ...(lemmy.value.url ? { url: lemmy.value.url } : {}),
-        ...(firstPost.media?.length
-          ? { custom_thumbnail: firstPost.media[0].path }
-          : {}),
-        nsfw: false,
-      });
       const { post_view } = await (
         await fetch(service + '/api/v3/post', {
           body: JSON.stringify({

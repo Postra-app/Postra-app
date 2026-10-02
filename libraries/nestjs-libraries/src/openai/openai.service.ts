@@ -1,4 +1,4 @@
-import { HttpException, Injectable } from '@nestjs/common';
+import { HttpException, Injectable, Logger } from '@nestjs/common';
 import OpenAI from 'openai';
 import { shuffle } from 'lodash';
 import { zodResponseFormat } from 'openai/helpers/zod';
@@ -106,6 +106,7 @@ const VoicePrompt = z.object({
 
 @Injectable()
 export class OpenaiService {
+  private readonly _logger = new Logger(OpenaiService.name);
   // openai-node 6.x: chat.completions.parse() rejects `response_format`
   // ("Unknown parameter") because it routes to the Responses API. Use .create()
   // with the same zodResponseFormat() body — the server still enforces the JSON
@@ -530,7 +531,7 @@ ${SETTINGS_BLOCK_RULE}`,
 
         if (parsed) return parsed;
       } catch (err) {
-        console.log('generatePostDesign attempt failed:', err);
+        this._logger.warn(`generatePostDesign attempt failed: ${(err as Error)?.message ?? err}`);
       }
     }
 
@@ -731,7 +732,7 @@ ${SETTINGS_BLOCK_RULE}`,
           if (!best) best = parsed;
         }
       } catch (err) {
-        console.log('generatePostCarousel attempt failed:', err);
+        this._logger.warn(`generatePostCarousel attempt failed: ${(err as Error)?.message ?? err}`);
       }
     }
 
@@ -781,7 +782,7 @@ ${SETTINGS_BLOCK_RULE}`,
 
         return parse;
       } catch (err) {
-        console.log('generateSlidesFromText attempt failed:', err);
+        this._logger.warn(`generateSlidesFromText attempt failed: ${(err as Error)?.message ?? err}`);
       }
     }
 

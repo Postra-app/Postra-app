@@ -1,3 +1,4 @@
+import { Logger } from '@nestjs/common';
 import {
   AnalyticsData,
   AuthTokenDetails,
@@ -29,6 +30,7 @@ export class InstagramProvider
   extends SocialAbstract
   implements SocialProvider
 {
+  private readonly _logger = new Logger(InstagramProvider.name);
   identifier = 'instagram';
   name = 'Instagram\n(Facebook Business)';
   isBetweenSteps = true;
@@ -646,7 +648,7 @@ export class InstagramProvider
   ): Promise<PostResponse[]> {
     const [accessToken, userToken] = token.split('___');
     const [firstPost] = postDetails;
-    console.log('in progress', id);
+    this._logger.debug(`Publishing to ${id}`);
     const isStory = firstPost.settings.post_type === 'story';
     const isTrialReel = !!firstPost.settings.is_trial_reel;
     const safeMedia = await this.toInstagramSafeMedia(
@@ -703,7 +705,7 @@ export class InstagramProvider
             }
           )
         ).json();
-        console.log('in progress2', id);
+        this._logger.debug(`Media container created for ${id}, waiting for processing`);
 
         let status = 'IN_PROGRESS';
         // Capped under the 10-min activity budget (H1): an unbounded poll
@@ -727,7 +729,7 @@ export class InstagramProvider
           await timer(30000);
           status = status_code;
         }
-        console.log('in progress3', id);
+        this._logger.debug(`Media processed for ${id}`);
 
         return photoId;
       }) || []
@@ -983,13 +985,10 @@ export class InstagramProvider
     // payload throw on .map below — a single failed call should degrade to a
     // partial panel, not wipe the whole channel's analytics).
     if (!data || !data2) {
-      console.error(
-        '[analytics:instagram] partial/empty for',
-        id,
-        '— reach/follower error:',
-        JSON.stringify((all as any)?.error),
-        '| engagement error:',
-        JSON.stringify((all2 as any)?.error)
+      this._logger.warn(
+        `[analytics:instagram] partial/empty for ${id} — reach/follower error: ${
+          (all as any)?.error?.message
+        } | engagement error: ${(all2 as any)?.error?.message}`
       );
     }
 
@@ -1100,7 +1099,7 @@ export class InstagramProvider
 
       return result;
     } catch (err) {
-      console.error('Error fetching Instagram post analytics:', err);
+      this._logger.warn(`Error fetching Instagram post analytics: ${(err as Error)?.message ?? err}`);
       return [];
     }
   }

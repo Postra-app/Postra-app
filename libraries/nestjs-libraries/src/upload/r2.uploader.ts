@@ -10,12 +10,15 @@ import {
   DeleteObjectCommand,
 } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
+import { Logger } from '@nestjs/common';
 import { Request, Response } from 'express';
 import crypto from 'crypto';
 import path from 'path';
 import { makeId } from '@gitroom/nestjs-libraries/services/make.is';
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const { fromBuffer } = require('file-type');
+
+const logger = new Logger('R2Uploader');
 
 const ALLOWED_EXT_TO_MIME: Record<string, string> = {
   '.jpg': 'image/jpeg',
@@ -131,7 +134,7 @@ export async function createMultipartUpload(req: Request, res: Response) {
       key: response.Key,
     });
   } catch (err) {
-    console.log('Error', err);
+    logger.error(`createMultipartUpload failed: ${(err as Error)?.message ?? err}`);
     return res.status(500).json({ source: { status: 500 } });
   }
 }
@@ -159,7 +162,7 @@ export async function prepareUploadParts(req: Request, res: Response) {
       // @ts-ignore
       response.presignedUrls[part.number] = url;
     } catch (err) {
-      console.log('Error', err);
+      logger.error(`prepareUploadParts failed: ${(err as Error)?.message ?? err}`);
       return res.status(500).json({ error: 'Upload failed' });
     }
   }
@@ -181,7 +184,7 @@ export async function listParts(req: Request, res: Response) {
 
     return res.status(200).json(response['Parts']);
   } catch (err) {
-    console.log('Error', err);
+    logger.error(`listParts failed: ${(err as Error)?.message ?? err}`);
     return res.status(500).json({ error: 'Upload failed' });
   }
 }
@@ -237,7 +240,7 @@ export async function completeMultipartUpload(req: Request, res: Response) {
       response?.Location?.split('/').at(-1);
     return response;
   } catch (err) {
-    console.log('Error', err);
+    logger.error(`completeMultipartUpload failed: ${(err as Error)?.message ?? err}`);
     return res.status(500).json({ error: 'Upload failed' });
   }
 }
@@ -256,7 +259,7 @@ export async function abortMultipartUpload(req: Request, res: Response) {
 
     return res.status(200).json(response);
   } catch (err) {
-    console.log('Error', err);
+    logger.error(`abortMultipartUpload failed: ${(err as Error)?.message ?? err}`);
     return res.status(500).json({ error: 'Upload failed' });
   }
 }

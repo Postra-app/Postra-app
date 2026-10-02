@@ -30,8 +30,6 @@ export class FalService {
       )
     ).json();
 
-    console.log(all, video, images);
-
     if (video) {
       return video.url;
     }

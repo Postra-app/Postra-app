@@ -1,5 +1,5 @@
 import Stripe from 'stripe';
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { Organization, User } from '@prisma/client';
 import { SubscriptionService } from '@gitroom/nestjs-libraries/database/prisma/subscriptions/subscription.service';
 import { OrganizationService } from '@gitroom/nestjs-libraries/database/prisma/organizations/organization.service';
@@ -17,6 +17,7 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || 'sk_nothing');
 
 @Injectable()
 export class StripeService {
+  private readonly _logger = new Logger(StripeService.name);
   constructor(
     private _subscriptionService: SubscriptionService,
     private _organizationService: OrganizationService,
@@ -45,8 +46,6 @@ export class StripeService {
     if (!getOrgFromCustomer?.allowTrial) {
       return true;
     }
-
-    console.log('Checking card');
 
     const paymentMethods = await stripe.paymentMethods.list({
       customer: event.data.object.customer as string,
@@ -88,7 +87,9 @@ export class StripeService {
       }
 
       if (paymentIntent.status !== 'requires_capture') {
-        console.error('Cant charge');
+        this._logger.error(
+          `Card check failed for customer ${event.data.object.customer}: payment intent ${paymentIntent.status}`
+        );
         await stripe.paymentMethods.detach(latestMethod.id);
         await stripe.subscriptions.cancel(event.data.object.id as string);
         return false;
@@ -282,7 +283,7 @@ export class StripeService {
       }
     }
 
-    console.warn(
+    this._logger.warn(
       `[stripe] organization ${organization.id} points at customer ${
         organization.paymentId
       }, which Stripe no longer has — creating a new one`
@@ -411,7 +412,7 @@ export class StripeService {
       ).data;
     } catch (err) {
       if (isMissingCustomerError(err)) {
-        console.warn(
+        this._logger.warn(
           `[stripe] organization ${organizationId} points at customer ${customer}, which Stripe no longer has — reading it as no subscriptions`
         );
         return [];
@@ -557,7 +558,7 @@ export class StripeService {
 
       return null;
     } catch (err) {
-      console.error('Error finding auto-apply promotion code:', err);
+      this._logger.error(`Error finding auto-apply promotion code: ${(err as Error)?.message ?? err}`);
       return null;
     }
   }
@@ -1154,7 +1155,11 @@ export class StripeService {
         success: true,
       };
     } catch (err) {
-      console.log(err);
+      this._logger.error(
+        `Lifetime deal failed for organization ${organizationId}: ${
+          (err as Error)?.message ?? err
+        }`
+      );
       return {
         success: false,
       };

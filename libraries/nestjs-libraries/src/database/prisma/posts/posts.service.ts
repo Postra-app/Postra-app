@@ -1,6 +1,7 @@
 import {
   BadRequestException,
   Injectable,
+  Logger,
   NotFoundException,
   ValidationPipe,
 } from '@nestjs/common';
@@ -65,6 +66,7 @@ type PostWithConditionals = Post & {
 
 @Injectable()
 export class PostsService {
+  private readonly _logger = new Logger(PostsService.name);
   private storage = UploadFactory.createStorage();
   constructor(
     private _postRepository: PostsRepository,
@@ -148,7 +150,7 @@ export class PostsService {
         getIntegration.token
       );
     } catch (e) {
-      console.log(e);
+      this._logger.warn(`getMissingContent failed: ${(e as Error)?.message ?? e}`);
       if (e instanceof RefreshToken) {
         return this.getMissingContent(orgId, postId, true);
       }
@@ -262,7 +264,7 @@ export class PostsService {
       );
       return loadAnalytics;
     } catch (e) {
-      console.log(e);
+      this._logger.warn(`checkPostAnalytics failed: ${(e as Error)?.message ?? e}`);
       if (e instanceof RefreshToken) {
         return this.checkPostAnalytics(orgId, postId, date, true);
       }

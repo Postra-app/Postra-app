@@ -1,3 +1,4 @@
+import { Logger } from '@nestjs/common';
 import {
   AuthTokenDetails,
   PostDetails,
@@ -41,6 +42,7 @@ const UPLOAD_LIMITS = {
 } as const;
 
 export class TelegramProvider extends SocialAbstract implements SocialProvider {
+  private readonly _logger = new Logger(TelegramProvider.name);
   override maxConcurrentJob = 3; // Telegram has moderate bot API limits
   identifier = 'telegram';
   name = 'Telegram';
@@ -80,7 +82,6 @@ export class TelegramProvider extends SocialAbstract implements SocialProvider {
   }) {
     const chat = await telegramBot.getChat(params.code);
 
-    console.log(JSON.stringify(chat));
     if (!chat?.id) {
       return 'No chat found';
     }
@@ -129,7 +130,7 @@ export class TelegramProvider extends SocialAbstract implements SocialProvider {
         match?.message?.message_id || match?.channel_post?.message_id;
 
       if (!isAdmin) {
-        // alternatively you can replace this with a console.log if you do not want to inform the user of the bot's admin status
+        // alternatively you can log here instead if you do not want to inform the user of the bot's admin status
         telegramBot.sendMessage(
           chatId,
           "Connection Successful. I don't have admin privileges to delete these messages, please go ahead and remove them yourself."
@@ -145,7 +146,6 @@ export class TelegramProvider extends SocialAbstract implements SocialProvider {
         // Delete the success message after 10 seconds
         setTimeout(async () => {
           await telegramBot.deleteMessage(chatId, successMessage.message_id);
-          console.log('Success message deleted.');
         }, 10000);
       }
     }
@@ -451,7 +451,7 @@ export class TelegramProvider extends SocialAbstract implements SocialProvider {
 
       return false;
     } catch (error) {
-      console.error('Error checking bot privileges:', error);
+      this._logger.warn(`Error checking bot privileges: ${(error as Error)?.message ?? error}`);
       return false;
     }
   }

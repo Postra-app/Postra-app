@@ -1,3 +1,4 @@
+import { Logger } from '@nestjs/common';
 import {
   AuthTokenDetails,
   PostDetails,
@@ -30,6 +31,8 @@ import { stripHtmlValidation } from '@gitroom/helpers/utils/strip.html.validatio
 import { Rules } from '@gitroom/nestjs-libraries/chat/rules.description.decorator';
 import { hasExtension } from '@gitroom/helpers/utils/has.extension';
 
+const logger = new Logger('BlueskyProvider');
+
 async function reduceImageBySize(url: string, maxSizeKB = 976) {
   try {
     // Fetch the image from the URL (SSRF-guarded: path is client-controlled)
@@ -61,7 +64,7 @@ async function reduceImageBySize(url: string, maxSizeKB = 976) {
 
     return { width, height, buffer: imageBuffer };
   } catch (error) {
-    console.error('Error processing image:', error);
+    logger.error(`Error processing image: ${(error as Error)?.message ?? error}`);
     throw error;
   }
 }
@@ -91,7 +94,7 @@ async function uploadVideo(
 
   const video = await downloadVideo(videoPath);
 
-  console.log('Downloaded video', videoPath, video.size);
+  logger.debug(`Downloaded video ${videoPath} (${video.size} bytes)`);
 
   const uploadUrl = new URL(
     'https://video.bsky.app/xrpc/app.bsky.video.uploadVideo'
@@ -110,7 +113,7 @@ async function uploadVideo(
   });
 
   const jobStatus = (await uploadResponse.json()) as AppBskyVideoDefs.JobStatus;
-  console.log('JobId:', jobStatus.jobId);
+  logger.debug(`Video job ${jobStatus.jobId}`);
   let blob: BlobRef | undefined = jobStatus.blob;
   const videoAgent = new AtpAgent({ service: 'https://video.bsky.app' });
 
@@ -118,10 +121,10 @@ async function uploadVideo(
     const { data: status } = await videoAgent.app.bsky.video.getJobStatus({
       jobId: jobStatus.jobId,
     });
-    console.log(
-      'Status:',
-      status.jobStatus.state,
-      status.jobStatus.progress || ''
+    logger.debug(
+      `Video job ${jobStatus.jobId}: ${status.jobStatus.state} ${
+        status.jobStatus.progress || ''
+      }`
     );
     if (status.jobStatus.blob) {
       blob = status.jobStatus.blob;
@@ -139,7 +142,7 @@ async function uploadVideo(
     await timer(30000);
   }
 
-  console.log('posting video...');
+  logger.debug('Video processed, posting');
 
   return {
     $type: 'app.bsky.embed.video',
@@ -259,7 +262,7 @@ export class BlueskyProvider extends SocialAbstract implements SocialProvider {
         username: profile.data.handle!,
       };
     } catch (e) {
-      console.log(e);
+      logger.warn(`Bluesky login failed: ${(e as Error)?.message ?? e}`);
       return 'Invalid credentials';
     }
   }

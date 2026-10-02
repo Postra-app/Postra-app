@@ -53,7 +53,9 @@ export const initializeSentry = (appName: string, allowLogs = false) => {
       profileLifecycle: 'trace',
     });
   } catch (err) {
-    console.log(err);
+    // Runs before Nest is loaded; importing @nestjs/common here would defeat
+    // Sentry's instrumentation of it.
+    console.error(`Sentry init failed: ${(err as Error)?.message ?? err}`);
   }
   return true;
 };

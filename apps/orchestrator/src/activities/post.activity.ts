@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import {
   Activity,
   ActivityMethod,
@@ -104,6 +104,7 @@ function slimPost(post: any) {
 @Injectable()
 @Activity()
 export class PostActivity {
+  private readonly _logger = new Logger(PostActivity.name);
   constructor(
     private _postService: PostsService,
     private _notificationService: NotificationService,
@@ -256,7 +257,7 @@ export class PostActivity {
       )
     );
     if (fresh.length && fresh.every((p) => p?.releaseId)) {
-      console.log(
+      this._logger.log(
         `[postComment] already published, skipping republish provider=${
           integration.providerIdentifier
         } posts=${fresh.map((p) => `${p!.id}:${p!.releaseId}`).join(',')}`
@@ -313,9 +314,10 @@ export class PostActivity {
             integration.organizationId
           );
         } catch (err) {
-          console.error(
-            `[postComment] failed to persist release for post=${response.id}`,
-            err
+          this._logger.error(
+            `[postComment] failed to persist release for post=${response.id}: ${
+              (err as Error)?.message ?? err
+            }`
           );
         }
       }
@@ -358,7 +360,7 @@ export class PostActivity {
       )
     );
     if (fresh.length && fresh.every((p) => p?.releaseId)) {
-      console.log(
+      this._logger.log(
         `[postSocial] already published, skipping republish provider=${
           integration.providerIdentifier
         } posts=${fresh.map((p) => `${p!.id}:${p!.releaseId}`).join(',')}`
@@ -406,10 +408,10 @@ export class PostActivity {
     } catch (err: any) {
       // Ties the raw API-response log (SocialAbstract.fetch) to a concrete
       // channel and post — Temporal's own failure line only carries workflowId.
-      console.error(
+      this._logger.error(
         `[postSocial] failed provider=${integration.providerIdentifier} integrationId=${
           integration.id
-        } channel=${integration.name} posts=${(newPosts || [])
+        } posts=${(newPosts || [])
           .map((p) => p.id)
           .join(',')} error=${err?.message || err}`
       );
@@ -431,9 +433,10 @@ export class PostActivity {
             integration.organizationId
           );
         } catch (err) {
-          console.error(
-            `[postSocial] failed to persist release for post=${response.id}`,
-            err
+          this._logger.error(
+            `[postSocial] failed to persist release for post=${response.id}: ${
+              (err as Error)?.message ?? err
+            }`
           );
         }
       }

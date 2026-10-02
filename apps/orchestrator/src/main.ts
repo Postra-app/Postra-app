@@ -5,6 +5,7 @@ import dayjs from 'dayjs';
 import utc from 'dayjs/plugin/utc';
 dayjs.extend(utc);
 
+import { Logger } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from '@gitroom/orchestrator/app.module';
 import * as dns from 'node:dns';
@@ -31,7 +32,7 @@ async function bootstrap() {
   app.enableShutdownHooks();
   const port = process.env.ORCHESTRATOR_PORT || 3002;
   await app.listen(port);
-  console.log(`Orchestrator health check listening on port ${port}`);
+  Logger.log(`Orchestrator health check listening on port ${port}`, 'Bootstrap');
 }
 
 

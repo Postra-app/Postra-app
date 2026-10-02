@@ -1,3 +1,4 @@
+import { Logger } from '@nestjs/common';
 import {
   AuthTokenDetails,
   PostDetails,
@@ -14,6 +15,7 @@ import { Tool } from '@gitroom/nestjs-libraries/integrations/tool.decorator';
 import { hasExtension } from '@gitroom/helpers/utils/has.extension';
 
 export class MeweProvider extends SocialAbstract implements SocialProvider {
+  private readonly _logger = new Logger(MeweProvider.name);
   identifier = 'mewe';
   name = 'MeWe';
   isBetweenSteps = false;
@@ -163,7 +165,7 @@ export class MeweProvider extends SocialAbstract implements SocialProvider {
         username: profile.handle || '',
       };
     } catch (e) {
-      console.log(e);
+      this._logger.warn(`MeWe login failed: ${(e as Error)?.message ?? e}`);
       return 'MeWe authentication failed. Please try again.';
     }
   }

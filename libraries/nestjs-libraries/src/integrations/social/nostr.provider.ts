@@ -1,3 +1,4 @@
+import { Logger } from '@nestjs/common';
 import {
   AuthTokenDetails,
   PostDetails,
@@ -27,6 +28,7 @@ const list = [
 const pool = new SimplePool();
 
 export class NostrProvider extends SocialAbstract implements SocialProvider {
+  private readonly _logger = new Logger(NostrProvider.name);
   override maxConcurrentJob = 5;
   identifier = 'nostr';
   name = 'Nostr';
@@ -155,7 +157,7 @@ export class NostrProvider extends SocialAbstract implements SocialProvider {
         username: user.name || 'nousername',
       };
     } catch (e) {
-      console.log(e);
+      this._logger.warn(`Nostr login failed: ${(e as Error)?.message ?? e}`);
       return 'Invalid credentials';
     }
   }

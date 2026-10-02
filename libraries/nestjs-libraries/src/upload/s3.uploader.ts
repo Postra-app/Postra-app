@@ -9,6 +9,7 @@ import {
   DeleteObjectCommand,
 } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
+import { Logger } from '@nestjs/common';
 import { Request, Response } from 'express';
 import path from 'path';
 import { makeId } from '@gitroom/nestjs-libraries/services/make.is';
@@ -19,6 +20,8 @@ const { fromBuffer } = require('file-type');
 // instance role) so the `s3` storage provider gets chunked, direct-to-bucket
 // multipart uploads instead of pushing the whole file through nginx + multer
 // memory (which capped uploads at 50 MB and risked OOM on big videos).
+
+const logger = new Logger('S3Uploader');
 
 const ALLOWED_EXT_TO_MIME: Record<string, string> = {
   '.jpg': 'image/jpeg',
@@ -129,7 +132,7 @@ export async function createMultipartUpload(req: Request, res: Response) {
       key: response.Key,
     });
   } catch (err) {
-    console.log('Error', err);
+    logger.error(`createMultipartUpload failed: ${(err as Error)?.message ?? err}`);
     return res.status(500).json({ source: { status: 500 } });
   }
 }
@@ -151,7 +154,7 @@ export async function prepareUploadParts(req: Request, res: Response) {
         expiresIn: 3600,
       });
     } catch (err) {
-      console.log('Error', err);
+      logger.error(`prepareUploadParts failed: ${(err as Error)?.message ?? err}`);
       return res.status(500).json({ error: 'Upload failed' });
     }
   }
@@ -171,7 +174,7 @@ export async function listParts(req: Request, res: Response) {
     const response = await S3.send(command);
     return res.status(200).json(response['Parts']);
   } catch (err) {
-    console.log('Error', err);
+    logger.error(`listParts failed: ${(err as Error)?.message ?? err}`);
     return res.status(500).json({ error: 'Upload failed' });
   }
 }
@@ -220,7 +223,7 @@ export async function completeMultipartUpload(req: Request, res: Response) {
     response.Location = `${CDN_URL}/${key}`;
     return response;
   } catch (err) {
-    console.log('Error', err);
+    logger.error(`completeMultipartUpload failed: ${(err as Error)?.message ?? err}`);
     return res.status(500).json({ error: 'Upload failed' });
   }
 }
@@ -237,7 +240,7 @@ export async function abortMultipartUpload(req: Request, res: Response) {
     const response = await S3.send(command);
     return res.status(200).json(response);
   } catch (err) {
-    console.log('Error', err);
+    logger.error(`abortMultipartUpload failed: ${(err as Error)?.message ?? err}`);
     return res.status(500).json({ error: 'Upload failed' });
   }
 }

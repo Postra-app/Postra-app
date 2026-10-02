@@ -1,3 +1,4 @@
+import { Logger } from '@nestjs/common';
 import {
   URL,
   Video,
@@ -37,6 +38,7 @@ class Veo3Params {
   available: !!process.env.KIEAI_API_KEY,
 })
 export class Veo3 extends VideoAbstract<Veo3Params> {
+  private readonly _logger = new Logger(Veo3.name);
   override dto = Veo3Params;
   async process(
     output: 'vertical' | 'horizontal',
@@ -72,7 +74,7 @@ export class Veo3 extends VideoAbstract<Veo3Params> {
       if (attempts++ > 60) {
         throw new Error(`Timed out waiting for video to be ready`);
       }
-      console.log('waiting for video to be ready');
+      this._logger.debug(`Waiting for video ${taskId}`);
       const data = (await (
         await fetch(
           'https://api.kie.ai/api/v1/veo/record-info?taskId=' + taskId,
