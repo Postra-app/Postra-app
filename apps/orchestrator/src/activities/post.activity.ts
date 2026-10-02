@@ -1,5 +1,10 @@
 import { Injectable, Logger } from '@nestjs/common';
 import {
+  afterPublishing,
+  markPublishing,
+  withHeartbeat,
+} from '@gitroom/nestjs-libraries/temporal/temporal.heartbeat';
+import {
   Activity,
   ActivityMethod,
   TemporalService,
@@ -127,7 +132,7 @@ export class PostActivity {
     for (const post of list) {
       await this._temporalService.client
         .getRawClient()
-        .workflow.signalWithStart('postWorkflowV108', {
+        .workflow.signalWithStart('postWorkflowV109', {
           workflowId: `post_${post.id}`,
           taskQueue: 'main',
           signal: 'poke',
@@ -238,6 +243,17 @@ export class PostActivity {
     integration: Integration,
     posts: Post[]
   ) {
+    return withHeartbeat(() =>
+      this.postCommentBody(postId, lastPostId, integration, posts)
+    );
+  }
+
+  private async postCommentBody(
+    postId: string,
+    lastPostId: string | undefined,
+    integration: Integration,
+    posts: Post[]
+  ) {
     integration.token = AuthService.decryptIntegrationToken(integration.token);
     if (integration.refreshToken) {
       integration.refreshToken = AuthService.decryptIntegrationToken(
@@ -275,33 +291,42 @@ export class PostActivity {
       posts
     );
 
-    const comments = await getIntegration.comment(
-      integration.internalId,
-      postId,
-      lastPostId,
-      integration.token,
-      await Promise.all(
-        (newPosts || []).map(async (p) => ({
-          id: p.id,
-          message: stripHtmlValidation(
-            getIntegration.editor,
-            p.content,
-            true,
-            false,
-            !/<\/?[a-z][\s\S]*>/i.test(p.content),
-            getIntegration.mentionFormat
-          ),
-          settings: JSON.parse(p.settings || '{}'),
-          media: await this._postService.updateMedia(
-            integration.organizationId,
-            p.id,
-            JSON.parse(p.image || '[]'),
-            getIntegration?.convertToJPEG || false
-          ),
-        }))
-      ),
-      integration
+    const items = await Promise.all(
+      (newPosts || []).map(async (p) => ({
+        id: p.id,
+        message: stripHtmlValidation(
+          getIntegration.editor,
+          p.content,
+          true,
+          false,
+          !/<\/?[a-z][\s\S]*>/i.test(p.content),
+          getIntegration.mentionFormat
+        ),
+        settings: JSON.parse(p.settings || '{}'),
+        media: await this._postService.updateMedia(
+          integration.organizationId,
+          p.id,
+          JSON.parse(p.image || '[]'),
+          getIntegration?.convertToJPEG || false
+        ),
+      }))
     );
+
+    // From here the platform may receive the comment (see temporal.heartbeat.ts).
+    markPublishing(`${integration.providerIdentifier} comment`);
+    let comments: PostResponse[];
+    try {
+      comments = await getIntegration.comment(
+        integration.internalId,
+        postId,
+        lastPostId,
+        integration.token,
+        items,
+        integration
+      );
+    } catch (err) {
+      throw afterPublishing(err);
+    }
 
     // Persist immediately for the same reason as postSocial above.
     for (const response of comments || []) {
@@ -328,6 +353,10 @@ export class PostActivity {
 
   @ActivityMethod()
   async postSocial(integration: Integration, posts: Post[]) {
+    return withHeartbeat(() => this.postSocialBody(integration, posts));
+  }
+
+  private async postSocialBody(integration: Integration, posts: Post[]) {
     integration.token = AuthService.decryptIntegrationToken(integration.token);
     if (integration.refreshToken) {
       integration.refreshToken = AuthService.decryptIntegrationToken(
@@ -380,29 +409,33 @@ export class PostActivity {
 
     let postNow: PostResponse[];
     try {
+      const items = await Promise.all(
+        (newPosts || []).map(async (p) => ({
+          id: p.id,
+          message: stripHtmlValidation(
+            getIntegration.editor,
+            p.content,
+            true,
+            false,
+            !/<\/?[a-z][\s\S]*>/i.test(p.content),
+            getIntegration.mentionFormat
+          ),
+          settings: JSON.parse(p.settings || '{}'),
+          media: await this._postService.updateMedia(
+            integration.organizationId,
+            p.id,
+            JSON.parse(p.image || '[]'),
+            getIntegration?.convertToJPEG || false
+          ),
+        }))
+      );
+
+      // From here the platform may receive the post (see temporal.heartbeat.ts).
+      markPublishing(integration.providerIdentifier);
       postNow = await getIntegration.post(
         integration.internalId,
         integration.token,
-        await Promise.all(
-          (newPosts || []).map(async (p) => ({
-            id: p.id,
-            message: stripHtmlValidation(
-              getIntegration.editor,
-              p.content,
-              true,
-              false,
-              !/<\/?[a-z][\s\S]*>/i.test(p.content),
-              getIntegration.mentionFormat
-            ),
-            settings: JSON.parse(p.settings || '{}'),
-            media: await this._postService.updateMedia(
-              integration.organizationId,
-              p.id,
-              JSON.parse(p.image || '[]'),
-              getIntegration?.convertToJPEG || false
-            ),
-          }))
-        ),
+        items,
         integration
       );
     } catch (err: any) {
@@ -415,7 +448,7 @@ export class PostActivity {
           .map((p) => p.id)
           .join(',')} error=${err?.message || err}`
       );
-      throw err;
+      throw afterPublishing(err);
     }
 
     // Persist the platform's acknowledgement immediately. The workflow's own
