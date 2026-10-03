@@ -13,7 +13,7 @@ export class DeletePostTool implements AgentToolInterface {
   run() {
     return createTool({
       id: 'deletePost',
-      description: `Ask the user to confirm deleting an existing post and any pending publish for it. Pass the post "group" id (from listScheduledPosts, NOT the id). This tool does NOT delete anything by itself: it shows the user a confirmation card, and the post is only deleted if they approve it. Tell the user to use that card - do not ask them to reply "yes" in the chat, and do not call this tool again for the same post.`,
+      description: `Ask the user to confirm deleting an existing post and any pending publish for it. Pass the post "group" id (from listScheduledPosts, NOT the id). This tool does NOT delete anything by itself: it shows the user a confirmation card, and the post is only deleted if they approve it. Tell the user to use that card - do not ask them to reply "yes" in the chat, and call it once per request. You cannot see whether the user approved or declined an earlier card, and cards expire, so when the user asks again, call it again and show a new card.`,
       inputSchema: z.object({
         group: z
           .string()

@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test';
+import { channels, promo, settingsFor } from './publish.helpers';
 
 // AI on production with the real OpenAI key, once a night (e2e-canary.yml,
 // never at deploy; budget agreed 2026-10-01). A mock cannot catch what has
@@ -115,4 +116,73 @@ test('ghost text suggests a continuation in the signature editor', async ({ page
   expect(body).toContain('TextMessageOutput');
   expect(body).toMatch(/"content",\d+\]/);
   expect(body).not.toMatch(/"errors"/);
+});
+
+// The Agent's destructive tools only park an action; a person approves it on
+// a card in the chat (P5 #11). On a draft of a technical channel: Decline
+// leaves the post, Approve deletes it, and the same token a second time is
+// 410. The draft is deleted in `finally` if anything fails on the way.
+test('the Agent deletes a post only after Approve on its card', async ({ page, request }) => {
+  test.setTimeout(300_000);
+  const telegram = (await channels(request)).find((c) => c.identifier === 'telegram');
+  expect(telegram, 'a Telegram channel').toBeTruthy();
+  const content = promo(1);
+  const date = new Date(Date.now() + 5 * 86_400_000);
+  const created = await request.post('/api/posts', {
+    data: {
+      type: 'draft',
+      shortLink: false,
+      date: date.toISOString(),
+      tags: [],
+      posts: [
+        {
+          integration: { id: telegram!.id },
+          value: [{ content, image: [] }],
+          settings: await settingsFor(request, telegram!),
+        },
+      ],
+    },
+  });
+  expect(created.status(), await created.text()).toBe(201);
+  const [{ postId }] = await created.json();
+  const { group } = await (await request.get(`/api/posts/${postId}`)).json();
+  expect(group, 'group of the draft').toBeTruthy();
+  const exists = async () => (await request.get(`/api/posts/group/${group}`)).status() === 200;
+
+  try {
+    await page.goto('/agents');
+    const input = page.getByPlaceholder(/Write your (post|message)/);
+    await expect(input).toBeVisible();
+    // Enter does nothing while the Agent is still answering, so keep
+    // pressing until the message has left the box.
+    const ask = async () => {
+      await input.fill(`Delete the post whose group id is ${group}. Use the deletePost tool.`);
+      await expect(async () => {
+        await input.press('Enter');
+        await expect(input).toHaveValue('', { timeout: 2_000 });
+      }).toPass({ timeout: 120_000 });
+    };
+
+    await ask();
+    const decline = page.getByRole('button', { name: 'Decline' }).last();
+    await expect(decline).toBeVisible({ timeout: 150_000 });
+    const declined = page.waitForResponse((r) => /\/copilot\/pending\/[^/]+\/decline/.test(r.url()));
+    await decline.click();
+    expect((await declined).status()).toBe(201);
+    expect(await exists(), 'declined: the post is still there').toBe(true);
+
+    await ask();
+    const approve = page.getByRole('button', { name: 'Approve' }).last();
+    await expect(approve).toBeEnabled({ timeout: 150_000 });
+    const approved = page.waitForResponse((r) => /\/copilot\/pending\/[^/]+\/approve/.test(r.url()));
+    await approve.click();
+    const res = await approved;
+    expect(res.status()).toBe(201);
+    await expect.poll(exists, { timeout: 15_000 }).toBe(false);
+
+    const again = await request.post(new URL(res.url()).pathname);
+    expect(again.status(), 'a used token').toBe(410);
+  } finally {
+    if (await exists()) await request.delete(`/api/posts/${group}`);
+  }
 });
