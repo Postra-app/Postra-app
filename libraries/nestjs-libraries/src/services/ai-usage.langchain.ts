@@ -23,8 +23,17 @@ export class AiUsageCallbackHandler extends BaseCallbackHandler {
       output?.llmOutput?.tokenUsage ?? output?.llmOutput?.usage ?? {};
     const inputAmount = usage.promptTokens ?? usage.prompt_tokens ?? 0;
     const outputAmount = usage.completionTokens ?? usage.completion_tokens ?? 0;
+    // ChatOpenAI reports the cache hit per generation, not in llmOutput.
+    const cachedAmount = (output?.generations ?? [])
+      .flat()
+      .reduce(
+        (sum: number, g: any) =>
+          sum +
+          (g?.message?.usage_metadata?.input_token_details?.cache_read ?? 0),
+        0
+      );
     if (inputAmount || outputAmount) {
-      recordAiUsage({ ...this.meta, inputAmount, outputAmount });
+      recordAiUsage({ ...this.meta, inputAmount, outputAmount, cachedAmount });
     }
   }
 }

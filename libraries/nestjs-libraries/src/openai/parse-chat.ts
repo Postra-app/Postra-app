@@ -27,7 +27,11 @@ export async function parseChat(
 }> {
   const completion = (await openai.chat.completions.create(body)) as unknown as {
     choices: Array<{ message: { content: string | null } }>;
-    usage?: { prompt_tokens?: number; completion_tokens?: number };
+    usage?: {
+      prompt_tokens?: number;
+      completion_tokens?: number;
+      prompt_tokens_details?: { cached_tokens?: number };
+    };
   };
   if (meter) {
     recordAiUsage({
@@ -35,6 +39,7 @@ export async function parseChat(
       model: body?.model ?? 'unknown',
       inputAmount: completion.usage?.prompt_tokens ?? 0,
       outputAmount: completion.usage?.completion_tokens ?? 0,
+      cachedAmount: completion.usage?.prompt_tokens_details?.cached_tokens ?? 0,
     });
   }
   return {

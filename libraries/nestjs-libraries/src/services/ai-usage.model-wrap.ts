@@ -28,6 +28,7 @@ export function meterLanguageModel<
       model: model.modelId,
       inputAmount: usage?.inputTokens ?? 0,
       outputAmount: usage?.outputTokens ?? 0,
+      cachedAmount: usage?.cachedInputTokens ?? 0,
     });
   };
 

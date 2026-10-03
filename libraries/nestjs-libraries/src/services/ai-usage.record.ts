@@ -24,6 +24,9 @@ export interface AiUsageEvent {
   model: string;
   unit?: 'tokens' | 'seconds' | 'images';
   inputAmount?: number;
+  // Input tokens the provider served from its prompt cache (OpenAI
+  // prompt_tokens_details.cached_tokens) — part of inputAmount, billed cheaper.
+  cachedAmount?: number;
   outputAmount?: number;
 }
 

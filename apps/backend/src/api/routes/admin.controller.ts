@@ -705,6 +705,7 @@ export class AdminController {
           unit: t.unit,
           inputAmount: t._sum.inputAmount || 0,
           outputAmount: t._sum.outputAmount || 0,
+          cachedAmount: t._sum.cachedAmount || 0,
           calls: t._count._all,
         })),
         topOrgs: textTopOrgs.map((t) => ({

@@ -1048,6 +1048,7 @@ model AiUsage {
   unit           String   @default("tokens")
   inputAmount    Int      @default(0)
   outputAmount   Int      @default(0)
+  cachedAmount   Int      @default(0)
   createdAt      DateTime @default(now())
 
   @@index([organizationId, createdAt])

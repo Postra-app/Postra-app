@@ -20,6 +20,7 @@ export class AiUsageService {
             unit: event.unit ?? 'tokens',
             inputAmount: Math.max(0, Math.round(event.inputAmount ?? 0)),
             outputAmount: Math.max(0, Math.round(event.outputAmount ?? 0)),
+            cachedAmount: Math.max(0, Math.round(event.cachedAmount ?? 0)),
           },
         })
         .catch(() => {});
@@ -46,7 +47,7 @@ export class AiUsageService {
       this._prisma.aiUsage.groupBy({
         by: ['engine', 'model', 'unit'],
         where: { createdAt: { gte: from, lte: to } },
-        _sum: { inputAmount: true, outputAmount: true },
+        _sum: { inputAmount: true, outputAmount: true, cachedAmount: true },
         _count: { _all: true },
       }),
       this._prisma.aiUsage.groupBy({
