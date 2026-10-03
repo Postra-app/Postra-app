@@ -11,6 +11,8 @@ export type AuditAction =
   | 'admin.impersonate.stop'
   | 'admin.grant-lifetime'
   | 'admin.grant-admin'
+  | 'admin.suspend-user'
+  | 'admin.unsuspend-user'
   | 'admin.revoke-admin'
   | 'admin.announcement.create'
   | 'admin.announcement.delete'
