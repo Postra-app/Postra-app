@@ -5,6 +5,7 @@ import { DatabaseModule } from '@gitroom/nestjs-libraries/database/prisma/databa
 import { AutopostActivity } from '@gitroom/orchestrator/activities/autopost.activity';
 import { EmailActivity } from '@gitroom/orchestrator/activities/email.activity';
 import { IntegrationsActivity } from '@gitroom/orchestrator/activities/integrations.activity';
+import { HousekeepingActivity } from '@gitroom/orchestrator/activities/housekeeping.activity';
 import { HealthController } from '@gitroom/orchestrator/health.controller';
 
 const activities = [
@@ -12,6 +13,7 @@ const activities = [
   AutopostActivity,
   EmailActivity,
   IntegrationsActivity,
+  HousekeepingActivity,
 ];
 @Module({
   imports: [

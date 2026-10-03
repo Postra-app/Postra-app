@@ -446,7 +446,7 @@ export class IntegrationsController {
     // truthy property used to pass, including `constructor`, `toString` and
     // the provider's own `post` and `refreshToken` (E2E-02-08).
     if (!isCallableProviderFunction(integrationProvider, body.name)) {
-      throw new BadRequestException('Unknown function');
+      throw new NotFoundException('Function not found');
     }
 
     // @ts-ignore
