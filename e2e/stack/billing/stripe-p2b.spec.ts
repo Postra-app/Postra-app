@@ -184,3 +184,40 @@ const emailsSince = async (since: Date) => {
   }
   return out;
 };
+
+// P2 (Plan/lunchdayfinal.md, queue 3): the admin refund path, which the live
+// card test does not exercise (K. keeps that payment). A Postra staff user
+// lists the organisation's charges and refunds the paid one; a charge that
+// belongs to another customer is refused even when its id is sent.
+test('a superadmin refunds a paid charge; another customer\'s charge is refused', async () => {
+  const org = await payingOrg('STANDARD');
+  const other = await payingOrg('STANDARD');
+
+  const staff = await throwawayOrg(prisma, { tier: 'STANDARD', totalChannels: 3, channels: 0 });
+  cleanup.push(() => staff.remove());
+  const staffUser = await prisma.userOrganization.findFirstOrThrow({ where: { organizationId: staff.orgId } });
+  await prisma.user.update({ where: { id: staffUser.userId }, data: { isSuperAdmin: true } });
+  // The auth context is cached for a short while; wait for the flag to land.
+  await expect.poll(async () => (await staff.api.get('/admin/stats')).status(), { timeout: 60_000 }).toBe(200);
+
+  const listed = await staff.api.get(`/admin/charges?organizationId=${org.orgId}`);
+  expect(listed.status(), await listed.text()).toBe(200);
+  const charges: { id: string; amount: number }[] = (await listed.json()).charges;
+  const paid = charges.find((c) => c.amount === PRICE.STANDARD);
+  expect(paid, 'the first invoice was charged').toBeTruthy();
+  const foreign = (await stripe.charges.list({ customer: other.customer, limit: 1 })).data[0];
+
+  const res = await staff.api.post('/admin/refund-charges', {
+    data: { organizationId: org.orgId, chargeIds: [paid!.id, foreign.id] },
+  });
+  expect(res.status(), await res.text()).toBe(201);
+  expect(await res.json()).toEqual({ refunded: [paid!.id], failed: [foreign.id] });
+
+  expect((await stripe.charges.retrieve(paid!.id)).refunded).toBe(true);
+  expect((await stripe.charges.retrieve(foreign.id)).refunded).toBe(false);
+  const audit = await prisma.auditLog.findFirst({ where: { action: 'billing.refund', organizationId: org.orgId } });
+  expect(audit, 'the refund is in the audit trail').toBeTruthy();
+
+  // An organisation owner (not staff) cannot reach the route at all.
+  expect((await org.api.post('/admin/refund-charges', { data: { organizationId: org.orgId, chargeIds: [paid!.id] } })).status()).toBe(403);
+});
