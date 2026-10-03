@@ -30,7 +30,7 @@ export const NewPost = () => {
   const modal = useModals();
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { integrations, reloadCalendarView, sets } = useCalendar();
+  const { integrations, reloadCalendarView, sets, signature } = useCalendar();
   const t = useT();
 
   const createAPost = useCallback(async (
@@ -87,8 +87,17 @@ export const NewPost = () => {
             ...p,
           }))}
           {...(set?.content ? { set: safeJsonParse<any>(set.content, undefined) } : {})}
-          {...(initialMedia?.length
-            ? { onlyValues: [{ content: '', image: initialMedia }] }
+          {...(initialMedia?.length || (signature?.id && !set)
+            ? {
+                // The auto-add signature, as a click on a calendar cell
+                // already did; this button (the main way in) skipped it.
+                onlyValues: [
+                  {
+                    content: signature?.id && !set ? '\n' + signature.content : '',
+                    ...(initialMedia?.length ? { image: initialMedia } : {}),
+                  },
+                ],
+              }
             : {})}
           reopenModal={createAPost}
           mutate={reloadCalendarView}
@@ -99,7 +108,7 @@ export const NewPost = () => {
       size: '80%',
       title: ``,
     });
-  }, [integrations, sets]);
+  }, [integrations, sets, signature]);
 
   // Studio's "Use in post" lands here: /launches?newPostMedia=[{id,path},…]
   // → open the new-post modal with the exported graphic(s) pre-attached.
