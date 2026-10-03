@@ -1,3 +1,4 @@
+import { Throttle } from '@nestjs/throttler';
 import {
   Body,
   Controller,
@@ -25,6 +26,8 @@ import { ApiTags } from '@nestjs/swagger';
 import { UsersService } from '@gitroom/nestjs-libraries/database/prisma/users/users.service';
 import { UserDetailDto } from '@gitroom/nestjs-libraries/dtos/users/user.details.dto';
 import { EmailNotificationsDto } from '@gitroom/nestjs-libraries/dtos/users/email-notifications.dto';
+import { problemReportHtml } from '@gitroom/backend/api/routes/problem.report';
+import { ProblemReportDto } from '@gitroom/nestjs-libraries/dtos/users/problem.report.dto';
 import { HttpForbiddenException } from '@gitroom/nestjs-libraries/services/exception.filter';
 import { RealIP } from 'nestjs-real-ip';
 import { UserAgent } from '@gitroom/nestjs-libraries/user/user.agent';
@@ -213,6 +216,34 @@ export class UsersController {
     @Body() body: UserDetailDto
   ) {
     return this._userService.changePersonal(user.id, organization.id, body);
+  }
+
+  // "Report a problem" also lands in the team's inbox. Sentry keeps the report
+  // and its screenshot, but sends no mail on our plan: a report sent on
+  // 2026-10-03 sat in Sentry unseen. Reply-To is the reporter, so answering
+  // is one click.
+  @Post('/problem-report')
+  @Throttle({ default: { ttl: 3600000, limit: 10 } })
+  async problemReport(
+    @GetOrgFromRequest() organization: Organization,
+    @GetUserFromRequest() user: User,
+    @Body() body: ProblemReportDto
+  ) {
+    const replyTo = body.email || user.email;
+    await this._notificationService.sendEmail(
+      process.env.EMAIL_ADMIN_ADDRESS || process.env.EMAIL_FROM_ADDRESS!,
+      `Problem report from ${organization.name}`.slice(0, 150),
+      problemReportHtml({
+        message: body.message,
+        name: body.name,
+        email: replyTo,
+        organization: organization.name,
+        page: body.page,
+        eventId: body.eventId,
+      }),
+      replyTo
+    );
+    return { ok: true };
   }
 
   @Get('/email-notifications')
