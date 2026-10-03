@@ -457,6 +457,7 @@ const OpenModal: FC<{
     }[];
   };
 }> = ({ args, respond }) => {
+  const t = useT();
   const modals = useModals();
   const { properties } = useContext(PropertiesContext);
   const startModal = useCallback(async () => {
@@ -535,8 +536,10 @@ const OpenModal: FC<{
     startModal();
   }, []);
   return (
+    // Shown in the chat while the editor is open. It used to print the raw
+    // tool arguments as JSON to the user.
     <div onClick={() => respond('continue')}>
-      Opening manually ${JSON.stringify(args)}
+      {t('agent_opening_editor', 'Opening the editor…')}
     </div>
   );
 };
