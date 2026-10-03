@@ -776,15 +776,12 @@ export class PostsService {
   async deletePost(orgId: string, group: string) {
     const post = await this._postRepository.deletePost(orgId, group);
 
-    // One workflow per channel, plus any Repeat children (they carry the same
-    // postId). Terminating only the first channel's left the others asleep
-    // until their publish time.
-    for (const id of post?.ids ?? []) {
+    if (post?.id) {
       try {
         const workflows = this._temporalService.client
           .getRawClient()
           ?.workflow.list({
-            query: `postId="${id}" AND ExecutionStatus="Running"`,
+            query: `postId="${post.id}" AND ExecutionStatus="Running"`,
           });
 
         for await (const executionInfo of workflows) {
