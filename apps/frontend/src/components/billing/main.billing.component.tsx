@@ -75,7 +75,7 @@ export const Prorate: FC<{
   }
   return (
     <div className="text-[12px] flex pt-[12px]">
-      ({t('pay_today', 'Pay Today')} £{(price < 0 ? 0 : price)?.toFixed(1)})
+      ({t('pay_today', 'Pay Today')} £{(price < 0 ? 0 : price)?.toFixed(2)})
     </div>
   );
 };
