@@ -5,8 +5,12 @@ on:
     branches:
       - main
 
+# id-token: GitHub's OIDC token is exchanged for the AWS role
+# postra-github-deploy (terraform envs/dev/github_deploy.tf) — no AWS keys
+# are stored in this public repo's secrets.
 permissions:
   contents: read
+  id-token: write
 
 # Merging several PRs back-to-back used to queue one full ~12-min deploy per
 # merge. Each deploy ships whatever is on main at that moment, so an older
@@ -38,8 +42,8 @@ jobs:
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          role-to-assume: ${{ secrets.AWS_DEPLOY_ROLE_ARN }}
+          role-session-name: postra-deploy-${{ github.run_id }}
           aws-region: ${{ secrets.AWS_REGION }}
 
       - name: Login to Amazon ECR
@@ -84,8 +88,8 @@ jobs:
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          role-to-assume: ${{ secrets.AWS_DEPLOY_ROLE_ARN }}
+          role-session-name: postra-deploy-${{ github.run_id }}
           aws-region: ${{ secrets.AWS_REGION }}
 
       - name: Set image URIs
@@ -126,8 +130,8 @@ jobs:
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          role-to-assume: ${{ secrets.AWS_DEPLOY_ROLE_ARN }}
+          role-session-name: postra-deploy-${{ github.run_id }}
           aws-region: ${{ secrets.AWS_REGION }}
 
       - name: Resolve EC2 instance by tag
