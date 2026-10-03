@@ -23,7 +23,9 @@ export class EmailActivity {
 
   @ActivityMethod()
   async getUserOrgs(id: string) {
-    return this._organizationService.getTeam(id);
+    // The digest goes to the same people as every other mail of the
+    // organisation: not to disabled seats or suspended accounts.
+    return this._organizationService.getMailRecipients(id);
   }
 
   @ActivityMethod()

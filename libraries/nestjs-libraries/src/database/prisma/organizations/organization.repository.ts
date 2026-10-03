@@ -406,6 +406,9 @@ export class OrganizationRepository {
     });
   }
 
+  // Who gets the organisation's mail. A seat disabled by a downgrade, or a
+  // suspended account, kept receiving it, failure mails with post content
+  // included.
   getAllUsersOrgs(orgId: string) {
     return this._organization.model.organization.findUnique({
       where: {
@@ -413,6 +416,7 @@ export class OrganizationRepository {
       },
       select: {
         users: {
+          where: { disabled: false, user: { suspendedAt: null } },
           select: {
             user: {
               select: {
