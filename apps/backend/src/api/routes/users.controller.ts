@@ -175,7 +175,13 @@ export class UsersController {
     // `admin.impersonate` row indistinguishable from the row that began it.
     if (!id) {
       clearImpersonateCookie(response);
-      this._auditService.record({ action: 'admin.impersonate.stop' });
+      // Who stopped, so a stop pairs with its start (E2E-09-64). While
+      // impersonating, `user` is the target; record() puts the admin from
+      // the JWT in its place and the target beside it.
+      this._auditService.record({
+        action: 'admin.impersonate.stop',
+        userId: user.id,
+      });
 
       if (process.env.NOT_SECURED) {
         response.header('impersonate', '');
