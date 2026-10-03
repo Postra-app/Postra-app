@@ -8,12 +8,17 @@
 //                               only with stream_options.include_usage)
 //   GET  /__requests            every request received so far
 //   POST /__fail                the next completion answers 500
+//   POST /__outage {"match": t, "on": bool}
+//                               every /v1 call whose body contains t answers
+//                               500 while on; each spec uses its own t, so
+//                               specs running in parallel are unaffected
 import { createServer } from 'node:http';
 
 const PORT = Number(process.env.FAKE_OPENAI_PORT || 58090);
 export const TEXT = 'Stack AI answer.';
 const requests = [];
 let failNext = false;
+const outages = new Set();
 
 // The smallest value that satisfies a JSON schema — enough for the app to
 // parse a structured output the way it parses OpenAI's.
@@ -68,6 +73,15 @@ createServer((req, res) => {
     if (req.method === 'POST' && req.url === '/__fail') {
       failNext = true;
       return json(res, 200, { failNext });
+    }
+    if (req.method === 'POST' && req.url === '/__outage') {
+      if (body.on) outages.add(body.match);
+      else outages.delete(body.match);
+      return json(res, 200, { outages: [...outages] });
+    }
+    if (req.url?.startsWith('/v1/') && [...outages].some((t) => raw.includes(t))) {
+      requests.push({ path: req.url, model: body.model, outage: true });
+      return json(res, 500, { error: { message: 'The server had an error', type: 'server_error' } });
     }
 
     if (req.method === 'POST' && req.url === '/v1/chat/completions') {

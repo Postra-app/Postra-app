@@ -6,6 +6,7 @@ import { z } from 'zod';
 import { createReadStream } from 'fs';
 import { stat } from 'fs/promises';
 import { parseChat } from '@gitroom/nestjs-libraries/openai/parse-chat';
+import { isAiOutage } from '@gitroom/nestjs-libraries/openai/ai-outage';
 import {
   recordAiUsage,
   AiUsageEvent,
@@ -434,6 +435,7 @@ export class OpenaiService {
                 ).choices[0].message.parsed?.post || ''
               );
             } catch (e) {
+              if (isAiOutage(e)) throw e;
               retries--;
             }
           }
@@ -533,6 +535,7 @@ ${SETTINGS_BLOCK_RULE}`,
 
         if (parsed) return parsed;
       } catch (err) {
+        if (isAiOutage(err)) throw err;
         this._logger.warn(`generatePostDesign attempt failed: ${(err as Error)?.message ?? err}`);
       }
     }
@@ -734,6 +737,7 @@ ${SETTINGS_BLOCK_RULE}`,
           if (!best) best = parsed;
         }
       } catch (err) {
+        if (isAiOutage(err)) throw err;
         this._logger.warn(`generatePostCarousel attempt failed: ${(err as Error)?.message ?? err}`);
       }
     }
@@ -784,6 +788,7 @@ ${SETTINGS_BLOCK_RULE}`,
 
         return parse;
       } catch (err) {
+        if (isAiOutage(err)) throw err;
         this._logger.warn(`generateSlidesFromText attempt failed: ${(err as Error)?.message ?? err}`);
       }
     }
