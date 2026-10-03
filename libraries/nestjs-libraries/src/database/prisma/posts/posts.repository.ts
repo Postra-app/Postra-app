@@ -382,7 +382,7 @@ export class PostsRepository {
   }
 
   async deletePost(orgId: string, group: string) {
-    const where = { organizationId: orgId, group, deletedAt: null };
+    const where = { organizationId: orgId, group, deletedAt: null as Date | null };
     // Every channel in the group has its own post and its own workflow, so
     // the caller needs all of their ids, read before they stop being live.
     const posts = await this._post.model.post.findMany({
