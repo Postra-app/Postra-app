@@ -151,7 +151,10 @@ export class PostsService {
       );
     } catch (e) {
       this._logger.warn(`getMissingContent failed: ${(e as Error)?.message ?? e}`);
-      if (e instanceof RefreshToken) {
+      // Retry once after a token refresh; a second RefreshToken means the
+      // refresh didn't help (revoked scope) — recursing again would loop,
+      // refreshing the token on every turn.
+      if (e instanceof RefreshToken && !forceRefresh) {
         return this.getMissingContent(orgId, postId, true);
       }
     }
@@ -265,7 +268,8 @@ export class PostsService {
       return loadAnalytics;
     } catch (e) {
       this._logger.warn(`checkPostAnalytics failed: ${(e as Error)?.message ?? e}`);
-      if (e instanceof RefreshToken) {
+      // Retry once, as in getMissingContent.
+      if (e instanceof RefreshToken && !forceRefresh) {
         return this.checkPostAnalytics(orgId, postId, date, true);
       }
     }
