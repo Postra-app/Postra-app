@@ -131,3 +131,15 @@ describe('every structured text call names the surface that spends it', () => {
     }
   });
 });
+
+// OpenAI serves a prompt from cache only when its beginning is identical. The
+// agent's prompt started with the current time, so nothing was ever cached.
+describe('the agent prompt keeps what changes per call at the end', () => {
+  it('puts the time and the Brand Kit after the static instructions', () => {
+    const source = read('chat/load.tools.service.ts');
+    const staticStart = source.indexOf('You are an agent that helps manage');
+    expect(staticStart).toBeGreaterThan(0);
+    expect(source.indexOf('Date (UTC)')).toBeGreaterThan(staticStart);
+    expect(source.indexOf('${brandKit}')).toBeGreaterThan(staticStart);
+  });
+});
