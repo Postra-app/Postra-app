@@ -32,6 +32,29 @@ import {
 const MAX_LOGIN_FAILURES = 10;
 const LOGIN_LOCKOUT_WINDOW_SECONDS = 15 * 60;
 
+// The activation mail goes through the Temporal mail queue. When the queue
+// cannot take it, the account already exists: registration answered 400
+// "Failed to signalWithStart Workflow" for an account that was in the
+// database, and no mail ever came (E2E-02-04). Send it directly instead.
+export const sendActivationMail = async (
+  emails: Pick<EmailService, 'sendEmail' | 'sendEmailSync'>,
+  to: string,
+  subject: string,
+  html: string
+) => {
+  try {
+    // No Temporal client at all answers undefined rather than throwing.
+    if (!(await emails.sendEmail(to, subject, html, 'top'))) {
+      throw new Error('no mail queue');
+    }
+  } catch (err) {
+    new Logger('AuthService').warn(
+      `activation mail not queued (${(err as Error)?.message}); sending directly`
+    );
+    await emails.sendEmailSync(to, subject, html);
+  }
+};
+
 @Injectable()
 export class AuthService {
   constructor(
@@ -107,13 +130,13 @@ export class AuthService {
 
         const obj = { addedOrg, jwt: await this.jwt(create.users[0].user) };
         const activation = authEmails.activation[lang];
-        await this._emailService.sendEmail(
+        await sendActivationMail(
+          this._emailService,
           body.email,
           activation.subject,
           activation.html(
             `${process.env.FRONTEND_URL}/auth/activate/${obj.jwt}`
-          ),
-          'top'
+          )
         );
         return obj;
       }
@@ -375,11 +398,11 @@ export class AuthService {
     const jwt = await this.jwt(user);
 
     const activation = authEmails.activation[lang];
-    await this._emailService.sendEmail(
+    await sendActivationMail(
+      this._emailService,
       user.email,
       activation.subject,
-      activation.html(`${process.env.FRONTEND_URL}/auth/activate/${jwt}`),
-      'top'
+      activation.html(`${process.env.FRONTEND_URL}/auth/activate/${jwt}`)
     );
 
     return true;
