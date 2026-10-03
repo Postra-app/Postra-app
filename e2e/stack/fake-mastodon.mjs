@@ -5,7 +5,10 @@
 //
 //   POST /api/v1/statuses   accept a status, like Mastodon does
 //   GET  /__received        every status received so far
-//   POST /__fail            the next status answers 422 with a Mastodon error
+//   POST /__fail {"match": t}  the next status containing t answers 422 with a
+//                           Mastodon error. Keyed by text because specs run in
+//                           parallel: a bare "fail the next one" was taken by
+//                           whichever spec posted first.
 //   POST /__hold {"ms": n}  the next status is recorded at once but answered
 //                           n ms later — a platform that accepted the post
 //                           while the worker that sent it dies (restart/)
@@ -16,7 +19,7 @@ import { createServer } from 'node:http';
 
 const PORT = Number(process.env.FAKE_MASTODON_PORT || 58080);
 const received = [];
-let failNext = false;
+const failMatching = new Set();
 let holdNextMs = 0;
 
 const readBody = (req) =>
@@ -55,8 +58,10 @@ createServer(async (req, res) => {
   if (req.method === 'GET' && req.url === '/health') return json(res, 200, { ok: true });
   if (req.method === 'GET' && req.url === '/__received') return json(res, 200, received);
   if (req.method === 'POST' && req.url === '/__fail') {
-    failNext = true;
-    return json(res, 200, { failNext });
+    const { match } = JSON.parse(body.toString() || '{}');
+    if (!match) return json(res, 400, { error: 'match is required' });
+    failMatching.add(String(match));
+    return json(res, 200, { failMatching: [...failMatching] });
   }
 
   if (req.method === 'POST' && req.url === '/__hold') {
@@ -80,11 +85,12 @@ createServer(async (req, res) => {
   }
 
   if (req.method === 'POST' && req.url === '/api/v1/statuses') {
-    if (failNext) {
-      failNext = false;
+    const fields = formFields(body, req.headers['content-type']);
+    const failing = [...failMatching].find((m) => (fields.status ?? '').includes(m));
+    if (failing) {
+      failMatching.delete(failing);
       return json(res, 422, { error: 'Validation failed: Text character limit of 500 exceeded' });
     }
-    const fields = formFields(body, req.headers['content-type']);
     const id = String(100000 + received.length);
     received.push({
       id,
