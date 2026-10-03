@@ -62,6 +62,14 @@ export default defineConfig({
       dependencies: ['setup'],
       use: { storageState: STATE_FILE },
     },
+    // The per-provider matrix on the technical channels: manual only, it
+    // publishes ~16 real posts (matrix.technical.spec.ts).
+    {
+      name: 'publish-matrix',
+      testMatch: /matrix\.technical\.spec\.ts/,
+      dependencies: ['setup'],
+      use: { storageState: STATE_FILE },
+    },
     // The UK landing: public, no sign-in.
     {
       name: 'landing',
