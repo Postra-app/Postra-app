@@ -113,3 +113,4 @@ test('a tag created in the composer is saved with the draft', async ({ page }) =
   expect(tags.map((t) => t.tag.name), JSON.stringify(Object.keys(stored.posts[0]))).toContain(name);
   await api.dispose();
 });
+
