@@ -128,6 +128,12 @@ export class AuthMiddleware implements NestMiddleware {
         throw new HttpForbiddenException();
       }
 
+      // Suspended by a Postra administrator: no session works, whatever it
+      // carries (the suspension also bumps tokenVersion).
+      if (user.suspendedAt) {
+        throw new HttpForbiddenException();
+      }
+
       // Revocation gate: a token is only valid while its version matches the
       // user's current one. A password reset bumps user.tokenVersion (and busts
       // the authctx cache), so every JWT issued beforehand — including a

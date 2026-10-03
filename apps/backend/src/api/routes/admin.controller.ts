@@ -230,6 +230,8 @@ export class AdminController {
           providerName: true,
           activated: true,
           isSuperAdmin: true,
+          suspendedAt: true,
+          suspendedReason: true,
           createdAt: true,
           lastOnline: true,
           organizations: {
@@ -407,6 +409,63 @@ export class AdminController {
     }
 
     return { id: userId, isSuperAdmin: next };
+  }
+
+  // Lock an account out (abuse, fraud, a chargeback) or let it back in. The
+  // user cannot sign in and every session ends at once: tokenVersion is
+  // bumped, as on a password reset. Their organisations, posts and channels
+  // are left as they are; to stop an organisation publishing, disable its
+  // channels in the Channels tab.
+  @Post('/suspend-user')
+  async suspendUser(
+    @GetUserFromRequest() user: User,
+    @Body('userId') userId: string,
+    @Body('value') value: boolean,
+    @Body('reason') reason?: string
+  ) {
+    this.assertSuperAdmin(user);
+    if (!userId?.trim()) {
+      throw new HttpException('Missing userId', 400);
+    }
+    const suspend = value === true;
+    if (userId === user.id) {
+      throw new HttpException('You cannot suspend your own account', 400);
+    }
+    const target = await this._prisma.user.findUnique({
+      where: { id: userId },
+      select: { id: true, email: true, isSuperAdmin: true, suspendedAt: true },
+    });
+    if (!target) {
+      throw new HttpException('User not found', 404);
+    }
+    if (suspend && target.isSuperAdmin) {
+      throw new HttpException('Revoke admin access before suspending an administrator', 400);
+    }
+
+    if (suspend !== !!target.suspendedAt) {
+      await this._prisma.user.update({
+        where: { id: userId },
+        data: suspend
+          ? {
+              suspendedAt: new Date(),
+              suspendedReason: reason?.trim().slice(0, 500) || null,
+              tokenVersion: { increment: 1 },
+            }
+          : { suspendedAt: null, suspendedReason: null },
+      });
+      await bustAuthContextCache(userId);
+      this._auditService.record({
+        action: suspend ? 'admin.suspend-user' : 'admin.unsuspend-user',
+        userId: user.id,
+        metadata: {
+          targetUserId: userId,
+          email: target.email,
+          ...(suspend && reason ? { reason: reason.trim().slice(0, 500) } : {}),
+        },
+      });
+    }
+
+    return { id: userId, suspended: suspend };
   }
 
   @Get('/metrics')

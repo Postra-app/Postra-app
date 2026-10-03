@@ -13,6 +13,7 @@ import { deleteDialog } from '@gitroom/react/helpers/delete.dialog';
 import { useModals } from '@gitroom/frontend/components/layout/new-modal';
 import { ImportDebugPostModal } from '@gitroom/frontend/components/launches/import-debug-post.modal';
 import { AdminBillingModal } from './admin-billing.modal';
+import { AdminSuspendModal } from './admin-suspend.modal';
 import { useToaster } from '@gitroom/react/toaster/toaster';
 import { useDebouncedSearch } from '@gitroom/frontend/components/admin/use-debounced-search';
 
@@ -130,6 +131,8 @@ interface UserItem {
   providerName: string;
   activated: boolean;
   isSuperAdmin: boolean;
+  suspendedAt: string | null;
+  suspendedReason: string | null;
   createdAt: string;
   lastOnline: string;
   organizations: UserOrgItem[];
@@ -234,6 +237,41 @@ export const AdminUsersComponent = () => {
       });
     },
     [openModal, t]
+  );
+
+  // Suspend asks for a reason in a modal; lifting it is a plain confirm.
+  const toggleSuspension = useCallback(
+    (u: UserItem) => async () => {
+      if (!u.suspendedAt) {
+        openModal({
+          title: t('admin_suspend', 'Suspend account'),
+          maxSize: 520,
+          children: (close) => (
+            <AdminSuspendModal userId={u.id} email={u.email} close={close} onDone={() => mutate()} />
+          ),
+        });
+        return;
+      }
+      if (
+        !(await deleteDialog(
+          t('admin_unsuspend_confirm', `Let ${u.email} sign in again?`),
+          t('admin_unsuspend', 'Lift suspension')
+        ))
+      ) {
+        return;
+      }
+      const res = await fetch('/admin/suspend-user', {
+        method: 'POST',
+        body: JSON.stringify({ userId: u.id, value: false }),
+      });
+      if (!res.ok) {
+        toaster.show(await withReason(res, t('admin_unsuspend_failed', 'Could not lift the suspension')), 'warning');
+        return;
+      }
+      toaster.show(t('admin_unsuspend_done', 'Suspension lifted'), 'success');
+      await mutate();
+    },
+    [openModal, t, mutate, fetch, toaster]
   );
 
   /**
@@ -523,6 +561,14 @@ export const AdminUsersComponent = () => {
                       ADMIN
                     </span>
                   )}
+                  {u.suspendedAt && (
+                    <span
+                      title={u.suspendedReason || undefined}
+                      className="ms-[6px] px-[6px] py-[1px] rounded-[6px] text-[10px] font-[600] bg-[rgba(248,113,113,0.15)] text-[#f87171] border border-[rgba(248,113,113,0.3)]"
+                    >
+                      SUSPENDED
+                    </span>
+                  )}
                 </td>
                 <td className="p-[12px] text-[13px] text-newTextColor/60">
                   {[u.name, u.lastName].filter(Boolean).join(' ') || '-'}
@@ -645,6 +691,17 @@ export const AdminUsersComponent = () => {
                         className="px-[12px] h-[30px] rounded-[8px] text-[12px] border border-[rgba(248,113,113,0.4)] text-[#f87171] hover:bg-[rgba(248,113,113,0.1)] cursor-pointer transition-colors"
                       >
                         {t('admin_delete_user', 'Delete account')}
+                      </button>
+                    )}
+                    {u.id !== user?.id && !u.isSuperAdmin && (
+                      <button
+                        type="button"
+                        onClick={toggleSuspension(u)}
+                        className="px-[12px] h-[30px] rounded-[8px] text-[12px] border border-[rgba(248,113,113,0.4)] text-[#f87171] hover:bg-[rgba(248,113,113,0.1)] cursor-pointer transition-colors"
+                      >
+                        {u.suspendedAt
+                          ? t('admin_unsuspend', 'Lift suspension')
+                          : t('admin_suspend', 'Suspend account')}
                       </button>
                     )}
                     {u.id !== user?.id && (

@@ -55,6 +55,9 @@ export const sendActivationMail = async (
   }
 };
 
+export const ACCOUNT_SUSPENDED =
+  'This account is suspended. Contact hello@postra.co.uk if you think this is a mistake.';
+
 @Injectable()
 export class AuthService {
   constructor(
@@ -522,6 +525,11 @@ export class AuthService {
   }
 
   private async jwt(user: User) {
+    // Every way in (password, Google, activation link, the mobile app) ends
+    // here, so a suspended account gets no session from any of them.
+    if (user.suspendedAt) {
+      throw new Error(ACCOUNT_SUSPENDED);
+    }
     // Sign only the claims we actually need. auth.middleware re-resolves the
     // user (org, role, isSuperAdmin, activated) from the DB on every request
     // and never trusts token claims, so a fat token just meant a bigger cookie
