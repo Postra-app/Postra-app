@@ -64,16 +64,17 @@ test("the channel menu opens from the keyboard and its items are readable", asyn
   expect(color).toMatch(/rgba?\(255, 255, 255/);
 });
 
-test("a tile's hint does not hang over the dialog its click opens", async ({ page }) => {
+test('tiles carry no hover hints; Instagram explains its requirements on click', async ({ page }) => {
+  // The upstream "?" hints read as warnings before anyone tried to connect
+  // (and Bluesky's wrongly said to turn off 2FA). What matters is said when
+  // the customer picks the platform.
   await page.goto('/launches');
   await page.getByRole('button', { name: 'Add Channel' }).click();
   const tile = page.getByText('Instagram', { exact: false }).filter({ hasText: 'Facebook Business' });
   await tile.hover();
-  const hint = page.locator('#tooltip');
-  await expect(hint).toBeVisible();
+  await expect(page.locator('#tooltip')).toBeHidden();
   await tile.click();
   await expect(page.getByText('Before you connect Instagram')).toBeVisible();
-  await expect(hint).toBeHidden();
 });
 
 test('removing a time slot removes that slot, not its neighbour', async ({ page }) => {

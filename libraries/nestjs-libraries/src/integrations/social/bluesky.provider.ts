@@ -69,6 +69,31 @@ async function reduceImageBySize(url: string, maxSizeKB = 976) {
   }
 }
 
+// The video upload request. No Content-Length header: fetch derives it from
+// the Buffer, and undici rejects one set by hand ("invalid content-length
+// header", E2E-05-29: every Bluesky video failed with "fetch failed").
+export const videoUploadRequest = (
+  did: string,
+  videoPath: string,
+  token: string,
+  body: Buffer
+) => {
+  const url = new URL('https://video.bsky.app/xrpc/app.bsky.video.uploadVideo');
+  url.searchParams.append('did', did);
+  url.searchParams.append('name', videoPath.split('/').pop()!.split('?')[0]);
+  return {
+    url,
+    init: {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'video/mp4',
+      },
+      body,
+    } as RequestInit,
+  };
+};
+
 async function uploadVideo(
   agent: AtpAgent,
   videoPath: string
@@ -79,38 +104,26 @@ async function uploadVideo(
     exp: Date.now() / 1000 + 60 * 30, // 30 minutes
   });
 
-  async function downloadVideo(
-    url: string
-  ): Promise<{ video: Buffer; size: number }> {
-    const response = await fetch(url);
-    if (!response.ok) {
-      throw new Error(`Failed to fetch video: ${response.statusText}`);
-    }
-    const arrayBuffer = await response.arrayBuffer();
-    const video = Buffer.from(arrayBuffer);
-    const size = video.length;
-    return { video, size };
-  }
+  // The path is client-controlled: same SSRF-guarded download as images.
+  const video = await fetchMediaBuffer(videoPath, 120_000);
 
-  const video = await downloadVideo(videoPath);
+  logger.debug(`Downloaded video ${videoPath} (${video.length} bytes)`);
 
-  logger.debug(`Downloaded video ${videoPath} (${video.size} bytes)`);
-
-  const uploadUrl = new URL(
-    'https://video.bsky.app/xrpc/app.bsky.video.uploadVideo'
+  const request = videoUploadRequest(
+    agent.session!.did,
+    videoPath,
+    serviceAuth.token,
+    video
   );
-  uploadUrl.searchParams.append('did', agent.session!.did);
-  uploadUrl.searchParams.append('name', videoPath.split('/').pop()!);
-
-  const uploadResponse = await fetch(uploadUrl, {
-    method: 'POST',
-    headers: {
-      Authorization: `Bearer ${serviceAuth.token}`,
-      'Content-Type': 'video/mp4',
-      'Content-Length': video.size.toString(),
-    },
-    body: video.video,
-  });
+  const uploadResponse = await fetch(request.url, request.init);
+  if (!uploadResponse.ok) {
+    throw new BadBody(
+      'bluesky',
+      JSON.stringify({ status: uploadResponse.status }),
+      '',
+      `Bluesky refused the video upload (${uploadResponse.status} ${uploadResponse.statusText})`
+    );
+  }
 
   const jobStatus = (await uploadResponse.json()) as AppBskyVideoDefs.JobStatus;
   logger.debug(`Video job ${jobStatus.jobId}`);
