@@ -247,3 +247,42 @@ test('a channel that needs reconnecting: the post fails as "Refresh channel need
     await run.done();
   }
 });
+
+// §5.4 "comment failure": the post goes out, the platform refuses the reply.
+// The post stays published, only the reply is flagged, and the team is told
+// which part did not make it.
+test('a refused reply leaves the post published and flags only the reply', async () => {
+  const tag = Date.now();
+  const main = `[stack] main part ${tag}`;
+  const reply = `[stack] refused reply ${tag}`;
+  expect((await api.post(`${FAKE}/__fail`, { data: { match: reply } })).ok()).toBe(true);
+  const res = await api.post('/posts', {
+    data: {
+      type: 'now',
+      shortLink: false,
+      date: new Date().toISOString(),
+      tags: [],
+      posts: [
+        {
+          integration: { id: CHANNEL },
+          value: [
+            { content: main, image: [] },
+            { content: reply, image: [] },
+          ],
+          settings: { __type: 'mastodon' },
+        },
+      ],
+    },
+  });
+  expect(res.status(), await res.text()).toBe(201);
+  const post = (await listPosts(api)).find((p) => p.content.includes(main))!;
+
+  await settledState(post.id).toBe('PUBLISHED');
+  const { posts } = await (await api.get(`/posts/${post.id}`)).json();
+  const replyRow = posts.find((p: { content: string }) => p.content.includes(reply));
+  await expect
+    .poll(async () => ((await (await api.get(`/posts/${post.id}`)).json()).posts as { id: string; state: string }[]).find((p) => p.id === replyRow.id)?.state, { timeout: 30_000 })
+    .toBe('ERROR');
+  expect((await received()).some((r) => r.status === main)).toBe(true);
+  expect(await notifications()).toContain('one of the comments attached to it could not be posted');
+});
