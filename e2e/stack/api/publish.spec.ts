@@ -105,3 +105,73 @@ test('a platform refusal marks the post failed, with the reason', async () => {
   expect(after.error).toContain('Text character limit of 500 exceeded');
   expect(after.error).not.toMatch(/\bat \w+|\/app\/|node_modules|workflowId/);
 });
+
+// Editing a scheduled post (composer → save with the same post id): the old
+// workflow is stopped and a new one publishes the new text, once (S2,
+// 05-composer-publish.md §5.3 "Edit zaplanowanego").
+test('an edited scheduled post publishes the new text, once', async () => {
+  const tag = Date.now();
+  const original = `[stack] before edit ${tag}`;
+  const edited = `[stack] after edit ${tag}`;
+  const at = new Date(Date.now() + 20_000);
+  const post = await publish(original, 'schedule', at);
+  const { group } = await (await api.get(`/posts/${post.id}`)).json();
+
+  const res = await api.post('/posts', {
+    data: {
+      type: 'schedule',
+      shortLink: false,
+      date: at.toISOString(),
+      tags: [],
+      posts: [
+        {
+          integration: { id: CHANNEL },
+          group,
+          value: [{ id: post.id, content: edited, image: [] }],
+          settings: { __type: 'mastodon' },
+        },
+      ],
+    },
+  });
+  expect(res.status(), await res.text()).toBe(201);
+
+  await settledState(post.id).toBe('PUBLISHED');
+  // Give a leftover workflow for the old text time to fire, if there were one.
+  await new Promise((r) => setTimeout(r, 5_000));
+  const sent = (await received()).filter((r) => r.status.includes(`${tag}`));
+  expect(sent.map((r) => r.status)).toEqual([edited]);
+});
+
+// "Duplicate" on a calendar tile: a new post with the same text, its own id,
+// and the original untouched.
+test('duplicating a post makes an independent copy', async () => {
+  const content = `[stack] duplicate me ${Date.now()}`;
+  const post = await publish(content, 'schedule', new Date(Date.now() + 3 * 86_400_000));
+  try {
+    const original = await (await api.get(`/posts/${post.id}`)).json();
+    const copy = await api.post('/posts', {
+      data: {
+        type: 'draft',
+        shortLink: false,
+        date: new Date(Date.now() + 4 * 86_400_000).toISOString(),
+        tags: [],
+        posts: [
+          {
+            integration: { id: CHANNEL },
+            value: original.posts.map((p: { content: string }) => ({ content: p.content, image: [] })),
+            settings: original.settings,
+          },
+        ],
+      },
+    });
+    expect(copy.status()).toBe(201);
+    const both = (await listPosts(api)).filter((p) => p.content === content);
+    expect(both).toHaveLength(2);
+    expect(new Set(both.map((p) => p.group)).size).toBe(2);
+    expect((await stored(post.id)).state).toBe('QUEUE');
+    for (const p of both) await api.delete(`/posts/${p.group}`);
+  } catch (e) {
+    await api.delete(`/posts/${post.group}`);
+    throw e;
+  }
+});
