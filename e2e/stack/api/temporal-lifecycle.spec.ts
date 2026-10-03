@@ -78,3 +78,32 @@ test('Repeat keeps the workflow waiting after publishing, and Delete stops it', 
   expect((await (await api.delete(`/posts/${created.group}`)).json()).deleted).toBe(true);
   await expect.poll(() => running(created.id), { timeout: 15_000 }).toEqual([]);
 });
+
+// The daily housekeeping (E2E-06-01): started by the backend when RUN_CRON is
+// set; here started by hand. Its first run removes the file behind a media row
+// deleted longer ago than the grace period, and the row.
+test('housekeeping removes a file deleted past its grace period', async () => {
+  const { writeFileSync, existsSync, mkdirSync } = await import('fs');
+  const { database } = await import('../helpers');
+  const dir = process.env.UPLOAD_DIRECTORY || '/tmp/postra-e2e-stack-uploads';
+  mkdirSync(dir, { recursive: true });
+  const file = `${dir}/housekeeping-${Date.now()}.png`;
+  writeFileSync(file, 'x');
+  const prisma = database();
+  const org = await prisma.organization.findFirstOrThrow({ where: { name: USERS.a.org } });
+  const row = await prisma.media.create({
+    data: { name: 'old.png', path: file, organizationId: org.id, deletedAt: new Date(Date.now() - 40 * 86_400_000) },
+  });
+  const handle = await temporal.workflow.start('housekeepingWorkflow', {
+    workflowId: `housekeeping-stack-${Date.now()}`,
+    taskQueue: 'main',
+  });
+  try {
+    await expect.poll(() => existsSync(file), { timeout: 60_000 }).toBe(false);
+    await expect.poll(async () => prisma.media.count({ where: { id: row.id } }), { timeout: 10_000 }).toBe(0);
+  } finally {
+    await handle.terminate();
+    await prisma.media.deleteMany({ where: { id: row.id } });
+    await prisma.$disconnect();
+  }
+});

@@ -285,4 +285,25 @@ describe('sweepOrphanMedia', () => {
     expect(report.failed).toBe(1);
     expect(report.removed).toBe(0);
   });
+
+  // Deleting the row of a file that could not be removed left the file in the
+  // bucket with nothing pointing at it, so no later run could find it.
+  it('keeps the row of a file it could not remove, deletes the others', async () => {
+    removeFile.mockImplementation(async (path: string) => {
+      if (path === 'uploads/stuck.jpg') throw new Error('S3 said no');
+    });
+    const prisma = buildPrisma({
+      media: [
+        { id: 'm1', path: 'uploads/stuck.jpg', thumbnail: null, deletedAt: longAgo },
+        { id: 'm2', path: 'uploads/gone.jpg', thumbnail: null, deletedAt: longAgo },
+      ],
+    });
+    const service = new MaintenanceService(prisma as any);
+
+    const report = await service.sweepOrphanMedia(true);
+
+    expect(report).toMatchObject({ removed: 1, failed: 1 });
+    expect(prisma.deleted.media).toEqual([{ id: { in: ['m2'] } }]);
+    removeFile.mockReset();
+  });
 });
