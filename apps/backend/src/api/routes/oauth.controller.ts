@@ -1,3 +1,4 @@
+import { Throttle } from '@nestjs/throttler';
 import {
   Body,
   Controller,
@@ -39,6 +40,7 @@ export class OAuthController {
   }
 
   @Post('/token')
+  @Throttle({ default: { ttl: 300_000, limit: 30 } })
   async token(@Body() body: TokenExchangeDto) {
     if (body.grant_type !== 'authorization_code') {
       throw new HttpException(
@@ -61,6 +63,7 @@ export class OAuthAuthorizedController {
   constructor(private _oauthService: OAuthService) {}
 
   @Post('/authorize')
+  @Throttle({ default: { ttl: 300_000, limit: 30 } })
   async approveOrDeny(
     @Body() body: ApproveOAuthDto,
     @GetUserFromRequest() user: User,

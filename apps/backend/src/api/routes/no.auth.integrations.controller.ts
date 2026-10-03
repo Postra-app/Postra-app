@@ -1,3 +1,4 @@
+import { Throttle } from '@nestjs/throttler';
 import { fetch } from 'undici';
 import { ssrfSafeDispatcher } from '@gitroom/nestjs-libraries/dtos/webhooks/ssrf.safe.dispatcher';
 import { isSafePublicHttpsUrl } from '@gitroom/nestjs-libraries/dtos/webhooks/webhook.url.validator';
@@ -121,6 +122,7 @@ export class NoAuthIntegrationsController {
    * cookie stays in their own browser.
    */
   @Get('/invite/:token/go')
+  @Throttle({ default: { ttl: 300_000, limit: 60 } })
   async followInvite(
     @Param('token') token: string,
     @Query('provider') provider: string,
@@ -201,6 +203,7 @@ export class NoAuthIntegrationsController {
   @Post('/social-connect/:integration')
   @CheckPolicies([AuthorizationActions.Create, Sections.CHANNEL])
   @UseFilters(new NotEnoughScopesFilter())
+  @Throttle({ default: { ttl: 300_000, limit: 30 } })
   async connectSocialMedia(
     @Param('integration') integration: string,
     @Body() body: ConnectIntegrationDto,
@@ -593,6 +596,7 @@ export class NoAuthIntegrationsController {
   }
 
   @Post('/public/provider/:id/connect')
+  @Throttle({ default: { ttl: 300_000, limit: 20 } })
   async saveProviderPage(@Param('id') id: string, @Body() body: any) {
     if (!body.state) {
       throw new BadRequestException('Invalid state');

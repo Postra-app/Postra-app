@@ -45,6 +45,7 @@ export class PostsController {
   ) {}
 
   @Get('/:id/statistics')
+  @Throttle({ default: { ttl: 300_000, limit: 60 } })
   async getStatistics(
     @GetOrgFromRequest() org: Organization,
     @Param('id') id: string
@@ -53,6 +54,7 @@ export class PostsController {
   }
 
   @Get('/:id/missing')
+  @Throttle({ default: { ttl: 300_000, limit: 30 } })
   async getMissingContent(
     @GetOrgFromRequest() org: Organization,
     @Param('id') id: string
@@ -75,6 +77,7 @@ export class PostsController {
   }
 
   @Post('/:id/comments')
+  @Throttle({ default: { ttl: 300_000, limit: 30 } })
   async createComment(
     @GetOrgFromRequest() org: Organization,
     @GetUserFromRequest() user: User,
@@ -174,6 +177,7 @@ export class PostsController {
   }
 
   @Post('/valid')
+  @Throttle({ default: { ttl: 300_000, limit: 120 } })
   async validatePosts(
     @GetOrgFromRequest() org: Organization,
     @Body() rawBody: any
@@ -183,6 +187,7 @@ export class PostsController {
 
   @Post('/')
   @CheckPolicies([AuthorizationActions.Create, Sections.POSTS_PER_MONTH])
+  @Throttle({ default: { ttl: 300_000, limit: 120 } })
   async createPost(
     @GetOrgFromRequest() org: Organization,
     @Body() rawBody: any,
@@ -263,6 +268,7 @@ export class PostsController {
   }
 
   @Delete('/:group')
+  @Throttle({ default: { ttl: 300_000, limit: 120 } })
   deletePost(
     @GetOrgFromRequest() org: Organization,
     @Param('group') group: string
@@ -271,6 +277,7 @@ export class PostsController {
   }
 
   @Put('/:id/date')
+  @Throttle({ default: { ttl: 300_000, limit: 120 } })
   changeDate(
     @GetOrgFromRequest() org: Organization,
     @Param('id') id: string,

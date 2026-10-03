@@ -1,3 +1,4 @@
+import { Throttle } from '@nestjs/throttler';
 import { randomBytes } from 'crypto';
 import {
   Body,
@@ -51,6 +52,7 @@ export class IntegrationsController {
 
   @Post('/provider/:id/connect')
   @CheckPolicies([AuthorizationActions.Create, Sections.CHANNEL])
+  @Throttle({ default: { ttl: 300_000, limit: 20 } })
   async saveProviderPage(
     @GetOrgFromRequest() org: Organization,
     @Param('id') id: string,
@@ -210,6 +212,7 @@ export class IntegrationsController {
 
   @Get('/social/:integration')
   @CheckPolicies([AuthorizationActions.Create, Sections.CHANNEL])
+  @Throttle({ default: { ttl: 300_000, limit: 60 } })
   async getIntegrationUrl(
     @Param('integration') integration: string,
     @Query('refresh') refresh: string,
@@ -341,6 +344,7 @@ export class IntegrationsController {
   }
 
   @Post('/mentions')
+  @Throttle({ default: { ttl: 300_000, limit: 120 } })
   async mentions(
     @GetOrgFromRequest() org: Organization,
     @Body() body: IntegrationFunctionDto
@@ -397,6 +401,7 @@ export class IntegrationsController {
   }
 
   @Post('/function')
+  @Throttle({ default: { ttl: 300_000, limit: 120 } })
   async functionIntegration(
     @GetOrgFromRequest() org: Organization,
     @Body() body: IntegrationFunctionDto
@@ -555,11 +560,13 @@ export class IntegrationsController {
   }
 
   @Get('/telegram/updates')
+  @Throttle({ default: { ttl: 300_000, limit: 300 } })
   async getUpdates(@Query() query: { word: string; id?: number }) {
     return new TelegramProvider().getBotId(query);
   }
 
   @Post('/moltbook/register')
+  @Throttle({ default: { ttl: 300_000, limit: 10 } })
   async moltbookRegister(@Body() body: { name: string; description: string }) {
     try {
       const provider = new MoltbookProvider();
@@ -575,6 +582,7 @@ export class IntegrationsController {
   }
 
   @Get('/moltbook/status')
+  @Throttle({ default: { ttl: 300_000, limit: 60 } })
   async moltbookStatus(@Query('apiKey') apiKey: string) {
     try {
       const provider = new MoltbookProvider();

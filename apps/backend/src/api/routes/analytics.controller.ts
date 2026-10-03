@@ -1,3 +1,4 @@
+import { Throttle } from '@nestjs/throttler';
 import { Controller, Get, Param, Query } from '@nestjs/common';
 import { Organization } from '@prisma/client';
 import { GetOrgFromRequest } from '@gitroom/nestjs-libraries/user/org.from.request';
@@ -14,6 +15,7 @@ export class AnalyticsController {
   ) {}
 
   @Get('/:integration')
+  @Throttle({ default: { ttl: 300_000, limit: 60 } })
   async getIntegration(
     @GetOrgFromRequest() org: Organization,
     @Param('integration') integration: string,
@@ -23,6 +25,7 @@ export class AnalyticsController {
   }
 
   @Get('/post/:postId')
+  @Throttle({ default: { ttl: 300_000, limit: 60 } })
   async getPostAnalytics(
     @GetOrgFromRequest() org: Organization,
     @Param('postId') postId: string,
