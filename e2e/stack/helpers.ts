@@ -83,6 +83,9 @@ export const throwawayOrg = async (
     tier: 'STANDARD' | 'PRO' | 'ULTIMATE';
     totalChannels: number;
     channels: number;
+    // Platform of the pre-made channels; Bluesky unless a spec needs one
+    // the plan includes.
+    provider?: string;
     isTrailing?: boolean;
   }
 ) => {
@@ -128,8 +131,8 @@ export const throwawayOrg = async (
         id,
         internalId: `${id}-internal`,
         organizationId: org.id,
-        name: `Throwaway Bluesky ${i}`,
-        providerIdentifier: 'bluesky',
+        name: `Throwaway ${options.provider ?? 'bluesky'} ${i}`,
+        providerIdentifier: options.provider ?? 'bluesky',
         type: 'social',
         token: 'fake-token',
         profile: id,

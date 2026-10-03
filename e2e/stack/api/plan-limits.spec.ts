@@ -8,7 +8,7 @@ const connect = (platform: string) => `/integrations/social/${platform}`;
 
 test('Starter cannot connect Pro or Business platforms', async () => {
   const starter = await signedIn('b');
-  for (const platform of ['youtube', 'threads', 'linkedin-page', 'x', 'discord']) {
+  for (const platform of ['youtube', 'threads', 'linkedin-page', 'bluesky', 'mastodon', 'telegram', 'x', 'discord']) {
     expect((await starter.get(connect(platform))).status(), platform).toBe(402);
   }
   await starter.dispose();
@@ -16,15 +16,15 @@ test('Starter cannot connect Pro or Business platforms', async () => {
 
 test('Starter can start connecting its own platforms', async () => {
   const starter = await signedIn('b');
-  for (const platform of ['mastodon', 'linkedin', 'telegram']) {
+  for (const platform of ['facebook', 'instagram', 'tiktok', 'linkedin']) {
     expect((await starter.get(connect(platform))).status(), platform).not.toBe(402);
   }
   await starter.dispose();
 });
 
-test('Pro gets YouTube and Threads but not X or Discord', async () => {
+test('Pro gets YouTube, Threads, Bluesky, Mastodon and Telegram but not X or Discord', async () => {
   const pro = await signedIn('a');
-  for (const platform of ['youtube', 'threads']) {
+  for (const platform of ['youtube', 'threads', 'bluesky', 'mastodon', 'telegram']) {
     expect((await pro.get(connect(platform))).status(), platform).not.toBe(402);
   }
   for (const platform of ['x', 'discord']) {
@@ -58,15 +58,15 @@ test.describe('channel count', () => {
   });
 
   test('Starter with 3 of 3 channels cannot start connecting a 4th', async () => {
-    const { api } = await org({ tier: 'STANDARD', totalChannels: 3, channels: 3 });
-    const res = await api.get(connect('mastodon'));
+    const { api } = await org({ tier: 'STANDARD', totalChannels: 3, channels: 3, provider: 'linkedin' });
+    const res = await api.get(connect('linkedin'));
     expect(res.status()).toBe(402);
     expect((await res.json()).message).toContain('maximum number of channels');
   });
 
   test('Starter with 2 of 3 channels can', async () => {
-    const { api } = await org({ tier: 'STANDARD', totalChannels: 3, channels: 2 });
-    expect((await api.get(connect('mastodon'))).status()).toBe(200);
+    const { api } = await org({ tier: 'STANDARD', totalChannels: 3, channels: 2, provider: 'linkedin' });
+    expect((await api.get(connect('linkedin'))).status()).toBe(200);
   });
 
   test('a Pro trial is capped at 3 channels, the same Pro paid is not', async () => {
@@ -87,8 +87,8 @@ test.describe('channel count', () => {
     // Reconnecting adds nothing, so the cap must not lock a full org out of
     // repairing a token. `refresh` carries the channel's internalId — what
     // launches.component.tsx and render.analytics.tsx send.
-    const { api, channelIds } = await org({ tier: 'STANDARD', totalChannels: 3, channels: 3 });
-    const res = await api.get(`${connect('bluesky')}?refresh=${channelIds[0]}-internal`);
+    const { api, channelIds } = await org({ tier: 'STANDARD', totalChannels: 3, channels: 3, provider: 'linkedin' });
+    const res = await api.get(`${connect('linkedin')}?refresh=${channelIds[0]}-internal`);
     expect(res.status(), await res.text()).not.toBe(402);
     expect(res.status()).toBeLessThan(500);
   });
