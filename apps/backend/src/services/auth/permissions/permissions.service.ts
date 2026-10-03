@@ -4,6 +4,7 @@ import {
   postsCycleStart,
   pricing,
   TRIAL_CHANNEL_CAP,
+  channelsInUse,
 } from '@gitroom/nestjs-libraries/database/prisma/subscriptions/pricing';
 import { SubscriptionService } from '@gitroom/nestjs-libraries/database/prisma/subscriptions/subscription.service';
 import { PostsService } from '@gitroom/nestjs-libraries/database/prisma/posts/posts.service';
@@ -106,9 +107,9 @@ export class PermissionsService {
           }
         }
 
-        const totalChannels = (
+        const totalChannels = channelsInUse(
           await this._integrationService.getIntegrationsList(orgId)
-        ).filter((f) => !f.refreshNeeded).length;
+        );
 
         // Trialing orgs get their tier's platforms but only
         // TRIAL_CHANNEL_CAP slots until the trial converts.

@@ -57,6 +57,20 @@ test.describe('channel count', () => {
     await prisma.$disconnect();
   });
 
+  // One slot rule for every entry point (pricing.ts channelsInUse): a channel
+  // waiting to be reconnected keeps its slot, a disabled one frees it.
+  test('a channel waiting for reconnection keeps its slot; a disabled one frees it', async () => {
+    const waiting = await org({ tier: 'STANDARD', totalChannels: 3, channels: 3, provider: 'linkedin' });
+    await prisma.integration.update({ where: { id: waiting.channelIds[0] }, data: { refreshNeeded: true } });
+    expect((await waiting.api.get(connect('facebook'))).status(), 'refreshNeeded still counts').toBe(402);
+
+    const freed = await org({ tier: 'STANDARD', totalChannels: 3, channels: 3, provider: 'linkedin' });
+    await prisma.integration.update({ where: { id: freed.channelIds[0] }, data: { disabled: true } });
+    expect((await freed.api.get(connect('facebook'))).status(), 'disabled frees a slot').not.toBe(402);
+    // And re-enabling it, with the slot now free, is allowed.
+    expect((await freed.api.post('/integrations/enable', { data: { id: freed.channelIds[0] } })).status()).toBeLessThan(300);
+  });
+
   test('Starter with 3 of 3 channels cannot start connecting a 4th', async () => {
     const { api } = await org({ tier: 'STANDARD', totalChannels: 3, channels: 3, provider: 'linkedin' });
     const res = await api.get(connect('linkedin'));
