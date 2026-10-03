@@ -284,5 +284,6 @@ test('a refused reply leaves the post published and flags only the reply', async
     .poll(async () => ((await (await api.get(`/posts/${post.id}`)).json()).posts as { id: string; state: string }[]).find((p) => p.id === replyRow.id)?.state, { timeout: 30_000 })
     .toBe('ERROR');
   expect((await received()).some((r) => r.status === main)).toBe(true);
-  expect(await notifications()).toContain('one of the comments attached to it could not be posted');
+  const notices = JSON.stringify(await (await api.get('/notifications/list')).json());
+  expect(notices).toContain('one of the comments attached to it could not be posted');
 });
