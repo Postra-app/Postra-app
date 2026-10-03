@@ -304,12 +304,19 @@ export class AuthService {
       expires: dayjs().add(20, 'minutes').format('YYYY-MM-DD HH:mm:ss'),
     });
 
+    // Not awaited: waiting for the mail made a known address answer
+    // measurably slower than an unknown one, which told anyone timing the
+    // form which addresses have accounts (2.2.3).
     const reset = authEmails.resetPassword[lang];
-    await this._notificationService.sendEmail(
-      user.email,
-      reset.subject,
-      reset.html(`${process.env.FRONTEND_URL}/auth/forgot/${resetValues}`)
-    );
+    this._notificationService
+      .sendEmail(
+        user.email,
+        reset.subject,
+        reset.html(`${process.env.FRONTEND_URL}/auth/forgot/${resetValues}`)
+      )
+      .catch((err) =>
+        new Logger('AuthService').error(`reset mail not sent: ${err?.message}`)
+      );
   }
 
   async forgotReturn(body: ForgotReturnPasswordDto) {
