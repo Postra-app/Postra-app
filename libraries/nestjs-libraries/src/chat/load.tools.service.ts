@@ -107,14 +107,11 @@ export class LoadToolsService {
         const brandKit = renderBrandKit(
           requestContext.get('brandKit' as never) as string
         );
+        // Static instructions first, the parts that change per call (time,
+        // Brand Kit) last: OpenAI caches only an identical prompt prefix, and
+        // a timestamp on the first line meant no call was ever served from
+        // cache (P5, AiUsage.cachedAmount 0 on ~3.5k-token prompts).
         return `
-      Global information:
-        - Date (UTC): ${dayjs().format('YYYY-MM-DD HH:mm:ss')}
-        - ${languageRule({
-          scope: 'everything you say to the user',
-          follow: "the user's own messages",
-        })}
-${brandKit}
       You are an agent that helps manage and schedule social media posts for users, you can:
         - Schedule posts into the future, or now, adding texts, images and videos
         - Generate pictures for posts
@@ -153,6 +150,14 @@ ${brandKit}
         ],
         !!ui
       )}
+
+      Global information:
+        - ${languageRule({
+          scope: 'everything you say to the user',
+          follow: "the user's own messages",
+        })}
+${brandKit}
+        - Date (UTC): ${dayjs().format('YYYY-MM-DD HH:mm:ss')}
 `;
       },
       // gpt-5.5 is the official successor to gpt-5.2 (retired from ChatGPT

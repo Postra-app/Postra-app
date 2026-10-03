@@ -168,6 +168,24 @@ test('Discord: post with a thread reply', async ({ request }) => {
   );
 });
 
+// Every comment lives in the thread opened under the post; the second one used
+// to land in the channel itself. A Discord thread started from a message has
+// the message's id, so both replies' URLs must point at the post's id.
+test('Discord: two comments both land in the post\'s thread', async ({ request }) => {
+  test.setTimeout(300_000);
+  const content = ad(1, 'dc-thread2');
+  const [post] = await check(
+    request,
+    (await only(request, 'discord')).slice(0, 1),
+    [{ content }, { content: `Questions? hello@postra.co.uk · reply 1 ${run}` }, { content: `Try it: postra.co.uk · reply 2 ${run}` }],
+    content
+  );
+  const postMessage = new URL(post.releaseURL!).pathname.split('/').pop();
+  const all = (await (await request.get(`/api/posts/${post.id}`)).json()).posts as { releaseURL: string | null }[];
+  const replyChannels = all.slice(1).map((r) => new URL(r.releaseURL!).pathname.split('/')[3]);
+  expect(replyChannels).toEqual([postMessage, postMessage]);
+});
+
 // ---- Mastodon ------------------------------------------------------------
 
 test('Mastodon: image with alt text', async ({ request }) => {
