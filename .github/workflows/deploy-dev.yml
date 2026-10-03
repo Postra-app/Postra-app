@@ -28,10 +28,97 @@ env:
   IMAGE_TAG_SHA: sha-${{ github.sha }}
 
 jobs:
-  deploy:
+  build:
     runs-on: ubuntu-latest
     timeout-minutes: 60
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
 
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_REGION }}
+
+      - name: Login to Amazon ECR
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Set image URIs
+        id: image
+        run: |
+          echo "image_latest=${ECR_REGISTRY}/${ECR_REPOSITORY}:latest" >> "$GITHUB_OUTPUT"
+          echo "image_sha=${ECR_REGISTRY}/${ECR_REPOSITORY}:${IMAGE_TAG_SHA}" >> "$GITHUB_OUTPUT"
+
+      - name: Build Docker image
+        run: |
+          docker build \
+            -f Dockerfile.dev \
+            --build-arg NEXT_PUBLIC_VERSION=${GITHUB_SHA} \
+            --build-arg SENTRY_ORG="${{ secrets.SENTRY_ORG }}" \
+            --build-arg SENTRY_PROJECT="${{ secrets.SENTRY_PROJECT }}" \
+            --build-arg SENTRY_AUTH_TOKEN="${{ secrets.SENTRY_AUTH_TOKEN }}" \
+            -t "${{ steps.image.outputs.image_latest }}" \
+            -t "${{ steps.image.outputs.image_sha }}" \
+            .
+
+      - name: Push Docker image
+        run: |
+          docker push "${{ steps.image.outputs.image_latest }}"
+          docker push "${{ steps.image.outputs.image_sha }}"
+
+  # Staging (Plan/lunchdayfinal.md P7): the same image on staging.postra.pl,
+  # started for this deploy and stopped after it, health + smoke there before
+  # production gets it. Off until the repo variable STAGING_ENABLED is "true"
+  # (staging is applied ~a week before D2, decision K. 2026-10-03).
+  staging:
+    needs: build
+    if: vars.STAGING_ENABLED == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_REGION }}
+
+      - name: Set image URIs
+        id: image
+        run: |
+          echo "image_latest=${ECR_REGISTRY}/${ECR_REPOSITORY}:latest" >> "$GITHUB_OUTPUT"
+          echo "image_sha=${ECR_REGISTRY}/${ECR_REPOSITORY}:${IMAGE_TAG_SHA}" >> "$GITHUB_OUTPUT"
+
+      - name: Deploy, check and stop staging
+        env:
+          IMAGE_URI: ${{ steps.image.outputs.image_sha }}
+          E2E_EMAIL: ${{ secrets.STAGING_E2E_EMAIL }}
+          E2E_PASSWORD: ${{ secrets.STAGING_E2E_PASSWORD }}
+        run: .github/scripts/deploy-staging.sh
+
+      - name: Upload staging smoke screenshots
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-staging
+          path: e2e/playwright/.results/
+          retention-days: 7
+          include-hidden-files: true
+
+  deploy:
+    needs: [build, staging]
+    # Skipped staging (STAGING_ENABLED off) lets production deploy as before;
+    # a failed staging stops it.
+    if: always() && needs.build.result == 'success' && (needs.staging.result == 'success' || needs.staging.result == 'skipped')
+    # Approval, if any, is set on this environment in the repo settings.
+    environment: production
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
     steps:
       - name: Checkout repo
         uses: actions/checkout@v4
@@ -67,31 +154,11 @@ jobs:
           echo "Resolved instance: ${INSTANCE_ID}"
           echo "instance_id=${INSTANCE_ID}" >> "$GITHUB_OUTPUT"
 
-      - name: Login to Amazon ECR
-        uses: aws-actions/amazon-ecr-login@v2
-
       - name: Set image URIs
         id: image
         run: |
           echo "image_latest=${ECR_REGISTRY}/${ECR_REPOSITORY}:latest" >> "$GITHUB_OUTPUT"
           echo "image_sha=${ECR_REGISTRY}/${ECR_REPOSITORY}:${IMAGE_TAG_SHA}" >> "$GITHUB_OUTPUT"
-
-      - name: Build Docker image
-        run: |
-          docker build \
-            -f Dockerfile.dev \
-            --build-arg NEXT_PUBLIC_VERSION=${GITHUB_SHA} \
-            --build-arg SENTRY_ORG="${{ secrets.SENTRY_ORG }}" \
-            --build-arg SENTRY_PROJECT="${{ secrets.SENTRY_PROJECT }}" \
-            --build-arg SENTRY_AUTH_TOKEN="${{ secrets.SENTRY_AUTH_TOKEN }}" \
-            -t "${{ steps.image.outputs.image_latest }}" \
-            -t "${{ steps.image.outputs.image_sha }}" \
-            .
-
-      - name: Push Docker image
-        run: |
-          docker push "${{ steps.image.outputs.image_latest }}"
-          docker push "${{ steps.image.outputs.image_sha }}"
 
       - name: Deploy on EC2 via SSM
         id: ssm
