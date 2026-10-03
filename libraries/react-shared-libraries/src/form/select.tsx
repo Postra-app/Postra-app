@@ -5,6 +5,7 @@ import {
   FC,
   forwardRef,
   SelectHTMLAttributes,
+  useId,
   useMemo,
 } from 'react';
 import { clsx } from 'clsx';
@@ -39,6 +40,9 @@ export const Select: FC<
     ...rest
   } = props;
   const form = useFormContext();
+  // Linked to its label, as in Input.
+  const generatedId = useId();
+  const fieldId = rest.id || generatedId;
   const err = useMemo(() => {
     if (error) return error;
     if (!form || !form.formState.errors[props?.name!]) return;
@@ -46,13 +50,13 @@ export const Select: FC<
   }, [form?.formState?.errors?.[props?.name!]?.message, error]);
   return (
     <div className={clsx('flex flex-col', label ? 'gap-[6px]' : '')}>
-      <div className={`text-[14px]`}>
+      <label htmlFor={fieldId} className={`text-[14px]`}>
         <TranslatedLabel
           label={label}
           translationKey={translationKey}
           translationParams={translationParams}
         />
-      </div>
+      </label>
       <select
         ref={ref}
         {...(disableForm ? {} : form.register(props.name, extraForm))}
@@ -61,6 +65,7 @@ export const Select: FC<
           className
         )}
         {...rest}
+        id={fieldId}
       />
       {!hideErrors && (
         <div className="text-red-400 text-[12px]">{err || <>&nbsp;</>}</div>

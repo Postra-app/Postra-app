@@ -6,6 +6,7 @@ import {
   InputHTMLAttributes,
   ReactNode,
   useEffect,
+  useId,
   useMemo,
   useState,
 } from 'react';
@@ -56,6 +57,10 @@ export const Input: FC<
     ...rest
   } = props;
   const form = useFormContext();
+  // The label used to be a plain div, so screen readers (and getByLabel)
+  // announced every field in the app as an unnamed text box.
+  const generatedId = useId();
+  const inputId = rest.id || generatedId;
   const [reveal, setReveal] = useState(false);
   const isPassword = type === 'password';
   const err = useMemo(() => {
@@ -72,13 +77,13 @@ export const Input: FC<
   return (
     <div className="flex flex-col gap-[6px]">
       {!!label && (
-        <div className={`text-[14px]`}>
+        <label htmlFor={inputId} className={`text-[14px]`}>
           <TranslatedLabel
             label={label}
             translationKey={translationKey}
             translationParams={translationParams}
           />
-        </div>
+        </label>
       )}
       <div
         className={clsx(
@@ -96,6 +101,7 @@ export const Input: FC<
           type={isPassword ? (reveal ? 'text' : 'password') : type}
           {...(disableForm ? {} : form.register(props.name))}
           {...rest}
+          id={inputId}
         />
         {isPassword && (
           <button

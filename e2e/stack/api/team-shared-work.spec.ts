@@ -142,7 +142,8 @@ test('one person in two organisations sees each one separately', async () => {
     expect(made.status(), await made.text()).toBe(201);
     const there = await user.get(`/posts?startDate=${inDays(-1)}&endDate=${inDays(30)}`, as(other.orgId));
     expect(((await there.json()).p as { c: string }[]).some((p) => p.c.includes(tag))).toBe(true);
-    expect((await listPosts(user)).some((p) => p.content.includes(tag)), 'not in organisation C').toBe(false);
+    const inC = await user.get(`/posts?startDate=${inDays(-1)}&endDate=${inDays(30)}`, as(orgC.id));
+    expect(((await inC.json()).p as { c: string }[]).some((p) => p.c.includes(tag)), 'not in organisation C').toBe(false);
     expect((await listPosts(owner)).some((p) => p.content.includes(tag)), 'the owner of C').toBe(false);
   } finally {
     await prisma.userOrganization.deleteMany({ where: { userId: person.id, organizationId: other.orgId } });
