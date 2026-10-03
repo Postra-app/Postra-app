@@ -19,8 +19,17 @@ interface TwoStepState {
   returnURL?: string;
 }
 
+// What the customer sees when there is no app to send them back to (the
+// invite link: signed out, no returnURL). Only a real connection may show the
+// green "Channel Connected!" screen.
+type Outcome =
+  | { kind: 'connected' }
+  | { kind: 'removed'; message: string }
+  | { kind: 'failed'; message: string };
+
 interface SuccessState {
-  message: string;
+  title?: string;
+  message?: string;
 }
 
 export const ContinueIntegration: FC<{
@@ -41,7 +50,7 @@ export const ContinueIntegration: FC<{
 
   // Helper to handle navigation - redirects if logged or returnURL exists, otherwise shows inline
   const navigateOrShow = useCallback(
-    (path: string, returnURL: string | undefined, successMessage: string) => {
+    (path: string, returnURL: string | undefined, outcome: Outcome) => {
       if (returnURL) {
         // If returnURL exists, always redirect to it with the path params
         const params = path.includes('?') ? path.split('?')[1] : '';
@@ -50,11 +59,18 @@ export const ContinueIntegration: FC<{
         // If logged in without returnURL, use normal navigation
         push(path);
       } else {
-        // If not logged in without returnURL, show success inline
-        setSuccessState({ message: successMessage });
+        // If not logged in without returnURL, show the outcome inline
+        if (outcome.kind === 'failed') {
+          setErrorMessage(outcome.message);
+          setError(true);
+        } else if (outcome.kind === 'removed') {
+          setSuccessState({ title: t('channel_removed', 'Channel removed'), message: outcome.message });
+        } else {
+          setSuccessState({});
+        }
       }
     },
-    [logged, push]
+    [logged, push, t]
   );
   const modifiedParams = useMemo(() => {
     if (provider === 'mewe') {
@@ -226,14 +242,20 @@ export const ContinueIntegration: FC<{
         navigateOrShow(
           `/launches?precondition=true`,
           returnURL,
-          'Precondition failed'
+          {
+            kind: 'failed',
+            message: t(
+              'channel_connected_elsewhere_trial',
+              'This channel was already connected to another Postra account, so it cannot be added during a free trial.'
+            ),
+          }
         );
         return;
       }
 
       if (data.status === HttpStatusCode.NotAcceptable) {
         const { msg, returnURL } = await data.json();
-        navigateOrShow(`/launches?msg=${msg}`, returnURL, msg);
+        navigateOrShow(`/launches?msg=${msg}`, returnURL, { kind: 'failed', message: msg });
         return;
       }
 
@@ -302,7 +324,7 @@ export const ContinueIntegration: FC<{
           onboarding ? '&onboarding=true' : ''
         }`,
         returnURL,
-        'Channel connected'
+        { kind: 'connected' }
       );
     })();
   }, []);
@@ -341,7 +363,7 @@ export const ContinueIntegration: FC<{
             twoStepState.onboarding ? '&onboarding=true' : ''
           }`,
           twoStepState.returnURL,
-          'Channel connected'
+          { kind: 'connected' }
         );
       } finally {
         setIsSaving(false);
@@ -371,7 +393,7 @@ export const ContinueIntegration: FC<{
     navigateOrShow(
       '/launches',
       twoStepState.returnURL,
-      t('unfinished_channel_removed', 'The unfinished channel was removed.')
+      { kind: 'removed', message: t('unfinished_channel_removed', 'The unfinished channel was removed.') }
     );
   }, [twoStepState, fetch, navigateOrShow, t]);
 
@@ -418,7 +440,7 @@ export const ContinueIntegration: FC<{
             </svg>
           </div>
           <div className="text-[28px] font-semibold mb-[12px]">
-            {t('channel_connected', 'Channel Connected!')}
+            {successState.title || t('channel_connected', 'Channel Connected!')}
           </div>
           <div className="text-[16px] text-gray-400 max-w-[400px]">
             {successState.message ||

@@ -29,6 +29,9 @@ test('a client without an account connects a channel from an invite link', async
 
   await page.goto(`/integrations/social/mastodon?code=uiinvitee&state=${state}`);
   await expect(page.getByText('Channel Connected!')).toBeVisible();
+  // The heading once, then a sentence — not "Channel connected" a second time.
+  await expect(page.getByText('channel has been successfully connected')).toBeVisible();
+  await expect(page.getByText('Channel connected', { exact: true })).toHaveCount(0);
 
   const list = (await (await a.get('/integrations/list')).json()).integrations as {
     id: string;
