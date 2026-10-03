@@ -5,7 +5,18 @@ export interface ProblemReport {
   name?: string;
   email?: string;
   message: string;
+  // The screenshot the widget attached, as a data URL.
+  screenshot?: string;
 }
+
+const toDataUrl = (a?: { data: string | Uint8Array; contentType?: string }) => {
+  if (!a || typeof a.data === 'string') return undefined;
+  let bin = '';
+  for (let i = 0; i < a.data.length; i += 0x8000) {
+    bin += String.fromCharCode(...a.data.subarray(i, i + 0x8000));
+  }
+  return `data:${a.contentType || 'image/png'};base64,${btoa(bin)}`;
+};
 
 export const initializeSentryClient = (
   environment: string,
@@ -48,9 +59,14 @@ export const initializeSentryClient = (
         messagePlaceholder:
           "What went wrong? What did you expect to happen?",
         successMessageText: 'Thank you — we read every report.',
-        onSubmitSuccess: (data: ProblemReport, eventId: string) =>
+        onSubmitSuccess: (data: any, eventId: string) =>
           onProblemReport?.(
-            { name: data.name, email: data.email, message: data.message },
+            {
+              name: data.name,
+              email: data.email,
+              message: data.message,
+              screenshot: toDataUrl(data.attachments?.[0]),
+            },
             eventId
           ),
       }),

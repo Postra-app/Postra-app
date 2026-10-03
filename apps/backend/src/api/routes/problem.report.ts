@@ -10,11 +10,15 @@ export const problemReportHtml = (r: {
   organization: string;
   page?: string;
   eventId?: string;
+  screenshotUrl?: string;
 }) =>
   [
     `<p><strong>From:</strong> ${escapeHtml(r.name || '-')} &lt;${escapeHtml(r.email)}&gt;</p>`,
     `<p><strong>Organization:</strong> ${escapeHtml(r.organization)}</p>`,
     r.page ? `<p><strong>Page:</strong> ${escapeHtml(r.page)}</p>` : '',
     r.eventId ? `<p><strong>Sentry event:</strong> ${escapeHtml(r.eventId)} (screenshot, if any, is there)</p>` : '',
+    r.screenshotUrl
+      ? `<p><strong>Screenshot:</strong> <a href="${escapeHtml(r.screenshotUrl)}">open</a> (link valid 7 days; the original stays in Sentry)</p>`
+      : '',
     `<p style="white-space:pre-wrap">${escapeHtml(r.message)}</p>`,
   ].join('');

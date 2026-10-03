@@ -101,7 +101,7 @@ async function start() {
   );
 
   app.use(
-    ['/copilot/{*splat}', '/posts', '/media/{*splat}'],
+    ['/copilot/{*splat}', '/posts', '/media/{*splat}', '/user/problem-report'],
     (req: any, res: any, next: any) => {
       // Studio routes under /media (refine-design, :id/canvas, :id/design-spec)
       // carry canvas screenshots and JSON that exceed Express's default ~100kb

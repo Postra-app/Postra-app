@@ -27,4 +27,10 @@ export class ProblemReportDto {
   @IsString()
   @MaxLength(300)
   page?: string;
+
+  // Data URL of the widget's screenshot (PNG/JPEG, checked again server-side).
+  @IsOptional()
+  @IsString()
+  @MaxLength(7_500_000)
+  screenshot?: string;
 }
