@@ -13,6 +13,10 @@ import { UsersService } from '@gitroom/nestjs-libraries/database/prisma/users/us
 import { TrackEnum } from '@gitroom/nestjs-libraries/user/track.enum';
 import { isMissingCustomerError } from '@gitroom/nestjs-libraries/services/stripe.errors';
 
+// One Stripe account serves every B K Company business, so each Postra
+// invoice names the trading name itself (D20, decision K. 2026-10-03).
+export const POSTRA_INVOICE_SETTINGS = { footer: 'B K Company trading as Postra' };
+
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || 'sk_nothing');
 
 @Injectable()
@@ -248,6 +252,10 @@ export class StripeService {
 
   async createOrGetCustomer(organization: Organization) {
     if (organization.paymentId && (await this.customerExists(organization))) {
+      // Customers made before the footer existed get it on their next checkout.
+      await stripe.customers.update(organization.paymentId, {
+        invoice_settings: POSTRA_INVOICE_SETTINGS,
+      });
       return organization.paymentId;
     }
 
@@ -255,6 +263,7 @@ export class StripeService {
     const customer = await stripe.customers.create({
       email: users.users[0].user.email.indexOf('@') > -1 ? users.users[0].user.email : `${users.users[0].user.email}@postra.co.uk`,
       name: organization.name,
+      invoice_settings: POSTRA_INVOICE_SETTINGS,
     });
     await this._subscriptionService.updateCustomerId(
       organization.id,
