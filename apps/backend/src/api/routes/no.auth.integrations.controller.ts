@@ -40,6 +40,7 @@ import { SubscriptionService } from '@gitroom/nestjs-libraries/database/prisma/s
 import {
   channelLimitFor,
   pricing,
+  channelsInUse,
 } from '@gitroom/nestjs-libraries/database/prisma/subscriptions/pricing';
 
 // The native app's URL scheme, registered in Postra-mobile's app.json. The
@@ -463,9 +464,7 @@ export class NoAuthIntegrationsController {
             402
           );
         }
-        const activeChannels = list.filter(
-          (i) => !i.refreshNeeded && !i.disabled
-        ).length;
+        const activeChannels = channelsInUse(list);
         const limit = channelLimitFor({
           isTrailing: org.isTrailing,
           subscription: subscription

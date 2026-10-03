@@ -210,6 +210,15 @@ export const trialAiAllowance = (
 ): number =>
   isTrailing ? Math.min(allowance, pricing.STANDARD[type] || 0) : allowance;
 
+/**
+ * Channels that take a slot: every channel that is not disabled — including
+ * one waiting to be reconnected, which comes back without asking for a slot.
+ * Disabling is how a downgrade frees slots. One rule for every entry point
+ * (connect, invite link, re-enable); they used to count three different ways.
+ */
+export const channelsInUse = (channels: { disabled?: boolean | null }[]): number =>
+  channels.filter((c) => !c.disabled).length;
+
 export const channelLimitFor = (org?: {
   isTrailing?: boolean;
   subscription?: { totalChannels: number } | null;

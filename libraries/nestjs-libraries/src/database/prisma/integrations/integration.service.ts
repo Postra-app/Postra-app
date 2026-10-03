@@ -1,3 +1,4 @@
+import { channelsInUse } from '@gitroom/nestjs-libraries/database/prisma/subscriptions/pricing';
 import { META_GRAPH_API_VERSION } from '@gitroom/nestjs-libraries/integrations/social/meta.graph.version';
 import {
   HttpException,
@@ -555,13 +556,10 @@ export class IntegrationService {
   }
 
   async enableChannel(org: string, totalChannels: number, id: string) {
-    const integrations = (
+    const inUse = channelsInUse(
       await this._integrationRepository.getIntegrationsList(org)
-    ).filter((f) => !f.disabled);
-    if (
-      !!process.env.STRIPE_PUBLISHABLE_KEY &&
-      integrations.length >= totalChannels
-    ) {
+    );
+    if (!!process.env.STRIPE_PUBLISHABLE_KEY && inUse >= totalChannels) {
       throw new HttpException('You have reached the maximum number of channels', 402);
     }
 
