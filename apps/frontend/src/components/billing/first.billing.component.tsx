@@ -27,6 +27,10 @@ import { useModals } from '@gitroom/frontend/components/layout/new-modal';
 import useCookie from 'react-use-cookie';
 import { LogoutComponent } from '@gitroom/frontend/components/layout/logout.component';
 import DeleteAccountComponent from '@gitroom/frontend/components/settings/delete-account.component';
+import {
+  planFeatures,
+  PlanFeature,
+} from '@gitroom/frontend/components/billing/plan.features';
 
 const ModeComponent = dynamic(
   () => import('@gitroom/frontend/components/layout/mode.component'),
@@ -297,81 +301,22 @@ export const FirstBillingComponent = () => {
   );
 };
 
-type FeatureItem = {
-  key: string;
-  defaultValue: string;
-  prefix?: string | number;
-};
-
 export const BillingFeatures: FC<{ tier: string }> = ({ tier }) => {
   const t = useT();
-  const features = useMemo(() => {
-    const currentPricing = pricing[tier];
-    const channelsOr = currentPricing.channel;
-    const list: FeatureItem[] = [];
-
-    list.push({
-      key: channelsOr === 1 ? 'billing_channel' : 'billing_channels',
-      defaultValue: channelsOr === 1 ? 'channel' : 'channels',
-      prefix: channelsOr,
-    });
-
-    list.push({
-      key: 'billing_posts_per_month',
-      defaultValue: 'posts per month',
-      prefix:
-        currentPricing.posts_per_month > 10000
-          ? 'unlimited'
-          : currentPricing.posts_per_month,
-    });
-
-    if (currentPricing.team_members) {
-      list.push({
-        key:
-          currentPricing.team_members === 1
-            ? 'billing_team_member'
-            : 'billing_team_members',
-        defaultValue:
-          currentPricing.team_members === 1 ? 'team member' : 'team members',
-        prefix: currentPricing.team_members,
-      });
-    }
-    if (currentPricing?.ai) {
-      list.push({
-        key: 'billing_ai_auto_complete',
-        defaultValue: 'AI auto-complete',
-      });
-      list.push({ key: 'billing_ai_copilots', defaultValue: 'AI copilots' });
-    }
-    list.push({
-      key: 'billing_advanced_picture_editor',
-      defaultValue: 'Advanced Picture Editor',
-    });
-    if (currentPricing?.image_generator) {
-      list.push({
-        key: 'billing_ai_images_per_month',
-        defaultValue: 'AI Images per month',
-        prefix: currentPricing?.image_generation_count,
-      });
-    }
-    return list;
-  }, [tier]);
-
-  const renderFeature = (feature: FeatureItem) => {
-    const translatedText = t(feature.key, feature.defaultValue);
-    if (feature.prefix === 'unlimited') {
-      return `${t('billing_unlimited', 'Unlimited')} ${translatedText}`;
-    }
-    if (feature.prefix !== undefined) {
-      return `${feature.prefix} ${translatedText}`;
-    }
-    return translatedText;
-  };
+  const features = useMemo(() => planFeatures(tier), [tier]);
+  const renderFeature = (feature: PlanFeature) =>
+    t(feature.key, feature.text, feature.vars);
 
   return (
     <div className="grid grid-cols-2 mobile:grid-cols-1 gap-y-[8px] gap-x-[32px]">
       {features.map((feature) => (
-        <div key={feature.key} className="flex items-center gap-[8px]">
+        <div
+          key={feature.key}
+          className={clsx(
+            'flex items-center gap-[8px]',
+            feature.key === 'billing_plan_platforms' && 'col-span-2 mobile:col-span-1'
+          )}
+        >
           <div>
             <svg
               xmlns="http://www.w3.org/2000/svg"

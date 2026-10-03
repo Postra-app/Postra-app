@@ -31,6 +31,7 @@ import { FinishTrial } from '@gitroom/frontend/components/billing/finish.trial';
 import { newDayjs } from '@gitroom/frontend/components/layout/set.timezone';
 import { useDubClickId } from '@gitroom/frontend/components/layout/dubAnalytics';
 import { LogoutComponent } from '@gitroom/frontend/components/layout/logout.component';
+import { planFeatures } from '@gitroom/frontend/components/billing/plan.features';
 
 export const Prorate: FC<{
   period: 'MONTHLY' | 'YEARLY';
@@ -82,37 +83,11 @@ export const Features: FC<{
   pack: 'FREE' | 'STANDARD' | 'PRO';
 }> = (props) => {
   const { pack } = props;
-  const features = useMemo(() => {
-    const currentPricing = pricing[pack];
-    const channelsOr = currentPricing.channel;
-    const list = [];
-    list.push(`${channelsOr} ${channelsOr === 1 ? 'channel' : 'channels'}`);
-    list.push(
-      `${
-        currentPricing.posts_per_month > 10000
-          ? 'Unlimited'
-          : currentPricing.posts_per_month
-      } posts per month`
-    );
-    if (currentPricing.team_members) {
-      list.push(
-        `${currentPricing.team_members} ${
-          currentPricing.team_members === 1 ? 'team member' : 'team members'
-        }`
-      );
-    }
-    if (currentPricing?.ai) {
-      list.push(`AI auto-complete`);
-      list.push(`AI copilots`);
-    }
-    list.push(`Advanced Picture Editor`);
-    if (currentPricing?.image_generator) {
-      list.push(
-        `${currentPricing?.image_generation_count} AI Images per month`
-      );
-    }
-    return list;
-  }, [pack]);
+  const t = useT();
+  const features = useMemo(
+    () => planFeatures(pack).map((f) => t(f.key, f.text, f.vars)),
+    [pack, t]
+  );
   return (
     <div className="flex flex-col gap-[10px] justify-center text-[16px] text-newTextColor/55">
       {features.map((feature) => (

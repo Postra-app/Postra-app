@@ -1484,5 +1484,18 @@
   "channel_options": "Channel options",
   "remove_time_slot": "Remove {{time}}",
   "change_bot_nickname_title": "Change Bot Nickname",
-  "change_bot_picture_and_nickname_title": "Change Bot Picture and Nickname"
+  "change_bot_picture_and_nickname_title": "Change Bot Picture and Nickname",
+  "billing_plan_channel": "1 channel",
+  "billing_plan_channels": "{{count}} channels",
+  "billing_plan_platforms": "On {{platforms}}",
+  "billing_plan_posts_unlimited": "Unlimited posts",
+  "billing_plan_posts": "{{count}} posts a month",
+  "billing_plan_person": "1 person",
+  "billing_plan_people": "{{count}} people",
+  "billing_plan_ai": "AI writer, assistant and auto-complete",
+  "billing_plan_images": "{{count}} AI images a month",
+  "billing_plan_studio": "Studio image editor",
+  "billing_plan_autopost": "Blog to posts from {{count}} RSS feeds",
+  "billing_plan_api_unlimited": "Public API and unlimited webhooks",
+  "billing_plan_api": "Public API and {{count}} webhooks"
 }

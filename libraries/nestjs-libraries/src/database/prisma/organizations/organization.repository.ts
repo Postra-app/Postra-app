@@ -7,6 +7,12 @@ import { makeId } from '@gitroom/nestjs-libraries/services/make.is';
 import { makeSecureId } from '@gitroom/nestjs-libraries/services/make.secure.id';
 import { normalizeEmail } from '@gitroom/helpers/utils/email.normalize';
 
+
+// Launch market is the UK: a sign-up without an explicit ?region=pl (straight
+// to /auth/register, the mobile app's link, Google) is a UK customer.
+export const organizationRegion = (region?: string) =>
+  region === 'PL' ? 'PL' : 'UK';
+
 @Injectable()
 export class OrganizationRepository {
   constructor(
@@ -314,7 +320,7 @@ export class OrganizationRepository {
         apiKey: AuthService.fixedEncryption(makeSecureId(20)),
         allowTrial: true,
         isTrailing: true,
-        region: body.region === 'UK' ? 'UK' : 'PL',
+        region: organizationRegion(body.region),
         users: {
           create: {
             role: Role.SUPERADMIN,

@@ -1484,5 +1484,18 @@
   "channel_options": "Opcje kanału",
   "remove_time_slot": "Usuń {{time}}",
   "change_bot_nickname_title": "Zmień nazwę bota",
-  "change_bot_picture_and_nickname_title": "Zmień zdjęcie i nazwę bota"
+  "change_bot_picture_and_nickname_title": "Zmień zdjęcie i nazwę bota",
+  "billing_plan_channel": "1 kanał",
+  "billing_plan_channels": "Kanały: {{count}}",
+  "billing_plan_platforms": "Platformy: {{platforms}}",
+  "billing_plan_posts_unlimited": "Posty bez limitu",
+  "billing_plan_posts": "{{count}} postów miesięcznie",
+  "billing_plan_person": "1 osoba",
+  "billing_plan_people": "Osoby: {{count}}",
+  "billing_plan_ai": "Pisanie z AI, asystent i podpowiedzi",
+  "billing_plan_images": "{{count}} obrazów AI miesięcznie",
+  "billing_plan_studio": "Edytor grafiki Studio",
+  "billing_plan_autopost": "Blog na posty z {{count}} kanałów RSS",
+  "billing_plan_api_unlimited": "Publiczne API i webhooki bez limitu",
+  "billing_plan_api": "Publiczne API i {{count}} webhooków"
 }
