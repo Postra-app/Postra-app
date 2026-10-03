@@ -1,5 +1,5 @@
 import { APIRequestContext, expect, test } from '@playwright/test';
-import { listPosts, signedIn } from '../helpers';
+import { database, listPosts, signedIn } from '../helpers';
 import { USERS } from '../seed';
 
 // Publishing end to end: API → Temporal → orchestrator → the real Mastodon
@@ -173,5 +173,42 @@ test('duplicating a post makes an independent copy', async () => {
   } catch (e) {
     await api.delete(`/posts/${post.group}`);
     throw e;
+  }
+});
+
+// §5.4 error paths: the channel goes bad between scheduling and publishing.
+// The post fails with a plain reason, the team is told in the app, and
+// nothing reaches the platform. The channel is restored in `finally`: the
+// other tests here publish through it.
+const notifications = async (): Promise<string> =>
+  JSON.stringify(await (await api.get('/notifications/list')).json());
+
+test('a channel disabled before publish time: the post fails as "Channel disabled"', async () => {
+  const content = `[stack] disabled channel ${Date.now()}`;
+  const post = await publish(content, 'schedule', new Date(Date.now() + 12_000));
+  expect((await api.post('/integrations/disable', { data: { id: CHANNEL } })).status()).toBe(201);
+  try {
+    await settledState(post.id).toBe('ERROR');
+    expect((await stored(post.id)).error).toBe('Channel disabled');
+    expect(await notifications()).toContain("because it's disabled");
+    expect((await received()).some((r) => r.status === content)).toBe(false);
+  } finally {
+    expect((await api.post('/integrations/enable', { data: { id: CHANNEL } })).status()).toBe(201);
+  }
+});
+
+test('a channel that needs reconnecting: the post fails as "Refresh channel needed"', async () => {
+  const content = `[stack] refresh needed ${Date.now()}`;
+  const post = await publish(content, 'schedule', new Date(Date.now() + 12_000));
+  const prisma = database();
+  await prisma.integration.update({ where: { id: CHANNEL }, data: { refreshNeeded: true } });
+  try {
+    await settledState(post.id).toBe('ERROR');
+    expect((await stored(post.id)).error).toBe('Refresh channel needed');
+    expect(await notifications()).toContain('you need to reconnect it');
+    expect((await received()).some((r) => r.status === content)).toBe(false);
+  } finally {
+    await prisma.integration.update({ where: { id: CHANNEL }, data: { refreshNeeded: false } });
+    await prisma.$disconnect();
   }
 });
