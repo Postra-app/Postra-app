@@ -129,12 +129,21 @@ export const SettingsPopup: FC<{
   return (
     <>
       <div className="bg-white/[0.03] border-r phone:border-r-0 phone:border-b border-white/10 py-[18px] px-[12px] flex flex-col transition-all w-fit phone:w-full min-w-[160px] shrink-0">
-        <div className="flex flex-1 flex-col gap-[4px] phone:flex-row phone:flex-none phone:overflow-x-auto phone:pb-[4px]">
+        {/* Real tabs: they were clickable divs, unreachable by keyboard and
+            invisible to screen readers. */}
+        <div
+          role="tablist"
+          aria-orientation="vertical"
+          className="flex flex-1 flex-col gap-[4px] phone:flex-row phone:flex-none phone:overflow-x-auto phone:pb-[4px]"
+        >
           {list.map(({ tab: tabKey, label }) => (
-            <div
+            <button
+              type="button"
+              role="tab"
+              aria-selected={tabKey === tab}
               key={tabKey}
               className={clsx(
-                'cursor-pointer flex items-center gap-[10px] rounded-[10px] px-[12px] py-[9px] text-[14px] font-[500] whitespace-nowrap transition-all duration-150',
+                'cursor-pointer text-start flex items-center gap-[10px] rounded-[10px] px-[12px] py-[9px] text-[14px] font-[500] whitespace-nowrap transition-all duration-150',
                 tabKey === tab
                   ? 'text-white border border-white/15 bg-gradient-to-r from-[rgba(56,189,248,0.25)] to-[rgba(167,139,250,0.18)] shadow-[0_0_14px_-8px_rgba(56,189,248,0.35)]'
                   : 'text-newTextColor/55 hover:text-newTextColor/90 hover:bg-white/[0.05] border border-transparent'
@@ -142,7 +151,7 @@ export const SettingsPopup: FC<{
               onClick={() => setTab(tabKey)}
             >
               {label}
-            </div>
+            </button>
           ))}
         </div>
         <div>
