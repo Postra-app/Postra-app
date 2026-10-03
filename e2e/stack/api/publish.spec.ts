@@ -93,8 +93,8 @@ test('a scheduled post waits for its time, then publishes', async () => {
 });
 
 test('a platform refusal marks the post failed, with the reason', async () => {
-  await api.post(`${FAKE}/__fail`);
   const content = `[stack] refused ${Date.now()}`;
+  expect((await api.post(`${FAKE}/__fail`, { data: { match: content } })).ok()).toBe(true);
   const post = await publish(content, 'now', new Date());
 
   await settledState(post.id).toBe('ERROR');

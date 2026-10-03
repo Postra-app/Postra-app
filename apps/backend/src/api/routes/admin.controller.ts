@@ -623,8 +623,12 @@ export class AdminController {
   ) {
     this.assertSuperAdmin(user);
 
-    const fromDate = (parseDay(from, 'from') ?? dayjs().subtract(30, 'day')).toDate();
-    const toDate = (parseDay(to, 'to') ?? dayjs()).toDate();
+    // `to` is a day and includes it, as in /admin/stats: `to=2026-10-02`
+    // used to mean midnight at the start of that day and dropped all of it.
+    const fromDate = (parseDay(from, 'from') ?? dayjs().subtract(30, 'day'))
+      .startOf('day')
+      .toDate();
+    const toDate = (parseDay(to, 'to') ?? dayjs()).endOf('day').toDate();
 
     // NOTE: AI usage is reported from `credits` (real, billable usage). Mastra's
     // own span tables (mastra_ai_spans) are @@ignore'd in the Prisma schema (no @id),

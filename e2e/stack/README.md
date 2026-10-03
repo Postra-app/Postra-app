@@ -38,7 +38,7 @@ wipe anything but the stores from `docker-compose.yml`.
 Publishing: `api/publish.spec.ts` and the "Post Now" UI test publish through
 API → Temporal → orchestrator → the real Mastodon provider → the fake, which
 records every status (`GET /__received`) and can refuse the next one
-(`POST /__fail`, a Mastodon-shaped 422).
+(`POST /__fail {"match": text}`, a Mastodon-shaped 422 for the post containing that text).
 
 Writing tests:
 

@@ -46,25 +46,20 @@ export interface PricingInterface {
   [key: string]: PricingInnerInterface;
 }
 // Per-tier platform entitlements. Each tier includes the one below it plus a
-// few more. Starter carries the zero-marginal-cost platforms (Telegram/
-// Bluesky/Mastodon are free APIs) plus the personal LinkedIn profile — its 3
-// slots still cap usage. The upgrade levers: LinkedIn Pages (post as the
-// company, not the person)/YouTube/Threads pull to Pro; X (our X API volume
-// is capped) and Discord stay Business-only.
-const STARTER_PROVIDERS = [
-  'facebook',
-  'instagram',
-  'tiktok',
-  'linkedin',
-  'telegram',
-  'bluesky',
-  'mastodon',
-];
+// few more. Starter is the four platforms a small UK business actually runs on
+// (the personal LinkedIn profile included, because freelancers and B2B sellers
+// live there); its 3 slots still cap usage. Pro adds video and text-first
+// platforms and LinkedIn Pages (post as the company); X (our X API volume is
+// capped) and Discord stay Business-only, so Business is every platform.
+const STARTER_PROVIDERS = ['facebook', 'instagram', 'tiktok', 'linkedin'];
 const PRO_PROVIDERS = [
   ...STARTER_PROVIDERS,
-  'threads',
   'youtube',
+  'threads',
   'linkedin-page',
+  'bluesky',
+  'mastodon',
+  'telegram',
 ];
 const BUSINESS_PROVIDERS = [...PRO_PROVIDERS, 'x', 'discord'];
 

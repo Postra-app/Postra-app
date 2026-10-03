@@ -32,6 +32,15 @@ describe('permission denials', () => {
     })).toContain('webhooks');
   });
 
+  it('tells an Auto Post denial which plans include it, not "not in your plan"', () => {
+    const message = getErrorMessage({
+      section: Sections.AUTOPOST,
+      action: AuthorizationActions.Create,
+    });
+    expect(message).toContain('Pro (3 RSS feeds)');
+    expect(message).toContain('Business (10)');
+  });
+
   // Authority vs entitlement: money fixes one and not the other, so they must
   // not share a status code.
   it('answers 403 for a role denial and 402 for a plan limit', () => {
