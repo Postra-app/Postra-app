@@ -59,3 +59,51 @@ test('"Post Now" from the composer publishes to the platform', async ({ page }) 
     .toBe(true);
   expect(problems).toEqual([]);
 });
+
+// Regressions of E2E-05-04/07/09/22 (fixed 2026-09-26), re-run after the
+// ESLint 9 sweep touched these components.
+const LINK = `https://example.com/spring-offer?utm_source=newsletter&utm_medium=email&utm_campaign=${'x'.repeat(120)}`;
+
+test('the counter counts a link as 23 on Mastodon and an emoji as one on Bluesky', async ({ page }) => {
+  // 476 + space + link (23) = 500: exactly Mastodon's limit, not over it.
+  await openComposer(page, 'mastodon', '');
+  await page.keyboard.insertText(`${'a'.repeat(476)} ${LINK}`);
+  // Shown twice: the total and the channel's own count.
+  await expect(page.getByText('500/500', { exact: true }).first()).toBeVisible();
+
+  await openComposer(page, 'bluesky', '');
+  await page.keyboard.insertText('😀'.repeat(300));
+  await expect(page.getByText('300/300', { exact: true }).first()).toBeVisible();
+});
+
+test('a long link wraps in the editor instead of pushing it sideways', async ({ page }) => {
+  await openComposer(page, 'bluesky', '');
+  await page.keyboard.insertText(`Spring offer ${LINK}`);
+  const editor = page.locator('.ProseMirror').first();
+  const { scroll, client } = await editor.evaluate((el) => ({ scroll: el.scrollWidth, client: el.clientWidth }));
+  expect(scroll).toBeLessThanOrEqual(client + 1);
+});
+
+test('a tag created in the composer is saved with the draft', async ({ page }) => {
+  const name = `Stack tag ${Date.now()}`;
+  const text = `[stack ui] tagged ${Date.now()}`;
+  await openComposer(page, 'bluesky', text);
+  // The tag button, then the same words at the foot of its menu.
+  await page.getByText('Add New Tag', { exact: true }).first().click();
+  await page.getByText('Add New Tag', { exact: true }).last().click();
+  await page.getByLabel('Name').fill(name);
+  await page.getByRole('button', { name: 'Save', exact: true }).click();
+  await expect(page.getByText(name).first()).toBeVisible();
+  await page.getByRole('button', { name: 'Save as Draft' }).click();
+  await expect(page.getByRole('button', { name: 'Save as Draft' })).toBeHidden();
+
+  const api = await signedIn('a');
+  const post = await expect
+    .poll(async () => (await listPosts(api)).find((p) => p.content.includes(text)))
+    .toBeTruthy()
+    .then(async () => (await listPosts(api)).find((p) => p.content.includes(text))!);
+  const stored = await (await api.get(`/posts/${post.id}`)).json();
+  const tags: { tag: { name: string } }[] = stored.posts[0].tags ?? [];
+  expect(tags.map((t) => t.tag.name), JSON.stringify(Object.keys(stored.posts[0]))).toContain(name);
+  await api.dispose();
+});
