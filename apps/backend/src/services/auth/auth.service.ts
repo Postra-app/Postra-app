@@ -429,11 +429,12 @@ export class AuthService {
     redirectUri?: string,
     state?: string
   ) {
+    // GETDEL: read and consume in one step. A get followed by a del let two
+    // requests racing with the same state both through (2.2.11).
     const stateKey = state ? `auth-state:${state}` : '';
-    if (!stateKey || !(await ioRedis.get(stateKey))) {
+    if (!stateKey || !(await ioRedis.getdel(stateKey))) {
       throw new Error('Invalid or expired state');
     }
-    await ioRedis.del(stateKey);
 
     const providerInstance = this._providerManager.getProvider(provider);
     const token = await providerInstance.getToken(code, redirectUri);

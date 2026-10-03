@@ -326,12 +326,24 @@ export class AuthController {
     @Param('provider') provider: string,
     @Res({ passthrough: false }) response: Response
   ) {
-    const { jwt, token } = await this._authService.checkExists(
-      provider,
-      code,
-      redirect_uri,
-      state
-    );
+    // A spent or forged state, or a code the provider refuses, is the
+    // caller's problem: it was a 500 (and a Sentry issue) every time.
+    let result: { jwt?: string; token?: string };
+    try {
+      result = await this._authService.checkExists(
+        provider,
+        code,
+        redirect_uri,
+        state
+      );
+    } catch (e: any) {
+      const message =
+        e?.message === 'Invalid or expired state'
+          ? e.message
+          : 'Sign-in with this provider failed. Please try again.';
+      return response.status(400).type('text/plain').send(message);
+    }
+    const { jwt, token } = result;
 
     if (token) {
       return response.json({ token });

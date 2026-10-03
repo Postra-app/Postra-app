@@ -40,3 +40,25 @@ test.describe('auth', () => {
     await api.dispose();
   });
 });
+
+// 2.2.11: the state of a sign-in with Google works once. The first use gets
+// past the state check (and fails later, at Google, on a made-up code); the
+// second, and a made-up state, stop at the state.
+test('a Google sign-in state works once', async () => {
+  const api = await anonymous();
+  const link = await (await api.get('/auth/oauth/GOOGLE')).text();
+  const state = new URL(link.replace(/^"|"$/g, '')).searchParams.get('state');
+  expect(state).toMatch(/^auth-/);
+  const exists = (s: string) => api.post('/auth/oauth/GOOGLE/exists', { data: { code: 'made-up', state: s } });
+
+  const first = await exists(state!);
+  expect(first.status()).toBe(400);
+  expect(await first.text()).toContain('Sign-in with this provider failed');
+  for (const s of [state!, 'auth-made-up']) {
+    const res = await exists(s);
+    // Was a 500 for both.
+    expect(res.status(), s).toBe(400);
+    expect(await res.text()).toBe('Invalid or expired state');
+  }
+  await api.dispose();
+});
