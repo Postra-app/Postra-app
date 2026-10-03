@@ -7,6 +7,19 @@ import {
 const defaultRedirect = () =>
   `${process.env.FRONTEND_URL}/integrations/social/youtube`;
 
+// A redirect_uri from the caller is used only when it points back at this
+// app; Google's allowlist is the real gate, this keeps the code from relying
+// on it alone (E2E-03-02). Nothing in the web or mobile app sends one today.
+export const safeRedirect = (candidate?: string) => {
+  const own = process.env.FRONTEND_URL;
+  if (!candidate || !own) return defaultRedirect();
+  try {
+    return new URL(candidate).origin === new URL(own).origin ? candidate : defaultRedirect();
+  } catch {
+    return defaultRedirect();
+  }
+};
+
 const makeClient = (redirectUri: string) =>
   new google.auth.OAuth2({
     clientId: process.env.YOUTUBE_CLIENT_ID,
@@ -17,7 +30,7 @@ const makeClient = (redirectUri: string) =>
 @AuthProvider({ provider: 'GOOGLE' })
 export class GoogleProvider extends AuthProviderAbstract {
   generateLink(query?: { redirect_uri?: string }, state?: string) {
-    const redirectUri = query?.redirect_uri || defaultRedirect();
+    const redirectUri = safeRedirect(query?.redirect_uri);
     return makeClient(redirectUri).generateAuthUrl({
       access_type: 'online',
       prompt: 'consent',
@@ -31,7 +44,7 @@ export class GoogleProvider extends AuthProviderAbstract {
   }
 
   async getToken(code: string, redirectUri?: string) {
-    const client = makeClient(redirectUri || defaultRedirect());
+    const client = makeClient(safeRedirect(redirectUri));
     const { tokens } = await client.getToken(code);
     return tokens.access_token!;
   }

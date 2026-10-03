@@ -70,6 +70,11 @@ const queryPage = (value: unknown): number => {
 // empty picture.
 const NO_IMAGE_MESSAGE = 'The image could not be generated, please try again';
 
+// One file name, no directories: letters, digits, dot, dash, underscore, and
+// not starting with a dot.
+export const isSafeStoredName = (name: string) =>
+  typeof name === 'string' && /^[A-Za-z0-9_-][A-Za-z0-9._-]{0,199}$/.test(name);
+
 @ApiTags('Media')
 @Controller('/media')
 export class MediaController {
@@ -468,6 +473,12 @@ export class MediaController {
   ) {
     if (!name) {
       return false;
+    }
+    // The name becomes the file's path under the bucket URL, so it must be one
+    // plain file name as Transloadit returns it: "../../evil.html" was stored
+    // as a media path (E2E-02-07).
+    if (!isSafeStoredName(name)) {
+      throw new HttpException('Invalid file name', 400);
     }
     return this._mediaService.saveFile(
       org.id,
