@@ -52,7 +52,7 @@ export const CHANNEL_GUIDES: ChannelGuide[] = [
       "Send the /connect message in the channel or group you're connecting, not in a private chat with the bot.",
       'Posts are published by the bot, so keep it in the channel — removing it stops publishing.',
       'Media size limits (set by Telegram): images up to 10 MB, videos up to 50 MB. Larger files fail with a size error on the post.',
-      'Character limit: 4,096 for text-only posts. With media attached, the text becomes the media caption, which Telegram limits to 1,024 characters.',
+      'Character limit: 4,096. With media attached, up to 1,024 characters go out as the media caption; longer text is sent as a separate message right after the media.',
     ],
     composer: [
       'No extra settings tab — Telegram needs no per-post options.',
@@ -119,7 +119,7 @@ export const CHANNEL_GUIDES: ChannelGuide[] = [
       'Settings tab: choose which channel of the connected server to publish to (required).',
       'Character limit: 1,980.',
       'Media size limit: 10 MB per file on a server with no Boost (higher with server Boosts). Large videos may not fit.',
-      'First comments: click "Add comment" to post follow-up messages in the same channel right after the post; each can have its own Delay (1 min – 2 h or a custom gap).',
+      'First comments: click "Add comment" — they are posted in a thread opened under your post; each can have its own Delay (1 min – 2 h or a custom gap).',
     ],
   },
   {
@@ -166,10 +166,10 @@ export const CHANNEL_GUIDES: ChannelGuide[] = [
       "Feed images are automatically cropped to Instagram's allowed aspect ratios.",
     ],
     composer: [
-      'Post Type: Post, Reel or Story.',
+      'Post Type: Post / Reel (a video is published as a Reel) or Story.',
       "Collaborators: invite up to 3 public accounts to co-author (not available for Stories).",
       'Trial Reel: show a Reel to non-followers first, with manual or performance-based graduation to everyone.',
-      'First comments: click "Add comment" to publish a comment under the post right after it goes live, each with its own Delay. It is decided per channel from what Meta granted when you connected — if the button is missing, reconnect the channel.',
+      'First comments: click "Add comment" to publish a text comment under the post right after it goes live, each with its own Delay. It is decided per channel from what Meta granted when you connected — if the button is missing, reconnect the channel.',
       'Media is required; carousels take up to 10 items. Caption limit: 2,200 characters.',
     ],
   },
@@ -217,7 +217,7 @@ export const CHANNEL_GUIDES: ChannelGuide[] = [
       'Approve the requested permissions.',
     ],
     gotchas: [
-      'Personal profile and company page are two separate channels in Postra — you can connect both and pick either (or both) in the composer.',
+      'Personal profile and company page are two separate channels in Postra. Company pages are coming soon; a page you connected earlier keeps working alongside your profile.',
     ],
     composer: [
       '"Post as images carousel": turns 2+ attached images into a carousel document (you name the slide deck).',
@@ -298,7 +298,7 @@ export const APP_TABS: AppTabGuide[] = [
   {
     id: 'analytics',
     name: 'Analytics',
-    description: 'Follower growth and post performance per channel.',
+    description: 'Follower growth and post performance for Facebook, Instagram, Threads, X, YouTube, TikTok and LinkedIn Pages. Bluesky, Mastodon, Telegram, Discord and personal LinkedIn profiles have no analytics.',
   },
   {
     id: 'studio',
@@ -322,7 +322,7 @@ export const APP_TABS: AppTabGuide[] = [
     id: 'plugs',
     name: 'Plugs',
     description:
-      'Small per-channel automations that run in the background to boost reach — available for selected channels such as X, LinkedIn and Threads.',
+      'Small per-channel automations that run in the background to boost reach — available for X, Threads, Bluesky and LinkedIn Pages.',
   },
   {
     id: 'billing',
@@ -348,7 +348,7 @@ export const STUDIO_GRAPHICS_TOOLS: StudioToolGuide[] = [
   {
     name: 'AI Generate',
     description:
-      'Describe your idea — or click an upcoming occasion chip (✎ copies it into the prompt for editing) — and AI builds the whole design in one step: a background image plus an editable headline, subtext and call-to-action in your Brand Kit colours. Takes about 30 seconds and uses one AI credit. Set SLIDES to 2–5 to get a multi-slide carousel instead of a single graphic. Needs the Starter plan or above — on the free plan the upcoming-occasion list is still there, and the chips open matching templates instead.',
+      'Describe your idea — or click an upcoming occasion chip (✎ copies it into the prompt for editing) — and AI builds the whole design in one step: a background image plus an editable headline, subtext and call-to-action in your Brand Kit colours. Takes about 30 seconds and uses one AI image credit per image (a carousel uses one per slide, up to 5; an identical prompt reuses its background for free). Set SLIDES to 2–5 to get a multi-slide carousel instead of a single graphic. Needs the Starter plan or above — on the free plan the upcoming-occasion list is still there, and the chips open matching templates instead.',
   },
   {
     name: 'AI Refine',
@@ -462,7 +462,7 @@ export const SETTINGS_SECTIONS: SettingsSectionGuide[] = [
   },
   {
     name: 'Webhooks',
-    availability: 'Plans with webhooks',
+    availability: 'All paid plans (Starter 2, Pro 10, Business 30 webhooks), admins only',
     description:
       'Get an HTTP call to your own endpoint whenever posts publish — for connecting Postra to your own tools.',
   },
@@ -495,7 +495,7 @@ export const FAQ_ITEMS: FaqItem[] = [
   {
     question: "Why can't I add more channels?",
     answer:
-      'Each plan includes a fixed number of channels (3, 6 or 12, depending on the plan; trials are capped at 3). Upgrade in Billing to unlock more. Disconnected channels still occupy a slot until you delete them.',
+      'Each plan includes a fixed number of channels (3, 6 or 12, depending on the plan; trials are capped at 3). Upgrade in Billing to unlock more. A channel waiting to be reconnected keeps its slot; disabling or deleting a channel frees it.',
   },
   {
     question: 'A post failed to publish — what should I do?',
@@ -520,6 +520,6 @@ export const FAQ_ITEMS: FaqItem[] = [
   {
     question: 'How do first comments and threads work?',
     answer:
-      'Depending on the channel, the composer shows an extra button below your post. "Add comment" publishes a first comment right under the post on the platform — supported on LinkedIn and LinkedIn Page (text only), Telegram, Discord, Instagram and Facebook Pages. "Add post" chains additional posts into a thread — that\'s how X, Threads, Bluesky and Mastodon work. In both cases you can add several entries, reorder them, and give each one a Delay (1 min – 2 h presets or a custom number of minutes) so it publishes that long after the previous one. TikTok and YouTube don\'t support first comments. Where a channel supports them but the button is missing, reconnect that channel — the feature follows the permissions the platform granted at connect time. Separately, the comments you see when opening a post on the Calendar are internal team notes — they are never published anywhere.',
+      'Depending on the channel, the composer shows an extra button below your post. "Add comment" publishes a first comment right under the post on the platform — supported on LinkedIn, LinkedIn Page and Instagram (text only), Telegram, Discord and Facebook Pages. "Add post" chains additional posts into a thread — that\'s how X, Threads, Bluesky and Mastodon work. In both cases you can add several entries, reorder them, and give each one a Delay (1 min – 2 h presets or a custom number of minutes) so it publishes that long after the previous one. TikTok and YouTube don\'t support first comments. Where a channel supports them but the button is missing, reconnect that channel — the feature follows the permissions the platform granted at connect time. Separately, the comments you see when opening a post on the Calendar are internal team notes — they are never published anywhere.',
   },
 ];
