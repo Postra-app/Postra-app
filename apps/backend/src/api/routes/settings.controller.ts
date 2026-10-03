@@ -1,3 +1,4 @@
+import { Throttle } from '@nestjs/throttler';
 import { ShortLinkService } from '@gitroom/nestjs-libraries/short-linking/short.link.service';
 import { Body, Controller, Delete, Get, Param, Post } from '@nestjs/common';
 import { GetOrgFromRequest } from '@gitroom/nestjs-libraries/user/org.from.request';
@@ -34,6 +35,7 @@ export class SettingsController {
     [AuthorizationActions.Create, Sections.ADMIN],
     [AuthorizationActions.Create, Sections.TEAM_MEMBERS]
   )
+  @Throttle({ default: { ttl: 3_600_000, limit: 20 } })
   async inviteTeamMember(
     @GetOrgFromRequest() org: Organization,
     @Body() body: AddTeamMemberDto

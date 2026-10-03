@@ -159,8 +159,10 @@ export const throwawayOrg = async (
     channelIds,
     remove: async () => {
       await api.dispose();
-      await prisma.organization.delete({ where: { id: org.id } });
-      await prisma.user.delete({ where: { id: user.id } });
+      // deleteMany, not delete: cleanup must not fail a test that passed when
+      // the row is already gone (seen once in CI on rate-limits.spec).
+      await prisma.organization.deleteMany({ where: { id: org.id } });
+      await prisma.user.deleteMany({ where: { id: user.id } });
     },
   };
 };

@@ -1,3 +1,4 @@
+import { Throttle } from '@nestjs/throttler';
 import {
   Body,
   Controller,
@@ -62,6 +63,7 @@ export class ThirdPartyController {
   }
 
   @Post('/:id/submit')
+  @Throttle({ default: { ttl: 300_000, limit: 10 } })
   async generate(
     @GetOrgFromRequest() organization: Organization,
     @Param('id') id: string,
@@ -94,6 +96,7 @@ export class ThirdPartyController {
   }
 
   @Post('/function/:id/:functionName')
+  @Throttle({ default: { ttl: 300_000, limit: 120 } })
   async callFunction(
     @GetOrgFromRequest() organization: Organization,
     @Param('id') id: string,
@@ -135,6 +138,7 @@ export class ThirdPartyController {
   }
 
   @Post('/:id/import')
+  @Throttle({ default: { ttl: 300_000, limit: 30 } })
   async importMedia(
     @GetOrgFromRequest() organization: Organization,
     @Param('id') id: string,
@@ -181,6 +185,7 @@ export class ThirdPartyController {
   }
 
   @Post('/:identifier')
+  @Throttle({ default: { ttl: 300_000, limit: 20 } })
   async addApiKey(
     @GetOrgFromRequest() organization: Organization,
     @Param('identifier') identifier: string,

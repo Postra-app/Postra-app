@@ -1,3 +1,4 @@
+import { Throttle } from '@nestjs/throttler';
 import {
   BadRequestException,
   Body,
@@ -46,6 +47,7 @@ export class BillingController {
   ) {}
 
   @Get('/check/:id')
+  @Throttle({ default: { ttl: 300_000, limit: 300 } })
   async checkId(
     @GetOrgFromRequest() org: Organization,
     @GetUserFromRequest() user: User,
@@ -62,6 +64,7 @@ export class BillingController {
   }
 
   @Get('/check-discount')
+  @Throttle({ default: { ttl: 300_000, limit: 30 } })
   async checkDiscount(@GetOrgFromRequest() org: Organization) {
     return {
       offerCoupon: !(await this._stripeService.checkDiscount(org.paymentId))
@@ -72,12 +75,14 @@ export class BillingController {
 
   @Post('/apply-discount')
   @CheckPolicies(BILLING_ADMIN)
+  @Throttle({ default: { ttl: 300_000, limit: 10 } })
   async applyDiscount(@GetOrgFromRequest() org: Organization) {
     await this._stripeService.applyDiscount(org.paymentId);
   }
 
   @Post('/finish-trial')
   @CheckPolicies(BILLING_ADMIN)
+  @Throttle({ default: { ttl: 300_000, limit: 10 } })
   async finishTrial(@GetOrgFromRequest() org: Organization) {
     if (!org.paymentId) {
       return { finish: false, reason: 'no-trial' };
@@ -102,6 +107,7 @@ export class BillingController {
 
   @Post('/embedded')
   @CheckPolicies(BILLING_ADMIN)
+  @Throttle({ default: { ttl: 300_000, limit: 10 } })
   embedded(
     @GetOrgFromRequest() org: Organization,
     @GetUserFromRequest() user: User,
@@ -120,6 +126,7 @@ export class BillingController {
 
   @Post('/subscribe')
   @CheckPolicies(BILLING_ADMIN)
+  @Throttle({ default: { ttl: 300_000, limit: 10 } })
   subscribe(
     @GetOrgFromRequest() org: Organization,
     @GetUserFromRequest() user: User,
@@ -138,6 +145,7 @@ export class BillingController {
 
   @Get('/portal')
   @CheckPolicies(BILLING_ADMIN)
+  @Throttle({ default: { ttl: 300_000, limit: 10 } })
   async modifyPayment(@GetOrgFromRequest() org: Organization) {
     const customer = await this._stripeService.getCustomerByOrganizationId(
       org.id
@@ -158,6 +166,7 @@ export class BillingController {
 
   @Post('/cancel')
   @CheckPolicies(BILLING_ADMIN)
+  @Throttle({ default: { ttl: 300_000, limit: 10 } })
   async cancel(
     @GetOrgFromRequest() org: Organization,
     @GetUserFromRequest() user: User,
@@ -201,6 +210,7 @@ export class BillingController {
 
   @Post('/prorate')
   @CheckPolicies(BILLING_ADMIN)
+  @Throttle({ default: { ttl: 300_000, limit: 60 } })
   prorate(
     @GetOrgFromRequest() org: Organization,
     @Body() body: BillingSubscribeDto
@@ -210,6 +220,7 @@ export class BillingController {
 
   @Post('/lifetime')
   @CheckPolicies(BILLING_ADMIN)
+  @Throttle({ default: { ttl: 300_000, limit: 10 } })
   async lifetime(
     @GetOrgFromRequest() org: Organization,
     @Body() body: { code: string }
@@ -227,6 +238,7 @@ export class BillingController {
   // and each writing an audit row.
 
   @Post('/add-subscription')
+  @Throttle({ default: { ttl: 300_000, limit: 10 } })
   async addSubscription(
     @Body() body: BillingAddSubscriptionDto,
     @GetUserFromRequest() user: User,

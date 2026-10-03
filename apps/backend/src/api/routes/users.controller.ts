@@ -27,6 +27,7 @@ import { UsersService } from '@gitroom/nestjs-libraries/database/prisma/users/us
 import { UserDetailDto } from '@gitroom/nestjs-libraries/dtos/users/user.details.dto';
 import { EmailNotificationsDto } from '@gitroom/nestjs-libraries/dtos/users/email-notifications.dto';
 import { problemReportHtml } from '@gitroom/backend/api/routes/problem.report';
+import { decodeScreenshot, storeScreenshot } from '@gitroom/backend/api/routes/problem.report.screenshot';
 import { ProblemReportDto } from '@gitroom/nestjs-libraries/dtos/users/problem.report.dto';
 import { HttpForbiddenException } from '@gitroom/nestjs-libraries/services/exception.filter';
 import { RealIP } from 'nestjs-real-ip';
@@ -230,9 +231,14 @@ export class UsersController {
     @Body() body: ProblemReportDto
   ) {
     const replyTo = body.email || user.email;
+    const shot = decodeScreenshot(body.screenshot);
+    const screenshotUrl = shot
+      ? await storeScreenshot(shot).catch(() => undefined)
+      : undefined;
     await this._notificationService.sendEmail(
       process.env.EMAIL_ADMIN_ADDRESS || process.env.EMAIL_FROM_ADDRESS!,
-      `Problem report from ${organization.name}`.slice(0, 150),
+      // The mail template puts the subject into HTML unescaped.
+      `Problem report from ${organization.name.replace(/[<>&"']/g, '')}`.slice(0, 150),
       problemReportHtml({
         message: body.message,
         name: body.name,
@@ -240,6 +246,7 @@ export class UsersController {
         organization: organization.name,
         page: body.page,
         eventId: body.eventId,
+        screenshotUrl,
       }),
       replyTo
     );
@@ -431,6 +438,7 @@ export class UsersController {
   // signed-in user and the organizations they solely own (see UsersService.
   // deleteAccount), then clears the session cookies.
   @Post('/delete')
+  @Throttle({ default: { ttl: 3_600_000, limit: 5 } })
   async deleteSelf(
     @GetUserFromRequest() user: User,
     @Res({ passthrough: true }) response: Response
@@ -481,6 +489,7 @@ export class UsersController {
   }
 
   @Post('/t')
+  @Throttle({ default: { ttl: 300_000, limit: 120 } })
   async trackEvent(
     @Res({ passthrough: true }) res: Response,
     @Req() req: Request,

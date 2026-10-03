@@ -293,6 +293,7 @@ export class PublicIntegrationsController {
 
   @Get('/social/:integration')
   @CheckPolicies([AuthorizationActions.Create, Sections.CHANNEL])
+  @Throttle({ default: { ttl: 300_000, limit: 60 } })
   async getIntegrationUrl(
     @Param('integration') integration: string,
     @Query('refresh') refresh: string,
@@ -451,6 +452,7 @@ export class PublicIntegrationsController {
   }
 
   @Get('/posts/:id/missing')
+  @Throttle({ default: { ttl: 300_000, limit: 30 } })
   async getMissingContent(
     @GetOrgFromRequest() org: Organization,
     @Param('id') id: string
@@ -480,6 +482,7 @@ export class PublicIntegrationsController {
   }
 
   @Get('/analytics/:integration')
+  @Throttle({ default: { ttl: 300_000, limit: 60 } })
   async getAnalytics(
     @GetOrgFromRequest() org: Organization,
     @Param('integration') integration: string,
@@ -490,6 +493,7 @@ export class PublicIntegrationsController {
   }
 
   @Get('/analytics/post/:postId')
+  @Throttle({ default: { ttl: 300_000, limit: 60 } })
   async getPostAnalytics(
     @GetOrgFromRequest() org: Organization,
     @Param('postId') postId: string,

@@ -297,6 +297,7 @@ export class AuthController {
   }
 
   @Post('/resend-activation')
+  @Throttle({ default: { ttl: 3_600_000, limit: 5 } })
   async resendActivation(
     @Req() req: Request,
     @Body() body: ResendActivationDto

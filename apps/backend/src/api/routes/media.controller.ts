@@ -229,6 +229,7 @@ export class MediaController {
   }
 
   @Get('/pixabay-videos')
+  @Throttle({ default: { ttl: 300_000, limit: 60 } })
   async pixabayVideos(
     @Query('q') q: unknown,
     @Query('page') page: unknown
@@ -259,6 +260,7 @@ export class MediaController {
   }
 
   @Get('/pixabay-images')
+  @Throttle({ default: { ttl: 300_000, limit: 60 } })
   async pixabayImages(
     @Query('q') q: unknown,
     @Query('page') page: unknown
@@ -514,6 +516,7 @@ export class MediaController {
   }
 
   @Post('/:endpoint')
+  @Throttle({ default: { ttl: 300_000, limit: 600 } })
   async uploadFile(
     @GetOrgFromRequest() org: Organization,
     @Req() req: Request,

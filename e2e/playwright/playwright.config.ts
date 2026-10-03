@@ -70,6 +70,14 @@ export default defineConfig({
       dependencies: ['setup'],
       use: { storageState: STATE_FILE },
     },
+    // XSS in post content: a draft in the canary org, rendered in the public
+    // preview. Manual only (xss.spec.ts).
+    {
+      name: 'xss',
+      testMatch: /xss\.spec\.ts/,
+      dependencies: ['setup'],
+      use: { storageState: STATE_FILE },
+    },
     // The UK landing: public, no sign-in.
     {
       name: 'landing',

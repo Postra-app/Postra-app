@@ -1,3 +1,4 @@
+import { Throttle } from '@nestjs/throttler';
 import {
   Body,
   Controller,
@@ -38,6 +39,7 @@ export class WebhookController {
     [AuthorizationActions.Create, Sections.ADMIN],
     [AuthorizationActions.Create, Sections.WEBHOOKS]
   )
+  @Throttle({ default: { ttl: 300_000, limit: 30 } })
   async createAWebhook(
     @GetOrgFromRequest() org: Organization,
     @Body() body: WebhooksDto
@@ -47,6 +49,7 @@ export class WebhookController {
 
   @Put('/')
   @CheckPolicies([AuthorizationActions.Create, Sections.ADMIN])
+  @Throttle({ default: { ttl: 300_000, limit: 30 } })
   async updateWebhook(
     @GetOrgFromRequest() org: Organization,
     @Body() body: UpdateDto
@@ -65,6 +68,7 @@ export class WebhookController {
 
   @Post('/send')
   @CheckPolicies([AuthorizationActions.Create, Sections.ADMIN])
+  @Throttle({ default: { ttl: 300_000, limit: 10 } })
   async sendWebhook(@Body() body: any, @Query() query: OnlyURL) {
     // User-supplied URL — pin DNS + refuse private ranges so this test call
     // can't be turned into an SSRF probe of the VPC/IMDS.
