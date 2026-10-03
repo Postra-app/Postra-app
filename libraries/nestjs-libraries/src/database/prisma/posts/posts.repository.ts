@@ -382,15 +382,19 @@ export class PostsRepository {
   }
 
   async deletePost(orgId: string, group: string) {
+    const where = { organizationId: orgId, group, deletedAt: null };
+    // Every channel in the group has its own post and its own workflow, so
+    // the caller needs all of their ids, read before they stop being live.
+    const posts = await this._post.model.post.findMany({
+      where: { ...where, parentPostId: null },
+      select: { id: true },
+    });
+
     // Only live rows: without `deletedAt: null` a second delete of the same
     // group re-stamped deletedAt and still returned the post, so the caller
     // was told "deleted" for a post that had been gone for hours.
     const { count } = await this._post.model.post.updateMany({
-      where: {
-        organizationId: orgId,
-        group,
-        deletedAt: null,
-      },
+      where,
       data: {
         deletedAt: new Date(),
       },
@@ -400,16 +404,8 @@ export class PostsRepository {
       return null;
     }
 
-    return this._post.model.post.findFirst({
-      where: {
-        organizationId: orgId,
-        group,
-        parentPostId: null,
-      },
-      select: {
-        id: true,
-      },
-    });
+    const ids = posts.map((p) => p.id);
+    return { id: ids[0] ?? null, ids };
   }
 
   getPostsByGroup(orgId: string, group: string) {
