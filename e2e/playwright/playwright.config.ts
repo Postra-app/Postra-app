@@ -78,6 +78,14 @@ export default defineConfig({
       dependencies: ['setup'],
       use: { storageState: STATE_FILE },
     },
+    // Settings, team, webhooks, signatures and the public API on production
+    // (S4): temporary objects only, deleted in the same test. Manual.
+    {
+      name: 'settings',
+      testMatch: /settings\.spec\.ts/,
+      dependencies: ['setup'],
+      use: { ...devices['Desktop Chrome'], viewport: { width: 1440, height: 900 }, storageState: STATE_FILE },
+    },
     // "Report a problem" with a screenshot through the Sentry widget: a real
     // report and mail, so manual only (problem-report.spec.ts).
     {
