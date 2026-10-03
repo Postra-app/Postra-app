@@ -33,6 +33,7 @@ import { ssrfSafeDispatcher } from '@gitroom/nestjs-libraries/dtos/webhooks/ssrf
 // undici's own fetch — Node's global fetch can't drive the undici-package
 // dispatcher below (throws "invalid onRequestStart method"); see design-render.
 import { fetch } from 'undici';
+import { isOwnMediaUrl } from '@gitroom/helpers/utils/own.media.url';
 
 const pump = promisify(pipeline);
 
@@ -199,6 +200,11 @@ export class PublicController {
     @Req() req: Request
   ) {
     const { url } = query;
+    // Only our own media: the composer streams a post's video from the CDN;
+    // an open proxy for any .mp4 on the internet served nobody else.
+    if (!isOwnMediaUrl(url || '')) {
+      return res.status(400).send('Only Postra media can be streamed');
+    }
     if (!url.endsWith('mp4')) {
       return res.status(400).send('Invalid video URL');
     }
