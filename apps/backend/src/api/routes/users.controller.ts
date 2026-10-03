@@ -6,6 +6,7 @@ import {
   ForbiddenException,
   Get,
   HttpException,
+  Logger,
   Post,
   Query,
   Req,
@@ -233,8 +234,14 @@ export class UsersController {
     const replyTo = body.email || user.email;
     const shot = decodeScreenshot(body.screenshot);
     const screenshotUrl = shot
-      ? await storeScreenshot(shot).catch(() => undefined)
+      ? await storeScreenshot(shot).catch((err) => {
+          Logger.error(`problem-report screenshot not stored: ${err?.message}`);
+          return undefined;
+        })
       : undefined;
+    if (body.screenshot && !shot) {
+      Logger.warn(`problem-report screenshot refused (${body.screenshot.slice(0, 30)}…, ${body.screenshot.length} chars)`);
+    }
     await this._notificationService.sendEmail(
       process.env.EMAIL_ADMIN_ADDRESS || process.env.EMAIL_FROM_ADDRESS!,
       // The mail template puts the subject into HTML unescaped.
@@ -247,10 +254,15 @@ export class UsersController {
         page: body.page,
         eventId: body.eventId,
         screenshotUrl,
+        screenshotLost: !!body.screenshot && !screenshotUrl,
       }),
       replyTo
     );
-    return { ok: true };
+    // Lets the widget test tell a kept screenshot from a dropped one.
+    return {
+      ok: true,
+      screenshot: screenshotUrl ? 'stored' : body.screenshot ? 'lost' : 'none',
+    };
   }
 
   @Get('/email-notifications')

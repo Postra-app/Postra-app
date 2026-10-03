@@ -78,6 +78,18 @@ export default defineConfig({
       dependencies: ['setup'],
       use: { storageState: STATE_FILE },
     },
+    // "Report a problem" with a screenshot through the Sentry widget: a real
+    // report and mail, so manual only (problem-report.spec.ts).
+    {
+      name: 'problem-report',
+      testMatch: /problem-report\.spec\.ts/,
+      dependencies: ['setup'],
+      use: {
+        ...devices['Desktop Chrome'],
+        viewport: { width: 1440, height: 900 },
+        storageState: STATE_FILE,
+      },
+    },
     // The UK landing: public, no sign-in.
     {
       name: 'landing',

@@ -1,5 +1,6 @@
 import * as Sentry from '@sentry/nextjs';
 import { initializeSentryBasic } from '@gitroom/react/sentry/initialize.sentry.next.basic';
+import { screenshotDataUrl } from '@gitroom/react/sentry/screenshot.data.url';
 
 export interface ProblemReport {
   name?: string;
@@ -8,15 +9,6 @@ export interface ProblemReport {
   // The screenshot the widget attached, as a data URL.
   screenshot?: string;
 }
-
-const toDataUrl = (a?: { data: string | Uint8Array; contentType?: string }) => {
-  if (!a || typeof a.data === 'string') return undefined;
-  let bin = '';
-  for (let i = 0; i < a.data.length; i += 0x8000) {
-    bin += String.fromCharCode(...a.data.subarray(i, i + 0x8000));
-  }
-  return `data:${a.contentType || 'image/png'};base64,${btoa(bin)}`;
-};
 
 export const initializeSentryClient = (
   environment: string,
@@ -65,7 +57,7 @@ export const initializeSentryClient = (
               name: data.name,
               email: data.email,
               message: data.message,
-              screenshot: toDataUrl(data.attachments?.[0]),
+              screenshot: screenshotDataUrl(data.attachments?.[0]),
             },
             eventId
           ),
