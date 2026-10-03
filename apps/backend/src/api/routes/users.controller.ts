@@ -327,6 +327,11 @@ export class UsersController {
       getOrgFromCookie.role
     );
 
+    // The user's organisations sit in the 30s auth-context cache: without
+    // this, the app switched to the new organisation and landed back in the
+    // old one until the cache ran out.
+    await bustAuthContextCache(user.id);
+
     response.status(200).json({
       id: typeof addedOrg !== 'boolean' ? addedOrg.organizationId : null,
     });
