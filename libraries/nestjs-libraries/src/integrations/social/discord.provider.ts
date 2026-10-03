@@ -212,9 +212,10 @@ export class DiscordProvider extends SocialAbstract implements SocialProvider {
     const [commentPost] = postDetails;
     const channel = commentPost.settings.channel;
 
-    // For Discord, we create a thread from the original message for comments
-    // If we don't have a thread yet, create one
-    let threadChannel = channel;
+    // Comments live in a thread opened from the post. A thread started from a
+    // message has that message's id, so every comment after the first goes to
+    // the post's id — it used to go to the channel, outside the thread.
+    let threadChannel = lastCommentId ? postId : channel;
 
     // Create thread if this is the first comment
     if (!lastCommentId) {
