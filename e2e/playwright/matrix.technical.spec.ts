@@ -13,6 +13,17 @@ import {
   waitPublished,
 } from './publish.helpers';
 
+// Text of the HTML the composer stores; repeated until nothing is left to
+// strip, so "<scr<b>ipt>" cannot leave a tag behind.
+const stripTags = (html: string) => {
+  let text = html;
+  for (let prev = ''; prev !== text; ) {
+    prev = text;
+    text = text.replace(/<[^>]*>/g, '');
+  }
+  return text;
+};
+
 // The per-provider publishing matrix (e2e/05-composer-publish.md §5.3) on the
 // technical channels only: Telegram, Discord, Mastodon, Bluesky. Manual, not
 // nightly — it publishes about 16 real posts:
@@ -57,7 +68,7 @@ const check = async (
   timeout = 240_000
 ) => {
   await publishValues(api, targets, values);
-  const ids = await findPosts(api, values[0].content.replace(/<[^>]*>/g, '').slice(-40));
+  const ids = await findPosts(api, stripTags(values[0].content).slice(-40));
   expect(ids.length, 'one post per channel').toBe(targets.length);
   const published = await waitPublished(api, ids, timeout);
   const urls: string[] = [];
