@@ -2,6 +2,7 @@ const listSubscriptions = jest.fn();
 const listCharges = jest.fn();
 const retrieveCustomer = jest.fn();
 const createCustomer = jest.fn();
+const updateCustomer = jest.fn().mockResolvedValue({});
 
 jest.mock('stripe', () => {
   // Keep the real `errors` namespace on the mock: the rejections below have to
@@ -11,7 +12,7 @@ jest.mock('stripe', () => {
   const mock: any = jest.fn().mockImplementation(() => ({
     subscriptions: { list: listSubscriptions },
     charges: { list: listCharges },
-    customers: { retrieve: retrieveCustomer, create: createCustomer },
+    customers: { retrieve: retrieveCustomer, create: createCustomer, update: updateCustomer },
   }));
   mock.errors = actual.errors ?? actual.default?.errors;
   return mock;
@@ -163,6 +164,10 @@ describe('a Stripe customer we stored and Stripe no longer has', () => {
       service.createOrGetCustomer(org('cus_live') as any)
     ).resolves.toBe('cus_live');
     expect(createCustomer).not.toHaveBeenCalled();
+    // D20: an older customer gets the trading-name footer on checkout.
+    expect(updateCustomer).toHaveBeenCalledWith('cus_live', {
+      invoice_settings: { footer: 'B K Company trading as Postra' },
+    });
   });
 
   it('does not create a duplicate customer when Stripe merely hiccups', async () => {
