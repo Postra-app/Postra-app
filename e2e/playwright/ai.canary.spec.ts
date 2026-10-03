@@ -89,3 +89,30 @@ test('Studio AI Generate draws a design (weekly: it costs an image credit)', asy
   expect(image.status()).toBe(200);
   expect(image.headers()['content-type']).toMatch(/^image\//);
 });
+
+// Ghost text (CopilotKit autosuggestions) in the signature editor. It is the
+// only AI here that streams through CopilotKit's own OpenAI client, metered
+// as `autocomplete` in AiUsage; on 2026-10-03 that engine had 0 rows, so this
+// proves the feature answers at all. Nothing is saved: the modal is closed.
+test('ghost text suggests a continuation in the signature editor', async ({ page }) => {
+  test.setTimeout(120_000);
+  await page.goto('/settings');
+  await page.getByRole('tab', { name: /signatures/i }).click();
+  await page.getByRole('button', { name: /add( a)? signature/i }).click();
+  const editor = page.locator('[contenteditable="true"]').last();
+  await expect(editor).toBeVisible();
+  const answered = page.waitForResponse(
+    (r) => r.url().includes('/copilot/chat') && r.request().method() === 'POST',
+    { timeout: 60_000 }
+  );
+  await editor.click();
+  await page.keyboard.type('Thanks for reading! Plan your next post with', { delay: 40 });
+  const res = await answered;
+  expect(res.status()).toBe(200);
+  // A multipart GraphQL stream: the suggestion arrives as word chunks after
+  // the opening TextMessageOutput.
+  const body = await res.text();
+  expect(body).toContain('TextMessageOutput');
+  expect(body).toMatch(/"content",\d+\]/);
+  expect(body).not.toMatch(/"errors"/);
+});
