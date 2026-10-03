@@ -7,8 +7,10 @@ import {
   Param,
   Post,
   Query,
+  Res,
   ServiceUnavailableException,
 } from '@nestjs/common';
+import { Response } from 'express';
 import { GetUserFromRequest } from '@gitroom/nestjs-libraries/user/user.from.request';
 import { Prisma, User } from '@prisma/client';
 import { ApiTags } from '@nestjs/swagger';
@@ -45,6 +47,7 @@ import {
 } from '@gitroom/nestjs-libraries/database/prisma/integrations/channel.state.query';
 import { canPostComments, grantedScopesOf } from '@gitroom/nestjs-libraries/integrations/social/comment.capability';
 import { redactSecretsInJson } from '@gitroom/nestjs-libraries/services/redact.secrets';
+import { isScreenshotFile, signScreenshot } from '@gitroom/backend/api/routes/problem.report.screenshot';
 
 @ApiTags('Admin')
 @Controller('/admin')
@@ -109,6 +112,22 @@ export class AdminController {
       throw new HttpException('Error not found', 404);
     }
     return row;
+  }
+
+  // The "Screenshot: open" link in a problem-report mail. The mail cannot hold
+  // a signed S3 link (it would die with the server's credentials within hours),
+  // so each click signs a fresh five-minute one.
+  @Get('/problem-reports/:file')
+  async openProblemReportScreenshot(
+    @GetUserFromRequest() user: User,
+    @Param('file') file: string,
+    @Res({ passthrough: false }) response: Response
+  ) {
+    this.assertSuperAdmin(user);
+    if (!isScreenshotFile(file)) {
+      throw new HttpException('No such screenshot', 404);
+    }
+    return response.redirect(302, await signScreenshot(file));
   }
 
   @Get('/stats')

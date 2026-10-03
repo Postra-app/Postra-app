@@ -13,6 +13,7 @@ const ADMIN_READS = [
   '/admin/users',
   '/admin/audit',
   '/admin/integrations',
+  `/admin/problem-reports/${UNKNOWN}.png`,
   '/announcements/list',
   `/user/impersonate?name=owner`,
 ];
