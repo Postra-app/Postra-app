@@ -438,6 +438,7 @@ export class UsersController {
   // signed-in user and the organizations they solely own (see UsersService.
   // deleteAccount), then clears the session cookies.
   @Post('/delete')
+  @Throttle({ default: { ttl: 3_600_000, limit: 5 } })
   async deleteSelf(
     @GetUserFromRequest() user: User,
     @Res({ passthrough: true }) response: Response
@@ -488,6 +489,7 @@ export class UsersController {
   }
 
   @Post('/t')
+  @Throttle({ default: { ttl: 300_000, limit: 120 } })
   async trackEvent(
     @Res({ passthrough: true }) res: Response,
     @Req() req: Request,

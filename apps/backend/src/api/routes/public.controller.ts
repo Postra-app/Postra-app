@@ -1,3 +1,4 @@
+import { Throttle } from '@nestjs/throttler';
 import {
   Body,
   Controller,
@@ -45,6 +46,7 @@ export class PublicController {
     private _subscriptionService: SubscriptionService
   ) {}
   @Post('/agent')
+  @Throttle({ default: { ttl: 300_000, limit: 30 } })
   async createAgent(@Body() body: { text: string; apiKey: string }) {
     if (
       !body.apiKey ||
@@ -104,6 +106,7 @@ export class PublicController {
   }
 
   @Post('/t')
+  @Throttle({ default: { ttl: 300_000, limit: 120 } })
   async trackEvent(
     @Res() res: Response,
     @Req() req: Request,
@@ -189,6 +192,7 @@ export class PublicController {
 
 
   @Get('/stream')
+  @Throttle({ default: { ttl: 300_000, limit: 60 } })
   async streamFile(
     @Query() query: OnlyURL,
     @Res() res: Response,

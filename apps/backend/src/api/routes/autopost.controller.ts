@@ -1,3 +1,4 @@
+import { Throttle } from '@nestjs/throttler';
 import {
   Body,
   Controller,
@@ -64,6 +65,7 @@ export class AutopostController {
   }
 
   @Post('/send')
+  @Throttle({ default: { ttl: 300_000, limit: 10 } })
   async sendWebhook(@Query() query: OnlyURL) {
     return this._autopostsService.loadXML(query.url);
   }
