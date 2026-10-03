@@ -56,7 +56,7 @@ export const AdminSuspendModal: FC<{
       />
       <div className="flex gap-[8px] justify-end">
         <Button secondary onClick={close}>
-          {t('cancel', 'Cancel')}
+          {t('admin_cancel', 'Cancel')}
         </Button>
         <Button variant="danger" loading={busy} onClick={suspend}>
           {t('admin_suspend', 'Suspend account')}
