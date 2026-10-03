@@ -28,7 +28,7 @@ import { UsersService } from '@gitroom/nestjs-libraries/database/prisma/users/us
 import { UserDetailDto } from '@gitroom/nestjs-libraries/dtos/users/user.details.dto';
 import { EmailNotificationsDto } from '@gitroom/nestjs-libraries/dtos/users/email-notifications.dto';
 import { problemReportHtml } from '@gitroom/backend/api/routes/problem.report';
-import { decodeScreenshot, storeScreenshot } from '@gitroom/backend/api/routes/problem.report.screenshot';
+import { decodeScreenshot, screenshotLink, storeScreenshot } from '@gitroom/backend/api/routes/problem.report.screenshot';
 import { ProblemReportDto } from '@gitroom/nestjs-libraries/dtos/users/problem.report.dto';
 import { HttpForbiddenException } from '@gitroom/nestjs-libraries/services/exception.filter';
 import { RealIP } from 'nestjs-real-ip';
@@ -233,12 +233,13 @@ export class UsersController {
   ) {
     const replyTo = body.email || user.email;
     const shot = decodeScreenshot(body.screenshot);
-    const screenshotUrl = shot
+    const screenshotFile = shot
       ? await storeScreenshot(shot).catch((err) => {
           Logger.error(`problem-report screenshot not stored: ${err?.message}`);
           return undefined;
         })
       : undefined;
+    const screenshotUrl = screenshotFile && screenshotLink(screenshotFile);
     if (body.screenshot && !shot) {
       Logger.warn(`problem-report screenshot refused (${body.screenshot.slice(0, 30)}…, ${body.screenshot.length} chars)`);
     }

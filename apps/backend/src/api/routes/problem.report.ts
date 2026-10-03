@@ -20,7 +20,7 @@ export const problemReportHtml = (r: {
     r.page ? `<p><strong>Page:</strong> ${escapeHtml(r.page)}</p>` : '',
     r.eventId ? `<p><strong>Sentry event:</strong> ${escapeHtml(r.eventId)} (screenshot, if any, is there)</p>` : '',
     r.screenshotUrl
-      ? `<p><strong>Screenshot:</strong> <a href="${escapeHtml(r.screenshotUrl)}">open</a> (link valid 7 days; the original stays in Sentry)</p>`
+      ? `<p><strong>Screenshot:</strong> <a href="${escapeHtml(r.screenshotUrl)}">open</a> (sign in to Postra as an administrator; kept 30 days, the original stays in Sentry)</p>`
       : r.screenshotLost
         ? `<p><strong>Screenshot:</strong> attached but not kept here; open it in the Sentry event</p>`
         : '',

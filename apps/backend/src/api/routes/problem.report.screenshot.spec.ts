@@ -1,4 +1,4 @@
-import { decodeScreenshot } from './problem.report.screenshot';
+import { decodeScreenshot, isScreenshotFile, screenshotLink } from './problem.report.screenshot';
 import { problemReportHtml } from './problem.report';
 
 const png = Buffer.concat([Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]), Buffer.alloc(32)]);
@@ -22,6 +22,24 @@ describe('problem report screenshot', () => {
   it('drops a screenshot over 5 MB', () => {
     const big = Buffer.concat([png, Buffer.alloc(5 * 1024 * 1024)]);
     expect(decodeScreenshot(url('png', big))).toBeNull();
+  });
+
+  // A presigned link signed with the server's role dies within hours, so the
+  // mail points at the admin route, which signs a fresh one on every click.
+  it('links the mail to the admin route, not to a signed S3 URL', () => {
+    process.env.NEXT_PUBLIC_BACKEND_URL = 'https://app.postra.pl/api';
+    const file = '3f2b6a1c-0d4e-4b8a-9c1e-2a3b4c5d6e7f.png';
+    expect(screenshotLink(file)).toBe(`https://app.postra.pl/api/admin/problem-reports/${file}`);
+    expect(problemReportHtml({ message: 'x', email: 'a@b.co', organization: 'O', screenshotUrl: screenshotLink(file) }))
+      .not.toContain('valid 7 days');
+  });
+
+  it('opens only a file name the server itself could have written', () => {
+    expect(isScreenshotFile('3f2b6a1c-0d4e-4b8a-9c1e-2a3b4c5d6e7f.png')).toBe(true);
+    expect(isScreenshotFile('3f2b6a1c-0d4e-4b8a-9c1e-2a3b4c5d6e7f.jpg')).toBe(true);
+    expect(isScreenshotFile('../uploads/x.png')).toBe(false);
+    expect(isScreenshotFile('3f2b6a1c-0d4e-4b8a-9c1e-2a3b4c5d6e7f.png/../a')).toBe(false);
+    expect(isScreenshotFile('anything.svg')).toBe(false);
   });
 
   it('puts the link in the mail, escaped', () => {
