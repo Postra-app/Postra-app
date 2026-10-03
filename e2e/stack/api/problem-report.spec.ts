@@ -10,7 +10,7 @@ test('a signed-in user can send a problem report', async () => {
     data: { message: '[stack] the button did nothing', name: 'Stack', page: '/billing', eventId: 'a'.repeat(32) },
   });
   expect(res.status(), await res.text()).toBeLessThan(300);
-  expect(await res.json()).toEqual({ ok: true });
+  expect(await res.json()).toEqual({ ok: true, screenshot: 'none' });
   await api.dispose();
 });
 
@@ -21,6 +21,9 @@ test('a report can carry the widget screenshot (a ~1 MB PNG passes the body limi
     data: { message: '[stack] with screenshot', screenshot: `data:image/png;base64,${png.toString('base64')}` },
   });
   expect(res.status(), await res.text()).toBeLessThan(300);
+  // The stack has no S3 bucket, so the mail says the screenshot was not kept
+  // rather than dropping the line silently.
+  expect((await res.json()).screenshot).toBe('lost');
   await api.dispose();
 });
 

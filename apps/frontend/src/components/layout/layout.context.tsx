@@ -177,13 +177,22 @@ function LayoutContextInner(params: { children: ReactNode }) {
       // the user sees nothing at all: clicking "Add channel" during a deploy
       // simply did nothing. Tell them why, and unwind.
       if (response.status >= 500) {
+        // A 503 with a JSON message is the backend naming the cause (OpenAI
+        // down: "AI is unavailable right now…"); any other 5xx stays generic.
+        const named =
+          response.status === 503 &&
+          response.headers.get('content-type')?.includes('application/json')
+            ? (await response.json().catch(() => null))?.message
+            : undefined;
         if (Date.now() - last5xx.current > 5000) {
           last5xx.current = Date.now();
           toaster.show(
-            t(
-              'server_unavailable_try_again',
-              'The server is temporarily unavailable — please try again in a moment.'
-            ),
+            typeof named === 'string'
+              ? named
+              : t(
+                  'server_unavailable_try_again',
+                  'The server is temporarily unavailable — please try again in a moment.'
+                ),
             'warning'
           );
         }

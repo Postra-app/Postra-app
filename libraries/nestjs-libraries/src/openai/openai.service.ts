@@ -6,6 +6,7 @@ import { z } from 'zod';
 import { createReadStream } from 'fs';
 import { stat } from 'fs/promises';
 import { parseChat } from '@gitroom/nestjs-libraries/openai/parse-chat';
+import { isAiOutage } from '@gitroom/nestjs-libraries/openai/ai-outage';
 import {
   recordAiUsage,
   AiUsageEvent,
@@ -112,10 +113,12 @@ export class OpenaiService {
   // with the same zodResponseFormat() body — the server still enforces the JSON
   // schema (strict) — and JSON.parse the content ourselves, preserving the
   // { choices: [{ message: { parsed } }] } shape so call sites stay unchanged.
-  private parseChat(body: any, orgId?: string | null) {
+  // Every caller names its own engine, so /admin/ai-usage splits the cost by
+  // the surface that spent it (E2E-06-05: all of it used to say 'creator').
+  private parseChat(engine: AiUsageEvent['engine'], body: any, orgId?: string | null) {
     return parseChat(openai, body, {
       organizationId: orgId ?? null,
-      engine: 'creator',
+      engine,
     });
   }
 
@@ -246,7 +249,7 @@ export class OpenaiService {
   async generatePromptForPicture(prompt: string, orgId?: string) {
     return (
       (
-        await this.parseChat({
+        await this.parseChat('media', {
           model: 'gpt-4.1',
           messages: [
             {
@@ -267,7 +270,7 @@ export class OpenaiService {
   async generateVoiceFromText(prompt: string, orgId?: string) {
     return (
       (
-        await this.parseChat({
+        await this.parseChat('video', {
           model: 'gpt-4.1',
           messages: [
             {
@@ -379,7 +382,7 @@ export class OpenaiService {
 
     const posts =
       (
-        await this.parseChat({
+        await this.parseChat('composer', {
           model: 'gpt-4.1',
           messages: [
             {
@@ -412,7 +415,7 @@ export class OpenaiService {
             try {
               return (
                 (
-                  await this.parseChat({
+                  await this.parseChat('composer', {
                     model: 'gpt-4.1',
                     messages: [
                       {
@@ -432,6 +435,7 @@ export class OpenaiService {
                 ).choices[0].message.parsed?.post || ''
               );
             } catch (e) {
+              if (isAiOutage(e)) throw e;
               retries--;
             }
           }
@@ -484,7 +488,7 @@ export class OpenaiService {
     for (let i = 0; i < 3; i++) {
       try {
         const parsed = (
-          await this.parseChat({
+          await this.parseChat('studio', {
             model: 'gpt-4.1',
             messages: [
               {
@@ -531,6 +535,7 @@ ${SETTINGS_BLOCK_RULE}`,
 
         if (parsed) return parsed;
       } catch (err) {
+        if (isAiOutage(err)) throw err;
         this._logger.warn(`generatePostDesign attempt failed: ${(err as Error)?.message ?? err}`);
       }
     }
@@ -557,7 +562,7 @@ ${SETTINGS_BLOCK_RULE}`,
     const targetLanguage = resolveLanguage(topic, language, languageFallback);
 
     const parsed = (
-      await this.parseChat({
+      await this.parseChat('agent', {
         model: 'gpt-4.1',
         messages: [
           {
@@ -671,7 +676,7 @@ ${SETTINGS_BLOCK_RULE}`,
     for (let i = 0; i < 3; i++) {
       try {
         const parsed = (
-          await this.parseChat({
+          await this.parseChat('studio', {
             model: 'gpt-4.1',
             messages: [
               {
@@ -732,6 +737,7 @@ ${SETTINGS_BLOCK_RULE}`,
           if (!best) best = parsed;
         }
       } catch (err) {
+        if (isAiOutage(err)) throw err;
         this._logger.warn(`generatePostCarousel attempt failed: ${(err as Error)?.message ?? err}`);
       }
     }
@@ -752,7 +758,7 @@ ${SETTINGS_BLOCK_RULE}`,
         const message = `You are an assistant that takes a text and break it into slides, each slide should have an image prompt and voice text to be later used to generate a video and voice, image prompt should capture the essence of the slide and also have a back dark gradient on top, image prompt should not contain text in the picture, generate between 3-5 slides maximum`;
         const parse =
           (
-            await this.parseChat({
+            await this.parseChat('video', {
               model: 'gpt-4.1',
               messages: [
                 {
@@ -782,6 +788,7 @@ ${SETTINGS_BLOCK_RULE}`,
 
         return parse;
       } catch (err) {
+        if (isAiOutage(err)) throw err;
         this._logger.warn(`generateSlidesFromText attempt failed: ${(err as Error)?.message ?? err}`);
       }
     }

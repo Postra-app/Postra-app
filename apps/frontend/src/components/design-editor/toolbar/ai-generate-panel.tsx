@@ -372,7 +372,7 @@ export const AiGeneratePanel: FC<Props> = ({ canvas }) => {
       <p className="text-[11px] text-textColor/65 leading-snug">
         {t(
           'ai_generate_hint',
-          'AI generates the background + text in one step. Takes about 5-10 seconds.'
+          'AI generates the background + text in one step. Takes about 30 seconds.'
         )}
       </p>
     </div>

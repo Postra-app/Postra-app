@@ -348,7 +348,7 @@ export const STUDIO_GRAPHICS_TOOLS: StudioToolGuide[] = [
   {
     name: 'AI Generate',
     description:
-      'Describe your idea — or click an upcoming occasion chip (✎ copies it into the prompt for editing) — and AI builds the whole design in one step: a background image plus an editable headline, subtext and call-to-action in your Brand Kit colours. Takes about 5–10 seconds and uses one AI credit. Set SLIDES to 2–5 to get a multi-slide carousel instead of a single graphic. Needs the Starter plan or above — on the free plan the upcoming-occasion list is still there, and the chips open matching templates instead.',
+      'Describe your idea — or click an upcoming occasion chip (✎ copies it into the prompt for editing) — and AI builds the whole design in one step: a background image plus an editable headline, subtext and call-to-action in your Brand Kit colours. Takes about 30 seconds and uses one AI credit. Set SLIDES to 2–5 to get a multi-slide carousel instead of a single graphic. Needs the Starter plan or above — on the free plan the upcoming-occasion list is still there, and the chips open matching templates instead.',
   },
   {
     name: 'AI Refine',

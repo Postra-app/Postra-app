@@ -20,7 +20,11 @@ export interface AiUsageEvent {
     | 'autocomplete'
     // Images and embeddings from the /media surfaces: the composer's AI
     // Image, Studio's AI tab and template search.
-    | 'media';
+    | 'media'
+    // The composer's "split into a thread".
+    | 'composer'
+    // Scripts for the video generators (slides, avatar voice).
+    | 'video';
   model: string;
   unit?: 'tokens' | 'seconds' | 'images';
   inputAmount?: number;

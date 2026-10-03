@@ -36,3 +36,20 @@ test('"# Hashtags" suggests tags and adds the picked ones under the text', async
   await expect(page.getByRole('textbox').first()).toContainText(TEXT);
   expect(problems).toEqual([]);
 });
+
+test('with OpenAI down, "Shorten" says AI is unavailable and leaves the text alone', async ({ page, request }) => {
+  const OUTAGE = 'stack-openai-outage-ui';
+  const text = `${TEXT} ${OUTAGE}`;
+  const problems = watchForErrors(page);
+  await request.post('http://localhost:58090/__outage', { data: { match: OUTAGE, on: true } });
+  try {
+    await openComposer(page, 'bluesky', text);
+    await page.getByRole('button', { name: 'Shorten', exact: true }).click();
+    await expect(page.getByText('AI is unavailable right now')).toBeVisible({ timeout: 30_000 });
+    await expect(page.getByRole('textbox').first()).toContainText(text);
+    // The 503 itself is the expected answer; nothing else may fail.
+    expect(problems.filter((p) => !/^503 POST .*\/media\/ai-edit$/.test(p))).toEqual([]);
+  } finally {
+    await request.post('http://localhost:58090/__outage', { data: { match: OUTAGE, on: false } });
+  }
+});
