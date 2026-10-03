@@ -1502,5 +1502,7 @@
   "autopost_upsell_body": "Auto Post obserwuje kanał RSS Twojego bloga. Gdy opublikujesz nowy artykuł, AI pisze o nim post na Twoje kanały i go planuje. W planach Pro ({{pro}} kanały RSS) i Business ({{business}}).",
   "autopost_upsell_cta": "Zobacz plany",
   "autopost_feeds_used": "Wykorzystane kanały RSS: {{used}} z {{limit}}",
-  "autopost_deleted": "Kanał Auto Post usunięty"
+  "autopost_deleted": "Kanał Auto Post usunięty",
+  "billing_trial_limits": "W 7-dniowym okresie próbnym podłączysz do {{channels}} kanałów i korzystasz z puli AI planu Starter ({{images}} obrazów AI); pełny plan odblokuje się przy pierwszej płatności albo od razu, jeśli zakończysz okres próbny wcześniej.",
+  "billing_end_trial_now": "Zakończ okres próbny teraz"
 }

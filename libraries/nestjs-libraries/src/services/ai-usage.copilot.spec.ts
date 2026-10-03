@@ -31,6 +31,7 @@ describe('meterCopilotAdapter', () => {
         unit: 'tokens',
         inputAmount: 13,
         outputAmount: 12,
+        cachedAmount: 0,
       },
     ]);
   });

@@ -31,6 +31,7 @@ import { FinishTrial } from '@gitroom/frontend/components/billing/finish.trial';
 import { newDayjs } from '@gitroom/frontend/components/layout/set.timezone';
 import { useDubClickId } from '@gitroom/frontend/components/layout/dubAnalytics';
 import { LogoutComponent } from '@gitroom/frontend/components/layout/logout.component';
+import { TrialLimitsNote } from '@gitroom/frontend/components/billing/trial.limits.note';
 import { planFeatures } from '@gitroom/frontend/components/billing/plan.features';
 
 export const Prorate: FC<{
@@ -75,7 +76,7 @@ export const Prorate: FC<{
   }
   return (
     <div className="text-[12px] flex pt-[12px]">
-      ({t('pay_today', 'Pay Today')} £{(price < 0 ? 0 : price)?.toFixed(1)})
+      ({t('pay_today', 'Pay Today')} £{(price < 0 ? 0 : price)?.toFixed(2)})
     </div>
   );
 };
@@ -545,6 +546,7 @@ export const MainBillingComponent: FC<{
       </div>
 
       {finishTrial && <FinishTrial close={() => setFinishTrial(false)} />}
+      {!!user?.isTrailing && <TrialLimitsNote endTrialLink />}
       <div className="flex gap-[16px] [@media(max-width:1024px)]:flex-col [@media(max-width:1024px)]:text-center">
         {Object.entries(pricing)
           .filter((f) => f[0] !== 'TEAM' && (!isGeneral || f[0] !== 'FREE'))

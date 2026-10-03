@@ -1,7 +1,19 @@
 import * as Sentry from '@sentry/nextjs';
 import { initializeSentryBasic } from '@gitroom/react/sentry/initialize.sentry.next.basic';
 
-export const initializeSentryClient = (environment: string, dsn: string) =>
+export interface ProblemReport {
+  name?: string;
+  email?: string;
+  message: string;
+}
+
+export const initializeSentryClient = (
+  environment: string,
+  dsn: string,
+  // Called once a "Report a problem" is filed in Sentry, so the app can also
+  // email it to the team (Sentry sends no mail for it on our plan).
+  onProblemReport?: (report: ProblemReport, eventId: string) => void
+) =>
   initializeSentryBasic(environment, dsn, {
     integrations: [
       // Add default integrations back
@@ -36,6 +48,11 @@ export const initializeSentryClient = (environment: string, dsn: string) =>
         messagePlaceholder:
           "What went wrong? What did you expect to happen?",
         successMessageText: 'Thank you — we read every report.',
+        onSubmitSuccess: (data: ProblemReport, eventId: string) =>
+          onProblemReport?.(
+            { name: data.name, email: data.email, message: data.message },
+            eventId
+          ),
       }),
       Sentry.replayCanvasIntegration(),
     ],

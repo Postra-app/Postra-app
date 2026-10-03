@@ -27,6 +27,7 @@ import { useModals } from '@gitroom/frontend/components/layout/new-modal';
 import useCookie from 'react-use-cookie';
 import { LogoutComponent } from '@gitroom/frontend/components/layout/logout.component';
 import DeleteAccountComponent from '@gitroom/frontend/components/settings/delete-account.component';
+import { TrialLimitsNote } from '@gitroom/frontend/components/billing/trial.limits.note';
 import {
   planFeatures,
   PlanFeature,
@@ -148,6 +149,11 @@ export const FirstBillingComponent = () => {
                 {t('billing_cancel_anytime', 'Cancel anytime, from settings')}
               </div>
             </div>
+          </div>
+        )}
+        {!!user?.allowTrial && (
+          <div className="mb-[10px]">
+            <TrialLimitsNote />
           </div>
         )}
       </>

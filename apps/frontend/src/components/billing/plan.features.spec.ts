@@ -1,6 +1,7 @@
 import { pricing } from '@gitroom/nestjs-libraries/database/prisma/subscriptions/pricing';
 import {
   PLATFORM_NAMES,
+  SOON_PLATFORMS,
   planFeatures,
   planFeatureText,
 } from '@gitroom/frontend/components/billing/plan.features';
@@ -24,7 +25,7 @@ describe('planFeatures', () => {
   it('shows what Pro adds: platforms and Blog to posts', () => {
     const pro = texts('PRO');
     expect(pro).toContain(
-      'On Facebook, Instagram, TikTok, LinkedIn, YouTube, Threads, LinkedIn Pages, Bluesky, Mastodon, Telegram'
+      'On Facebook, Instagram, TikTok, LinkedIn, YouTube, Threads, LinkedIn Pages (soon), Bluesky, Mastodon, Telegram'
     );
     expect(pro).toContain('Blog to posts from 3 RSS feeds');
     expect(pro).toContain('Unlimited posts');
@@ -37,7 +38,7 @@ describe('planFeatures', () => {
       expect(line).toBe(
         'On ' +
           pricing[tier].allowedProviders
-            .map((p) => PLATFORM_NAMES[p])
+            .map((p) => PLATFORM_NAMES[p] + (SOON_PLATFORMS.has(p) ? ' (soon)' : ''))
             .join(', ')
       );
     }

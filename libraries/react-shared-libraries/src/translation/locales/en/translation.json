@@ -1502,5 +1502,7 @@
   "autopost_upsell_body": "Auto Post watches your blog's RSS feed. When you publish a new article, AI writes a post about it for your channels and schedules it. Included in Pro ({{pro}} RSS feeds) and Business ({{business}}).",
   "autopost_upsell_cta": "See plans",
   "autopost_feeds_used": "{{used}} of {{limit}} RSS feeds used",
-  "autopost_deleted": "Auto Post feed deleted"
+  "autopost_deleted": "Auto Post feed deleted",
+  "billing_trial_limits": "During the 7-day trial you can connect up to {{channels}} channels and use Starter's AI allowance ({{images}} AI images); your full plan unlocks with the first payment, or straight away if you end the trial early.",
+  "billing_end_trial_now": "End the trial now"
 }

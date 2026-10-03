@@ -65,6 +65,21 @@ export const markPublishing = (what: string) => {
 // so it must not be retried. Typed failures (bad_body, refresh_token, ...) are
 // the provider's own verdict and pass through, as does anything thrown before
 // publishing started, which is safe to retry.
+// `fetch failed` alone says nothing: undici puts the reason (a reset socket,
+// a TLS or DNS error, a timeout) in `cause`. Keep up to three links of it, so
+// Post.error and /admin/errors say what actually broke.
+export const describeError = (err: unknown): string => {
+  const parts: string[] = [];
+  let current: unknown = err;
+  for (let depth = 0; current && depth < 4; depth++) {
+    const e = current as { message?: string; code?: string };
+    const text = [e.code, e.message].filter(Boolean).join(': ') || String(current);
+    if (!parts.includes(text)) parts.push(text);
+    current = (current as { cause?: unknown }).cause;
+  }
+  return parts.length > 1 ? `${parts[0]} (${parts.slice(1).join(' ← ')})` : parts[0] || String(err);
+};
+
 export const afterPublishing = (err: unknown): unknown => {
   const ctx = current();
   const publishing =
@@ -72,7 +87,7 @@ export const afterPublishing = (err: unknown): unknown => {
     ctx[DETAILS].startsWith(PUBLISHING_PREFIX);
   if (!publishing || err instanceof ApplicationFailure) return err;
   return ApplicationFailure.create({
-    message: (err as Error)?.message || String(err),
+    message: describeError(err),
     type: 'publish_unknown',
     nonRetryable: true,
   });

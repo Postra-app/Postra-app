@@ -24,6 +24,11 @@ export const PLATFORM_NAMES: Record<string, string> = {
   discord: 'Discord',
 };
 
+// Platforms a plan includes but the picker still shows as "Soon" (kept out of
+// enabledProviders in integration.manager.ts). The list names them, marked, so
+// it never sells something a customer cannot connect yet.
+export const SOON_PLATFORMS = new Set(['linkedin-page']);
+
 const UNLIMITED = 10000;
 
 export const planFeatures = (tier: string): PlanFeature[] => {
@@ -48,7 +53,10 @@ export const planFeatures = (tier: string): PlanFeature[] => {
     text: 'On {{platforms}}',
     vars: {
       platforms: plan.allowedProviders
-        .map((p) => PLATFORM_NAMES[p] || p)
+        .map((p) => {
+          const name = PLATFORM_NAMES[p] || p;
+          return SOON_PLATFORMS.has(p) ? `${name} (soon)` : name;
+        })
         .join(', '),
     },
   });

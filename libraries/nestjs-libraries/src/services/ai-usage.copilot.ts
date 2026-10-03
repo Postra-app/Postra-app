@@ -30,6 +30,7 @@ export const meterCopilotAdapter = <T>(
           unit: 'tokens',
           inputAmount: chunk.usage.prompt_tokens,
           outputAmount: chunk.usage.completion_tokens,
+          cachedAmount: chunk.usage.prompt_tokens_details?.cached_tokens ?? 0,
         });
       }
     });
