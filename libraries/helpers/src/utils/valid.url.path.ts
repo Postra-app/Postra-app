@@ -1,3 +1,4 @@
+import { isOwnMediaUrl } from './own.media.url';
 import {
   ValidationArguments,
   ValidatorConstraintInterface,
@@ -28,19 +29,12 @@ export class ValidUrlExtension implements ValidatorConstraintInterface {
 @ValidatorConstraint({ name: 'checkValidPath', async: false })
 export class ValidUrlPath implements ValidatorConstraintInterface {
   validate(text: string, args: ValidationArguments) {
-    if (!process.env.RESTRICT_UPLOAD_DOMAINS) {
-      return true;
-    }
-
-    return (
-      (text || 'invalid url').indexOf(process.env.RESTRICT_UPLOAD_DOMAINS) > -1
-    );
+    // Exact host, not a substring: "evil.example/cdn-dev.postra.pl/x.png" used
+    // to pass, and with RESTRICT_UPLOAD_DOMAINS unset nothing was checked.
+    return isOwnMediaUrl(text || '');
   }
 
   defaultMessage(args: ValidationArguments) {
-    // here you can provide default error message if validation failed
-    return (
-      'URL must contain the domain: ' + process.env.RESTRICT_UPLOAD_DOMAINS + ' Make sure you first use the upload API route.'
-    );
+    return 'Media must be uploaded to Postra first (upload, media library or stock import).';
   }
 }
