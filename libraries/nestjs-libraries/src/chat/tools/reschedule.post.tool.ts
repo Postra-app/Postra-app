@@ -13,7 +13,7 @@ export class ReschedulePostTool implements AgentToolInterface {
   run() {
     return createTool({
       id: 'reschedulePost',
-      description: `Ask the user to confirm moving an existing post to a new date/time. Pass the post "id" (from listScheduledPosts, NOT the group) and the new UTC date. This tool does NOT move anything by itself: it shows the user a confirmation card, and the post moves only if they approve it. Tell the user to use that card - do not ask them to reply "yes" in the chat, and do not call this tool again for the same post.`,
+      description: `Ask the user to confirm moving an existing post to a new date/time. Pass the post "id" (from listScheduledPosts, NOT the group) and the new UTC date. This tool does NOT move anything by itself: it shows the user a confirmation card, and the post moves only if they approve it. Tell the user to use that card - do not ask them to reply "yes" in the chat, and call it once per request. You cannot see whether the user approved or declined an earlier card, and cards expire, so when the user asks again, call it again and show a new card.`,
       inputSchema: z.object({
         id: z.string().describe('The post id from listScheduledPosts.'),
         date: z
