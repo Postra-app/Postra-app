@@ -1497,5 +1497,10 @@
   "billing_plan_studio": "Studio image editor",
   "billing_plan_autopost": "Blog to posts from {{count}} RSS feeds",
   "billing_plan_api_unlimited": "Public API and unlimited webhooks",
-  "billing_plan_api": "Public API and {{count}} webhooks"
+  "billing_plan_api": "Public API and {{count}} webhooks",
+  "autopost_upsell_title": "Turn your blog into social posts",
+  "autopost_upsell_body": "Auto Post watches your blog's RSS feed. When you publish a new article, AI writes a post about it for your channels and schedules it. Included in Pro ({{pro}} RSS feeds) and Business ({{business}}).",
+  "autopost_upsell_cta": "See plans",
+  "autopost_feeds_used": "{{used}} of {{limit}} RSS feeds used",
+  "autopost_deleted": "Auto Post feed deleted"
 }

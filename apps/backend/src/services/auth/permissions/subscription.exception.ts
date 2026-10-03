@@ -1,3 +1,4 @@
+import { pricing } from '@gitroom/nestjs-libraries/database/prisma/subscriptions/pricing';
 import {
   ArgumentsHost,
   Catch,
@@ -56,7 +57,9 @@ export const getErrorMessage = (error: {
         default:
           return 'You have reached the maximum number of generated videos for your subscription. Please upgrade your subscription to generate more videos.';
       }
-    // Every other section (AI, AUTOPOST, TEAM_MEMBERS, COMMUNITY_FEATURES,
+    case Sections.AUTOPOST:
+      return `Auto Post is included in Pro (${pricing.PRO.autoPostLimit} RSS feeds) and Business (${pricing.ULTIMATE.autoPostLimit}), and your plan has no feeds left. Upgrade your subscription to add another feed.`;
+    // Every other section (AI, TEAM_MEMBERS, COMMUNITY_FEATURES,
     // IMPORT_FROM_CHANNELS, ...) used to fall out of this switch as `undefined`,
     // which JSON.stringify then dropped: the client received a bare
     // `{statusCode: 402, url}` and the global handler opened an empty dialog.

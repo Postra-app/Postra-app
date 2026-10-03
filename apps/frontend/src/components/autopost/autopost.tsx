@@ -25,6 +25,9 @@ import { Slider } from '@gitroom/react/form/slider';
 import { useT } from '@gitroom/react/translation/get.transation.service.client';
 import Spinner from '@gitroom/frontend/components/layout/loading';
 import { EmptyState } from '@gitroom/frontend/components/ui/empty-state';
+import { useUser } from '@gitroom/frontend/components/layout/user.context';
+import { pricing } from '@gitroom/nestjs-libraries/database/prisma/subscriptions/pricing';
+import { autopostAccess } from '@gitroom/frontend/components/autopost/autopost.access';
 export const Autopost: FC = () => {
   const fetch = useFetch();
   const t = useT();
@@ -34,6 +37,8 @@ export const Autopost: FC = () => {
     return (await fetch('/autopost')).json();
   }, []);
   const { data, isLoading, mutate } = useSWR('autopost', list);
+  const user = useUser();
+  const access = autopostAccess(user?.tier as any, data?.length || 0);
   const addWebhook = useCallback(
     (data?: any) => () => {
       modal.openModal({
@@ -59,7 +64,7 @@ export const Autopost: FC = () => {
           method: 'DELETE',
         });
         mutate();
-        toaster.show(t('webhook_deleted_successfully', 'Webhook deleted successfully'), 'success');
+        toaster.show(t('autopost_deleted', 'Auto Post feed deleted'), 'success');
       }
     },
     []
@@ -90,6 +95,27 @@ export const Autopost: FC = () => {
           {isLoading ? (
             <div className="flex justify-center py-[16px]">
               <Spinner width={40} height={40} />
+            </div>
+          ) : !access.included && !data?.length ? (
+            <div className="flex flex-col gap-[12px] py-[8px]">
+              <div className="text-[18px] font-[600]">
+                {t('autopost_upsell_title', 'Turn your blog into social posts')}
+              </div>
+              <div className="text-newTextColor/70 max-w-[640px]">
+                {t(
+                  'autopost_upsell_body',
+                  'Auto Post watches your blog\'s RSS feed. When you publish a new article, AI writes a post about it for your channels and schedules it. Included in Pro ({{pro}} RSS feeds) and Business ({{business}}).',
+                  {
+                    pro: pricing.PRO.autoPostLimit,
+                    business: pricing.ULTIMATE.autoPostLimit,
+                  }
+                )}
+              </div>
+              <div>
+                <Button onClick={() => window.open('/billing', '_self')}>
+                  {t('autopost_upsell_cta', 'See plans')}
+                </Button>
+              </div>
             </div>
           ) : !data?.length ? (
             <EmptyState
@@ -136,14 +162,23 @@ export const Autopost: FC = () => {
               ))}
             </div>
           )}
-          <div>
-            <Button
-              onClick={addWebhook()}
-              className={clsx((data?.length || 0) > 0 && 'my-[16px]')}
-            >
-              {t('add_an_autopost', 'Add an autopost')}
-            </Button>
-          </div>
+          {access.included && (
+            <div className="flex flex-wrap items-center gap-[12px]">
+              <Button
+                onClick={addWebhook()}
+                disabled={access.atLimit}
+                className={clsx((data?.length || 0) > 0 && 'my-[16px]')}
+              >
+                {t('add_an_autopost', 'Add an autopost')}
+              </Button>
+              <span className="text-newTextColor/55 text-[13px]">
+                {t('autopost_feeds_used', '{{used}} of {{limit}} RSS feeds used', {
+                  used: access.used,
+                  limit: access.limit,
+                })}
+              </span>
+            </div>
+          )}
         </div>
       </div>
     </div>
