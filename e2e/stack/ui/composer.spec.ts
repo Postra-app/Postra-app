@@ -64,13 +64,19 @@ test('"Post Now" from the composer publishes to the platform', async ({ page }) 
 // ESLint 9 sweep touched these components.
 const LINK = `https://example.com/spring-offer?utm_source=newsletter&utm_medium=email&utm_campaign=${'x'.repeat(120)}`;
 
-test('the counter counts a link as 23 on Mastodon and an emoji as one on Bluesky', async ({ page }) => {
+// One composer per test: on a CI runner a second one in the same test ran
+// past the 30 s default.
+test('the counter counts a link as 23 on Mastodon', async ({ page }) => {
+  test.setTimeout(60_000);
   // 476 + space + link (23) = 500: exactly Mastodon's limit, not over it.
   await openComposer(page, 'mastodon', '');
   await page.keyboard.insertText(`${'a'.repeat(476)} ${LINK}`);
   // Shown twice: the total and the channel's own count.
   await expect(page.getByText('500/500', { exact: true }).first()).toBeVisible();
+});
 
+test('the counter counts an emoji as one on Bluesky', async ({ page }) => {
+  test.setTimeout(60_000);
   await openComposer(page, 'bluesky', '');
   await page.keyboard.insertText('😀'.repeat(300));
   await expect(page.getByText('300/300', { exact: true }).first()).toBeVisible();
