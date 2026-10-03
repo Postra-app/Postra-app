@@ -221,3 +221,26 @@ test('a superadmin refunds a paid charge; another customer\'s charge is refused'
   // An organisation owner (not staff) cannot reach the route at all.
   expect((await org.api.post('/admin/refund-charges', { data: { organizationId: org.orgId, chargeIds: [paid!.id] } })).status()).toBe(403);
 });
+
+// D20: one Stripe account serves every B K Company business, so Postra's
+// invoices carry the trading name — on a new customer and on one that existed
+// before the footer did.
+test('Postra customers get the "B K Company trading as Postra" invoice footer', async () => {
+  const fresh = await throwawayOrg(prisma, { tier: 'STANDARD', totalChannels: 3, channels: 0 });
+  cleanup.push(() => fresh.remove());
+  await prisma.subscription.deleteMany({ where: { organizationId: fresh.orgId } });
+  expect((await subscribe(fresh.api, 'STANDARD')).status()).toBe(201);
+  const created = (await prisma.organization.findUniqueOrThrow({ where: { id: fresh.orgId } })).paymentId!;
+  const c1 = (await stripe.customers.retrieve(created)) as Stripe.Customer;
+  expect(c1.invoice_settings.footer).toBe('B K Company trading as Postra');
+
+  const older = await throwawayOrg(prisma, { tier: 'STANDARD', totalChannels: 3, channels: 0 });
+  cleanup.push(() => older.remove());
+  await prisma.subscription.deleteMany({ where: { organizationId: older.orgId } });
+  const legacy = await stripe.customers.create({ email: `${older.orgId}@example.com` });
+  cleanup.push(() => stripe.customers.del(legacy.id));
+  await prisma.organization.update({ where: { id: older.orgId }, data: { paymentId: legacy.id } });
+  expect((await subscribe(older.api, 'STANDARD')).status()).toBe(201);
+  const c2 = (await stripe.customers.retrieve(legacy.id)) as Stripe.Customer;
+  expect(c2.invoice_settings.footer).toBe('B K Company trading as Postra');
+});
