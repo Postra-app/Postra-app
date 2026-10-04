@@ -1164,7 +1164,7 @@ const CalendarItem: FC<{
           // the post's action icons still appear.
           hasTags
             ? 'h-[24px] min-h-[24px] max-h-[24px]'
-            : 'h-[6px] min-h-[6px] max-h-[6px] group-hover:h-[24px] group-hover:min-h-[24px] group-hover:max-h-[24px]'
+            : 'h-[6px] min-h-[6px] max-h-[6px] group-hover:h-[24px] group-hover:min-h-[24px] group-hover:max-h-[24px] group-focus-within:h-[24px] group-focus-within:min-h-[24px] group-focus-within:max-h-[24px]'
         )}
         style={{
           background:
@@ -1175,78 +1175,100 @@ const CalendarItem: FC<{
         <div
           className={clsx(
             post?.tags?.[0]?.tag?.color ? 'mix-blend-difference' : '',
-            'group-hover:hidden cursor-pointer'
+            'group-hover:hidden group-focus-within:hidden cursor-pointer'
           )}
         >
           {(post?.tags ?? []).map((p) => p.tag.name).join(', ')}
         </div>
         {copyDebugJson && (
-          <div
+          <button
             className={clsx(
-              'hidden group-hover:block hover:underline cursor-pointer',
+              'hidden group-hover:block group-focus-within:block hover:underline cursor-pointer',
               post?.tags?.[0]?.tag?.color && 'mix-blend-difference'
             )}
-            onClick={copyDebugJson}
+            type="button"
+          aria-label={t('copy_debug_json', 'Copy Debug JSON')}
+          onClick={copyDebugJson}
           >
             <CopyDebug />
-          </div>
+          </button>
         )}
-        <div
+        <button
           className={clsx(
-            'hidden group-hover:block hover:underline cursor-pointer',
+            'hidden group-hover:block group-focus-within:block hover:underline cursor-pointer',
             post?.tags?.[0]?.tag?.color && 'mix-blend-difference'
           )}
-          onClick={duplicatePost}
+          type="button"
+        aria-label={t('duplicate_post', 'Duplicate Post')}
+        onClick={duplicatePost}
         >
           <Duplicate />
-        </div>
-        <div
+        </button>
+        <button
           className={clsx(
-            'hidden group-hover:block hover:underline cursor-pointer',
+            'hidden group-hover:block group-focus-within:block hover:underline cursor-pointer',
             post?.tags?.[0]?.tag?.color && 'mix-blend-difference'
           )}
-          onClick={preview}
+          type="button"
+        aria-label={t('preview_post', 'Preview Post')}
+        onClick={preview}
         >
           <Preview />
-        </div>{' '}
+        </button>{' '}
         {(post.integration?.providerIdentifier === 'x' && disableXAnalytics) ||
         !post.releaseId ? (
           <></>
         ) : post.releaseId === 'missing' && missingRelease ? (
-          <div
+          <button
             className={clsx(
-              'hidden group-hover:block hover:underline cursor-pointer',
+              'hidden group-hover:block group-focus-within:block hover:underline cursor-pointer',
               post?.tags?.[0]?.tag?.color && 'mix-blend-difference'
             )}
-            onClick={missingRelease}
+            type="button"
+          aria-label={t('post_statistics', 'Post Statistics')}
+          onClick={missingRelease}
           >
             <Statistics />
-          </div>
+          </button>
         ) : post.releaseId !== 'missing' ? (
-          <div
+          <button
             className={clsx(
-              'hidden group-hover:block hover:underline cursor-pointer',
+              'hidden group-hover:block group-focus-within:block hover:underline cursor-pointer',
               post?.tags?.[0]?.tag?.color && 'mix-blend-difference'
             )}
-            onClick={statistics}
+            type="button"
+          aria-label={t('post_statistics', 'Post Statistics')}
+          onClick={statistics}
           >
             <Statistics />
-          </div>
+          </button>
         ) : (
           <></>
         )}{' '}
-        <div
+        <button
           className={clsx(
-            'hidden group-hover:block hover:underline cursor-pointer',
+            'hidden group-hover:block group-focus-within:block hover:underline cursor-pointer',
             post?.tags?.[0]?.tag?.color && 'mix-blend-difference'
           )}
-          onClick={deletePost}
+          type="button"
+        aria-label={t('delete_post', 'Delete Post')}
+        onClick={deletePost}
         >
           <DeletePost />
-        </div>
+        </button>
       </div>
+      {/* Opens the post from the keyboard too (Enter or Space); it was a div
+          that only a mouse could reach. */}
       <div
+        role="button"
+        tabIndex={0}
         onClick={editPost}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            editPost();
+          }
+        }}
         className={clsx(
           'gap-[5px] w-full flex h-full flex-1 rounded-br-[10px] rounded-bl-[10px] p-[8px] text-[14px] bg-[rgba(15,23,42,0.92)] transition-all hover:bg-[rgba(30,41,59,0.95)]',
           'relative',
