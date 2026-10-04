@@ -163,6 +163,12 @@ async function uploadVideo(
   } satisfies AppBskyEmbedVideo.Main;
 }
 
+// A 4xx other than 429 from Bluesky's login: the credentials are refused.
+export const loginRefusedCredentials = (err: unknown) => {
+  const status = (err as { status?: unknown })?.status;
+  return typeof status === 'number' && status >= 400 && status < 500 && status !== 429;
+};
+
 @Rules(
   'Bluesky can have maximum 1 video or 4 pictures in one post, it can also be without attachments'
 )
@@ -294,7 +300,14 @@ export class BlueskyProvider extends SocialAbstract implements SocialProvider {
         password: body.password,
       });
     } catch (err) {
-      throw new RefreshToken('bluesky', JSON.stringify(err), {} as BodyInit);
+      // Only a definite refusal means the app password is broken. A 5xx or
+      // a network error is Bluesky being unavailable for a moment: marking
+      // the channel "reconnect needed" for that failed every following post
+      // with "Refresh channel needed" (upstream 0b26c98e).
+      if (loginRefusedCredentials(err)) {
+        throw new RefreshToken('bluesky', JSON.stringify(err), {} as BodyInit);
+      }
+      throw err;
     }
 
     return agent;
