@@ -82,16 +82,21 @@ test('the post Creator (LangChain graph) streams a result and is metered', async
 });
 
 test('a bad request never reaches OpenAI', async () => {
-  const sent = async () => ((await (await owner.get(`${FAKE}/__requests`)).json()) as unknown[]).length;
-  const before = await sent();
+  // Counted by this test's own text: the fake's global request count moved
+  // whenever another AI spec ran in parallel (CI, 10-04).
+  const marker = `stack-bad-request-${Date.now()}`;
+  const seen = async (text: string) =>
+    ((await (await owner.get(`${FAKE}/__seen?text=${encodeURIComponent(text)}`)).json()) as { count: number }).count;
+  const short = '⁂¶'; // too short to edit, and in no other spec's text
   for (const data of [
-    { text: 'ab', action: 'shorten' },
-    { text: TEXT, action: 'write-my-thesis' },
-    { text: TEXT, action: 'translate', language: 'klingon' },
+    { text: short, action: 'shorten' },
+    { text: `${TEXT} ${marker}`, action: 'write-my-thesis' },
+    { text: `${TEXT} ${marker}`, action: 'translate', language: 'klingon' },
   ]) {
     expect((await owner.post('/media/ai-edit', { data })).status(), JSON.stringify(data)).toBe(400);
   }
-  expect(await sent()).toBe(before);
+  expect(await seen(marker)).toBe(0);
+  expect(await seen(short)).toBe(0);
 });
 
 test('a brand-new account waits an hour for AI', async () => {
