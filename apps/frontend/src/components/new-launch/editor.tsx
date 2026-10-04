@@ -71,6 +71,7 @@ import {
 import { DelayComponent } from '@gitroom/frontend/components/new-launch/delay.component';
 
 const MAX_UPLOAD_SIZE = 1024 * 1024 * 1024; // 1 GB
+const handledPastes = new WeakSet<ClipboardEvent>();
 
 const InterceptBoldShortcut = Extension.create({
   name: 'preventBoldWithUnderline',
@@ -598,9 +599,10 @@ export const Editor: FC<{
   const [loading, setLoading] = useState(false);
 
   const uppy = useUppyUploader({
+    // No uppy.clear() here: the finished files are already removed, and
+    // clearing wiped another upload still in flight (upstream 480ee7ee).
     onUploadSuccess: (result: any) => {
       appendImages(result);
-      uppy.clear();
     },
     allowedFileTypes: 'image/*,video/mp4',
     onStart: () => {},
@@ -635,6 +637,14 @@ export const Editor: FC<{
     async (event: ClipboardEvent | File[]) => {
       if (num > 0 && comments === 'no-media') {
         return;
+      }
+      // ProseMirror hands a paste it did not take over to the editor a second
+      // time, with the same event: the files were added twice.
+      if (!Array.isArray(event)) {
+        if (handledPastes.has(event)) {
+          return;
+        }
+        handledPastes.add(event);
       }
       // @ts-expect-error event is a File[]|ClipboardEvent union; clipboardData is on one arm
       const clipboardItems = event.clipboardData?.items;

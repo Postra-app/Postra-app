@@ -196,7 +196,13 @@ export class ThreadsProvider extends SocialAbstract implements SocialProvider {
       ).json();
 
       if (status === 'ERROR') {
-        throw new Error(error_message || id);
+        // Threads often says only "UNKNOWN"; that told the customer nothing
+        // (upstream e6251b25).
+        throw new Error(
+          error_message && error_message !== 'UNKNOWN'
+            ? error_message
+            : 'Threads could not process the media, please check the media format and try again'
+        );
       }
 
       if (status === 'FINISHED') {

@@ -1007,11 +1007,48 @@ export class PostsService {
     return '';
   }
 
+  // A published post put back in the queue keeps its past date, so the
+  // workflow publishes it again at once. Only on an explicit `republish`; the
+  // message is the confirmation an API or agent caller never saw
+  // (upstream b6310364).
+  private guardAgainstRepublish(
+    post: {
+      state: State;
+      publishDate: Date;
+      integration?: { name?: string; providerIdentifier: string } | null;
+    } | null,
+    howToEdit: string
+  ) {
+    if (post?.state !== 'PUBLISHED') {
+      return;
+    }
+    throw new BadRequestException(
+      `This post was already published on ${dayjs
+        .utc(post.publishDate)
+        .format('YYYY-MM-DD HH:mm')} UTC. Saving it this way would publish it again to ${
+        post.integration?.name || post.integration?.providerIdentifier || 'the channel'
+      }. To edit it without publishing again, ${howToEdit}. To publish it again on purpose, send republish: true.`
+    );
+  }
+
   async createPost(
     orgId: string,
     body: CreatePostDto,
     creationMethod: CreationMethod
   ): Promise<any[]> {
+    // Every post of the request is checked before the first one is written.
+    if ((body.type === 'now' || body.type === 'schedule') && !body.republish) {
+      for (const post of body.posts) {
+        const existingId = post.value?.[0]?.id;
+        if (existingId) {
+          this.guardAgainstRepublish(
+            await this._postRepository.getPostById(existingId, orgId),
+            `save it with type 'update'`
+          );
+        }
+      }
+    }
+
     const postList = [];
     for (const post of body.posts) {
       const provider = this._integrationManager.getSocialIntegration(
@@ -1048,6 +1085,16 @@ export class PostsService {
         return [] as any[];
       }
 
+      // The publish guard skips a post that already has a release, so a
+      // republish saved with "Update" (type 'schedule') went nowhere. Clear it,
+      // as "Post now" on a published post already did in the workflow.
+      if (body.republish && body.type !== 'draft' && body.type !== 'update') {
+        await this._postRepository.clearReleases(
+          orgId,
+          posts.map((p) => p.id)
+        );
+      }
+
       if (body.type !== 'update') {
         this.startWorkflow(
           post.settings.__type.split('-')[0].toLowerCase(),
@@ -1078,11 +1125,15 @@ export class PostsService {
   async changePostStatus(
     orgId: string,
     id: string,
-    status: 'draft' | 'schedule'
+    status: 'draft' | 'schedule',
+    republish = false
   ) {
     const getPostById = await this._postRepository.getPostById(id, orgId);
     if (!getPostById) {
       throw new NotFoundException('Post not found');
+    }
+    if (status === 'schedule' && !republish) {
+      this.guardAgainstRepublish(getPostById, 'leave its status as it is');
     }
 
     const state: State = status === 'draft' ? 'DRAFT' : 'QUEUE';
@@ -1104,7 +1155,8 @@ export class PostsService {
     orgId: string,
     id: string,
     date: string,
-    action: 'schedule' | 'update' = 'schedule'
+    action: 'schedule' | 'update' = 'update',
+    republish = false
   ) {
     // Both used to surface as 500s: garbage reached Prisma as Invalid Date, and
     // a post from another org (or none) came back null.
@@ -1115,6 +1167,9 @@ export class PostsService {
     const getPostById = await this._postRepository.getPostById(id, orgId);
     if (!getPostById) {
       throw new NotFoundException('Post not found');
+    }
+    if (action === 'schedule' && !republish) {
+      this.guardAgainstRepublish(getPostById, `use action 'update'`);
     }
 
     // schedule: Set status to QUEUE and change date (reschedule the post)

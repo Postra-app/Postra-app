@@ -120,6 +120,12 @@ export class CreatePostDto {
   @IsNumber()
   inter?: number;
 
+  // Explicit opt-in to publish an already published post again; without it a
+  // "now"/"schedule" save of a published post is refused.
+  @IsOptional()
+  @IsBoolean()
+  republish?: boolean;
+
   @IsDefined()
   @IsDateString()
   date: string;

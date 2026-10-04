@@ -20,6 +20,9 @@ import { EventEmitter } from 'events';
 
 interface OpenModalInterface {
   title?: any;
+  // Name for screen readers when the modal draws its own header
+  // (`removeLayout`) and has no `title`.
+  ariaLabel?: string;
   closeOnClickOutside?: boolean;
   removeLayout?: boolean;
   fullScreen?: boolean;
@@ -182,7 +185,15 @@ export const Component: FC<{
                 : 'absolute top-0 left-0 min-w-full min-h-full'
             )}
           >
+            {/* A dialog for screen readers too: the post editor and the
+                other full-screen modals were plain divs over the page. */}
             <div
+              role="dialog"
+              aria-modal="true"
+              aria-label={
+                modal.ariaLabel ||
+                (typeof modal.title === 'string' ? modal.title : 'Dialog')
+              }
               className={clsx(
                 modal.fullScreen ? 'w-full h-full flex-1' : 'mx-auto py-[48px]'
               )}

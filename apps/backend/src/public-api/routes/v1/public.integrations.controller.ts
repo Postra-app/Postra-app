@@ -468,7 +468,12 @@ export class PublicIntegrationsController {
     @Body() body: ChangePostStatusDto
   ) {
     Sentry.metrics.count('public_api-request', 1);
-    return this._postsService.changePostStatus(org.id, id, body.status);
+    return this._postsService.changePostStatus(
+      org.id,
+      id,
+      body.status,
+      body.republish === true
+    );
   }
 
   @Put('/posts/:id/release-id')

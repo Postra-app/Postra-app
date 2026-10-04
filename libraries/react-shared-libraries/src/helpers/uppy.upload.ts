@@ -15,6 +15,18 @@ const fetchUploadApiEndpoint = async (
       'Content-Type': 'application/json',
     },
   });
+  // Our fetch does not throw on HTTP errors, and Uppy takes whatever this
+  // returns as a finished step: an error body became an uploaded file.
+  if (!res.ok) {
+    const body = await res.text().catch(() => '');
+    let message = body;
+    try {
+      message = JSON.parse(body)?.message || body;
+    } catch {
+      // not JSON: keep the text
+    }
+    throw new Error(message || `${endpoint} failed (${res.status})`);
+  }
   return res.json();
 };
 
