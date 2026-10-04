@@ -20,12 +20,42 @@ export const clientIpFromForwardedFor = (header?: string): string => {
   return hops[hops.length - 1] || '';
 };
 
+/**
+ * CopilotKit asks the AI runtime which agents exist on every page load
+ * (`availableAgents` on POST /copilot/chat). It reads metadata and calls no
+ * model, but it counted toward the route's AI limit, so a team clicking
+ * around used up its organisation's allowance in minutes. Only a document
+ * without a mutation qualifies: GraphQL runs the operation named
+ * `operationName`, and a mutation can carry any name.
+ */
+export const isCopilotMetadataQuery = (body: unknown): boolean => {
+  const { operationName, query } = (body || {}) as {
+    operationName?: unknown;
+    query?: unknown;
+  };
+  return (
+    operationName === 'availableAgents' &&
+    typeof query === 'string' &&
+    !/\b(mutation|subscription)\b/i.test(query)
+  );
+};
+
 @Injectable()
 export class ThrottlerBehindProxyGuard extends ThrottlerGuard {
   public override async canActivate(
     context: ExecutionContext
   ): Promise<boolean> {
-    const { url, method } = context.switchToHttp().getRequest<Request>();
+    const { url, method, body } = context
+      .switchToHttp()
+      .getRequest<Request>();
+
+    if (
+      method === 'POST' &&
+      url.includes('/copilot/chat') &&
+      isCopilotMetadataQuery(body)
+    ) {
+      return true;
+    }
 
     // Public posting API (existing behaviour).
     if (method === 'POST' && url.includes('/public/v1/posts')) {
