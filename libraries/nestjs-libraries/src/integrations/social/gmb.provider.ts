@@ -10,6 +10,7 @@ import { numericId } from '@gitroom/nestjs-libraries/integrations/social/numeric
 import { google } from 'googleapis';
 import { OAuth2Client } from 'google-auth-library/build/src/auth/oauth2client';
 import {
+  BadBody,
   SocialAbstract,
   ValidityMedia,
 } from '@gitroom/nestjs-libraries/integrations/social.abstract';
@@ -489,14 +490,35 @@ export class GmbProvider extends SocialAbstract implements SocialProvider {
       'create local post'
     );
 
-    const postData = await response.json();
+    const postData = await response.json().catch(() => ({}));
 
-    // Extract the post ID and construct the URL
-    const postId = postData.name || '';
+    // Google answers 200 for a post it rejected on policy, and occasionally
+    // without the post at all; both were reported as published (upstream
+    // f700b8a1, 1d965049).
+    if (postData?.state === 'REJECTED') {
+      throw new BadBody(
+        this.identifier,
+        JSON.stringify(postData),
+        JSON.stringify(postBody),
+        'Google rejected this post for a content policy violation. Please review the post content and try again.'
+      );
+    }
+    if (!postData?.name) {
+      throw new BadBody(
+        this.identifier,
+        JSON.stringify(postData),
+        JSON.stringify(postBody),
+        'Google did not confirm the post creation. Please try again.'
+      );
+    }
+
+    const postId = postData.name;
     const locationId = id.split('/').pop();
 
-    // GMB posts don't have direct URLs, but we can link to the business profile
-    const releaseURL = `https://business.google.com/locations/${locationId}`;
+    // The post's own link in Google Search when Google gives one (upstream
+    // 6345ca57); the business profile otherwise.
+    const releaseURL =
+      postData.searchUrl || `https://business.google.com/locations/${locationId}`;
 
     return [
       {
