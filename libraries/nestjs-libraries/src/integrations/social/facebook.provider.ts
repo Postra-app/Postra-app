@@ -76,7 +76,7 @@ export class FacebookProvider extends SocialAbstract implements SocialProvider {
     status: number
   ):
     | {
-        type: 'refresh-token' | 'bad-body';
+        type: 'refresh-token' | 'bad-body' | 'retry';
         value: string;
       }
     | undefined {
@@ -95,6 +95,28 @@ export class FacebookProvider extends SocialAbstract implements SocialProvider {
       };
     }
 
+    // The token is valid but belongs to the user, not to the page: the page
+    // was never granted to the app, so only reconnecting fixes it.
+    if (
+      body.indexOf(
+        'Unpublished posts must be posted to a page as the page itself'
+      ) > -1
+    ) {
+      return {
+        type: 'refresh-token' as const,
+        value:
+          'Postra is not authorized to publish as this page, please reconnect the channel',
+      };
+    }
+
+    if (body.indexOf('(#200)') > -1) {
+      return {
+        type: 'bad-body' as const,
+        value:
+          'Facebook rejected the post due to missing permissions. Make sure your Facebook account has full content access to the Page, then reconnect the channel.',
+      };
+    }
+
     if (body.indexOf('1366046') > -1) {
       return {
         type: 'bad-body' as const,
@@ -102,9 +124,11 @@ export class FacebookProvider extends SocialAbstract implements SocialProvider {
       };
     }
 
+    // Code 368 "Temporarily blocked for policies violations" (subcode
+    // 1390008): Meta documents it as temporary — wait and retry.
     if (body.indexOf('1390008') > -1) {
       return {
-        type: 'bad-body' as const,
+        type: 'retry' as const,
         value: 'You are posting too fast, please slow down',
       };
     }
@@ -231,6 +255,44 @@ export class FacebookProvider extends SocialAbstract implements SocialProvider {
       return {
         type: 'bad-body' as const,
         value: 'Facebook return: No permission to publish the video',
+      };
+    }
+    // Subcodes on a word boundary: "459" must not match inside 4590…
+    if (/"error_subcode":459\b/.test(body)) {
+      return {
+        type: 'bad-body' as const,
+        value:
+          'Facebook is asking you to resolve a security check. Log in at facebook.com, complete it, then try again',
+      };
+    }
+    if (/"error_subcode":492\b/.test(body)) {
+      return {
+        type: 'bad-body' as const,
+        value:
+          'Your Facebook user no longer has a role on this Page. Ask a Page admin to grant you a role, then reconnect the channel',
+      };
+    }
+    if (body.indexOf('must be granted before impersonating') > -1) {
+      return {
+        type: 'refresh-token' as const,
+        value:
+          'Facebook Page permissions are missing, please reconnect the channel and allow all permissions',
+      };
+    }
+    if (
+      /"error_subcode":33\b/.test(body) &&
+      body.indexOf('does not exist') > -1
+    ) {
+      return {
+        type: 'bad-body' as const,
+        value:
+          'The Facebook Page or post this was targeting no longer exists, please reconnect the channel and schedule again',
+      };
+    }
+    if (body.indexOf('Sorry, something went wrong') > -1) {
+      return {
+        type: 'retry' as const,
+        value: 'Facebook is temporarily unavailable, please try again later',
       };
     }
     // Match the token-expiry error as a STRUCTURED code, not a loose substring.
@@ -431,6 +493,7 @@ export class FacebookProvider extends SocialAbstract implements SocialProvider {
   async fetchPageInformation(accessToken: string, data: { page: string }) {
     const pageId = data.page;
     const fields = 'id,username,name,access_token,picture.type(large)';
+    let foundWithoutToken = false;
 
     const searchPaginated = async (startUrl: string) => {
       let url: string | undefined = startUrl;
@@ -440,7 +503,11 @@ export class FacebookProvider extends SocialAbstract implements SocialProvider {
           const page = response.data.find(
             (p: any) => String(p.id) === String(pageId)
           );
-          if (page) {
+          // A page listed through a business the user has no role on comes
+          // back without a page token: keep looking for a listing that has one.
+          if (page && !page.access_token) {
+            foundWithoutToken = true;
+          } else if (page) {
             return {
               id: page.id,
               name: page.name,
@@ -494,6 +561,12 @@ export class FacebookProvider extends SocialAbstract implements SocialProvider {
       }
     } catch {
       // Business Manager API not available for all users
+    }
+
+    if (foundWithoutToken) {
+      throw new Error(
+        'Your Facebook user has no permission to manage this page. Ask a page admin for full content access, then reconnect the channel'
+      );
     }
 
     throw new Error('Page not found in your accounts');

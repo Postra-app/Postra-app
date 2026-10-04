@@ -13,7 +13,9 @@ import { makeSecureId } from '@gitroom/nestjs-libraries/services/make.secure.id'
 import { timer } from '@gitroom/helpers/utils/timer';
 import dayjs from 'dayjs';
 import {
+  BadBody,
   ProcessingTimeout,
+  RefreshToken,
   SocialAbstract,
   ValidityMedia,
 } from '@gitroom/nestjs-libraries/integrations/social.abstract';
@@ -310,6 +312,14 @@ export class InstagramProvider
       };
     }
 
+    if (body.indexOf('(#200)') > -1) {
+      return {
+        type: 'bad-body' as const,
+        value:
+          'Facebook rejected the post due to missing permissions. Make sure your Facebook account has full content access to the Page linked to this Instagram account, then reconnect the channel.',
+      };
+    }
+
     if (body.indexOf('Not enough permissions to post') > -1) {
       return {
         type: 'bad-body' as const,
@@ -321,6 +331,21 @@ export class InstagramProvider
       return {
         type: 'bad-body' as const,
         value: 'Aspect ratio not supported, must be between 4:5 to 1.91:1',
+      };
+    }
+
+    // Meta put the account behind a checkpoint: every post fails until the
+    // user logs in on Instagram. Our "refresh-token" marks the channel for
+    // reconnecting (Instagram has no token refresh), so later posts stop
+    // failing one by one and the user is told what to do (upstream 28730a0c).
+    if (
+      body.indexOf('You cannot access the app till you log in to') > -1 ||
+      body.indexOf('Session key is malformed') > -1
+    ) {
+      return {
+        type: 'refresh-token' as const,
+        value:
+          'Instagram requires you to log in at instagram.com and follow its instructions before posting can resume. After that, please reconnect this channel.',
       };
     }
 
@@ -357,8 +382,17 @@ export class InstagramProvider
     if (body.indexOf('2207082') > -1) {
       return {
         type: 'retry' as const,
-        value: 'Could not upload your media',
-      }
+        value:
+          'Instagram could not process this video. If you attached audio to a video that has no sound track, set the original video volume to 0 and try again',
+      };
+    }
+
+    if (body.indexOf('2207085') > -1) {
+      return {
+        type: 'bad-body' as const,
+        value:
+          'Instagram could not process the video, please check the video format, duration and resolution and try again',
+      };
     }
 
     if (body.indexOf('2207077') > -1) {
@@ -390,6 +424,27 @@ export class InstagramProvider
     }
 
     return undefined;
+  }
+
+  // A container Instagram could not process (ERROR) or that ran out of time
+  // (EXPIRED) used to fall through to media_publish, which failed with an
+  // unrelated message. Fail with the reason Instagram gave, curated where we
+  // know it (upstream f4bd43f2, c693a97e).
+  failedContainer(statusCode: string, reason?: string) {
+    if (statusCode !== 'ERROR' && statusCode !== 'EXPIRED') {
+      return;
+    }
+    const json = JSON.stringify({ status_code: statusCode, status: reason });
+    const handled = this.handleErrors(reason || '', 200);
+    if (handled?.type === 'refresh-token') {
+      throw new RefreshToken(this.identifier, json, '{}', handled.value);
+    }
+    throw new BadBody(
+      this.identifier,
+      json,
+      '{}',
+      handled?.value || reason || 'Instagram could not process the media'
+    );
   }
 
   async reConnect(
@@ -729,17 +784,18 @@ export class InstagramProvider
           if (processingAttempts++ >= 14) {
             throw new ProcessingTimeout('instagram');
           }
-          const { status_code } = await (
+          const { status_code, status: reason } = await (
             await this.fetch(
               `https://${type}/v20.0/${photoId}?access_token=${
                 userToken || accessToken
-              }&fields=status_code`,
+              }&fields=status_code,status`,
               undefined,
               '',
               0,
               true
             )
           ).json();
+          this.failedContainer(status_code, reason);
           await timer(30000);
           status = status_code;
         }
@@ -831,9 +887,9 @@ export class InstagramProvider
         if (carouselAttempts++ >= 14) {
           throw new ProcessingTimeout('instagram');
         }
-        const { status_code } = await (
+        const { status_code, status: reason } = await (
           await this.fetch(
-            `https://${type}/v20.0/${containerId}?fields=status_code&access_token=${
+            `https://${type}/v20.0/${containerId}?fields=status_code,status&access_token=${
               userToken || accessToken
             }`,
             undefined,
@@ -842,6 +898,7 @@ export class InstagramProvider
             true
           )
         ).json();
+        this.failedContainer(status_code, reason);
         await timer(30000);
         status = status_code;
       }
