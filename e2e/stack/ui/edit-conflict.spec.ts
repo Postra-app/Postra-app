@@ -1,22 +1,17 @@
 import { expect, Page, test } from '@playwright/test';
-import { createDraft, signedIn } from '../helpers';
+import { signedIn } from '../helpers';
 import { USERS } from '../seed';
+import { quietSlot, weekOf } from './ui-helpers';
 
 // Someone saves the post while it is open in my editor: saving mine asks
 // whether to replace their version or keep it (api/edit-conflict.spec.ts).
 
-// The draft is two days ahead, often in next week: open the week it is in.
-const weekOf = (date: Date) => {
-  const day = (n: number) => {
-    const d = new Date(date);
-    d.setDate(d.getDate() - ((d.getDay() + 6) % 7) + n);
-    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-  };
-  return `display=week&startDate=${day(0)}&endDate=${day(6)}`;
-};
+// A draft in a slot of its own: drafts other tests make two days ahead fold
+// into "show more" in a busy cell.
+const SLOT = quietSlot(3);
 
 const openEditor = async (page: Page, content: string) => {
-  await page.goto(`/launches?${weekOf(new Date(Date.now() + 2 * 86_400_000))}`);
+  await page.goto(weekOf(SLOT));
   await page
     .getByRole('button', { name: `Open post: ${USERS.a.channel.name}` })
     .filter({ hasText: content })
@@ -30,7 +25,7 @@ const theyEdit = async (id: string, group: string, content: string) => {
     data: {
       type: 'draft',
       shortLink: false,
-      date: new Date(Date.now() + 2 * 86_400_000).toISOString(),
+      date: SLOT.toISOString(),
       tags: [],
       posts: [
         {
@@ -58,7 +53,24 @@ for (const choice of ['Replace with mine', 'Keep theirs'] as const) {
     test.setTimeout(60_000);
     const api = await signedIn('a');
     const content = `[stack ui] edit conflict ${choice} ${Date.now()}`;
-    const draft = await createDraft(api, 'a', content);
+    const created = await api.post('/posts', {
+      data: {
+        type: 'draft',
+        shortLink: false,
+        date: SLOT.toISOString(),
+        tags: [],
+        posts: [
+          {
+            integration: { id: USERS.a.channel.id },
+            value: [{ content, image: [] }],
+            settings: { __type: 'bluesky' },
+          },
+        ],
+      },
+    });
+    expect(created.status(), await created.text()).toBe(201);
+    const { postId } = (await created.json())[0];
+    const draft = { id: postId as string, group: (await (await api.get(`/posts/${postId}`)).json()).group as string };
     await api.dispose();
 
     const editor = await openEditor(page, content);
