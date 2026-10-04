@@ -95,12 +95,14 @@ export const ChangeLanguageComponent = () => {
     <div className="relative">
       <div className="grid grid-cols-4 gap-2">
         {availableLanguages.map((language) => (
-          <div
+          <button
+            type="button"
             className={clsx(
               'flex items-center flex-col bg-newTableHeader hover:bg-newTableBorder p-[20px] cursor-pointer gap-2',
               language === currentLanguage ? 'border border-textColor' : ''
             )}
             key={language}
+            aria-pressed={language === currentLanguage}
             onClick={() => handleLanguageChange(language)}
           >
             <ReactCountryFlag
@@ -115,7 +117,7 @@ export const ChangeLanguageComponent = () => {
             <Text weight={language === currentLanguage ? 'bold' : 'normal'}>
               {getLanguageName(language)}
             </Text>
-          </div>
+          </button>
         ))}
       </div>
     </div>
@@ -133,8 +135,10 @@ export const LanguageComponent = () => {
     });
   };
   return (
-    <div
+    <button
+      type="button"
       onClick={openModal}
+      aria-label={t('change_language', 'Change Language')}
       className="rounded-full overflow-hidden h-[22px] w-[22px] relative cursor-pointer"
     >
       <ReactCountryFlag
@@ -151,6 +155,6 @@ export const LanguageComponent = () => {
         }}
         title={currentLanguage}
       />
-    </div>
+    </button>
   );
 };
