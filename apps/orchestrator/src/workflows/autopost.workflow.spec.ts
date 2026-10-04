@@ -11,7 +11,7 @@ const sleep = jest.fn(async () => {
 let history = 10;
 jest.mock('@temporalio/workflow', () => ({
   proxyActivities: () => ({ autoPost }),
-  sleep: (...a: any[]) => sleep(...a),
+  sleep: () => sleep(),
   continueAsNew: (...a: any[]) => continueAsNew(...a),
   patched: () => true,
   workflowInfo: () => ({ historyLength: history }),
