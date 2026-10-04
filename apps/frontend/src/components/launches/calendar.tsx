@@ -138,6 +138,13 @@ const usePostActions = (onMutate?: () => void) => {
       };
 
       const data = await (await fetch(`/posts/group/${post.group}`)).json();
+      // The post was deleted elsewhere (another tab, a teammate) since the
+      // calendar loaded: 404, and data.posts[0] threw (upstream c1d55367).
+      if (!data?.posts?.length) {
+        toaster.show(t('post_not_found', 'Post not found'), 'warning');
+        mutate();
+        return;
+      }
       const date = !isDuplicate
         ? null
         : (await (await fetch('/posts/find-slot')).json()).date;
