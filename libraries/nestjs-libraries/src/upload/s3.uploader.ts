@@ -36,9 +36,10 @@ const ALLOWED_EXT_TO_MIME: Record<string, string> = {
   '.mp4': 'video/mp4',
 };
 
-// Declared-size guards enforced at create time (the client cannot stream more
-// than it declared without S3 rejecting parts, and contents are magic-byte
-// checked on complete). Generous enough for long-form video (YouTube, Reels).
+// Size limits. The size declared at create time is only the client's word:
+// S3 never sees it, and each presigned part accepts up to 5 GB, so the real
+// size of the assembled object is checked again on complete (with the magic
+// bytes). Generous enough for long-form video (YouTube, Reels).
 const MAX_IMAGE_BYTES = 10 * 1024 * 1024; // 10 MB
 const MAX_VIDEO_BYTES = 4 * 1024 * 1024 * 1024; // 4 GB
 
@@ -218,6 +219,18 @@ export async function completeMultipartUpload(req: Request, res: Response) {
       return res
         .status(400)
         .json({ message: 'File contents do not match declared type.' });
+    }
+
+    // "bytes 0-4100/<total>" on the ranged read above: the assembled size.
+    const total =
+      Number(head.ContentRange?.split('/')[1]) || Number(head.ContentLength);
+    if (!total || total > maxBytesForMime(expectedMime)) {
+      await S3.send(new DeleteObjectCommand({ Bucket: S3_BUCKET, Key: key }));
+      return res.status(400).json({
+        message: `File size exceeds the maximum allowed size of ${maxBytesForMime(
+          expectedMime
+        )} bytes.`,
+      });
     }
 
     response.Location = `${CDN_URL}/${key}`;
