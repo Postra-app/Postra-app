@@ -138,17 +138,14 @@ export class OAuthService {
 
     const token = 'pos_' + makeSecureId(40);
     const encryptedToken = AuthService.fixedEncryption(token);
-    const {
-      organizationId,
-      organization: { paymentId },
-    } = await this._oauthRepository.exchangeCodeForToken(
+    const { organizationId } = await this._oauthRepository.exchangeCodeForToken(
       auth.id,
       encryptedToken
     );
 
+    // No Stripe customer id here: an outside app has no use for it.
     return {
       id: organizationId,
-      cus: paymentId,
       access_token: token,
       token_type: 'bearer',
     };
@@ -164,7 +161,13 @@ export class OAuthService {
   }
 
   async revokeApp(userId: string, authId: string) {
-    await this._oauthRepository.revokeAuthorization(userId, authId);
+    const { count } = await this._oauthRepository.revokeAuthorization(
+      userId,
+      authId
+    );
+    if (!count) {
+      throw new HttpException('Authorization not found', HttpStatus.NOT_FOUND);
+    }
     return { success: true };
   }
 }

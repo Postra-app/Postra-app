@@ -167,11 +167,6 @@ export class OAuthRepository {
       where: { id },
       select: {
         organizationId: true,
-        organization: {
-          select: {
-            paymentId: true,
-          }
-        }
       },
       data: {
         accessToken: encryptedToken,
@@ -226,8 +221,10 @@ export class OAuthRepository {
     });
   }
 
+  // updateMany: an id that is not this user's matches nothing (count 0)
+  // instead of throwing "record not found" as a 500.
   revokeAuthorization(userId: string, authId: string) {
-    return this._oauthAuth.model.oAuthAuthorization.update({
+    return this._oauthAuth.model.oAuthAuthorization.updateMany({
       where: {
         id: authId,
         userId,
