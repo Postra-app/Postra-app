@@ -32,4 +32,9 @@ export class EmailActivity {
   async setStreak(organizationId: string, type: 'start' | 'end') {
     return this._organizationService.setStreak(organizationId, type);
   }
+
+  @ActivityMethod()
+  async getLastPublishDate(organizationId: string) {
+    return this._organizationService.getLastPublishDate(organizationId);
+  }
 }

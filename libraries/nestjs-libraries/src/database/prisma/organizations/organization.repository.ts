@@ -383,6 +383,24 @@ export class OrganizationRepository {
     } catch (err) {}
   }
 
+  // The newest published post, never in the future: the streak workflow sleeps
+  // until a day after it. Deleted posts do not keep a streak alive.
+  async getLastPublishDate(organizationId: string) {
+    const org = await this._organization.model.organization.findUnique({
+      where: { id: organizationId },
+      select: {
+        post: {
+          where: { state: 'PUBLISHED', deletedAt: null },
+          orderBy: { publishDate: 'desc' },
+          take: 1,
+          select: { publishDate: true },
+        },
+      },
+    });
+    const publishDate = org?.post?.[0]?.publishDate;
+    return publishDate ? Math.min(publishDate.getTime(), Date.now()) : null;
+  }
+
   async getTeam(orgId: string) {
     return this._organization.model.organization.findUnique({
       where: {
