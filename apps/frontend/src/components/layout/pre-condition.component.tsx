@@ -33,7 +33,7 @@ export const PreConditionComponent: FC = () => {
   useEffect(() => {
     if (query.get('precondition')) {
       modal.openModal({
-        title: 'Suspicious activity detected',
+        title: 'This channel was used in another Postra account',
         withCloseButton: true,
         classNames: {
           modal: 'text-textColor',
