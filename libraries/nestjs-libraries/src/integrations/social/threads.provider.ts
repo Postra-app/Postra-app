@@ -42,12 +42,23 @@ export class ThreadsProvider extends SocialAbstract implements SocialProvider {
 
   override handleErrors(body: string):
     | {
-        type: 'refresh-token' | 'bad-body';
+        type: 'refresh-token' | 'bad-body' | 'retry';
         value: string;
       }
     | undefined {
     if (body.includes('Error validating access token')) {
       return { type: 'refresh-token', value: 'Threads access token expired' };
+    }
+
+    // Threads has not found the media container it just created; a few
+    // seconds later it has. Retry instead of failing the post (upstream
+    // 5536d8a7).
+    if (body.includes('4279009')) {
+      return {
+        type: 'retry',
+        value:
+          'Threads could not find the media container yet, please try again in a few seconds',
+      };
     }
 
     if (body.includes('2207051')) {
