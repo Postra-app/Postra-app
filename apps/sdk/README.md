@@ -1,24 +1,39 @@
-# Postra NodeJS SDK
+# @postra/node
 
-This is the NodeJS SDK for [Postra](https://postra.co.uk).
-
-You can start by installing the package:
+Node.js client for the [Postra](https://postra.co.uk) public API. Node 18 or
+newer, no dependencies.
 
 ```bash
 npm install @postra/node
 ```
 
 ## Usage
+
+Create an API key in Postra under **Settings → Developers** (plans with API
+access).
+
 ```typescript
 import Postra from '@postra/node';
-const postra = new Postra('your api key', 'your self-hosted instance (optional)');
+
+const postra = new Postra(process.env.POSTRA_API_KEY!);
+
+const channels = await postra.integrations();
 ```
 
-The available methods are:
-- `post(posts: CreatePostDto)` - Schedule a post to Postra
-- `postList(filters: GetPostsDto)` - Get a list of posts
-- `upload(file: Buffer, extension: string)` - Upload a file to Postra
-- `integrations()` - Get a list of connected channels
-- `deletePost(id: string)` - Delete a post by ID
+The second argument is the API base URL. It defaults to
+`https://app.postra.pl/api`; pass your own only for a self-hosted instance.
 
-Alternatively you can use the SDK with curl, check the [Postra API documentation](https://docs.postra.co.uk/public-api) for more information.
+| Method | Endpoint | Does |
+|---|---|---|
+| `integrations()` | `GET /public/v1/integrations` | Connected channels |
+| `post(posts)` | `POST /public/v1/posts` | Schedule, publish now or save a draft |
+| `postList(filters)` | `GET /public/v1/posts` | Posts between `startDate` and `endDate` |
+| `upload(file, extension)` | `POST /public/v1/upload` | Upload an image or MP4 to the media library |
+| `deletePost(id)` | `DELETE /public/v1/posts/:id` | Delete a post and its thread |
+
+A response other than 2xx throws `PostraError` with `status` and the API's
+`body`, so a wrong key reads as `401`, not as a JSON parse error.
+
+## Licence
+
+AGPL-3.0, like the rest of Postra.

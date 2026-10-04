@@ -1,0 +1,65 @@
+name: Publish SDK
+
+# Publishes apps/sdk as @postra/node through npm trusted publishing: npm
+# trusts this workflow file over OIDC, so there is no npm token anywhere.
+# The very first version was published by hand (npm only lets you attach a
+# trusted publisher to a package that already exists). After that: bump
+# "version" in apps/sdk/package.json, merge, push a tag `sdk-v<version>`.
+
+on:
+  push:
+    tags:
+      - 'sdk-v*'
+
+permissions:
+  contents: read
+  id-token: write
+
+concurrency:
+  group: publish-sdk
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10.6.1
+          run_install: false
+
+      - name: Setup Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+          registry-url: https://registry.npmjs.org
+
+      # Trusted publishing needs npm 11.5.1+; Node 22 ships npm 10.
+      - name: Update npm
+        run: npm install -g npm@^11.5.1
+
+      - name: Tag matches the package version
+        working-directory: apps/sdk
+        run: |
+          version=$(node -p "require('./package.json').version")
+          if [ "sdk-v$version" != "$GITHUB_REF_NAME" ]; then
+            echo "Tag $GITHUB_REF_NAME does not match apps/sdk version $version" >&2
+            exit 1
+          fi
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Test
+        run: pnpm exec jest apps/sdk --forceExit
+
+      - name: Publish
+        working-directory: apps/sdk
+        run: npm publish --access public

@@ -32,10 +32,9 @@ import { useT } from '@gitroom/react/translation/get.transation.service.client';
 import { GlobalSettings } from '@gitroom/frontend/components/settings/global.settings';
 import { ApprovedAppsComponent } from '@gitroom/frontend/components/approved-apps/approved-apps.component';
 
-// The Developers tab documents the `@postra/node` SDK / CLI and
-// docs.postra.co.uk, none of which are published yet. Keep the code but hide
-// the tab until they exist — flip to `true` once the package + docs ship.
-const DEVELOPER_API_ENABLED = false;
+// The Developers tab: API key, the published `@postra/node` SDK, MCP and
+// OAuth apps. Hidden until the SDK was on npm (2026-10).
+const DEVELOPER_API_ENABLED = true;
 
 export const SettingsPopup: FC<{
   getRef?: Ref<any>;

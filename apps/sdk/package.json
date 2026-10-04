@@ -1,24 +1,37 @@
 {
   "name": "@postra/node",
-  "version": "1.0.8",
-  "description": "The ultimate social media scheduling tool",
+  "version": "1.0.0",
+  "description": "Node.js client for the Postra public API: schedule posts, upload media and list channels",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "scripts": {
-    "publish": "tsup && pnpm publish --access public"
+    "build": "tsup",
+    "prepublishOnly": "tsup"
   },
   "files": [
     "dist"
   ],
+  "engines": {
+    "node": ">=18"
+  },
   "keywords": [
     "social media",
     "scheduling tool",
     "social media scheduling tool",
     "postra"
   ],
-  "author": "KrisRz",
+  "author": "B K Company (Postra)",
   "license": "AGPL-3.0",
-  "dependencies": {
-    "node-fetch": "^3.3.2"
+  "homepage": "https://postra.co.uk",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Postra-app/Postra-app.git",
+    "directory": "apps/sdk"
+  },
+  "bugs": {
+    "url": "https://github.com/Postra-app/Postra-app/issues"
+  },
+  "publishConfig": {
+    "access": "public"
   }
 }
