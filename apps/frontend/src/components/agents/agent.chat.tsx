@@ -29,7 +29,17 @@ import { useVariables } from '@gitroom/react/helpers/variable.context';
 import { useParams } from 'next/navigation';
 import { useFetch } from '@gitroom/helpers/utils/custom.fetch';
 import { TextMessage } from '@copilotkit/runtime-client-gql';
-import { AddEditModal } from '@gitroom/frontend/components/new-launch/add.edit.modal';
+import dynamic from 'next/dynamic';
+// The composer pulls ~13 @tiptap packages: load it when the modal opens. A
+// static import here put it into this route's bundle, and the menu prefetches
+// every route, so each page downloaded the editor (387 KB) up front.
+const AddEditModal = dynamic(
+  () =>
+    import('@gitroom/frontend/components/new-launch/add.edit.modal').then(
+      (mod) => mod.AddEditModal
+    ),
+  { ssr: false }
+);
 import dayjs from 'dayjs';
 import { makeId } from '@gitroom/nestjs-libraries/services/make.is';
 import { ExistingDataContextProvider } from '@gitroom/frontend/components/launches/helpers/use.existing.data';

@@ -17,3 +17,19 @@ test('the calendar loads no Stripe.js and has one main landmark', async ({ page 
   expect(stripe).toEqual([]);
   await expect(page.getByRole('main')).toHaveCount(1);
 });
+
+test('the calendar does not download the post editor before it is opened', async ({ page }) => {
+  // The menu prefetches every route; a route that imported the composer
+  // statically (Agent, Sets) brought ~13 @tiptap packages to every page.
+  const editorChunks: string[] = [];
+  page.on('response', async (res) => {
+    if (res.request().resourceType() !== 'script' || !res.url().includes('/_next/')) return;
+    const body = await res.text().catch(() => '');
+    if (/ProseMirror|@tiptap/.test(body)) editorChunks.push(res.url().split('/').pop()!);
+  });
+  await page.goto('/launches');
+  await expect(page.getByRole('button', { name: 'Create Post' })).toBeVisible();
+  await page.waitForLoadState('networkidle');
+  await page.waitForTimeout(3_000); // idle-time prefetch of the menu routes
+  expect(editorChunks).toEqual([]);
+});
