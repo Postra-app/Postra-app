@@ -1289,7 +1289,7 @@ const CalendarItem: FC<{
             src={post.integration?.picture || '/no-picture.jpg'}
           />
           <img
-            alt={post.integration?.providerIdentifier || ''}
+            alt=""
             className="w-[12px] h-[12px] rounded-[8px] absolute z-10 top-[10px] end-0 border border-fifth"
             src={`/icons/platforms/${post.integration?.providerIdentifier}.png`}
           />
