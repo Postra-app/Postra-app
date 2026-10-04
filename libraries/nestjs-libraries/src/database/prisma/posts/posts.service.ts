@@ -1,5 +1,6 @@
 import {
   BadRequestException,
+  ConflictException,
   Injectable,
   Logger,
   NotFoundException,
@@ -1036,6 +1037,23 @@ export class PostsService {
     body: CreatePostDto,
     creationMethod: CreationMethod
   ): Promise<any[]> {
+    // Two people editing one post: the later save used to replace the
+    // earlier one without a word, and an agency lost a colleague's changes.
+    const editedIds = (body.posts || []).flatMap((post) =>
+      (post.value || []).map((value) => value.id).filter(Boolean)
+    ) as string[];
+    if (body.expectedUpdatedAt && editedIds.length) {
+      const latest = await this._postRepository.latestUpdateOf(orgId, editedIds);
+      if (latest && latest.getTime() > Date.parse(body.expectedUpdatedAt)) {
+        throw new ConflictException({
+          statusCode: 409,
+          message:
+            'Someone else saved changes to this post after you opened it.',
+          updatedAt: latest.toISOString(),
+        });
+      }
+    }
+
     // Every post of the request is checked before the first one is written.
     if ((body.type === 'now' || body.type === 'schedule') && !body.republish) {
       for (const post of body.posts) {

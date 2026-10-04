@@ -20,6 +20,9 @@ async function fetchMediaResponse(
 
   const response = await fetch(url, {
     method: 'GET',
+    // The stored bytes as they are: a CDN that compresses on the fly drops
+    // Content-Length (upstream 5a9b1cc9).
+    headers: { 'accept-encoding': 'identity' },
     dispatcher: ssrfSafeDispatcher,
     redirect: 'error',
     signal,

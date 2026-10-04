@@ -28,13 +28,17 @@ const colorStyles: Record<AnnouncementColor, { bg: string; hover: string }> = {
 
 const useAnnouncements = () => {
   const fetch = useFetch();
-  return useSWR<Announcement[]>('/announcements', async () => {
-    return (await fetch('/announcements')).json();
-  }, {
-    revalidateOnFocus: false,
-    revalidateOnReconnect: false,
-    revalidateIfStale: false,
-  });
+  return useSWR<Announcement[]>(
+    '/announcements',
+    async () => {
+      return (await fetch('/announcements')).json();
+    },
+    {
+      revalidateOnFocus: false,
+      revalidateOnReconnect: false,
+      revalidateIfStale: false,
+    }
+  );
 };
 
 const AnnouncementDetailModal: FC<{
@@ -145,17 +149,23 @@ export const AnnouncementBanner: FC = () => {
   const style = colorStyles[latest.color] || colorStyles.INFO;
 
   return (
-    <div
-      className={`${style.bg} ${style.hover} text-white px-[16px] py-[8px] text-center cursor-pointer rounded-[8px] text-[14px] font-[500] transition-colors`}
-      onClick={handleClick(latest)}
-    >
-      {latest.title}
-      {announcements.length > 1 && (
-        <span className="ml-[8px] opacity-70">
-          (+{announcements.length - 1} {t('more', 'more')})
-        </span>
-      )}
-      <style>{`#left-menu {padding-top: ${user?.isSuperAdmin ? '100px !important;' : '60px !important;'}`}</style>
-    </div>
+    // A button: the announcement opened on a mouse click only.
+    <>
+      <button
+        type="button"
+        className={`${style.bg} ${style.hover} text-white px-[16px] py-[8px] text-center cursor-pointer rounded-[8px] text-[14px] font-[500] transition-colors`}
+        onClick={handleClick(latest)}
+      >
+        {latest.title}
+        {announcements.length > 1 && (
+          <span className="ml-[8px] opacity-70">
+            (+{announcements.length - 1} {t('more', 'more')})
+          </span>
+        )}
+      </button>
+      <style>{`#left-menu {padding-top: ${
+        user?.isSuperAdmin ? '100px !important;' : '60px !important;'
+      }`}</style>
+    </>
   );
 };

@@ -10,6 +10,11 @@ import sharp from 'sharp';
 import { lookup } from 'mime-types';
 import { readOrFetch } from '@gitroom/helpers/utils/read.or.fetch';
 import { hasExtension } from '@gitroom/helpers/utils/has.extension';
+import {
+  mediaRange,
+  MediaRangeUnsupported,
+  mediaSize,
+} from '@gitroom/nestjs-libraries/media/media.range';
 import { timer } from '@gitroom/helpers/utils/timer';
 import {
   BadBody,
@@ -23,6 +28,9 @@ import { LinkedinDto } from '@gitroom/nestjs-libraries/dtos/posts/providers-sett
 import imageToPDF from 'image-to-pdf';
 import { Readable } from 'stream';
 import { Rules } from '@gitroom/nestjs-libraries/chat/rules.description.decorator';
+
+// Video parts, the same 2 MB the upload used before.
+const LINKEDIN_PART = 1024 * 1024 * 2;
 
 @Rules(
   'LinkedIn can have maximum one attachment when selecting video, when choosing a carousel on LinkedIn minimum amount of attachment must be two, and only pictures, if uploading a video, LinkedIn can have only one attachment'
@@ -277,6 +285,12 @@ export class LinkedinProvider extends SocialAbstract implements SocialProvider {
       endpoint = 'images';
     }
 
+    // A video arrives as its path, not its bytes: each 2 MB part is read from
+    // media storage right before its PUT, so the whole file is never in memory
+    // (upstream 84bee82b). As a Buffer, not a stream: this.fetch may retry the
+    // PUT, and a consumed stream cannot be sent again.
+    const videoSize = isVideo ? await mediaSize(fileName) : 0;
+
     const {
       value: { uploadUrl, image, video, document, uploadInstructions, ...all },
     } = await (
@@ -298,7 +312,7 @@ export class LinkedinProvider extends SocialAbstract implements SocialProvider {
                   : `urn:li:organization:${personId}`,
               ...(isVideo
                 ? {
-                    fileSizeBytes: picture.length,
+                    fileSizeBytes: videoSize,
                     uploadCaptions: false,
                     uploadThumbnail: false,
                   }
@@ -316,7 +330,9 @@ export class LinkedinProvider extends SocialAbstract implements SocialProvider {
     if (isVideo) {
       // Only the Videos API uses multipart chunked uploads. Each 2MB part is
       // PUT separately and the returned etags are passed to finalizeUpload.
-      for (let i = 0; i < picture.length; i += 1024 * 1024 * 2) {
+      for (let i = 0; i < videoSize; i += LINKEDIN_PART) {
+        const end = Math.min(i + LINKEDIN_PART, videoSize) - 1;
+        const part = await this.videoPart(fileName, i, end);
         const upload = await this.fetch(
           sendUrlRequest,
           {
@@ -327,7 +343,7 @@ export class LinkedinProvider extends SocialAbstract implements SocialProvider {
               Authorization: `Bearer ${accessToken}`,
               'Content-Type': 'application/octet-stream',
             },
-            body: picture.slice(i, i + 1024 * 1024 * 2),
+            body: part,
           },
           'linkedin',
           0,
@@ -573,6 +589,18 @@ export class LinkedinProvider extends SocialAbstract implements SocialProvider {
     });
   }
 
+  private async videoPart(path: string, start: number, end: number) {
+    try {
+      return await mediaRange(path, start, end);
+    } catch (e) {
+      // Storage without range support fails every time: say so, do not retry.
+      if (e instanceof MediaRangeUnsupported) {
+        throw new BadBody('linkedin-error-upload', '{}', '{}', e.message);
+      }
+      throw e;
+    }
+  }
+
   private async processMediaForPosts(
     postDetails: PostDetails<LinkedinDto>[],
     accessToken: string,
@@ -583,7 +611,7 @@ export class LinkedinProvider extends SocialAbstract implements SocialProvider {
       postDetails.flatMap(
         (post) =>
           post.media?.map(async (media) => {
-            let mediaBuffer: Buffer;
+            let mediaBuffer: Buffer | undefined;
 
             // Check if media has a buffer (from PDF conversion)
             if (
@@ -593,7 +621,8 @@ export class LinkedinProvider extends SocialAbstract implements SocialProvider {
               Buffer.isBuffer(media.buffer)
             ) {
               mediaBuffer = (media as any).buffer;
-            } else {
+            } else if (!hasExtension(media.path, 'mp4')) {
+              // Videos are read part by part in uploadPicture.
               mediaBuffer = await this.prepareMediaBuffer(media.path);
             }
 
@@ -623,11 +652,10 @@ export class LinkedinProvider extends SocialAbstract implements SocialProvider {
   }
 
   private async prepareMediaBuffer(mediaUrl: string): Promise<Buffer> {
-    const isVideo = hasExtension(mediaUrl, 'mp4');
     const isGif = lookup(mediaUrl) === 'image/gif';
 
-    // GIFs and videos pass through untouched (sharp would break animation).
-    if (isVideo || isGif) {
+    // GIFs pass through untouched (sharp would break animation).
+    if (isGif) {
       return Buffer.from(await readOrFetch(mediaUrl));
     }
 

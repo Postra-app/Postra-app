@@ -459,8 +459,17 @@ export const ManageModal: FC<AddEditModalProps> = (props) => {
           }
         }
 
-        const data = {
+        // When the version in this editor was last saved: the server refuses
+        // a save over a newer one (409) instead of replacing a colleague's work.
+        const loadedAt = (existingData?.posts || [])
+          .map((p: any) => p?.updatedAt)
+          .filter(Boolean)
+          .sort()
+          .pop();
+
+        const data: Record<string, any> = {
           type,
+          ...(loadedAt ? { expectedUpdatedAt: loadedAt } : {}),
           ...(republish ? { republish } : {}),
           ...(repeater ? { inter: repeater } : {}),
           tags,
@@ -489,10 +498,31 @@ export const ManageModal: FC<AddEditModalProps> = (props) => {
           if (addEditSets) {
             addEditSets(data);
           } else {
-            const saveResponse = await fetch('/posts', {
+            let saveResponse = await fetch('/posts', {
               method: 'POST',
               body: JSON.stringify(data),
             });
+            if (saveResponse.status === 409) {
+              const overwrite = await deleteDialog(
+                t(
+                  'post_changed_meanwhile',
+                  'Someone else saved changes to this post after you opened it. Replace their version with yours, or keep theirs and close the editor?'
+                ),
+                t('overwrite_with_mine', 'Replace with mine'),
+                t('post_changed_title', 'This post was changed'),
+                t('keep_their_version', 'Keep theirs')
+              );
+              if (!overwrite) {
+                mutate();
+                modal.closeAll();
+                return;
+              }
+              delete data.expectedUpdatedAt;
+              saveResponse = await fetch('/posts', {
+                method: 'POST',
+                body: JSON.stringify(data),
+              });
+            }
             if (!saveResponse.ok) {
               console.error('[Postra:posts] save failed', saveResponse.status);
               toaster.show(

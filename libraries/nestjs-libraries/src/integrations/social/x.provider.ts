@@ -12,6 +12,13 @@ import { lookup } from 'mime-types';
 import sharp from 'sharp';
 import { readOrFetch } from '@gitroom/helpers/utils/read.or.fetch';
 import {
+  mediaRange,
+  MediaRangeUnsupported,
+  mediaSize,
+} from '@gitroom/nestjs-libraries/media/media.range';
+import {
+  BadBody,
+  ProcessingTimeout,
   SocialAbstract,
   ValidityMedia,
 } from '@gitroom/nestjs-libraries/integrations/social.abstract';
@@ -26,6 +33,12 @@ import { stripLinks as removeLinks } from '@gitroom/helpers/utils/strip.links';
 import { XDto } from '@gitroom/nestjs-libraries/dtos/posts/providers-settings/x.dto';
 import { Rules } from '@gitroom/nestjs-libraries/chat/rules.description.decorator';
 import { hasExtension } from '@gitroom/helpers/utils/has.extension';
+
+// One APPEND per megabyte, as client.v2.uploadMedia does.
+const X_PART = 1024 * 1024;
+// X's own STATUS hints for a long video add up to a few minutes; past this
+// the post is reported, not retried.
+const X_PROCESSING_BUDGET_MS = 8 * 60 * 1000;
 
 @Rules(
   `X can have maximum 4 pictures, or maximum one video, it can also be without attachments ${
@@ -500,6 +513,84 @@ export class XProvider extends SocialAbstract implements SocialProvider {
     );
   }
 
+  // client.v2.uploadMedia's INIT / APPEND / FINALIZE, but each 1 MB part is
+  // read from media storage right before its APPEND: the whole video was
+  // downloaded into memory first, up to 1 GB per post (upstream 5e82d460).
+  async uploadVideoInParts(client: TwitterApi, path: string) {
+    const size = await mediaSize(path);
+    const init = await client.v2.post<{ data: { id: string } }>(
+      'media/upload/initialize',
+      {
+        media_type: lookup(path) || 'video/mp4',
+        total_bytes: size,
+        media_category: 'tweet_video',
+      }
+    );
+    const mediaId = init.data.id;
+
+    for (let start = 0, index = 0; start < size; start += X_PART, index++) {
+      const end = Math.min(start + X_PART, size) - 1;
+      await client.v2.post(
+        `media/upload/${mediaId}/append`,
+        { segment_index: index, media: await this.videoPart(path, start, end) },
+        { forceBodyMode: 'form-data' }
+      );
+    }
+
+    const finalize = await client.v2.post<{
+      data: { processing_info?: object };
+    }>(`media/upload/${mediaId}/finalize`);
+    if (finalize.data?.processing_info) {
+      await this.waitForVideoProcessing(client, mediaId);
+    }
+    return mediaId;
+  }
+
+  private async videoPart(path: string, start: number, end: number) {
+    try {
+      return await mediaRange(path, start, end);
+    } catch (e) {
+      // Storage without range support fails every time: say so, do not retry.
+      if (e instanceof MediaRangeUnsupported) {
+        throw new BadBody('x-error-upload', '{}', '{}', e.message);
+      }
+      throw e;
+    }
+  }
+
+  // The library's STATUS poll, iterative and capped: an unbounded poll ran
+  // the activity out of time, and its retry published again (H1).
+  private async waitForVideoProcessing(client: TwitterApi, mediaId: string) {
+    let waited = 0;
+    while (waited < X_PROCESSING_BUDGET_MS) {
+      const response = await client.v2.get<{
+        data: {
+          processing_info?: {
+            state: string;
+            check_after_secs?: number;
+            error?: { message?: string };
+          };
+        };
+      }>('media/upload', { command: 'STATUS', media_id: mediaId });
+      const info = response.data?.processing_info;
+      if (!info || info.state === 'succeeded') {
+        return;
+      }
+      if (info.state === 'failed') {
+        throw new BadBody(
+          'x-error-upload',
+          JSON.stringify(response.data),
+          '{}',
+          `X could not process the video: ${info.error?.message || 'unknown error'}`
+        );
+      }
+      const wait = Math.max(1, info.check_after_secs || 1) * 1000;
+      await timer(wait);
+      waited += wait;
+    }
+    throw new ProcessingTimeout('x');
+  }
+
   private async uploadMedia(
     client: TwitterApi,
     postDetails: PostDetails<any>[]
@@ -511,10 +602,10 @@ export class XProvider extends SocialAbstract implements SocialProvider {
             return {
               id: await this.runInConcurrent(
                 async () =>
-                  client.v2.uploadMedia(
-                    hasExtension(m.path, 'mp4')
-                      ? Buffer.from(await readOrFetch(m.path))
-                      : await sharp(await readOrFetch(m.path), {
+                  hasExtension(m.path, 'mp4')
+                    ? this.uploadVideoInParts(client, m.path)
+                    : client.v2.uploadMedia(
+                        await sharp(await readOrFetch(m.path), {
                           animated: lookup(m.path) === 'image/gif',
                           limitInputPixels: 100_000_000,
                         })
@@ -523,10 +614,10 @@ export class XProvider extends SocialAbstract implements SocialProvider {
                           })
                           .gif()
                           .toBuffer(),
-                    {
-                      media_type: (lookup(m.path) || '') as any,
-                    }
-                  ),
+                        {
+                          media_type: (lookup(m.path) || '') as any,
+                        }
+                      ),
                 true
               ),
               postId: p.id,

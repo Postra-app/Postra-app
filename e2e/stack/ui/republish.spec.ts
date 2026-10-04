@@ -1,7 +1,7 @@
 import { expect, test } from '@playwright/test';
 import { listPosts, signedIn } from '../helpers';
 import { USERS } from '../seed';
-import { watchForErrors } from './ui-helpers';
+import { quietSlot, watchForErrors, weekOf } from './ui-helpers';
 
 // Editing a published post: "Republish the post" in the editor publishes it
 // again, and only that answer does. The server refuses to requeue a published
@@ -39,7 +39,13 @@ test('"Republish the post" in the editor publishes the post again', async ({ pag
     expect(res.status(), await res.text()).toBe(201);
     await expect.poll(timesSent, { timeout: 90_000, intervals: [500, 1_000, 2_000] }).toBe(1);
 
-    await page.goto('/launches');
+    // Moved (date only) to a slot of its own: tests publishing at the same
+    // hour fold tiles into "show more".
+    const id = (await listPosts(api)).find((p) => p.content.includes(content))!.id;
+    const slot = quietSlot(-2);
+    expect((await api.put(`/posts/${id}/date`, { data: { date: slot.toISOString(), action: 'update' } })).status()).toBe(200);
+
+    await page.goto(weekOf(slot));
     await page
       .getByRole('button', { name: `Open post: ${USERS.a.mastodon.name}` })
       .filter({ hasText: content })

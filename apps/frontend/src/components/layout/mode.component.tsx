@@ -19,7 +19,16 @@ const ModeComponent = () => {
     document.body.classList.add(mode);
   }, [mode]);
   return (
-    <div onClick={changeMode} className="select-none cursor-pointer">
+    // A button, with a name: it was a div that a keyboard never reached and a
+    // screen reader read as nothing.
+    <button
+      type="button"
+      onClick={changeMode}
+      aria-label={
+        mode === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'
+      }
+      className="select-none cursor-pointer flex"
+    >
       {mode === 'dark' ? (
         <svg
           xmlns="http://www.w3.org/2000/svg"
@@ -53,7 +62,7 @@ const ModeComponent = () => {
           />
         </svg>
       )}
-    </div>
+    </button>
   );
 };
 export default ModeComponent;

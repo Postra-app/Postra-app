@@ -135,11 +135,14 @@ const NotificationComponent = () => {
   const ref = useClickAway<HTMLDivElement>(() => setShow(false));
   return (
     <div className="relative cursor-pointer select-none" ref={ref}>
-      <div
+      {/* A real button: a div with role="button" and no tabIndex was never
+          reached from the keyboard. */}
+      <button
+        type="button"
         onClick={changeShow}
-        role="button"
         aria-label={t('notifications', 'Notifications')}
         aria-expanded={show}
+        className="flex"
       >
         <svg
           xmlns="http://www.w3.org/2000/svg"
@@ -167,7 +170,7 @@ const NotificationComponent = () => {
             />
           )}
         </svg>
-      </div>
+      </button>
       {show && <NotificationOpenComponent />}
     </div>
   );
