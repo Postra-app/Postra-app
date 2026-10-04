@@ -120,8 +120,14 @@ function LayoutContextInner(params: { children: ReactNode }) {
       if (response.status === 402) {
         if (
           await deleteDialog(
+            // clone(): on Cancel the caller still reads this response, and
+            // a consumed body threw "body already used"; a non-JSON 402 must
+            // not throw either (upstream d727ac0b, 971aa369).
             (
-              await response.json()
+              await response
+                .clone()
+                .json()
+                .catch(() => ({}))
             ).message,
             'Go to billing',
             'Payment required'
