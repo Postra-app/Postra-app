@@ -31,3 +31,21 @@ test('Tab reaches a post, its actions show, Enter opens it', async ({ page }) =>
     await api.dispose();
   }
 });
+
+// The channel panel's collapse toggle and the AI post Creator were divs with
+// click handlers: no name, and Tab never reached them.
+test('the channel panel collapses and the Creator opens from the keyboard', async ({ page }) => {
+  await page.goto('/launches');
+  const collapse = page.getByRole('button', { name: 'Collapse channels' });
+  await collapse.focus();
+  await page.keyboard.press('Enter');
+  const expand = page.getByRole('button', { name: 'Expand channels' });
+  await expect(expand).toHaveAttribute('aria-expanded', 'false');
+  await expand.focus();
+  await page.keyboard.press('Enter');
+  await expect(page.getByRole('button', { name: 'Collapse channels' })).toHaveAttribute('aria-expanded', 'true');
+
+  await page.getByRole('button', { name: 'Generate Posts' }).focus();
+  await page.keyboard.press('Enter');
+  await expect(page.getByRole('dialog', { name: 'Generate Posts' })).toBeVisible();
+});
