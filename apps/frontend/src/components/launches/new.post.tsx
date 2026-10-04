@@ -30,13 +30,16 @@ export const NewPost = () => {
   const modal = useModals();
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { integrations, reloadCalendarView, sets, signature } = useCalendar();
+  const { integrations, reloadCalendarView, composerDefaults } = useCalendar();
   const t = useT();
 
   const createAPost = useCallback(async (
     initialMedia?: { id: string; path: string }[]
   ) => {
-    const date = (await (await fetch('/posts/find-slot')).json()).date;
+    const [{ date }, { sets, signature }] = await Promise.all([
+      fetch('/posts/find-slot').then((res) => res.json()),
+      composerDefaults(),
+    ]);
 
     // Media arriving from Studio pre-fills the post (onlyValues), which takes
     // precedence over a set's content — asking for a set would be misleading.
@@ -108,7 +111,7 @@ export const NewPost = () => {
       size: '80%',
       title: ``,
     });
-  }, [integrations, sets, signature]);
+  }, [integrations, composerDefaults]);
 
   // Studio's "Use in post" lands here: /launches?newPostMedia=[{id,path},…]
   // → open the new-post modal with the exported graphic(s) pre-attached.

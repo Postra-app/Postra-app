@@ -657,8 +657,7 @@ export const CalendarColumn: FC<{
     changeDate,
     display,
     reloadCalendarView,
-    sets,
-    signature,
+    composerDefaults,
     loading,
   } = useCalendar();
   const modal = useModals();
@@ -817,6 +816,7 @@ export const CalendarColumn: FC<{
   );
 
   const addModal = useCallback(async () => {
+    const { sets, signature } = await composerDefaults();
     const set: any = !sets.length
       ? undefined
       : await new Promise((resolve) => {
@@ -888,7 +888,7 @@ export const CalendarColumn: FC<{
       ),
       size: '80%',
     });
-  }, [integrations, getDate, sets, signature]);
+  }, [integrations, getDate, composerDefaults]);
 
   const addProvider = useAddProvider();
   return (

@@ -36,6 +36,10 @@ export const CalendarContext = createContext({
   loading: true,
   sets: [] as { name: string; id: string; content: string[] }[],
   signature: undefined as any,
+  composerDefaults: async () => ({
+    sets: [] as { name: string; id: string; content: string[] }[],
+    signature: undefined as any,
+  }),
   comments: [] as Array<{
     date: string;
     total: number;
@@ -254,7 +258,7 @@ export const CalendarWeekProvider: FC<{
     return (await fetch('/sets')).json();
   }, []);
 
-  const { data: sets, mutate } = useSWR('sets', setList, {
+  const { data: sets, mutate: reloadSets } = useSWR('sets', setList, {
     revalidateOnFocus: false,
     revalidateOnReconnect: false,
     revalidateIfStale: false,
@@ -262,7 +266,7 @@ export const CalendarWeekProvider: FC<{
     refreshWhenHidden: false,
     refreshWhenOffline: false,
   });
-  const { data: sign } = useSWR('default-sign', defaultSign, {
+  const { data: sign, mutate: reloadSign } = useSWR('default-sign', defaultSign, {
     revalidateOnFocus: false,
     revalidateOnReconnect: false,
     revalidateIfStale: false,
@@ -270,6 +274,17 @@ export const CalendarWeekProvider: FC<{
     refreshWhenHidden: false,
     refreshWhenOffline: false,
   });
+
+  // "Create post" or a calendar cell clicked right after the page loads can
+  // beat these two requests; wait for them instead of opening the composer
+  // without the set picker or the auto-add signature.
+  const composerDefaults = useCallback(async () => {
+    const [loadedSets, loadedSign] = await Promise.all([
+      sets !== undefined ? sets : reloadSets(),
+      sign !== undefined ? sign : reloadSign(),
+    ]);
+    return { sets: loadedSets || [], signature: loadedSign };
+  }, [sets, sign, reloadSets, reloadSign]);
 
   const setFiltersWrapper = useCallback(
     (newFilters: {
@@ -369,6 +384,7 @@ export const CalendarWeekProvider: FC<{
         comments,
         sets: sets || [],
         signature: sign,
+        composerDefaults,
         // List view specific
         listPosts,
         listPage,
