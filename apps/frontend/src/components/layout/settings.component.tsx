@@ -91,8 +91,9 @@ export const SettingsPopup: FC<{
   const list = useMemo(() => {
     const arr = [];
     arr.push({ tab: 'global_settings', label: t('global_settings', 'Global Settings') });
-    // Populate tabs based on user permissions
-    if ((user?.tier?.team_members ?? 0) > 1 && isGeneral) {
+    // Populate tabs based on user permissions. Listing and removing members
+    // is admin-only on the API, so a team member would open the tab to a 403.
+    if ((user?.tier?.team_members ?? 0) > 1 && isGeneral && user?.role !== 'USER') {
       arr.push({ tab: 'teams', label: t('teams', 'Teams') });
     }
     // Webhooks send organisation data out; managing them is for admins.
@@ -108,9 +109,11 @@ export const SettingsPopup: FC<{
     if (user?.tier.current !== 'FREE') {
       arr.push({ tab: 'signatures', label: t('signatures', 'Signatures') });
     }
+    // API keys and OAuth apps belong to admins (publicApi is empty for a USER).
     if (
       DEVELOPER_API_ENABLED &&
       user?.tier?.public_api &&
+      user?.role !== 'USER' &&
       isGeneral &&
       showLogout
     ) {
