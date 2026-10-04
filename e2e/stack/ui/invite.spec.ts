@@ -22,7 +22,7 @@ test('a client without an account connects a channel from an invite link', async
   // Through our backend (which marks this browser) on to the platform's
   // consent screen — the end of our part. Take the state it was given and
   // come back the way the platform would.
-  await page.getByRole('button', { name: 'Continue to Mastodon' }).click();
+  await page.getByRole('link', { name: 'Continue to Mastodon' }).click();
   await page.waitForURL(/localhost:58080\/oauth\/authorize/);
   const state = new URL(page.url()).searchParams.get('state');
   expect(state).toBeTruthy();
@@ -41,4 +41,21 @@ test('a client without an account connects a channel from an invite link', async
   expect(added, 'the channel is in the inviting organisation').toBeTruthy();
   await a.delete('/integrations', { data: { id: added!.id } });
   await a.dispose();
+});
+
+// "Continue" was a button that navigated from a click handler: tapped after
+// the page streamed in but before React hydrated it (a slow phone, or this
+// suite under load) it did nothing. Never hydrating at all — the app's
+// script bundles blocked, the streamed HTML still in place — a link must
+// still get the client to the platform.
+test('"Continue" works before the page has hydrated', async ({ page }) => {
+  const a = await signedIn('a');
+  const { url } = await (await a.get('/integrations/social/mastodon?invite=true')).json();
+  await a.dispose();
+
+  await page.route('**/_next/static/chunks/**', (route) => route.abort());
+  await page.goto(new URL(url).pathname);
+  await page.getByRole('link', { name: 'Continue to Mastodon' }).click();
+  await page.waitForURL(/localhost:58080\/oauth\/authorize/);
+  expect(new URL(page.url()).searchParams.get('state')).toBeTruthy();
 });

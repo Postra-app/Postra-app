@@ -1,7 +1,7 @@
 'use client';
 
 import { FC, useCallback } from 'react';
-import { Button } from '@gitroom/frontend/components/ui/button';
+import { buttonClass } from '@gitroom/frontend/components/ui/button';
 import { useT } from '@gitroom/react/translation/get.transation.service.client';
 import { useVariables } from '@gitroom/react/helpers/variable.context';
 import {
@@ -25,11 +25,12 @@ export const ConnectInviteClient: FC<{
   // Through the backend, not straight to the provider: that hop marks this
   // browser as the one the invite was opened in, which is what lets the
   // callback finish without a Postra account.
+  const goUrl = `${backendUrl}/integrations/invite/${encodeURIComponent(
+    token
+  )}/go?provider=${encodeURIComponent(provider)}`;
   const go = useCallback(() => {
-    window.location.href = `${backendUrl}/integrations/invite/${encodeURIComponent(
-      token
-    )}/go?provider=${encodeURIComponent(provider)}`;
-  }, [backendUrl, token, provider]);
+    window.location.href = goUrl;
+  }, [goUrl]);
 
   if (hasMetaChecklist(provider)) {
     return <MetaConnectChecklist provider={provider} onConfirm={go} />;
@@ -44,11 +45,13 @@ export const ConnectInviteClient: FC<{
           { provider: providerName }
         )}
       </p>
-      <Button type="button" onClick={go}>
+      {/* A link, not a button: a client tapping it on a slow phone before
+          the page has hydrated still gets to the platform. */}
+      <a href={goUrl} className={buttonClass()}>
         {t('connect_invite_continue', 'Continue to {{provider}}', {
           provider: providerName,
         })}
-      </Button>
+      </a>
     </div>
   );
 };
