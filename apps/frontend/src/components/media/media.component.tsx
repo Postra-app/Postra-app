@@ -990,9 +990,14 @@ export const MultiMediaComponent: FC<{
                   last in the row wearing Polotno's icon with the label hidden
                   below 1560px, which is a good way to own a feature nobody
                   finds. Hidden in dummy previews, where clicking does nothing. */}
+              {/* Buttons, not clickable divs: the keyboard never reached them,
+                  and with the labels hidden on narrower screens a screen
+                  reader had no name for them either. */}
               {!dummy && (
-                <div
+                <button
+                  type="button"
                   onClick={openStudio}
+                  aria-label={t('studio', 'Studio')}
                   className="cursor-pointer h-[30px] rounded-[6px] justify-center items-center flex bg-newColColor px-[8px] hover:bg-forth transition-colors phone:hidden"
                   title={t(
                     'studio_hint',
@@ -1007,10 +1012,12 @@ export const MultiMediaComponent: FC<{
                       {t('studio', 'Studio')}
                     </div>
                   </div>
-                </div>
+                </button>
               )}
-              <div
+              <button
+                type="button"
                 onClick={showModal}
+                aria-label={t('insert_media', 'Insert Media')}
                 className="cursor-pointer h-[30px] rounded-[6px] justify-center items-center flex bg-newColColor px-[8px]"
               >
                 <div className="flex gap-[8px] items-center">
@@ -1021,10 +1028,12 @@ export const MultiMediaComponent: FC<{
                     {t('insert_media', 'Insert Media')}
                   </div>
                 </div>
-              </div>
+              </button>
               {!!plontoKey && (
-                <div
+                <button
+                  type="button"
                   onClick={openPolotno}
+                  aria-label="Polotno"
                   className="cursor-pointer h-[30px] rounded-[6px] justify-center items-center flex bg-newColColor px-[8px] hover:bg-forth transition-colors phone:hidden"
                 >
                   <div className="flex gap-[5px] items-center">
@@ -1035,7 +1044,7 @@ export const MultiMediaComponent: FC<{
                       Polotno
                     </div>
                   </div>
-                </div>
+                </button>
               )}
               {/* The Studio button above is phone:hidden — say why instead of
                   hiding the feature without a trace. */}
