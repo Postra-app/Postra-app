@@ -1269,6 +1269,9 @@ const CalendarItem: FC<{
       <div
         role="button"
         tabIndex={0}
+        // A name of its own, not the post's text: a post saying "post now"
+        // or "create post" would otherwise answer to those buttons' names.
+        aria-label={`${t('open_post', 'Open post')}: ${post.integration?.name || ''}`}
         onClick={editPost}
         onKeyDown={(e) => {
           if (e.key === 'Enter' || e.key === ' ') {

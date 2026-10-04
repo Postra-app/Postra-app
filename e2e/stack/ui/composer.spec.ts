@@ -43,7 +43,7 @@ test('"Post Now" from the composer publishes to the platform', async ({ page }) 
   await openComposer(page, 'mastodon', text);
 
   await page.getByRole('button', { name: 'Add to calendar' }).hover();
-  await page.getByRole('button', { name: 'Post Now' }).click();
+  await page.getByRole('button', { name: 'Post now', exact: true }).click();
   await expect(page.getByRole('button', { name: 'Add to calendar' })).toBeHidden();
 
   await expect

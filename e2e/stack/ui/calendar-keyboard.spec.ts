@@ -21,7 +21,7 @@ test('Tab reaches a post, its actions show, Enter opens it', async ({ page }) =>
     const sunday = new Date(monday.getTime() + 6 * 86_400_000);
     await page.goto(`/launches?display=week&startDate=${isoDay(monday)}&endDate=${isoDay(sunday)}`);
 
-    const tile = page.getByRole('button', { name: new RegExp(text) });
+    const tile = page.locator('[role=button]', { hasText: text });
     await tile.focus();
     await expect(page.getByRole('button', { name: 'Preview Post' }).first()).toBeVisible();
     await page.keyboard.press('Enter');
