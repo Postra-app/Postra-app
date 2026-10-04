@@ -223,19 +223,36 @@ export const ManageModal: FC<AddEditModalProps> = (props) => {
 
   const schedule = useCallback(
     (type: 'draft' | 'now' | 'schedule' | 'update') => async () => {
+      let republish = false;
       if (
         (type === 'now' || type === 'schedule') &&
         (existingData?.posts?.[0]?.state === 'PUBLISHED' ||
           (existingData?.posts?.[0]?.state === 'QUEUE' &&
             dayjs().isAfter(date.utc())))
       ) {
+        const channels = selectedIntegrations
+          .map((p) => p.integration.name)
+          .join(', ');
+        const recurring =
+          !!repeater || !!existingData?.posts?.[0]?.intervalInDays;
         const whatToDo = await new Promise((resolve) => {
           modal.openModal({
             title: 'What do you want to do?',
             children: (
               <div className="flex flex-col">
                 <div className="text-[20px] mb-[20px]">
-                  This post was already published, what do you want to do?
+                  This post was already published. Publishing it again sends
+                  it to {channels || 'its channel'}{' '}
+                  {type === 'now'
+                    ? 'right now'
+                    : `at ${date.local().format('DD/MM/YYYY HH:mm')}`}
+                  .
+                  {recurring && (
+                    <div className="mt-[10px] text-[16px]">
+                      It repeats: your changes apply to every repeat from now
+                      on.
+                    </div>
+                  )}
                 </div>
                 <div className="flex w-full gap-[10px]">
                   <div className="flex-1 flex">
@@ -264,6 +281,10 @@ export const ManageModal: FC<AddEditModalProps> = (props) => {
 
         if (whatToDo === 'update') {
           type = 'update';
+        }
+        // The server refuses to requeue a published post without it.
+        if (whatToDo === 'republish') {
+          republish = true;
         }
       }
 
@@ -440,6 +461,7 @@ export const ManageModal: FC<AddEditModalProps> = (props) => {
 
         const data = {
           type,
+          ...(republish ? { republish } : {}),
           ...(repeater ? { inter: repeater } : {}),
           tags,
           shortLink,
@@ -512,7 +534,7 @@ export const ManageModal: FC<AddEditModalProps> = (props) => {
         setLoading(false);
       }
     },
-    [ref, repeater, tags, date, addEditSets, dummy, shortlinkPreferenceData]
+    [ref, repeater, tags, date, addEditSets, dummy, shortlinkPreferenceData, selectedIntegrations, existingData]
   );
 
   return (

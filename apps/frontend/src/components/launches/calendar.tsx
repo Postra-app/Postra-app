@@ -806,6 +806,9 @@ export const CalendarColumn: FC<{
           body: JSON.stringify({
             date: getDate.utc().format('YYYY-MM-DDTHH:mm:ss'),
             action,
+            // A published post asks first (above); without the flag the server
+            // refuses to put it back in the queue. No effect on queued posts.
+            ...(action === 'schedule' ? { republish: true } : {}),
           }),
         });
         if (status !== 500) {

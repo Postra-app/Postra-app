@@ -282,9 +282,18 @@ export class PostsController {
     @GetOrgFromRequest() org: Organization,
     @Param('id') id: string,
     @Body('date') date: string,
-    @Body('action') action: 'schedule' | 'update' = 'schedule'
+    // 'update' when no action is sent: a client that leaves it out must never
+    // put a post back in the queue (and so publish it again).
+    @Body('action') action: 'schedule' | 'update' = 'update',
+    @Body('republish') republish?: boolean
   ) {
-    return this._postsService.changeDate(org.id, id, date, action);
+    return this._postsService.changeDate(
+      org.id,
+      id,
+      date,
+      action,
+      republish === true
+    );
   }
 
   @Post('/separate-posts')

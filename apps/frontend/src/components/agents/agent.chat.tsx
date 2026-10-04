@@ -271,6 +271,9 @@ const ConfirmActionCard: FC<{
   const [state, setState] = useState<
     'idle' | 'working' | 'approved' | 'declined' | 'error'
   >('idle');
+  // The server's reason when it refused the action (a published post cannot
+  // be moved back into the queue); empty for an expired card.
+  const [refusal, setRefusal] = useState('');
 
   const act = useCallback(
     async (decision: 'approve' | 'decline') => {
@@ -281,6 +284,10 @@ const ConfirmActionCard: FC<{
           `/copilot/pending/${result.token}/${decision}`,
           { method: 'POST' }
         );
+        if (response.status === 400) {
+          const body = await response.json().catch(() => ({}));
+          setRefusal(typeof body?.message === 'string' ? body.message : '');
+        }
         if (!response.ok) throw new Error(String(response.status));
         setState(decision === 'approve' ? 'approved' : 'declined');
       } catch {
@@ -342,10 +349,11 @@ const ConfirmActionCard: FC<{
       )}
       {state === 'error' && (
         <div className="text-[12.5px] text-red-400">
-          {t(
-            'agent_confirm_expired',
-            'That confirmation is no longer valid. Ask the assistant again.'
-          )}
+          {refusal ||
+            t(
+              'agent_confirm_expired',
+              'That confirmation is no longer valid. Ask the assistant again.'
+            )}
         </div>
       )}
     </div>
