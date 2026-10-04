@@ -39,3 +39,29 @@ for (const screen of SCREENS) {
     expect({ scrollWidth, overflow }).toEqual({ scrollWidth: 390, overflow: [] });
   });
 }
+
+// The Agent's chat history on a phone: with many chats every row was squeezed
+// below its text and the titles were cut in half (seen on production with 20
+// chats). The list is answered in this browser only.
+test('the chat history drawer shows every title whole', async ({ page }) => {
+  await page.route('**/api/copilot/list', (route) =>
+    route.fulfill({
+      json: {
+        threads: Array.from({ length: 24 }, (_, i) => ({
+          id: `stack-thread-${i}`,
+          title: `List connected channel names ${i}`,
+        })),
+      },
+    })
+  );
+  await page.goto('/agents');
+  await page.getByRole('button', { name: 'Chat history' }).click();
+  const rows = page.getByRole('link', { name: /List connected channel names/ });
+  await expect(rows).toHaveCount(24);
+  const clipped = await rows.evaluateAll((links) =>
+    links.filter((a) => a.scrollHeight > a.clientHeight + 1).length
+  );
+  expect(clipped).toBe(0);
+  await page.getByRole('button', { name: 'Close' }).click();
+  await expect(rows).toHaveCount(0);
+});

@@ -365,7 +365,10 @@ export const GeneratorComponent = () => {
     });
   }, [user, all]);
   return (
-    <div
+    // A button with a name: a div the keyboard never reached.
+    <button
+      type="button"
+      aria-label={t('generate_posts', 'Generate Posts')}
       className="h-[44px] w-[44px] group-[.sidebar]:w-full bg-ai justify-center items-center flex rounded-[8px] cursor-pointer"
       onClick={generate}
     >
@@ -398,6 +401,6 @@ export const GeneratorComponent = () => {
           </clipPath>
         </defs>
       </svg>
-    </div>
+    </button>
   );
 };

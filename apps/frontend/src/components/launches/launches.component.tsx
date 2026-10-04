@@ -536,10 +536,17 @@ export const LaunchesComponent = () => {
               <h2 className="group-[.sidebar]:hidden flex-1 text-[20px] font-[600] tracking-[-0.02em]">
                 {t('channels')}
               </h2>
-              <div
+              <button
+                type="button"
                 onClick={() =>
                   setCollapseMenu(collapseMenu === '1' ? '0' : '1')
                 }
+                aria-label={
+                  collapseMenu === '1'
+                    ? t('expand_channels', 'Expand channels')
+                    : t('collapse_channels', 'Collapse channels')
+                }
+                aria-expanded={collapseMenu !== '1'}
                 className="launches-icon-button group-[.sidebar]:rotate-[180deg] group-[.sidebar]:mx-auto text-btnText bg-white/[0.06] border border-white/10 rounded-[10px] w-[28px] h-[28px] flex items-center justify-center cursor-pointer select-none hover:bg-white/[0.1] transition-colors"
               >
                 <svg
@@ -557,7 +564,7 @@ export const LaunchesComponent = () => {
                     strokeLinejoin="round"
                   />
                 </svg>
-              </div>
+              </button>
             </div>
             <div className="flex flex-col gap-[8px] group-[.sidebar]:mx-auto group-[.sidebar]:w-[44px]">
               <AddProviderButton update={() => update(true)} />

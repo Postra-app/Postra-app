@@ -32,27 +32,19 @@ import {
 const MAX_LOGIN_FAILURES = 10;
 const LOGIN_LOCKOUT_WINDOW_SECONDS = 15 * 60;
 
-// The activation mail goes through the Temporal mail queue. When the queue
-// cannot take it, the account already exists: registration answered 400
-// "Failed to signalWithStart Workflow" for an account that was in the
-// database, and no mail ever came (E2E-02-04). Send it directly instead.
+// Sign-in mails (activation, password reset) are sent directly, never
+// through the Temporal mail queue. With the queue down, registration answered
+// 400 for an account it had created and no mail came (E2E-02-04); with the
+// queue's workflow stuck, signals are still accepted, so no fallback ever
+// fired and the mail never left; and the reset mail had no fallback at all —
+// it vanished without a log (upstream 1f5f24e5). They are few and urgent.
 export const sendActivationMail = async (
-  emails: Pick<EmailService, 'sendEmail' | 'sendEmailSync'>,
+  emails: Pick<EmailService, 'sendEmailSync'>,
   to: string,
   subject: string,
   html: string
 ) => {
-  try {
-    // No Temporal client at all answers undefined rather than throwing.
-    if (!(await emails.sendEmail(to, subject, html, 'top'))) {
-      throw new Error('no mail queue');
-    }
-  } catch (err) {
-    new Logger('AuthService').warn(
-      `activation mail not queued (${(err as Error)?.message}); sending directly`
-    );
-    await emails.sendEmailSync(to, subject, html);
-  }
+  await emails.sendEmailSync(to, subject, html);
 };
 
 export const ACCOUNT_SUSPENDED =
@@ -311,8 +303,8 @@ export class AuthService {
     // measurably slower than an unknown one, which told anyone timing the
     // form which addresses have accounts (2.2.3).
     const reset = authEmails.resetPassword[lang];
-    this._notificationService
-      .sendEmail(
+    this._emailService
+      .sendEmailSync(
         user.email,
         reset.subject,
         reset.html(`${process.env.FRONTEND_URL}/auth/forgot/${resetValues}`)

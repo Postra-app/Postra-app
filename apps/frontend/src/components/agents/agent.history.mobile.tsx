@@ -32,7 +32,8 @@ export const AgentHistoryMobile: FC = () => {
 
   return (
     <>
-      <div
+      <button
+        type="button"
         onClick={() => setOpen(true)}
         className="hidden phone:flex cursor-pointer w-[34px] h-[34px] items-center justify-center rounded-[10px] hover:text-newTextColor transition-colors"
         aria-label={t('chat_history', 'Chat history')}
@@ -54,7 +55,7 @@ export const AgentHistoryMobile: FC = () => {
             strokeLinejoin="round"
           />
         </svg>
-      </div>
+      </button>
 
       {open &&
         createPortal(
@@ -69,18 +70,20 @@ export const AgentHistoryMobile: FC = () => {
               <div className="flex-1 text-[18px] font-[600]">
                 {t('chat_history', 'Chat history')}
               </div>
-              <div
+              <button
+                type="button"
                 onClick={close}
+                aria-label={t('close', 'Close')}
                 className="cursor-pointer text-textColor/60 hover:text-white w-[28px] h-[28px] flex items-center justify-center text-[18px]"
               >
                 ✕
-              </div>
+              </button>
             </div>
             <div className="p-[16px] flex flex-col gap-[8px] overflow-y-auto">
               <Link
                 href="/agents"
                 onClick={close}
-                className="flex items-center justify-center gap-[6px] min-h-[44px] rounded-[12px] bg-[linear-gradient(135deg,#38bdf8,#a78bfa)] text-slate-950 font-[700] text-[15px]"
+                className="shrink-0 flex items-center justify-center gap-[6px] min-h-[44px] rounded-[12px] bg-[linear-gradient(135deg,#38bdf8,#a78bfa)] text-slate-950 font-[700] text-[15px]"
               >
                 + {t('start_a_new_chat', 'New chat')}
               </Link>
@@ -91,7 +94,9 @@ export const AgentHistoryMobile: FC = () => {
                     href={`/agents/${p.id}`}
                     onClick={close}
                     className={clsx(
-                      'overflow-hidden text-ellipsis whitespace-nowrap px-[14px] py-[12px] rounded-[12px] border transition-colors',
+                      // shrink-0: with many chats the column squeezed each
+                      // row below its text and cut the letters in half.
+                      'shrink-0 overflow-hidden text-ellipsis whitespace-nowrap px-[14px] py-[12px] rounded-[12px] border transition-colors',
                       p.id === id
                         ? 'bg-white/[0.06] border-sky-300/15 text-textColor'
                         : 'border-transparent text-textColor/75 hover:text-textColor hover:bg-white/[0.04]'

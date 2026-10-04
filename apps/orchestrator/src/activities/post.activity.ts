@@ -474,20 +474,31 @@ export class PostActivity {
       }
     }
 
-    await this._temporalService.client
-      .getRawClient()
-      .workflow.start('streakWorkflow', {
-        args: [{ organizationId: integration.organizationId }],
-        workflowId: `streak_${integration.organizationId}`,
-        taskQueue: 'main',
-        workflowIdConflictPolicy: 'TERMINATE_EXISTING',
-        typedSearchAttributes: new TypedSearchAttributes([
-          {
-            key: organizationId,
-            value: integration.organizationId,
-          },
-        ]),
-      });
+    // The post is out. A failure starting the streak reminder must not fail
+    // this activity: its retry would publish again (upstream 273c7b50 has
+    // the same guard).
+    try {
+      await this._temporalService.client
+        .getRawClient()
+        .workflow.start('streakWorkflow', {
+          args: [{ organizationId: integration.organizationId }],
+          workflowId: `streak_${integration.organizationId}`,
+          taskQueue: 'main',
+          workflowIdConflictPolicy: 'TERMINATE_EXISTING',
+          typedSearchAttributes: new TypedSearchAttributes([
+            {
+              key: organizationId,
+              value: integration.organizationId,
+            },
+          ]),
+        });
+    } catch (err) {
+      this._logger.error(
+        `[postSocial] streak reminder not started for org=${
+          integration.organizationId
+        }: ${(err as Error)?.message ?? err}`
+      );
+    }
 
     return postNow;
   }
