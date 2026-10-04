@@ -1,4 +1,4 @@
-import { BadRequestException } from '@nestjs/common';
+import { numericId } from '@gitroom/nestjs-libraries/integrations/social/numeric.id';
 import {
   AnalyticsData,
   AuthTokenDetails,
@@ -201,11 +201,7 @@ export class LinkedinPageProvider
   }
 
   async fetchPageInformation(accessToken: string, params: { page: string }) {
-    const pageId = params.page;
-    // From the client, into the API path: an organisation id is numeric.
-    if (!/^\d+$/.test(String(pageId))) {
-      throw new BadRequestException('Invalid page');
-    }
+    const pageId = numericId(params?.page);
     const data = await (
       await fetch(
         `https://api.linkedin.com/v2/organizations/${pageId}?projection=(id,localizedName,vanityName,logoV2(original~:playableStreams))`,

@@ -1,5 +1,6 @@
 import { META_GRAPH_API_VERSION } from '@gitroom/nestjs-libraries/integrations/social/meta.graph.version';
-import { BadRequestException, Logger } from '@nestjs/common';
+import { Logger } from '@nestjs/common';
+import { numericId } from '@gitroom/nestjs-libraries/integrations/social/numeric.id';
 import {
   AnalyticsData,
   AuthTokenDetails,
@@ -585,20 +586,17 @@ export class InstagramProvider
     data: { pageId: string; id: string }
   ) {
     const [accessToken, userToken] = token.split('___');
-    // Both ids come from the client and go into the Graph API path with the
-    // user's token; Meta ids are numeric (CodeQL js/request-forgery #73/#74).
-    if (!/^\d+$/.test(String(data?.pageId)) || !/^\d+$/.test(String(data?.id))) {
-      throw new BadRequestException('Invalid page');
-    }
+    const pageId = numericId(data?.pageId);
+    const accountId = numericId(data?.id);
     const { access_token, ...all } = await (
       await fetch(
-        `https://graph.facebook.com/${META_GRAPH_API_VERSION}/${data.pageId}?fields=access_token,name,picture.type(large)&access_token=${accessToken}`
+        `https://graph.facebook.com/${META_GRAPH_API_VERSION}/${pageId}?fields=access_token,name,picture.type(large)&access_token=${accessToken}`
       )
     ).json();
 
     const { id, name, profile_picture_url, username } = await (
       await fetch(
-        `https://graph.facebook.com/${META_GRAPH_API_VERSION}/${data.id}?fields=username,name,profile_picture_url&access_token=${accessToken}`
+        `https://graph.facebook.com/${META_GRAPH_API_VERSION}/${accountId}?fields=username,name,profile_picture_url&access_token=${accessToken}`
       )
     ).json();
 
