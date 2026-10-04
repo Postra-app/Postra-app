@@ -33,7 +33,13 @@ export const LogoutComponent: FC<{ isIcon?: boolean }> = ({ isIcon }) => {
   }, []);
   return (
     <>
-      <div className="cursor-pointer" onClick={logout}>
+      {/* A button, not a clickable div: reachable and usable from the keyboard. */}
+      <button
+        type="button"
+        className="cursor-pointer text-start"
+        onClick={logout}
+        aria-label={isIcon ? t('logout_from', 'Logout from') + ' Postra' : undefined}
+      >
         {isIcon ? (
           <svg
             width="24"
@@ -58,7 +64,7 @@ export const LogoutComponent: FC<{ isIcon?: boolean }> = ({ isIcon }) => {
             {isGeneral ? ' Postra' : ' Postra'}
           </span>
         )}
-      </div>
+      </button>
     </>
   );
 };
