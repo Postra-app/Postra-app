@@ -32,6 +32,32 @@ import {
 const MAX_LOGIN_FAILURES = 10;
 const LOGIN_LOCKOUT_WINDOW_SECONDS = 15 * 60;
 
+// The activation mail goes through the Temporal mail queue. When the queue
+// cannot take it, the account already exists: registration answered 400
+// "Failed to signalWithStart Workflow" for an account that was in the
+// database, and no mail ever came (E2E-02-04). Send it directly instead.
+export const sendActivationMail = async (
+  emails: Pick<EmailService, 'sendEmail' | 'sendEmailSync'>,
+  to: string,
+  subject: string,
+  html: string
+) => {
+  try {
+    // No Temporal client at all answers undefined rather than throwing.
+    if (!(await emails.sendEmail(to, subject, html, 'top'))) {
+      throw new Error('no mail queue');
+    }
+  } catch (err) {
+    new Logger('AuthService').warn(
+      `activation mail not queued (${(err as Error)?.message}); sending directly`
+    );
+    await emails.sendEmailSync(to, subject, html);
+  }
+};
+
+export const ACCOUNT_SUSPENDED =
+  'This account is suspended. Contact hello@postra.co.uk if you think this is a mistake.';
+
 @Injectable()
 export class AuthService {
   constructor(
@@ -107,13 +133,13 @@ export class AuthService {
 
         const obj = { addedOrg, jwt: await this.jwt(create.users[0].user) };
         const activation = authEmails.activation[lang];
-        await this._emailService.sendEmail(
+        await sendActivationMail(
+          this._emailService,
           body.email,
           activation.subject,
           activation.html(
             `${process.env.FRONTEND_URL}/auth/activate/${obj.jwt}`
-          ),
-          'top'
+          )
         );
         return obj;
       }
@@ -281,12 +307,19 @@ export class AuthService {
       expires: dayjs().add(20, 'minutes').format('YYYY-MM-DD HH:mm:ss'),
     });
 
+    // Not awaited: waiting for the mail made a known address answer
+    // measurably slower than an unknown one, which told anyone timing the
+    // form which addresses have accounts (2.2.3).
     const reset = authEmails.resetPassword[lang];
-    await this._notificationService.sendEmail(
-      user.email,
-      reset.subject,
-      reset.html(`${process.env.FRONTEND_URL}/auth/forgot/${resetValues}`)
-    );
+    this._notificationService
+      .sendEmail(
+        user.email,
+        reset.subject,
+        reset.html(`${process.env.FRONTEND_URL}/auth/forgot/${resetValues}`)
+      )
+      .catch((err) =>
+        new Logger('AuthService').error(`reset mail not sent: ${err?.message}`)
+      );
   }
 
   async forgotReturn(body: ForgotReturnPasswordDto) {
@@ -375,11 +408,11 @@ export class AuthService {
     const jwt = await this.jwt(user);
 
     const activation = authEmails.activation[lang];
-    await this._emailService.sendEmail(
+    await sendActivationMail(
+      this._emailService,
       user.email,
       activation.subject,
-      activation.html(`${process.env.FRONTEND_URL}/auth/activate/${jwt}`),
-      'top'
+      activation.html(`${process.env.FRONTEND_URL}/auth/activate/${jwt}`)
     );
 
     return true;
@@ -406,11 +439,12 @@ export class AuthService {
     redirectUri?: string,
     state?: string
   ) {
+    // GETDEL: read and consume in one step. A get followed by a del let two
+    // requests racing with the same state both through (2.2.11).
     const stateKey = state ? `auth-state:${state}` : '';
-    if (!stateKey || !(await ioRedis.get(stateKey))) {
+    if (!stateKey || !(await ioRedis.getdel(stateKey))) {
       throw new Error('Invalid or expired state');
     }
-    await ioRedis.del(stateKey);
 
     const providerInstance = this._providerManager.getProvider(provider);
     const token = await providerInstance.getToken(code, redirectUri);
@@ -491,6 +525,11 @@ export class AuthService {
   }
 
   private async jwt(user: User) {
+    // Every way in (password, Google, activation link, the mobile app) ends
+    // here, so a suspended account gets no session from any of them.
+    if (user.suspendedAt) {
+      throw new Error(ACCOUNT_SUSPENDED);
+    }
     // Sign only the claims we actually need. auth.middleware re-resolves the
     // user (org, role, isSuperAdmin, activated) from the DB on every request
     // and never trusts token claims, so a fat token just meant a bigger cookie

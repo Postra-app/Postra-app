@@ -1,5 +1,5 @@
 import { APIRequestContext, expect, test } from '@playwright/test';
-import { listPosts, signedIn } from '../helpers';
+import { database, listPosts, signedIn, throwawayOrg } from '../helpers';
 import { USERS } from '../seed';
 
 // Publishing end to end: API → Temporal → orchestrator → the real Mastodon
@@ -104,4 +104,186 @@ test('a platform refusal marks the post failed, with the reason', async () => {
   // Temporal's JSON with stack traces and container paths.
   expect(after.error).toContain('Text character limit of 500 exceeded');
   expect(after.error).not.toMatch(/\bat \w+|\/app\/|node_modules|workflowId/);
+});
+
+// Editing a scheduled post (composer → save with the same post id): the old
+// workflow is stopped and a new one publishes the new text, once (S2,
+// 05-composer-publish.md §5.3 "Edit zaplanowanego").
+test('an edited scheduled post publishes the new text, once', async () => {
+  const tag = Date.now();
+  const original = `[stack] before edit ${tag}`;
+  const edited = `[stack] after edit ${tag}`;
+  const at = new Date(Date.now() + 20_000);
+  const post = await publish(original, 'schedule', at);
+  const { group } = await (await api.get(`/posts/${post.id}`)).json();
+
+  const res = await api.post('/posts', {
+    data: {
+      type: 'schedule',
+      shortLink: false,
+      date: at.toISOString(),
+      tags: [],
+      posts: [
+        {
+          integration: { id: CHANNEL },
+          group,
+          value: [{ id: post.id, content: edited, image: [] }],
+          settings: { __type: 'mastodon' },
+        },
+      ],
+    },
+  });
+  expect(res.status(), await res.text()).toBe(201);
+
+  await settledState(post.id).toBe('PUBLISHED');
+  // Give a leftover workflow for the old text time to fire, if there were one.
+  await new Promise((r) => setTimeout(r, 5_000));
+  const sent = (await received()).filter((r) => r.status.includes(`${tag}`));
+  expect(sent.map((r) => r.status)).toEqual([edited]);
+});
+
+// "Duplicate" on a calendar tile: a new post with the same text, its own id,
+// and the original untouched.
+test('duplicating a post makes an independent copy', async () => {
+  const content = `[stack] duplicate me ${Date.now()}`;
+  const post = await publish(content, 'schedule', new Date(Date.now() + 3 * 86_400_000));
+  try {
+    const original = await (await api.get(`/posts/${post.id}`)).json();
+    const copy = await api.post('/posts', {
+      data: {
+        type: 'draft',
+        shortLink: false,
+        date: new Date(Date.now() + 4 * 86_400_000).toISOString(),
+        tags: [],
+        posts: [
+          {
+            integration: { id: CHANNEL },
+            value: original.posts.map((p: { content: string }) => ({ content: p.content, image: [] })),
+            settings: original.settings,
+          },
+        ],
+      },
+    });
+    expect(copy.status()).toBe(201);
+    const both = (await listPosts(api)).filter((p) => p.content === content);
+    expect(both).toHaveLength(2);
+    expect(new Set(both.map((p) => p.group)).size).toBe(2);
+    expect((await stored(post.id)).state).toBe('QUEUE');
+    for (const p of both) await api.delete(`/posts/${p.group}`);
+  } catch (e) {
+    await api.delete(`/posts/${post.group}`);
+    throw e;
+  }
+});
+
+// §5.4 error paths: the channel goes bad between scheduling and publishing.
+// The post fails with a plain reason, the team is told in the app, and
+// nothing reaches the platform. Each runs in its own organisation: disabling
+// A's Mastodon hid it from the UI tests running beside this file.
+const badChannelPost = async (
+  breakIt: (prisma: ReturnType<typeof database>, channelId: string, owner: APIRequestContext) => Promise<void>
+) => {
+  const prisma = database();
+  const org = await throwawayOrg(prisma, { tier: 'PRO', totalChannels: 5, channels: 1, provider: 'mastodon' });
+  const content = `[stack] bad channel ${Date.now()}`;
+  const res = await org.api.post('/posts', {
+    data: {
+      type: 'schedule',
+      shortLink: false,
+      date: new Date(Date.now() + 12_000).toISOString(),
+      tags: [],
+      posts: [
+        {
+          integration: { id: org.channelIds[0] },
+          value: [{ content, image: [] }],
+          settings: { __type: 'mastodon' },
+        },
+      ],
+    },
+  });
+  expect(res.status(), await res.text()).toBe(201);
+  const post = (await listPosts(org.api)).find((p) => p.content.includes(content))!;
+  await breakIt(prisma, org.channelIds[0], org.api);
+  return {
+    content,
+    state: () =>
+      expect.poll(async () => (await (await org.api.get(`/posts/${post.id}`)).json()).posts[0].state, {
+        timeout: 90_000,
+        intervals: [500, 1_000, 2_000],
+      }),
+    error: async () => (await (await org.api.get(`/posts/${post.id}`)).json()).posts[0].error,
+    notifications: async () => JSON.stringify(await (await org.api.get('/notifications/list')).json()),
+    done: async () => {
+      await org.remove();
+      await prisma.$disconnect();
+    },
+  };
+};
+
+test('a channel disabled before publish time: the post fails as "Channel disabled"', async () => {
+  const run = await badChannelPost(async (_prisma, id, owner) => {
+    expect((await owner.post('/integrations/disable', { data: { id } })).status()).toBe(201);
+  });
+  try {
+    await run.state().toBe('ERROR');
+    expect(await run.error()).toBe('Channel disabled');
+    expect(await run.notifications()).toContain("because it's disabled");
+    expect((await received()).some((r) => r.status === run.content)).toBe(false);
+  } finally {
+    await run.done();
+  }
+});
+
+test('a channel that needs reconnecting: the post fails as "Refresh channel needed"', async () => {
+  const run = await badChannelPost(async (prisma, id) => {
+    await prisma.integration.update({ where: { id }, data: { refreshNeeded: true } });
+  });
+  try {
+    await run.state().toBe('ERROR');
+    expect(await run.error()).toBe('Refresh channel needed');
+    expect(await run.notifications()).toContain('you need to reconnect it');
+    expect((await received()).some((r) => r.status === run.content)).toBe(false);
+  } finally {
+    await run.done();
+  }
+});
+
+// §5.4 "comment failure": the post goes out, the platform refuses the reply.
+// The post stays published, only the reply is flagged, and the team is told
+// which part did not make it.
+test('a refused reply leaves the post published and flags only the reply', async () => {
+  const tag = Date.now();
+  const main = `[stack] main part ${tag}`;
+  const reply = `[stack] refused reply ${tag}`;
+  expect((await api.post(`${FAKE}/__fail`, { data: { match: reply } })).ok()).toBe(true);
+  const res = await api.post('/posts', {
+    data: {
+      type: 'now',
+      shortLink: false,
+      date: new Date().toISOString(),
+      tags: [],
+      posts: [
+        {
+          integration: { id: CHANNEL },
+          value: [
+            { content: main, image: [] },
+            { content: reply, image: [] },
+          ],
+          settings: { __type: 'mastodon' },
+        },
+      ],
+    },
+  });
+  expect(res.status(), await res.text()).toBe(201);
+  const post = (await listPosts(api)).find((p) => p.content.includes(main))!;
+
+  await settledState(post.id).toBe('PUBLISHED');
+  const { posts } = await (await api.get(`/posts/${post.id}`)).json();
+  const replyRow = posts.find((p: { content: string }) => p.content.includes(reply));
+  await expect
+    .poll(async () => ((await (await api.get(`/posts/${post.id}`)).json()).posts as { id: string; state: string }[]).find((p) => p.id === replyRow.id)?.state, { timeout: 30_000 })
+    .toBe('ERROR');
+  expect((await received()).some((r) => r.status === main)).toBe(true);
+  const notices = JSON.stringify(await (await api.get('/notifications/list')).json());
+  expect(notices).toContain('one of the comments attached to it could not be posted');
 });

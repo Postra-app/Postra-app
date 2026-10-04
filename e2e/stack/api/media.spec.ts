@@ -98,3 +98,12 @@ test("B cannot see, read, describe or delete A's media", async () => {
   expect((await library(a)).some((m) => m.id === media.id)).toBe(true);
   expect((await a.delete(`/media/${media.id}`)).status()).toBe(200);
 });
+
+// E2E-02-07: the name is stored as the file's path under the bucket URL.
+test('save-media refuses a name that is a path', async () => {
+  const api = await signedIn('a');
+  for (const name of ['../../evil.html', 'a/../../../etc/passwd', '.hidden', 'x/y.png']) {
+    expect((await api.post('/media/save-media', { data: { name } })).status(), name).toBe(400);
+  }
+  await api.dispose();
+});

@@ -77,6 +77,10 @@ export class OrganizationService {
     return this._organizationRepository.updateApiKey(orgId);
   }
 
+  getMailRecipients(orgId: string) {
+    return this._organizationRepository.getAllUsersOrgs(orgId);
+  }
+
   getTeam(orgId: string) {
     return this._organizationRepository.getTeam(orgId);
   }

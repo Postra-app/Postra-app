@@ -40,6 +40,26 @@ import { uniqBy } from 'lodash';
 import { canPostComments } from '@gitroom/nestjs-libraries/integrations/social/comment.capability';
 import { RefreshIntegrationService } from '@gitroom/nestjs-libraries/integrations/refresh.integration.service';
 
+// Composer pickers that read from the platform but are not @Tool methods.
+const PICKER_FUNCTIONS = new Set([
+  'pages',
+  'companies',
+  'company',
+  'tags',
+  'creatorInfo',
+  'postTypes',
+  'restrictions',
+  'subreddits',
+]);
+
+export const isCallableProviderFunction = (provider: object, name: unknown) => {
+  if (typeof name !== 'string') return false;
+  const tools: { methodName: string }[] =
+    Reflect.getMetadata('custom:tool', Object.getPrototypeOf(provider)) || [];
+  const allowed = PICKER_FUNCTIONS.has(name) || tools.some((t) => t.methodName === name);
+  return allowed && typeof (provider as Record<string, unknown>)[name] === 'function';
+};
+
 @ApiTags('Integrations')
 @Controller('/integrations')
 export class IntegrationsController {
@@ -419,6 +439,14 @@ export class IntegrationsController {
     );
     if (!integrationProvider) {
       throw new BadRequestException('Invalid provider');
+    }
+
+    // The method name comes from the client. Only what the composer calls
+    // may run: methods marked @Tool plus the pickers that are not tools. Any
+    // truthy property used to pass, including `constructor`, `toString` and
+    // the provider's own `post` and `refreshToken` (E2E-02-08).
+    if (!isCallableProviderFunction(integrationProvider, body.name)) {
+      throw new NotFoundException('Function not found');
     }
 
     // @ts-ignore

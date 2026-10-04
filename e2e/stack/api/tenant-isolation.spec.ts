@@ -1,5 +1,5 @@
 import { APIRequestContext, expect, test } from '@playwright/test';
-import { anonymous, channelOf, createDraft, signedIn } from '../helpers';
+import { anonymous, channelOf, createDraft, database, signedIn, throwawayOrg } from '../helpers';
 
 // Organisation B must not be able to read, change or delete anything that
 // belongs to organisation A — and must not even learn that it exists (404,
@@ -110,6 +110,29 @@ test('E2E-05-18: B cannot overwrite or delete A\'s signature', async () => {
   const mine = JSON.stringify(await (await a.get('/signatures')).json());
   expect(mine).toContain('[stack] signature A');
   expect((await a.delete(`/signatures/${id}`)).status()).toBe(200);
+});
+
+// E2E-02-05: these were 500s (the data held, the answers were wrong). Two
+// throwaway organisations: a set in A makes the composer ask "Select a Set",
+// which would block the UI tests running beside this file.
+test("B cannot overwrite or delete A's set", async () => {
+  const prisma = database();
+  const owner = await throwawayOrg(prisma, { tier: 'PRO', totalChannels: 5, channels: 0 });
+  const other = await throwawayOrg(prisma, { tier: 'PRO', totalChannels: 5, channels: 0 });
+  try {
+    const created = await owner.api.post('/sets', { data: { name: '[stack] set A', content: '{}' } });
+    expect(created.status(), await created.text()).toBe(201);
+    const { id } = await created.json();
+
+    expect((await other.api.put('/sets', { data: { id, name: 'taken', content: '{}' } })).status()).toBe(404);
+    expect((await other.api.delete(`/sets/${id}`)).status()).toBe(404);
+    expect(JSON.stringify(await (await owner.api.get('/sets')).json())).toContain('[stack] set A');
+    expect((await owner.api.delete(`/sets/${id}`)).status()).toBe(200);
+  } finally {
+    await owner.remove();
+    await other.remove();
+    await prisma.$disconnect();
+  }
 });
 
 test("B cannot rename or delete A's tag", async () => {

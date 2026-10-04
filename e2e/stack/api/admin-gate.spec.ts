@@ -36,6 +36,7 @@ test('an organisation owner cannot announce, delete announcements or grant plans
     ).status()
   ).toBe(403);
   expect((await api.delete(`/announcements/${UNKNOWN}`)).status()).toBe(403);
+  expect((await api.post('/admin/suspend-user', { data: { userId: UNKNOWN, value: true } })).status()).toBe(403);
   expect(
     (
       await api.post('/billing/add-subscription', {

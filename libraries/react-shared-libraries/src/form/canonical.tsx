@@ -5,6 +5,7 @@ import React, {
   FC,
   InputHTMLAttributes,
   useCallback,
+  useId,
   useMemo,
 } from 'react';
 import { clsx } from 'clsx';
@@ -55,16 +56,19 @@ export const Canonical: FC<
     }
     return form.setValue(props.name, id);
   }, [form]);
+  // Linked to its label, as in Input.
+  const generatedId = useId();
+  const fieldId = rest.id || generatedId;
   return (
     <div className="flex flex-col gap-[6px]">
       <div className="flex items-center gap-[3px]">
-        <div className={`text-[14px]`}>
+        <label htmlFor={fieldId} className={`text-[14px]`}>
           <TranslatedLabel
             label={label}
             translationKey={translationKey}
             translationParams={translationParams}
           />
-        </div>
+        </label>
         <div>
           <svg
             onClick={onPostSelector}
@@ -89,6 +93,7 @@ export const Canonical: FC<
           className
         )}
         {...rest}
+        id={fieldId}
       />
       <div className="text-red-400 text-[12px]">{err || <>&nbsp;</>}</div>
     </div>

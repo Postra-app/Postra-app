@@ -1,6 +1,6 @@
 'use client';
 
-import { DetailedHTMLProps, FC, InputHTMLAttributes, useMemo } from 'react';
+import { DetailedHTMLProps, FC, InputHTMLAttributes, useId, useMemo } from 'react';
 import clsx from 'clsx';
 import { useFormContext } from 'react-hook-form';
 import { TranslatedLabel } from '../translation/translated-label';
@@ -33,6 +33,9 @@ export const Textarea: FC<
     if (!form || !form.formState.errors[props?.name!]) return;
     return form?.formState?.errors?.[props?.name!]?.message! as string;
   }, [form?.formState?.errors?.[props?.name!]?.message, error]);
+  // Linked to its label, as in Input.
+  const generatedId = useId();
+  const fieldId = rest.id || generatedId;
   return (
     <div
       className={clsx(
@@ -40,13 +43,13 @@ export const Textarea: FC<
         props.disabled && 'opacity-50'
       )}
     >
-      <div className={`text-[14px]`}>
+      <label htmlFor={fieldId} className={`text-[14px]`}>
         <TranslatedLabel
           label={label}
           translationKey={translationKey}
           translationParams={translationParams}
         />
-      </div>
+      </label>
       <textarea
         {...(disableForm ? {} : form.register(props.name))}
         className={clsx(
@@ -54,6 +57,7 @@ export const Textarea: FC<
           className
         )}
         {...rest}
+        id={fieldId}
       />
       <div className="text-red-400 text-[12px]">{err || <>&nbsp;</>}</div>
     </div>

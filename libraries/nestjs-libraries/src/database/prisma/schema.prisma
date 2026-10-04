@@ -128,6 +128,11 @@ model User {
   // (UK GDPR accountability). Null for accounts created before the checkbox
   // existed and for team-invited users who never saw the registration form.
   termsAcceptedAt       DateTime?
+  // Set by a Postra administrator to lock an account out (abuse, fraud). A
+  // suspended user cannot sign in or use a session; tokenVersion is bumped at
+  // the same time so every existing session ends.
+  suspendedAt           DateTime?
+  suspendedReason       String?
   comments              Comments[]
   items                 ItemUser[]
   groupBuyer            MessagesGroup[]      @relation("groupBuyer")

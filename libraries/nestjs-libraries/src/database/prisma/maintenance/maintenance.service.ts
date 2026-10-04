@@ -184,6 +184,7 @@ export class MaintenanceService {
       drop.delete(path);
     }
 
+    const notRemoved = new Set<string>();
     for (const path of drop.keys()) {
       if (!apply) {
         report.removed++;
@@ -194,13 +195,21 @@ export class MaintenanceService {
         report.removed++;
       } catch {
         report.failed++;
+        notRemoved.add(path);
       }
     }
 
     if (apply && report.removed) {
       // The rows go too: keeping a soft-deleted row whose object is gone would
-      // make the next run reconsider the same files forever.
-      const sweptIds = [...new Set([...drop.values()].flat())];
+      // make the next run reconsider the same files forever. A row whose file
+      // could not be removed stays, so the next run tries again instead of
+      // leaving the file behind with nothing pointing at it.
+      const keptIds = new Set(
+        [...notRemoved].flatMap((path) => drop.get(path) ?? [])
+      );
+      const sweptIds = [...new Set([...drop.values()].flat())].filter(
+        (id) => !keptIds.has(id)
+      );
       await this._prisma.model.media.deleteMany({
         where: { id: { in: sweptIds } },
       });
