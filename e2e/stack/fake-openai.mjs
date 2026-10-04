@@ -7,6 +7,12 @@
 //                               text; usage as OpenAI reports it (streams
 //                               only with stream_options.include_usage)
 //   GET  /__requests            every request received so far
+//   GET  /__seen?text=t         how many /v1 requests carried t in their
+//                               body — a spec counts its own calls by a
+//                               unique marker while others run in parallel
+//   POST /v1/images/generations a 1x1 PNG as b64_json, like gpt-image; a
+//                               prompt containing "stack-refuse" is refused
+//                               the way the safety filter refuses
 //   POST /__fail                the next completion answers 500
 //   POST /__outage {"match": t, "on": bool}
 //                               every /v1 call whose body contains t answers
@@ -17,6 +23,8 @@ import { createServer } from 'node:http';
 const PORT = Number(process.env.FAKE_OPENAI_PORT || 58090);
 export const TEXT = 'Stack AI answer.';
 const requests = [];
+// Raw /v1 bodies, for /__seen.
+const bodies = [];
 let failNext = false;
 const outages = new Set();
 
@@ -51,6 +59,10 @@ const instanceOf = (schema, defs = schema?.$defs ?? schema?.definitions ?? {}) =
   }
 };
 
+// A valid 1x1 PNG, so the upload path (type sniffing, sharp) runs for real.
+const PNG_1x1 =
+  'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==';
+
 const json = (res, status, data) => {
   res.writeHead(status, { 'content-type': 'application/json' });
   res.end(JSON.stringify(data));
@@ -79,6 +91,11 @@ createServer((req, res) => {
       else outages.delete(body.match);
       return json(res, 200, { outages: [...outages] });
     }
+    if (req.method === 'GET' && req.url?.startsWith('/__seen?')) {
+      const text = new URL(req.url, 'http://fake').searchParams.get('text') || '';
+      return json(res, 200, { count: text ? bodies.filter((b) => b.includes(text)).length : 0 });
+    }
+    if (req.url?.startsWith('/v1/')) bodies.push(raw);
     if (req.url?.startsWith('/v1/') && [...outages].some((t) => raw.includes(t))) {
       requests.push({ path: req.url, model: body.model, outage: true });
       return json(res, 500, { error: { message: 'The server had an error', type: 'server_error' } });
@@ -134,6 +151,24 @@ createServer((req, res) => {
           },
         ],
         usage,
+      });
+    }
+
+    if (req.method === 'POST' && req.url === '/v1/images/generations') {
+      requests.push({ path: req.url, model: body.model, size: body.size });
+      if (String(body.prompt || '').includes('stack-refuse')) {
+        return json(res, 400, {
+          error: {
+            message: 'Your request was rejected as a result of our safety system.',
+            type: 'image_generation_user_error',
+            code: 'moderation_blocked',
+          },
+        });
+      }
+      return json(res, 200, {
+        created: Math.floor(Date.now() / 1000),
+        data: [{ b64_json: PNG_1x1 }],
+        usage: { input_tokens: 9, output_tokens: 1056, total_tokens: 1065 },
       });
     }
 
