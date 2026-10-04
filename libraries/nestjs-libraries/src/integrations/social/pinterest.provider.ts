@@ -105,7 +105,9 @@ export class PinterestProvider
         value: 'Pinterest was unable to reach the URL provided. Please check the link and try again.',
       }
     }
-    if (body.indexOf(`does not match '^\\\\\\\\\\\\\\\\d+$'`) > -1) {
+    // The board-id pattern arrives escaped a varying number of times; the
+    // fixed string here matched none of them (upstream 002a341b).
+    if (body.indexOf("does not match '^") > -1 && body.indexOf("d+$'") > -1) {
       return {
         type: 'bad-body' as const,
         value: 'The board ID must be a numeric string. Please check the board ID format.',
@@ -116,6 +118,13 @@ export class PinterestProvider
         type: 'bad-body' as const,
         value: 'The specified board was not found. Please check the board ID.',
       }
+    }
+    if (body.indexOf('You are not permitted to access that resource') > -1) {
+      return {
+        type: 'bad-body' as const,
+        value:
+          'The connected Pinterest account is not permitted to post to this board. Please check the board ID and that the account owns or can write to the board.',
+      };
     }
     if (body.indexOf('cover_image_url or cover_image_content_type') > -1) {
       return {
@@ -273,7 +282,9 @@ export class PinterestProvider
       ).json();
 
       // client-controlled path: SSRF guard (upstream 6c4a8ca4)
-      const data = await fetchMediaStream(postDetails?.[0]?.media?.[0]?.path!);
+      // The video, not whatever came first — a cover image usually does
+      // (upstream be413ec2).
+      const data = await fetchMediaStream(findMp4.path);
 
       const formData = Object.keys(upload_parameters)
         .filter((f) => f)
@@ -480,8 +491,11 @@ export class PinterestProvider
       const result: AnalyticsData[] = [];
       const metrics = data.all;
 
-      if (metrics.lifetime_metrics) {
-        const lifetimeMetrics = metrics.lifetime_metrics;
+      // These are period metrics: Pinterest returns them in summary_metrics;
+      // lifetime_metrics only ever carries comments and reactions, so every
+      // pin showed no analytics (upstream 8f92a37e).
+      if (metrics.summary_metrics) {
+        const lifetimeMetrics = metrics.summary_metrics;
 
         if (lifetimeMetrics.IMPRESSION !== undefined) {
           result.push({

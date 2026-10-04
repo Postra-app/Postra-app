@@ -115,7 +115,7 @@ If the tools return errors, you would need to rerun it with the right parameters
                     value: z
                       .any()
                       .describe(
-                        'Value of the key, always prefer the id then label if possible'
+                        'Value of the key, always prefer the id then label if possible. When the settings schema says a field is an id, pass the id returned by the channel tools, never the display label'
                       ),
                   })
                 )
