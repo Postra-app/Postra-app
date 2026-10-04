@@ -1148,6 +1148,34 @@ export class AdminController {
   }
 
   /**
+   * A subject access request (UK GDPR art. 15) answered from the panel: the
+   * person's data as JSON, without impersonating them. Audited, like every
+   * other look into someone's account.
+   */
+  @Get('/users/:id/export')
+  async exportUser(
+    @GetUserFromRequest() user: User,
+    @Param('id') userId: string,
+    @Res({ passthrough: true }) response: Response
+  ) {
+    this.assertSuperAdmin(user);
+    const data = await this._userService.exportUserData(userId);
+    if (!data) {
+      throw new HttpException('User not found', 404);
+    }
+    this._auditService.record({
+      action: 'admin.export-user',
+      userId: user.id,
+      metadata: { targetUserId: userId, email: data.user.email },
+    });
+    response.header(
+      'Content-Disposition',
+      `attachment; filename="postra-data-${userId}.json"`
+    );
+    return data;
+  }
+
+  /**
    * Erase a user on their behalf.
    *
    * The right to erasure had exactly one route: the customer clicking Delete
