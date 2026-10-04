@@ -161,6 +161,7 @@ export const SelectCurrent: FC = () => {
                 />
                 {integration.identifier === 'youtube' ? (
                   <img
+                    alt=""
                     src="/icons/platforms/youtube.svg"
                     className="absolute z-10 bottom-[2px] end-[2px] min-w-[12px]"
                     width={12}

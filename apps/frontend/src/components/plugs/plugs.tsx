@@ -99,7 +99,7 @@ export const Plugs = () => {
     return (
       <div className="bg-white/[0.03] p-[20px] flex flex-1 flex-col gap-[15px] transition-all items-center justify-center">
         <div>
-          <img src="/wtyczki1.webp" className="w-full max-w-[420px] h-auto" />
+          <img alt="" src="/wtyczki1.webp" className="w-full max-w-[420px] h-auto" />
         </div>
         <div className="text-[48px]">
           {t(

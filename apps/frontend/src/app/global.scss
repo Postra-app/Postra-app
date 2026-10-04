@@ -1233,7 +1233,9 @@ body.light .agent {
 
 .forceChange .changeColor {
   background: var(--new-btn-primary) !important;
-  color: #fff !important;
+  /* The primary button's text colour: white on sky blue was 2.1:1 (WCAG AA
+     asks 4.5:1), this is 7.7:1. */
+  color: #06222e !important;
 }
 
 .text-shadow-tags {

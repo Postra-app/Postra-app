@@ -174,7 +174,7 @@ export const PlatformAnalytics = () => {
     return (
       <div className="bg-white/[0.03] p-[20px] flex flex-col gap-[15px] transition-all flex-1 justify-center items-center text-center">
         <div>
-          <img src="/wtyczki1.webp" className="w-full max-w-[420px] h-auto" />
+          <img alt="" src="/wtyczki1.webp" className="w-full max-w-[420px] h-auto" />
         </div>
         <div className="text-[48px]">
           {t('can_t_show_analytics_yet', "We can't show analytics yet")}

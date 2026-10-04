@@ -51,6 +51,7 @@ const SelectAvatarComponent: FC<{
         >
           <div>
             <img
+              alt={p.avatar_name}
               src={p.preview_image_url}
               className="w-full h-full object-cover"
             />

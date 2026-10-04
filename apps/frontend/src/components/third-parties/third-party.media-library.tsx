@@ -213,6 +213,7 @@ const ThirdPartyMediaLibraryPicker: FC<{
         >
           <div>
             <img
+              alt=""
               className="w-[32px] h-[32px] rounded-full"
               src={`/icons/third-party/${p.identifier}.png`}
             />

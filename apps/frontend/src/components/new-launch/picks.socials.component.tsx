@@ -82,6 +82,7 @@ export const PicksSocialsComponent: FC<{ toolTip?: boolean }> = ({
                     />
                     {integration.identifier === 'youtube' ? (
                       <img
+                        alt=""
                         src="/icons/platforms/youtube.svg"
                         className="absolute z-10 bottom-0 -end-[5px] min-w-[16px]"
                         width={16}

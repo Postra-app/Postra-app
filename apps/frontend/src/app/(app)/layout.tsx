@@ -49,7 +49,8 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
     ? PlausibleProvider
     : Fragment;
   return (
-    <html>
+    // lang: screen readers pick their voice from it, and it was missing.
+    <html lang={language}>
       <head>
         <link rel="icon" href="/postra-icon.webp" type="image/webp" />
         {!!process.env.DATAFAST_WEBSITE_ID && (

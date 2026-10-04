@@ -330,7 +330,6 @@ export const MenuComponent: FC<
               ),
             }
           : {})}
-        role="Handle"
         className={clsx(
           'group-[.sidebar]:hidden flex-1 whitespace-nowrap text-ellipsis overflow-hidden cursor-move',
           integration.disabled && 'opacity-50'

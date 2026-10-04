@@ -135,6 +135,7 @@ export const ThirdPartyListComponent: FC<{ reload: () => void }> = (props) => {
         >
           <div>
             <img
+              alt=""
               className="w-[32px] h-[32px]"
               src={`/icons/third-party/${p.identifier}.png`}
             />

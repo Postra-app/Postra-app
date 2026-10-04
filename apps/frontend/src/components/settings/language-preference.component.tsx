@@ -38,6 +38,7 @@ const LanguagePreferenceComponent = () => {
         'dir',
         RTL.includes(lng) ? 'rtl' : 'ltr'
       );
+      document.documentElement.setAttribute('lang', lng);
       toaster.show(t('settings_updated', 'Settings updated'), 'success');
     },
     [setCookie, toaster, t]
