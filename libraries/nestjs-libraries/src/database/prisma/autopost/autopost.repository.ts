@@ -100,10 +100,13 @@ export class AutopostRepository {
       return { id: updatedId, active };
     }
 
+    // lastUrl is optional in the DTO but a required column: the UI always
+    // sends it, so a plain API call without it was a 500 instead of a feed.
     const { id: newId, active } = await this._autoPost.model.autoPost.create({
       data: {
         organizationId: orgId,
         ...data,
+        lastUrl: data.lastUrl ?? '',
       },
     });
 

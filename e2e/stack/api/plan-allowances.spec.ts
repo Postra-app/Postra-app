@@ -106,8 +106,9 @@ test.describe('Auto Post feeds', () => {
     await seedFeeds(pro.orgId, 3);
     expect((await pro.api.post('/autopost', { data: feed(4) })).status()).toBe(402);
 
+    // feed() sends no lastUrl, like a plain API client; `not 402` let a 500 through.
     const business = await org({ tier: 'ULTIMATE', totalChannels: 12, channels: 0 });
     await seedFeeds(business.orgId, 3);
-    expect((await business.api.post('/autopost', { data: feed(4) })).status()).not.toBe(402);
+    expect((await business.api.post('/autopost', { data: feed(4) })).status()).toBe(201);
   });
 });
