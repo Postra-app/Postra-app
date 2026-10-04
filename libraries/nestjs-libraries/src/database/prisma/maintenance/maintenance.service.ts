@@ -31,9 +31,9 @@ export interface RetentionWindows {
 }
 
 export const DEFAULT_RETENTION: RetentionWindows = {
-  // The panel's widest named filter is 90 days; 180 keeps roughly two of those
-  // for a diagnosis that reaches back, without keeping failures forever.
-  errorsDays: 180,
+  // The privacy policy promises technical logs for up to 90 days, and the
+  // panel's widest named filter is 90 days too (decision 2026-10-04).
+  errorsDays: 90,
   // Accountability records outlive diagnostics: who granted what, to whom,
   // from which address. Kept over a year so a dispute a year old can be
   // answered.

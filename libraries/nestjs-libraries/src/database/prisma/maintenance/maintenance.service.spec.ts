@@ -307,3 +307,14 @@ describe('sweepOrphanMedia', () => {
     removeFile.mockReset();
   });
 });
+
+// The privacy policy says technical logs are kept up to 90 days; audit and
+// billing usage records up to 13 months (decision 2026-10-04).
+describe('retention matches the privacy policy', () => {
+  it('keeps error logs 90 days, audit and AI usage about 13 months', () => {
+    expect(DEFAULT_RETENTION.errorsDays).toBe(90);
+    expect(DEFAULT_RETENTION.auditDays).toBeLessThanOrEqual(400);
+    expect(DEFAULT_RETENTION.aiUsageDays).toBeLessThanOrEqual(400);
+  });
+});
+
