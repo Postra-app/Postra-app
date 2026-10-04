@@ -4,7 +4,11 @@ import React, { FC, useCallback, useEffect, useMemo, useState } from 'react';
 import useSWR from 'swr';
 import { useFetch } from '@gitroom/helpers/utils/custom.fetch';
 import { useVariables } from '@gitroom/react/helpers/variable.context';
-import { loadStripe, Stripe } from '@stripe/stripe-js';
+// /pure: the plain entry point injects js.stripe.com as a side effect of the
+// import, and this component sits in the app layout, so every page loaded
+// Stripe.js (250 KiB) and its m.stripe.com cookie. Now it loads on checkout.
+import { loadStripe } from '@stripe/stripe-js/pure';
+import type { Stripe } from '@stripe/stripe-js';
 import { OrganizationSelector } from '@gitroom/frontend/components/layout/organization.selector';
 import { LanguageComponent } from '@gitroom/frontend/components/layout/language.component';
 import { AttachToFeedbackIcon } from '@gitroom/frontend/components/new-layout/sentry.feedback.component';
