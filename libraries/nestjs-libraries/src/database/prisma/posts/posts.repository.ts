@@ -188,19 +188,16 @@ export class PostsRepository {
             ],
           },
         ],
+        // The customer filter used to replace this whole object, so a
+        // customer's view also listed posts of deleted channels (upstream
+        // 81547fc6).
         integration: {
           deletedAt: null,
           organizationId: orgId,
+          ...(query.customer ? { customerId: query.customer } : {}),
         },
         deletedAt: null,
         parentPostId: null,
-        ...(query.customer
-          ? {
-              integration: {
-                customerId: query.customer,
-              },
-            }
-          : {}),
       },
       select: {
         id: true,
@@ -213,6 +210,7 @@ export class PostsRepository {
         group: true,
         creationMethod: true,
         tags: {
+          where: { tag: { deletedAt: null } },
           select: {
             tag: true,
           },
@@ -355,6 +353,7 @@ export class PostsRepository {
           group: true,
           creationMethod: true,
           tags: {
+            where: { tag: { deletedAt: null } },
             select: {
               tag: true,
             },
@@ -422,6 +421,7 @@ export class PostsRepository {
       include: {
         integration: true,
         tags: {
+          where: { tag: { deletedAt: null } },
           select: {
             tag: true,
           },
@@ -462,6 +462,7 @@ export class PostsRepository {
           ? {
               integration: true,
               tags: {
+                where: { tag: { deletedAt: null } },
                 select: {
                   tag: true,
                 },
@@ -726,6 +727,8 @@ export class PostsRepository {
           const tagsList = await tx.tags.findMany({
             where: {
               orgId: orgId,
+              // A deleted tag of the same name was attached too, unseen.
+              deletedAt: null,
               name: {
                 in: tags.map((tag) => tag.label).filter((f) => f),
               },
@@ -975,7 +978,12 @@ export class PostsRepository {
       where: { id, orgId, deletedAt: null },
       data: { deletedAt: new Date() },
     });
-    return count ? this._tags.model.tags.findUnique({ where: { id } }) : null;
+    if (!count) {
+      return null;
+    }
+    // Posts keep no link to a deleted tag (upstream 8d81cacd).
+    await this._tagsPosts.model.tagsPosts.deleteMany({ where: { tagId: id } });
+    return this._tags.model.tags.findUnique({ where: { id } });
   }
 
   createComment(

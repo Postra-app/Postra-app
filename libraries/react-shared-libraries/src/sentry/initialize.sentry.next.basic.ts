@@ -37,7 +37,13 @@ export const initializeSentryBasic = (environment: string, dsn: string, extensio
       ],
       // The browser's harmless ResizeObserver notice arrives in bursts (ten
       // at once when the channel sidebar reflows) and is never actionable.
-      ignoreErrors: [/^ResizeObserver loop/],
+      // MetaMask's injected script fails on pages that never asked for a
+      // wallet: the visitor's extension, not our code (upstream 0f59347c).
+      ignoreErrors: [
+        /^ResizeObserver loop/,
+        /^Failed to connect to MetaMask$/i,
+        /^MetaMask extension not found$/i,
+      ],
       environment: environment || 'development',
       // Without a release the uploaded source maps have nothing to attach to,
       // and every frontend stack trace in Sentry stays minified. This is the
