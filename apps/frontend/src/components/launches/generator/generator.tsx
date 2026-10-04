@@ -169,6 +169,7 @@ const FirstStep: FC = (props) => {
         setShowStep('');
         modal.openModal({
           id: 'add-edit-modal',
+          ariaLabel: 'Post editor',
           closeOnClickOutside: false,
           removeLayout: true,
           closeOnEscape: false,

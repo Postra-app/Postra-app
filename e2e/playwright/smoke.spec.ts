@@ -106,7 +106,12 @@ test('calendar → composer → draft saved → draft deleted', async ({
       await deleteLeftovers(request);
     } else {
       await tile.click();
-      await page.getByRole('button', { name: 'Delete Post' }).click();
+      // The editor's button, not the tile's own "Delete Post" icon, which
+      // stays shown under the editor while the tile has focus (WebKit).
+      await page
+        .getByRole('dialog')
+        .getByRole('button', { name: 'Delete Post', exact: true })
+        .click();
       await page.getByRole('button', { name: 'Yes, delete it!' }).click();
     }
     await expect

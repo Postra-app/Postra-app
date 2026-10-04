@@ -466,6 +466,7 @@ const OpenModal: FC<{
         const group = makeId(10);
         modals.openModal({
           id: 'add-edit-modal',
+          ariaLabel: 'Post editor',
           closeOnClickOutside: false,
           removeLayout: true,
           closeOnEscape: false,

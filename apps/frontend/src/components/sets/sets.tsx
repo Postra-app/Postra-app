@@ -96,6 +96,7 @@ export const Sets: FC = () => {
     (params?: { id?: string; name?: string; content?: string }) => () => {
       modal.openModal({
         id: 'add-edit-modal',
+        ariaLabel: 'Post editor',
         closeOnClickOutside: false,
         removeLayout: true,
         closeOnEscape: false,
