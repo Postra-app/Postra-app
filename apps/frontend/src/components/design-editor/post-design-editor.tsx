@@ -487,8 +487,23 @@ const PostDesignEditor: FC<PostDesignEditorProps> = ({
     let cancelled = false;
     const load = async () => {
       try {
-        const data = await (await fetch(`/media/${loadMediaId}`)).json();
+        const res = await fetch(`/media/${loadMediaId}`);
         if (cancelled || !fabricRef.current) return;
+        // A deleted (or foreign) item is a 404 with a JSON body: read as data
+        // it had no design and no path, so Studio opened blank without a word.
+        if (!res.ok) {
+          toaster.show(
+            res.status === 404
+              ? t(
+                  'load_media_deleted',
+                  'This design is no longer in your media library. It may have been deleted.'
+                )
+              : t('load_media_failed', 'Failed to load media for editing.'),
+            'warning'
+          );
+          return;
+        }
+        const data = await res.json();
         if (data?.canvasJson) {
           restoreState(data.canvasJson);
           return;
