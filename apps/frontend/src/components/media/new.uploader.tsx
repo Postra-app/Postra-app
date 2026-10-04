@@ -210,12 +210,22 @@ export function useUppyUploader(props: {
       });
     });
     uppy2.on('error', (result) => {
+      // One file of a batch failed: the rest are still uploading, and
+      // 'complete' reports this one with them. Resetting here dropped every
+      // other file of the batch (upstream 29478ed6).
+      if (Object.keys(uppy2.getState().currentUploads).length) {
+        console.warn('[Postra:upload] a file failed', result);
+        return;
+      }
       console.error('[Postra:upload] upload failed', result);
       if (!refusalShown) {
         toast.show('Upload failed — please try again.', 'warning');
       }
       refusalShown = false;
-      uppy2.clear();
+      // clear() throws while an upload is registered and leaves the uploader
+      // plugin running; cancelAll() removes the files and aborts them
+      // (upstream 66d9ef75).
+      uppy2.cancelAll();
       setLocked(false);
       props.onEnd();
       fileOrderIndex = 0;
@@ -224,8 +234,19 @@ export function useUppyUploader(props: {
       props.onStart();
     });
     uppy2.on('complete', async (result) => {
-      for (const file of [...result.successful]) {
+      const failed = result.failed || [];
+      // Failed files go too, or the next upload would quietly retry them.
+      for (const file of [...result.successful, ...failed]) {
         uppy2.removeFile(file.id);
+      }
+      if (failed.length) {
+        const names = failed.map((f) => f.name).filter(Boolean);
+        toast.show(
+          `Some files failed to upload${
+            names.length ? ` (${names.slice(0, 3).join(', ')}${names.length > 3 ? '…' : ''})` : ''
+          } — please try again.`,
+          'warning'
+        );
       }
 
       props.onEnd();
@@ -238,6 +259,9 @@ export function useUppyUploader(props: {
 
       // whatever happens below, never leave the composer locked
       try {
+        if (!result.successful.length) {
+          return;
+        }
         if (storageProvider === 'local') {
           onUploadSuccess(sortedSuccessful.map((p) => p.response.body));
           return;
@@ -307,8 +331,14 @@ export function useUppyUploader(props: {
       }
     });
     uppy2.on('upload-success', (file, response) => {
+      // Already removed (a refused or cancelled file): nothing to update, and
+      // reading its progress threw (upstream c2d35f94).
+      const current = uppy2.getState().files[file.id];
+      if (!current) {
+        return;
+      }
       uppy2.setFileState(file.id, {
-        progress: uppy2.getState().files[file.id].progress,
+        progress: current.progress,
         uploadURL: response.body.Location,
         response: response,
         isPaused: false,
