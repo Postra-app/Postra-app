@@ -684,8 +684,12 @@ export class IntegrationService {
       }
     }
 
+    // Days to load. The public API passes `date` through as given, so a
+    // missing or bad value asked the provider for NaN days and cached that
+    // under "undefined" (upstream 96b78476; the app always sends 7+).
+    const days = Number(date) > 0 ? Number(date) : 7;
     const getIntegrationData = await ioRedis.get(
-      `integration:${org.id}:${integration}:${date}`
+      `integration:${org.id}:${integration}:${days}`
     );
     if (getIntegrationData) {
       return JSON.parse(getIntegrationData);
@@ -696,10 +700,10 @@ export class IntegrationService {
         const loadAnalytics = await integrationProvider.analytics(
           getIntegration.internalId,
           getIntegration.token,
-          +date
+          days
         );
         await ioRedis.set(
-          `integration:${org.id}:${integration}:${date}`,
+          `integration:${org.id}:${integration}:${days}`,
           JSON.stringify(loadAnalytics),
           'EX',
           !process.env.NODE_ENV || process.env.NODE_ENV === 'development'

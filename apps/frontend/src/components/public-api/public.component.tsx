@@ -203,16 +203,6 @@ const McpSection = ({
             )}
           </div>
         </div>
-        <div className="flex gap-[6px] shrink-0 pt-[2px]">
-          <a
-            className="cursor-pointer px-[16px] h-[36px] bg-[#38bdf8] hover:brightness-110 text-[#06222e] transition-colors rounded-[8px] text-[13px] font-[600] flex items-center gap-[6px]"
-            href="https://docs.postra.co.uk/mcp/introduction"
-            target="_blank"
-          >
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6" /><polyline points="15 3 21 3 21 9" /><line x1="10" y1="14" x2="21" y2="3" /></svg>
-            {t('read_the_docs', 'Docs')}
-          </a>
-        </div>
       </div>
       <div className="p-[20px] flex flex-col gap-[16px]">
         <div className="flex flex-col gap-[6px]">
@@ -323,150 +313,69 @@ const McpSection = ({
   );
 };
 
-const localCliSteps = [
-  {
-    label: 'Install the CLI',
-    code: 'npm install -g postra',
-  },
-  {
-    label: 'Run: postra auth:login',
-    code: 'postra auth:login',
-  },
-  {
-    label: 'Install the Postra skill for your AI agent',
-    code: 'npx skills add gitroomhq/postra-agent',
-  },
-] as const;
-
-const ciCliSteps = [
-  {
-    label: 'Install the CLI',
-    code: 'npm install -g postra',
-  },
-  {
-    label: 'Set your API key as an environment variable',
-    code: 'export POSTRA_API_KEY="{API_KEY}"',
-  },
-  {
-    label: 'Install the Postra skill for your AI agent',
-    code: 'npx skills add gitroomhq/postra-agent',
-  },
-] as const;
-
-const CliSection = ({ apiKey }: { apiKey: string }) => {
+// The SDK is the published @postra/node package (apps/sdk). There is no
+// Postra CLI or agent skill package yet, so nothing here may tell a customer
+// to install one: an unclaimed npm name is somebody else's package tomorrow.
+const SdkSection = ({ apiKey }: { apiKey: string }) => {
   const t = useT();
-  const [mode, setMode] = useState<'local' | 'ci'>('local');
   const [revealed, setRevealed] = useState(false);
-
-  const steps =
-    mode === 'local'
-      ? localCliSteps.map((step) => ({ ...step }))
-      : ciCliSteps.map((step) => ({
-          ...step,
-          code: step.code.replace('{API_KEY}', apiKey),
-        }));
-
-  const displaySteps =
-    mode === 'ci' && !revealed
-      ? steps.map((step) => ({
-          ...step,
-          code: step.code.replace(
-            new RegExp(apiKey.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g'),
-            '*'.repeat(apiKey.length)
-          ),
-        }))
-      : steps;
+  const install = 'npm install @postra/node';
+  const usage = (key: string) =>
+    `import Postra from '@postra/node';\n\nconst postra = new Postra('${key}');\nconst channels = await postra.integrations();`;
 
   return (
     <div className="bg-white/[0.03] backdrop-blur-[8px] rounded-[16px] border border-white/10 overflow-hidden">
       <div className="bg-white/[0.03] px-[20px] py-[14px] border-b border-white/10 flex items-start justify-between gap-[12px]">
         <div>
           <div className="text-[15px] font-[600]">
-            {t('cli_and_skills', 'CLI & AI Skills')}
+            {t('node_sdk', 'Node.js SDK')}
           </div>
           <div className="text-[13px] text-newTextColor/55 mt-[2px]">
             {t(
-              'cli_description',
-              'Use the Postra CLI to automate posting from your terminal, or install the skill to let your AI agent schedule posts for you.'
+              'node_sdk_description',
+              'Schedule posts, upload media and list your channels from your own code.'
             )}
           </div>
         </div>
         <div className="flex gap-[6px] shrink-0 pt-[2px]">
           <a
             className="cursor-pointer px-[16px] h-[36px] bg-[#38bdf8] hover:brightness-110 text-[#06222e] transition-colors rounded-[8px] text-[13px] font-[600] flex items-center gap-[6px]"
-            href="https://docs.postra.co.uk/cli/introduction"
+            href="https://www.npmjs.com/package/@postra/node"
             target="_blank"
+            rel="noopener noreferrer"
           >
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6" /><polyline points="15 3 21 3 21 9" /><line x1="10" y1="14" x2="21" y2="3" /></svg>
-            {t('read_the_docs', 'Docs')}
+            {t('npm_package', 'npm package')}
           </a>
         </div>
       </div>
       <div className="p-[20px] flex flex-col gap-[16px]">
-        <div className="flex gap-[6px]">
-          {(['local', 'ci'] as const).map((m) => (
-            <button
-              key={m}
-              type="button"
-              className={clsx(
-                'cursor-pointer px-[14px] h-[36px] text-[13px] font-[500] rounded-[8px] transition-colors',
-                mode === m
-                  ? 'bg-[rgba(56,189,248,0.16)] text-[#7dd3fc]'
-                  : 'bg-btnSimple text-newTextColor/55 hover:bg-boxHover hover:text-textColor'
-              )}
-              onClick={() => setMode(m)}
-            >
-              {m === 'local'
-                ? t('locally', 'Locally')
-                : t('ci_remote_servers', 'CI / Remote servers')}
-            </button>
-          ))}
-        </div>
-        {displaySteps.map((step, i) => (
-          <div key={i} className="flex flex-col gap-[6px]">
-            <div className="text-[13px] font-[600] text-newTextColor/55">
-              {i + 1}. {step.label}
-            </div>
-            <pre className="bg-white/[0.03] border border-white/10 rounded-[8px] p-[16px] text-[13px] whitespace-pre-wrap break-all overflow-x-auto leading-[1.6]">
-              {step.code}
-            </pre>
+        <div className="flex flex-col gap-[6px]">
+          <div className="text-[13px] font-[600] text-newTextColor/55">
+            1. {t('install_the_sdk', 'Install')}
           </div>
-        ))}
+          <pre className="bg-white/[0.03] border border-white/10 rounded-[8px] p-[16px] text-[13px] whitespace-pre-wrap break-all overflow-x-auto leading-[1.6]">
+            {install}
+          </pre>
+        </div>
+        <div className="flex flex-col gap-[6px]">
+          <div className="text-[13px] font-[600] text-newTextColor/55">
+            2. {t('use_your_api_key', 'Use your API key')}
+          </div>
+          <pre className="bg-white/[0.03] border border-white/10 rounded-[8px] p-[16px] text-[13px] whitespace-pre-wrap break-all overflow-x-auto leading-[1.6]">
+            {usage(revealed ? apiKey : '*'.repeat(apiKey.length))}
+          </pre>
+        </div>
         <div className="flex gap-[8px]">
-          {mode === 'ci' && (
-            <button
-              type="button"
-              onClick={() => setRevealed(!revealed)}
-              className="cursor-pointer px-[16px] h-[36px] bg-btnSimple hover:bg-boxHover transition-colors rounded-[8px] text-[13px] font-[600] flex items-center gap-[6px]"
-            >
-              <svg
-                width="14"
-                height="14"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              >
-                {revealed ? (
-                  <>
-                    <path d="M17.94 17.94A10.07 10.07 0 0112 20c-7 0-11-8-11-8a18.45 18.45 0 015.06-5.94" />
-                    <path d="M9.9 4.24A9.12 9.12 0 0112 4c7 0 11 8 11 8a18.5 18.5 0 01-2.16 3.19" />
-                    <line x1="1" y1="1" x2="23" y2="23" />
-                  </>
-                ) : (
-                  <>
-                    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
-                    <circle cx="12" cy="12" r="3" />
-                  </>
-                )}
-              </svg>
-              {revealed ? t('hide', 'Hide') : t('reveal', 'Reveal')}
-            </button>
-          )}
+          <button
+            type="button"
+            onClick={() => setRevealed(!revealed)}
+            className="cursor-pointer px-[16px] h-[36px] bg-btnSimple hover:bg-boxHover transition-colors rounded-[8px] text-[13px] font-[600] flex items-center gap-[6px]"
+          >
+            {revealed ? t('hide', 'Hide') : t('reveal', 'Reveal')}
+          </button>
           <CopyButton
-            text={steps.map((s) => s.code).join(' && ')}
+            text={`${install}\n\n${usage(apiKey)}`}
             label={t('copy_all', 'Copy All')}
           />
         </div>
@@ -531,7 +440,7 @@ const PublicApiContent = () => {
         <br />
         {t(
           'api_auth_note_line4',
-          'and you will receive a pos_ prefixed token that works with the API, MCP, and CLI — just like an API Key.'
+          'and you will receive a pos_ prefixed token that works with the API, the SDK and MCP — just like an API Key.'
         )}
       </div>
       <div className="bg-white/[0.03] backdrop-blur-[8px] rounded-[16px] border border-white/10 overflow-hidden">
@@ -546,24 +455,6 @@ const PublicApiContent = () => {
                 'Use Postra API to integrate with your tools.'
               )}
             </div>
-          </div>
-          <div className="flex gap-[6px] shrink-0 pt-[2px]">
-            <a
-              className="cursor-pointer px-[16px] h-[36px] bg-[#38bdf8] hover:brightness-110 text-[#06222e] transition-colors rounded-[8px] text-[13px] font-[600] flex items-center gap-[6px]"
-              href="https://docs.postra.pl/public-api"
-              target="_blank"
-            >
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6" /><polyline points="15 3 21 3 21 9" /><line x1="10" y1="14" x2="21" y2="3" /></svg>
-            {t('read_the_docs', 'Docs')}
-            </a>
-            <a
-              className="cursor-pointer px-[16px] h-[36px] bg-[#38bdf8] hover:brightness-110 text-[#06222e] transition-colors rounded-[8px] text-[13px] font-[600] flex items-center gap-[6px]"
-              href="https://www.npmjs.com/package/n8n-nodes-postra"
-              target="_blank"
-            >
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6" /><polyline points="15 3 21 3 21 9" /><line x1="10" y1="14" x2="21" y2="3" /></svg>
-              {t('n8n_node', 'N8N Node')}
-            </a>
           </div>
         </div>
         <div className="p-[20px] flex flex-col gap-[16px]">
@@ -665,7 +556,7 @@ const PublicApiContent = () => {
         </div>
       </div>
 
-      <CliSection apiKey={user.publicApi} />
+      <SdkSection apiKey={user.publicApi} />
 
       <McpSection user={user} mcpBase={mcpBase} />
     </div>

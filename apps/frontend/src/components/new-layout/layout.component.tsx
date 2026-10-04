@@ -148,9 +148,11 @@ export const LayoutComponent = ({ children }: { children: ReactNode }) => {
                           <NotificationComponent />
                         </div>
                       </div>
-                      <div className="app-shell-content flex phone:flex-col flex-1 gap-[1px] pb-[64px] md:pb-0 bg-[linear-gradient(180deg,rgba(15,23,42,0.92),rgba(8,14,28,0.96))]">
+                      {/* The page itself: a screen reader's "skip to main content"
+                          had no landmark to land on (Lighthouse landmark-one-main). */}
+                      <main className="app-shell-content flex phone:flex-col flex-1 gap-[1px] pb-[64px] md:pb-0 bg-[linear-gradient(180deg,rgba(15,23,42,0.92),rgba(8,14,28,0.96))]">
                         {children}
-                      </div>
+                      </main>
                     </div>
                   </div>
                   <BottomNav />

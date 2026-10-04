@@ -1,6 +1,18 @@
 import { CreatePostDto } from '@gitroom/nestjs-libraries/dtos/posts/create.post.dto';
 import { GetPostsDto } from '@gitroom/nestjs-libraries/dtos/posts/get.posts.dto';
-import fetch, { FormData } from 'node-fetch';
+
+// The public API lives under /api on app.postra.pl; without it every call
+// landed on the web app and came back as a redirect to the login page.
+export const DEFAULT_BASE_URL = 'https://app.postra.pl/api';
+
+const MIME_TYPES: Record<string, string> = {
+  png: 'image/png',
+  jpg: 'image/jpeg',
+  jpeg: 'image/jpeg',
+  gif: 'image/gif',
+  webp: 'image/webp',
+  mp4: 'video/mp4',
+};
 
 function toQueryString(obj: Record<string, any>): string {
   const params = new URLSearchParams();
@@ -12,84 +24,76 @@ function toQueryString(obj: Record<string, any>): string {
   return params.toString();
 }
 
+export class PostraError extends Error {
+  constructor(public status: number, public body: unknown) {
+    super(
+      `Postra API responded ${status}: ${
+        typeof body === 'string' ? body : JSON.stringify(body)
+      }`
+    );
+    this.name = 'PostraError';
+  }
+}
+
 export default class Postra {
-  constructor(
-    private _apiKey: string,
-    private _path = 'https://app.postra.pl'
-  ) {}
+  private _baseUrl: string;
 
-  async post(posts: CreatePostDto) {
-    return (
-      await fetch(`${this._path}/public/v1/posts`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: this._apiKey,
-        },
-        body: JSON.stringify(posts),
-      })
-    ).json();
+  constructor(private _apiKey: string, baseUrl = DEFAULT_BASE_URL) {
+    // A loop, not /\/+$/: that regex is quadratic on input full of slashes.
+    let url = baseUrl;
+    while (url.endsWith('/')) url = url.slice(0, -1);
+    this._baseUrl = url;
   }
 
-  async postList(filters: GetPostsDto) {
-    return (
-      await fetch(`${this._path}/public/v1/posts?${toQueryString(filters)}`, {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: this._apiKey,
-        },
-      })
-    ).json();
+  private async request(path: string, init: RequestInit = {}) {
+    const res = await fetch(`${this._baseUrl}/public/v1${path}`, {
+      ...init,
+      redirect: 'manual',
+      headers: { Authorization: this._apiKey, ...(init.headers || {}) },
+    });
+    const text = await res.text();
+    let body: unknown = text;
+    try {
+      body = text ? JSON.parse(text) : null;
+    } catch {
+      // not JSON — keep the text for the error message
+    }
+    if (!res.ok) {
+      throw new PostraError(res.status, body);
+    }
+    return body as any;
   }
 
-  async upload(file: Buffer, extension: string) {
+  post(posts: CreatePostDto) {
+    return this.request('/posts', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(posts),
+    });
+  }
+
+  postList(filters: GetPostsDto) {
+    return this.request(`/posts?${toQueryString(filters)}`);
+  }
+
+  upload(file: Buffer, extension: string) {
+    const ext = extension.replace(/^\./, '').toLowerCase();
     const formData = new FormData();
-    const type =
-      extension === 'png'
-        ? 'image/png'
-        : extension === 'jpg'
-        ? 'image/jpeg'
-        : extension === 'gif'
-        ? 'image/gif'
-        : extension === 'jpeg'
-        ? 'image/jpeg'
-        : 'image/jpeg';
-
-    const blob = new Blob([file], { type });
-    formData.append('file', blob, extension);
-
-    return (
-      await fetch(`${this._path}/public/v1/upload`, {
-        method: 'POST',
-        // @ts-ignore
-        body: formData,
-        headers: {
-          Authorization: this._apiKey,
-        },
-      })
-    ).json();
+    formData.append(
+      'file',
+      new Blob([file], { type: MIME_TYPES[ext] || 'application/octet-stream' }),
+      `upload.${ext}`
+    );
+    return this.request('/upload', { method: 'POST', body: formData });
   }
 
-  async integrations() {
-    return (
-      await fetch(`${this._path}/public/v1/integrations`, {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: this._apiKey,
-        },
-      })
-    ).json();
+  integrations() {
+    return this.request('/integrations');
   }
 
   deletePost(id: string) {
-    return fetch(`${this._path}/public/v1/posts/${id}`, {
+    return this.request(`/posts/${encodeURIComponent(id)}`, {
       method: 'DELETE',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: this._apiKey,
-      },
     });
   }
 }

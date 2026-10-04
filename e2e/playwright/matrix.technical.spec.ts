@@ -161,6 +161,13 @@ test('Discord: short video', async ({ request }) => {
   await check(request, await only(request, 'discord'), [{ content, image: [media.video!] }], content);
 });
 
+test('Discord: three images in one message (carousel)', async ({ request }) => {
+  test.setTimeout(300_000);
+  const content = ad(5, 'dc-three');
+  await check(request, await only(request, 'discord'), [{ content, image: media.images.slice(0, 3) }], content);
+  await pause(5_000);
+});
+
 test('Discord: heading, list and link in markdown', async ({ request }) => {
   test.setTimeout(300_000);
   const tag = ad(6, 'dc-markdown');
@@ -218,6 +225,17 @@ test('Mastodon: short video', async ({ request }) => {
   test.setTimeout(300_000);
   const content = ad(2, 'md-video');
   await check(request, (await only(request, 'mastodon')).slice(0, 1), [{ content, image: [media.video!] }], content);
+  await pause(5_000);
+});
+
+test('Mastodon: four images with alt text (carousel)', async ({ request }) => {
+  test.setTimeout(300_000);
+  const content = ad(3, 'md-four');
+  const [post] = await check(request, (await only(request, 'mastodon')).slice(0, 1), [{ content, image: media.images }], content);
+  const url = new URL(post.releaseURL!);
+  const status = await (await request.get(`${url.origin}/api/v1/statuses/${url.pathname.split('/').pop()}`)).json();
+  expect(status.media_attachments?.length, 'four images on Mastodon').toBe(4);
+  expect(status.media_attachments.map((m: { description: string }) => m.description)).toEqual(media.images.map((i) => i.alt));
   await pause(5_000);
 });
 

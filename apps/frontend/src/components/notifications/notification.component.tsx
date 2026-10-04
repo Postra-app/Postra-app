@@ -73,7 +73,9 @@ export const NotificationOpenComponent = () => {
   return (
     <div
       id="notification-popup"
-      className="opacity-0 animate-normalFadeDown mt-[10px] absolute w-[420px] min-h-[200px] top-[100%] end-0 bg-third text-textColor rounded-[16px] flex flex-col border border-tableBorder z-[600]"
+      // 420px anchored to the bell started 61px off the left edge of a 390px
+      // phone; there it spans the screen instead.
+      className="opacity-0 animate-normalFadeDown mt-[10px] absolute w-[420px] phone:fixed phone:w-auto phone:start-[16px] phone:end-[16px] phone:top-[56px] min-h-[200px] top-[100%] end-0 bg-third text-textColor rounded-[16px] flex flex-col border border-tableBorder z-[600]"
     >
       <div
         className={`p-[16px] border-b border-tableBorder font-bold`}
@@ -140,7 +142,14 @@ const NotificationComponent = () => {
       <button
         type="button"
         onClick={changeShow}
-        aria-label={t('notifications', 'Notifications')}
+        // The red dot alone tells a screen reader nothing.
+        aria-label={
+          data?.total > 0
+            ? t('notifications_unread', 'Notifications, {{count}} unread', {
+                count: data.total,
+              })
+            : t('notifications', 'Notifications')
+        }
         aria-expanded={show}
         className="flex"
       >

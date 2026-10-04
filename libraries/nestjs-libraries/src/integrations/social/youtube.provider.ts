@@ -14,6 +14,7 @@ import axios from 'axios';
 import { YoutubeSettingsDto } from '@gitroom/nestjs-libraries/dtos/posts/providers-settings/youtube.settings.dto';
 import {
   BadBody,
+  RefreshToken,
   SocialAbstract,
   ValidityMedia,
 } from '@gitroom/nestjs-libraries/integrations/social.abstract';
@@ -610,8 +611,21 @@ export class YoutubeProvider extends SocialAbstract implements SocialProvider {
       }
 
       return result;
-    } catch (err) {
-      console.error('Error fetching YouTube post analytics:', err);
+    } catch (err: any) {
+      // An expired or revoked token answered as "no statistics" for good;
+      // checkPostAnalytics refreshes the token and retries once (upstream
+      // 96b78476).
+      if (err?.response?.status === 401) {
+        throw new RefreshToken(
+          this.identifier,
+          JSON.stringify(err.response.data || {}),
+          '{}'
+        );
+      }
+      console.error(
+        'Error fetching YouTube post analytics:',
+        err?.message || err
+      );
       return [];
     }
   }

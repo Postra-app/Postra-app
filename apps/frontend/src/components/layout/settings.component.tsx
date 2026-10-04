@@ -32,10 +32,9 @@ import { useT } from '@gitroom/react/translation/get.transation.service.client';
 import { GlobalSettings } from '@gitroom/frontend/components/settings/global.settings';
 import { ApprovedAppsComponent } from '@gitroom/frontend/components/approved-apps/approved-apps.component';
 
-// The Developers tab documents the `@postra/node` SDK / CLI and
-// docs.postra.co.uk, none of which are published yet. Keep the code but hide
-// the tab until they exist — flip to `true` once the package + docs ship.
-const DEVELOPER_API_ENABLED = false;
+// The Developers tab: API key, the published `@postra/node` SDK, MCP and
+// OAuth apps. Hidden until the SDK was on npm (2026-10).
+const DEVELOPER_API_ENABLED = true;
 
 export const SettingsPopup: FC<{
   getRef?: Ref<any>;
@@ -92,8 +91,9 @@ export const SettingsPopup: FC<{
   const list = useMemo(() => {
     const arr = [];
     arr.push({ tab: 'global_settings', label: t('global_settings', 'Global Settings') });
-    // Populate tabs based on user permissions
-    if ((user?.tier?.team_members ?? 0) > 1 && isGeneral) {
+    // Populate tabs based on user permissions. Listing and removing members
+    // is admin-only on the API, so a team member would open the tab to a 403.
+    if ((user?.tier?.team_members ?? 0) > 1 && isGeneral && user?.role !== 'USER') {
       arr.push({ tab: 'teams', label: t('teams', 'Teams') });
     }
     // Webhooks send organisation data out; managing them is for admins.
@@ -109,9 +109,11 @@ export const SettingsPopup: FC<{
     if (user?.tier.current !== 'FREE') {
       arr.push({ tab: 'signatures', label: t('signatures', 'Signatures') });
     }
+    // API keys and OAuth apps belong to admins (publicApi is empty for a USER).
     if (
       DEVELOPER_API_ENABLED &&
       user?.tier?.public_api &&
+      user?.role !== 'USER' &&
       isGeneral &&
       showLogout
     ) {

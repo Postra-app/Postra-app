@@ -1,6 +1,6 @@
 'use client';
 
-import { Stripe } from '@stripe/stripe-js';
+import type { Stripe } from '@stripe/stripe-js';
 
 import { FC, useEffect, useState } from 'react';
 import {
