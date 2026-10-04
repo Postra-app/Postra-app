@@ -39,7 +39,10 @@ export default class Postra {
   private _baseUrl: string;
 
   constructor(private _apiKey: string, baseUrl = DEFAULT_BASE_URL) {
-    this._baseUrl = baseUrl.replace(/\/+$/, '');
+    // A loop, not /\/+$/: that regex is quadratic on input full of slashes.
+    let url = baseUrl;
+    while (url.endsWith('/')) url = url.slice(0, -1);
+    this._baseUrl = url;
   }
 
   private async request(path: string, init: RequestInit = {}) {
