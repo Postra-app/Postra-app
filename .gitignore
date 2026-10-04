@@ -72,3 +72,6 @@ apps/orchestrator/uploads/
 
 # jest-junit output
 /reports/
+
+# Load-test session tokens (e2e/load/seed.mjs)
+e2e/load/users.json
