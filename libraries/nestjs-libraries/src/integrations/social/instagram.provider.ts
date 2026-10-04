@@ -659,6 +659,20 @@ export class InstagramProvider
       firstPost?.media,
       isStory
     );
+    // Collaborators go on the post itself: a single item, or the carousel
+    // container — Meta refuses them on carousel children. Sent URL-encoded
+    // and without a leading @, which Instagram rejects (2207018) and the tag
+    // input keeps as typed (upstream a9aced7d, 0a8c28fb, 1de15370).
+    const collaborators =
+      firstPost?.settings?.collaborators?.length && !isStory
+        ? `&collaborators=${encodeURIComponent(
+            JSON.stringify(
+              firstPost.settings.collaborators.map((p) =>
+                p.label.replace(/^@+/, '')
+              )
+            )
+          )}`
+        : ``;
     const medias = await Promise.all(
       safeMedia.map(async (m) => {
         const caption =
@@ -694,16 +708,12 @@ export class InstagramProvider
             )}`
           : ``;
 
-        const collaborators =
-          firstPost?.settings?.collaborators?.length && !isStory
-            ? `&collaborators=${JSON.stringify(
-                firstPost?.settings?.collaborators.map((p) => p.label)
-              )}`
-            : ``;
+        const itemCollaborators =
+          firstPost?.media?.length === 1 ? collaborators : ``;
 
         const { id: photoId } = await (
           await this.fetch(
-            `https://${type}/v20.0/${id}/media?${mediaType}${isCarousel}${collaborators}${trialParams}&access_token=${accessToken}${caption}`,
+            `https://${type}/v20.0/${id}/media?${mediaType}${isCarousel}${itemCollaborators}${trialParams}&access_token=${accessToken}${caption}`,
             {
               method: 'POST',
             }
@@ -805,7 +815,7 @@ export class InstagramProvider
             firstPost?.message
           )}&media_type=CAROUSEL&children=${encodeURIComponent(
             medias.join(',')
-          )}&access_token=${accessToken}`,
+          )}${collaborators}&access_token=${accessToken}`,
           {
             method: 'POST',
           }
