@@ -331,6 +331,7 @@ export const PlatformAnalytics = () => {
             <div className="max-w-[200px]">
               <Select
                 label=""
+                aria-label={t('date_range', 'Date range')}
                 name="date"
                 disableForm={true}
                 hideErrors={true}

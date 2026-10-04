@@ -64,6 +64,7 @@ const LanguagePreferenceComponent = () => {
           <Select
             name="language"
             label=""
+            aria-label={t('interface_language', 'Interface language')}
             disableForm={true}
             hideErrors={true}
             value={current}

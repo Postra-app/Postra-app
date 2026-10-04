@@ -100,6 +100,7 @@ export const StatisticsModal: FC<{
                 <div className="max-w-[150px]">
                   <Select
                     label=""
+                    aria-label={t('date_range', 'Date range')}
                     name="date"
                     disableForm={true}
                     hideErrors={true}

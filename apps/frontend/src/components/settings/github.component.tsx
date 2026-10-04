@@ -108,6 +108,7 @@ const ConnectComponent: FC<{
           onChange={(e) => setUrl(e.target.value)}
           name="github"
           label=""
+          aria-label="GitHub repository URL"
           placeholder="Full GitHub URL"
         />
         <Button

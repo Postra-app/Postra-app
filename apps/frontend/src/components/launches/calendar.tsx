@@ -367,7 +367,9 @@ export const DayView = () => {
                 .startOf('day')
                 .add(option[0].time, 'minute')
                 .local()
-                .format(isUSCitizen() ? 'hh:mm A' : 'LT')}
+                // Not 'LT': in the English locale that is 12-hour too, so
+                // "24 hours" changed nothing in the day view.
+                .format(isUSCitizen() ? 'hh:mm A' : 'HH:mm')}
             </div>
             <div
               key={option[0].time}

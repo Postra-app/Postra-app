@@ -9,6 +9,7 @@ import { useClickAway } from '@uidotdev/usehooks';
 import ReactLoading from '@gitroom/frontend/components/layout/loading';
 import { useT } from '@gitroom/react/translation/get.transation.service.client';
 import DOMPurify from 'dompurify';
+import { isUSCitizen } from '@gitroom/frontend/components/launches/helpers/isuscitizen.utils';
 function replaceLinks(text: string) {
   const urlRegex =
     /(\bhttps?:\/\/[-A-Z0-9+&@#/%?=~_|!:,.;]*[-A-Z0-9+&@#/%=~_|])/gi;
@@ -35,7 +36,10 @@ export const ShowNotification: FC<{
   );
   const createdAt = dayjs(notification.createdAt);
   const isWithin24h = dayjs().diff(createdAt, 'hour') < 24;
-  const fullDate = createdAt.format('MMM D, YYYY h:mm A');
+  // Settings → Time format, as in the calendar.
+  const fullDate = createdAt.format(
+    isUSCitizen() ? 'MMM D, YYYY h:mm A' : 'D MMM YYYY, HH:mm'
+  );
   return (
     <div
       className={clsx(
