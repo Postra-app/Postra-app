@@ -126,6 +126,13 @@ export class CreatePostDto {
   @IsBoolean()
   republish?: boolean;
 
+  // When the editor opened the post: a save after someone else changed it is
+  // refused with a 409 instead of silently replacing their work. Without it
+  // the last save wins, as before (API, agent).
+  @IsOptional()
+  @IsDateString()
+  expectedUpdatedAt?: string;
+
   @IsDefined()
   @IsDateString()
   date: string;

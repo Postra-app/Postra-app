@@ -488,6 +488,15 @@ export class PostsRepository {
     });
   }
 
+  // By id, not by group: every save moves the posts to a new group.
+  async latestUpdateOf(orgId: string, ids: string[]) {
+    const { _max } = await this._post.model.post.aggregate({
+      _max: { updatedAt: true },
+      where: { organizationId: orgId, id: { in: ids } },
+    });
+    return _max.updatedAt;
+  }
+
   clearReleases(orgId: string, ids: string[]) {
     return this._post.model.post.updateMany({
       where: {
