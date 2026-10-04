@@ -331,6 +331,31 @@ export const AdminUsersComponent = () => {
     [fetch, toaster, t, mutate]
   );
 
+  // Subject access request: the person's data as a JSON file (audited).
+  const exportUser = useCallback(
+    (u: UserItem) => async () => {
+      const res = await fetch(`/admin/users/${u.id}/export`);
+      if (!res.ok) {
+        toaster.show(
+          await withReason(res, t('admin_export_user_failed', 'Export failed')),
+          'warning'
+        );
+        return;
+      }
+      const url = URL.createObjectURL(
+        new Blob([JSON.stringify(await res.json(), null, 2)], {
+          type: 'application/json',
+        })
+      );
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `postra-data-${u.email}.json`;
+      link.click();
+      URL.revokeObjectURL(url);
+    },
+    [fetch, toaster, t]
+  );
+
   const grantLifetime = useCallback(
     (u: UserItem) => async () => {
       if (
@@ -684,6 +709,13 @@ export const AdminUsersComponent = () => {
                             : t('admin_billing', 'Billing')}
                         </button>
                       ))}
+                    <button
+                      type="button"
+                      onClick={exportUser(u)}
+                      className="px-[12px] h-[30px] rounded-[8px] text-[12px] border border-white/[0.12] text-newTextColor hover:bg-white/[0.06] cursor-pointer transition-colors"
+                    >
+                      {t('admin_export_user', 'Export data')}
+                    </button>
                     {u.id !== user?.id && (
                       <button
                         type="button"

@@ -1,5 +1,6 @@
 import { META_GRAPH_API_VERSION } from '@gitroom/nestjs-libraries/integrations/social/meta.graph.version';
-import { BadRequestException, Logger } from '@nestjs/common';
+import { Logger } from '@nestjs/common';
+import { numericId } from '@gitroom/nestjs-libraries/integrations/social/numeric.id';
 import {
   AnalyticsData,
   AuthTokenDetails,
@@ -585,20 +586,17 @@ export class InstagramProvider
     data: { pageId: string; id: string }
   ) {
     const [accessToken, userToken] = token.split('___');
-    // Both ids come from the client and go into the Graph API path with the
-    // user's token; Meta ids are numeric (CodeQL js/request-forgery #73/#74).
-    if (!/^\d+$/.test(String(data?.pageId)) || !/^\d+$/.test(String(data?.id))) {
-      throw new BadRequestException('Invalid page');
-    }
+    const pageId = numericId(data?.pageId);
+    const accountId = numericId(data?.id);
     const { access_token, ...all } = await (
       await fetch(
-        `https://graph.facebook.com/${META_GRAPH_API_VERSION}/${data.pageId}?fields=access_token,name,picture.type(large)&access_token=${accessToken}`
+        `https://graph.facebook.com/${META_GRAPH_API_VERSION}/${pageId}?fields=access_token,name,picture.type(large)&access_token=${accessToken}`
       )
     ).json();
 
     const { id, name, profile_picture_url, username } = await (
       await fetch(
-        `https://graph.facebook.com/${META_GRAPH_API_VERSION}/${data.id}?fields=username,name,profile_picture_url&access_token=${accessToken}`
+        `https://graph.facebook.com/${META_GRAPH_API_VERSION}/${accountId}?fields=username,name,profile_picture_url&access_token=${accessToken}`
       )
     ).json();
 
@@ -661,6 +659,20 @@ export class InstagramProvider
       firstPost?.media,
       isStory
     );
+    // Collaborators go on the post itself: a single item, or the carousel
+    // container — Meta refuses them on carousel children. Sent URL-encoded
+    // and without a leading @, which Instagram rejects (2207018) and the tag
+    // input keeps as typed (upstream a9aced7d, 0a8c28fb, 1de15370).
+    const collaborators =
+      firstPost?.settings?.collaborators?.length && !isStory
+        ? `&collaborators=${encodeURIComponent(
+            JSON.stringify(
+              firstPost.settings.collaborators.map((p) =>
+                p.label.replace(/^@+/, '')
+              )
+            )
+          )}`
+        : ``;
     const medias = await Promise.all(
       safeMedia.map(async (m) => {
         const caption =
@@ -696,16 +708,12 @@ export class InstagramProvider
             )}`
           : ``;
 
-        const collaborators =
-          firstPost?.settings?.collaborators?.length && !isStory
-            ? `&collaborators=${JSON.stringify(
-                firstPost?.settings?.collaborators.map((p) => p.label)
-              )}`
-            : ``;
+        const itemCollaborators =
+          firstPost?.media?.length === 1 ? collaborators : ``;
 
         const { id: photoId } = await (
           await this.fetch(
-            `https://${type}/v20.0/${id}/media?${mediaType}${isCarousel}${collaborators}${trialParams}&access_token=${accessToken}${caption}`,
+            `https://${type}/v20.0/${id}/media?${mediaType}${isCarousel}${itemCollaborators}${trialParams}&access_token=${accessToken}${caption}`,
             {
               method: 'POST',
             }
@@ -807,7 +815,7 @@ export class InstagramProvider
             firstPost?.message
           )}&media_type=CAROUSEL&children=${encodeURIComponent(
             medias.join(',')
-          )}&access_token=${accessToken}`,
+          )}${collaborators}&access_token=${accessToken}`,
           {
             method: 'POST',
           }

@@ -51,6 +51,7 @@ const SelectAvatarComponent: FC<{
         >
           <div>
             <img
+              alt={p.avatar_name}
               src={p.preview_image_url}
               className="w-full h-full object-cover"
             />
@@ -198,7 +199,7 @@ const HeygenProviderComponent = () => {
               Generate Voice From My Post Text
             </Button>
           )}
-          <Textarea label="" {...form.register('voice')} />
+          <Textarea label="" aria-label="Voice to generate" {...form.register('voice')} />
           {!!data?.length && (
             <>
               <div className="text-lg my-3">Select Avatar</div>

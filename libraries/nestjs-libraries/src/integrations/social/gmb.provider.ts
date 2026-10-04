@@ -6,9 +6,11 @@ import {
   SocialProvider,
 } from '@gitroom/nestjs-libraries/integrations/social/social.integrations.interface';
 import { makeSecureId } from '@gitroom/nestjs-libraries/services/make.secure.id';
+import { numericId } from '@gitroom/nestjs-libraries/integrations/social/numeric.id';
 import { google } from 'googleapis';
 import { OAuth2Client } from 'google-auth-library/build/src/auth/oauth2client';
 import {
+  BadBody,
   SocialAbstract,
   ValidityMedia,
 } from '@gitroom/nestjs-libraries/integrations/social.abstract';
@@ -328,10 +330,15 @@ export class GmbProvider extends SocialAbstract implements SocialProvider {
     data: { id: string; accountName: string; locationName: string }
   ) {
     // data.id is the full resource path: accounts/{accountId}/locations/{locationId}
-    // data.locationName is the v1 API format: locations/{locationId}
-    // Fetch location details using the v1 API format
+    // (the v4 Local Posts API); the v1 API takes locations/{locationId}. Both
+    // come from the client, so rebuild them from the numeric ids instead of
+    // sending the client's strings into the API path and into the channel id.
+    const [, accountId, locationId] =
+      /^accounts\/([^/]+)\/locations\/([^/]+)$/.exec(String(data?.id)) || [];
+    const id = `accounts/${numericId(accountId)}/locations/${numericId(locationId)}`;
+    const locationName = `locations/${numericId(locationId)}`;
     const locationResponse = await fetch(
-      `https://mybusinessbusinessinformation.googleapis.com/v1/${data.locationName}?readMask=name,title,storefrontAddress,metadata`,
+      `https://mybusinessbusinessinformation.googleapis.com/v1/${locationName}?readMask=name,title,storefrontAddress,metadata`,
       {
         headers: {
           Authorization: `Bearer ${accessToken}`,
@@ -344,7 +351,7 @@ export class GmbProvider extends SocialAbstract implements SocialProvider {
     let photoUrl = '';
     try {
       const mediaResponse = await fetch(
-        `https://mybusinessbusinessinformation.googleapis.com/v1/${data.locationName}/media`,
+        `https://mybusinessbusinessinformation.googleapis.com/v1/${locationName}/media`,
         {
           headers: {
             Authorization: `Bearer ${accessToken}`,
@@ -370,7 +377,7 @@ export class GmbProvider extends SocialAbstract implements SocialProvider {
 
     return {
       // Return the full resource path as id (for v4 Local Posts API)
-      id: data.id,
+      id,
       name: locationData.title || 'Unnamed Location',
       access_token: accessToken,
       picture: photoUrl,
@@ -483,14 +490,35 @@ export class GmbProvider extends SocialAbstract implements SocialProvider {
       'create local post'
     );
 
-    const postData = await response.json();
+    const postData = await response.json().catch(() => ({}));
 
-    // Extract the post ID and construct the URL
-    const postId = postData.name || '';
+    // Google answers 200 for a post it rejected on policy, and occasionally
+    // without the post at all; both were reported as published (upstream
+    // f700b8a1, 1d965049).
+    if (postData?.state === 'REJECTED') {
+      throw new BadBody(
+        this.identifier,
+        JSON.stringify(postData),
+        JSON.stringify(postBody),
+        'Google rejected this post for a content policy violation. Please review the post content and try again.'
+      );
+    }
+    if (!postData?.name) {
+      throw new BadBody(
+        this.identifier,
+        JSON.stringify(postData),
+        JSON.stringify(postBody),
+        'Google did not confirm the post creation. Please try again.'
+      );
+    }
+
+    const postId = postData.name;
     const locationId = id.split('/').pop();
 
-    // GMB posts don't have direct URLs, but we can link to the business profile
-    const releaseURL = `https://business.google.com/locations/${locationId}`;
+    // The post's own link in Google Search when Google gives one (upstream
+    // 6345ca57); the business profile otherwise.
+    const releaseURL =
+      postData.searchUrl || `https://business.google.com/locations/${locationId}`;
 
     return [
       {

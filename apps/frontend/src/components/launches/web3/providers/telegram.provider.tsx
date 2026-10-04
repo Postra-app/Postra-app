@@ -109,6 +109,7 @@ export const TelegramProvider: FC<Web3ProviderInterface> = (props) => {
               <div className="flex-1">
                 <Input
                   label=""
+                  aria-label={t('telegram_connect_command', 'Command to send in your chat')}
                   value={`/connect ${word.current}`}
                   name=""
                   disableForm={true}

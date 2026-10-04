@@ -39,6 +39,7 @@ import {
 } from '@gitroom/backend/services/auth/permissions/subscription.exception';
 import { PostValidationExceptionFilter } from '@gitroom/backend/api/routes/posts.validation.exception';
 import { AiUnavailableExceptionFilter } from '@gitroom/backend/api/routes/ai.unavailable.exception';
+import { StripeErrorExceptionFilter } from '@gitroom/backend/api/routes/stripe.error.exception';
 import { HttpExceptionFilter } from '@gitroom/nestjs-libraries/services/exception.filter';
 import { ConfigurationChecker } from '@gitroom/helpers/configuration/configuration.checker';
 import { startMcp } from '@gitroom/nestjs-libraries/chat/start.mcp';
@@ -142,6 +143,7 @@ async function start() {
   );
   app.useGlobalFilters(new PostValidationExceptionFilter());
   app.useGlobalFilters(new AiUnavailableExceptionFilter());
+  app.useGlobalFilters(new StripeErrorExceptionFilter());
   app.useGlobalFilters(new HttpExceptionFilter());
 
   // Swagger UI is dev-only (NOT_SECURED is never set in prod): the full

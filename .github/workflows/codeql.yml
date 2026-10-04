@@ -9,6 +9,15 @@ on:
       - apps/**
       - '!apps/docs/**'
       - libraries/**
+  # An alert raised only after the merge is already in production; analyse the
+  # pull request too, so a new one shows up while it can still be fixed.
+  pull_request:
+    branches:
+      - main
+    paths:
+      - apps/**
+      - '!apps/docs/**'
+      - libraries/**
   merge_group:
 
 

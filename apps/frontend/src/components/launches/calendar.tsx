@@ -138,6 +138,13 @@ const usePostActions = (onMutate?: () => void) => {
       };
 
       const data = await (await fetch(`/posts/group/${post.group}`)).json();
+      // The post was deleted elsewhere (another tab, a teammate) since the
+      // calendar loaded: 404, and data.posts[0] threw (upstream c1d55367).
+      if (!data?.posts?.length) {
+        toaster.show(t('post_not_found', 'Post not found'), 'warning');
+        mutate();
+        return;
+      }
       const date = !isDuplicate
         ? null
         : (await (await fetch('/posts/find-slot')).json()).date;
@@ -367,7 +374,9 @@ export const DayView = () => {
                 .startOf('day')
                 .add(option[0].time, 'minute')
                 .local()
-                .format(isUSCitizen() ? 'hh:mm A' : 'LT')}
+                // Not 'LT': in the English locale that is 12-hour too, so
+                // "24 hours" changed nothing in the day view.
+                .format(isUSCitizen() ? 'hh:mm A' : 'HH:mm')}
             </div>
             <div
               key={option[0].time}
@@ -421,7 +430,7 @@ export const WeekView = () => {
   return (
     <div className="flex flex-col text-textColor flex-1 phone:hidden">
       <div className="flex-1 relative">
-        <div className="launches-calendar-grid grid [grid-template-columns:80px_repeat(7,_minmax(0,_1fr))] gap-[6px] rounded-[18px] absolute h-full start-0 top-0 w-full overflow-auto border border-white/10 bg-[linear-gradient(180deg,rgba(15,23,42,0.9),rgba(10,14,26,0.94))] p-[6px] shadow-[0_28px_80px_rgba(2,6,23,0.28)] backdrop-blur-xl scrollbar scrollbar-thumb-fifth scrollbar-track-newBgColor">
+        <div tabIndex={0} aria-label={t('week', 'Week')} className="launches-calendar-grid grid [grid-template-columns:80px_repeat(7,_minmax(0,_1fr))] gap-[6px] rounded-[18px] absolute h-full start-0 top-0 w-full overflow-auto border border-white/10 bg-[linear-gradient(180deg,rgba(15,23,42,0.9),rgba(10,14,26,0.94))] p-[6px] shadow-[0_28px_80px_rgba(2,6,23,0.28)] backdrop-blur-xl scrollbar scrollbar-thumb-fifth scrollbar-track-newBgColor">
           <div className="launches-calendar-header z-10 flex justify-center items-center flex-col h-[62px] rounded-[14px] border border-white/8 bg-[rgba(15,23,42,0.78)] shadow-[inset_0_1px_0_rgba(255,255,255,0.04)] sticky top-0"></div>
           {localizedDays.map((day, index) => (
             <div
@@ -516,7 +525,7 @@ export const MonthView = () => {
   return (
     <div className="flex flex-col text-textColor flex-1 phone:hidden">
       <div className="flex-1 flex relative">
-        <div className="launches-calendar-grid grid grid-cols-7 grid-rows-[62px_auto] gap-[6px] rounded-[18px] absolute start-0 top-0 overflow-auto w-full h-full border border-white/10 bg-[linear-gradient(180deg,rgba(15,23,42,0.9),rgba(10,14,26,0.94))] p-[6px] shadow-[0_28px_80px_rgba(2,6,23,0.28)] backdrop-blur-xl scrollbar scrollbar-thumb-tableBorder scrollbar-track-secondary">
+        <div tabIndex={0} aria-label={t('month', 'Month')} className="launches-calendar-grid grid grid-cols-7 grid-rows-[62px_auto] gap-[6px] rounded-[18px] absolute start-0 top-0 overflow-auto w-full h-full border border-white/10 bg-[linear-gradient(180deg,rgba(15,23,42,0.9),rgba(10,14,26,0.94))] p-[6px] shadow-[0_28px_80px_rgba(2,6,23,0.28)] backdrop-blur-xl scrollbar scrollbar-thumb-tableBorder scrollbar-track-secondary">
           {localizedDays.map((day) => (
             <div
               key={day}
@@ -657,8 +666,7 @@ export const CalendarColumn: FC<{
     changeDate,
     display,
     reloadCalendarView,
-    sets,
-    signature,
+    composerDefaults,
     loading,
   } = useCalendar();
   const modal = useModals();
@@ -817,6 +825,7 @@ export const CalendarColumn: FC<{
   );
 
   const addModal = useCallback(async () => {
+    const { sets, signature } = await composerDefaults();
     const set: any = !sets.length
       ? undefined
       : await new Promise((resolve) => {
@@ -888,7 +897,7 @@ export const CalendarColumn: FC<{
       ),
       size: '80%',
     });
-  }, [integrations, getDate, sets, signature]);
+  }, [integrations, getDate, composerDefaults]);
 
   const addProvider = useAddProvider();
   return (
@@ -1011,6 +1020,7 @@ export const CalendarColumn: FC<{
                         />
                         {selectedIntegrations.identifier === 'youtube' ? (
                           <img
+                            alt=""
                             src="/icons/platforms/youtube.svg"
                             className="absolute z-10 -bottom-[5px] -end-[5px]"
                             width={20}
@@ -1161,7 +1171,7 @@ const CalendarItem: FC<{
           // the post's action icons still appear.
           hasTags
             ? 'h-[24px] min-h-[24px] max-h-[24px]'
-            : 'h-[6px] min-h-[6px] max-h-[6px] group-hover:h-[24px] group-hover:min-h-[24px] group-hover:max-h-[24px]'
+            : 'h-[6px] min-h-[6px] max-h-[6px] group-hover:h-[24px] group-hover:min-h-[24px] group-hover:max-h-[24px] group-focus-within:h-[24px] group-focus-within:min-h-[24px] group-focus-within:max-h-[24px]'
         )}
         style={{
           background:
@@ -1172,78 +1182,103 @@ const CalendarItem: FC<{
         <div
           className={clsx(
             post?.tags?.[0]?.tag?.color ? 'mix-blend-difference' : '',
-            'group-hover:hidden cursor-pointer'
+            'group-hover:hidden group-focus-within:hidden cursor-pointer'
           )}
         >
           {(post?.tags ?? []).map((p) => p.tag.name).join(', ')}
         </div>
         {copyDebugJson && (
-          <div
+          <button
             className={clsx(
-              'hidden group-hover:block hover:underline cursor-pointer',
+              'hidden group-hover:block group-focus-within:block hover:underline cursor-pointer',
               post?.tags?.[0]?.tag?.color && 'mix-blend-difference'
             )}
-            onClick={copyDebugJson}
+            type="button"
+          aria-label={t('copy_debug_json', 'Copy Debug JSON')}
+          onClick={copyDebugJson}
           >
             <CopyDebug />
-          </div>
+          </button>
         )}
-        <div
+        <button
           className={clsx(
-            'hidden group-hover:block hover:underline cursor-pointer',
+            'hidden group-hover:block group-focus-within:block hover:underline cursor-pointer',
             post?.tags?.[0]?.tag?.color && 'mix-blend-difference'
           )}
-          onClick={duplicatePost}
+          type="button"
+        aria-label={t('duplicate_post', 'Duplicate Post')}
+        onClick={duplicatePost}
         >
           <Duplicate />
-        </div>
-        <div
+        </button>
+        <button
           className={clsx(
-            'hidden group-hover:block hover:underline cursor-pointer',
+            'hidden group-hover:block group-focus-within:block hover:underline cursor-pointer',
             post?.tags?.[0]?.tag?.color && 'mix-blend-difference'
           )}
-          onClick={preview}
+          type="button"
+        aria-label={t('preview_post', 'Preview Post')}
+        onClick={preview}
         >
           <Preview />
-        </div>{' '}
+        </button>{' '}
         {(post.integration?.providerIdentifier === 'x' && disableXAnalytics) ||
         !post.releaseId ? (
           <></>
         ) : post.releaseId === 'missing' && missingRelease ? (
-          <div
+          <button
             className={clsx(
-              'hidden group-hover:block hover:underline cursor-pointer',
+              'hidden group-hover:block group-focus-within:block hover:underline cursor-pointer',
               post?.tags?.[0]?.tag?.color && 'mix-blend-difference'
             )}
-            onClick={missingRelease}
+            type="button"
+          aria-label={t('post_statistics', 'Post Statistics')}
+          onClick={missingRelease}
           >
             <Statistics />
-          </div>
+          </button>
         ) : post.releaseId !== 'missing' ? (
-          <div
+          <button
             className={clsx(
-              'hidden group-hover:block hover:underline cursor-pointer',
+              'hidden group-hover:block group-focus-within:block hover:underline cursor-pointer',
               post?.tags?.[0]?.tag?.color && 'mix-blend-difference'
             )}
-            onClick={statistics}
+            type="button"
+          aria-label={t('post_statistics', 'Post Statistics')}
+          onClick={statistics}
           >
             <Statistics />
-          </div>
+          </button>
         ) : (
           <></>
         )}{' '}
-        <div
+        <button
           className={clsx(
-            'hidden group-hover:block hover:underline cursor-pointer',
+            'hidden group-hover:block group-focus-within:block hover:underline cursor-pointer',
             post?.tags?.[0]?.tag?.color && 'mix-blend-difference'
           )}
-          onClick={deletePost}
+          type="button"
+        aria-label={t('delete_post', 'Delete Post')}
+        onClick={deletePost}
         >
           <DeletePost />
-        </div>
+        </button>
       </div>
+      {/* Opens the post from the keyboard too (Enter or Space); it was a div
+          that only a mouse could reach. */}
       <div
+        role="button"
+        tabIndex={0}
+        // A name of its own, not the post's text: a post saying "post now"
+        // or "create post" would otherwise answer to those buttons' names.
+        aria-label={`${t('open_post', 'Open post')}: ${post.integration?.name || ''}`}
         onClick={editPost}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            editPost();
+          }
+        }}
         className={clsx(
           'gap-[5px] w-full flex h-full flex-1 rounded-br-[10px] rounded-bl-[10px] p-[8px] text-[14px] bg-[rgba(15,23,42,0.92)] transition-all hover:bg-[rgba(30,41,59,0.95)]',
           'relative',
@@ -1252,10 +1287,12 @@ const CalendarItem: FC<{
       >
         <div className={clsx('relative min-w-[20px]')}>
           <img
+            alt={post.integration?.name || ''}
             className="w-[20px] h-[20px] rounded-[8px]"
             src={post.integration?.picture || '/no-picture.jpg'}
           />
           <img
+            alt=""
             className="w-[12px] h-[12px] rounded-[8px] absolute z-10 top-[10px] end-0 border border-fifth"
             src={`/icons/platforms/${post.integration?.providerIdentifier}.png`}
           />

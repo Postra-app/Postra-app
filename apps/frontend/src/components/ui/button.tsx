@@ -16,6 +16,19 @@ const variantClass: Record<Variant, string> = {
     'bg-[rgba(248,113,113,0.14)] border border-[rgba(248,113,113,0.4)] text-[#fca5a5] hover:bg-[rgba(248,113,113,0.22)]',
 };
 
+/** The button look, for a link that navigates (works before hydration). */
+export const buttonClass = (
+  variant: Variant = 'primary',
+  size: 'sm' | 'md' = 'md'
+) =>
+  clsx(
+    'inline-flex items-center justify-center gap-[7px] rounded-[10px] font-[600] cursor-pointer transition-all duration-150 whitespace-nowrap',
+    size === 'sm'
+      ? 'h-[30px] px-[12px] text-[12px]'
+      : 'h-[38px] px-[18px] text-[13.5px]',
+    variantClass[variant]
+  );
+
 /**
  * Postra button — admin design language (solid-cyan primary). Drop-in for the
  * shared @gitroom/react/form/button (same props: secondary, loading, disabled,
@@ -35,18 +48,12 @@ export const Button: FC<
   }
 > = ({ children, variant, secondary, loading, size, className, ...props }) => {
   const v: Variant = variant ?? (secondary ? 'secondary' : 'primary');
-  const sizeCls =
-    size === 'sm'
-      ? 'h-[30px] px-[12px] text-[12px]'
-      : 'h-[38px] px-[18px] text-[13.5px]';
   return (
     <button
       {...props}
       type={props.type || 'button'}
       className={clsx(
-        'inline-flex items-center justify-center gap-[7px] rounded-[10px] font-[600] cursor-pointer transition-all duration-150 whitespace-nowrap',
-        sizeCls,
-        variantClass[v],
+        buttonClass(v, size),
         (props.disabled || loading) && 'opacity-40 pointer-events-none',
         className
       )}

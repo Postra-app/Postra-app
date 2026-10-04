@@ -38,6 +38,7 @@ const LanguagePreferenceComponent = () => {
         'dir',
         RTL.includes(lng) ? 'rtl' : 'ltr'
       );
+      document.documentElement.setAttribute('lang', lng);
       toaster.show(t('settings_updated', 'Settings updated'), 'success');
     },
     [setCookie, toaster, t]
@@ -64,6 +65,7 @@ const LanguagePreferenceComponent = () => {
           <Select
             name="language"
             label=""
+            aria-label={t('interface_language', 'Interface language')}
             disableForm={true}
             hideErrors={true}
             value={current}

@@ -14,6 +14,7 @@ const ADMIN_READS = [
   '/admin/audit',
   '/admin/integrations',
   `/admin/problem-reports/${UNKNOWN}.png`,
+  `/admin/users/${UNKNOWN}/export`,
   '/announcements/list',
   `/user/impersonate?name=owner`,
 ];

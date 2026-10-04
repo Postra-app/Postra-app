@@ -121,6 +121,7 @@ const ShortlinkPreferenceComponent = () => {
           <Select
             name="shortlink"
             label=""
+            aria-label={t('shortlink_preference', 'Shortlink Preference')}
             disableForm={true}
             hideErrors={true}
             value={localValue}

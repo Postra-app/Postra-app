@@ -994,29 +994,39 @@ export class PostsRepository {
     });
   }
 
-  async getPostByForWebhookId(postId: string) {
-    return this._post.model.post.findMany({
-      where: {
-        id: postId,
-        deletedAt: null,
-        parentPostId: null,
-      },
-      select: {
-        id: true,
-        content: true,
-        publishDate: true,
-        releaseURL: true,
-        state: true,
-        integration: {
-          select: {
-            id: true,
-            name: true,
-            providerIdentifier: true,
-            picture: true,
-            type: true,
-          },
+  async getPostByForWebhookId(postId: string, integrationId: string) {
+    const select = {
+      id: true,
+      content: true,
+      publishDate: true,
+      releaseURL: true,
+      state: true,
+      integration: {
+        select: {
+          id: true,
+          name: true,
+          providerIdentifier: true,
+          picture: true,
+          type: true,
         },
       },
+    };
+    const posts = await this._post.model.post.findMany({
+      where: { id: postId, deletedAt: null, parentPostId: null },
+      select,
+    });
+    if (posts.length) {
+      return posts;
+    }
+
+    // The workflows pass the platform's post id, which updatePost has
+    // already stored as releaseId — looked up by our id alone, every webhook
+    // body was [] (upstream b1930421).
+    return this._post.model.post.findMany({
+      where: { releaseId: postId, integrationId, deletedAt: null, parentPostId: null },
+      orderBy: { updatedAt: 'desc' },
+      take: 1,
+      select,
     });
   }
 

@@ -527,6 +527,7 @@ export const MediaBox: FC<{
           )}
         >
           <div
+            tabIndex={0}
             className={clsx(
               'absolute -left-[3px] -top-[3px] withp3 h-full overflow-x-hidden overflow-y-auto scrollbar scrollbar-thumb-newColColor scrollbar-track-newBgColorInner',
               !isLoading &&
@@ -536,7 +537,7 @@ export const MediaBox: FC<{
           >
             {!isLoading && !data?.results?.length && (
               <>
-                <img src="/1.webp" className="w-full max-w-[320px] h-auto" />
+                <img alt="" src="/1.webp" className="w-full max-w-[320px] h-auto" />
                 <div className="text-[20px] font-[600]">
                   {debouncedSearch
                     ? t(
@@ -928,6 +929,7 @@ export const MultiMediaComponent: FC<{
                         <VideoFrame url={mediaDirectory.set(media?.path)} />
                       ) : (
                         <img
+                          alt=""
                           className="w-full h-full object-cover rounded-[4px]"
                           src={mediaDirectory.set(media?.path)}
                         />
@@ -1176,6 +1178,7 @@ export const MediaComponent: FC<{
       {!!currentMedia && (
         <div className="my-[20px] cursor-pointer w-[200px] h-[200px] border-2 border-tableBorder">
           <img
+            alt=""
             className="w-full h-full object-cover"
             src={currentMedia.path}
             onClick={() => window.open(mediaDirectory.set(currentMedia.path))}

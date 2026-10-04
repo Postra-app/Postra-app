@@ -38,7 +38,7 @@ const MetricComponent = () => {
       <div className="text-[15px] font-[600]">
         {t('date_metrics', 'Time format')}
       </div>
-      <Select name="metric" disableForm={true} label="" onChange={changeMetric} value={currentMetric ? 'US' : 'GLOBAL'}>
+      <Select name="metric" disableForm={true} label="" aria-label={t('date_metrics', 'Time format')} onChange={changeMetric} value={currentMetric ? 'US' : 'GLOBAL'}>
         {dateMetrics.map((metric) => (
           <option
             key={metric.value}
