@@ -106,6 +106,15 @@ export async function proxy(request: NextRequest) {
   const org = nextUrl.searchParams.get('org');
   const url = new URL(nextUrl).search;
   if (!nextUrl.pathname.startsWith('/auth') && !authCookie) {
+    // A third-party app sends its user to the consent screen. Without the
+    // path the user landed in the app after logging in and the OAuth flow
+    // was lost; returnUrl (stored by auth/return.url.component) brings them
+    // back to it.
+    if (nextUrl.pathname.startsWith('/oauth/authorize')) {
+      const login = new URL('/auth', nextUrl.href);
+      login.searchParams.set('returnUrl', nextUrl.pathname + nextUrl.search);
+      return NextResponse.redirect(login);
+    }
     const providers = ['google', 'settings'];
     const findIndex = providers.find((p) => nextUrl.href.indexOf(p) > -1);
     const additional = !findIndex

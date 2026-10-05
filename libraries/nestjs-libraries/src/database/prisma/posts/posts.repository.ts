@@ -56,6 +56,8 @@ export class PostsRepository {
     return rows.map((r) => r.content).filter((c): c is string => !!c);
   }
 
+  // The window is the last 2 days, whatever the name says. The name matches the
+  // Temporal activity in PostActivity, which must keep it (workflow history).
   searchForMissingThreeHoursPosts() {
     return this._post.model.post.findMany({
       where: {

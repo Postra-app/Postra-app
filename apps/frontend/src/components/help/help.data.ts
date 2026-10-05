@@ -396,6 +396,11 @@ export const STUDIO_GRAPHICS_TOOLS: StudioToolGuide[] = [
       'Upload your own photos, and work on whatever photo is on the canvas: filters (brightness, contrast, saturation, blur and black-and-white presets), background removal and a smart crop to the current format. Free stock photos have their own tool next to Templates.',
   },
   {
+    name: 'Layers',
+    description:
+      'Every element on the canvas in one list — the top of the list is the front of the design. Click a row to select that element, move it forward or backward, hide it, or lock it so a stray click cannot move it (a locked element stays unselectable until you unlock it).',
+  },
+  {
     name: 'Saving & export',
     description:
       '"Save to library" stores the finished graphic in Media, ready for any post; "Save as template" adds it to your templates; "Download PNG" saves a lossless file; "All formats" renders a variant for every platform size at once; "Use in Post" attaches the design to a post. The format bar at the bottom switches between platform sizes and repositions your layout, and Carousel mode edits multi-slide posts. Studio also keeps a draft automatically — leave and come back, and your design is restored. You can get back into an image later from Media: hover a file and pick "Edit in Studio". Studio needs a desktop or laptop — the canvas and its panels do not fit a phone screen.',
@@ -462,7 +467,7 @@ export const SETTINGS_SECTIONS: SettingsSectionGuide[] = [
   },
   {
     name: 'Webhooks',
-    availability: 'All paid plans (Starter 2, Pro 10, Business 30 webhooks), admins only',
+    availability: 'All paid plans (Starter 2, Pro 30, Business unlimited webhooks), admins only',
     description:
       'Get an HTTP call to your own endpoint whenever posts publish — for connecting Postra to your own tools.',
   },

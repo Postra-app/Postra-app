@@ -159,13 +159,10 @@ model User {
 
 model UsedCodes {
   id           String       @id @default(uuid())
-  // Double-redeem race guard. This @unique is only safe to deploy AFTER its
-  // versioned migration (migrations/20260708_add_usedcodes_code_unique) has
-  // been applied to the DB: boot runs `prisma db push` without
-  // --accept-data-loss, which refuses to *add* a unique constraint (Prisma
-  // flags it as data-loss) and the app never boots (prod 502, 2026-07-08).
-  // With the "UsedCodes_code_key" index already present, db push sees no diff
-  // and boots cleanly. See the PR runbook.
+  // Double-redeem race guard. The "UsedCodes_code_key" index lives in the
+  // squashed migrations/00000000000000_init. Boot runs `prisma migrate deploy`
+  // (scripts/db-migrate.mjs); adding this @unique while boot still ran
+  // `prisma db push` took prod down (502, 2026-07-08).
   code         String       @unique
   orgId        String
   createdAt    DateTime     @default(now())

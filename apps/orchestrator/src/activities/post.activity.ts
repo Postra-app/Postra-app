@@ -128,6 +128,10 @@ export class PostActivity {
     return this._integrationService.getIntegrationById(orgId, id);
   }
 
+  // Despite the name, this looks back 2 days, not 3 hours (the window is in
+  // PostsRepository). Do not rename it: the activity name is recorded in the
+  // history of running missingPostWorkflow executions, and a rename breaks
+  // their replay.
   @ActivityMethod()
   async searchForMissingThreeHoursPosts() {
     const list = await this._postService.searchForMissingThreeHoursPosts();

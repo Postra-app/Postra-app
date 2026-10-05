@@ -2,22 +2,22 @@
 # Copilot Coding Agent Instructions for Postra
 
 ## Project Architecture
-- Monorepo managed by NX, with apps in `apps/` and shared code in `libraries/`.
-- Main services: `frontend` (Next.js), `backend` (NestJS), `cron`, `commands`, `extension`, `sdk`, and `workers`.
-- Data layer uses Prisma ORM (`libraries/nestjs-libraries/src/database/prisma/schema.prisma`) with PostgreSQL as the default database.
-- Redis (BullMQ) is used for queues and caching.
-- Email notifications via Resend.
-- Social login integrations (Instagram, Facebook) and Make.com/N8N integrations.
+- pnpm workspace monorepo, with apps in `apps/` and shared code in `libraries/`.
+- Apps: `frontend` (Next.js), `backend` (NestJS API), `orchestrator` (NestJS Temporal worker: workflows and activities), `commands` (maintenance CLI), `extension` (browser extension) and `sdk` (`@postra/node`).
+- Data layer uses Prisma ORM (`libraries/nestjs-libraries/src/database/prisma/schema.prisma`) with PostgreSQL.
+- Scheduled posts and background jobs run on Temporal. Redis is used for caching, rate limiting and short-lived state.
+- Email via Resend or any SMTP server (`EMAIL_PROVIDER`; production uses Amazon SES SMTP).
+- Social channels are the providers in `libraries/nestjs-libraries/src/integrations/social`; the ones offered to customers are `enabledProviders` in `integration.manager.ts`.
 
 ## Developer Workflows
-- Use Node.js 20.17.0 and pnpm 8+.
+- Use Node.js 22 (`engines`: `>=22.12.0 <23.0.0`) and pnpm 10.6.1 (`packageManager`).
 - Install dependencies: `pnpm install`
-- Build all apps: `pnpm run build`
-- Run all apps in dev mode: `pnpm run dev`
-- Test: `pnpm test` (Jest, coverage enabled)
+- Build frontend, backend and orchestrator: `pnpm run build`
+- Run in dev mode: `pnpm run dev`
+- Test: `pnpm test` (Jest, coverage enabled); stack tests: `pnpm e2e:stack` (see `e2e/stack/README.md`)
 - Individual app scripts are in each app's `package.json` (e.g., `pnpm --filter ./apps/backend run dev`).
 - Prisma DB commands: `pnpm run prisma-generate`, `pnpm run prisma-db-migrate` (apply migrations), `pnpm run prisma-migrate-dev` (create one). Never `prisma db push`.
-- Docker: `docker compose -f ./docker-compose.dev.yaml up -d`
+- Local infrastructure: `make infra` (Postgres, Redis, Temporal); `make dev` also runs migrations and starts backend + frontend. See `Makefile`.
 
 ## Conventions & Patterns
 - Use conventional commits (`feat:`, `fix:`, `chore:`).
@@ -28,14 +28,14 @@
 - Make sure to keep the `.env.example` file updated with new environment variables.
 
 ## Integration Points
-- External APIs: Social media (Instagram, Facebook), Make.com, N8N, Resend, Stripe, etc.
-- SDK (`apps/sdk`) provides programmatic access to Postra features.
-- Extension (`apps/extension`) is built with Vite, React, TypeScript, and Tailwind CSS.
+- External APIs: social platforms, OpenAI, Stripe, email (Resend or SMTP), AWS S3, Sentry.
+- SDK (`apps/sdk`, published as `@postra/node`) is a client for the public API (`apps/backend/src/public-api`). Releases go out on a `sdk-v*` tag (`.github/workflows/publish-sdk.yml`).
+- Extension (`apps/extension`) is a Chrome MV3 service worker built with Vite and TypeScript; it reads cookies for cookie-based providers (Skool).
 
 ## Key Files & Directories
 - `apps/` — Main services and applications
 - `libraries/` — Shared code and modules
-- `docker-compose.dev.yaml` — Local development Docker setup
+- `docker-compose.dev.yaml` and `Makefile` — Local development Docker setup
 - `.env` — Environment configuration
 - `jest.config.ts` — Test configuration
 - `pnpm-workspace.yaml` — Workspace package management
@@ -43,9 +43,7 @@
 - `libraries/nestjs-libraries/src/database/prisma/schema.prisma` — Database schema
 
 ## Documentation
-- Main docs: https://docs.postra.co.uk/
-- Developer guide: https://docs.postra.co.uk/developer-guide
-- Public API: https://docs.postra.co.uk/public-api
+- There is no hosted docs site. `README.md`, `CLAUDE.md` and `AGENTS.md` at the repo root are the reference.
 
 ---
 

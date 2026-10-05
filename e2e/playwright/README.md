@@ -33,5 +33,4 @@ the `E2E_EMAIL` / `E2E_PASSWORD` / `E2E_ORG` secrets (skipped with a warning whe
 they are not set). Traces are off in CI — they record the session cookie, and
 this repo's artifacts are public — so a failure uploads screenshots only.
 
-The step is report-only (`continue-on-error`) until it has passed three deploys
-in a row. After that, a failure rolls the deploy back like a failed health check.
+The step gates the deploy: a failure rolls it back like a failed health check.

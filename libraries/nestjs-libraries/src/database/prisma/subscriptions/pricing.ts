@@ -10,8 +10,9 @@ export interface PricingInnerInterface {
   // (integrations.controller.getIntegrationUrl) and on downgrade
   // (subscription.service.modifySubscription). Edit this list to move a
   // platform between tiers. NOTE: a platform must ALSO be in
-  // integration.manager `enabledProviders` to appear in the picker — e.g. `x`
-  // is listed for ULTIMATE here but stays hidden until enabled globally.
+  // integration.manager `enabledProviders` to appear in the picker — e.g.
+  // `linkedin-page` is listed for PRO here but shows "Coming soon" until it is
+  // enabled globally.
   allowedProviders: string[];
   posts_per_month: number;
   // Team seat allowance INCLUDING the owner. 1 = solo (owner only, cannot
