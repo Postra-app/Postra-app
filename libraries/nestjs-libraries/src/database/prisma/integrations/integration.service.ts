@@ -808,7 +808,15 @@ export class IntegrationService {
     currentRun: number;
   }) {
     const getPlugById = await this._integrationRepository.getPlug(data.plugId);
-    if (!getPlugById) {
+    // Switched off, or its channel disabled or removed, after the post went
+    // out: the scheduled comment or repost still ran (INT-14). `true` ends
+    // the plug's runs.
+    if (
+      !getPlugById ||
+      !getPlugById.activated ||
+      getPlugById.integration?.disabled ||
+      getPlugById.integration?.deletedAt
+    ) {
       return true;
     }
 

@@ -42,7 +42,7 @@ describe('POST /integrations/function allowlist', () => {
 
 // Every picker the composer calls must still pass on every provider that has it.
 describe('the composer\'s calls on the real providers', () => {
-  const USED = ['boards', 'channels', 'companies', 'company', 'creatorInfo', 'experiences', 'groups', 'label', 'list', 'organizations', 'pages', 'postTypes', 'publications', 'restrictions', 'subreddits', 'tags', 'teams', 'templates'];
+  const USED = ['boards', 'channels', 'companies', 'company', 'creatorInfo', 'experiences', 'groups', 'label', 'list', 'mention', 'organizations', 'pages', 'postTypes', 'publications', 'restrictions', 'subreddits', 'tags', 'teams', 'templates'];
   it('are all allowed where the provider defines them', () => {
     // eslint-disable-next-line @typescript-eslint/no-require-imports
     const { socialIntegrationList } = require('@gitroom/nestjs-libraries/integrations/integration.manager');

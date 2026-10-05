@@ -72,3 +72,24 @@ test('E2E-08-31: a connect flow refuses a return address that is not a web addre
     await prisma.$disconnect();
   }
 });
+
+// INT-12: two callbacks at once both saw the one free slot and both added
+// a channel.
+test('one free slot, two channels connected at once: only one is added', async () => {
+  const prisma = database();
+  const org = await throwawayOrg(prisma, { tier: 'PRO', totalChannels: 3, channels: 2 });
+  try {
+    const [one, two] = [await stateFor(org.api), await stateFor(org.api)];
+    const tag = Date.now();
+    const statuses = (
+      await Promise.all([connect(org.api, one, `slotA${tag}`), connect(org.api, two, `slotB${tag}`)])
+    ).map((r) => r.status());
+    expect(statuses.filter((s) => s < 300)).toHaveLength(1);
+    expect(
+      await prisma.integration.count({ where: { organizationId: org.orgId, deletedAt: null, disabled: false } })
+    ).toBe(3);
+  } finally {
+    await org.remove();
+    await prisma.$disconnect();
+  }
+});

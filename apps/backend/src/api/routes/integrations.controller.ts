@@ -42,6 +42,9 @@ import { RefreshIntegrationService } from '@gitroom/nestjs-libraries/integration
 
 // Composer pickers that read from the platform but are not @Tool methods.
 const PICKER_FUNCTIONS = new Set([
+  // The editor's @-mention search (POST /integrations/mentions); refused, it
+  // fell back to the cache and looked like "no results" (INT-15).
+  'mention',
   'pages',
   'companies',
   'company',
