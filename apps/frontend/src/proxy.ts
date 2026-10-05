@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { isLogoutPath } from '@gitroom/frontend/components/layout/safe.url';
 import type { NextRequest } from 'next/server';
 import { getCookieUrlFromDomain } from '@gitroom/helpers/subdomain/subdomain.management';
 import { internalFetch } from '@gitroom/helpers/utils/internal.fetch';
@@ -74,8 +75,9 @@ export async function proxy(request: NextRequest) {
     return topResponse;
   }
 
-  // If the URL is logout, delete the cookie and redirect to login
-  if (nextUrl.href.indexOf('/auth/logout') > -1) {
+  // If the URL is logout, delete the cookie and redirect to login. The path
+  // itself: `?next=/auth/logout` in any link signed people out (E2E-08-32).
+  if (isLogoutPath(nextUrl.pathname)) {
     const response = NextResponse.redirect(
       new URL('/auth/login', nextUrl.href)
     );

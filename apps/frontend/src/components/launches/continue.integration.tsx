@@ -1,6 +1,7 @@
 'use client';
 
 import { FC, useCallback, useEffect, useMemo, useState } from 'react';
+import { isNavigableUrl } from '@gitroom/frontend/components/layout/safe.url';
 import { HttpStatusCode } from 'axios';
 import { useRouter } from 'next/navigation';
 import { Button } from '@gitroom/frontend/components/ui/button';
@@ -51,7 +52,10 @@ export const ContinueIntegration: FC<{
   // Helper to handle navigation - redirects if logged or returnURL exists, otherwise shows inline
   const navigateOrShow = useCallback(
     (path: string, returnURL: string | undefined, outcome: Outcome) => {
-      if (returnURL) {
+      // The return address is stored from the flow's start and can be
+      // anything a member asked for: `javascript:` ran script in whoever
+      // finished the connection (E2E-08-31).
+      if (returnURL && isNavigableUrl(returnURL, window.location.origin)) {
         // If returnURL exists, always redirect to it with the path params
         const params = path.includes('?') ? path.split('?')[1] : '';
         push(params ? `${returnURL}?${params}` : returnURL);

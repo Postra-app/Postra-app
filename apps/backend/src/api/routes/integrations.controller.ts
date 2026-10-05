@@ -312,6 +312,16 @@ export class IntegrationsController {
     const integrationProvider =
       this._integrationManager.getSocialIntegration(integration);
 
+    // Handed back to whoever finishes the connection and navigated to: a web
+    // address, a path or the app — never `javascript:` (E2E-08-31). Checked
+    // before the try below, which turns errors into a 200.
+    if (
+      redirectUrl &&
+      !/^(https?:\/\/|postra:\/\/|\/(?!\/))/i.test(redirectUrl)
+    ) {
+      throw new BadRequestException('redirectUrl must be a web address');
+    }
+
     if (integrationProvider.externalUrl && !externalUrl) {
       throw new BadRequestException('Missing external url');
     }

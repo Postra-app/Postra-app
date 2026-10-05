@@ -52,3 +52,23 @@ test('E2E-04-23: the session-less page picker only finishes an invitee\'s own co
     await prisma.$disconnect();
   }
 });
+
+test('E2E-08-31: a connect flow refuses a return address that is not a web address', async () => {
+  // Stored with the flow and navigated to by whoever finished it:
+  // `javascript:` ran script in a colleague's session.
+  const prisma = database();
+  const org = await throwawayOrg(prisma, { tier: 'PRO', totalChannels: 5, channels: 0 });
+  try {
+    for (const bad of ['javascript:alert(location.origin)//', 'data:text/html,x', '//attacker.example']) {
+      const res = await org.api.get(`/integrations/social/mastodon?redirectUrl=${encodeURIComponent(bad)}`);
+      expect(res.status(), bad).toBe(400);
+    }
+    for (const ok of ['postra://integrations', 'https://example.com/back', '/launches']) {
+      const res = await org.api.get(`/integrations/social/mastodon?redirectUrl=${encodeURIComponent(ok)}`);
+      expect(res.status(), ok).toBe(200);
+    }
+  } finally {
+    await org.remove();
+    await prisma.$disconnect();
+  }
+});
