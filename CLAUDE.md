@@ -22,7 +22,7 @@ Never install frontend components from npmjs, focus on writing native components
 The project uses tailwind 3, before writing any component look at:
 - /apps/frontend/src/app/colors.scss
 - /apps/frontend/src/app/global.scss
-- /apps/frontend/tailwind.config.js
+- /apps/frontend/tailwind.config.cjs
 
 All the --color-custom* are deprecated, don't use them.
 

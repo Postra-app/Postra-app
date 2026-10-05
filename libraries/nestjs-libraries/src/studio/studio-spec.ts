@@ -1,8 +1,9 @@
 /**
  * StudioSpec — semantic canvas representation for AI roundtrip.
  *
- * Phase 2 features (AI Refine, A/B variants, Magic Layers, semantic search)
- * exchange this shape with the backend. Fabric `toJSON()` is too verbose +
+ * AI Refine (`StudioAiService.refineSpec`) exchanges this shape with the
+ * backend, and `POST /media/:id/design-spec` stores it on a media row. Fabric
+ * `toJSON()` is too verbose +
  * triggers hallucinated property names; this shape stays close to the
  * "agent-template" pattern (tldraw) — small, typed, addressable by stable id.
  *

@@ -138,9 +138,11 @@ jobs:
         id: resolve
         run: |
           # Resolve the live instance by its Name tag instead of a fixed
-          # EC2_INSTANCE_ID secret. Terraform replaces the box on userdata
-          # change (user_data_replace_on_change), which changes the instance
-          # ID and broke the deploy with "InvalidInstanceId". Looking it up by
+          # EC2_INSTANCE_ID secret. A fixed ID broke the deploy with
+          # "InvalidInstanceId" after Terraform replaced the box. A userdata
+          # change is now a stop/start that keeps the ID
+          # (user_data_replace_on_change = false in Postra-infra), but a
+          # replacement (new AMI, rebuild) still changes it. Looking it up by
           # tag each run makes the deploy immune to replacement.
           INSTANCE_ID=$(aws ec2 describe-instances \
             --region "${AWS_REGION}" \

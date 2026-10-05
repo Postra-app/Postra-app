@@ -37,7 +37,7 @@ const ORIGIN = z.enum(['left', 'center', 'right', 'top', 'bottom']);
 
 // OpenAI strict structured outputs require EVERY field to be required, so an
 // optional field MUST also be `.nullable()` (the API rejects bare `.optional()`
-// at zodResponseFormat conversion → 500 on refine/variants/decompose). Keep
+// at zodResponseFormat conversion → 500 on refine). Keep
 // `.optional().nullable()` on all non-mandatory layer fields.
 const TextLayerSchema = z.object({
   id: z.string(),

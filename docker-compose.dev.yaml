@@ -1,7 +1,8 @@
 # Local dev infrastructure
 # Usage:
-#   make infra          -- Postgres + Redis only (light, default)
-#   make infra-full     -- Postgres + Redis + Temporal + pgAdmin + RedisInsight
+#   make infra          -- Postgres + Redis + Temporal + Temporal UI (default; the backend needs Temporal)
+#   make infra-light    -- Postgres + Redis only (frontend-only work)
+#   make infra-full     -- infra + pgAdmin + RedisInsight
 #   make infra-stop     -- stop everything
 
 services:
@@ -69,25 +70,6 @@ services:
       - postra-network
 
   # ── Temporal (profile: temporal) ──────────────────────────────
-  temporal-elasticsearch:
-    container_name: temporal-elasticsearch
-    image: elasticsearch:7.17.27
-    profiles: [temporal]
-    environment:
-      - cluster.routing.allocation.disk.threshold_enabled=true
-      - cluster.routing.allocation.disk.watermark.low=512mb
-      - cluster.routing.allocation.disk.watermark.high=256mb
-      - cluster.routing.allocation.disk.watermark.flood_stage=128mb
-      - discovery.type=single-node
-      - ES_JAVA_OPTS=-Xms256m -Xmx256m
-      - xpack.security.enabled=false
-    networks:
-      - temporal-network
-    expose:
-      - 9200
-    volumes:
-      - /var/lib/elasticsearch/data
-
   temporal-postgresql:
     container_name: temporal-postgresql
     image: postgres:16
@@ -120,6 +102,7 @@ services:
       # Production runs Temporal with Elasticsearch off and visibility in SQL.
       # Local used to force it on, which meant a heavyweight container nobody
       # needed and a configuration that did not match the one being debugged.
+      # The Elasticsearch container is gone from this file for the same reason.
       - ENABLE_ES=false
       - SKIP_ADD_CUSTOM_SEARCH_ATTRIBUTES=true
       - TEMPORAL_NAMESPACE=default

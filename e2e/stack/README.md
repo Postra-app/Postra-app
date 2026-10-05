@@ -21,6 +21,7 @@ What runs:
 | backend | 53000 | `apps/backend/dist`, migrated by `scripts/db-migrate.mjs` like production |
 | orchestrator (Temporal worker) | — (metrics 9464) | without it nothing publishes |
 | fake Mastodon | 58080 | `fake-mastodon.mjs`; `MASTODON_URL` points the real provider here |
+| fake OpenAI | 58090 | `fake-openai.mjs`; `OPENAI_BASE_URL` points the official SDK here, so AI code runs unchanged and costs nothing |
 | frontend | 54200 | `next start`, UI layer only |
 | proxy | 54000 | `proxy.mjs`: one origin, `/api/*` → backend, the rest → frontend — what production's nginx does |
 
@@ -50,7 +51,7 @@ Writing tests:
 - UI selectors by role and text, never by Tailwind classes.
 - Locally a server already listening on its port is reused; after a code
   change stop it (`lsof -ti tcp:53000 | xargs kill`, same for 9464, 58080,
-  54200, 54000) and rebuild, or you test the old code.
+  58090, 54200, 54000) and rebuild, or you test the old code.
 
 ## Optional projects
 

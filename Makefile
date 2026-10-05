@@ -14,17 +14,18 @@ dev-full: infra-full db-migrate db-seed dev-app
 
 # ── Infrastructure ───────────────────────────────────────────────
 
-# Core + Temporal (backend requires Temporal to start)
+# Core + Temporal + Temporal UI (backend requires Temporal to start)
 infra:
 	docker compose -f docker-compose.dev.yaml --profile temporal up -d
 	@echo "Postgres: localhost:5432  |  Redis: localhost:6379  |  Temporal: localhost:7233"
+	@echo "Temporal UI: localhost:8080"
 
 # Minimal: Postgres + Redis only (frontend-only dev, backend won't start)
 infra-light:
 	docker compose -f docker-compose.dev.yaml up -d
 	@echo "Postgres: localhost:5432  |  Redis: localhost:6379"
 
-# Core + Temporal + ES
+# Core + Temporal + Temporal UI + pgAdmin + RedisInsight
 infra-full:
 	docker compose -f docker-compose.dev.yaml --profile temporal --profile tools up -d
 	@echo "Postgres: localhost:5432  |  Redis: localhost:6379"
