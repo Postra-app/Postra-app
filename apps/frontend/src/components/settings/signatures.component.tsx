@@ -1,7 +1,7 @@
 import React, { FC, Fragment, useCallback, useRef } from 'react';
 import { refusalMessage } from '@gitroom/frontend/components/layout/response.error';
 import { useFetch } from '@gitroom/helpers/utils/custom.fetch';
-import useSWR from 'swr';
+import useSWR, { useSWRConfig } from 'swr';
 import { Button } from '@gitroom/frontend/components/ui/button';
 import { Card } from '@gitroom/frontend/components/ui/card';
 import clsx from 'clsx';
@@ -29,7 +29,13 @@ export const SignaturesComponent: FC<{
   const load = useCallback(async () => {
     return (await fetch('/signatures')).json();
   }, []);
-  const { data, mutate } = useSWR('signatures', load);
+  const { data, mutate: reloadList } = useSWR('signatures', load);
+  // The composer reads the default signature from its own key; an edit here
+  // left it adding the old one until a page reload (FE-C-10).
+  const { mutate: mutateKey } = useSWRConfig();
+  const mutate = useCallback(async () => {
+    await Promise.all([reloadList(), mutateKey('default-sign')]);
+  }, [reloadList, mutateKey]);
   const addSignature = useCallback(
     (data?: any) => () => {
       modal.openModal({

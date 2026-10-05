@@ -164,10 +164,12 @@ export const TeamsComponent = () => {
       children: <AddMember />,
     });
   }, [t]);
+  // Someone accepting an invite joins while this list sits in the cache: it
+  // is fetched again on opening the tab and on coming back to the window
+  // (FE-S-9).
   const { data, isLoading, mutate } = useSWR('/api/teams', loadTeam, {
-    revalidateOnFocus: false,
-    revalidateOnReconnect: false,
-    revalidateIfStale: false,
+    revalidateOnFocus: true,
+    revalidateOnMount: true,
   });
   const remove = useCallback(
     (toRemove: {

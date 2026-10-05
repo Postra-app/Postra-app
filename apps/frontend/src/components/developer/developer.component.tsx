@@ -1,6 +1,6 @@
 'use client';
 
-import { FC, useCallback, useState } from 'react';
+import { FC, useCallback, useState, useRef } from 'react';
 import { refusalMessage } from '@gitroom/frontend/components/layout/response.error';
 import { useFetch } from '@gitroom/helpers/utils/custom.fetch';
 import useSWR from 'swr';
@@ -195,7 +195,21 @@ export const DeveloperComponent: FC = () => {
     }
   }, [name, description, redirectUrl, pictureId, t]);
 
+  // One rotation at a time: a second one started while the first was in
+  // flight could show the first secret last, after the second had replaced
+  // it (FE-S-3).
+  const rotating = useRef(false);
   const rotateSecret = useCallback(async () => {
+    if (rotating.current) return;
+    rotating.current = true;
+    try {
+      await rotateSecretOnce();
+    } finally {
+      rotating.current = false;
+    }
+  }, [decision, t]);
+
+  const rotateSecretOnce = async () => {
     const approved = await decision.open({
       title: t('oauth_rotate_secret_title', 'Generate a new client secret?'),
       description: t(
@@ -227,7 +241,7 @@ export const DeveloperComponent: FC = () => {
         'warning'
       );
     }
-  }, [decision, t]);
+  };
 
   const deleteApp = useCallback(async () => {
     const approved = await decision.open({

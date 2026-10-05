@@ -41,6 +41,9 @@ const ShortlinkPreferenceComponent = () => {
   const { data, isLoading, mutate } = useShortlinkPreference();
 
   const [localValue, setLocalValue] = useState<ShortLinkPreference>('ASK');
+  // A second choice while the first was saving could be overtaken by it, and
+  // the earlier choice stayed saved (FE-S-8). The control waits for the save.
+  const [saving, setSaving] = useState(false);
 
   // Sync local state with fetched data
   useEffect(() => {
@@ -56,6 +59,7 @@ const ShortlinkPreferenceComponent = () => {
 
       // Update local state immediately (optimistic)
       setLocalValue(newValue);
+      setSaving(true);
 
       try {
         const response = await fetch('/settings/shortlink', {
@@ -82,6 +86,8 @@ const ShortlinkPreferenceComponent = () => {
           t('settings_update_failed', 'Could not update settings'),
           'warning'
         );
+      } finally {
+        setSaving(false);
       }
     },
     [fetch, mutate, toaster, t, localValue]
@@ -126,6 +132,7 @@ const ShortlinkPreferenceComponent = () => {
             hideErrors={true}
             value={localValue}
             onChange={handleChange}
+            disabled={saving}
           >
             <option value="ASK">
               {t('shortlink_ask', 'Ask every time')}

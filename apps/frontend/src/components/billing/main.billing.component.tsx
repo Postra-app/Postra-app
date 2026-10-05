@@ -43,21 +43,24 @@ export const Prorate: FC<{
   const fetch = useFetch();
   const [price, setPrice] = useState<number | false>(0);
   const [loading, setLoading] = useState(false);
+  // Only the answer for the last choice is shown: a monthly quote landing
+  // after the yearly one used to replace it next to the yearly offer
+  // (FE-B-4).
+  const latest = useRef(0);
   const calculatePrice = useDebouncedCallback(async () => {
+    const request = ++latest.current;
     setLoading(true);
-    setPrice(
-      (
-        await (
-          await fetch('/billing/prorate', {
-            method: 'POST',
-            body: JSON.stringify({
-              period,
-              billing: pack,
-            }),
-          })
-        ).json()
-      ).price
-    );
+    const { price: quoted } = await (
+      await fetch('/billing/prorate', {
+        method: 'POST',
+        body: JSON.stringify({
+          period,
+          billing: pack,
+        }),
+      })
+    ).json();
+    if (request !== latest.current) return;
+    setPrice(quoted);
     setLoading(false);
   }, 500);
   useEffect(() => {
