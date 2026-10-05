@@ -44,8 +44,8 @@ export class UsersService {
     return this._usersRepository.activateUser(id);
   }
 
-  updatePassword(id: string, password: string) {
-    return this._usersRepository.updatePassword(id, password);
+  updatePassword(id: string, password: string, tokenVersion: number) {
+    return this._usersRepository.updatePassword(id, password, tokenVersion);
   }
 
   getPersonal(userId: string) {

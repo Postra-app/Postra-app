@@ -113,11 +113,18 @@ export class UsersRepository {
     });
   }
 
-  updatePassword(id: string, password: string) {
-    return this._user.model.user.update({
+  /**
+   * Writes only if the session version is still the one the reset link was
+   * minted for. Two requests with the same link both passed the check before
+   * either wrote, and the later password won (AUTH-3). Returns how many rows
+   * changed: 0 means the link was already used.
+   */
+  async updatePassword(id: string, password: string, tokenVersion: number) {
+    const { count } = await this._user.model.user.updateMany({
       where: {
         id,
         providerName: Provider.LOCAL,
+        tokenVersion,
       },
       data: {
         password: AuthService.hashPassword(password),
@@ -127,6 +134,7 @@ export class UsersRepository {
         tokenVersion: { increment: 1 },
       },
     });
+    return count;
   }
 
   changeAudienceSize(userId: string, audience: number) {
