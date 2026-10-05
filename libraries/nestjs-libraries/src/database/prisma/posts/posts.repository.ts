@@ -669,6 +669,50 @@ export class PostsRepository {
     });
   }
 
+  /**
+   * The channels among `integrationIds` that already have an Auto Post post
+   * for this article, made lately. The link has to end where the article's
+   * does: `…/posts/1` must not match a post for `…/posts/10`.
+   */
+  async channelsWithRecentAutopost(
+    orgId: string,
+    integrationIds: string[],
+    url: string
+  ) {
+    const forms = [url, url.replace(/&/g, '&amp;')];
+    const rows = await this._post.model.post.findMany({
+      where: {
+        organizationId: orgId,
+        integrationId: { in: integrationIds },
+        creationMethod: 'AUTOPOST',
+        deletedAt: null,
+        createdAt: { gte: new Date(Date.now() - 14 * 24 * 60 * 60 * 1000) },
+        OR: forms.flatMap((form) => [
+          { content: { endsWith: form } },
+          ...['<', '\n', ' ', '"'].map((next) => ({
+            content: { contains: form + next },
+          })),
+        ]),
+      },
+      select: { integrationId: true },
+      distinct: ['integrationId'],
+    });
+    return new Set(rows.map((row) => row.integrationId));
+  }
+
+  clearGroupReleases(orgId: string, group: string) {
+    return this._post.model.post.updateMany({
+      where: { organizationId: orgId, group, deletedAt: null },
+      data: { releaseId: null, releaseURL: null },
+    });
+  }
+
+  countExistingPosts(orgId: string, ids: string[]) {
+    return this._post.model.post.count({
+      where: { organizationId: orgId, id: { in: ids }, deletedAt: null },
+    });
+  }
+
   countPostsFromDay(orgId: string, date: Date) {
     return this._post.model.post.count({
       where: {

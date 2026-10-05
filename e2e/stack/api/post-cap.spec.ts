@@ -114,3 +114,22 @@ test('E2E-07-22: at the cap, the public API cannot turn a draft into a scheduled
     await org.remove();
   }
 });
+
+// BILL-4 / POSTS-12: the check was `count < limit`, so with one post left a
+// single save on several channels (or a thread) went through in full.
+test('one post left: a save on two channels is refused, on one it goes through', async () => {
+  const org = await throwawayOrg(prisma, { tier: 'STANDARD', totalChannels: 3, channels: 2 });
+  const [first, second] = org.channelIds;
+  await fill(org.orgId, first, 399, { state: 'QUEUE', publishDate: inDays(1) });
+
+  const twoChannels = body(first, 'schedule', '[stack] two channels');
+  twoChannels.posts.push({ ...twoChannels.posts[0], integration: { id: second } });
+  expect((await org.api.post('/posts', { data: twoChannels })).status()).toBe(402);
+
+  const thread = body(first, 'schedule', '[stack] thread');
+  thread.posts[0].value.push({ content: '[stack] part two', image: [] });
+  expect((await org.api.post('/posts', { data: thread })).status()).toBe(402);
+
+  expect((await org.api.post('/posts', { data: body(first, 'schedule', '[stack] the 400th') })).status()).toBe(201);
+  await org.remove();
+});

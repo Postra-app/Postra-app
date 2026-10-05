@@ -1,6 +1,15 @@
 import { PrismaRepository } from '@gitroom/nestjs-libraries/database/prisma/prisma.service';
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { AutopostDto } from '@gitroom/nestjs-libraries/dtos/autopost/autopost.dto';
+
+// An org-scoped update of an id that is not this org's feed throws P2025,
+// which reached the client as a 500 (AI-13). It is a 404.
+const feedNotFound = (err: any): never => {
+  if (err?.code === 'P2025') {
+    throw new NotFoundException('Auto Post feed not found');
+  }
+  throw err;
+};
 
 @Injectable()
 export class AutopostRepository {
@@ -25,15 +34,18 @@ export class AutopostRepository {
   }
 
   deleteAutopost(orgId: string, id: string) {
-    return this._autoPost.model.autoPost.update({
-      where: {
-        id,
-        organizationId: orgId,
-      },
-      data: {
-        deletedAt: new Date(),
-      },
-    });
+    return this._autoPost.model.autoPost
+      .update({
+        where: {
+          id,
+          organizationId: orgId,
+          deletedAt: null,
+        },
+        data: {
+          deletedAt: new Date(),
+        },
+      })
+      .catch(feedNotFound);
   }
 
   getAutopost(id: string) {
@@ -57,15 +69,18 @@ export class AutopostRepository {
   }
 
   changeActive(orgId: string, id: string, active: boolean) {
-    return this._autoPost.model.autoPost.update({
-      where: {
-        id,
-        organizationId: orgId,
-      },
-      data: {
-        active,
-      },
-    });
+    return this._autoPost.model.autoPost
+      .update({
+        where: {
+          id,
+          organizationId: orgId,
+          deletedAt: null,
+        },
+        data: {
+          active,
+        },
+      })
+      .catch(feedNotFound);
   }
 
   async createAutopost(orgId: string, body: AutopostDto, id?: string) {
@@ -90,13 +105,16 @@ export class AutopostRepository {
     // Update policy skips the cap check by design). A plain org-scoped update
     // throws P2025 on an unknown/foreign id instead of creating.
     if (id) {
-      const { id: updatedId, active } = await this._autoPost.model.autoPost.update({
-        where: {
-          id,
-          organizationId: orgId,
-        },
-        data,
-      });
+      const { id: updatedId, active } = await this._autoPost.model.autoPost
+        .update({
+          where: {
+            id,
+            organizationId: orgId,
+            deletedAt: null,
+          },
+          data,
+        })
+        .catch(feedNotFound);
       return { id: updatedId, active };
     }
 

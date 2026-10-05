@@ -1,5 +1,6 @@
 import Stripe from 'stripe';
 import { HttpException, Injectable, Logger } from '@nestjs/common';
+import { ioRedis } from '@gitroom/nestjs-libraries/redis/redis.service';
 import { Organization, User } from '@prisma/client';
 import { SubscriptionService } from '@gitroom/nestjs-libraries/database/prisma/subscriptions/subscription.service';
 import { OrganizationService } from '@gitroom/nestjs-libraries/database/prisma/organizations/organization.service';
@@ -1203,12 +1204,28 @@ export class StripeService {
   }
 
   async lifetimeDeal(organizationId: string, code: string) {
+    // One code at a time per organisation. Two different codes redeemed at
+    // once both read N channels and both wrote N + 5: both codes were spent
+    // and five channels were lost (BILL-10). The second waits for a retry.
+    const lock = `lifetime-deal:${organizationId}`;
+    if ((await ioRedis.set(lock, '1', 'EX', 30, 'NX')) !== 'OK') {
+      return { success: false };
+    }
+    try {
+      return await this.redeemLifetimeCode(organizationId, code);
+    } finally {
+      await ioRedis.del(lock).catch(() => undefined);
+    }
+  }
+
+  private async redeemLifetimeCode(organizationId: string, code: string) {
     const getCurrentSubscription =
       await this._subscriptionService.getSubscriptionByOrganizationId(
         organizationId
       );
+    // A plain Error here was a 500 for an ordinary refusal (BILL-11).
     if (getCurrentSubscription && !getCurrentSubscription?.isLifetime) {
-      throw new Error('You already have a non lifetime subscription');
+      throw new HttpException('You already have a non lifetime subscription', 400);
     }
 
     try {

@@ -294,7 +294,11 @@ export class PostsService {
     organization: string,
     replaceDraft: boolean = false
   ): Promise<CreatePostDto> {
-    if (!body?.posts?.every((p) => p?.integration?.id)) {
+    // `posts: {}` has no `.every` and was a 500 before validation (API-12).
+    if (
+      !Array.isArray(body?.posts) ||
+      !body.posts.every((p) => p?.integration?.id)
+    ) {
       throw new BadRequestException('All posts must have an integration id');
     }
 
@@ -806,6 +810,22 @@ export class PostsService {
     return { deleted: !!post?.id, id: post?.id ?? null };
   }
 
+  channelsWithRecentAutopost(
+    orgId: string,
+    integrationIds: string[],
+    url: string
+  ) {
+    return this._postRepository.channelsWithRecentAutopost(
+      orgId,
+      integrationIds,
+      url
+    );
+  }
+
+  countExistingPosts(orgId: string, ids: string[]) {
+    return this._postRepository.countExistingPosts(orgId, ids);
+  }
+
   async countPostsFromDay(orgId: string, date: Date) {
     return this._postRepository.countPostsFromDay(orgId, date);
   }
@@ -897,6 +917,10 @@ export class PostsService {
     // `.map` as a 500.
     if (posts != null && !Array.isArray(posts)) {
       throw new BadRequestException('posts must be an array');
+    }
+    // Each post's value is a list too; `value: {}` died on `.map` (POSTS-13).
+    if ((posts || []).some((post) => post?.value != null && !Array.isArray(post.value))) {
+      throw new BadRequestException('Each post value must be an array');
     }
 
     const integrationsById = new Map(
@@ -1178,6 +1202,14 @@ export class PostsService {
 
     const state: State = status === 'draft' ? 'DRAFT' : 'QUEUE';
     await this._postRepository.changeState(id, state);
+    // The publish guard returns a saved release instead of publishing, so a
+    // republish through the public API reported success and sent nothing
+    // (POSTS-8). The editor's republish clears it the same way.
+    if (status === 'schedule' && republish) {
+      // The whole thread: comments with a saved release were skipped and
+      // reported under the old post.
+      await this._postRepository.clearGroupReleases(orgId, getPostById.group);
+    }
 
     try {
       await this.startWorkflow(
@@ -1222,7 +1254,13 @@ export class PostsService {
       action
     );
 
-    if (action === 'schedule') {
+    // A new date for a post still waiting to go out has to reach its
+    // workflow, which otherwise kept sleeping until the old time and
+    // published then (POSTS-7). A published post only changes on the
+    // calendar.
+    const waiting =
+      getPostById.state === 'QUEUE' && !getPostById.releaseId;
+    if (action === 'schedule' || waiting) {
       try {
         await this.startWorkflow(
           getPostById.integration.providerIdentifier

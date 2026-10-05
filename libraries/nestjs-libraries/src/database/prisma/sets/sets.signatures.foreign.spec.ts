@@ -26,7 +26,12 @@ const sets = (count: number) => {
 };
 const signatures = (count: number) => {
   const m = model(count);
-  const repo = new SignatureRepository({ model: { signatures: m } } as any);
+  // The write runs in a transaction; the transaction client is the same mock.
+  const tx = { signatures: m, $queryRaw: jest.fn().mockResolvedValue([]) };
+  const repo = new SignatureRepository(
+    { model: { signatures: m } } as any,
+    { model: { $transaction: (fn: any) => fn(tx) } } as any
+  );
   return { m, service: new SignatureService(repo) };
 };
 

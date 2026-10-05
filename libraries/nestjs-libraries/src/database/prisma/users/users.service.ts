@@ -44,8 +44,8 @@ export class UsersService {
     return this._usersRepository.activateUser(id);
   }
 
-  updatePassword(id: string, password: string) {
-    return this._usersRepository.updatePassword(id, password);
+  updatePassword(id: string, password: string, tokenVersion: number) {
+    return this._usersRepository.updatePassword(id, password, tokenVersion);
   }
 
   getPersonal(userId: string) {
@@ -110,19 +110,33 @@ export class UsersService {
     const media = soleOrgIds.length
       ? await this._prisma.media.findMany({
           where: { organizationId: { in: soleOrgIds } },
-          select: { path: true, thumbnail: true },
+          select: { path: true, thumbnail: true, organizationId: true },
         })
       : [];
 
+    const deletedOrgIds = new Set<string>();
     await this._prisma.$transaction(async (tx) => {
       for (const id of soleOrgIds) {
+        // Counted again under the organisation's row lock: someone accepting
+        // an invitation between the first count and here had their new
+        // membership, posts and channels deleted with the org (AUTH-1). A
+        // membership insert holds a key lock on this row, so the two wait
+        // for each other.
+        await tx.$queryRaw`SELECT "id" FROM "Organization" WHERE "id" = ${id} FOR UPDATE`;
+        const members = await tx.userOrganization.count({
+          where: { organizationId: id },
+        });
+        if (members > 1) continue;
         await tx.organization.delete({ where: { id } });
+        deletedOrgIds.add(id);
       }
 
       await tx.user.delete({ where: { id: userId } });
     });
 
-    await this.removeStoredFiles(media);
+    await this.removeStoredFiles(
+      media.filter((m) => deletedOrgIds.has(m.organizationId))
+    );
 
     return { deleted: true };
   }

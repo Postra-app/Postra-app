@@ -387,12 +387,16 @@ export class IntegrationRepository {
           })
         )?.rootInternalId || internalId;
 
+      // This organisation only: the same account connected in another org
+      // had its tokens and state overwritten too (INT-9).
       await this._integration.model.integration.updateMany({
         where: {
           id: {
             not: upsert.id,
           },
           rootInternalId: rootId,
+          organizationId: org,
+          deletedAt: null,
         },
         data: {
           token,

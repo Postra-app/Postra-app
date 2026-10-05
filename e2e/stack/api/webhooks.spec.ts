@@ -84,3 +84,24 @@ test("B cannot see, change or delete A's webhook", async () => {
   expect(mine).toContain('https://example.com/hooks/private');
   expect((await a.delete(`/webhooks/${id}`)).status()).toBe(200);
 });
+
+// POSTS-4/5: a channel filter that was not a list, or named a channel the
+// organisation does not have, was written as no filter at all — and no
+// filter means every channel.
+test('a webhook with a broken channel filter is refused, not widened to every channel', async () => {
+  const name = `stack-filter-${Date.now()}`;
+  const shapes: unknown[] = [
+    {},
+    [{ id: UNKNOWN }],
+    [{ id: channelOf('a') }, { id: channelOf('b') }],
+  ];
+  for (const integrations of shapes) {
+    const res = await a.post('/webhooks', {
+      data: { name, url: 'https://example.com/hook', integrations },
+    });
+    expect(res.status(), JSON.stringify(integrations)).toBe(400);
+  }
+  // Nothing was written: the 500 used to come after the webhook existed.
+  const names = ((await (await a.get('/webhooks')).json()) as { name: string }[]).map((w) => w.name);
+  expect(names).not.toContain(name);
+});

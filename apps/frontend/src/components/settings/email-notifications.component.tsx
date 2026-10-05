@@ -45,6 +45,7 @@ const EmailNotificationsComponent = () => {
   // Keep a ref to always have the latest state
   const settingsRef = useRef(localSettings);
   settingsRef.current = localSettings;
+  const saving = useRef<Promise<void>>(Promise.resolve());
 
   // Sync local state with fetched data
   useEffect(() => {
@@ -63,7 +64,15 @@ const EmailNotificationsComponent = () => {
       };
 
       // Update local state immediately (optimistic)
+      settingsRef.current = newData;
       setLocalSettings(newData);
+
+      // Saves go out one after another, in the order clicked: two quick
+      // toggles could land in reverse, and the earlier one won (FE-S-7).
+      const turn = saving.current;
+      let release!: () => void;
+      saving.current = new Promise<void>((r) => (release = r));
+      await turn;
 
       try {
         const response = await fetch('/user/email-notifications', {
@@ -92,6 +101,8 @@ const EmailNotificationsComponent = () => {
           t('settings_update_failed', 'Could not update settings'),
           'warning'
         );
+      } finally {
+        release();
       }
     },
     []

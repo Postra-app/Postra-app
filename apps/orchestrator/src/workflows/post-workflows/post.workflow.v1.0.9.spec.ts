@@ -206,3 +206,22 @@ describe('postWorkflowV109 — repeating posts', () => {
     }
   });
 });
+
+describe('postWorkflowV109 — after the platform has the post', () => {
+  // POSTS-9: a notification that could not be sent turned a published post
+  // into an error and stopped its comments.
+  it('a failed notification neither marks the post failed nor stops its comment', async () => {
+    activities.getPostsList.mockResolvedValue([post, comment]);
+    activities.isCommentable.mockResolvedValue(true);
+    activities.postSocial = jest.fn().mockResolvedValue(published);
+    activities.postComment = jest.fn().mockResolvedValue([{ id: 'c1', postId: '10', releaseURL: 'https://t.me/x/10', status: 'completed' }]);
+    activities.inAppNotification.mockRejectedValue(new Error('notification activity failed'));
+
+    await run();
+
+    expect(activities.postSocial).toHaveBeenCalledTimes(1);
+    expect(activities.inAppNotification).toHaveBeenCalled();
+    expect(activities.postComment).toHaveBeenCalledTimes(1);
+    expect(activities.changeState).not.toHaveBeenCalledWith('p1', 'ERROR', expect.anything(), expect.anything());
+  });
+});

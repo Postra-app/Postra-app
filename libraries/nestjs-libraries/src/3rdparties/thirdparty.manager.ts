@@ -31,6 +31,11 @@ export class ThirdPartyManager {
       Reflect.getMetadata('third:party', ThirdPartyAbstract) || []
     ).find((p: any) => p.identifier === identifier);
 
+    // An unknown name was read as `undefined.target`, a 500 before the
+    // callers' own "Invalid identifier" answer could run (API-14).
+    if (!thirdParty) {
+      return undefined;
+    }
     return { ...thirdParty, instance: this._moduleRef.get(thirdParty.target) };
   }
 

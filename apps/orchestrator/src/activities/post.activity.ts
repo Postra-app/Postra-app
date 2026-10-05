@@ -35,7 +35,9 @@ import {
 import { SubscriptionService } from '@gitroom/nestjs-libraries/database/prisma/subscriptions/subscription.service';
 import { lookup } from 'node:dns/promises';
 import { isIP } from 'node:net';
+import { randomUUID } from 'node:crypto';
 import { fetch } from 'undici';
+import { ioRedis } from '@gitroom/nestjs-libraries/redis/redis.service';
 import { ssrfSafeDispatcher } from '@gitroom/nestjs-libraries/dtos/webhooks/ssrf.safe.dispatcher';
 
 function isPrivateIp(ip: string): boolean {
@@ -377,6 +379,72 @@ export class PostActivity {
       integration.providerIdentifier
     );
 
+    // One run publishes a post at a time. Rescheduling a post while it was
+    // going out terminated its workflow and started another, which found no
+    // saved release yet and published it again (POSTS-1). The second run
+    // waits for the regular retry, by which time the first has saved the
+    // release and the guard below returns it.
+    // The lock is short and kept alive while this run works, so a worker
+    // that dies mid-publish frees it before the next retry comes round.
+    const lockKey = `publishing:${posts?.[0]?.id}`;
+    const owner = randomUUID();
+    if ((await ioRedis.set(lockKey, owner, 'EX', 90, 'NX')) !== 'OK') {
+      throw new Error('This post is being published by another run');
+    }
+    const keepAlive = setInterval(() => {
+      ioRedis.expire(lockKey, 90).catch(() => undefined);
+    }, 30_000);
+    let postNow: PostResponse[];
+    try {
+      const outcome = await this.publishOnce(integration, posts, getIntegration);
+      if (outcome.alreadyPublished) {
+        return outcome.responses;
+      }
+      postNow = outcome.responses;
+    } finally {
+      clearInterval(keepAlive);
+      if ((await ioRedis.get(lockKey).catch(() => null)) === owner) {
+        await ioRedis.del(lockKey).catch(() => undefined);
+      }
+    }
+
+    // The post is out. A failure starting the streak reminder must not fail
+    // this activity: its retry would publish again (upstream 273c7b50 has
+    // the same guard).
+    try {
+      await this._temporalService.client
+        .getRawClient()
+        .workflow.start('streakWorkflowV2', {
+          args: [{ organizationId: integration.organizationId }],
+          workflowId: `streak_${integration.organizationId}`,
+          taskQueue: 'main',
+          // A running streak checks for newer posts before it ends; killing
+          // and restarting it on every publish is what V1 did (273c7b50).
+          workflowIdConflictPolicy: 'USE_EXISTING',
+          typedSearchAttributes: new TypedSearchAttributes([
+            {
+              key: organizationId,
+              value: integration.organizationId,
+            },
+          ]),
+        });
+    } catch (err) {
+      this._logger.error(
+        `[postSocial] streak reminder not started for org=${
+          integration.organizationId
+        }: ${(err as Error)?.message ?? err}`
+      );
+    }
+
+    return postNow;
+  }
+
+  /** Guard, publish and record the release; runs under the publishing lock. */
+  private async publishOnce(
+    integration: Integration,
+    posts: Post[],
+    getIntegration: ReturnType<IntegrationManager['getSocialIntegration']>
+  ): Promise<{ alreadyPublished: boolean; responses: PostResponse[] }> {
     // Idempotency guard (H1, duplicate posts): a retry — a Temporal
     // re-attempt or the workflow's repeat loop — re-runs this activity with
     // posts snapshotted at workflow start. If a previous attempt already got
@@ -393,12 +461,15 @@ export class PostActivity {
           integration.providerIdentifier
         } posts=${fresh.map((p) => `${p!.id}:${p!.releaseId}`).join(',')}`
       );
-      return fresh.map((p) => ({
-        id: p!.id,
-        postId: p!.releaseId!,
-        releaseURL: p!.releaseURL || '',
-        status: 'posted',
-      }));
+      return {
+        alreadyPublished: true,
+        responses: fresh.map((p) => ({
+          id: p!.id,
+          postId: p!.releaseId!,
+          releaseURL: p!.releaseURL || '',
+          status: 'posted',
+        })) as PostResponse[],
+      };
     }
 
     const newPosts = await this._postService.updateTags(
@@ -474,35 +545,7 @@ export class PostActivity {
       }
     }
 
-    // The post is out. A failure starting the streak reminder must not fail
-    // this activity: its retry would publish again (upstream 273c7b50 has
-    // the same guard).
-    try {
-      await this._temporalService.client
-        .getRawClient()
-        .workflow.start('streakWorkflowV2', {
-          args: [{ organizationId: integration.organizationId }],
-          workflowId: `streak_${integration.organizationId}`,
-          taskQueue: 'main',
-          // A running streak checks for newer posts before it ends; killing
-          // and restarting it on every publish is what V1 did (273c7b50).
-          workflowIdConflictPolicy: 'USE_EXISTING',
-          typedSearchAttributes: new TypedSearchAttributes([
-            {
-              key: organizationId,
-              value: integration.organizationId,
-            },
-          ]),
-        });
-    } catch (err) {
-      this._logger.error(
-        `[postSocial] streak reminder not started for org=${
-          integration.organizationId
-        }: ${(err as Error)?.message ?? err}`
-      );
-    }
-
-    return postNow;
+    return { alreadyPublished: false, responses: postNow };
   }
 
   @ActivityMethod()
@@ -567,21 +610,40 @@ export class PostActivity {
       webhooks.map(async (webhook) => {
         try {
           await assertPublicWebhookUrl(webhook.url);
-          // ssrfSafeDispatcher pins DNS (TOCTOU/rebinding) and redirect:
-          // 'error' stops a 302 from bouncing the request into the VPC/IMDS.
-          await fetch(webhook.url, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify(post),
-            dispatcher: ssrfSafeDispatcher,
-            redirect: 'error',
-            signal: AbortSignal.timeout(5000),
-          });
-        } catch (e) {
-          /**empty**/
+        } catch {
+          return;
         }
+        // A receiver that is briefly down (429, 5xx, a timeout, a dropped
+        // connection) gets the event again; it used to be dropped on the
+        // first failure without a word (POSTS-6). Each webhook retries on its
+        // own, so one slow receiver never sends a duplicate to another.
+        for (let attempt = 1; attempt <= 3; attempt++) {
+          try {
+            // ssrfSafeDispatcher pins DNS (TOCTOU/rebinding) and redirect:
+            // 'error' stops a 302 from bouncing the request into the VPC/IMDS.
+            const res = await fetch(webhook.url, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify(post),
+              dispatcher: ssrfSafeDispatcher,
+              redirect: 'error',
+              signal: AbortSignal.timeout(5000),
+            });
+            if (res.status !== 429 && res.status < 500) {
+              return;
+            }
+          } catch {
+            // network error or timeout: retried below
+          }
+          if (attempt < 3) {
+            await timer(attempt * 2000);
+          }
+        }
+        this._logger.warn(
+          `[sendWebhooks] webhook=${webhook.id} post=${postId} not delivered after 3 attempts`
+        );
       })
     );
   }

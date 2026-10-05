@@ -1,6 +1,7 @@
 import { Throttle } from '@nestjs/throttler';
 import {
   Body,
+  BadRequestException,
   Controller,
   Delete,
   Get,
@@ -509,6 +510,10 @@ export class MediaController {
     // own upload carry the AI label, never take it off something we generated.
     @Body('aiGenerated') aiGenerated: string = 'false'
   ) {
+    // No file field at all reached `file.originalname` as a 500 (API-13).
+    if (!file) {
+      throw new BadRequestException('No file was sent');
+    }
     const originalName = file.originalname;
     const getFile = await this.storage.uploadFile(file);
 

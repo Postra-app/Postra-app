@@ -352,12 +352,16 @@ export class AuthService {
 
     const updated = await this._userService.updatePassword(
       user.id,
-      body.password
+      body.password,
+      user.tokenVersion
     );
+    if (!updated) {
+      return false;
+    }
     // updatePassword bumped tokenVersion; drop the cached auth context so the
     // new version is enforced on the very next request (not up to 30s later).
     await bustAuthContextCache(user.id);
-    return updated;
+    return true;
   }
 
   async activate(code: string, tracking: string) {

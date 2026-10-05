@@ -1,4 +1,11 @@
-import { IsDefined, IsOptional, IsString, IsUrl } from 'class-validator';
+import {
+  IsArray,
+  IsDefined,
+  IsOptional,
+  IsString,
+  IsUrl,
+  ValidateNested,
+} from 'class-validator';
 import { Type } from 'class-transformer';
 import { IsSafeWebhookUrl } from '@gitroom/nestjs-libraries/dtos/webhooks/webhook.url.validator';
 
@@ -24,7 +31,11 @@ export class WebhooksDto {
   })
   url: string;
 
+  // `{}` passed as a list and failed only after the webhook was written,
+  // leaving it on every channel behind a 500 (POSTS-4).
   @Type(() => WebhooksIntegrationDto)
+  @IsArray()
+  @ValidateNested({ each: true })
   @IsDefined()
   integrations: WebhooksIntegrationDto[];
 }

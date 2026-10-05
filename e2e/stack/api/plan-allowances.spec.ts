@@ -111,4 +111,43 @@ test.describe('Auto Post feeds', () => {
     await seedFeeds(business.orgId, 3);
     expect((await business.api.post('/autopost', { data: feed(4) })).status()).toBe(201);
   });
+
+  // BILL-7: a feed made on Pro could be switched back on after moving to
+  // Starter, which has no Auto Post. Switching off stays possible.
+  test('a plan without Auto Post cannot switch a feed on, only off', async () => {
+    const starter = await org({ tier: 'STANDARD', totalChannels: 3, channels: 0 });
+    await seedFeeds(starter.orgId, 1);
+    const [seeded] = await prisma.autoPost.findMany({ where: { organizationId: starter.orgId } });
+
+    const on = await starter.api.post(`/autopost/${seeded.id}/active`, { data: { active: true } });
+    expect(on.status()).toBe(402);
+    expect((await prisma.autoPost.findUniqueOrThrow({ where: { id: seeded.id } })).active).toBe(false);
+    expect((await starter.api.post(`/autopost/${seeded.id}/active`, { data: { active: false } })).status()).toBe(201);
+
+    const pro = await org({ tier: 'PRO', totalChannels: 6, channels: 0 });
+    await seedFeeds(pro.orgId, 1);
+    const [proFeed] = await prisma.autoPost.findMany({ where: { organizationId: pro.orgId } });
+    expect((await pro.api.post(`/autopost/${proFeed.id}/active`, { data: { active: true } })).status()).toBe(201);
+    expect((await pro.api.post(`/autopost/${proFeed.id}/active`, { data: { active: false } })).status()).toBe(201);
+  });
+
+  // AI-13: a feed that does not exist (or is another org's) answered 500.
+  test('an unknown feed is 404 on edit, switch and delete', async () => {
+    const pro = await org({ tier: 'PRO', totalChannels: 6, channels: 0 });
+    const unknown = '00000000-0000-4000-8000-000000000000';
+    expect((await pro.api.put(`/autopost/${unknown}`, { data: feed(9) })).status()).toBe(404);
+    expect((await pro.api.post(`/autopost/${unknown}/active`, { data: { active: false } })).status()).toBe(404);
+    expect((await pro.api.delete(`/autopost/${unknown}`)).status()).toBe(404);
+  });
+
+  // AI-6: two feeds created at once both passed the count of the guard.
+  test('one feed left on Pro, two created at once: only one is', async () => {
+    const pro = await org({ tier: 'PRO', totalChannels: 6, channels: 0 });
+    await seedFeeds(pro.orgId, 2);
+    const statuses = (
+      await Promise.all([feed(21), feed(22)].map((data) => pro.api.post('/autopost', { data })))
+    ).map((r) => r.status());
+    expect(statuses.filter((s) => s === 201)).toHaveLength(1);
+    expect(await prisma.autoPost.count({ where: { organizationId: pro.orgId, deletedAt: null } })).toBe(3);
+  });
 });

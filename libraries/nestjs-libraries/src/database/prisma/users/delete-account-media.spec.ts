@@ -12,10 +12,15 @@ import { UsersService } from '@gitroom/nestjs-libraries/database/prisma/users/us
 // every photo and video they had uploaded was still a working URL on the CDN.
 // Postra is registered with the ICO (ZC223242).
 
-const build = (media: { path: string; thumbnail: string | null }[]) => {
+const build = (
+  media: { path: string; thumbnail: string | null; organizationId?: string }[]
+) => {
+  media = media.map((m) => ({ organizationId: 'org-1', ...m }));
   const tx = {
     organization: { delete: jest.fn().mockResolvedValue({}) },
     user: { delete: jest.fn().mockResolvedValue({}) },
+    userOrganization: { count: jest.fn().mockResolvedValue(1) },
+    $queryRaw: jest.fn().mockResolvedValue([]),
   };
   const prisma = {
     userOrganization: {
@@ -85,6 +90,24 @@ describe('deleting an account', () => {
   it('touches storage at all only when there was media', async () => {
     const { service } = build([]);
     await service.deleteAccount('user-1');
+    expect(removeFile).not.toHaveBeenCalled();
+  });
+});
+
+// AUTH-1: the members were counted before the transaction. Someone accepting
+// an invitation in between lost their membership, posts and channels with the
+// org.
+describe('deleting an account while someone joins the organisation', () => {
+  it('keeps an organisation that gained a member, and its files', async () => {
+    const { service, tx } = build([{ path: 'https://cdn.example/x.jpg', thumbnail: null }]);
+    removeFile.mockClear();
+    tx.userOrganization.count.mockResolvedValue(2);
+
+    await service.deleteAccount('user-1');
+
+    expect(tx.$queryRaw).toHaveBeenCalled();
+    expect(tx.organization.delete).not.toHaveBeenCalled();
+    expect(tx.user.delete).toHaveBeenCalledWith({ where: { id: 'user-1' } });
     expect(removeFile).not.toHaveBeenCalled();
   });
 });

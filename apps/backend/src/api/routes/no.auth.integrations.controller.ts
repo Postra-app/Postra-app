@@ -461,73 +461,95 @@ export class NoAuthIntegrationsController {
     // cap and then complete them all here, overshooting the plan. Re-check at
     // the actual channel creation. Skip on refresh/reconnect and when the
     // channel already exists (an update adds no new channel).
-    if (process.env.STRIPE_PUBLISHABLE_KEY && !refresh) {
-      const list = await this._integrationService.getIntegrationsList(org.id);
-      const alreadyConnected = list.some(
-        (i) =>
-          i.internalId === String(id) &&
-          i.providerIdentifier === integration
+    // The slot check and the write, one connection at a time per
+    // organisation: two callbacks at once both saw the one free slot and both
+    // added a channel (INT-12). Same lock as switching a channel on.
+    const capLock =
+      process.env.STRIPE_PUBLISHABLE_KEY && !refresh
+        ? `channels-enable:${org.id}`
+        : null;
+    if (capLock && (await ioRedis.set(capLock, '1', 'EX', 15, 'NX')) !== 'OK') {
+      throw new HttpException(
+        'Another channel is being connected. Please try again.',
+        409
       );
-      if (!alreadyConnected) {
-        const subscription =
-          await this._subscriptionService.getSubscriptionByOrganizationId(
-            org.id
-          );
-        const tier = subscription?.subscriptionTier || 'FREE';
-        const allowed =
-          pricing[tier]?.allowedProviders || pricing.FREE.allowedProviders;
-        if (!allowed.includes(integration)) {
-          throw new HttpException(
-            'This platform is not available on your plan',
-            402
-          );
-        }
-        const activeChannels = channelsInUse(list);
-        const limit = channelLimitFor({
-          isTrailing: org.isTrailing,
-          subscription: subscription
-            ? { totalChannels: subscription.totalChannels }
-            : null,
-        });
-        if (limit && activeChannels >= limit) {
-          throw new HttpException(
-            'You have reached the maximum number of channels for your plan',
-            402
-          );
+    }
+    let createUpdate: Awaited<
+      ReturnType<IntegrationService['createOrUpdateIntegration']>
+    >;
+    try {
+      if (process.env.STRIPE_PUBLISHABLE_KEY && !refresh) {
+        const list = await this._integrationService.getIntegrationsList(org.id);
+        const alreadyConnected = list.some(
+          (i) =>
+            i.internalId === String(id) &&
+            i.providerIdentifier === integration
+        );
+        if (!alreadyConnected) {
+          const subscription =
+            await this._subscriptionService.getSubscriptionByOrganizationId(
+              org.id
+            );
+          const tier = subscription?.subscriptionTier || 'FREE';
+          const allowed =
+            pricing[tier]?.allowedProviders || pricing.FREE.allowedProviders;
+          if (!allowed.includes(integration)) {
+            throw new HttpException(
+              'This platform is not available on your plan',
+              402
+            );
+          }
+          const activeChannels = channelsInUse(list);
+          const limit = channelLimitFor({
+            isTrailing: org.isTrailing,
+            subscription: subscription
+              ? { totalChannels: subscription.totalChannels }
+              : null,
+          });
+          if (limit && activeChannels >= limit) {
+            throw new HttpException(
+              'You have reached the maximum number of channels for your plan',
+              402
+            );
+          }
         }
       }
-    }
 
-    const createUpdate =
-      await this._integrationService.createOrUpdateIntegration(
-        additionalSettings,
-        !!integrationProvider.oneTimeToken,
-        org.id,
-        validName.trim(),
-        picture,
-        'social',
-        String(id),
-        integration,
-        accessToken,
-        refreshToken,
-        expiresIn,
-        username,
-        refresh ? false : integrationProvider.isBetweenSteps,
-        body.refresh,
-        +body.timezone,
-        details
-          ? AuthService.fixedEncryption(details)
-          : integrationProvider.customFields
-          ? AuthService.fixedEncryption(
-              Buffer.from(body.code, 'base64').toString()
-            )
-          : integrationProvider.isChromeExtension
-          ? AuthService.fixedEncryption(
-              Buffer.from(body.code, 'base64').toString()
-            )
-          : undefined,
-        grantedScopes
-      );
+      createUpdate =
+        await this._integrationService.createOrUpdateIntegration(
+          additionalSettings,
+          !!integrationProvider.oneTimeToken,
+          org.id,
+          validName.trim(),
+          picture,
+          'social',
+          String(id),
+          integration,
+          accessToken,
+          refreshToken,
+          expiresIn,
+          username,
+          refresh ? false : integrationProvider.isBetweenSteps,
+          body.refresh,
+          +body.timezone,
+          details
+            ? AuthService.fixedEncryption(details)
+            : integrationProvider.customFields
+            ? AuthService.fixedEncryption(
+                Buffer.from(body.code, 'base64').toString()
+              )
+            : integrationProvider.isChromeExtension
+            ? AuthService.fixedEncryption(
+                Buffer.from(body.code, 'base64').toString()
+              )
+            : undefined,
+          grantedScopes
+        );
+    } finally {
+      if (capLock) {
+        await ioRedis.del(capLock).catch(() => undefined);
+      }
+    }
 
     // Without a session, an invitee picks the page of this very channel on
     // the public route — and nothing else (see saveProviderPage).

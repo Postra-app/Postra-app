@@ -185,3 +185,31 @@ test("E2E-08-29: an app's picture must be the organisation's own media; approved
     await prisma.$disconnect();
   }
 });
+
+// API-6: two exchanges of one code both read it before either wrote: both got
+// a token, and the first one stopped working. API-9: two apps created at once
+// both saw "no app yet".
+test('one code is one token, and one organisation gets one app, also at the same moment', async () => {
+  const prisma = database();
+  const owner = await throwawayOrg(prisma, { tier: 'PRO', totalChannels: 5, channels: 0 });
+  try {
+    const app = (name: string) =>
+      owner.api.post('/user/oauth-app', { data: { name, redirectUrl: 'https://example.com/callback' } });
+    const [first, second] = await Promise.all([app('Stack app one'), app('Stack app two')]);
+    expect([first.status(), second.status()].filter((s) => s === 201)).toHaveLength(1);
+    expect(await prisma.oAuthApp.count({ where: { organizationId: owner.orgId, deletedAt: null } })).toBe(1);
+
+    const { clientId, clientSecret } = await (first.status() === 201 ? first : second).json();
+    const code = await approve(owner.api, clientId, 'race');
+    const results = await Promise.all([1, 2].map(() => exchange(owner.api, clientId, clientSecret, code)));
+    const winners = results.filter((r) => r.status() < 300);
+    expect(winners).toHaveLength(1);
+    const token = (await winners[0].json()).access_token;
+    const api = await publicApi(token);
+    expect((await api.get('integrations')).status()).toBe(200);
+    await api.dispose();
+  } finally {
+    await owner.remove();
+    await prisma.$disconnect();
+  }
+});

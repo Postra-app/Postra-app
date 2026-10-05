@@ -78,21 +78,23 @@ export class ImagesSlides extends VideoAbstract<ImagesSlidesParams> {
 
     const generated = await Promise.all(
       list.reduce((all, current) => {
+        // Plain async functions, not `new Promise(async …)`: an error inside
+        // an async executor rejects a promise nobody holds, and the outer
+        // one never settled — the request hung, the reserved credit was
+        // never refunded and Node saw an unhandled rejection (AI-1).
         all.push(
-          new Promise(async (res) => {
-            res({
-              len: 0,
-              url: await this._falService.generateImageFromText(
-                'ideogram/v2',
-                current.imagePrompt,
-                output === 'vertical'
-              ),
-            });
-          })
+          (async () => ({
+            len: 0,
+            url: await this._falService.generateImageFromText(
+              'ideogram/v2',
+              current.imagePrompt,
+              output === 'vertical'
+            ),
+          }))()
         );
 
         all.push(
-          new Promise(async (res) => {
+          (async () => {
             const buffer = Buffer.from(
               await (
                 await limit(() =>
@@ -128,7 +130,7 @@ export class ImagesSlides extends VideoAbstract<ImagesSlidesParams> {
               encoding: '',
             });
 
-            res({
+            return {
               len: await getAudioDuration(buffer),
               url:
                 path.indexOf('http') === -1
@@ -137,8 +139,8 @@ export class ImagesSlides extends VideoAbstract<ImagesSlidesParams> {
                     process.env.NEXT_PUBLIC_UPLOAD_STATIC_DIRECTORY +
                     path
                   : path,
-            });
-          })
+            };
+          })()
         );
 
         return all;

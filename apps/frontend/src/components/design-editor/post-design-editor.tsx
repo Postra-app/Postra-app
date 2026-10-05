@@ -53,6 +53,8 @@ import {
   readDraft,
   writeDraft,
   clearDraft,
+  draftSlides,
+  jsonHasObjects,
 } from './utils/draft-autosave';
 import { loadCanvasFonts } from './utils/font-loading';
 import { stampPlatform, readStampedPlatform, sameSurface } from './utils/canvas-format';
@@ -280,8 +282,14 @@ const PostDesignEditor: FC<PostDesignEditorProps> = ({
         if (JSON.stringify(c.toJSON()) === doneJsonRef.current) return;
         draftDoneRef.current = false;
       }
-      if (c.getObjects().length) hadContentRef.current = true;
-      if (!c.getObjects().length) {
+      const liveJson = JSON.stringify(c.toJSON());
+      const carousel = useCarouselStore.getState();
+      const slides = draftSlides(liveJson, carousel);
+      // An empty slide on screen is not an empty carousel (E2E-06-23).
+      const hasContent =
+        c.getObjects().length > 0 || !!slides?.some(jsonHasObjects);
+      if (hasContent) hadContentRef.current = true;
+      if (!hasContent) {
         // Emptying a canvas that HELD something is deliberate, so drop the
         // draft. An editor that never held anything (a second tab, say) must
         // leave the stored draft alone — otherwise simply opening Studio in
@@ -290,9 +298,12 @@ const PostDesignEditor: FC<PostDesignEditorProps> = ({
         return;
       }
       const result = writeDraft(orgIdRef.current, {
-        canvasJson: JSON.stringify(c.toJSON()),
+        canvasJson: liveJson,
         platformKey: useEditorStore.getState().platform.key,
         savedAt: Date.now(),
+        ...(slides
+          ? { slides, slideIndex: carousel.currentSlideIndex }
+          : {}),
       });
       setSaveState({ result, at: Date.now() });
     };
@@ -576,8 +587,15 @@ const PostDesignEditor: FC<PostDesignEditorProps> = ({
       const targetSlide = state.slides[targetIndex];
       const currentJson = JSON.stringify(c.toJSON());
       useCarouselStore.getState().commitSlideSwitch(currentJson);
+      // History is one list for the whole canvas: an Undo after a switch
+      // loaded the previous slide's state here, and the next switch saved it
+      // over this slide (E2E-06-23). Each slide starts its own history.
+      const startHistory = () => {
+        useEditorStore.getState().resetHistory();
+        saveStateRef.current?.();
+      };
       if (targetSlide?.canvasJson) {
-        restoreState(targetSlide.canvasJson);
+        restoreState(targetSlide.canvasJson).then(startHistory);
       } else {
         const handler = saveStateRef.current;
         isRestoringRef.current = true;
@@ -587,6 +605,7 @@ const PostDesignEditor: FC<PostDesignEditorProps> = ({
         c.renderAll();
         isRestoringRef.current = false;
         if (handler) HISTORY_EVENTS.forEach((evt) => c.on(evt, handler));
+        startHistory();
       }
     });
   }, [restoreState]);
@@ -616,10 +635,27 @@ const PostDesignEditor: FC<PostDesignEditorProps> = ({
       });
       c.setZoom(scale);
     }
+    // A carousel comes back whole, on the slide that was on screen.
+    let canvasJson = draft.canvasJson;
+    if (draft.slides) {
+      const index = Math.min(
+        Math.max(0, draft.slideIndex ?? 0),
+        draft.slides.length - 1
+      );
+      const carousel = useCarouselStore.getState();
+      carousel.replaceAllSlides(
+        draft.slides.map((json, i) => ({
+          id: `slide-draft-${i}-${Date.now().toString(36)}`,
+          canvasJson: json,
+        }))
+      );
+      useCarouselStore.setState({ currentSlideIndex: index });
+      canvasJson = draft.slides[index] || draft.canvasJson;
+    }
     setRestoringDraft(true);
     // Push the restored state into history, otherwise the first undo after a
     // restore would jump back to the initial empty canvas with no way forward.
-    restoreState(draft.canvasJson)
+    restoreState(canvasJson)
       .then(() => saveStateRef.current?.())
       .finally(() => setRestoringDraft(false));
     // eslint-disable-next-line react-hooks/exhaustive-deps

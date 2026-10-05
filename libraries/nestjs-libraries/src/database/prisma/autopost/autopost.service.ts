@@ -5,6 +5,7 @@ import {
 } from '@gitroom/nestjs-libraries/openai/untrusted-source';
 import { HttpException, Injectable } from '@nestjs/common';
 import { fetch } from 'undici';
+import { readResponseCapped } from '@gitroom/nestjs-libraries/media/fetch.media.buffer';
 import { ssrfSafeDispatcher } from '@gitroom/nestjs-libraries/dtos/webhooks/ssrf.safe.dispatcher';
 import { isSafePublicHttpsUrl } from '@gitroom/nestjs-libraries/dtos/webhooks/webhook.url.validator';
 import { AutopostRepository } from '@gitroom/nestjs-libraries/database/prisma/autopost/autopost.repository';
@@ -105,6 +106,8 @@ const dallePrompt = z.object({
     .string()
     .describe('Generated prompt from description to be sent to DallE'),
 });
+
+const FEED_MAX_BYTES = 10 * 1024 * 1024;
 
 @Injectable()
 export class AutopostService {
@@ -236,7 +239,10 @@ export class AutopostService {
       signal: AbortSignal.timeout(10000),
       headers: { accept: 'application/rss+xml, application/xml, text/xml, */*' },
     });
-    const body = await res.text();
+    // Read with a ceiling: `res.text()` buffered whatever the server sent,
+    // and a feed URL is anything a signed-in user types (AI-10). Real feeds
+    // are kilobytes to a few megabytes.
+    const body = (await readResponseCapped(res as any, FEED_MAX_BYTES)).toString('utf8');
     return parser.parseString(body);
   }
 
@@ -616,17 +622,42 @@ export class AutopostService {
   async schedulePost(state: WorkflowChannelsState) {
     // Image-required platforms (Instagram, Pinterest) can't publish a text-only
     // post; drop them when no image was produced rather than failing at publish.
-    const integrations = state.image
+    let integrations = state.image
       ? state.integrations
       : state.integrations.filter(
           (i) =>
             !AutopostService.IMAGE_REQUIRED_PROVIDERS.has(i.providerIdentifier)
         );
     if (integrations.length === 0) {
+      // Every channel needs an image and there is none (generation failed or
+      // credits ran out). Returning here moved the cursor past the article
+      // for good (AI-4); failing keeps it, and the next run tries again.
+      if (state.integrations.length) {
+        throw new Error(
+          'This article needs an image for the selected channels and none could be made. It will be tried again on the next run.'
+        );
+      }
       return;
     }
 
     const orgId = integrations[0].organizationId;
+
+    // The post and the feed's cursor are two writes. A worker killed between
+    // them left the cursor behind, and the retry posted the same article
+    // again (AI-2). Channels that already have it are left out; with none
+    // left, update-url moves the cursor on.
+    const done = await this._postsService.channelsWithRecentAutopost(
+      orgId,
+      integrations.map((i) => i.id),
+      state.load.url
+    );
+    if (done.size) {
+      integrations = integrations.filter((i) => !done.has(i.id));
+      if (!integrations.length) {
+        return;
+      }
+    }
+
     const useSlot = state.body.onSlot;
     const date = useSlot
       ? (await this._postsService.findFreeDateTime(orgId)) + 'Z'

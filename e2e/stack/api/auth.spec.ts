@@ -1,6 +1,6 @@
 import { expect, request, test } from '@playwright/test';
 import { sign } from 'jsonwebtoken';
-import { BACKEND_URL, anonymous, database, signedIn } from '../helpers';
+import { BACKEND_URL, anonymous, database, signedIn, throwawayOrg } from '../helpers';
 import { USERS } from '../seed';
 
 test.describe('auth', () => {
@@ -179,4 +179,32 @@ test('E2E-02-28: a Google sign-in state does not work in another browser', async
   expect(res.status()).toBe(400);
   expect(await res.text()).toBe('Invalid or expired state');
   await Promise.all([attacker.dispose(), victim.dispose()]);
+});
+
+// AUTH-3: two requests with the same reset link both passed the single-use
+// check before either wrote, and the later password won.
+test('a password reset link works once, even for two requests at the same moment', async () => {
+  const prisma = database();
+  const org = await throwawayOrg(prisma, { tier: 'PRO', totalChannels: 3, channels: 0 });
+  try {
+    const { userId } = await prisma.userOrganization.findFirstOrThrow({ where: { organizationId: org.orgId } });
+    const user = await prisma.user.findUniqueOrThrow({ where: { id: userId } });
+    const link = sign(
+      { id: user.id, tokenVersion: user.tokenVersion, expires: '2099-01-01 00:00:00', purpose: 'reset' },
+      process.env.JWT_SECRET!,
+      { expiresIn: '20m' }
+    );
+    const api = await anonymous();
+    const results = await Promise.all(
+      ['Owner-chose-this-9!x', 'Someone-else-chose-7!q'].map(async (password) =>
+        (await api.post('/auth/forgot-return', { data: { token: link, password, repeatPassword: password } })).json()
+      )
+    );
+    expect(results.filter((r) => r.reset === true)).toHaveLength(1);
+    expect((await prisma.user.findUniqueOrThrow({ where: { id: userId } })).tokenVersion).toBe(user.tokenVersion + 1);
+    await api.dispose();
+  } finally {
+    await org.remove();
+    await prisma.$disconnect();
+  }
 });

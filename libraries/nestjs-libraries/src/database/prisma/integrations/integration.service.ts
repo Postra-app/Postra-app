@@ -55,6 +55,9 @@ export class IntegrationService {
       try {
         await this._temporalService.terminateWorkflow(`autopost-${item.id}`);
       } catch (err) {}
+      // Stopped, so say so: the feed stayed "active" in the list while
+      // nothing ran, and switching it on again looked like a no-op.
+      await this._autopostsRepository.changeActive(orgId, item.id, false);
     }
 
     return true;
@@ -556,16 +559,29 @@ export class IntegrationService {
   }
 
   async enableChannel(org: string, totalChannels: number, id: string) {
-    const inUse = channelsInUse(
-      await this._integrationRepository.getIntegrationsList(org)
-    );
-    if (!!process.env.STRIPE_PUBLISHABLE_KEY && inUse >= totalChannels) {
-      throw new HttpException('You have reached the maximum number of channels', 402);
+    // Counted and switched on one at a time per organisation: two requests
+    // at once both saw a free slot and both enabled (BILL-6).
+    const lock = `channels-enable:${org}`;
+    if ((await ioRedis.set(lock, '1', 'EX', 15, 'NX')) !== 'OK') {
+      throw new HttpException(
+        'Another channel is being switched on. Please try again.',
+        409
+      );
     }
+    try {
+      const inUse = channelsInUse(
+        await this._integrationRepository.getIntegrationsList(org)
+      );
+      if (!!process.env.STRIPE_PUBLISHABLE_KEY && inUse >= totalChannels) {
+        throw new HttpException('You have reached the maximum number of channels', 402);
+      }
 
-    const { count } = await this._integrationRepository.enableChannel(org, id);
-    if (!count) {
-      throw new NotFoundException('Channel not found');
+      const { count } = await this._integrationRepository.enableChannel(org, id);
+      if (!count) {
+        throw new NotFoundException('Channel not found');
+      }
+    } finally {
+      await ioRedis.del(lock).catch(() => undefined);
     }
   }
 
@@ -792,7 +808,15 @@ export class IntegrationService {
     currentRun: number;
   }) {
     const getPlugById = await this._integrationRepository.getPlug(data.plugId);
-    if (!getPlugById) {
+    // Switched off, or its channel disabled or removed, after the post went
+    // out: the scheduled comment or repost still ran (INT-14). `true` ends
+    // the plug's runs.
+    if (
+      !getPlugById ||
+      !getPlugById.activated ||
+      getPlugById.integration?.disabled ||
+      getPlugById.integration?.deletedAt
+    ) {
       return true;
     }
 

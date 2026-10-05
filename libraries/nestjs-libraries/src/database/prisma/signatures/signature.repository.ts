@@ -1,10 +1,16 @@
-import { PrismaRepository } from '@gitroom/nestjs-libraries/database/prisma/prisma.service';
+import {
+  PrismaRepository,
+  PrismaTransaction,
+} from '@gitroom/nestjs-libraries/database/prisma/prisma.service';
 import { Injectable } from '@nestjs/common';
 import { SignatureDto } from '@gitroom/nestjs-libraries/dtos/signature/signature.dto';
 
 @Injectable()
 export class SignatureRepository {
-  constructor(private _signatures: PrismaRepository<'signatures'>) {}
+  constructor(
+    private _signatures: PrismaRepository<'signatures'>,
+    private _transaction: PrismaTransaction
+  ) {}
 
   getSignaturesByOrgId(orgId: string) {
     return this._signatures.model.signatures.findMany({
@@ -31,30 +37,39 @@ export class SignatureRepository {
       autoAdd: signature.autoAdd,
     };
 
-    let updatedId: string;
-    if (id) {
-      const { count } = await this._signatures.model.signatures.updateMany({
-        where: { id, organizationId: orgId, deletedAt: null },
-        data: values,
-      });
-      if (!count) {
-        return null;
+    // One write, serialised per organisation when it sets the default: two
+    // signatures made default at once each switched the other off, and the
+    // org was left with none (AUTH-10).
+    return this._transaction.model.$transaction(async (tx) => {
+      if (values.autoAdd) {
+        await tx.$queryRaw`SELECT "id" FROM "Organization" WHERE "id" = ${orgId} FOR UPDATE`;
       }
-      updatedId = id;
-    } else {
-      ({ id: updatedId } = await this._signatures.model.signatures.create({
-        data: { ...values, organizationId: orgId },
-      }));
-    }
 
-    if (values.autoAdd) {
-      await this._signatures.model.signatures.updateMany({
-        where: { organizationId: orgId, id: { not: updatedId } },
-        data: { autoAdd: false },
-      });
-    }
+      let updatedId: string;
+      if (id) {
+        const { count } = await tx.signatures.updateMany({
+          where: { id, organizationId: orgId, deletedAt: null },
+          data: values,
+        });
+        if (!count) {
+          return null;
+        }
+        updatedId = id;
+      } else {
+        ({ id: updatedId } = await tx.signatures.create({
+          data: { ...values, organizationId: orgId },
+        }));
+      }
 
-    return { id: updatedId };
+      if (values.autoAdd) {
+        await tx.signatures.updateMany({
+          where: { organizationId: orgId, id: { not: updatedId } },
+          data: { autoAdd: false },
+        });
+      }
+
+      return { id: updatedId };
+    });
   }
 
   async deleteSignature(orgId: string, id: string) {

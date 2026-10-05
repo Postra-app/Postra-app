@@ -170,11 +170,22 @@ export class OAuthRepository {
     });
   }
 
-  exchangeCodeForToken(id: string, encryptedToken: string) {
-    return this._oauthAuth.model.oAuthAuthorization.update({
-      where: { id },
-      select: {
-        organizationId: true,
+  /**
+   * Spends the code in the same write that issues the token. Two exchanges of
+   * one code both read it before either wrote, both answered with a token,
+   * and the first one stopped working (API-6). Returns 0 when it was spent.
+   */
+  async exchangeCodeForToken(
+    id: string,
+    encryptedCode: string,
+    encryptedToken: string
+  ) {
+    const { count } = await this._oauthAuth.model.oAuthAuthorization.updateMany({
+      where: {
+        id,
+        authorizationCode: encryptedCode,
+        revokedAt: null,
+        codeExpiresAt: { gt: new Date() },
       },
       data: {
         accessToken: encryptedToken,
@@ -182,6 +193,7 @@ export class OAuthRepository {
         codeExpiresAt: null,
       },
     });
+    return count;
   }
 
   findByAccessToken(encryptedToken: string) {
@@ -198,6 +210,9 @@ export class OAuthRepository {
                 subscriptionTier: true,
                 totalChannels: true,
                 isLifetime: true,
+                // The credit cycle starts here; without it the public API and
+                // MCP counted from the time of the request (API-7).
+                createdAt: true,
               },
             },
           },

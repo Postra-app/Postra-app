@@ -59,6 +59,18 @@ export class RefreshIntegrationService {
       return false as const;
     }
 
+    // Removed while the provider was answering: writing the new tokens back
+    // went through an upsert that brought the channel back to life, tokens
+    // and all (INT-7).
+    if (
+      !(await this._integrationService.getIntegrationById(
+        integration.organizationId,
+        integration.id
+      ))
+    ) {
+      return false as const;
+    }
+
     await this._integrationService.createOrUpdateIntegration(
       undefined,
       !!socialProvider.oneTimeToken,

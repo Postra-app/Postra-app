@@ -9,7 +9,9 @@ import {
   MaxLength,
   MinLength,
   ValidateIf,
+  ValidateNested,
 } from 'class-validator';
+import { Type } from 'class-transformer';
 
 export class RefineDesignDto {
   @IsObject()
@@ -129,9 +131,13 @@ export class TemplateSearchDto {
 
   // Optional now: the client sends the hash of the catalogue first, and only
   // resends the texts when the server has no embeddings cached under it.
+  // Each entry is checked too: `[null]` passed the array check and failed
+  // later as a 500, and the 500-character cap on `text` never applied (AI-11).
   @IsOptional()
   @IsArray()
   @ArrayMaxSize(200)
+  @ValidateNested({ each: true })
+  @Type(() => TemplateSearchEntryDto)
   templates?: TemplateSearchEntryDto[];
 
   @IsOptional()

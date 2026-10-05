@@ -42,7 +42,8 @@ export class ThirdPartyController {
         )
       ).map((thirdParty) => {
         const { description, fields, position, title, identifier } =
-          this._thirdPartyManager.getThirdPartyByName(thirdParty.identifier);
+          this._thirdPartyManager.getThirdPartyByName(thirdParty.identifier) ||
+          ({} as Partial<ReturnType<ThirdPartyManager['getThirdPartyByName']> & object>);
         return {
           ...thirdParty,
           title,
