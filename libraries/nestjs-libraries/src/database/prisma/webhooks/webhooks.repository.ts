@@ -1,12 +1,16 @@
-import { PrismaRepository } from '@gitroom/nestjs-libraries/database/prisma/prisma.service';
-import { Injectable } from '@nestjs/common';
+import {
+  PrismaRepository,
+  PrismaTransaction,
+} from '@gitroom/nestjs-libraries/database/prisma/prisma.service';
+import { BadRequestException, Injectable } from '@nestjs/common';
 import { WebhooksDto } from '@gitroom/nestjs-libraries/dtos/webhooks/webhooks.dto';
 
 @Injectable()
 export class WebhooksRepository {
   constructor(
     private _webhooks: PrismaRepository<'webhooks'>,
-    private _integration: PrismaRepository<'integration'>
+    private _integration: PrismaRepository<'integration'>,
+    private _transaction: PrismaTransaction
   ) {}
 
   getTotal(orgId: string) {
@@ -53,59 +57,57 @@ export class WebhooksRepository {
 
   // Null on an update of a webhook this org does not have (or deleted).
   async createWebhook(orgId: string, body: WebhooksDto) {
-    let id: string;
-    if (body.id) {
+    // Only channels the org owns. An unknown or foreign id used to be dropped
+    // in silence, and an empty list means "every channel": a webhook meant
+    // for one channel received all of them (POSTS-5).
+    const requested = [...new Set((body.integrations || []).map((i) => i.id))];
+    const owned = requested.length
+      ? await this._integration.model.integration.findMany({
+          where: { organizationId: orgId, id: { in: requested } },
+          select: { id: true },
+        })
+      : [];
+    if (owned.length !== requested.length) {
+      throw new BadRequestException(
+        'Some of the selected channels are not in this organisation'
+      );
+    }
+    const links = owned.map((integration) => ({
+      integrationId: integration.id,
+    }));
+
+    // The webhook and its channel filter in one write: a new webhook used to
+    // exist without its filter for a moment, which reads as "all channels"
+    // to a publish happening right then (POSTS-4).
+    return this._transaction.model.$transaction(async (tx) => {
+      if (!body.id) {
+        const created = await tx.webhooks.create({
+          data: {
+            organizationId: orgId,
+            url: body.url,
+            name: body.name,
+            integrations: { create: links },
+          },
+        });
+        return { id: created.id };
+      }
+
       // Update path (PUT /webhooks): scope to the org and NEVER create.
       // A prior upsert here let a made-up id fall through to `create`,
       // turning the (un-policy-checked) update route into an uncapped
       // create that bypassed the per-plan webhook limit enforced on POST.
-      const updated = await this._webhooks.model.webhooks.updateMany({
+      const updated = await tx.webhooks.updateMany({
         where: { id: body.id, organizationId: orgId, deletedAt: null },
         data: { url: body.url, name: body.name },
       });
       if (updated.count === 0) {
         return null;
       }
-      id = body.id;
-    } else {
-      const created = await this._webhooks.model.webhooks.create({
-        data: {
-          organizationId: orgId,
-          url: body.url,
-          name: body.name,
-        },
+      await tx.webhooks.update({
+        where: { id: body.id, organizationId: orgId },
+        data: { integrations: { deleteMany: {}, create: links } },
       });
-      id = created.id;
-    }
-
-    // Only link integrations the org actually owns — a client-supplied
-    // foreign integration id would otherwise leak that channel's name/picture
-    // back through getWebhooks.
-    const ownedIntegrations = await this._integration.model.integration.findMany(
-      {
-        where: {
-          organizationId: orgId,
-          id: { in: (body.integrations || []).map((i) => i.id) },
-        },
-        select: { id: true },
-      }
-    );
-
-    await this._webhooks.model.webhooks.update({
-      where: {
-        id,
-        organizationId: orgId,
-      },
-      data: {
-        integrations: {
-          deleteMany: {},
-          create: ownedIntegrations.map((integration) => ({
-            integrationId: integration.id,
-          })),
-        },
-      },
+      return { id: body.id };
     });
-
-    return { id };
   }
 }

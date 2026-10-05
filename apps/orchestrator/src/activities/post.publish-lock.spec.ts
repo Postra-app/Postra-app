@@ -43,7 +43,7 @@ describe('two runs publishing the same post', () => {
       },
       _temporalService: { client: { getRawClient: () => ({ workflow: { start: jest.fn() } }) } },
     });
-    const integration = () => ({ id: 'i1', organizationId: 'o1', providerIdentifier: 'mastodon', internalId: 'x', token: 't', refreshToken: null });
+    const integration = () => ({ id: 'i1', organizationId: 'o1', providerIdentifier: 'mastodon', internalId: 'x', token: 't', refreshToken: null as string | null });
 
     const first = activity.postSocialBody(integration(), [post]);
     for (let i = 0; i < 200 && !provider.post.mock.calls.length; i++) {

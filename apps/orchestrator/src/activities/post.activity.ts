@@ -610,21 +610,40 @@ export class PostActivity {
       webhooks.map(async (webhook) => {
         try {
           await assertPublicWebhookUrl(webhook.url);
-          // ssrfSafeDispatcher pins DNS (TOCTOU/rebinding) and redirect:
-          // 'error' stops a 302 from bouncing the request into the VPC/IMDS.
-          await fetch(webhook.url, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify(post),
-            dispatcher: ssrfSafeDispatcher,
-            redirect: 'error',
-            signal: AbortSignal.timeout(5000),
-          });
-        } catch (e) {
-          /**empty**/
+        } catch {
+          return;
         }
+        // A receiver that is briefly down (429, 5xx, a timeout, a dropped
+        // connection) gets the event again; it used to be dropped on the
+        // first failure without a word (POSTS-6). Each webhook retries on its
+        // own, so one slow receiver never sends a duplicate to another.
+        for (let attempt = 1; attempt <= 3; attempt++) {
+          try {
+            // ssrfSafeDispatcher pins DNS (TOCTOU/rebinding) and redirect:
+            // 'error' stops a 302 from bouncing the request into the VPC/IMDS.
+            const res = await fetch(webhook.url, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify(post),
+              dispatcher: ssrfSafeDispatcher,
+              redirect: 'error',
+              signal: AbortSignal.timeout(5000),
+            });
+            if (res.status !== 429 && res.status < 500) {
+              return;
+            }
+          } catch {
+            // network error or timeout: retried below
+          }
+          if (attempt < 3) {
+            await timer(attempt * 2000);
+          }
+        }
+        this._logger.warn(
+          `[sendWebhooks] webhook=${webhook.id} post=${postId} not delivered after 3 attempts`
+        );
       })
     );
   }
