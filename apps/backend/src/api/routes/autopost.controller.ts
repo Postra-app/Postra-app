@@ -15,13 +15,21 @@ import { ApiTags } from '@nestjs/swagger';
 import { CheckPolicies } from '@gitroom/backend/services/auth/permissions/permissions.ability';
 import { AutopostService } from '@gitroom/nestjs-libraries/database/prisma/autopost/autopost.service';
 import { AutopostDto } from '@gitroom/nestjs-libraries/dtos/autopost/autopost.dto';
-import { AuthorizationActions, Sections } from '@gitroom/nestjs-libraries/services/auth/permission.exception.class';
+import {
+  AuthorizationActions,
+  Sections,
+  SubscriptionException,
+} from '@gitroom/nestjs-libraries/services/auth/permission.exception.class';
+import { PermissionsService } from '@gitroom/backend/services/auth/permissions/permissions.service';
 import { OnlyURL } from '@gitroom/nestjs-libraries/dtos/webhooks/webhooks.dto';
 
 @ApiTags('Autopost')
 @Controller('/autopost')
 export class AutopostController {
-  constructor(private _autopostsService: AutopostService) {}
+  constructor(
+    private _autopostsService: AutopostService,
+    private _permissionsService: PermissionsService
+  ) {}
 
   @Get('/')
   async getAutoposts(@GetOrgFromRequest() org: Organization) {
@@ -61,6 +69,25 @@ export class AutopostController {
     @Param('id') id: string,
     @Body('active') active: boolean
   ) {
+    // Switching a feed on needs a plan with Auto Post; a feed made on Pro
+    // could be restarted after a downgrade (BILL-7). Switching off is always
+    // allowed, so a plan change never leaves a feed nobody can stop.
+    if (active) {
+      const action = AuthorizationActions.Update;
+      const section = Sections.AUTOPOST;
+      const ability = await this._permissionsService.check(
+        org.id,
+        org.createdAt,
+        // @ts-ignore — the org from the request carries the caller's role
+        org.users[0].role,
+        [[action, section]],
+        undefined,
+        org.isTrailing
+      );
+      if (!ability.can(action, section)) {
+        throw new SubscriptionException({ section, action });
+      }
+    }
     return this._autopostsService.changeActive(org.id, id, active);
   }
 

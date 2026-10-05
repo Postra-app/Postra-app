@@ -111,4 +111,23 @@ test.describe('Auto Post feeds', () => {
     await seedFeeds(business.orgId, 3);
     expect((await business.api.post('/autopost', { data: feed(4) })).status()).toBe(201);
   });
+
+  // BILL-7: a feed made on Pro could be switched back on after moving to
+  // Starter, which has no Auto Post. Switching off stays possible.
+  test('a plan without Auto Post cannot switch a feed on, only off', async () => {
+    const starter = await org({ tier: 'STANDARD', totalChannels: 3, channels: 0 });
+    await seedFeeds(starter.orgId, 1);
+    const [seeded] = await prisma.autoPost.findMany({ where: { organizationId: starter.orgId } });
+
+    const on = await starter.api.post(`/autopost/${seeded.id}/active`, { data: { active: true } });
+    expect(on.status()).toBe(402);
+    expect((await prisma.autoPost.findUniqueOrThrow({ where: { id: seeded.id } })).active).toBe(false);
+    expect((await starter.api.post(`/autopost/${seeded.id}/active`, { data: { active: false } })).status()).toBe(201);
+
+    const pro = await org({ tier: 'PRO', totalChannels: 6, channels: 0 });
+    await seedFeeds(pro.orgId, 1);
+    const [proFeed] = await prisma.autoPost.findMany({ where: { organizationId: pro.orgId } });
+    expect((await pro.api.post(`/autopost/${proFeed.id}/active`, { data: { active: true } })).status()).toBe(201);
+    expect((await pro.api.post(`/autopost/${proFeed.id}/active`, { data: { active: false } })).status()).toBe(201);
+  });
 });

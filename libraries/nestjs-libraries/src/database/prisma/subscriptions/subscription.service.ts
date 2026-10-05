@@ -237,7 +237,9 @@ export class SubscriptionService {
       to.team_members
     );
 
-    if (billing === 'FREE') {
+    // Every plan without Auto Post stops the feeds, not only FREE: a Pro org
+    // moving to Starter kept generating and publishing (BILL-7).
+    if (!to.autoPost) {
       await this._integrationService.changeActiveCron(organizationId);
     }
   }

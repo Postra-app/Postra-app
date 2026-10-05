@@ -180,4 +180,18 @@ describe('tier change by org applies the same limits as the webhook path', () =>
       byCustomer.integrationService.disableChannel.mock.calls
     );
   });
+
+  // BILL-7: only FREE stopped Auto Post; Starter has no Auto Post either.
+  it.each([
+    ['STANDARD', true],
+    ['TEAM', false],
+    ['FREE', true],
+    ['PRO', false],
+    ['ULTIMATE', false],
+  ] as const)('moving to %s stops Auto Post: %s', async (tier, stops) => {
+    const { service, integrationService } = setup();
+    integrationService.changeActiveCron.mockClear();
+    await service.modifySubscriptionByOrg('org-1', 3, tier);
+    expect(integrationService.changeActiveCron).toHaveBeenCalledTimes(stops ? 1 : 0);
+  });
 });

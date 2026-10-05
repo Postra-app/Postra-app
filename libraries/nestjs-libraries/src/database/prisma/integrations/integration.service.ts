@@ -55,6 +55,9 @@ export class IntegrationService {
       try {
         await this._temporalService.terminateWorkflow(`autopost-${item.id}`);
       } catch (err) {}
+      // Stopped, so say so: the feed stayed "active" in the list while
+      // nothing ran, and switching it on again looked like a no-op.
+      await this._autopostsRepository.changeActive(orgId, item.id, false);
     }
 
     return true;
