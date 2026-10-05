@@ -1,5 +1,5 @@
 import { APIRequestContext, expect, request, test } from '@playwright/test';
-import { BACKEND_URL, database, throwawayOrg } from '../helpers';
+import { BACKEND_URL, addMember, database, throwawayOrg } from '../helpers';
 
 // "Sign in with Postra" for third-party apps (Settings → Developers, hidden
 // until the SDK ships — the routes are live): an owner registers an app, a
@@ -93,6 +93,95 @@ test('register, approve, exchange, call the public API, revoke', async () => {
     expect((await exchange(owner.api, clientId, newSecret, code2)).status()).toBe(201);
   } finally {
     await owner.remove();
+    await prisma.$disconnect();
+  }
+});
+
+test('E2E-08-25: a plain member cannot approve an app for the organisation', async () => {
+  // An approved app acts as an admin of the organisation (SUPERADMIN on the
+  // public API and MCP), so approving one is for admins, like the API key.
+  const prisma = database();
+  const owner = await throwawayOrg(prisma, { tier: 'PRO', totalChannels: 5, channels: 1 });
+  const member = await addMember(prisma, owner.orgId, 'USER');
+  try {
+    const created = await owner.api.post('/user/oauth-app', {
+      data: { name: 'Stack OAuth app', redirectUrl: 'https://example.com/callback' },
+    });
+    expect(created.status(), await created.text()).toBe(201);
+    const { clientId } = await created.json();
+    const res = await member.api.post('/oauth/authorize', {
+      data: { client_id: clientId, state: 'm1', action: 'approve' },
+    });
+    expect(res.status()).toBe(403);
+  } finally {
+    await member.remove();
+    await owner.remove();
+    await prisma.$disconnect();
+  }
+});
+
+test('E2E-08-25: a token stops working once whoever approved it leaves the team', async () => {
+  const prisma = database();
+  const owner = await throwawayOrg(prisma, { tier: 'PRO', totalChannels: 5, channels: 1 });
+  const admin = await addMember(prisma, owner.orgId, 'ADMIN');
+  try {
+    const created = await owner.api.post('/user/oauth-app', {
+      data: { name: 'Stack OAuth app', redirectUrl: 'https://example.com/callback' },
+    });
+    const { clientId, clientSecret } = await created.json();
+    const code = await approve(admin.api, clientId, 'a1');
+    const token = await exchange(owner.api, clientId, clientSecret, code);
+    expect(token.status(), await token.text()).toBe(201);
+    const asApp = await publicApi((await token.json()).access_token);
+    expect((await asApp.get('integrations')).status()).toBe(200);
+
+    // The token used to keep acting for the organisation after its owner
+    // removed the person who approved it.
+    expect((await owner.api.delete(`/settings/team/${admin.userId}`)).status()).toBe(200);
+    expect((await asApp.get('integrations')).status()).toBe(401);
+    await asApp.dispose();
+  } finally {
+    await admin.remove();
+    await owner.remove();
+    await prisma.$disconnect();
+  }
+});
+
+test("E2E-08-29: an app's picture must be the organisation's own media; approved apps show no secrets", async () => {
+  const prisma = database();
+  const owner = await throwawayOrg(prisma, { tier: 'PRO', totalChannels: 5, channels: 1 });
+  const other = await throwawayOrg(prisma, { tier: 'PRO', totalChannels: 5, channels: 1 });
+  try {
+    const foreign = await prisma.media.create({
+      data: { name: 'theirs.png', path: 'https://cdn.example.com/theirs.png', organizationId: other.orgId, canvasJson: '{"secret":"design"}' },
+    });
+    // Someone else's media id came back as the app's picture, whole record.
+    const refused = await owner.api.post('/user/oauth-app', {
+      data: { name: 'Stack OAuth app', redirectUrl: 'https://example.com/callback', pictureId: foreign.id },
+    });
+    expect(refused.status()).toBe(400);
+    expect(await refused.text()).not.toContain('design');
+
+    const own = await prisma.media.create({
+      data: { name: 'ours.png', path: 'https://cdn.example.com/ours.png', organizationId: owner.orgId, canvasJson: '{"secret":"ours"}' },
+    });
+    const created = await owner.api.post('/user/oauth-app', {
+      data: { name: 'Stack OAuth app', redirectUrl: 'https://example.com/callback', pictureId: own.id },
+    });
+    expect(created.status(), await created.text()).toBe(201);
+    const app = await created.json();
+    expect(app.picture).toEqual({ id: own.id, path: own.path });
+
+    // The Approved Apps list: what the page shows, no encrypted secret or token.
+    const code = await approve(owner.api, app.clientId, 'p1');
+    expect((await exchange(owner.api, app.clientId, app.clientSecret, code)).status()).toBe(201);
+    const approved = await (await owner.api.get('/user/approved-apps')).json();
+    expect(approved).toHaveLength(1);
+    expect(Object.keys(approved[0]).sort()).toEqual(['createdAt', 'id', 'oauthApp']);
+    expect(Object.keys(approved[0].oauthApp).sort()).toEqual(['description', 'id', 'name', 'picture']);
+  } finally {
+    await owner.remove();
+    await other.remove();
     await prisma.$disconnect();
   }
 });

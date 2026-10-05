@@ -52,6 +52,29 @@ const PICKER_FUNCTIONS = new Set([
   'subreddits',
 ]);
 
+// What a picker returns goes to the browser of whoever opened it, a plain
+// member included. Facebook's page list carried every page's access token
+// (E2E-08-28); the server fetches the page token itself once a page is chosen.
+const TOKEN_KEYS = new Set([
+  'access_token',
+  'accessToken',
+  'refresh_token',
+  'refreshToken',
+]);
+export const withoutProviderTokens = (value: unknown): any => {
+  if (Array.isArray(value)) {
+    return value.map(withoutProviderTokens);
+  }
+  if (value && typeof value === 'object' && !(value instanceof Date)) {
+    return Object.fromEntries(
+      Object.entries(value)
+        .filter(([key]) => !TOKEN_KEYS.has(key))
+        .map(([key, item]) => [key, withoutProviderTokens(item)])
+    );
+  }
+  return value;
+};
+
 export const isCallableProviderFunction = (provider: object, name: unknown) => {
   if (typeof name !== 'string') return false;
   const tools: { methodName: string }[] =
@@ -460,7 +483,7 @@ export class IntegrationsController {
           getIntegration
         );
 
-        return load;
+        return withoutProviderTokens(load);
       } catch (err) {
         if (err instanceof RefreshToken) {
           const data = await this._refreshIntegrationService.refresh(

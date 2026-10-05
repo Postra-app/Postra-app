@@ -18,7 +18,8 @@ export class OrganizationRepository {
   constructor(
     private _organization: PrismaRepository<'organization'>,
     private _userOrg: PrismaRepository<'userOrganization'>,
-    private _user: PrismaRepository<'user'>
+    private _user: PrismaRepository<'user'>,
+    private _oauthAuth: PrismaRepository<'oAuthAuthorization'>
   ) {}
 
   createMaxUser(id: string, name: string, saasName: string, email: string) {
@@ -451,6 +452,11 @@ export class OrganizationRepository {
   }
 
   async deleteTeamMember(orgId: string, userId: string) {
+    // Apps they approved for this organisation leave with them.
+    await this._oauthAuth.model.oAuthAuthorization.updateMany({
+      where: { organizationId: orgId, userId, revokedAt: null },
+      data: { revokedAt: new Date() },
+    });
     return this._userOrg.model.userOrganization.delete({
       where: {
         userId_organizationId: {

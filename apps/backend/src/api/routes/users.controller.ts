@@ -343,11 +343,15 @@ export class UsersController {
     });
   }
 
+  // The list every member's browser loads for the organisation switcher. It
+  // carried the API key (a SUPERADMIN credential for the public API and MCP)
+  // and the Stripe customer id to every member, USER included (E2E-08-24);
+  // /user/self shows the key to admins only, and nothing here needs either.
   @Get('/organizations')
   async getOrgs(@GetUserFromRequest() user: User) {
-    return (await this._orgService.getOrgsByUserId(user.id)).filter(
-      (f) => !f.users[0].disabled
-    );
+    return (await this._orgService.getOrgsByUserId(user.id))
+      .filter((f) => !f.users[0].disabled)
+      .map(({ apiKey, paymentId, ...org }) => org);
   }
 
   @Post('/change-org')

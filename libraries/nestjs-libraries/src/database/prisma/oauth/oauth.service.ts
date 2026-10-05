@@ -25,6 +25,8 @@ export class OAuthService {
       );
     }
 
+    await this.refuseForeignPicture(orgId, dto.pictureId);
+
     const clientId = 'pca_' + makeSecureId(32);
     const clientSecret = 'pcs_' + makeSecureId(48);
     const encryptedSecret = AuthService.fixedEncryption(clientSecret);
@@ -41,7 +43,17 @@ export class OAuthService {
     return { ...app, clientSecret };
   }
 
+  // The picture is a media id from the client, and the app came back with the
+  // whole media record attached: another organisation's id returned its
+  // files, Studio design and owner (E2E-08-29).
+  private async refuseForeignPicture(orgId: string, pictureId?: string) {
+    if (pictureId && !(await this._oauthRepository.ownsMedia(orgId, pictureId))) {
+      throw new HttpException('Picture not found', HttpStatus.BAD_REQUEST);
+    }
+  }
+
   async updateApp(orgId: string, dto: UpdateOAuthAppDto) {
+    await this.refuseForeignPicture(orgId, dto.pictureId);
     return this._oauthRepository.updateApp(orgId, {
       ...(dto.name && { name: dto.name }),
       ...(dto.description !== undefined && { description: dto.description }),
@@ -151,9 +163,26 @@ export class OAuthService {
     };
   }
 
+  // A token acts as an admin of its organisation, so it lives only while
+  // whoever approved it is one. It used to outlive their removal from the
+  // team, a suspension and the app's deletion (E2E-08-25).
   async getOrgByOAuthToken(token: string) {
     const encrypted = AuthService.fixedEncryption(token);
-    return this._oauthRepository.findByAccessToken(encrypted);
+    const authorization = await this._oauthRepository.findByAccessToken(
+      encrypted
+    );
+    if (
+      !authorization ||
+      authorization.oauthApp.deletedAt ||
+      authorization.user.suspendedAt ||
+      !authorization.user.organizations.some(
+        (membership) =>
+          membership.organizationId === authorization.organizationId
+      )
+    ) {
+      return null;
+    }
+    return authorization;
   }
 
   async getApprovedApps(userId: string) {

@@ -1,6 +1,7 @@
 import { Throttle } from '@nestjs/throttler';
 import { fetch } from 'undici';
 import { ssrfSafeDispatcher } from '@gitroom/nestjs-libraries/dtos/webhooks/ssrf.safe.dispatcher';
+import { withoutProviderTokens } from '@gitroom/backend/api/routes/integrations.controller';
 import { isSafePublicHttpsUrl } from '@gitroom/nestjs-libraries/dtos/webhooks/webhook.url.validator';
 import {
   Body,
@@ -588,7 +589,7 @@ export class NoAuthIntegrationsController {
     return {
       ...safeIntegration,
       onboarding: onboarding === 'true',
-      pages,
+      pages: withoutProviderTokens(pages),
       ...(returnURL ? { returnURL } : {}),
       ...(extensionToken ? { extensionToken } : {}),
     };

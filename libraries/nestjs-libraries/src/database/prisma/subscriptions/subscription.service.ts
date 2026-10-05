@@ -142,6 +142,22 @@ export class SubscriptionService {
     }
   }
 
+  assignCustomerId(
+    organizationId: string,
+    expected: string | null,
+    customerId: string
+  ) {
+    return this._subscriptionRepository.assignCustomerId(
+      organizationId,
+      expected,
+      customerId
+    );
+  }
+
+  getPaymentId(organizationId: string) {
+    return this._subscriptionRepository.getPaymentId(organizationId);
+  }
+
   updateCustomerId(organizationId: string, customerId: string) {
     return this._subscriptionRepository.updateCustomerId(
       organizationId,

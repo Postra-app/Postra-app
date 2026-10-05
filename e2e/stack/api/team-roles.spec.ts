@@ -54,6 +54,24 @@ test("a member never sees or rotates the organisation's API key", async () => {
   expect(ownerSelf.publicApi).toBeTruthy();
 });
 
+test('E2E-08-24: the organisation list every browser loads carries no API key or Stripe id', async () => {
+  // /user/self hid the key from members; the organisation switcher's list
+  // handed it (a SUPERADMIN credential for the public API and MCP) and the
+  // Stripe customer id to everyone, members included.
+  for (const who of [member, owner]) {
+    const res = await who.get('/user/organizations');
+    expect(res.status()).toBe(200);
+    const orgs = (await res.json()) as Record<string, unknown>[];
+    expect(orgs.length).toBeGreaterThan(0);
+    for (const org of orgs) {
+      expect(org).toHaveProperty('id');
+      expect(org).toHaveProperty('name');
+      expect(org).not.toHaveProperty('apiKey');
+      expect(org).not.toHaveProperty('paymentId');
+    }
+  }
+});
+
 test('a full Pro team: the owner still sees and manages it, but cannot invite', async () => {
   // Pro = owner + 1 seat, and the member fills it. Only the invite needs a
   // free seat; seeing the team and removing someone must keep working, or a

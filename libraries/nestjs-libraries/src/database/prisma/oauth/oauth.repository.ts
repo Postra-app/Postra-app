@@ -5,8 +5,16 @@ import { PrismaRepository } from '@gitroom/nestjs-libraries/database/prisma/pris
 export class OAuthRepository {
   constructor(
     private _oauthApp: PrismaRepository<'oAuthApp'>,
-    private _oauthAuth: PrismaRepository<'oAuthAuthorization'>
+    private _oauthAuth: PrismaRepository<'oAuthAuthorization'>,
+    private _media: PrismaRepository<'media'>
   ) {}
+
+  async ownsMedia(orgId: string, mediaId: string) {
+    return !!(await this._media.model.media.findFirst({
+      where: { id: mediaId, organizationId: orgId, deletedAt: null },
+      select: { id: true },
+    }));
+  }
 
   getAppByOrgId(orgId: string) {
     return this._oauthApp.model.oAuthApp.findFirst({
@@ -15,7 +23,7 @@ export class OAuthRepository {
         deletedAt: null,
       },
       include: {
-        picture: true,
+        picture: { select: { id: true, path: true } },
       },
     });
   }
@@ -27,7 +35,7 @@ export class OAuthRepository {
         deletedAt: null,
       },
       include: {
-        picture: true,
+        picture: { select: { id: true, path: true } },
       },
     });
   }
@@ -54,7 +62,7 @@ export class OAuthRepository {
         clientSecret: data.clientSecret,
       },
       include: {
-        picture: true,
+        picture: { select: { id: true, path: true } },
       },
     });
   }
@@ -81,7 +89,7 @@ export class OAuthRepository {
       where: { id: app.id },
       data,
       include: {
-        picture: true,
+        picture: { select: { id: true, path: true } },
       },
     });
   }
@@ -194,8 +202,18 @@ export class OAuthRepository {
             },
           },
         },
+        oauthApp: {
+          select: { deletedAt: true },
+        },
         user: {
-          select: { id: true },
+          select: {
+            id: true,
+            suspendedAt: true,
+            organizations: {
+              where: { disabled: false, role: { in: ['ADMIN', 'SUPERADMIN'] } },
+              select: { organizationId: true },
+            },
+          },
         },
       },
     });
@@ -208,10 +226,18 @@ export class OAuthRepository {
         revokedAt: null,
         accessToken: { not: null },
       },
-      include: {
+      // What the Approved Apps page shows, nothing more: the full rows carried
+      // the app's encrypted client secret and this grant's encrypted access
+      // token (AUTH-12).
+      select: {
+        id: true,
+        createdAt: true,
         oauthApp: {
-          include: {
-            picture: true,
+          select: {
+            id: true,
+            name: true,
+            description: true,
+            picture: { select: { path: true } },
           },
         },
       },

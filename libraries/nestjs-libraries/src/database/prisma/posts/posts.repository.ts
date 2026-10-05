@@ -736,7 +736,7 @@ export class PostsRepository {
         content: value.content,
         delay: value.delay || 0,
         group: uuid,
-        intervalInDays: inter ? +inter : null,
+        intervalInDays: inter && +inter >= 1 ? Math.floor(+inter) : null,
         approvedSubmitForOrder: APPROVED_SUBMIT_FOR_ORDER.NO,
         ...(type === 'create' ? { creationMethod } : {}),
         ...(state === 'update'

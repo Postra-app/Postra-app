@@ -59,3 +59,30 @@ describe('the composer\'s calls on the real providers', () => {
     expect(refused).toEqual([]);
   });
 });
+
+// E2E-08-28: the Facebook page picker returned every page with its page
+// access token straight to the browser of whoever opened it, a plain member
+// included. The server fetches the page token itself when a page is chosen.
+describe('provider pickers never hand tokens to the browser', () => {
+  it('drops access and refresh tokens from POST /integrations/function', async () => {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const { IntegrationsController } = require('./integrations.controller');
+    const provider = new FakeProvider();
+    (provider as any).pages = async () => [
+      { id: '1', name: 'Page', access_token: 'EAA-page-secret', picture: { data: { url: 'u' } } },
+      { id: '2', name: 'Other', nested: { refresh_token: 'r-secret', accessToken: 'a-secret' } },
+    ];
+    const controller = new IntegrationsController(
+      { getSocialIntegration: () => provider },
+      { getIntegrationById: async () => ({ token: 't', internalId: 'i', providerIdentifier: 'facebook' }) },
+      {},
+      {}
+    );
+    const out = await controller.functionIntegration({ id: 'org' }, { id: 'int', name: 'pages', data: {} });
+    const json = JSON.stringify(out);
+    for (const secret of ['EAA-page-secret', 'r-secret', 'a-secret']) {
+      expect(json).not.toContain(secret);
+    }
+    expect(out[0]).toMatchObject({ id: '1', name: 'Page', picture: { data: { url: 'u' } } });
+  });
+});

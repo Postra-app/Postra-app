@@ -6,7 +6,10 @@ import {
   SocialProvider,
 } from '@gitroom/nestjs-libraries/integrations/social/social.integrations.interface';
 import { makeSecureId } from '@gitroom/nestjs-libraries/services/make.secure.id';
-import { SocialAbstract } from '@gitroom/nestjs-libraries/integrations/social.abstract';
+import {
+  SocialAbstract,
+  BadBody,
+} from '@gitroom/nestjs-libraries/integrations/social.abstract';
 import { Integration } from '@prisma/client';
 import { DiscordDto } from '@gitroom/nestjs-libraries/dtos/posts/providers-settings/discord.dto';
 import { Tool } from '@gitroom/nestjs-libraries/integrations/tool.decorator';
@@ -143,6 +146,25 @@ export class DiscordProvider extends SocialAbstract implements SocialProvider {
   ): Promise<PostResponse[]> {
     const [firstPost] = postDetails;
     const channel = firstPost.settings.channel;
+
+    // The bot is shared by every organisation and a channel id is no secret:
+    // a post naming a channel of another organisation's server went there
+    // (E2E-04-21). Only channels of the server this channel was connected to.
+    const target = await (
+      await this.fetch(`https://discord.com/api/channels/${channel}`, {
+        headers: {
+          Authorization: `Bot ${process.env.DISCORD_BOT_TOKEN_ID}`,
+        },
+      })
+    ).json();
+    if (String(target?.guild_id) !== String(id)) {
+      throw new BadBody(
+        'discord',
+        JSON.stringify({ channel, guild: target?.guild_id }),
+        '',
+        'This Discord channel is not in the connected server'
+      );
+    }
 
     const form = new FormData();
     form.append(
