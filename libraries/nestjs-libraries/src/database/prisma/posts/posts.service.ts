@@ -1182,6 +1182,12 @@ export class PostsService {
 
     const state: State = status === 'draft' ? 'DRAFT' : 'QUEUE';
     await this._postRepository.changeState(id, state);
+    // The publish guard returns a saved release instead of publishing, so a
+    // republish through the public API reported success and sent nothing
+    // (POSTS-8). The editor's republish clears it the same way.
+    if (status === 'schedule' && republish) {
+      await this._postRepository.clearReleases(orgId, [id]);
+    }
 
     try {
       await this.startWorkflow(
@@ -1226,7 +1232,13 @@ export class PostsService {
       action
     );
 
-    if (action === 'schedule') {
+    // A new date for a post still waiting to go out has to reach its
+    // workflow, which otherwise kept sleeping until the old time and
+    // published then (POSTS-7). A published post only changes on the
+    // calendar.
+    const waiting =
+      getPostById.state === 'QUEUE' && !getPostById.releaseId;
+    if (action === 'schedule' || waiting) {
       try {
         await this.startWorkflow(
           getPostById.integration.providerIdentifier

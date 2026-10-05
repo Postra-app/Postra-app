@@ -296,27 +296,34 @@ export async function postWorkflowV109({
           );
         }
 
-        // mark post as successful
-        await updatePost(
-          postsList[i].id,
-          postsResults[i].postId,
-          postsResults[i].releaseURL,
-          organizationId
-        );
-
-        if (i === 0) {
-          // send notification on a sucessful post
-          await inAppNotification(
-            post.integration.organizationId,
-            `Your post has been published on ${capitalize(
-              post.integration.providerIdentifier
-            )}`,
-            `Your post has been published on ${capitalize(
-              post.integration.providerIdentifier
-            )} at ${postsResults[0].releaseURL}`,
-            true,
-            true
+        // The platform has the post from here on. A failure to record it
+        // again or to tell the user must not turn it into an error and stop
+        // its comments (POSTS-9); postSocial saved the release already.
+        try {
+          // mark post as successful
+          await updatePost(
+            postsList[i].id,
+            postsResults[i].postId,
+            postsResults[i].releaseURL,
+            organizationId
           );
+
+          if (i === 0) {
+            // send notification on a sucessful post
+            await inAppNotification(
+              post.integration.organizationId,
+              `Your post has been published on ${capitalize(
+                post.integration.providerIdentifier
+              )}`,
+              `Your post has been published on ${capitalize(
+                post.integration.providerIdentifier
+              )} at ${postsResults[0].releaseURL}`,
+              true,
+              true
+            );
+          }
+        } catch {
+          // recorded by postSocial; nothing to undo
         }
 
         // break the current while to move to the next post
