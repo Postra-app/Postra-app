@@ -627,6 +627,20 @@ export class AutopostService {
     }
 
     const orgId = integrations[0].organizationId;
+
+    // The post and the feed's cursor are two writes. A worker killed between
+    // them left the cursor behind, and the retry posted the same article
+    // again (AI-2). Already posted: let update-url move the cursor on.
+    if (
+      await this._postsService.hasRecentAutopost(
+        orgId,
+        integrations.map((i) => i.id),
+        state.load.url
+      )
+    ) {
+      return;
+    }
+
     const useSlot = state.body.onSlot;
     const date = useSlot
       ? (await this._postsService.findFreeDateTime(orgId)) + 'Z'

@@ -669,6 +669,25 @@ export class PostsRepository {
     });
   }
 
+  /** An Auto Post post for this article on these channels, made lately. */
+  async hasRecentAutopost(orgId: string, integrationIds: string[], url: string) {
+    return !!(await this._post.model.post.findFirst({
+      where: {
+        organizationId: orgId,
+        integrationId: { in: integrationIds },
+        creationMethod: 'AUTOPOST',
+        deletedAt: null,
+        createdAt: { gte: new Date(Date.now() - 14 * 24 * 60 * 60 * 1000) },
+        // Stored content may be HTML, where `&` in a link is `&amp;`.
+        OR: [
+          { content: { contains: url } },
+          { content: { contains: url.replace(/&/g, '&amp;') } },
+        ],
+      },
+      select: { id: true },
+    }));
+  }
+
   countPostsFromDay(orgId: string, date: Date) {
     return this._post.model.post.count({
       where: {

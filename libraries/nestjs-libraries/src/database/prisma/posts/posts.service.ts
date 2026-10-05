@@ -806,6 +806,10 @@ export class PostsService {
     return { deleted: !!post?.id, id: post?.id ?? null };
   }
 
+  hasRecentAutopost(orgId: string, integrationIds: string[], url: string) {
+    return this._postRepository.hasRecentAutopost(orgId, integrationIds, url);
+  }
+
   async countPostsFromDay(orgId: string, date: Date) {
     return this._postRepository.countPostsFromDay(orgId, date);
   }
