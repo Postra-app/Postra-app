@@ -130,7 +130,9 @@ export class AuthService {
           body.email,
           activation.subject,
           activation.html(
-            `${process.env.FRONTEND_URL}/auth/activate/${obj.jwt}`
+            `${process.env.FRONTEND_URL}/auth/activate/${this.activationToken(
+              create.users[0].user
+            )}`
           )
         );
         return obj;
@@ -210,7 +212,10 @@ export class AuthService {
     const providerInstance = this._providerManager.getProvider(provider);
     const providerUser = await providerInstance.getUser(body.providerToken);
 
-    if (!providerUser) {
+    // A provider that could not verify the token may still answer with an
+    // object: the wallet provider returned { id: '' }, which signed every bad
+    // signature into one shared account (E2E-02-29). No id, no user.
+    if (!providerUser || !providerUser.id) {
       throw new Error('Invalid provider token');
     }
 
@@ -293,11 +298,15 @@ export class AuthService {
     // nothing could mark as spent, and a leaked link stayed usable for the full
     // twenty minutes — including *after* the victim had reset their own
     // password, which handed the account to whoever else held the link.
-    const resetValues = AuthChecker.signJWT({
-      id: user.id,
-      tokenVersion: user.tokenVersion,
-      expires: dayjs().add(20, 'minutes').format('YYYY-MM-DD HH:mm:ss'),
-    });
+    const resetValues = AuthChecker.signJWT(
+      {
+        id: user.id,
+        tokenVersion: user.tokenVersion,
+        expires: dayjs().add(20, 'minutes').format('YYYY-MM-DD HH:mm:ss'),
+        purpose: 'reset',
+      },
+      { expiresIn: '20m' }
+    );
 
     // Not awaited: waiting for the mail made a known address answer
     // measurably slower than an unknown one, which told anyone timing the
@@ -397,7 +406,7 @@ export class AuthService {
       throw new Error('Account is already activated');
     }
 
-    const jwt = await this.jwt(user);
+    const jwt = this.activationToken(user);
 
     const activation = authEmails.activation[lang];
     await sendActivationMail(
@@ -514,6 +523,18 @@ export class AuthService {
       // An unreadable token cannot be revoked and does not need to be — it
       // fails the signature check on its next request anyway.
     }
+  }
+
+  // The activation link used to be the session token itself, so once the
+  // account was activated the link signed in whoever held it for 30 days
+  // (E2E-02-27). Its own token, refused as a session by auth.middleware.
+  private activationToken(user: Pick<User, 'id' | 'email'>) {
+    return AuthChecker.signJWT({
+      id: user.id,
+      email: user.email,
+      activated: false,
+      purpose: 'activate',
+    });
   }
 
   private async jwt(user: User) {

@@ -1,6 +1,14 @@
 'use client';
 
-import React, { FC, Fragment, useCallback, useMemo, useState } from 'react';
+import React, {
+  FC,
+  Fragment,
+  useCallback,
+  useMemo,
+  useState,
+  useRef,
+} from 'react';
+import { refusalMessage } from '@gitroom/frontend/components/layout/response.error';
 import { useFetch } from '@gitroom/helpers/utils/custom.fetch';
 import useSWR from 'swr';
 import { Button } from '@gitroom/frontend/components/ui/button';
@@ -17,8 +25,7 @@ import clsx from 'clsx';
 import { deleteDialog } from '@gitroom/react/helpers/delete.dialog';
 import dynamic from 'next/dynamic';
 const CopilotTextarea = dynamic(
-  () =>
-    import('@copilotkit/react-textarea').then((mod) => mod.CopilotTextarea),
+  () => import('@copilotkit/react-textarea').then((mod) => mod.CopilotTextarea),
   { ssr: false }
 );
 import { Slider } from '@gitroom/react/form/slider';
@@ -42,7 +49,9 @@ export const Autopost: FC = () => {
   const addWebhook = useCallback(
     (data?: any) => () => {
       modal.openModal({
-        title: data ? t('edit_autopost', 'Edit Autopost') : t('add_autopost_title', 'Add Autopost'),
+        title: data
+          ? t('edit_autopost', 'Edit Autopost')
+          : t('add_autopost_title', 'Add Autopost'),
         withCloseButton: true,
         children: <AddOrEditWebhook data={data} reload={mutate} />,
       });
@@ -64,7 +73,10 @@ export const Autopost: FC = () => {
           method: 'DELETE',
         });
         mutate();
-        toaster.show(t('autopost_deleted', 'Auto Post feed deleted'), 'success');
+        toaster.show(
+          t('autopost_deleted', 'Auto Post feed deleted'),
+          'success'
+        );
       }
     },
     []
@@ -104,7 +116,7 @@ export const Autopost: FC = () => {
               <div className="text-newTextColor/70 max-w-[640px]">
                 {t(
                   'autopost_upsell_body',
-                  'Auto Post watches your blog\'s RSS feed. When you publish a new article, AI writes a post about it for your channels and schedules it. Included in Pro ({{pro}} RSS feeds) and Business ({{business}}).',
+                  "Auto Post watches your blog's RSS feed. When you publish a new article, AI writes a post about it for your channels and schedules it. Included in Pro ({{pro}} RSS feeds) and Business ({{business}}).",
                   {
                     pro: pricing.PRO.autoPostLimit,
                     business: pricing.ULTIMATE.autoPostLimit,
@@ -172,10 +184,14 @@ export const Autopost: FC = () => {
                 {t('add_an_autopost', 'Add an autopost')}
               </Button>
               <span className="text-newTextColor/55 text-[13px]">
-                {t('autopost_feeds_used', '{{used}} of {{limit}} RSS feeds used', {
-                  used: access.used,
-                  limit: access.limit,
-                })}
+                {t(
+                  'autopost_feeds_used',
+                  '{{used}} of {{limit}} RSS feeds used',
+                  {
+                    used: access.used,
+                    limit: access.limit,
+                  }
+                )}
               </span>
             </div>
           )}
@@ -291,26 +307,46 @@ export const AddOrEditWebhook: FC<{
   // {integrations} response under a key other components read as an array,
   // corrupting each other's data across SPA navigations.
   const { data: integrationList, isLoading } = useIntegrationList();
+  const saving = useRef(false);
   const callBack = useCallback(
     async (values: any) => {
-      await fetch(data?.id ? `/autopost/${data?.id}` : '/autopost', {
-        method: data?.id ? 'PUT' : 'POST',
-        body: JSON.stringify({
-          ...(data?.id
-            ? {
-                id: data.id,
-              }
-            : {}),
-          ...values,
-          ...(!syncLast
-            ? {
-                lastUrl,
-              }
-            : {
-                lastUrl: '',
-              }),
-        }),
-      });
+      // One save at a time: a double click created two feeds publishing the
+      // same RSS (E2E-06-20); a refused save is not "added" (E2E-08-36).
+      if (saving.current) return;
+      saving.current = true;
+      let res: Response;
+      try {
+        res = await fetch(data?.id ? `/autopost/${data?.id}` : '/autopost', {
+          method: data?.id ? 'PUT' : 'POST',
+          body: JSON.stringify({
+            ...(data?.id
+              ? {
+                  id: data.id,
+                }
+              : {}),
+            ...values,
+            ...(!syncLast
+              ? {
+                  lastUrl,
+                }
+              : {
+                  lastUrl: '',
+                }),
+          }),
+        });
+      } finally {
+        saving.current = false;
+      }
+      if (!res.ok) {
+        toast.show(
+          await refusalMessage(
+            res,
+            t('autopost_not_saved', 'The feed was not saved.')
+          ),
+          'warning'
+        );
+        return;
+      }
       toast.show(
         data?.id
           ? t('autopost_updated_successfully', 'Autopost updated successfully')
@@ -335,7 +371,10 @@ export const AddOrEditWebhook: FC<{
       ).json();
       if (!success) {
         setValid('');
-        toast.show(t('could_not_use_rss_feed', 'Could not use this RSS feed'), 'warning');
+        toast.show(
+          t('could_not_use_rss_feed', 'Could not use this RSS feed'),
+          'warning'
+        );
         return;
       }
       toast.show(t('rss_valid', 'RSS valid!'), 'success');
@@ -416,7 +455,10 @@ export const AddOrEditWebhook: FC<{
                   onChange={(e) => {
                     form.setValue('content', e.target.value);
                   }}
-                  placeholder={t('write_your_post_placeholder', 'Write your post...')}
+                  placeholder={t(
+                    'write_your_post_placeholder',
+                    'Write your post...'
+                  )}
                   autosuggestionsConfig={{
                     textareaPurpose: `Assist me in writing social media post`,
                     chatApiConfigs: {},

@@ -6,6 +6,7 @@ export default {
   testPathIgnorePatterns: ['/node_modules/', '/\\.next/', '/dist/'],
   moduleFileExtensions: ['ts', 'tsx', 'js', 'jsx', 'json'],
   testEnvironment: 'node',
+  setupFiles: ['<rootDir>/jest.setup-dispose.js'],
   clearMocks: true,
   // Mirror the @gitroom/* path aliases from tsconfig.base.json so specs can
   // import source files that use them.

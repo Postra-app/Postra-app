@@ -170,6 +170,20 @@ export class SubscriptionRepository {
     return { revoked: count > 0 };
   }
 
+  // Writes the customer only over the one the caller saw, so of two
+  // checkouts racing to create the first customer only one is stored.
+  async assignCustomerId(
+    organizationId: string,
+    expected: string | null,
+    customerId: string
+  ) {
+    const { count } = await this._organization.model.organization.updateMany({
+      where: { id: organizationId, paymentId: expected },
+      data: { paymentId: customerId },
+    });
+    return count === 1;
+  }
+
   updateCustomerId(organizationId: string, customerId: string) {
     return this._organization.model.organization.update({
       where: {

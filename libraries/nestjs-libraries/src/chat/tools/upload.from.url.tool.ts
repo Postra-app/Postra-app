@@ -6,6 +6,7 @@ import { MediaService } from '@gitroom/nestjs-libraries/database/prisma/media/me
 import { UploadFactory } from '@gitroom/nestjs-libraries/upload/upload.factory';
 import { checkAuth } from '@gitroom/nestjs-libraries/chat/auth.context';
 import { ssrfSafeDispatcher } from '@gitroom/nestjs-libraries/dtos/webhooks/ssrf.safe.dispatcher';
+import { readResponseCapped } from '@gitroom/nestjs-libraries/media/fetch.media.buffer';
 import { Readable } from 'stream';
 // Use undici's fetch (not Node's global fetch): the `dispatcher` option only
 // interoperates with an Agent from the same undici instance.
@@ -68,13 +69,19 @@ so the attachment passes the upload-domain validation. Returns the hosted media 
         const response = await fetch(inputData.url, {
           // @ts-ignore — undici option, not in lib.dom fetch types
           dispatcher: ssrfSafeDispatcher,
+          signal: AbortSignal.timeout(60_000),
         });
 
         if (!response.ok) {
           return { errors: 'Failed to fetch URL' };
         }
 
-        const buffer = Buffer.from(await response.arrayBuffer());
+        let buffer: Buffer;
+        try {
+          buffer = await readResponseCapped(response as any);
+        } catch (err) {
+          return { errors: (err as Error).message };
+        }
         const detected = await fromBuffer(buffer);
         if (!detected || !ALLOWED_MIME.has(detected.mime)) {
           return { errors: 'Unsupported file type.' };

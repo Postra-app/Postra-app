@@ -273,6 +273,7 @@ export class AuthController {
 
   @Post('/activate')
   async activate(
+    @Req() req: Request,
     @Body('code') code: string,
     @Body('datafast_visitor_id') datafast_visitor_id: string,
     @Res({ passthrough: false }) response: Response
@@ -283,6 +284,13 @@ export class AuthController {
     );
     if (!activate) {
       return response.status(200).json({ can: false });
+    }
+
+    // The page posts on open, so someone else's activation link signed the
+    // browser out of its own account and into theirs (E2E-08-33). A browser
+    // that is already signed in keeps its session; the account is activated.
+    if (req.cookies?.auth || req.headers.auth) {
+      return response.status(200).json({ can: true, kept: true });
     }
 
     response.cookie('auth', activate, authCookieOptions());

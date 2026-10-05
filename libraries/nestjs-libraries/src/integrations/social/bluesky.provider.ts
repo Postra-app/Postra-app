@@ -1,4 +1,5 @@
 import { Logger } from '@nestjs/common';
+import { assertSafeInstanceUrl } from '@gitroom/nestjs-libraries/dtos/webhooks/webhook.url.validator';
 import {
   AuthTokenDetails,
   PostDetails,
@@ -255,9 +256,19 @@ export class BlueskyProvider extends SocialAbstract implements SocialProvider {
   }) {
     const body = JSON.parse(Buffer.from(params.code, 'base64').toString());
 
+    // The service URL comes from the client, and the server logs in there
+    // with the user's credentials: any host, internal ones included
+    // (E2E-04-24). Same rule as Lemmy's instance URL.
+    let service: string;
+    try {
+      service = await assertSafeInstanceUrl(body.service, 'bluesky');
+    } catch {
+      return 'The Bluesky service must be a public HTTPS address';
+    }
+
     try {
       const agent = new BskyAgent({
-        service: body.service,
+        service,
       });
 
       const {

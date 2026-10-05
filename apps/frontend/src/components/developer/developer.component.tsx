@@ -1,6 +1,7 @@
 'use client';
 
 import { FC, useCallback, useState } from 'react';
+import { refusalMessage } from '@gitroom/frontend/components/layout/response.error';
 import { useFetch } from '@gitroom/helpers/utils/custom.fetch';
 import useSWR from 'swr';
 import { useToaster } from '@gitroom/react/toaster/toaster';
@@ -125,17 +126,25 @@ export const DeveloperComponent: FC = () => {
       return;
     }
     try {
-      const result = await (
-        await fetch('/user/oauth-app', {
-          method: 'POST',
-          body: JSON.stringify({
-            name,
-            description,
-            redirectUrl,
-            pictureId,
-          }),
-        })
-      ).json();
+      const res = await fetch('/user/oauth-app', {
+        method: 'POST',
+        body: JSON.stringify({
+          name,
+          description,
+          redirectUrl,
+          pictureId,
+        }),
+      });
+      // A refused app (a callback that is not a URL) closed the form without
+      // a word (E2E-08-36).
+      if (!res.ok) {
+        toaster.show(
+          await refusalMessage(res, t('oauth_app_create_failed', 'Failed to create the app')),
+          'warning'
+        );
+        return;
+      }
+      const result = await res.json();
 
       if (result.clientSecret) {
         setPlaintextSecret(result.clientSecret);
@@ -159,7 +168,7 @@ export const DeveloperComponent: FC = () => {
 
   const updateApp = useCallback(async () => {
     try {
-      await fetch('/user/oauth-app', {
+      const res = await fetch('/user/oauth-app', {
         method: 'PUT',
         body: JSON.stringify({
           name,
@@ -168,6 +177,13 @@ export const DeveloperComponent: FC = () => {
           pictureId,
         }),
       });
+      if (!res.ok) {
+        toaster.show(
+          await refusalMessage(res, t('oauth_app_update_failed', 'The app was not updated.')),
+          'warning'
+        );
+        return;
+      }
       toaster.show(t('oauth_app_updated', 'App updated'), 'success');
       setEditing(false);
       mutate();

@@ -14,6 +14,7 @@ import {
 //@ts-ignore
 import mime from 'mime';
 import TelegramBot from 'node-telegram-bot-api';
+import { ioRedis } from '@gitroom/nestjs-libraries/redis/redis.service';
 import { Integration } from '@prisma/client';
 import striptags from 'striptags';
 import { fetch } from 'undici';
@@ -86,6 +87,13 @@ export class TelegramProvider extends SocialAbstract implements SocialProvider {
       return 'No chat found';
     }
 
+    // The chat id or @username alone connected any chat the shared bot was
+    // in (E2E-04-25). The proof is "/connect <word>" posted in the chat,
+    // which getBotId sees; it is good for one connection, briefly.
+    if (!(await ioRedis.getdel(`telegram-proven:${chat.id}`))) {
+      return 'Post the /connect message in the chat first';
+    }
+
     const photo = !chat?.photo?.big_file_id
       ? ''
       : await telegramBot.getFileLink(chat.photo.big_file_id);
@@ -121,6 +129,7 @@ export class TelegramProvider extends SocialAbstract implements SocialProvider {
 
     // prevents the code from running while chatId is still undefined to avoid the error 'ETELEGRAM: 400 Bad Request: chat_id is empty'. the code would still work eventually but console spam is not pretty
     if (chatId) {
+      await ioRedis.set(`telegram-proven:${chatId}`, '1', 'EX', 15 * 60);
       //get the numberic ID of the bot
       const botId = (await telegramBot.getMe()).id;
       // check if the bot is an admin in the chat

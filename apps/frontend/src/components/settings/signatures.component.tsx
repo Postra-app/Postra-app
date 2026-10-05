@@ -1,4 +1,5 @@
-import React, { FC, Fragment, useCallback } from 'react';
+import React, { FC, Fragment, useCallback, useRef } from 'react';
+import { refusalMessage } from '@gitroom/frontend/components/layout/response.error';
 import { useFetch } from '@gitroom/helpers/utils/custom.fetch';
 import useSWR from 'swr';
 import { Button } from '@gitroom/frontend/components/ui/button';
@@ -11,8 +12,7 @@ import { FormProvider, useForm } from 'react-hook-form';
 import { yupResolver } from '@hookform/resolvers/yup';
 import dynamic from 'next/dynamic';
 const CopilotTextarea = dynamic(
-  () =>
-    import('@copilotkit/react-textarea').then((mod) => mod.CopilotTextarea),
+  () => import('@copilotkit/react-textarea').then((mod) => mod.CopilotTextarea),
   { ssr: false }
 );
 import { Select } from '@gitroom/react/form/select';
@@ -168,12 +168,32 @@ const AddOrRemoveSignature: FC<{
   const text = form.watch('content');
   const autoAdd = form.watch('autoAdd');
   const modal = useModals();
+  const saving = useRef(false);
   const callBack = useCallback(
     async (values: any) => {
-      await fetch(data?.id ? `/signatures/${data.id}` : '/signatures', {
-        method: data?.id ? 'PUT' : 'POST',
-        body: JSON.stringify(values),
-      });
+      // One save at a time (a double click made two signatures), and a
+      // refused one is not "added" (E2E-08-37, E2E-08-36).
+      if (saving.current) return;
+      saving.current = true;
+      let res: Response;
+      try {
+        res = await fetch(data?.id ? `/signatures/${data.id}` : '/signatures', {
+          method: data?.id ? 'PUT' : 'POST',
+          body: JSON.stringify(values),
+        });
+      } finally {
+        saving.current = false;
+      }
+      if (!res.ok) {
+        toast.show(
+          await refusalMessage(
+            res,
+            t('signature_not_saved', 'The signature was not saved.')
+          ),
+          'warning'
+        );
+        return;
+      }
       toast.show(
         data?.id
           ? t('signature_updated', 'Signature updated')
@@ -240,12 +260,8 @@ const AddOrRemoveSignature: FC<{
               setValueAs: (value) => value === 'true',
             })}
           >
-            <option value="false">
-              {t('no', 'No')}
-            </option>
-            <option value="true">
-              {t('yes', 'Yes')}
-            </option>
+            <option value="false">{t('no', 'No')}</option>
+            <option value="true">{t('yes', 'Yes')}</option>
           </Select>
 
           <Button type="submit">{t('save', 'Save')}</Button>

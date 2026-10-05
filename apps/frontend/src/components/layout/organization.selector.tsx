@@ -1,6 +1,7 @@
 'use client';
 
 import React, { FC, useCallback, useMemo } from 'react';
+import { announceOrgChange } from '@gitroom/frontend/components/layout/org.broadcast';
 import { useFetch } from '@gitroom/helpers/utils/custom.fetch';
 import useSWR from 'swr';
 import { useUser } from '@gitroom/frontend/components/layout/user.context';
@@ -34,6 +35,7 @@ export const OrganizationSelector: FC<{ asOpenSelect?: boolean }> = ({
           id: org.id,
         }),
       });
+      announceOrgChange(org.id);
       window.location.reload();
     },
     []

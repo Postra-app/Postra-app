@@ -16,6 +16,16 @@ import {
   SubscriptionException,
 } from '@gitroom/nestjs-libraries/services/auth/permission.exception.class';
 
+// Sign-in routes and the channel-connect callbacks run before there is an
+// organisation to check against. Matched as a prefix: the old substring test
+// let anything containing "/auth" through, so `/oauth/authorize` — approving an
+// app that then acts as an admin — skipped every policy (E2E-08-25).
+export const isUnguardedPath = (path: string) =>
+  path === '/auth' ||
+  path.startsWith('/auth/') ||
+  path.startsWith('/integrations/social-connect') ||
+  path.startsWith('/integrations/provider');
+
 @Injectable()
 export class PoliciesGuard implements CanActivate {
   constructor(
@@ -25,12 +35,7 @@ export class PoliciesGuard implements CanActivate {
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
     const request: Request = context.switchToHttp().getRequest();
-    if (
-      request.path.indexOf('/auth') > -1 ||
-      request.path.indexOf('/auth') > -1 ||
-      request.path.indexOf('/integrations/social-connect') > -1 ||
-      request.path.indexOf('/integrations/provider') > -1
-    ) {
+    if (isUnguardedPath(request.path)) {
       return true;
     }
 

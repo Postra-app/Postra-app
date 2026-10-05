@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { isLogoutPath } from '@gitroom/frontend/components/layout/safe.url';
 import type { NextRequest } from 'next/server';
 import { getCookieUrlFromDomain } from '@gitroom/helpers/subdomain/subdomain.management';
 import { internalFetch } from '@gitroom/helpers/utils/internal.fetch';
@@ -74,8 +75,9 @@ export async function proxy(request: NextRequest) {
     return topResponse;
   }
 
-  // If the URL is logout, delete the cookie and redirect to login
-  if (nextUrl.href.indexOf('/auth/logout') > -1) {
+  // If the URL is logout, delete the cookie and redirect to login. The path
+  // itself: `?next=/auth/logout` in any link signed people out (E2E-08-32).
+  if (isLogoutPath(nextUrl.pathname)) {
     const response = NextResponse.redirect(
       new URL('/auth/login', nextUrl.href)
     );
@@ -197,33 +199,13 @@ export async function proxy(request: NextRequest) {
     return topResponse;
   }
   try {
-    if (org) {
-      const { id } = await (
-        await internalFetch('/user/join-org', {
-          body: JSON.stringify({
-            org,
-          }),
-          method: 'POST',
-        })
-      ).json();
-      const redirect = NextResponse.redirect(
-        new URL(`/?added=true`, nextUrl.href)
+    // An invitation is accepted on a page that asks first. Joining right
+    // here let any site send a signed-in person into its organisation, as
+    // whichever account the browser happened to hold (E2E-08-34).
+    if (org && nextUrl.pathname !== '/join') {
+      return NextResponse.redirect(
+        new URL(`/join?org=${encodeURIComponent(org)}`, nextUrl.href)
       );
-      if (id) {
-        redirect.cookies.set('showorg', id, {
-          ...(!process.env.NOT_SECURED
-            ? {
-                path: '/',
-                secure: true,
-                httpOnly: true,
-                sameSite: 'lax',
-                domain: getCookieUrlFromDomain(process.env.FRONTEND_URL!),
-              }
-            : {}),
-          expires: new Date(Date.now() + 15 * 60 * 1000),
-        });
-      }
-      return redirect;
     }
     if (nextUrl.pathname === '/') {
       return NextResponse.redirect(

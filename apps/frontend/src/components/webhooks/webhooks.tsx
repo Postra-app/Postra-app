@@ -1,6 +1,7 @@
 'use client';
 
-import React, { FC, Fragment, useCallback, useState } from 'react';
+import React, { FC, Fragment, useCallback, useState, useRef } from 'react';
+import { refusalMessage } from '@gitroom/frontend/components/layout/response.error';
 import { useFetch } from '@gitroom/helpers/utils/custom.fetch';
 import useSWR from 'swr';
 import { useUser } from '@gitroom/frontend/components/layout/user.context';
@@ -32,7 +33,9 @@ export const Webhooks: FC = () => {
   const addWebhook = useCallback(
     (data?: any) => () => {
       modal.openModal({
-        title: data ? t('update_webhook', 'Update webhook') : t('add_webhook', 'Add webhook'),
+        title: data
+          ? t('update_webhook', 'Update webhook')
+          : t('add_webhook', 'Add webhook'),
         withCloseButton: true,
         children: <AddOrEditWebhook data={data} reload={mutate} />,
       });
@@ -54,7 +57,10 @@ export const Webhooks: FC = () => {
           method: 'DELETE',
         });
         mutate();
-        toaster.show(t('webhook_deleted_successfully', 'Webhook deleted successfully'), 'success');
+        toaster.show(
+          t('webhook_deleted_successfully', 'Webhook deleted successfully'),
+          'success'
+        );
       }
     },
     []
@@ -167,27 +173,45 @@ export const AddOrEditWebhook: FC<{
   // {integrations} response under a key other components read as an array,
   // corrupting each other's data across SPA navigations.
   const { data: integrationList, isLoading } = useIntegrationList();
+  const saving = useRef(false);
   const callBack = useCallback(
     async (values: any) => {
-      await fetch('/webhooks', {
-        method: data?.id ? 'PUT' : 'POST',
-        body: JSON.stringify({
-          ...(data?.id
-            ? {
-                id: data.id,
-              }
-            : {}),
-          ...values,
-        }),
-      });
-      toast.show(
-        data?.id
-          ? t('webhook_updated_successfully', 'Webhook updated successfully')
-          : t('webhook_added_successfully', 'Webhook added successfully'),
-        'success'
-      );
-      modal.closeAll();
-      reload();
+      // One save at a time: a double click created two webhooks (E2E-08-37).
+      if (saving.current) return;
+      saving.current = true;
+      try {
+        const res = await fetch('/webhooks', {
+          method: data?.id ? 'PUT' : 'POST',
+          body: JSON.stringify({
+            ...(data?.id
+              ? {
+                  id: data.id,
+                }
+              : {}),
+            ...values,
+          }),
+        });
+        if (!res.ok) {
+          toast.show(
+            await refusalMessage(
+              res,
+              t('webhook_not_saved', 'The webhook was not saved.')
+            ),
+            'warning'
+          );
+          return;
+        }
+        toast.show(
+          data?.id
+            ? t('webhook_updated_successfully', 'Webhook updated successfully')
+            : t('webhook_added_successfully', 'Webhook added successfully'),
+          'success'
+        );
+        modal.closeAll();
+        reload();
+      } finally {
+        saving.current = false;
+      }
     },
     [data, integrations]
   );

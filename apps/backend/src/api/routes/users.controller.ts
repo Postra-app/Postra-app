@@ -314,6 +314,29 @@ export class UsersController {
     return subscription ? { subscription } : { subscription: undefined };
   }
 
+  // What an invitation is for, without accepting it: the join page asks
+  // "Join X as Y?" before anything is written (E2E-08-34).
+  @Get('/invite-preview')
+  async invitePreview(
+    @GetUserFromRequest() user: User,
+    @Query('org') org: string
+  ) {
+    const invite = this._authService.getOrgFromCookie(org);
+    if (!invite) {
+      return { valid: false };
+    }
+    const organization = await this._orgService.getOrgById(invite.orgId);
+    if (!organization) {
+      return { valid: false };
+    }
+    return {
+      valid: true,
+      organization: organization.name,
+      role: invite.role,
+      email: user.email,
+    };
+  }
+
   @Post('/join-org')
   async joinOrg(
     @GetUserFromRequest() user: User,
@@ -343,11 +366,15 @@ export class UsersController {
     });
   }
 
+  // The list every member's browser loads for the organisation switcher. It
+  // carried the API key (a SUPERADMIN credential for the public API and MCP)
+  // and the Stripe customer id to every member, USER included (E2E-08-24);
+  // /user/self shows the key to admins only, and nothing here needs either.
   @Get('/organizations')
   async getOrgs(@GetUserFromRequest() user: User) {
-    return (await this._orgService.getOrgsByUserId(user.id)).filter(
-      (f) => !f.users[0].disabled
-    );
+    return (await this._orgService.getOrgsByUserId(user.id))
+      .filter((f) => !f.users[0].disabled)
+      .map(({ apiKey, paymentId, ...org }) => org);
   }
 
   @Post('/change-org')

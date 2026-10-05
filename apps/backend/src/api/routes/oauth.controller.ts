@@ -15,6 +15,11 @@ import { GetOrgFromRequest } from '@gitroom/nestjs-libraries/user/org.from.reque
 import { User, Organization } from '@prisma/client';
 import { AuthorizeOAuthQueryDto, ApproveOAuthDto } from '@gitroom/nestjs-libraries/dtos/oauth/authorize-oauth.dto';
 import { TokenExchangeDto } from '@gitroom/nestjs-libraries/dtos/oauth/token-exchange.dto';
+import { CheckPolicies } from '@gitroom/backend/services/auth/permissions/permissions.ability';
+import {
+  AuthorizationActions,
+  Sections,
+} from '@gitroom/nestjs-libraries/services/auth/permission.exception.class';
 
 @ApiTags('OAuth')
 @Controller('/oauth')
@@ -62,8 +67,11 @@ export class OAuthController {
 export class OAuthAuthorizedController {
   constructor(private _oauthService: OAuthService) {}
 
+  // An approved app acts as an admin of the organisation, so approving one is
+  // for admins, like seeing the API key (E2E-08-25).
   @Post('/authorize')
   @Throttle({ default: { ttl: 300_000, limit: 30 } })
+  @CheckPolicies([AuthorizationActions.Create, Sections.ADMIN])
   async approveOrDeny(
     @Body() body: ApproveOAuthDto,
     @GetUserFromRequest() user: User,

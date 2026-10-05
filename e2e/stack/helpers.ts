@@ -166,3 +166,49 @@ export const throwawayOrg = async (
     },
   };
 };
+
+// Another signed-in person in an existing organisation, with the given role.
+// Call `remove` in the test's finally (the organisation's own cleanup also
+// takes the membership, but not the user).
+export const addMember = async (
+  prisma: PrismaClient,
+  organizationId: string,
+  role: 'USER' | 'ADMIN'
+) => {
+  const tag = `${process.pid}-${Date.now()}-${++throwawayCount}`;
+  const email = `member-${tag}@example.com`;
+  const password = 'Stack-tests-T-1';
+  const user = await prisma.user.create({
+    data: {
+      email,
+      password: hashSync(password, 10),
+      providerName: 'LOCAL',
+      name: 'Stack',
+      lastName: 'Member',
+      timezone: 0,
+      activated: true,
+      createdAt: new Date(Date.now() - 2 * 86_400_000),
+    },
+  });
+  await prisma.userOrganization.create({
+    data: { userId: user.id, organizationId, role },
+  });
+  const api = await pwRequest.newContext({
+    baseURL: BACKEND_URL,
+    extraHTTPHeaders: {
+      'x-forwarded-for': `198.19.${Math.floor(Math.random() * 250)}.${Math.floor(Math.random() * 250) + 1}`,
+    },
+  });
+  const res = await api.post('/auth/login', {
+    data: { email, password, provider: 'LOCAL' },
+  });
+  expect(res.status(), `member sign-in: ${await res.text()}`).toBe(200);
+  return {
+    api,
+    userId: user.id,
+    remove: async () => {
+      await api.dispose();
+      await prisma.user.deleteMany({ where: { id: user.id } });
+    },
+  };
+};

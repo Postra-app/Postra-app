@@ -2,12 +2,13 @@ import {
   PrismaRepository,
   PrismaTransaction,
 } from '@gitroom/nestjs-libraries/database/prisma/prisma.service';
-import { Injectable } from '@nestjs/common';
+import { ConflictException, Injectable } from '@nestjs/common';
 import { Post as PostBody } from '@gitroom/nestjs-libraries/dtos/posts/create.post.dto';
 import {
   APPROVED_SUBMIT_FOR_ORDER,
   CreationMethod,
   Post,
+  Prisma,
   State,
 } from '@prisma/client';
 import { GetPostsDto } from '@gitroom/nestjs-libraries/dtos/posts/get.posts.dto';
@@ -125,15 +126,15 @@ export class PostsRepository {
     });
   }
 
+  // Filling in a media path (or swapping a PNG for a JPEG) is not an edit.
+  // Through Prisma it bumped `updatedAt`, so the editor whose opening of the
+  // post triggered it held a version that already looked stale, and its first
+  // save was refused with a 409 (E2E-05-40). Raw SQL because Prisma sets
+  // @updatedAt on every update it makes.
   updateImages(id: string, images: string) {
-    return this._post.model.post.update({
-      where: {
-        id,
-      },
-      data: {
-        image: images,
-      },
-    });
+    return this._prismaTransaction.model.$transaction(
+      (tx) => tx.$executeRaw`UPDATE "Post" SET "image" = ${images} WHERE "id" = ${id}`
+    );
   }
 
   getPostUrls(orgId: string, ids: string[]) {
@@ -489,13 +490,60 @@ export class PostsRepository {
   }
 
   // By id, not by group: every save moves the posts to a new group.
-  async latestUpdateOf(orgId: string, ids: string[]) {
+  async refuseIfChangedSince(
+    orgId: string,
+    ids: string[],
+    expectedUpdatedAt: string
+  ) {
     const { _max } = await this._post.model.post.aggregate({
       _max: { updatedAt: true },
       where: { organizationId: orgId, id: { in: ids } },
     });
-    return _max.updatedAt;
+    this.refuseIfNewer(_max.updatedAt, expectedUpdatedAt);
   }
+
+  // First thing in a save's transaction: lock every post it overwrites, in
+  // one fixed order, until it commits. Checked only before the write, two
+  // saves opened from the same version both passed and the later replaced
+  // the earlier without a 409 (E2E-05-39); locked post by post as the writes
+  // went, [A, B] and [B, A] at once deadlocked and one got a 500
+  // (E2E-05-42). Now the second save waits for the first, then sees its
+  // version.
+  async lockForSave(
+    tx: Prisma.TransactionClient,
+    orgId: string,
+    ids: string[],
+    expectedUpdatedAt?: string
+  ) {
+    if (!ids.length) {
+      return;
+    }
+
+    const rows = await tx.$queryRaw<{ updatedAt: Date }[]>`
+      SELECT "updatedAt" FROM "Post"
+      WHERE "id" = ANY(${ids}::text[]) AND "organizationId" = ${orgId}
+      ORDER BY "id"
+      FOR UPDATE`;
+
+    if (expectedUpdatedAt) {
+      const latest = rows.reduce<Date | null>(
+        (max, { updatedAt }) => (!max || updatedAt > max ? updatedAt : max),
+        null
+      );
+      this.refuseIfNewer(latest, expectedUpdatedAt);
+    }
+  }
+
+  private refuseIfNewer(latest: Date | null, expectedUpdatedAt: string) {
+    if (latest && latest.getTime() > Date.parse(expectedUpdatedAt)) {
+      throw new ConflictException({
+        statusCode: 409,
+        message: 'Someone else saved changes to this post after you opened it.',
+        updatedAt: latest.toISOString(),
+      });
+    }
+  }
+
 
   clearReleases(orgId: string, ids: string[]) {
     return this._post.model.post.updateMany({
@@ -650,12 +698,14 @@ export class PostsRepository {
     body: PostBody,
     tags: { value: string; label: string }[],
     creationMethod: CreationMethod,
-    inter?: number
+    inter?: number,
+    outer?: Prisma.TransactionClient
   ) {
     // Creating a thread is a multi-step write (per-part upserts, tag rewrite,
     // soft-delete of the previous group). A failure mid-way used to leave a
-    // half-created thread with the old group still live — all-or-nothing now.
-    return this._prismaTransaction.model.$transaction(async (tx) => {
+    // half-created thread with the old group still live — all-or-nothing now,
+    // and inside the caller's transaction when a save spans several channels.
+    const write = async (tx: Prisma.TransactionClient) => {
     const posts: Post[] = [];
     const uuid = uuidv4();
 
@@ -686,7 +736,7 @@ export class PostsRepository {
         content: value.content,
         delay: value.delay || 0,
         group: uuid,
-        intervalInDays: inter ? +inter : null,
+        intervalInDays: inter && +inter >= 1 ? Math.floor(+inter) : null,
         approvedSubmitForOrder: APPROVED_SUBMIT_FOR_ORDER.NO,
         ...(type === 'create' ? { creationMethod } : {}),
         ...(state === 'update'
@@ -795,6 +845,16 @@ export class PostsRepository {
     }
 
     return { previousPost, posts };
+    };
+
+    return outer ? write(outer) : this._prismaTransaction.model.$transaction(write);
+  }
+
+  // A whole save, every channel of it, commits or fails together. Generous
+  // timeout: a save of many channels with threads is a few hundred writes.
+  transaction<T>(write: (tx: Prisma.TransactionClient) => Promise<T>) {
+    return this._prismaTransaction.model.$transaction(write, {
+      timeout: 30_000,
     });
   }
 

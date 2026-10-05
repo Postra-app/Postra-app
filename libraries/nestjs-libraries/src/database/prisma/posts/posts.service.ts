@@ -1,6 +1,5 @@
 import {
   BadRequestException,
-  ConflictException,
   Injectable,
   Logger,
   NotFoundException,
@@ -1042,16 +1041,14 @@ export class PostsService {
     const editedIds = (body.posts || []).flatMap((post) =>
       (post.value || []).map((value) => value.id).filter(Boolean)
     ) as string[];
+    // Refused here before any work is done; the write below checks again
+    // with the rows locked, which is what stops two saves at once.
     if (body.expectedUpdatedAt && editedIds.length) {
-      const latest = await this._postRepository.latestUpdateOf(orgId, editedIds);
-      if (latest && latest.getTime() > Date.parse(body.expectedUpdatedAt)) {
-        throw new ConflictException({
-          statusCode: 409,
-          message:
-            'Someone else saved changes to this post after you opened it.',
-          updatedAt: latest.toISOString(),
-        });
-      }
+      await this._postRepository.refuseIfChangedSince(
+        orgId,
+        editedIds,
+        body.expectedUpdatedAt
+      );
     }
 
     // Every post of the request is checked before the first one is written.
@@ -1067,7 +1064,8 @@ export class PostsService {
       }
     }
 
-    const postList = [];
+    // Content first: shortening links calls out, and that must not happen
+    // while the rows are locked.
     for (const post of body.posts) {
       const provider = this._integrationManager.getSocialIntegration(
         (post.settings as any)?.__type
@@ -1088,17 +1086,41 @@ export class PostsService {
         ...p,
         content: removeLinks ? stripLinks(updateContent[i]) : updateContent[i],
       }));
+    }
 
-      const { posts } = await this._postRepository.createOrUpdatePost(
-        body.type,
+    // Every channel in one transaction, behind the locks and the version
+    // check of lockForSave. Written one transaction per channel, a save refused (or
+    // failing) on the second channel left the first one saved, and already
+    // publishing.
+    const written = await this._postRepository.transaction(async (tx) => {
+      await this._postRepository.lockForSave(
+        tx,
         orgId,
-        body.type === 'now' ? dayjs().format('YYYY-MM-DDTHH:mm:00') : body.date,
-        post,
-        body.tags,
-        creationMethod,
-        body.inter
+        editedIds,
+        body.expectedUpdatedAt
       );
 
+      const saved = [];
+      for (const post of body.posts) {
+        const { posts } = await this._postRepository.createOrUpdatePost(
+          body.type,
+          orgId,
+          body.type === 'now'
+            ? dayjs().format('YYYY-MM-DDTHH:mm:00')
+            : body.date,
+          post,
+          body.tags,
+          creationMethod,
+          body.inter,
+          tx
+        );
+        saved.push({ post, posts });
+      }
+      return saved;
+    });
+
+    const postList = [];
+    for (const { post, posts } of written) {
       if (!posts?.length) {
         return [] as any[];
       }

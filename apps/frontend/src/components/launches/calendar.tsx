@@ -811,6 +811,12 @@ export const CalendarColumn: FC<{
             ...(action === 'schedule' ? { republish: true } : {}),
           }),
         });
+        // Refused (the post deleted in another tab, a 404): the tile was
+        // already moved here and stayed there as if saved (E2E-05-49).
+        if (status >= 400) {
+          reloadCalendarView();
+          return;
+        }
         if (status !== 500) {
           if (item.interval || action === 'schedule') {
             reloadCalendarView();

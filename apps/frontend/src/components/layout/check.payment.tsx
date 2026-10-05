@@ -39,13 +39,29 @@ export const CheckPaymentInner: FC<{
     }
   }, [showLoader]);
 
-  const checkSubscription = useCallback(async () => {
-    const { status } = await (
-      await fetch('/billing/check/' + props.check)
-    ).json();
-    if (status === 0) {
-      await timer(1000);
-      return checkSubscription();
+  // One failed request (a 503, a dropped connection) ended the polling with
+  // the full-screen loader still up, and a payment that stayed pending kept
+  // it up for good (E2E-07-17). Errors are retried, and after about two
+  // minutes the app is handed back with a note.
+  const checkSubscription = useCallback(async (attempt = 0): Promise<void> => {
+    let status: number | undefined;
+    try {
+      status = (await (await fetch('/billing/check/' + props.check)).json())
+        ?.status;
+    } catch {
+      status = undefined;
+    }
+    if (status !== 1 && status !== 2) {
+      if (attempt < 120) {
+        await timer(1000);
+        return checkSubscription(attempt + 1);
+      }
+      setShowLoader(false);
+      toaster.show(
+        'We could not confirm the payment yet. It may still be processing — refresh this page in a minute.',
+        'warning'
+      );
+      return;
     }
     if (status === 1) {
       modal.open({

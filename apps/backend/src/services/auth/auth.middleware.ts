@@ -89,6 +89,14 @@ export class AuthMiddleware implements NestMiddleware {
         throw new HttpForbiddenException();
       }
 
+      // A link from a mail is not a session. A password-reset token carried
+      // the same id and tokenVersion a session does, so a leaked, unused
+      // reset link signed its holder in for 30 days (E2E-02-27). Those links
+      // carry `expires`, and from now on a `purpose`.
+      if ((payload as any).purpose || (payload as any).expires) {
+        throw new HttpForbiddenException();
+      }
+
       // Mark the authenticated human as seen — the admin, when a session is
       // impersonating, since an admin looking around is not the customer being
       // active. Throttled to one write per user per window and never awaited.

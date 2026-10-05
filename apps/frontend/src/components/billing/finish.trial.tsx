@@ -3,6 +3,7 @@ import { TopTitle } from '@gitroom/frontend/components/launches/helpers/top.titl
 import { LoadingComponent } from '@gitroom/frontend/components/layout/loading';
 import { useFetch } from '@gitroom/helpers/utils/custom.fetch';
 import { timer } from '@gitroom/helpers/utils/timer';
+import { useSWRConfig } from 'swr';
 import { Button } from '@gitroom/frontend/components/ui/button';
 import { useT } from '@gitroom/react/translation/get.transation.service.client';
 
@@ -11,13 +12,21 @@ export const FinishTrial: FC<{ close: () => void }> = (props) => {
   const [problem, setProblem] = useState<{ url?: string } | null>(null);
   const fetch = useFetch();
   const t = useT();
+  const { mutate } = useSWRConfig();
 
   const finishSubscription = useCallback(async () => {
-    const result = await (
-      await fetch('/billing/finish-trial', {
-        method: 'POST',
-      })
-    ).json();
+    // A failed request left the dialog spinning for good (E2E-07-18).
+    let result: { finish?: boolean; url?: string } | undefined;
+    try {
+      result = await (
+        await fetch('/billing/finish-trial', {
+          method: 'POST',
+        })
+      ).json();
+    } catch {
+      setProblem({});
+      return;
+    }
     // finish:false means Stripe did not take the payment (usually 3-D Secure),
     // so the plan will not flip and polling would spin forever.
     if (!result?.finish) {
@@ -28,11 +37,17 @@ export const FinishTrial: FC<{ close: () => void }> = (props) => {
   }, []);
 
   const checkFinished = useCallback(async (attempt = 0) => {
-    const { finished } = await (
-      await fetch('/billing/is-trial-finished')
-    ).json();
+    let finished = false;
+    try {
+      finished = (await (await fetch('/billing/is-trial-finished')).json())
+        ?.finished;
+    } catch {
+      finished = false;
+    }
     if (finished) {
       setFinished(true);
+      // The open app still held the trial's limits (E2E-07-18).
+      mutate('/user/self');
       return;
     }
     if (attempt >= 30) {

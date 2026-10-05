@@ -35,6 +35,34 @@ async function fetchMediaResponse(
   return response;
 }
 
+// A body read into memory has to have an end. Importing media from a URL
+// buffered whatever the server sent before looking at it, so one server
+// streaming gigabytes — with or without Content-Length — filled the backend's
+// memory for every user (E2E-08-27).
+export const URL_IMPORT_MAX_BYTES = 100 * 1024 * 1024;
+export async function readResponseCapped(
+  response: Awaited<ReturnType<typeof fetch>>,
+  maxBytes = URL_IMPORT_MAX_BYTES
+): Promise<Buffer> {
+  const tooLarge = () =>
+    new Error(`The file is larger than ${Math.round(maxBytes / 1024 / 1024)} MB`);
+  if (Number(response.headers.get('content-length')) > maxBytes) {
+    await response.body?.cancel().catch(() => undefined);
+    throw tooLarge();
+  }
+  const chunks: Buffer[] = [];
+  let size = 0;
+  for await (const chunk of response.body ?? []) {
+    size += chunk.length;
+    if (size > maxBytes) {
+      await response.body?.cancel().catch(() => undefined);
+      throw tooLarge();
+    }
+    chunks.push(Buffer.from(chunk));
+  }
+  return Buffer.concat(chunks);
+}
+
 export async function fetchMediaBuffer(
   url: string,
   timeoutMs = 30_000

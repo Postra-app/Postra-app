@@ -12,6 +12,8 @@ import {
   Validate,
   ValidateIf,
   ValidateNested,
+  IsInt,
+  Min,
 } from 'class-validator';
 import { Transform, Type } from 'class-transformer';
 import { MediaDto } from '@gitroom/nestjs-libraries/dtos/media/media.dto';
@@ -116,8 +118,11 @@ export class CreatePostDto {
   @IsBoolean()
   shortLink: boolean;
 
+  // Days between repeats. Below one, the workflow clamped the wait to zero
+  // and each publication started the next at once, without end (E2E-05-43).
   @IsOptional()
-  @IsNumber()
+  @IsInt()
+  @Min(1)
   inter?: number;
 
   // Explicit opt-in to publish an already published post again; without it a

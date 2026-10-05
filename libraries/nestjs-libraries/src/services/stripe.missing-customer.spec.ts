@@ -2,6 +2,7 @@ const listSubscriptions = jest.fn();
 const listCharges = jest.fn();
 const retrieveCustomer = jest.fn();
 const createCustomer = jest.fn();
+const deleteCustomer = jest.fn().mockResolvedValue({ deleted: true });
 const updateCustomer = jest.fn().mockResolvedValue({});
 
 jest.mock('stripe', () => {
@@ -12,7 +13,12 @@ jest.mock('stripe', () => {
   const mock: any = jest.fn().mockImplementation(() => ({
     subscriptions: { list: listSubscriptions },
     charges: { list: listCharges },
-    customers: { retrieve: retrieveCustomer, create: createCustomer, update: updateCustomer },
+    customers: {
+      retrieve: retrieveCustomer,
+      create: createCustomer,
+      update: updateCustomer,
+      del: deleteCustomer,
+    },
   }));
   mock.errors = actual.errors ?? actual.default?.errors;
   return mock;
@@ -57,6 +63,8 @@ const build = (paymentId: string | null) => {
   const subscriptionService = {
     checkSubscription: jest.fn().mockResolvedValue(null),
     updateCustomerId: jest.fn().mockResolvedValue(undefined),
+    assignCustomerId: jest.fn().mockResolvedValue(true),
+    getPaymentId: jest.fn().mockResolvedValue(null),
   };
   const organizationService = {
     getOrgById: jest.fn().mockResolvedValue(org(paymentId)),
@@ -150,10 +158,16 @@ describe('a Stripe customer we stored and Stripe no longer has', () => {
     await expect(
       service.createOrGetCustomer(org('cus_dead') as any)
     ).resolves.toBe('cus_new');
-    expect(subscriptionService.updateCustomerId).toHaveBeenCalledWith(
+    expect(subscriptionService.assignCustomerId).toHaveBeenCalledWith(
       'org-1',
+      'cus_dead',
       'cus_new'
     );
+    // Keyed on the dead id, so Stripe makes a new customer rather than
+    // replaying an earlier answer.
+    expect(createCustomer.mock.calls[0][1]).toEqual({
+      idempotencyKey: 'customer-org-1-cus_dead',
+    });
   });
 
   it('keeps the stored customer when Stripe still has it', async () => {
@@ -180,5 +194,80 @@ describe('a Stripe customer we stored and Stripe no longer has', () => {
       service.createOrGetCustomer(org('cus_live') as any)
     ).rejects.toThrow('connection error');
     expect(createCustomer).not.toHaveBeenCalled();
+  });
+});
+
+describe('two first checkouts of one organisation at once (E2E-07-12)', () => {
+  // A plan switched while the first checkout loads, or two tabs: each
+  // created a customer and the last write won, so the other customer could
+  // still pay and its webhook found no organisation.
+  const race = () => {
+    const store: { paymentId: string | null } = { paymentId: null };
+    let made = 0;
+    createCustomer.mockImplementation(
+      async (_params: unknown, options?: { idempotencyKey?: string }) => ({
+        id: options?.idempotencyKey ? `cus_${options.idempotencyKey}` : `cus_${++made}`,
+      })
+    );
+    const subscriptionService = {
+      updateCustomerId: jest.fn(async (_org: string, id: string) => {
+        store.paymentId = id;
+      }),
+      assignCustomerId: jest.fn(
+        async (_org: string, expected: string | null, id: string) => {
+          if (store.paymentId !== expected) return false;
+          store.paymentId = id;
+          return true;
+        }
+      ),
+      getPaymentId: jest.fn(async () => store.paymentId),
+    };
+    const organizationService = {
+      getTeam: jest
+        .fn()
+        .mockResolvedValue({ users: [{ user: { email: 'owner@postra.co.uk' } }] }),
+    };
+    const service = new StripeService(
+      subscriptionService as any,
+      organizationService as any,
+      {} as any,
+      {} as any,
+      {} as any
+    );
+    return { service, store };
+  };
+
+  it('ends with one customer, the stored one, for both', async () => {
+    const { service, store } = race();
+    const [first, second] = await Promise.all([
+      service.createOrGetCustomer(org(null) as any),
+      service.createOrGetCustomer(org(null) as any),
+    ]);
+    expect(first).toBe(second);
+    expect(store.paymentId).toBe(first);
+  });
+
+  it('drops a customer it made but could not store, and uses the stored one', async () => {
+    const { service, store } = race();
+    store.paymentId = 'cus_winner';
+    createCustomer.mockResolvedValueOnce({ id: 'cus_loser' });
+
+    await expect(service.createOrGetCustomer(org(null) as any)).resolves.toBe('cus_winner');
+    expect(deleteCustomer).toHaveBeenCalledWith('cus_loser');
+    expect(store.paymentId).toBe('cus_winner');
+  });
+});
+
+describe('a checkout for an organisation that already pays (BILL-1)', () => {
+  // A checkout always starts a new subscription: an organisation with a live
+  // one got a second on the same customer, and cancelling stopped only one.
+  it('is refused with 409, without opening a checkout session', async () => {
+    retrieveCustomer.mockResolvedValueOnce({ id: 'cus_live', deleted: false });
+    listSubscriptions.mockResolvedValueOnce({ data: [{ id: 'sub_1', status: 'active' }] });
+    const { service } = build('cus_live');
+
+    await expect(
+      service.embedded('u1', 'org-1', 'user-1', { billing: 'PRO', period: 'MONTHLY' } as any, false)
+    ).rejects.toMatchObject({ status: 409 });
   });
 });

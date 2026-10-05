@@ -38,6 +38,10 @@ export const VideoCaptions: FC<VideoCaptionsProps> = ({ mediaId, source, onCapti
   // ever saw the captions they had just burned in - and there was no way back.
   const [burned, setBurned] = useState<Blob | null>(null);
   const [replacedSource, setReplacedSource] = useState(false);
+  // The clip the captions were burned onto. "Use in post" swaps the studio's
+  // media for the captioned result, so `mediaId` alone pointed the remove
+  // button at the new file and deleted it (E2E-06-19).
+  const [burnSource, setBurnSource] = useState<string | null>(null);
   // Caption size is the one styling choice worth exposing: 0.78 of the auto
   // size reads well on a phone held close, and badly on a laptop screencast.
   const [captionScale, setCaptionScale] = useState(0.78);
@@ -110,6 +114,8 @@ export const VideoCaptions: FC<VideoCaptionsProps> = ({ mediaId, source, onCapti
 
 
   const handleBurn = useCallback(async () => {
+    setBurnSource(mediaId);
+    setReplacedSource(false);
     if (!srt.trim() || isBurning) return;
     const segments = parseSrt(srt);
     if (!segments.length) {
@@ -195,9 +201,10 @@ export const VideoCaptions: FC<VideoCaptionsProps> = ({ mediaId, source, onCapti
   // Once the captioned version is stored, the silent twin is usually clutter -
   // but deleting is not ours to assume, so it stays one explicit click.
   const removeSourceClip = useCallback(async () => {
-    if (!mediaId) return;
+    if (!burnSource) return;
     try {
-      await fetch(`/media/${mediaId}`, { method: 'DELETE' });
+      const res = await fetch(`/media/${burnSource}`, { method: 'DELETE' });
+      if (!res.ok) throw new Error(String(res.status));
       setReplacedSource(true);
       toaster.show(
         t('video_captions_source_removed', 'Removed the clip without captions.'),
@@ -209,7 +216,7 @@ export const VideoCaptions: FC<VideoCaptionsProps> = ({ mediaId, source, onCapti
         'warning'
       );
     }
-  }, [mediaId, fetch, toaster, t]);
+  }, [burnSource, fetch, toaster, t]);
 
   return (
     <div className="flex flex-col gap-3 p-3">
@@ -342,7 +349,7 @@ export const VideoCaptions: FC<VideoCaptionsProps> = ({ mediaId, source, onCapti
             fileNameFor={() => `postra-captioned-${Date.now()}`}
             onUseInPost={onCaptioned}
           />
-          {mediaId && !replacedSource && (
+          {burnSource && !replacedSource && (
             <button
               type="button"
               onClick={removeSourceClip}

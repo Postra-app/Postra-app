@@ -1,6 +1,8 @@
 import { Throttle } from '@nestjs/throttler';
 import { fetch } from 'undici';
 import { ssrfSafeDispatcher } from '@gitroom/nestjs-libraries/dtos/webhooks/ssrf.safe.dispatcher';
+import { withoutProviderTokens } from '@gitroom/backend/api/routes/integrations.controller';
+import { isMobileSessionRevoked } from '@gitroom/nestjs-libraries/redis/mobile-session';
 import { isSafePublicHttpsUrl } from '@gitroom/nestjs-libraries/dtos/webhooks/webhook.url.validator';
 import {
   Body,
@@ -260,23 +262,39 @@ export class NoAuthIntegrationsController {
       await ioRedis.del(`invited:${body.state}`);
     } else {
       const authToken = (req.headers.auth as string) || req.cookies?.auth;
-      let sessionUser: { id?: string } | null = null;
+      let sessionUser: {
+        id?: string;
+        tokenVersion?: number;
+        sid?: string;
+        purpose?: string;
+        expires?: string;
+      } | null = null;
       try {
         sessionUser = authToken
-          ? (AuthService.verifyJWT(authToken) as { id?: string })
+          ? (AuthService.verifyJWT(authToken) as typeof sessionUser)
           : null;
       } catch {
         sessionUser = null;
       }
-      if (!sessionUser?.id) {
+      // This route sits outside AuthMiddleware, so it checks what the
+      // middleware does: a signature alone let a logged-out, revoked or
+      // suspended session (and a link from a mail) finish a connection
+      // (E2E-04-22).
+      if (
+        !sessionUser?.id ||
+        sessionUser.purpose ||
+        sessionUser.expires ||
+        (sessionUser.sid && (await isMobileSessionRevoked(sessionUser.sid)))
+      ) {
         throw new HttpException(
           'You must be signed in to connect a channel',
           401
         );
       }
-      const membership = await this._organizationService.getUserOrgMembership(
+      const membership = await this._organizationService.getSessionMembership(
         sessionUser.id,
-        organization
+        organization,
+        sessionUser.tokenVersion ?? 0
       );
       if (!membership) {
         throw new HttpException(
@@ -511,6 +529,17 @@ export class NoAuthIntegrationsController {
         grantedScopes
       );
 
+    // Without a session, an invitee picks the page of this very channel on
+    // the public route — and nothing else (see saveProviderPage).
+    if (invited && integrationProvider.isBetweenSteps && !refresh) {
+      await ioRedis.set(
+        `invited-page:${body.state}`,
+        createUpdate.id,
+        'EX',
+        3600
+      );
+    }
+
     this._refreshIntegrationService
       .startRefreshWorkflow(org.id, createUpdate.id, integrationProvider)
       .catch((err) => {
@@ -588,7 +617,7 @@ export class NoAuthIntegrationsController {
     return {
       ...safeIntegration,
       onboarding: onboarding === 'true',
-      pages,
+      pages: withoutProviderTokens(pages),
       ...(returnURL ? { returnURL } : {}),
       ...(extensionToken ? { extensionToken } : {}),
     };
@@ -601,6 +630,18 @@ export class NoAuthIntegrationsController {
       throw new BadRequestException('Invalid state');
     }
 
+    // The session-less route finishes only an invitee's own connection. It
+    // took any pending channel of the organisation named by a state, so a
+    // state outlived its holder's membership and reached other channels
+    // (E2E-04-23). Members pick their page on the authenticated route.
+    const invitedChannel = await ioRedis.get(`invited-page:${body.state}`);
+    if (!invitedChannel || invitedChannel !== id) {
+      throw new HttpException(
+        'Sign in to finish connecting this channel',
+        403
+      );
+    }
+
     const organization = await ioRedis.get(`organization:${body.state}`);
     if (!organization) {
       throw new NotFoundException('Organization not found');
@@ -608,7 +649,13 @@ export class NoAuthIntegrationsController {
 
     const org = await this._organizationService.getOrgById(organization);
 
-    return this._integrationService.saveProviderPage(org.id, id, body);
+    const saved = await this._integrationService.saveProviderPage(
+      org.id,
+      id,
+      body
+    );
+    await ioRedis.del(`invited-page:${body.state}`);
+    return saved;
   }
 
   @Post('/extension-refresh')

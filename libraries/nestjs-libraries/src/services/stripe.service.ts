@@ -115,6 +115,18 @@ export class StripeService {
         }
         return true;
       }
+      // Only a declined card ends the attempt. Anything else — a Stripe
+      // outage, a rate limit, a request Stripe refused — used to detach a good
+      // card and cancel the subscription, then answer 200 so Stripe never
+      // retried (E2E-07-14). Thrown, the webhook answers 500 and Stripe
+      // tries again.
+      const stripeError = err as Stripe.errors.StripeError & { rawType?: string };
+      if (
+        stripeError?.rawType !== 'card_error' &&
+        stripeError?.type !== 'StripeCardError'
+      ) {
+        throw err;
+      }
       try {
         await stripe.paymentMethods.detach(latestMethod.id);
         await stripe.subscriptions.cancel(event.data.object.id as string);
@@ -260,16 +272,40 @@ export class StripeService {
     }
 
     const users = await this._organizationService.getTeam(organization.id);
-    const customer = await stripe.customers.create({
-      email: users.users[0].user.email.indexOf('@') > -1 ? users.users[0].user.email : `${users.users[0].user.email}@postra.co.uk`,
-      name: organization.name,
-      invoice_settings: POSTRA_INVOICE_SETTINGS,
-    });
-    await this._subscriptionService.updateCustomerId(
-      organization.id,
-      customer.id
+    // Two checkouts at once (the plan switched while the first one loads, two
+    // tabs) each created a customer and the last write won: the other could
+    // still pay, and its webhook found no organisation (E2E-07-12). The
+    // idempotency key has Stripe answer both with one customer — keyed on the
+    // id this checkout replaces, so a dead customer still gets a new one — and
+    // the id is written only over the one this checkout saw.
+    const seen = organization.paymentId ?? null;
+    const customer = await stripe.customers.create(
+      {
+        email: users.users[0].user.email.indexOf('@') > -1 ? users.users[0].user.email : `${users.users[0].user.email}@postra.co.uk`,
+        name: organization.name,
+        invoice_settings: POSTRA_INVOICE_SETTINGS,
+      },
+      { idempotencyKey: `customer-${organization.id}-${seen ?? 'none'}` }
     );
-    return customer.id;
+    if (
+      await this._subscriptionService.assignCustomerId(
+        organization.id,
+        seen,
+        customer.id
+      )
+    ) {
+      return customer.id;
+    }
+
+    const stored = await this._subscriptionService.getPaymentId(
+      organization.id
+    );
+    if (!stored || stored === customer.id) {
+      return customer.id;
+    }
+    // Another checkout stored its customer first; this one would be an orphan.
+    await stripe.customers.del(customer.id).catch(() => undefined);
+    return stored;
   }
 
   /**
@@ -852,6 +888,22 @@ export class StripeService {
     const priceData = pricing[body.billing];
     const org = await this._organizationService.getOrgById(organizationId);
     const customer = await this.createOrGetCustomer(org!);
+    // A checkout always starts a new subscription. An organisation that already
+    // had one got a second on the same customer, and cancelling stopped only
+    // the first (BILL-1). Plan changes go through subscribe(), which updates it.
+    const live = (await this.listSubscriptions(customer, organizationId)).some(
+      (subscription) =>
+        // `incomplete` is a first payment that failed: trying again is fine.
+        ['active', 'trialing', 'past_due', 'unpaid'].includes(
+          subscription.status
+        )
+    );
+    if (live) {
+      throw new HttpException(
+        'This organization already has a subscription. Change the plan from the billing page instead.',
+        409
+      );
+    }
     const findProduct = await this.findOrCreateProduct(body.billing);
 
     const pricesList = await stripe.prices.list({

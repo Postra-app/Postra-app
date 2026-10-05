@@ -38,6 +38,7 @@ import { NotificationService } from '@gitroom/nestjs-libraries/database/prisma/n
 import { GetNotificationsDto } from '@gitroom/nestjs-libraries/dtos/notifications/get.notifications.dto';
 import { Readable } from 'stream';
 import { ssrfSafeDispatcher } from '@gitroom/nestjs-libraries/dtos/webhooks/ssrf.safe.dispatcher';
+import { readResponseCapped } from '@gitroom/nestjs-libraries/media/fetch.media.buffer';
 // undici's own fetch — Node's global fetch can't drive the undici-package
 // dispatcher below (throws "invalid onRequestStart method"); see design-render.
 import { fetch } from 'undici';
@@ -111,11 +112,17 @@ export class PublicIntegrationsController {
     const response = await fetch(body.url, {
       // @ts-ignore — undici option, not in lib.dom fetch types
       dispatcher: ssrfSafeDispatcher,
+      signal: AbortSignal.timeout(60_000),
     });
     if (!response.ok) {
       throw new HttpException({ msg: 'Failed to fetch URL' }, 400);
     }
-    const buffer = Buffer.from(await response.arrayBuffer());
+    let buffer: Buffer;
+    try {
+      buffer = await readResponseCapped(response as any);
+    } catch (err) {
+      throw new HttpException({ msg: (err as Error).message }, 400);
+    }
     const detected = await fromBuffer(buffer);
     if (!detected || !PUBLIC_API_ALLOWED_MIME.has(detected.mime)) {
       throw new HttpException({ msg: 'Unsupported file type.' }, 400);

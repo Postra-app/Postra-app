@@ -1,6 +1,7 @@
 import { PrismaRepository } from '@gitroom/nestjs-libraries/database/prisma/prisma.service';
 import { Role, ShortLinkPreference, SubscriptionTier } from '@prisma/client';
 import { Injectable } from '@nestjs/common';
+import { ioRedis } from '@gitroom/nestjs-libraries/redis/redis.service';
 import { AuthService } from '@gitroom/helpers/auth/auth.service';
 import { CreateOrgUserDto } from '@gitroom/nestjs-libraries/dtos/auth/create.org.user.dto';
 import { makeId } from '@gitroom/nestjs-libraries/services/make.is';
@@ -18,7 +19,8 @@ export class OrganizationRepository {
   constructor(
     private _organization: PrismaRepository<'organization'>,
     private _userOrg: PrismaRepository<'userOrganization'>,
-    private _user: PrismaRepository<'user'>
+    private _user: PrismaRepository<'user'>,
+    private _oauthAuth: PrismaRepository<'oAuthAuthorization'>
   ) {}
 
   createMaxUser(id: string, name: string, saasName: string, email: string) {
@@ -225,6 +227,24 @@ export class OrganizationRepository {
 
   // Active membership row for (user, org), or null. Used to authorize the
   // OAuth connect callback against the session user (see no.auth controller).
+  // The membership of a session that is still good: the user is active, not
+  // suspended, and the token's version is the current one (a logout
+  // everywhere, a password change or a suspension bumps it).
+  getSessionMembership(
+    userId: string,
+    organizationId: string,
+    tokenVersion: number
+  ) {
+    return this._userOrg.model.userOrganization.findFirst({
+      where: {
+        userId,
+        organizationId,
+        disabled: false,
+        user: { activated: true, suspendedAt: null, tokenVersion },
+      },
+    });
+  }
+
   getUserOrgMembership(userId: string, organizationId: string) {
     return this._userOrg.model.userOrganization.findFirst({
       where: {
@@ -250,6 +270,7 @@ export class OrganizationRepository {
     if (checkIfInviteExists) {
       return false;
     }
+
 
     // Already a member? The guard above only asks whether *this invite* has
     // been redeemed, so a second invite carries a different id, sails past it
@@ -288,13 +309,36 @@ export class OrganizationRepository {
       return false;
     }
 
-    const create = await this._userOrg.model.userOrganization.create({
-      data: {
-        role,
-        userId,
-        organizationId: orgId,
-      },
-    });
+    // The spent mark above lives in one field of the user who used the
+    // invite, so their next invite overwrote it and the first link worked
+    // again — for anyone, with the role it carried (E2E-02-31). One atomic
+    // claim per invite, kept well past the link's one-hour life; two people
+    // using one link at once cannot both get in either. Claimed only here, once
+    // nothing else refuses the join, and released if the write fails.
+    const claimed = await ioRedis.set(
+      `invite-used:${id}`,
+      userId,
+      'EX',
+      7 * 24 * 60 * 60,
+      'NX'
+    );
+    if (!claimed) {
+      return false;
+    }
+
+    let create;
+    try {
+      create = await this._userOrg.model.userOrganization.create({
+        data: {
+          role,
+          userId,
+          organizationId: orgId,
+        },
+      });
+    } catch (err) {
+      await ioRedis.del(`invite-used:${id}`);
+      throw err;
+    }
 
     await this._user.model.user.update({
       where: {
@@ -451,6 +495,11 @@ export class OrganizationRepository {
   }
 
   async deleteTeamMember(orgId: string, userId: string) {
+    // Apps they approved for this organisation leave with them.
+    await this._oauthAuth.model.oAuthAuthorization.updateMany({
+      where: { organizationId: orgId, userId, revokedAt: null },
+      data: { revokedAt: new Date() },
+    });
     return this._userOrg.model.userOrganization.delete({
       where: {
         userId_organizationId: {

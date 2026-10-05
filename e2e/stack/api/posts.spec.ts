@@ -116,3 +116,20 @@ test('tags: create, rename, delete; an unknown tag is 404', async () => {
     (await api.delete('/posts/tags/00000000-0000-4000-8000-000000000000')).status()
   ).toBe(404);
 });
+
+test('E2E-05-43: a repeat interval below one day is refused', async () => {
+  // `inter: -1` was stored as is: the workflow clamped the delay to zero and
+  // every publication started the next one at once — a post repeating
+  // without end on the customer's channel.
+  const api = await signedIn('a');
+  try {
+    for (const inter of [-1, 0, 0.5]) {
+      const res = await api.post('/posts', { data: draftBody('a', unique(`interval ${inter}`), { inter }) });
+      expect(res.status(), `inter ${inter}`).toBe(400);
+    }
+    const ok = await api.post('/posts', { data: draftBody('a', unique('interval 7'), { inter: 7 }) });
+    expect(ok.status(), await ok.text()).toBe(201);
+  } finally {
+    await api.dispose();
+  }
+});

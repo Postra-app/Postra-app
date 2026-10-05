@@ -1,6 +1,7 @@
 'use client';
 
 import { ReactNode, useCallback, useRef } from 'react';
+import { sameOriginUrl } from '@gitroom/frontend/components/layout/safe.url';
 import { FetchWrapperComponent } from '@gitroom/helpers/utils/custom.fetch';
 import { deleteDialog } from '@gitroom/react/helpers/delete.dialog';
 import { useReturnUrl } from '@gitroom/frontend/app/(app)/auth/return.url.component';
@@ -74,7 +75,10 @@ function LayoutContextInner(params: { children: ReactNode }) {
         response?.headers?.get('reload') ||
         response?.headers?.get('onboarding');
       if (reloadOrOnboarding) {
-        const getAndClear = returnUrl.getAndClear();
+        const getAndClear = sameOriginUrl(
+          returnUrl.getAndClear(),
+          window.location.origin
+        );
         if (getAndClear) {
           window.location.href = getAndClear;
           return true;

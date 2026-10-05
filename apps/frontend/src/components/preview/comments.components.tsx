@@ -1,6 +1,7 @@
 'use client';
 
 import { useUser } from '@gitroom/frontend/components/layout/user.context';
+import { useToaster } from '@gitroom/react/toaster/toaster';
 import { Button } from '@gitroom/frontend/components/ui/button';
 import { FC, useCallback, useMemo, useState } from 'react';
 import { useFetch } from '@gitroom/helpers/utils/custom.fetch';
@@ -29,19 +30,32 @@ export const RenderComponents: FC<{
     ).users;
   }, [data]);
   const { handleSubmit, register, setValue } = useForm();
+  const toaster = useToaster();
+  const t = useT();
   const submit: SubmitHandler<FieldValues> = useCallback(
     async (e) => {
-      setValue('comment', '');
-      await fetch(`/posts/${postId}/comments`, {
-        method: 'POST',
-        body: JSON.stringify(e),
-      });
-      mutate();
+      // Cleared only once it is saved: a refused or lost comment used to
+      // vanish with the text (E2E-05-46).
+      try {
+        const res = await fetch(`/posts/${postId}/comments`, {
+          method: 'POST',
+          body: JSON.stringify(e),
+        });
+        if (!res.ok) {
+          throw new Error(String(res.status));
+        }
+        setValue('comment', '');
+        mutate();
+      } catch {
+        toaster.show(
+          t('comment_not_sent', 'The comment was not sent. Please try again.'),
+          'warning'
+        );
+      }
     },
-    [postId, mutate]
+    [postId, mutate, toaster, t]
   );
 
-  const t = useT();
 
   if (isLoading) {
     return <></>;
