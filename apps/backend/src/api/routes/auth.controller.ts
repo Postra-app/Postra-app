@@ -49,13 +49,15 @@ const authCookieOptions = () => ({
 // Ties a sign-in with Google/GitHub/… to the browser that started it; see
 // AuthService.oauthLink.
 const OAUTH_STATE_COOKIE = 'postra_oauth';
+// Nothing in the page reads it, so it is HttpOnly in every mode; only
+// `secure` waits for HTTPS (NOT_SECURED is plain-http local development).
 const oauthStateCookieOptions = () => ({
   domain: getCookieUrlFromDomain(process.env.FRONTEND_URL!),
   path: '/',
   maxAge: 600 * 1000,
-  ...(!process.env.NOT_SECURED
-    ? { secure: true, httpOnly: true, sameSite: 'lax' as const }
-    : {}),
+  httpOnly: true,
+  sameSite: 'lax' as const,
+  secure: !process.env.NOT_SECURED,
 });
 
 @ApiTags('Auth')
