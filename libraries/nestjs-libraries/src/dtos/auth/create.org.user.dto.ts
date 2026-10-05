@@ -13,11 +13,14 @@ import { NormalizeEmail } from './email.transform';
 import { Provider } from '@prisma/client';
 
 export class CreateOrgUserDto {
+  // A LOCAL sign-up always has a password, and always meets the policy: any
+  // non-empty providerToken used to switch the check off, and the LOCAL
+  // branch ignores the token and stores the password as sent (AUTH-9).
   @IsString()
   @MinLength(8)
   @MaxLength(64)
   @IsDefined()
-  @ValidateIf((o) => !o.providerToken)
+  @ValidateIf((o) => o.provider === 'LOCAL' || !o.providerToken)
   password: string;
 
   @IsString()
@@ -32,7 +35,7 @@ export class CreateOrgUserDto {
   @NormalizeEmail()
   @IsEmail()
   @IsDefined()
-  @ValidateIf((o) => !o.providerToken)
+  @ValidateIf((o) => o.provider === 'LOCAL' || !o.providerToken)
   email: string;
 
   @IsString()

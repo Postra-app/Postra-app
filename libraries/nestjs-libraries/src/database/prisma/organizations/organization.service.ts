@@ -1,5 +1,6 @@
 import { CreateOrgUserDto } from '@gitroom/nestjs-libraries/dtos/auth/create.org.user.dto';
 import {
+  BadRequestException,
   ForbiddenException,
   Injectable,
   NotFoundException,
@@ -140,6 +141,17 @@ export class OrganizationService {
 
     if (myLevel < userLevel) {
       throw new ForbiddenException('You do not have permission to delete this user');
+    }
+
+    // The owner removing themselves left the team with nobody who can manage
+    // members or billing (AUTH-7).
+    if (
+      userRole === 'SUPERADMIN' &&
+      (await this._organizationRepository.countOwners(org.id)) <= 1
+    ) {
+      throw new BadRequestException(
+        'The organisation needs an owner. Make someone else the owner first.'
+      );
     }
 
     return this._organizationRepository.deleteTeamMember(org.id, userId);

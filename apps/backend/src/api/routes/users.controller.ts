@@ -507,6 +507,9 @@ export class UsersController {
     }
 
     await this._userService.deleteAccount(user.id);
+    // Another device signed in as this user kept reading the shared org for
+    // up to the 30 s the auth context is cached (AUTH-8).
+    await bustAuthContextCache(user.id);
 
     // GDPR art. 12: confirm the erasure to the data subject, in writing.
     // Best-effort — the deletion already happened and must not fail on email.

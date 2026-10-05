@@ -560,6 +560,12 @@ export class OrganizationRepository {
     return rows.map((r) => r.userId);
   }
 
+  countOwners(orgId: string) {
+    return this._userOrg.model.userOrganization.count({
+      where: { organizationId: orgId, role: 'SUPERADMIN', disabled: false },
+    });
+  }
+
   getActiveMemberCount(orgId: string) {
     return this._userOrg.model.userOrganization.count({
       where: { organizationId: orgId, disabled: false },
