@@ -61,8 +61,23 @@ export class PoliciesGuard implements CanActivate {
       request.body?.type === 'draft' ||
       (request.body?.type === undefined && request.body?.status === 'draft');
 
+    // Every channel and every thread part of a save is a post against the
+    // monthly cap; the check used to let one request through for any count
+    // below it (BILL-4, POSTS-12). Ids that already exist are edits.
+    const values: { id?: unknown }[] = Array.isArray(request.body?.posts)
+      ? request.body.posts.flatMap((p: any) =>
+          Array.isArray(p?.value) ? p.value : []
+        )
+      : [];
+    const postsRequested = {
+      total: values.length,
+      ids: values
+        .map((v) => v?.id)
+        .filter((id): id is string => typeof id === 'string' && !!id),
+    };
+
     // @ts-ignore
-    const ability = await this._authorizationService.check(org.id, org.createdAt, org.users[0].role, policyHandlers, refreshChannelId, org.isTrailing, isDraft);
+    const ability = await this._authorizationService.check(org.id, org.createdAt, org.users[0].role, policyHandlers, refreshChannelId, org.isTrailing, isDraft, postsRequested);
 
     const item = policyHandlers.find(
       (handler) => !this.execPolicyHandler(handler, ability)

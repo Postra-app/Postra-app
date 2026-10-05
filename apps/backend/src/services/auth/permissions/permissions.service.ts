@@ -54,7 +54,8 @@ export class PermissionsService {
     requestedPermission: Array<[AuthorizationActions, Sections]>,
     refreshChannelId?: string,
     isTrailing = false,
-    isDraft = false
+    isDraft = false,
+    postsRequested: { total: number; ids: string[] } = { total: 0, ids: [] }
   ) {
     const { can, build } = new AbilityBuilder<
       Ability<[AuthorizationActions, Sections]>
@@ -163,7 +164,18 @@ export class PermissionsService {
           postsCycleStart(createdAt)
         );
 
-        if (count < options.posts_per_month) {
+        const existing = postsRequested.ids.length
+          ? await this._postsService.countExistingPosts(
+              orgId,
+              postsRequested.ids
+            )
+          : 0;
+        const adding = Math.max(0, postsRequested.total - existing);
+        if (
+          adding
+            ? count + adding <= options.posts_per_month
+            : count < options.posts_per_month
+        ) {
           can(action, section);
           continue;
         }

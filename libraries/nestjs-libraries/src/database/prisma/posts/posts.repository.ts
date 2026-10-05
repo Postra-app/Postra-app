@@ -688,6 +688,12 @@ export class PostsRepository {
     }));
   }
 
+  countExistingPosts(orgId: string, ids: string[]) {
+    return this._post.model.post.count({
+      where: { organizationId: orgId, id: { in: ids }, deletedAt: null },
+    });
+  }
+
   countPostsFromDay(orgId: string, date: Date) {
     return this._post.model.post.count({
       where: {

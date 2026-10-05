@@ -810,6 +810,10 @@ export class PostsService {
     return this._postRepository.hasRecentAutopost(orgId, integrationIds, url);
   }
 
+  countExistingPosts(orgId: string, ids: string[]) {
+    return this._postRepository.countExistingPosts(orgId, ids);
+  }
+
   async countPostsFromDay(orgId: string, date: Date) {
     return this._postRepository.countPostsFromDay(orgId, date);
   }
