@@ -468,7 +468,10 @@ export class PublicIntegrationsController {
     return this._postsService.getMissingContent(org.id, id);
   }
 
+  // A draft costs nothing; scheduling it counts against the month, which this
+  // route used to skip (E2E-07-22). Moving a post back to draft stays free.
   @Put('/posts/:id/status')
+  @CheckPolicies([AuthorizationActions.Create, Sections.POSTS_PER_MONTH])
   async changePostStatus(
     @GetOrgFromRequest() org: Organization,
     @Param('id') id: string,

@@ -93,3 +93,24 @@ test('drafts, deleted posts and earlier cycles do not count towards the 400', as
   expect(res.status(), await res.text()).toBe(400);
   await org.remove();
 });
+
+test('E2E-07-22: at the cap, the public API cannot turn a draft into a scheduled post', async () => {
+  // Drafts are free; flipping one to "schedule" through PUT /posts/:id/status
+  // skipped the monthly allowance and queued it anyway.
+  const org = await throwawayOrg(prisma, { tier: 'STANDARD', totalChannels: 3, channels: 1 });
+  const [channel] = org.channelIds;
+  try {
+    await fill(org.orgId, channel, 400, { state: 'QUEUE', publishDate: inDays(1) });
+    const draft = await prisma.post.create({
+      data: { organizationId: org.orgId, integrationId: channel, content: '[stack] draft', group: `stack-draft-${org.orgId}`, state: 'DRAFT', publishDate: inDays(2) },
+    });
+    const { apiKey } = await prisma.organization.findUniqueOrThrow({ where: { id: org.orgId } });
+    const publicApi = await request.newContext({ baseURL: `${BACKEND_URL}/public/v1/`, extraHTTPHeaders: { authorization: apiKey! } });
+    const res = await publicApi.put(`posts/${draft.id}/status`, { data: { status: 'schedule' } });
+    expect(res.status(), await res.text()).toBe(402);
+    expect((await prisma.post.findUniqueOrThrow({ where: { id: draft.id } })).state).toBe('DRAFT');
+    await publicApi.dispose();
+  } finally {
+    await org.remove();
+  }
+});

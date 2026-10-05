@@ -70,20 +70,31 @@ export class StripeController {
       }
     };
 
-    // Claim the event id before doing any work. Stripe retries a delivery for
-    // up to 3 days on any 5xx or timeout, and a second run of these handlers
-    // would grant the subscription or the credits twice.
-    if (!(await this._eventStore.claim(event.id, event.type))) {
+    // Stripe retries a delivery for up to 3 days on any 5xx or timeout, and a
+    // second run of these handlers would grant the subscription or the
+    // credits twice. Done before: 200. Being handled right now: 409, so Stripe
+    // comes back later. A lease left by a killed process expires by itself.
+    if (await this._eventStore.isDone(event.id)) {
+      return { ok: true, duplicate: true };
+    }
+    if (!(await this._eventStore.lease(event.id))) {
+      throw new HttpException('Event is being handled', 409);
+    }
+    // Another delivery may have finished between the check above and the
+    // lease: look again now that this one holds it.
+    if (await this._eventStore.isDone(event.id)) {
+      await this._eventStore.release(event.id);
       return { ok: true, duplicate: true };
     }
 
     try {
       const result = await handle();
+      await this._eventStore.markDone(event.id, event.type);
+      await this._eventStore.release(event.id);
       return result ?? { ok: true };
     } catch (e) {
-      // Release the claim so Stripe's retry actually reprocesses the event
-      // instead of finding a claim for work that never completed. Answering 500
-      // is what asks Stripe to retry.
+      // Release the lease so Stripe's retry reprocesses the event. Answering
+      // 500 is what asks Stripe to retry.
       await this._eventStore.release(event.id);
       Logger.error(
         `Stripe webhook ${event.type} (${event.id}) failed`,

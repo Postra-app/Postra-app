@@ -332,8 +332,11 @@ export class AutopostService {
       const idx = ordered.findIndex((i: any) => i.link === lastUrl);
       const fresh = idx === -1 ? ordered.slice(0, 1) : ordered.slice(0, idx);
 
+      // `fresh` is newest-first. The oldest `max` go now and the cursor moves
+      // to the last of them; taking the newest lost the older ones for good,
+      // the cursor having already passed them (E2E-06-24).
       return fresh
-        .slice(0, max)
+        .slice(-max)
         .reverse()
         .map((i: any) => this.itemToLoad(i));
     } catch (err) {
@@ -426,10 +429,13 @@ export class AutopostService {
 
     // The per-autopost tone wins when the user set one; otherwise the org's
     // Brand Kit speaks, and only with neither do we fall back to a default.
+    // Interpolated into a LangChain template, where `{x}` is a variable: a
+    // tone like "Friendly {company}" failed every run of the feed (E2E-06-25).
+    const braces = (text: string) => text.replace(/[{}]/g, (b) => b + b);
     const toneInstruction = state.body.tone
-      ? `- Tone of voice: ${state.body.tone}`
+      ? `- Tone of voice: ${braces(state.body.tone)}`
       : state.brandVoice
-      ? `- ${state.brandVoice}`
+      ? `- ${braces(state.brandVoice)}`
       : '- Tone: professional but approachable';
 
     // Extra brand/topic context from the user (e.g. "fitness brand, add one

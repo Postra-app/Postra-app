@@ -422,6 +422,13 @@ export class AuthService {
   // CSRF state: random value stored in Redis at link time, consumed exactly
   // once in checkExists. The `auth-` prefix is what the frontend social
   // callback page uses to tell a login redirect from a channel-connect one.
+  //
+  // The state is also tied to the browser that asked for the link: Redis
+  // keeps a nonce the controller hands that browser in a cookie. Without it
+  // anyone could start a sign-in with their own Google account, stop at the
+  // callback and send the link on — the victim's browser finished it and was
+  // signed in to the attacker's account, or registered an account the
+  // attacker can sign in to (E2E-02-28).
   async oauthLink(provider: string, query?: any) {
     // Build the link before persisting the state. The old order wrote the Redis
     // key first, so every request that then failed — unknown provider, provider
@@ -430,20 +437,23 @@ export class AuthService {
     const providerInstance = this._providerManager.getProvider(provider);
     const state = `auth-${randomBytes(16).toString('hex')}`;
     const link = await providerInstance.generateLink(query, state);
-    await ioRedis.set(`auth-state:${state}`, '1', 'EX', 600);
-    return link;
+    const nonce = randomBytes(16).toString('hex');
+    await ioRedis.set(`auth-state:${state}`, nonce, 'EX', 600);
+    return { link, nonce };
   }
 
   async checkExists(
     provider: string,
     code: string,
     redirectUri?: string,
-    state?: string
+    state?: string,
+    nonce?: string
   ) {
     // GETDEL: read and consume in one step. A get followed by a del let two
     // requests racing with the same state both through (2.2.11).
     const stateKey = state ? `auth-state:${state}` : '';
-    if (!stateKey || !(await ioRedis.getdel(stateKey))) {
+    const stored = stateKey ? await ioRedis.getdel(stateKey) : null;
+    if (!stored || !nonce || stored !== nonce) {
       throw new Error('Invalid or expired state');
     }
 

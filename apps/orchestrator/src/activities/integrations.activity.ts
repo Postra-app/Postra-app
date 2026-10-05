@@ -17,6 +17,9 @@ export class IntegrationsActivity {
     return this._integrationService.getIntegrationById(orgId, id);
   }
 
+  // Without the decorator the worker never registered it, and
+  // refreshTokenWorkflow failed on every renewal before a token expired.
+  @ActivityMethod()
   async refreshToken(integration: Integration) {
     return this._refreshIntegrationService.refresh(integration);
   }

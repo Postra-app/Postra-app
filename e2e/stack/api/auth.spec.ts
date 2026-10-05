@@ -162,3 +162,21 @@ test("E2E-08-33: someone else's activation link does not replace the session in 
     await prisma.$disconnect();
   }
 });
+
+// E2E-02-28: the state was good in any browser. Someone could start a sign-in
+// with their own Google account, stop at the callback and send the link on:
+// the victim's browser finished it and landed in the sender's account (or
+// registered one the sender can sign in to). The state now only works in the
+// browser that asked for it.
+test('E2E-02-28: a Google sign-in state does not work in another browser', async () => {
+  const attacker = await anonymous();
+  const link = await (await attacker.get('/auth/oauth/GOOGLE')).text();
+  const state = new URL(link.replace(/^"|"$/g, '')).searchParams.get('state');
+
+  const victim = await anonymous();
+  const res = await victim.post('/auth/oauth/GOOGLE/exists', { data: { code: 'made-up', state } });
+  // Was "Sign-in with this provider failed": past the state, on to Google.
+  expect(res.status()).toBe(400);
+  expect(await res.text()).toBe('Invalid or expired state');
+  await Promise.all([attacker.dispose(), victim.dispose()]);
+});

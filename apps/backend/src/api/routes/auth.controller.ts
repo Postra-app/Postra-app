@@ -46,6 +46,20 @@ const authCookieOptions = () => ({
   expires: new Date(Date.now() + AUTH_COOKIE_MAX_AGE_MS),
 });
 
+// Ties a sign-in with Google/GitHub/… to the browser that started it; see
+// AuthService.oauthLink.
+const OAUTH_STATE_COOKIE = 'postra_oauth';
+// Nothing in the page reads it, so it is HttpOnly in every mode; only
+// `secure` waits for HTTPS (NOT_SECURED is plain-http local development).
+const oauthStateCookieOptions = () => ({
+  domain: getCookieUrlFromDomain(process.env.FRONTEND_URL!),
+  path: '/',
+  maxAge: 600 * 1000,
+  httpOnly: true,
+  sameSite: 'lax' as const,
+  secure: !process.env.NOT_SECURED,
+});
+
 @ApiTags('Auth')
 @Controller('/auth')
 export class AuthController {
@@ -267,8 +281,14 @@ export class AuthController {
   }
 
   @Get('/oauth/:provider')
-  async oauthLink(@Param('provider') provider: string, @Query() query: any) {
-    return this._authService.oauthLink(provider, query);
+  async oauthLink(
+    @Param('provider') provider: string,
+    @Query() query: any,
+    @Res({ passthrough: true }) response: Response
+  ) {
+    const { link, nonce } = await this._authService.oauthLink(provider, query);
+    response.cookie(OAUTH_STATE_COOKIE, nonce, oauthStateCookieOptions());
+    return link;
   }
 
   @Post('/activate')
@@ -328,6 +348,7 @@ export class AuthController {
 
   @Post('/oauth/:provider/exists')
   async oauthExists(
+    @Req() req: Request,
     @Body('code') code: string,
     @Body('redirect_uri') redirect_uri: string,
     @Body('state') state: string,
@@ -337,12 +358,15 @@ export class AuthController {
     // A spent or forged state, or a code the provider refuses, is the
     // caller's problem: it was a 500 (and a Sentry issue) every time.
     let result: { jwt?: string; token?: string };
+    const { maxAge: _maxAge, ...cookieScope } = oauthStateCookieOptions();
+    response.clearCookie(OAUTH_STATE_COOKIE, cookieScope);
     try {
       result = await this._authService.checkExists(
         provider,
         code,
         redirect_uri,
-        state
+        state,
+        req.cookies?.[OAUTH_STATE_COOKIE]
       );
     } catch (e: any) {
       const message =
