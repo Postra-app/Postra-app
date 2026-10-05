@@ -55,7 +55,11 @@ export class PoliciesGuard implements CanActivate {
 
     const refreshChannelId = typeof request.query?.refresh === 'string' ? request.query.refresh : undefined;
     // Drafts do not count towards the monthly post cap.
-    const isDraft = request.body?.type === 'draft';
+    // `status` is the body of PUT /posts/:id/status only; a create carries
+    // `type`, and a stray `status: 'draft'` next to it must not make it free.
+    const isDraft =
+      request.body?.type === 'draft' ||
+      (request.body?.type === undefined && request.body?.status === 'draft');
 
     // @ts-ignore
     const ability = await this._authorizationService.check(org.id, org.createdAt, org.users[0].role, policyHandlers, refreshChannelId, org.isTrailing, isDraft);

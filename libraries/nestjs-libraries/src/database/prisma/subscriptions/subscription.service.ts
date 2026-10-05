@@ -40,7 +40,14 @@ export class SubscriptionService {
   ): Promise<T> {
     const subscription =
       await this._subscriptionRepository.getSubscriptionByOrgId(orgId);
-    return this.useCredit({ id: orgId, subscription } as any, type, func);
+    // The trial flag too: without it a trial was held to the full plan pool
+    // (E2E-07-21).
+    const organization = await this._organizationService.getOrgById(orgId);
+    return this.useCredit(
+      { id: orgId, subscription, isTrailing: !!organization?.isTrailing } as any,
+      type,
+      func
+    );
   }
 
   useCredit<T>(

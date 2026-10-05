@@ -9,6 +9,37 @@ import {
 } from '@gitroom/nestjs-libraries/integrations/social/social.integrations.interface';
 import { TemporalService } from 'nestjs-temporal-core';
 
+const TRANSIENT_CODES = new Set([
+  'ECONNRESET',
+  'ECONNREFUSED',
+  'ETIMEDOUT',
+  'EAI_AGAIN',
+  'ENOTFOUND',
+  'EPIPE',
+  'UND_ERR_CONNECT_TIMEOUT',
+  'UND_ERR_HEADERS_TIMEOUT',
+  'UND_ERR_BODY_TIMEOUT',
+  'UND_ERR_SOCKET',
+]);
+
+/**
+ * A refresh that failed because the provider or the network was briefly down,
+ * not because the grant is gone. Everything else still counts as "reconnect
+ * needed" — only the unmistakable outages are let through.
+ */
+export const isTransientRefreshError = (err: any): boolean => {
+  if (!err) return false;
+  if (err.name === 'AbortError' || err.name === 'TimeoutError') return true;
+  const status = Number(
+    err.status ?? err.statusCode ?? err.response?.status ?? NaN
+  );
+  if (status === 429 || (status >= 500 && status < 600)) return true;
+  const code = err.code ?? err.cause?.code;
+  if (code && TRANSIENT_CODES.has(code)) return true;
+  // undici: `TypeError: fetch failed` with the socket error as the cause.
+  return err instanceof TypeError && err.message === 'fetch failed';
+};
+
 @Injectable()
 export class RefreshIntegrationService {
   constructor(
@@ -74,9 +105,20 @@ export class RefreshIntegrationService {
     socialProvider: SocialProvider,
     cause = ''
   ): Promise<AuthTokenDetails | false> {
+    let transient = false;
     const refresh: false | AuthTokenDetails = await socialProvider
       .refreshToken(AuthService.decryptIntegrationToken(integration.refreshToken))
-      .catch((err) => false);
+      .catch((err) => {
+        transient = isTransientRefreshError(err);
+        return false;
+      });
+
+    // A 503, a 429 or a dropped connection used to mark a healthy channel
+    // "reconnect needed" and disconnect it (INT-13). This attempt still
+    // fails; the channel stays as it is for the next one.
+    if (transient) {
+      return false;
+    }
 
     if (!refresh || !refresh.accessToken) {
       await this._integrationService.refreshNeeded(

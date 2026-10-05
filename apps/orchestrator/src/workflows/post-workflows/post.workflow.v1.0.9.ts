@@ -153,7 +153,6 @@ export async function postWorkflowV109({
     poked = true;
   });
 
-  const startTime = new Date();
   // get all the posts and comments to post
   const firstPost = await getPost(organizationId, postId);
 
@@ -176,6 +175,11 @@ export async function postWorkflowV109({
         : dayjs(firstPost.publishDate).diff(dayjs(), 'millisecond')
     );
   }
+
+  // The repeat interval counts from here, the moment the post is due. It was
+  // taken before the wait above, so a post scheduled 10 days ahead with a
+  // 1-day interval had 10 days already "used up" and repeated at once (POSTS-3).
+  const startTime = new Date();
 
   const postsListBefore = await getPostsList(organizationId, postId);
   const [post] = postsListBefore;

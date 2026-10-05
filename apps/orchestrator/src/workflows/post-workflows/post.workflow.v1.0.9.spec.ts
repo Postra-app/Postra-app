@@ -168,3 +168,41 @@ describe('postWorkflowV109 — worker restarts mid-publish', () => {
     expect(activities.updatePost).toHaveBeenCalledWith('c1', '10', 'https://t.me/x/10', 'org-1');
   });
 });
+
+describe('postWorkflowV109 — repeating posts', () => {
+  // POSTS-3: the interval was counted from the start of the workflow, before
+  // the wait for the publish date, so a post scheduled 10 days ahead with a
+  // 1-day interval repeated right after it went out.
+  it('the first repeat comes one interval after the post, not at once', async () => {
+    const now = new Date('2026-10-05T12:00:00.000Z').getTime();
+    jest.useFakeTimers({ now, doNotFake: ['nextTick', 'setImmediate', 'queueMicrotask'] });
+    const temporal = jest.requireMock('@temporalio/workflow');
+    const realSleep = temporal.sleep;
+    temporal.sleep = (d: unknown) => {
+      sleeps.push(d);
+      if (typeof d === 'number') jest.setSystemTime(Date.now() + d);
+      return Promise.resolve();
+    };
+    try {
+      const repeating = {
+        ...post,
+        publishDate: new Date(now + 10 * 86_400_000).toISOString(),
+        intervalInDays: 1,
+      };
+      activities.getPost.mockResolvedValue(repeating);
+      activities.getPostsList.mockResolvedValue([repeating]);
+      activities.postSocial = jest.fn().mockResolvedValue(published);
+
+      await run();
+
+      const day = 86_400_000;
+      // The wait for the publish date, then the wait for the repeat.
+      expect(sleeps[0]).toBe(10 * day);
+      expect(sleeps[sleeps.length - 1]).toBeGreaterThan(day - 60_000);
+      expect(temporal.startChild).toHaveBeenCalled();
+    } finally {
+      temporal.sleep = realSleep;
+      jest.useRealTimers();
+    }
+  });
+});

@@ -80,8 +80,16 @@ export class ShortLinkService {
         await Promise.all(
           urls.map(async (url) => {
             if (url.indexOf(ShortLinkService.provider.shortLinkDomain) === -1) {
-              replacementMap[url] =
-                await ShortLinkService.provider.convertLinkToShortLink(id, url);
+              // A shortener that fails or answers without a link leaves the
+              // link as it was; it used to become "undefined" in the post
+              // (E2E-05-50).
+              try {
+                replacementMap[url] =
+                  (await ShortLinkService.provider.convertLinkToShortLink(id, url)) ||
+                  url;
+              } catch {
+                replacementMap[url] = url;
+              }
             } else {
               replacementMap[url] = url; // Keep the original URL if it matches the prefix
             }
@@ -89,7 +97,7 @@ export class ShortLinkService {
         );
 
         // Replace the URLs in the text with their replacements
-        return text.replace(urlRegex, (url) => replacementMap[url]);
+        return text.replace(urlRegex, (url) => replacementMap[url] || url);
       })
     );
   }
@@ -123,7 +131,7 @@ export class ShortLinkService {
         );
 
         // Replace the URLs in the text with their replacements
-        return text.replace(urlRegex, (url) => replacementMap[url]);
+        return text.replace(urlRegex, (url) => replacementMap[url] || url);
       })
     );
   }
