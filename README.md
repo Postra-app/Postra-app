@@ -35,7 +35,7 @@
 Postra is a social media management platform with AI built in — made for small businesses, creators and agencies that don't have all day for social media. Plan content on a drag-and-drop calendar, generate posts, graphics and video in the built-in **Studio**, publish everywhere at once and track the results.
 
 - 🌐 Website: **[postra.co.uk](https://postra.co.uk)** (UK) · **[postra.pl](https://postra.pl)** (Poland)
-- 🚀 App: **[app.postra.pl](https://app.postra.pl)** — free 7-day trial, no card required
+- 🚀 App: **[app.postra.pl](https://app.postra.pl)** — 7-day trial; a card is needed to start and is charged only when the trial ends
 
 ## Features
 
@@ -51,7 +51,7 @@ Postra is a social media management platform with AI built in — made for small
 
 ## Platforms
 
-Facebook · Instagram · Threads · X (Twitter) · LinkedIn · YouTube · TikTok · Bluesky · Mastodon · Telegram · Discord — with LinkedIn Pages and more on the way.
+Facebook · Instagram · Threads · X (Twitter) · LinkedIn · YouTube · TikTok · Bluesky · Mastodon · Telegram · Discord.
 
 ## Built on Postiz
 
@@ -84,7 +84,7 @@ Built with **pnpm**. See `CLAUDE.md` for repo conventions.
 
 ```bash
 pnpm install
-docker compose -f docker-compose.dev.yaml up -d   # Postgres, Redis, Temporal
+make infra                                         # Postgres, Redis, Temporal (+ UI)
 cp .env.example .env                               # fill in required vars
 pnpm run prisma-db-migrate
 pnpm run dev                                        # frontend :4200, backend :3000
