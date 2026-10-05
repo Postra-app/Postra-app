@@ -100,6 +100,18 @@ const FormWrapper: FC<{ showCoupon?: boolean; autoApplyCoupon?: string }> = ({
   const [loading, setLoading] = useState(false);
   const [consent, setConsent] = useState(false);
 
+  // A checkout Stripe could not open left the plan picker with no form and
+  // no word why (E2E-07-20).
+  if (checkoutState.type === 'error') {
+    return (
+      <div className="rounded-[12px] border border-white/10 p-[16px] text-textColor/80">
+        {t(
+          'checkout_could_not_open',
+          'The payment form could not be opened. Refresh the page or pick the plan again.'
+        )}
+      </div>
+    );
+  }
   if (checkoutState.type !== 'success') {
     return null;
   }

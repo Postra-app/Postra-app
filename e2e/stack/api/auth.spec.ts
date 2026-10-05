@@ -131,3 +131,34 @@ test('E2E-02-29: a wallet sign-in with a bad signature gets no account', async (
     await prisma.$disconnect();
   }
 });
+
+test("E2E-08-33: someone else's activation link does not replace the session in this browser", async () => {
+  // The activation page posts on open and the answer set the auth cookie, so
+  // opening another account's link signed the browser into that account.
+  const prisma = database();
+  const signedInA = await signedIn('a');
+  const pending = await prisma.user.create({
+    data: {
+      email: `pending-${Date.now()}@example.com`,
+      password: 'x',
+      providerName: 'LOCAL',
+      name: 'Pending',
+      lastName: 'User',
+      timezone: 0,
+      activated: false,
+    },
+  });
+  try {
+    const code = sign({ id: pending.id, email: pending.email, activated: false, purpose: 'activate' }, process.env.JWT_SECRET!);
+    const res = await signedInA.post('/auth/activate', { data: { code } });
+    expect(res.status()).toBe(200);
+    expect(await res.json()).toMatchObject({ can: true, kept: true });
+    expect(res.headers()['set-cookie'] ?? '').not.toContain('auth=');
+    expect((await prisma.user.findUniqueOrThrow({ where: { id: pending.id } })).activated).toBe(true);
+    expect((await (await signedInA.get('/user/self')).json()).email).toBe(USERS.a.email);
+  } finally {
+    await prisma.user.deleteMany({ where: { id: pending.id } });
+    await signedInA.dispose();
+    await prisma.$disconnect();
+  }
+});

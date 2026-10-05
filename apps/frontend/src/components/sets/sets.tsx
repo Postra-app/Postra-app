@@ -131,7 +131,7 @@ export const Sets: FC = () => {
                     postData={data}
                     onSave={async (name: string) => {
                       try {
-                        await fetch('/sets', {
+                        const res = await fetch('/sets', {
                           method: 'POST',
                           body: JSON.stringify({
                             ...(params?.id ? { id: params.id } : {}),
@@ -139,6 +139,11 @@ export const Sets: FC = () => {
                             content: JSON.stringify(data),
                           }),
                         });
+                        // A refused save (the set deleted meanwhile, a 400)
+                        // closed the editor under "Set saved" (E2E-05-45).
+                        if (!res.ok) {
+                          throw new Error(String(res.status));
+                        }
                         modal.closeAll();
                         mutate();
                         toaster.show(t('set_saved', 'Set saved'), 'success');

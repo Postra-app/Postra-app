@@ -1,7 +1,7 @@
 'use client';
 
 import { Slider } from '@gitroom/react/form/slider';
-import React, { FC, useCallback, useEffect, useMemo, useState } from 'react';
+import React, { FC, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Button } from '@gitroom/frontend/components/ui/button';
 import { Card } from '@gitroom/frontend/components/ui/card';
 import { useFetch } from '@gitroom/helpers/utils/custom.fetch';
@@ -290,11 +290,17 @@ export const MainBillingComponent: FC<{
     }
     return subscription?.subscriptionTier;
   }, [subscription, initialChannels, monthlyOrYearly, period]);
+  const reactivating = useRef(false);
   const moveToCheckout = useCallback(
     (billing: 'STANDARD' | 'PRO' | 'FREE', reactivate = false) =>
       async () => {
         try {
           if (reactivate) {
+            // /billing/cancel toggles: a second press (Enter while the first
+            // request runs) cancelled the subscription again under a
+            // "reactivated" message (E2E-07-16).
+            if (reactivating.current) return;
+            reactivating.current = true;
             setLoading(true);
             const reactivateResponse = await fetch('/billing/cancel', {
               method: 'POST',
@@ -317,6 +323,8 @@ export const MainBillingComponent: FC<{
                 ),
                 'warning'
               );
+              reactivating.current = false;
+              setLoading(false);
               return;
             }
             const { cancel_at } = await reactivateResponse.json();
@@ -331,6 +339,7 @@ export const MainBillingComponent: FC<{
                 'Subscription reactivated successfully'
               )
             );
+            reactivating.current = false;
             setLoading(false);
             return;
           }
@@ -490,6 +499,9 @@ export const MainBillingComponent: FC<{
               subscriptionTier: billing,
               cancelAt: null,
             }));
+            // Ask the server: the new plan brings its own limits (channels,
+            // seats), which a local `tier` swap left at the old values
+            // (E2E-07-19).
             mutate(
               '/user/self',
               {
@@ -497,7 +509,7 @@ export const MainBillingComponent: FC<{
                 tier: billing,
               },
               {
-                revalidate: false,
+                revalidate: true,
               }
             );
             toast.show(
@@ -514,6 +526,7 @@ export const MainBillingComponent: FC<{
             'warning'
           );
         } finally {
+          reactivating.current = false;
           setLoading(false);
         }
       },

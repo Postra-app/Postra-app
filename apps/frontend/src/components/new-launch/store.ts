@@ -160,6 +160,9 @@ const initialState = {
   global: [] as Values[],
   internal: [] as Internal[],
   chars: {},
+  // Part of what reset() clears: a repeat set in one composer was saved with
+  // the next, unrelated post (E2E-05-44).
+  repeater: undefined as number | undefined,
 };
 
 export const useLaunchStore = create<StoreState>()((set) => ({

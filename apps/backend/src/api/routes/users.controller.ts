@@ -314,6 +314,29 @@ export class UsersController {
     return subscription ? { subscription } : { subscription: undefined };
   }
 
+  // What an invitation is for, without accepting it: the join page asks
+  // "Join X as Y?" before anything is written (E2E-08-34).
+  @Get('/invite-preview')
+  async invitePreview(
+    @GetUserFromRequest() user: User,
+    @Query('org') org: string
+  ) {
+    const invite = this._authService.getOrgFromCookie(org);
+    if (!invite) {
+      return { valid: false };
+    }
+    const organization = await this._orgService.getOrgById(invite.orgId);
+    if (!organization) {
+      return { valid: false };
+    }
+    return {
+      valid: true,
+      organization: organization.name,
+      role: invite.role,
+      email: user.email,
+    };
+  }
+
   @Post('/join-org')
   async joinOrg(
     @GetUserFromRequest() user: User,

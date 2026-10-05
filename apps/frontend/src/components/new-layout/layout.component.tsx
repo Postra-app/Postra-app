@@ -1,6 +1,7 @@
 'use client';
 
 import React, { ReactNode, useCallback } from 'react';
+import { useFollowOrgChange } from '@gitroom/frontend/components/layout/org.broadcast';
 import { Logo } from '@gitroom/frontend/components/new-layout/logo';
 import { GeistSans } from 'geist/font/sans';
 const ModeComponent = dynamic(
@@ -71,6 +72,8 @@ export const LayoutComponent = ({ children }: { children: ReactNode }) => {
     refreshWhenOffline: false,
     refreshWhenHidden: false,
   });
+
+  useFollowOrgChange(user?.orgId);
 
   if (!user) return null;
 

@@ -155,6 +155,10 @@ const PostDesignEditor: FC<PostDesignEditorProps> = ({
   const prevPlatformRef = useRef(platform);
   /** Set once the design has been exported or saved — the draft is spent. */
   const draftDoneRef = useRef(false);
+  // The design as it was when saved or exported. Work after that is new work:
+  // the flag alone switched autosave off for the rest of the session, so a
+  // refresh lost everything made after one "Save to library" (E2E-06-22).
+  const doneJsonRef = useRef<string | null>(null);
   /** Whether this editor ever held a design, so "empty" can be read correctly. */
   const hadContentRef = useRef(false);
 
@@ -272,7 +276,10 @@ const PostDesignEditor: FC<PostDesignEditorProps> = ({
       // The design has been exported or saved: re-writing it here would bring
       // it back as a "restored draft" the next time Studio opens, long after
       // the user considered it finished.
-      if (draftDoneRef.current) return;
+      if (draftDoneRef.current) {
+        if (JSON.stringify(c.toJSON()) === doneJsonRef.current) return;
+        draftDoneRef.current = false;
+      }
       if (c.getObjects().length) hadContentRef.current = true;
       if (!c.getObjects().length) {
         // Emptying a canvas that HELD something is deliberate, so drop the
@@ -698,6 +705,7 @@ const PostDesignEditor: FC<PostDesignEditorProps> = ({
       // last time, and without it the just-posted design was written straight
       // back and offered as a "restored draft" on the next visit.
       draftDoneRef.current = true;
+      doneJsonRef.current = fabricRef.current ? JSON.stringify(fabricRef.current.toJSON()) : null;
       clearDraft(orgIdRef.current);
       if (mode === 'studio') {
         router.push(
@@ -815,13 +823,16 @@ const PostDesignEditor: FC<PostDesignEditorProps> = ({
       const formData = new FormData();
       formData.append('file', blob, asTemplate ? 'template.jpg' : 'design.jpg');
       markAiGenerated(formData, canvasJson);
-      const data = await (
-        await fetch('/media/upload-simple', { method: 'POST', body: formData })
-      ).json();
-      await fetch(`/media/${data.id}/canvas`, {
+      const uploaded = await fetch('/media/upload-simple', { method: 'POST', body: formData });
+      if (!uploaded.ok) throw new Error(String(uploaded.status));
+      const data = await uploaded.json();
+      // A refused design (over the size limit) used to end in "Saved" and a
+      // deleted draft, leaving only a flat JPEG (E2E-06-21).
+      const savedCanvas = await fetch(`/media/${data.id}/canvas`, {
         method: 'PUT',
         body: JSON.stringify({ canvasJson }),
       });
+      if (!savedCanvas.ok) throw new Error(String(savedCanvas.status));
       if (asTemplate) {
         await fetch(`/media/${data.id}/template`, {
           method: 'PUT',
@@ -829,6 +840,7 @@ const PostDesignEditor: FC<PostDesignEditorProps> = ({
         });
       }
       draftDoneRef.current = true;
+      doneJsonRef.current = fabricRef.current ? JSON.stringify(fabricRef.current.toJSON()) : null;
       clearDraft(orgIdRef.current);
     },
     [fetch, exportCurrent]

@@ -60,12 +60,17 @@ const ThirdPartyMediaLibraryBrowser: FC<{
     if (!selected.length) return;
     setImporting(true);
     try {
-      await fetch(`/third-party/${integration.id}/import`, {
+      const res = await fetch(`/third-party/${integration.id}/import`, {
         method: 'POST',
         body: JSON.stringify({
           items: selected.map((s) => ({ url: s.url, name: s.name })),
         }),
       });
+      // A 404 (the integration removed meanwhile) imported nothing under
+      // "imported successfully" (E2E-08-36).
+      if (!res.ok) {
+        throw new Error(String(res.status));
+      }
       toaster.show(
         t('media_imported_successfully', 'Media imported successfully'),
         'success'

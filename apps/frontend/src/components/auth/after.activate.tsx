@@ -12,6 +12,7 @@ export const AfterActivate = () => {
   const params = useParams();
   const [showLoader, setShowLoader] = useState(true);
   const [failed, setFailed] = useState(false);
+  const [kept, setKept] = useState(false);
   const run = useRef(false);
   const t = useT();
   const [datafast_visitor_id] = useCookie('datafast_visitor_id');
@@ -43,8 +44,11 @@ export const AfterActivate = () => {
           setShowLoader(false);
           return;
         }
-        const { can } = await response.json();
-        if (!can) {
+        const { can, kept } = await response.json();
+        if (kept) {
+          setKept(true);
+        }
+        if (!can || kept) {
           setShowLoader(false);
         }
       } catch (e) {
@@ -64,6 +68,11 @@ export const AfterActivate = () => {
             ? t(
                 'activation_link_invalid',
                 'This activation link is invalid or has expired.'
+              )
+            : kept
+            ? t(
+                'activated_still_signed_in',
+                'The account is activated. You are still signed in to your current account; sign out to use the new one.'
               )
             : t('user_already_activated', 'This user is already activated')}
           <br />

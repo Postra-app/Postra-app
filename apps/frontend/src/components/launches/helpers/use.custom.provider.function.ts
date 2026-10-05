@@ -14,7 +14,9 @@ export const useCustomProviderFunction = () => {
           data: customData,
         }),
       });
-      if (load.status > 299 && load.status < 200) {
+      // Never true as `> 299 && < 200`: an error body went on as data and
+      // pickers crashed on it (E2E-05-47).
+      if (!load.ok) {
         throw new Error('Failed to fetch');
       }
       return load.json();

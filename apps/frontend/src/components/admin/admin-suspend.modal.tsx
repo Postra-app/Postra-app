@@ -23,11 +23,19 @@ export const AdminSuspendModal: FC<{
 
   const suspend = useCallback(async () => {
     setBusy(true);
-    const res = await fetch('/admin/suspend-user', {
-      method: 'POST',
-      body: JSON.stringify({ userId, value: true, reason }),
-    });
-    setBusy(false);
+    let res: Response;
+    try {
+      res = await fetch('/admin/suspend-user', {
+        method: 'POST',
+        body: JSON.stringify({ userId, value: true, reason }),
+      });
+    } catch {
+      toaster.show(t('admin_suspend_failed', 'Could not suspend the account'), 'warning');
+      return;
+    } finally {
+      // A thrown 5xx left the button disabled for good (FE-S-10).
+      setBusy(false);
+    }
     if (!res.ok) {
       toaster.show(await withReason(res, t('admin_suspend_failed', 'Could not suspend the account')), 'warning');
       return;

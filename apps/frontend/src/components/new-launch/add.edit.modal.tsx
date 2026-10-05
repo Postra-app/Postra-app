@@ -216,7 +216,9 @@ export const AddEditModalInnerInner: FC<AddEditModalProps> = (props) => {
                     .split('\n')
                     .map((line: string) => `<p>${line}</p>`)
                     .join(''),
-            media: p.media,
+            // A set is saved in the post payload's shape, where attachments
+            // are `image`; reading `media` dropped them on reopen (E2E-05-48).
+            media: p.image ?? p.media ?? [],
           }))
         : [
             {
