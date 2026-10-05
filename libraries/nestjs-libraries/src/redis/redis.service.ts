@@ -51,6 +51,15 @@ class MockRedis {
     return keys.filter((key) => this.live(key)).length;
   }
 
+  async expire(key: string, seconds: number) {
+    const entry = this.live(key);
+    if (!entry) {
+      return 0;
+    }
+    entry.expiresAt = Date.now() + seconds * 1000;
+    return 1;
+  }
+
   async del(...keys: string[]) {
     let removed = 0;
     for (const key of keys) {
