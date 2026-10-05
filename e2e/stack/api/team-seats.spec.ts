@@ -1,5 +1,5 @@
 import { APIRequestContext, expect, test } from '@playwright/test';
-import { channelOf, signedIn } from '../helpers';
+import { channelOf, database, signedIn, throwawayOrg } from '../helpers';
 import { ORG_C } from '../seed';
 
 // Seats and roles in a team (Plan/testing.md §9). team_members counts every
@@ -144,4 +144,36 @@ test('Business with a seat free can invite again', async () => {
   const res = await owner.post('/settings/team', invite());
   expect(res.status(), await res.text()).toBe(201);
   expect((await res.json()).url).toContain('/?org=');
+});
+
+test('E2E-02-31: a used team invite cannot be used again, by anyone', async () => {
+  // The spent mark sat in one field of the user who used it: their next
+  // invite overwrote it and the first link worked again for anyone, with the
+  // role it carried.
+  const prisma = database();
+  const agency = await throwawayOrg(prisma, { tier: 'ULTIMATE', totalChannels: 5, channels: 0 });
+  const other = await throwawayOrg(prisma, { tier: 'ULTIMATE', totalChannels: 5, channels: 0 });
+  const first = await throwawayOrg(prisma, { tier: 'PRO', totalChannels: 5, channels: 0 });
+  const second = await throwawayOrg(prisma, { tier: 'PRO', totalChannels: 5, channels: 0 });
+  const tokenOf = async (inviter: typeof agency, role: 'ADMIN' | 'USER') => {
+    const res = await inviter.api.post('/settings/team', {
+      data: { email: `someone-${Date.now()}@example.com`, role, sendEmail: false },
+    });
+    expect(res.status(), await res.text()).toBe(201);
+    return new URL((await res.json()).url, 'https://x').searchParams.get('org')!;
+  };
+  try {
+    const adminInvite = await tokenOf(agency, 'ADMIN');
+    const join = async (who: typeof agency, token: string) =>
+      (await (await who.api.post('/user/join-org', { data: { org: token } })).json()).id as string | null;
+
+    expect(await join(first, adminInvite)).toBe(agency.orgId);
+    // The same person then joins somewhere else.
+    expect(await join(first, await tokenOf(other, 'USER'))).toBe(other.orgId);
+    // Someone else holding the first link must not get in as ADMIN.
+    expect(await join(second, adminInvite)).toBeNull();
+  } finally {
+    for (const o of [agency, other, first, second]) await o.remove();
+    await prisma.$disconnect();
+  }
 });

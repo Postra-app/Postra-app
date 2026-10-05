@@ -129,6 +129,7 @@ describe('POST /integrations/social-connect/:integration with refresh', () => {
       {} as any,
       {
         getUserOrgMembership: jest.fn(async () => ({ role: 'ADMIN' })),
+        getSessionMembership: jest.fn(async () => ({ role: 'ADMIN' })),
         getOrgById: jest.fn(async () => FREE_ORG),
       } as any,
       { getSubscriptionByOrganizationId: jest.fn(async () => null) } as any

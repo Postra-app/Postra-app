@@ -63,3 +63,24 @@ describe('MobilePushService authorization', () => {
     });
   });
 });
+
+describe('notifyOrg recipients (E2E-02-30)', () => {
+  // Removing a member left their phone registered for the organisation, so
+  // every publication and failure still reached it.
+  it('pushes only to active, unsuspended members of the organisation', async () => {
+    const { service, model } = makeService();
+    model.findMany.mockResolvedValue([]);
+    await service.notifyOrg('orgA', 'title', 'body');
+    expect(model.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: {
+          organizationId: 'orgA',
+          user: {
+            suspendedAt: null,
+            organizations: { some: { organizationId: 'orgA', disabled: false } },
+          },
+        },
+      })
+    );
+  });
+});

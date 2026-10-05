@@ -58,6 +58,18 @@ export class OrganizationService {
     return this._organizationRepository.getOrgByApiKey(api);
   }
 
+  getSessionMembership(
+    userId: string,
+    organizationId: string,
+    tokenVersion: number
+  ) {
+    return this._organizationRepository.getSessionMembership(
+      userId,
+      organizationId,
+      tokenVersion
+    );
+  }
+
   getUserOrgMembership(userId: string, organizationId: string) {
     return this._organizationRepository.getUserOrgMembership(
       userId,

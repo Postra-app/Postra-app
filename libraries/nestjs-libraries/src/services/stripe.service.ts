@@ -115,6 +115,18 @@ export class StripeService {
         }
         return true;
       }
+      // Only a declined card ends the attempt. Anything else — a Stripe
+      // outage, a rate limit, a request Stripe refused — used to detach a good
+      // card and cancel the subscription, then answer 200 so Stripe never
+      // retried (E2E-07-14). Thrown, the webhook answers 500 and Stripe
+      // tries again.
+      const stripeError = err as Stripe.errors.StripeError & { rawType?: string };
+      if (
+        stripeError?.rawType !== 'card_error' &&
+        stripeError?.type !== 'StripeCardError'
+      ) {
+        throw err;
+      }
       try {
         await stripe.paymentMethods.detach(latestMethod.id);
         await stripe.subscriptions.cancel(event.data.object.id as string);

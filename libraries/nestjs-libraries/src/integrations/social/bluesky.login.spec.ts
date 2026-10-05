@@ -46,3 +46,24 @@ describe('Bluesky login failures', () => {
     });
   });
 });
+
+// E2E-04-24 (INT-3): the service URL comes from the client inside `code`,
+// and the server logged in there with the user's credentials — a request to
+// any host, internal ones included.
+describe('Bluesky connect with a service URL', () => {
+  const login = jest.spyOn(BskyAgent.prototype, 'login');
+  afterAll(() => login.mockRestore());
+  const code = (service: string) =>
+    Buffer.from(JSON.stringify({ service, identifier: 'a.bsky.social', password: 'x' })).toString('base64');
+
+  it('never contacts a service that is not a public HTTPS host', async () => {
+    login.mockClear();
+    for (const service of ['http://127.0.0.1:2583', 'http://169.254.169.254', 'https://localhost']) {
+      const result = await new BlueskyProvider()
+        .authenticate({ code: code(service), codeVerifier: '' })
+        .catch((e: unknown) => e);
+      expect(result).not.toHaveProperty('accessToken');
+    }
+    expect(login).not.toHaveBeenCalled();
+  });
+});
