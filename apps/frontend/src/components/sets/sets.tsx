@@ -31,10 +31,12 @@ const SaveSetModal: FC<{
   postData: any;
   initialValue?: string;
   onSave: (name: string) => void;
-  onCancel: () => void;
-}> = ({ postData, onSave, onCancel, initialValue }) => {
+}> = ({ postData, onSave, initialValue }) => {
   const [name, setName] = useState(initialValue);
   const t = useT();
+  // Cancel closes this naming window only. It closed every modal, the
+  // composer included, and the unsaved post went with it (FE-C-7).
+  const { closeCurrent } = useModals();
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -57,7 +59,7 @@ const SaveSetModal: FC<{
         />
       </div>
       <div className="flex gap-2 justify-end">
-        <Button type="button" secondary onClick={onCancel}>
+        <Button type="button" secondary onClick={closeCurrent}>
           {t('cancel', 'Cancel')}
         </Button>
         <Button type="submit" disabled={!name.trim()}>
@@ -154,7 +156,6 @@ export const Sets: FC = () => {
                         );
                       }
                     }}
-                    onCancel={() => modal.closeAll()}
                   />
                 ),
               });
