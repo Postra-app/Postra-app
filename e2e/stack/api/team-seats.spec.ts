@@ -167,6 +167,8 @@ test('E2E-02-31: a used team invite cannot be used again, by anyone', async () =
     const join = async (who: typeof agency, token: string) =>
       (await (await who.api.post('/user/join-org', { data: { org: token } })).json()).id as string | null;
 
+    // The owner opening their own link adds nobody and spends nothing.
+    expect(await join(agency, adminInvite)).toBeNull();
     expect(await join(first, adminInvite)).toBe(agency.orgId);
     // The same person then joins somewhere else.
     expect(await join(first, await tokenOf(other, 'USER'))).toBe(other.orgId);

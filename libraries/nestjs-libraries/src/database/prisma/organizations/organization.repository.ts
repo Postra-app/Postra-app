@@ -271,21 +271,6 @@ export class OrganizationRepository {
       return false;
     }
 
-    // The spent mark above lives in one field of the user who used the
-    // invite, so their next invite overwrote it and the first link worked
-    // again — for anyone, with the role it carried (E2E-02-31). One atomic
-    // claim per invite, kept well past the link's one-hour life; two people
-    // using one link at once cannot both get in either.
-    const claimed = await ioRedis.set(
-      `invite-used:${id}`,
-      userId,
-      'EX',
-      7 * 24 * 60 * 60,
-      'NX'
-    );
-    if (!claimed) {
-      return false;
-    }
 
     // Already a member? The guard above only asks whether *this invite* has
     // been redeemed, so a second invite carries a different id, sails past it
@@ -324,13 +309,36 @@ export class OrganizationRepository {
       return false;
     }
 
-    const create = await this._userOrg.model.userOrganization.create({
-      data: {
-        role,
-        userId,
-        organizationId: orgId,
-      },
-    });
+    // The spent mark above lives in one field of the user who used the
+    // invite, so their next invite overwrote it and the first link worked
+    // again — for anyone, with the role it carried (E2E-02-31). One atomic
+    // claim per invite, kept well past the link's one-hour life; two people
+    // using one link at once cannot both get in either. Claimed only here, once
+    // nothing else refuses the join, and released if the write fails.
+    const claimed = await ioRedis.set(
+      `invite-used:${id}`,
+      userId,
+      'EX',
+      7 * 24 * 60 * 60,
+      'NX'
+    );
+    if (!claimed) {
+      return false;
+    }
+
+    let create;
+    try {
+      create = await this._userOrg.model.userOrganization.create({
+        data: {
+          role,
+          userId,
+          organizationId: orgId,
+        },
+      });
+    } catch (err) {
+      await ioRedis.del(`invite-used:${id}`);
+      throw err;
+    }
 
     await this._user.model.user.update({
       where: {
