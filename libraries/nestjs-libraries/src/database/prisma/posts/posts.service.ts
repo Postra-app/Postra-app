@@ -1088,19 +1088,17 @@ export class PostsService {
       }));
     }
 
-    // Every channel in one transaction, with the version checked again on
-    // locked rows. Written one transaction per channel, a save refused (or
+    // Every channel in one transaction, behind the locks and the version
+    // check of lockForSave. Written one transaction per channel, a save refused (or
     // failing) on the second channel left the first one saved, and already
     // publishing.
     const written = await this._postRepository.transaction(async (tx) => {
-      if (body.expectedUpdatedAt && editedIds.length) {
-        await this._postRepository.refuseIfChangedSince(
-          orgId,
-          editedIds,
-          body.expectedUpdatedAt,
-          tx
-        );
-      }
+      await this._postRepository.lockForSave(
+        tx,
+        orgId,
+        editedIds,
+        body.expectedUpdatedAt
+      );
 
       const saved = [];
       for (const post of body.posts) {

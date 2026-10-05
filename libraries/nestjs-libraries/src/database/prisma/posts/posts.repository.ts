@@ -489,35 +489,52 @@ export class PostsRepository {
     });
   }
 
-  // By id, not by group: every save moves the posts to a new group. Within
-  // a save's transaction the rows are locked first: checked only before the
-  // write, two saves opened from the same version both passed and the later
-  // one replaced the earlier without a 409 (E2E-05-39). Locked, the second
-  // waits for the first to commit and then sees its newer version.
+  // By id, not by group: every save moves the posts to a new group.
   async refuseIfChangedSince(
     orgId: string,
     ids: string[],
-    expectedUpdatedAt: string,
-    tx?: Prisma.TransactionClient
+    expectedUpdatedAt: string
   ) {
-    let latest: Date | null = null;
-    if (tx) {
-      const rows = await tx.$queryRaw<{ updatedAt: Date }[]>`
-        SELECT "updatedAt" FROM "Post"
-        WHERE "id" = ANY(${ids}::text[]) AND "organizationId" = ${orgId}
-        ORDER BY "id"
-        FOR UPDATE`;
-      for (const { updatedAt } of rows) {
-        if (!latest || updatedAt > latest) latest = updatedAt;
-      }
-    } else {
-      const { _max } = await this._post.model.post.aggregate({
-        _max: { updatedAt: true },
-        where: { organizationId: orgId, id: { in: ids } },
-      });
-      latest = _max.updatedAt;
+    const { _max } = await this._post.model.post.aggregate({
+      _max: { updatedAt: true },
+      where: { organizationId: orgId, id: { in: ids } },
+    });
+    this.refuseIfNewer(_max.updatedAt, expectedUpdatedAt);
+  }
+
+  // First thing in a save's transaction: lock every post it overwrites, in
+  // one fixed order, until it commits. Checked only before the write, two
+  // saves opened from the same version both passed and the later replaced
+  // the earlier without a 409 (E2E-05-39); locked post by post as the writes
+  // went, [A, B] and [B, A] at once deadlocked and one got a 500
+  // (E2E-05-42). Now the second save waits for the first, then sees its
+  // version.
+  async lockForSave(
+    tx: Prisma.TransactionClient,
+    orgId: string,
+    ids: string[],
+    expectedUpdatedAt?: string
+  ) {
+    if (!ids.length) {
+      return;
     }
 
+    const rows = await tx.$queryRaw<{ updatedAt: Date }[]>`
+      SELECT "updatedAt" FROM "Post"
+      WHERE "id" = ANY(${ids}::text[]) AND "organizationId" = ${orgId}
+      ORDER BY "id"
+      FOR UPDATE`;
+
+    if (expectedUpdatedAt) {
+      const latest = rows.reduce<Date | null>(
+        (max, { updatedAt }) => (!max || updatedAt > max ? updatedAt : max),
+        null
+      );
+      this.refuseIfNewer(latest, expectedUpdatedAt);
+    }
+  }
+
+  private refuseIfNewer(latest: Date | null, expectedUpdatedAt: string) {
     if (latest && latest.getTime() > Date.parse(expectedUpdatedAt)) {
       throw new ConflictException({
         statusCode: 409,
@@ -526,6 +543,7 @@ export class PostsRepository {
       });
     }
   }
+
 
   clearReleases(orgId: string, ids: string[]) {
     return this._post.model.post.updateMany({

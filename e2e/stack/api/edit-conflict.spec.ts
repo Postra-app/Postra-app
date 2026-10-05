@@ -182,3 +182,39 @@ test('E2E-05-41: a save of two channels refused on one of them leaves the other 
     await org.remove();
   }
 });
+
+test('E2E-05-42: two saves of the same two posts listed in opposite order both go through', async () => {
+  const org = await throwawayOrg(prisma, { tier: 'PRO', totalChannels: 5, channels: 2 });
+  try {
+    const [first, second] = org.channelIds;
+    const open = async (id: string) =>
+      (await (await org.api.get(`/posts/${id}`)).json()) as { group: string };
+    const entry = (channel: string, group: string, id: string, content: string) => ({
+      integration: { id: channel },
+      group,
+      value: [{ id, content, image: [] }],
+      settings: { __type: 'bluesky' },
+    });
+    const saveBoth = (entries: ReturnType<typeof entry>[]) =>
+      org.api.post('/posts', {
+        data: { type: 'draft', shortLink: false, date: inDays(2), tags: [], posts: entries },
+      });
+
+    // One transaction for the whole save holds each post's lock until it
+    // commits: [A, B] and [B, A] at once each held one and waited for the
+    // other, and Postgres killed one of them — a 500 to an API client that
+    // sent nothing wrong. A few rounds, since it is a race.
+    for (let round = 0; round < 5; round++) {
+      const a = await openDraft(org.api, first);
+      const b = await openDraft(org.api, second);
+      const [groupA, groupB] = [(await open(a)).group, (await open(b)).group];
+      const results = await Promise.all([
+        saveBoth([entry(first, groupA, a, 'ab: one'), entry(second, groupB, b, 'ab: two')]),
+        saveBoth([entry(second, groupB, b, 'ba: two'), entry(first, groupA, a, 'ba: one')]),
+      ]);
+      expect(results.map((r) => r.status())).toEqual([201, 201]);
+    }
+  } finally {
+    await org.remove();
+  }
+});
