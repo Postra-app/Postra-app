@@ -1,4 +1,5 @@
 import { Throttle } from '@nestjs/throttler';
+import { ioRedis } from '@gitroom/nestjs-libraries/redis/redis.service';
 import {
   Body,
   Controller,
@@ -42,7 +43,21 @@ export class AutopostController {
     @GetOrgFromRequest() org: Organization,
     @Body() body: AutopostDto
   ) {
-    return this._autopostsService.createAutopost(org.id, body);
+    // The guard counted the feeds before this request; two at once both saw
+    // a free one and both were created (AI-6). Counted again, one at a time.
+    const lock = `autopost-create:${org.id}`;
+    if ((await ioRedis.set(lock, '1', 'EX', 15, 'NX')) !== 'OK') {
+      throw new SubscriptionException({
+        section: Sections.AUTOPOST,
+        action: AuthorizationActions.Create,
+      });
+    }
+    try {
+      await this.requireAutopost(org, AuthorizationActions.Create);
+      return await this._autopostsService.createAutopost(org.id, body);
+    } finally {
+      await ioRedis.del(lock).catch(() => undefined);
+    }
   }
 
   @Put('/:id')
@@ -73,20 +88,7 @@ export class AutopostController {
     // could be restarted after a downgrade (BILL-7). Switching off is always
     // allowed, so a plan change never leaves a feed nobody can stop.
     if (active) {
-      const action = AuthorizationActions.Update;
-      const section = Sections.AUTOPOST;
-      const ability = await this._permissionsService.check(
-        org.id,
-        org.createdAt,
-        // @ts-ignore — the org from the request carries the caller's role
-        org.users[0].role,
-        [[action, section]],
-        undefined,
-        org.isTrailing
-      );
-      if (!ability.can(action, section)) {
-        throw new SubscriptionException({ section, action });
-      }
+      await this.requireAutopost(org, AuthorizationActions.Update);
     }
     return this._autopostsService.changeActive(org.id, id, active);
   }
@@ -95,5 +97,24 @@ export class AutopostController {
   @Throttle({ default: { ttl: 300_000, limit: 10 } })
   async sendWebhook(@Query() query: OnlyURL) {
     return this._autopostsService.loadXML(query.url);
+  }
+
+  private async requireAutopost(
+    org: Organization,
+    action: AuthorizationActions
+  ) {
+    const section = Sections.AUTOPOST;
+    const ability = await this._permissionsService.check(
+      org.id,
+      org.createdAt,
+      // @ts-ignore — the org from the request carries the caller's role
+      org.users[0].role,
+      [[action, section]],
+      undefined,
+      org.isTrailing
+    );
+    if (!ability.can(action, section)) {
+      throw new SubscriptionException({ section, action });
+    }
   }
 }

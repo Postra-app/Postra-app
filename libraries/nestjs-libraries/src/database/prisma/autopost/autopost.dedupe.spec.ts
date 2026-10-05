@@ -41,3 +41,16 @@ it('a new article is posted', async () => {
   await service.schedulePost(state('https://blog.example/b'));
   expect(posts.createPost).toHaveBeenCalledTimes(1);
 });
+
+// AI-4: with every channel needing an image and none made, the article was
+// skipped and the cursor moved past it for good.
+it('an article that cannot get the image its channels need is kept for the next run', async () => {
+  const { service, posts } = build(false);
+  const instagramOnly = {
+    ...state('https://blog.example/c'),
+    image: null,
+    integrations: [{ id: 'ig-1', organizationId: 'org-1', providerIdentifier: 'instagram' }],
+  };
+  await expect(service.schedulePost(instagramOnly)).rejects.toThrow(/needs an image/);
+  expect(posts.createPost).not.toHaveBeenCalled();
+});

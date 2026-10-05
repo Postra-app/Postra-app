@@ -147,9 +147,22 @@ If the tools return errors, you would need to rerun it with the right parameters
         // The dashboard and public API enforce the plan's monthly post cap
         // through CheckPolicies; the agent creates posts directly, so it has
         // to ask the same question. Drafts do not count towards the cap.
+        // Every post and comment of the batch counts: the check was one
+        // `count >= limit` for a batch of any size (AI-8).
+        const adding = inputData.socialPost
+          .filter((p: { type: string }) => p.type !== 'draft')
+          .reduce(
+            (n: number, p: { postsAndComments?: unknown[] }) =>
+              n + Math.max(1, p.postsAndComments?.length || 0),
+            0
+          );
         if (
-          inputData.socialPost.some((p: { type: string }) => p.type !== 'draft') &&
-          (await this.postLimitReached(organizationId, organization.createdAt))
+          adding &&
+          (await this.postLimitReached(
+            organizationId,
+            organization.createdAt,
+            adding
+          ))
         ) {
           return {
             errors:
@@ -267,7 +280,11 @@ If the tools return errors, you would need to rerun it with the right parameters
     });
   }
 
-  private async postLimitReached(orgId: string, orgCreatedAt: string) {
+  private async postLimitReached(
+    orgId: string,
+    orgCreatedAt: string,
+    adding = 1
+  ) {
     if (!process.env.STRIPE_PUBLISHABLE_KEY) {
       return false;
     }
@@ -277,6 +294,6 @@ If the tools return errors, you would need to rerun it with the right parameters
       orgId,
       postsCycleStart(subscription?.createdAt || orgCreatedAt)
     );
-    return count >= limit;
+    return count + adding > limit;
   }
 }

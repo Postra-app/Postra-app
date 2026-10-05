@@ -5,6 +5,7 @@ import {
 } from '@gitroom/nestjs-libraries/openai/untrusted-source';
 import { HttpException, Injectable } from '@nestjs/common';
 import { fetch } from 'undici';
+import { readResponseCapped } from '@gitroom/nestjs-libraries/media/fetch.media.buffer';
 import { ssrfSafeDispatcher } from '@gitroom/nestjs-libraries/dtos/webhooks/ssrf.safe.dispatcher';
 import { isSafePublicHttpsUrl } from '@gitroom/nestjs-libraries/dtos/webhooks/webhook.url.validator';
 import { AutopostRepository } from '@gitroom/nestjs-libraries/database/prisma/autopost/autopost.repository';
@@ -105,6 +106,8 @@ const dallePrompt = z.object({
     .string()
     .describe('Generated prompt from description to be sent to DallE'),
 });
+
+const FEED_MAX_BYTES = 10 * 1024 * 1024;
 
 @Injectable()
 export class AutopostService {
@@ -236,7 +239,10 @@ export class AutopostService {
       signal: AbortSignal.timeout(10000),
       headers: { accept: 'application/rss+xml, application/xml, text/xml, */*' },
     });
-    const body = await res.text();
+    // Read with a ceiling: `res.text()` buffered whatever the server sent,
+    // and a feed URL is anything a signed-in user types (AI-10). Real feeds
+    // are kilobytes to a few megabytes.
+    const body = (await readResponseCapped(res as any, FEED_MAX_BYTES)).toString('utf8');
     return parser.parseString(body);
   }
 
@@ -623,6 +629,14 @@ export class AutopostService {
             !AutopostService.IMAGE_REQUIRED_PROVIDERS.has(i.providerIdentifier)
         );
     if (integrations.length === 0) {
+      // Every channel needs an image and there is none (generation failed or
+      // credits ran out). Returning here moved the cursor past the article
+      // for good (AI-4); failing keeps it, and the next run tries again.
+      if (state.integrations.length) {
+        throw new Error(
+          'This article needs an image for the selected channels and none could be made. It will be tried again on the next run.'
+        );
+      }
       return;
     }
 

@@ -43,6 +43,13 @@ describe('agent post cap', () => {
     await expect(tool.postLimitReached('org-1', new Date().toISOString())).resolves.toBe(true);
   });
 
+  // AI-8: one batch of ten at 399 of 400 went through in full.
+  it('counts the whole batch, not just whether one more fits', async () => {
+    const { tool } = build('STANDARD', 399);
+    await expect(tool.postLimitReached('org-1', new Date().toISOString(), 10)).resolves.toBe(true);
+    await expect(tool.postLimitReached('org-1', new Date().toISOString(), 1)).resolves.toBe(false);
+  });
+
   it('lets a Starter org below the cap through', async () => {
     const { tool } = build('STANDARD', 399);
     await expect(tool.postLimitReached('org-1', new Date().toISOString())).resolves.toBe(false);
