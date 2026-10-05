@@ -80,6 +80,12 @@ export class StripeController {
     if (!(await this._eventStore.lease(event.id))) {
       throw new HttpException('Event is being handled', 409);
     }
+    // Another delivery may have finished between the check above and the
+    // lease: look again now that this one holds it.
+    if (await this._eventStore.isDone(event.id)) {
+      await this._eventStore.release(event.id);
+      return { ok: true, duplicate: true };
+    }
 
     try {
       const result = await handle();

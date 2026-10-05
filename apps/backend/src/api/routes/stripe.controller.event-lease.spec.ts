@@ -53,10 +53,8 @@ const setup = (createSubscription: () => Promise<unknown>) => {
     validateRequest: () => event,
     createSubscription: jest.fn(createSubscription),
   };
-  const controller = new StripeController(
-    stripe as any,
-    new StripeEventStore(prisma as any)
-  );
+  const store = new StripeEventStore(prisma as any);
+  const controller = new StripeController(stripe as any, store);
   const deliver = async () => {
     try {
       return {
@@ -71,7 +69,7 @@ const setup = (createSubscription: () => Promise<unknown>) => {
       return { status: e.getStatus(), body: e.getResponse() };
     }
   };
-  return { stripe, deliver };
+  return { stripe, deliver, store };
 };
 
 describe('Stripe webhook: one run per event, and a crash is not "done"', () => {
@@ -112,5 +110,20 @@ describe('Stripe webhook: one run per event, and a crash is not "done"', () => {
     const retry = setup(async () => undefined);
     expect((await retry.deliver()).status).toBe(200);
     expect(retry.stripe.createSubscription).toHaveBeenCalledTimes(1);
+  });
+
+  it('a delivery that finishes between the check and the lease is not run twice', async () => {
+    const late = setup(async () => undefined);
+    const { store } = late;
+    const lease = store.lease.bind(store);
+    jest.spyOn(store, 'lease').mockImplementation(async (id) => {
+      // The other delivery runs from start to end right here.
+      const first = setup(async () => undefined);
+      expect((await first.deliver()).status).toBe(200);
+      return lease(id);
+    });
+    expect((await late.deliver()).body).toEqual({ ok: true, duplicate: true });
+    expect(late.stripe.createSubscription).not.toHaveBeenCalled();
+    expect(keys.size).toBe(0);
   });
 });
