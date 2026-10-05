@@ -69,3 +69,68 @@ test('a save over a newer change is a 409; with the newer time, or without one, 
     await org.remove();
   }
 });
+
+const openDraft = async (api: APIRequestContext, channel: string) => {
+  const created = await api.post('/posts', {
+    data: {
+      type: 'draft',
+      shortLink: false,
+      date: inDays(2),
+      tags: [],
+      posts: [{ integration: { id: channel }, value: [{ content: 'first', image: [] }], settings: { __type: 'bluesky' } }],
+    },
+  });
+  expect(created.status(), await created.text()).toBe(201);
+  return (await created.json())[0].postId as string;
+};
+
+test('E2E-05-39: saves opened from the same version at the same moment — one goes through, the rest are a 409', async () => {
+  const org = await throwawayOrg(prisma, { tier: 'PRO', totalChannels: 5, channels: 1 });
+  try {
+    const channel = org.channelIds[0];
+    const postId = await openDraft(org.api, channel);
+    const opened = (await (await org.api.get(`/posts/${postId}`)).json()) as {
+      group: string;
+      posts: { updatedAt: string }[];
+    };
+    const loadedAt = opened.posts[0].updatedAt;
+
+    // The version check ran before the save's transaction, so every one of
+    // these passed it and each replaced the one before without a word.
+    const saves = await Promise.all(
+      [1, 2, 3, 4].map((n) =>
+        save(org.api, channel, opened.group, postId, `editor ${n}`, { expectedUpdatedAt: loadedAt })
+      )
+    );
+    expect(saves.map((s) => s.status()).sort()).toEqual([201, 409, 409, 409]);
+  } finally {
+    await org.remove();
+  }
+});
+
+test('E2E-05-40: opening a post whose media is stored by id alone does not turn the first save into a 409', async () => {
+  const org = await throwawayOrg(prisma, { tier: 'PRO', totalChannels: 5, channels: 1 });
+  try {
+    const channel = org.channelIds[0];
+    const postId = await openDraft(org.api, channel);
+    const media = await prisma.media.create({
+      data: { name: 'stack.png', path: 'https://cdn.example.com/stack.png', organizationId: org.orgId },
+    });
+    // Rows written before media carried a path: reading the post fills it in.
+    await prisma.post.update({ where: { id: postId }, data: { image: JSON.stringify([{ id: media.id }]) } });
+
+    const opened = (await (await org.api.get(`/posts/${postId}`)).json()) as {
+      group: string;
+      posts: { updatedAt: string; image: { path: string }[] }[];
+    };
+    expect(opened.posts[0].image[0].path).toBe(media.path);
+
+    // Nobody else saved: the editor's own version must be accepted.
+    const saved = await save(org.api, channel, opened.group, postId, 'mine', {
+      expectedUpdatedAt: opened.posts[0].updatedAt,
+    });
+    expect(saved.status(), await saved.text()).toBe(201);
+  } finally {
+    await org.remove();
+  }
+});

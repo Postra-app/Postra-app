@@ -2,12 +2,13 @@ import {
   PrismaRepository,
   PrismaTransaction,
 } from '@gitroom/nestjs-libraries/database/prisma/prisma.service';
-import { Injectable } from '@nestjs/common';
+import { ConflictException, Injectable } from '@nestjs/common';
 import { Post as PostBody } from '@gitroom/nestjs-libraries/dtos/posts/create.post.dto';
 import {
   APPROVED_SUBMIT_FOR_ORDER,
   CreationMethod,
   Post,
+  Prisma,
   State,
 } from '@prisma/client';
 import { GetPostsDto } from '@gitroom/nestjs-libraries/dtos/posts/get.posts.dto';
@@ -125,15 +126,15 @@ export class PostsRepository {
     });
   }
 
+  // Filling in a media path (or swapping a PNG for a JPEG) is not an edit.
+  // Through Prisma it bumped `updatedAt`, so the editor whose opening of the
+  // post triggered it held a version that already looked stale, and its first
+  // save was refused with a 409 (E2E-05-40). Raw SQL because Prisma sets
+  // @updatedAt on every update it makes.
   updateImages(id: string, images: string) {
-    return this._post.model.post.update({
-      where: {
-        id,
-      },
-      data: {
-        image: images,
-      },
-    });
+    return this._prismaTransaction.model.$transaction(
+      (tx) => tx.$executeRaw`UPDATE "Post" SET "image" = ${images} WHERE "id" = ${id}`
+    );
   }
 
   getPostUrls(orgId: string, ids: string[]) {
@@ -488,13 +489,42 @@ export class PostsRepository {
     });
   }
 
-  // By id, not by group: every save moves the posts to a new group.
-  async latestUpdateOf(orgId: string, ids: string[]) {
-    const { _max } = await this._post.model.post.aggregate({
-      _max: { updatedAt: true },
-      where: { organizationId: orgId, id: { in: ids } },
-    });
-    return _max.updatedAt;
+  // By id, not by group: every save moves the posts to a new group. Within
+  // a save's transaction the rows are locked first: checked only before the
+  // write, two saves opened from the same version both passed and the later
+  // one replaced the earlier without a 409 (E2E-05-39). Locked, the second
+  // waits for the first to commit and then sees its newer version.
+  async refuseIfChangedSince(
+    orgId: string,
+    ids: string[],
+    expectedUpdatedAt: string,
+    tx?: Prisma.TransactionClient
+  ) {
+    let latest: Date | null = null;
+    if (tx) {
+      const rows = await tx.$queryRaw<{ updatedAt: Date }[]>`
+        SELECT "updatedAt" FROM "Post"
+        WHERE "id" = ANY(${ids}::text[]) AND "organizationId" = ${orgId}
+        ORDER BY "id"
+        FOR UPDATE`;
+      for (const { updatedAt } of rows) {
+        if (!latest || updatedAt > latest) latest = updatedAt;
+      }
+    } else {
+      const { _max } = await this._post.model.post.aggregate({
+        _max: { updatedAt: true },
+        where: { organizationId: orgId, id: { in: ids } },
+      });
+      latest = _max.updatedAt;
+    }
+
+    if (latest && latest.getTime() > Date.parse(expectedUpdatedAt)) {
+      throw new ConflictException({
+        statusCode: 409,
+        message: 'Someone else saved changes to this post after you opened it.',
+        updatedAt: latest.toISOString(),
+      });
+    }
   }
 
   clearReleases(orgId: string, ids: string[]) {
@@ -650,12 +680,20 @@ export class PostsRepository {
     body: PostBody,
     tags: { value: string; label: string }[],
     creationMethod: CreationMethod,
-    inter?: number
+    inter?: number,
+    expectedUpdatedAt?: string
   ) {
     // Creating a thread is a multi-step write (per-part upserts, tag rewrite,
     // soft-delete of the previous group). A failure mid-way used to leave a
     // half-created thread with the old group still live — all-or-nothing now.
     return this._prismaTransaction.model.$transaction(async (tx) => {
+    const editedIds = body.value
+      .map((value) => value.id)
+      .filter(Boolean) as string[];
+    if (expectedUpdatedAt && editedIds.length) {
+      await this.refuseIfChangedSince(orgId, editedIds, expectedUpdatedAt, tx);
+    }
+
     const posts: Post[] = [];
     const uuid = uuidv4();
 
