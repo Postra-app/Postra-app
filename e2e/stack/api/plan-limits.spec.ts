@@ -71,6 +71,24 @@ test.describe('channel count', () => {
     expect((await freed.api.post('/integrations/enable', { data: { id: freed.channelIds[0] } })).status()).toBeLessThan(300);
   });
 
+  // BILL-6: two channels switched on at once both saw the one free slot.
+  test('one free slot, two channels switched on at once: only one is', async () => {
+    const full = await org({ tier: 'STANDARD', totalChannels: 3, channels: 4, provider: 'linkedin' });
+    await prisma.integration.updateMany({
+      where: { id: { in: full.channelIds.slice(2) } },
+      data: { disabled: true },
+    });
+    const statuses = await Promise.all(
+      full.channelIds.slice(2).map(async (id) =>
+        (await full.api.post('/integrations/enable', { data: { id } })).status()
+      )
+    );
+    expect(statuses.filter((s) => s < 300)).toHaveLength(1);
+    expect(
+      await prisma.integration.count({ where: { organizationId: full.orgId, disabled: false, deletedAt: null } })
+    ).toBe(3);
+  });
+
   test('Starter with 3 of 3 channels cannot start connecting a 4th', async () => {
     const { api } = await org({ tier: 'STANDARD', totalChannels: 3, channels: 3, provider: 'linkedin' });
     const res = await api.get(connect('linkedin'));

@@ -559,16 +559,29 @@ export class IntegrationService {
   }
 
   async enableChannel(org: string, totalChannels: number, id: string) {
-    const inUse = channelsInUse(
-      await this._integrationRepository.getIntegrationsList(org)
-    );
-    if (!!process.env.STRIPE_PUBLISHABLE_KEY && inUse >= totalChannels) {
-      throw new HttpException('You have reached the maximum number of channels', 402);
+    // Counted and switched on one at a time per organisation: two requests
+    // at once both saw a free slot and both enabled (BILL-6).
+    const lock = `channels-enable:${org}`;
+    if ((await ioRedis.set(lock, '1', 'EX', 15, 'NX')) !== 'OK') {
+      throw new HttpException(
+        'Another channel is being switched on. Please try again.',
+        409
+      );
     }
+    try {
+      const inUse = channelsInUse(
+        await this._integrationRepository.getIntegrationsList(org)
+      );
+      if (!!process.env.STRIPE_PUBLISHABLE_KEY && inUse >= totalChannels) {
+        throw new HttpException('You have reached the maximum number of channels', 402);
+      }
 
-    const { count } = await this._integrationRepository.enableChannel(org, id);
-    if (!count) {
-      throw new NotFoundException('Channel not found');
+      const { count } = await this._integrationRepository.enableChannel(org, id);
+      if (!count) {
+        throw new NotFoundException('Channel not found');
+      }
+    } finally {
+      await ioRedis.del(lock).catch(() => undefined);
     }
   }
 
