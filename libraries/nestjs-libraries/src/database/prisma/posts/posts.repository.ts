@@ -681,19 +681,13 @@ export class PostsRepository {
     tags: { value: string; label: string }[],
     creationMethod: CreationMethod,
     inter?: number,
-    expectedUpdatedAt?: string
+    outer?: Prisma.TransactionClient
   ) {
     // Creating a thread is a multi-step write (per-part upserts, tag rewrite,
     // soft-delete of the previous group). A failure mid-way used to leave a
-    // half-created thread with the old group still live — all-or-nothing now.
-    return this._prismaTransaction.model.$transaction(async (tx) => {
-    const editedIds = body.value
-      .map((value) => value.id)
-      .filter(Boolean) as string[];
-    if (expectedUpdatedAt && editedIds.length) {
-      await this.refuseIfChangedSince(orgId, editedIds, expectedUpdatedAt, tx);
-    }
-
+    // half-created thread with the old group still live — all-or-nothing now,
+    // and inside the caller's transaction when a save spans several channels.
+    const write = async (tx: Prisma.TransactionClient) => {
     const posts: Post[] = [];
     const uuid = uuidv4();
 
@@ -833,6 +827,16 @@ export class PostsRepository {
     }
 
     return { previousPost, posts };
+    };
+
+    return outer ? write(outer) : this._prismaTransaction.model.$transaction(write);
+  }
+
+  // A whole save, every channel of it, commits or fails together. Generous
+  // timeout: a save of many channels with threads is a few hundred writes.
+  transaction<T>(write: (tx: Prisma.TransactionClient) => Promise<T>) {
+    return this._prismaTransaction.model.$transaction(write, {
+      timeout: 30_000,
     });
   }
 

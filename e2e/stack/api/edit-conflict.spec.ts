@@ -134,3 +134,51 @@ test('E2E-05-40: opening a post whose media is stored by id alone does not turn 
     await org.remove();
   }
 });
+
+test('E2E-05-41: a save of two channels refused on one of them leaves the other one as it was', async () => {
+  const org = await throwawayOrg(prisma, { tier: 'PRO', totalChannels: 5, channels: 2 });
+  try {
+    const [first, second] = org.channelIds;
+    const open = async (id: string) =>
+      (await (await org.api.get(`/posts/${id}`)).json()) as {
+        group: string;
+        posts: { updatedAt: string; content: string }[];
+      };
+
+    // A colleague saves the second channel while the two-channel save runs.
+    // Each channel used to be its own transaction: the first one committed,
+    // the second was refused, and the request answered 409 with half of it
+    // saved. A few rounds, since it is a race.
+    for (let round = 0; round < 5; round++) {
+      const a = await openDraft(org.api, first);
+      const b = await openDraft(org.api, second);
+      const [openedA, openedB] = [await open(a), await open(b)];
+      const loadedAt = [openedA.posts[0].updatedAt, openedB.posts[0].updatedAt].sort().pop();
+
+      const [both, colleague] = await Promise.all([
+        org.api.post('/posts', {
+          data: {
+            type: 'draft',
+            shortLink: false,
+            date: inDays(2),
+            tags: [],
+            expectedUpdatedAt: loadedAt,
+            posts: [
+              { integration: { id: first }, group: openedA.group, value: [{ id: a, content: 'both: one', image: [] }], settings: { __type: 'bluesky' } },
+              { integration: { id: second }, group: openedB.group, value: [{ id: b, content: 'both: two', image: [] }], settings: { __type: 'bluesky' } },
+            ],
+          },
+        }),
+        save(org.api, second, openedB.group, b, 'colleague', { expectedUpdatedAt: openedB.posts[0].updatedAt }),
+      ]);
+
+      expect([both.status(), colleague.status()].sort()).toEqual([201, 409]);
+      if (both.status() === 409) {
+        expect((await open(a)).posts[0].content).toContain('first');
+        expect((await open(a)).posts[0].content).not.toContain('both');
+      }
+    }
+  } finally {
+    await org.remove();
+  }
+});
