@@ -7,7 +7,8 @@ import { Request } from 'express';
 const THROTTLER_LIMIT_DEFAULT = 'THROTTLER:LIMITdefault';
 
 /**
- * The client address as seen by the one proxy we trust (the ALB).
+ * The client address as seen by the ALB (the last X-Forwarded-For entry;
+ * nginx in front of the app forwards the ALB's header unchanged).
  *
  * Exported so a spec can pin the choice of the last hop: reading the first one
  * lets any caller mint a throttle bucket per request just by sending the header.
@@ -96,14 +97,17 @@ export class ThrottlerBehindProxyGuard extends ThrottlerGuard {
       );
     }
 
-    // Unauthenticated routes (auth endpoints): bucket by client IP. The app
-    // runs behind exactly one proxy (the ALB) without express `trust proxy`,
-    // so read the forwarded client IP, falling back to the socket address.
+    // Unauthenticated routes (auth endpoints): bucket by client IP. Requests
+    // pass the ALB, then nginx in the app container; nginx forwards the ALB's
+    // X-Forwarded-For unchanged (var/docker/nginx.conf), so the header ends
+    // with the client address the ALB saw. No express `trust proxy`, so read
+    // that header, falling back to the socket address.
     //
     // Take the LAST entry, not the first. X-Forwarded-For is append-only: each
-    // hop adds what it saw, so with one trusted proxy the tail is the ALB's own
-    // observation and everything before it is whatever the client chose to
-    // send. Reading index 0 handed the bucket key to the caller — sending
+    // hop adds what it saw, so the tail is the ALB's own observation and
+    // everything before it is whatever the client chose to send. If nginx ever
+    // appends again, the tail becomes the ALB node and all anonymous users on
+    // that node share one bucket — measured on prod 2026-10-05 (E2E-02-39). Reading index 0 handed the bucket key to the caller — sending
     // `X-Forwarded-For: <anything>` produced a fresh bucket on every request
     // and the per-IP limits on login, register and forgot stopped applying
     //. Reaching the app without going through the ALB

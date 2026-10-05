@@ -18,6 +18,7 @@ import {
 } from '@gitroom/nestjs-libraries/database/prisma/audit/audit.actor';
 import { setImpersonateCookie } from '@gitroom/backend/services/auth/impersonate.cookie';
 import { isMobileSessionRevoked } from '@gitroom/nestjs-libraries/redis/mobile-session';
+import { clientIpFromForwardedFor } from '@gitroom/nestjs-libraries/throttler/throttler.provider';
 
 /**
  * Routes a session wearing someone else's identity may not reach.
@@ -47,10 +48,12 @@ export { authContextCacheKey, bustAuthContextCache };
 
 
 // Audit rows had no ip and no userAgent on any action; the columns
-// existed and nothing filled them.
-const requestFingerprint = (req: Request) => ({
+// existed and nothing filled them. The ip is the last X-Forwarded-For entry
+// (what the ALB saw), as for throttling — the first one is whatever the
+// client sent.
+export const requestFingerprint = (req: Request) => ({
   ip: (
-    (req.headers['x-forwarded-for'] as string)?.split(',')[0] ||
+    clientIpFromForwardedFor(req.headers['x-forwarded-for'] as string) ||
     req.ip ||
     ''
   ).trim(),
