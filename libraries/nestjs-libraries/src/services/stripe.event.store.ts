@@ -45,6 +45,26 @@ export class StripeEventStore {
     await ioRedis.del(`stripe-event:${id}`).catch(() => undefined);
   }
 
+  /**
+   * Different events of one customer, one at a time. An update that read the
+   * subscription, then lost the race to a deletion, wrote the old plan back
+   * after it (BILL-2). The second event is retried by Stripe and then reads
+   * the state the first one left.
+   */
+  async leaseCustomer(customerId: string, eventId: string): Promise<boolean> {
+    return (
+      (await ioRedis.set(`stripe-customer:${customerId}`, eventId, 'EX', 5 * 60, 'NX')) ===
+      'OK'
+    );
+  }
+
+  async releaseCustomer(customerId: string, eventId: string): Promise<void> {
+    const key = `stripe-customer:${customerId}`;
+    if ((await ioRedis.get(key).catch(() => null)) === eventId) {
+      await ioRedis.del(key).catch(() => undefined);
+    }
+  }
+
   async markDone(id: string, type: string): Promise<void> {
     try {
       await this._events.model.stripeProcessedEvent.create({

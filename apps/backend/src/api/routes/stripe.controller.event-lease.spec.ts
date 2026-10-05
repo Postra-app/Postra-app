@@ -7,6 +7,7 @@ jest.mock('@gitroom/nestjs-libraries/redis/redis.service', () => ({
       return 'OK';
     }),
     del: jest.fn(async (k: string) => (keys.delete(k) ? 1 : 0)),
+    get: jest.fn(async (k: string) => keys.get(k) ?? null),
   },
 }));
 
@@ -48,9 +49,13 @@ const event = {
   data: { object: { metadata: { service: 'gitroom' } } },
 };
 
-const setup = (createSubscription: () => Promise<unknown>) => {
+const setup = (
+  createSubscription: () => Promise<unknown>,
+  delivered: Record<string, any> = event
+) => {
   const stripe = {
-    validateRequest: () => event,
+    validateRequest: () => delivered,
+    updateSubscription: jest.fn(createSubscription),
     createSubscription: jest.fn(createSubscription),
   };
   const store = new StripeEventStore(prisma as any);
@@ -125,5 +130,38 @@ describe('Stripe webhook: one run per event, and a crash is not "done"', () => {
     expect((await late.deliver()).body).toEqual({ ok: true, duplicate: true });
     expect(late.stripe.createSubscription).not.toHaveBeenCalled();
     expect(keys.size).toBe(0);
+  });
+
+  // BILL-2: an update that read the subscription and lost the race to a
+  // deletion wrote the old plan back after it.
+  it('two events of one customer are handled one after the other', async () => {
+    const forCustomer = (id: string, type: string) => ({
+      id,
+      type,
+      data: { object: { customer: 'cus_1', metadata: { service: 'gitroom' } } },
+    });
+    let finish!: () => void;
+    const first = setup(
+      () => new Promise<void>((r) => (finish = r)),
+      forCustomer('evt_a', 'customer.subscription.created')
+    );
+    const pending = first.deliver();
+    await new Promise((r) => setImmediate(r));
+
+    const second = setup(
+      async () => undefined,
+      forCustomer('evt_b', 'customer.subscription.updated')
+    );
+    expect((await second.deliver()).status).toBe(409);
+    expect(second.stripe.updateSubscription).not.toHaveBeenCalled();
+
+    finish();
+    expect((await pending).status).toBe(200);
+    const retry = setup(
+      async () => undefined,
+      forCustomer('evt_b', 'customer.subscription.updated')
+    );
+    expect((await retry.deliver()).status).toBe(200);
+    expect(retry.stripe.updateSubscription).toHaveBeenCalledTimes(1);
   });
 });

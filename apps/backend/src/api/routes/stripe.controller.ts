@@ -87,15 +87,26 @@ export class StripeController {
       return { ok: true, duplicate: true };
     }
 
+    // One event per customer at a time; see StripeEventStore.leaseCustomer.
+    // @ts-ignore
+    const customer: unknown = event?.data?.object?.customer;
+    const customerId = typeof customer === 'string' ? customer : null;
+    if (customerId && !(await this._eventStore.leaseCustomer(customerId, event.id))) {
+      await this._eventStore.release(event.id);
+      throw new HttpException('Another event of this customer is being handled', 409);
+    }
+
     try {
       const result = await handle();
       await this._eventStore.markDone(event.id, event.type);
       await this._eventStore.release(event.id);
+      if (customerId) await this._eventStore.releaseCustomer(customerId, event.id);
       return result ?? { ok: true };
     } catch (e) {
       // Release the lease so Stripe's retry reprocesses the event. Answering
       // 500 is what asks Stripe to retry.
       await this._eventStore.release(event.id);
+      if (customerId) await this._eventStore.releaseCustomer(customerId, event.id);
       Logger.error(
         `Stripe webhook ${event.type} (${event.id}) failed`,
         e instanceof Error ? e.stack : String(e)
