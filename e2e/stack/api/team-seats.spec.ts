@@ -179,3 +179,28 @@ test('E2E-02-31: a used team invite cannot be used again, by anyone', async () =
     await prisma.$disconnect();
   }
 });
+
+// BILL-5: seats were checked when an invite was sent, and sending one
+// reserves nothing — a Pro owner could send several and all of them got in.
+test('Pro: two invites sent with one seat free, only the first person gets in', async () => {
+  const prisma = database();
+  const pro = await throwawayOrg(prisma, { tier: 'PRO', totalChannels: 5, channels: 0 });
+  const first = await throwawayOrg(prisma, { tier: 'PRO', totalChannels: 5, channels: 0 });
+  const second = await throwawayOrg(prisma, { tier: 'PRO', totalChannels: 5, channels: 0 });
+  const tokenOf = async () => {
+    const res = await pro.api.post('/settings/team', invite());
+    expect(res.status(), await res.text()).toBe(201);
+    return new URL((await res.json()).url, 'https://x').searchParams.get('org')!;
+  };
+  try {
+    const [one, two] = [await tokenOf(), await tokenOf()];
+    const join = async (who: typeof pro, token: string) =>
+      (await (await who.api.post('/user/join-org', { data: { org: token } })).json()).id as string | null;
+    expect(await join(first, one)).toBe(pro.orgId);
+    expect(await join(second, two)).toBeNull();
+    expect(await prisma.userOrganization.count({ where: { organizationId: pro.orgId, disabled: false } })).toBe(2);
+  } finally {
+    for (const o of [pro, first, second]) await o.remove();
+    await prisma.$disconnect();
+  }
+});

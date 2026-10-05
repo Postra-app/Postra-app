@@ -1,5 +1,9 @@
-import { PrismaRepository } from '@gitroom/nestjs-libraries/database/prisma/prisma.service';
-import { Role, ShortLinkPreference, SubscriptionTier } from '@prisma/client';
+import {
+  PrismaRepository,
+  PrismaTransaction,
+} from '@gitroom/nestjs-libraries/database/prisma/prisma.service';
+import { pricing } from '@gitroom/nestjs-libraries/database/prisma/subscriptions/pricing';
+import { Role, ShortLinkPreference } from '@prisma/client';
 import { Injectable } from '@nestjs/common';
 import { ioRedis } from '@gitroom/nestjs-libraries/redis/redis.service';
 import { AuthService } from '@gitroom/helpers/auth/auth.service';
@@ -20,7 +24,8 @@ export class OrganizationRepository {
     private _organization: PrismaRepository<'organization'>,
     private _userOrg: PrismaRepository<'userOrganization'>,
     private _user: PrismaRepository<'user'>,
-    private _oauthAuth: PrismaRepository<'oAuthAuthorization'>
+    private _oauthAuth: PrismaRepository<'oAuthAuthorization'>,
+    private _transaction: PrismaTransaction
   ) {}
 
   createMaxUser(id: string, name: string, saasName: string, email: string) {
@@ -301,13 +306,13 @@ export class OrganizationRepository {
         },
       });
 
-    if (
-      process.env.STRIPE_PUBLISHABLE_KEY &&
-      checkForSubscription?.subscription?.subscriptionTier ===
-        SubscriptionTier.STANDARD
-    ) {
-      return false;
-    }
+    // Seats are checked when an invite is sent, but sending one reserves
+    // nothing: a Pro owner could send several and every one of them got in
+    // (BILL-5). The plan's seats are counted again on joining.
+    const tier: keyof typeof pricing =
+      checkForSubscription?.subscription?.subscriptionTier ||
+      (process.env.STRIPE_PUBLISHABLE_KEY ? 'FREE' : 'ULTIMATE');
+    const seats = pricing[tier].team_members;
 
     // The spent mark above lives in one field of the user who used the
     // invite, so their next invite overwrote it and the first link worked
@@ -328,16 +333,31 @@ export class OrganizationRepository {
 
     let create;
     try {
-      create = await this._userOrg.model.userOrganization.create({
-        data: {
-          role,
-          userId,
-          organizationId: orgId,
-        },
+      // Counted and written under the organisation's lock, so two invites
+      // accepted at once cannot both take the last seat.
+      create = await this._transaction.model.$transaction(async (tx) => {
+        await tx.$queryRaw`SELECT "id" FROM "Organization" WHERE "id" = ${orgId} FOR UPDATE`;
+        const active = await tx.userOrganization.count({
+          where: { organizationId: orgId, disabled: false },
+        });
+        if (active >= seats) {
+          return null;
+        }
+        return tx.userOrganization.create({
+          data: {
+            role,
+            userId,
+            organizationId: orgId,
+          },
+        });
       });
     } catch (err) {
       await ioRedis.del(`invite-used:${id}`);
       throw err;
+    }
+    if (!create) {
+      await ioRedis.del(`invite-used:${id}`);
+      return false;
     }
 
     await this._user.model.user.update({
