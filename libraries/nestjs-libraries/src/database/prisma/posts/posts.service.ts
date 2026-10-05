@@ -810,8 +810,16 @@ export class PostsService {
     return { deleted: !!post?.id, id: post?.id ?? null };
   }
 
-  hasRecentAutopost(orgId: string, integrationIds: string[], url: string) {
-    return this._postRepository.hasRecentAutopost(orgId, integrationIds, url);
+  channelsWithRecentAutopost(
+    orgId: string,
+    integrationIds: string[],
+    url: string
+  ) {
+    return this._postRepository.channelsWithRecentAutopost(
+      orgId,
+      integrationIds,
+      url
+    );
   }
 
   countExistingPosts(orgId: string, ids: string[]) {
@@ -1198,7 +1206,9 @@ export class PostsService {
     // republish through the public API reported success and sent nothing
     // (POSTS-8). The editor's republish clears it the same way.
     if (status === 'schedule' && republish) {
-      await this._postRepository.clearReleases(orgId, [id]);
+      // The whole thread: comments with a saved release were skipped and
+      // reported under the old post.
+      await this._postRepository.clearGroupReleases(orgId, getPostById.group);
     }
 
     try {

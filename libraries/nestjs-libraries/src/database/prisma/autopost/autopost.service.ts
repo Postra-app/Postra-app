@@ -622,7 +622,7 @@ export class AutopostService {
   async schedulePost(state: WorkflowChannelsState) {
     // Image-required platforms (Instagram, Pinterest) can't publish a text-only
     // post; drop them when no image was produced rather than failing at publish.
-    const integrations = state.image
+    let integrations = state.image
       ? state.integrations
       : state.integrations.filter(
           (i) =>
@@ -644,15 +644,18 @@ export class AutopostService {
 
     // The post and the feed's cursor are two writes. A worker killed between
     // them left the cursor behind, and the retry posted the same article
-    // again (AI-2). Already posted: let update-url move the cursor on.
-    if (
-      await this._postsService.hasRecentAutopost(
-        orgId,
-        integrations.map((i) => i.id),
-        state.load.url
-      )
-    ) {
-      return;
+    // again (AI-2). Channels that already have it are left out; with none
+    // left, update-url moves the cursor on.
+    const done = await this._postsService.channelsWithRecentAutopost(
+      orgId,
+      integrations.map((i) => i.id),
+      state.load.url
+    );
+    if (done.size) {
+      integrations = integrations.filter((i) => !done.has(i.id));
+      if (!integrations.length) {
+        return;
+      }
     }
 
     const useSlot = state.body.onSlot;

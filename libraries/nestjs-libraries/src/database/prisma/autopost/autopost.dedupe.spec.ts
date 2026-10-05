@@ -18,9 +18,10 @@ const state = (url: string) =>
     integrations: [{ id: 'ch-1', organizationId: 'org-1', providerIdentifier: 'x' }],
   }) as any;
 
-const build = (alreadyPosted: boolean) => {
+const build = (alreadyPosted: boolean | string[]) => {
+  const done = alreadyPosted === true ? ['ch-1'] : alreadyPosted === false ? [] : alreadyPosted;
   const posts = {
-    hasRecentAutopost: jest.fn().mockResolvedValue(alreadyPosted),
+    channelsWithRecentAutopost: jest.fn().mockResolvedValue(new Set(done)),
     createPost: jest.fn().mockResolvedValue([]),
     findFreeDateTime: jest.fn(),
   };
@@ -32,7 +33,7 @@ const build = (alreadyPosted: boolean) => {
 it('an article already posted from this feed is not posted again', async () => {
   const { service, posts } = build(true);
   await service.schedulePost(state('https://blog.example/a?x=1&y=2'));
-  expect(posts.hasRecentAutopost).toHaveBeenCalledWith('org-1', ['ch-1'], 'https://blog.example/a?x=1&y=2');
+  expect(posts.channelsWithRecentAutopost).toHaveBeenCalledWith('org-1', ['ch-1'], 'https://blog.example/a?x=1&y=2');
   expect(posts.createPost).not.toHaveBeenCalled();
 });
 
@@ -53,4 +54,20 @@ it('an article that cannot get the image its channels need is kept for the next 
   };
   await expect(service.schedulePost(instagramOnly)).rejects.toThrow(/needs an image/);
   expect(posts.createPost).not.toHaveBeenCalled();
+});
+
+// Codex review: one channel having the article skipped the others too.
+it('only the channels that already have the article are left out', async () => {
+  const { service, posts } = build(['ch-1']);
+  const twoChannels = {
+    ...state('https://blog.example/d'),
+    integrations: [
+      { id: 'ch-1', organizationId: 'org-1', providerIdentifier: 'mastodon' },
+      { id: 'ch-2', organizationId: 'org-1', providerIdentifier: 'telegram' },
+    ],
+  };
+  await service.schedulePost(twoChannels);
+  expect(posts.createPost).toHaveBeenCalledTimes(1);
+  const sent = posts.createPost.mock.calls[0][1].posts.map((p: any) => p.integration.id);
+  expect(sent).toEqual(['ch-2']);
 });

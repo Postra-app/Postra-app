@@ -343,7 +343,8 @@ export class OrganizationRepository {
         const active = await tx.userOrganization.count({
           where: { organizationId: orgId, disabled: false },
         });
-        if (active >= seats) {
+        // Billing off: no seat limits anywhere, as when inviting.
+        if (process.env.STRIPE_PUBLISHABLE_KEY && active >= seats) {
           return null;
         }
         return tx.userOrganization.create({

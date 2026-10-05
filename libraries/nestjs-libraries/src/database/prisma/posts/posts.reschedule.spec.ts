@@ -5,10 +5,11 @@ import { PostsService } from './posts.service';
 
 const build = (post: Record<string, unknown>) => {
   const repository = {
-    getPostById: jest.fn().mockResolvedValue({ id: 'p1', integration: { providerIdentifier: 'x' }, ...post }),
+    getPostById: jest.fn().mockResolvedValue({ id: 'p1', group: 'g1', integration: { providerIdentifier: 'x' }, ...post }),
     changeDate: jest.fn().mockResolvedValue({}),
     changeState: jest.fn().mockResolvedValue({}),
     clearReleases: jest.fn().mockResolvedValue({}),
+    clearGroupReleases: jest.fn().mockResolvedValue({}),
   };
   const service = new PostsService(repository as any, ...(Array.from({ length: 11 }, () => ({})) as [any]));
   const startWorkflow = jest.spyOn(service, 'startWorkflow').mockResolvedValue(undefined as any);
@@ -37,12 +38,13 @@ describe('republishing through the public API', () => {
   it('clears the saved release so the post really goes out again', async () => {
     const { service, repository } = build({ state: 'PUBLISHED', releaseId: 'r1' });
     await service.changePostStatus('o1', 'p1', 'schedule', true);
-    expect(repository.clearReleases).toHaveBeenCalledWith('o1', ['p1']);
+    // The whole thread, comments included (Codex review).
+    expect(repository.clearGroupReleases).toHaveBeenCalledWith('o1', 'g1');
   });
 
   it('moving a post back to draft keeps its release', async () => {
     const { service, repository } = build({ state: 'QUEUE', releaseId: null });
     await service.changePostStatus('o1', 'p1', 'draft');
-    expect(repository.clearReleases).not.toHaveBeenCalled();
+    expect(repository.clearGroupReleases).not.toHaveBeenCalled();
   });
 });
