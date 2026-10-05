@@ -1223,8 +1223,9 @@ export class StripeService {
       await this._subscriptionService.getSubscriptionByOrganizationId(
         organizationId
       );
+    // A plain Error here was a 500 for an ordinary refusal (BILL-11).
     if (getCurrentSubscription && !getCurrentSubscription?.isLifetime) {
-      throw new Error('You already have a non lifetime subscription');
+      throw new HttpException('You already have a non lifetime subscription', 400);
     }
 
     try {

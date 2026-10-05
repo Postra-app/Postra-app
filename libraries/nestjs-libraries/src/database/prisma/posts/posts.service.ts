@@ -294,7 +294,11 @@ export class PostsService {
     organization: string,
     replaceDraft: boolean = false
   ): Promise<CreatePostDto> {
-    if (!body?.posts?.every((p) => p?.integration?.id)) {
+    // `posts: {}` has no `.every` and was a 500 before validation (API-12).
+    if (
+      !Array.isArray(body?.posts) ||
+      !body.posts.every((p) => p?.integration?.id)
+    ) {
       throw new BadRequestException('All posts must have an integration id');
     }
 
@@ -905,6 +909,10 @@ export class PostsService {
     // `.map` as a 500.
     if (posts != null && !Array.isArray(posts)) {
       throw new BadRequestException('posts must be an array');
+    }
+    // Each post's value is a list too; `value: {}` died on `.map` (POSTS-13).
+    if ((posts || []).some((post) => post?.value != null && !Array.isArray(post.value))) {
+      throw new BadRequestException('Each post value must be an array');
     }
 
     const integrationsById = new Map(
