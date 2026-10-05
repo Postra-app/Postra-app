@@ -78,6 +78,9 @@ export class OrganizationRepository {
             subscriptionTier: true,
             totalChannels: true,
             isLifetime: true,
+            // The credit cycle starts here; without it the public API and
+            // MCP counted from the time of the request (API-7).
+            createdAt: true,
           },
         },
       },

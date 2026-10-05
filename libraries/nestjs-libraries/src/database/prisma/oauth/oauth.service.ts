@@ -1,3 +1,4 @@
+import { ioRedis } from '@gitroom/nestjs-libraries/redis/redis.service';
 import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
 import { OAuthRepository } from '@gitroom/nestjs-libraries/database/prisma/oauth/oauth.repository';
 import { CreateOAuthAppDto } from '@gitroom/nestjs-libraries/dtos/oauth/create-oauth-app.dto';
@@ -17,6 +18,23 @@ export class OAuthService {
   }
 
   async createApp(orgId: string, dto: CreateOAuthAppDto) {
+    // One at a time per organisation: two requests at once both saw no app
+    // and both created one (API-9).
+    const lock = `oauth-app-create:${orgId}`;
+    if ((await ioRedis.set(lock, '1', 'EX', 15, 'NX')) !== 'OK') {
+      throw new HttpException(
+        'You can only have one OAuth application per organization',
+        HttpStatus.BAD_REQUEST
+      );
+    }
+    try {
+      return await this.createOnlyApp(orgId, dto);
+    } finally {
+      await ioRedis.del(lock).catch(() => undefined);
+    }
+  }
+
+  private async createOnlyApp(orgId: string, dto: CreateOAuthAppDto) {
     const existing = await this._oauthRepository.getAppByOrgId(orgId);
     if (existing) {
       throw new HttpException(
@@ -150,14 +168,21 @@ export class OAuthService {
 
     const token = 'pos_' + makeSecureId(40);
     const encryptedToken = AuthService.fixedEncryption(token);
-    const { organizationId } = await this._oauthRepository.exchangeCodeForToken(
+    const spent = await this._oauthRepository.exchangeCodeForToken(
       auth.id,
+      encryptedCode,
       encryptedToken
     );
+    if (!spent) {
+      throw new HttpException(
+        { error: 'invalid_grant' },
+        HttpStatus.BAD_REQUEST
+      );
+    }
 
     // No Stripe customer id here: an outside app has no use for it.
     return {
-      id: organizationId,
+      id: auth.organizationId,
       access_token: token,
       token_type: 'bearer',
     };
