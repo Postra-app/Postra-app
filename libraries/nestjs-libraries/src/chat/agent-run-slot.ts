@@ -22,11 +22,13 @@ export const takeAgentRunSlot = async (
 ): Promise<(() => Promise<void>) | null> => {
   const key = `agent-runs:${orgId}`;
   const running = await ioRedis.incr(key);
-  await ioRedis.expire(key, SLOT_TTL_SECONDS);
   if (running > AGENT_RUNS_PER_ORG) {
     await ioRedis.decr(key);
+    // No TTL refresh here: refused attempts kept extending a counter left
+    // behind by a crashed process, so it never expired.
     return null;
   }
+  await ioRedis.expire(key, SLOT_TTL_SECONDS);
   let released = false;
   return async () => {
     if (released) return;

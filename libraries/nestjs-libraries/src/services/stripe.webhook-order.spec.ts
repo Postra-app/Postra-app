@@ -201,6 +201,9 @@ describe('a second live subscription for the same customer', () => {
 
     expect(cancelSubscription).toHaveBeenCalledWith('sub_1');
     expect(res).toMatchObject({ skipped: 'duplicate subscription' });
+    // Stripe's default page of 10 could hide the older plan behind abandoned
+    // checkouts.
+    expect(listSubscriptions).toHaveBeenCalledWith(expect.objectContaining({ limit: 100 }));
     expect(subscriptionService.createOrUpdateSubscription).not.toHaveBeenCalled();
     expect(notificationService.inAppNotification).toHaveBeenCalled();
   });

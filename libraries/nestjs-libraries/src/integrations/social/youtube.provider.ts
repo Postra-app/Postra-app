@@ -1,3 +1,4 @@
+import { HttpException } from '@nestjs/common';
 import { fetchMediaStream } from '@gitroom/nestjs-libraries/media/fetch.media.buffer';
 import { hasAiGeneratedMedia } from '@gitroom/nestjs-libraries/integrations/social/ai.media';
 import {
@@ -380,8 +381,10 @@ export class YoutubeProvider extends SocialAbstract implements SocialProvider {
         (item) => item.id === String(data?.id)
       );
 
+      // The id comes from the client: a channel the token does not own is
+      // the caller's mistake (404), not a server error.
       if (!channel) {
-        throw new Error('Channel not found');
+        throw new HttpException('Channel not found', 404);
       }
 
       return {

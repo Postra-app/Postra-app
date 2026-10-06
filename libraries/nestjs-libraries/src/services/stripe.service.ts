@@ -25,6 +25,10 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || 'sk_nothing');
 // one was cancelled in place of the real subscription — the organisation
 // dropped to FREE while the live subscription kept charging (upstream
 // ac65e200).
+//
+// Every subscriptions.list here asks for 100, Stripe's largest page: the
+// default of 10, newest first, let ten abandoned checkouts hide the live
+// subscription from the duplicate check and the cancel paths.
 export const isLiveSubscription = (s: { status: string }) =>
   s.status !== 'canceled' &&
   s.status !== 'incomplete' &&
@@ -192,6 +196,7 @@ export class StripeService {
         await stripe.subscriptions.list({
           customer: current.customer as string,
           status: 'all',
+          limit: 100,
         })
       ).data.filter((s) => s.id !== current.id && isLiveSubscription(s));
       const isDuplicate = others.some(
@@ -296,7 +301,7 @@ export class StripeService {
     // The plan row is per customer, not per Stripe subscription. If the
     // customer already bought again, this deletion is for the old one.
     const stillLive = (
-      await stripe.subscriptions.list({ customer, status: 'all' })
+      await stripe.subscriptions.list({ customer, status: 'all', limit: 100 })
     ).data.some(
       (f) =>
         f.id !== event.data.object.id &&
@@ -453,6 +458,7 @@ export class StripeService {
         await stripe.subscriptions.list({
           customer,
           status: 'all',
+          limit: 100,
         })
       ).data.filter((f) => f.status === 'active' || f.status === 'trialing'),
     };
@@ -506,6 +512,7 @@ export class StripeService {
         await stripe.subscriptions.list({
           customer,
           status: 'all',
+          limit: 100,
         })
       ).data;
     } catch (err) {
@@ -542,6 +549,7 @@ export class StripeService {
         await stripe.subscriptions.list({
           customer,
           status: 'all',
+          limit: 100,
           expand: ['data.latest_invoice'],
         })
       ).data.filter(isLiveSubscription),
@@ -803,7 +811,7 @@ export class StripeService {
     paymentId: string
   ): Promise<{ finish: boolean; reason?: string; url?: string }> {
     const trialing = (
-      await stripe.subscriptions.list({ customer: paymentId })
+      await stripe.subscriptions.list({ customer: paymentId, limit: 100 })
     ).data.find((f) => f.status === 'trialing');
     if (!trialing) {
       return { finish: false, reason: 'no-trial' };
@@ -856,6 +864,7 @@ export class StripeService {
         await stripe.subscriptions.list({
           customer,
           status: 'all',
+          limit: 100,
           expand: ['data.discounts'],
         })
       ).data.find((f) => f.status === 'active' || f.status === 'trialing'),
@@ -890,6 +899,7 @@ export class StripeService {
         await stripe.subscriptions.list({
           customer,
           status: 'all',
+          limit: 100,
           expand: ['data.discounts'],
         })
       ).data.find((f) => f.status === 'active' || f.status === 'trialing'),
@@ -1077,6 +1087,7 @@ export class StripeService {
         await stripe.subscriptions.list({
           customer,
           status: 'all',
+          limit: 100,
         })
       ).data.filter((f) => f.status === 'active' || f.status === 'trialing'),
     };

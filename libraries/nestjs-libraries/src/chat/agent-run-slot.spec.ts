@@ -56,3 +56,12 @@ it('only a reply takes a slot, not the metadata the chat loads on every page', (
   expect(isAgentGeneration({ operationName: 'loadAgentState', query: 'query loadAgentState($data: LoadAgentStateInput!) { loadAgentState(data: $data) { state } }' })).toBe(false);
   expect(isAgentGeneration(undefined)).toBe(false);
 });
+
+it('a refused attempt does not keep a slot left by a crashed process alive', async () => {
+  counters.clear();
+  const { ioRedis } = jest.requireMock('@gitroom/nestjs-libraries/redis/redis.service');
+  counters.set('agent-runs:org-9', AGENT_RUNS_PER_ORG); // two runs that never released
+  (ioRedis.expire as jest.Mock).mockClear();
+  expect(await takeAgentRunSlot('org-9')).toBeNull();
+  expect(ioRedis.expire).not.toHaveBeenCalled();
+});

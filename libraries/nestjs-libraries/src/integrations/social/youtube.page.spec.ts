@@ -33,6 +33,6 @@ describe('YouTube channel picked after sign-in', () => {
     jest.spyOn(console, 'error').mockImplementation(() => undefined);
     await expect(
       new YoutubeProvider().fetchPageInformation('token', { id: 'C' })
-    ).rejects.toThrow('Channel not found');
+    ).rejects.toMatchObject({ status: 404, message: 'Channel not found' });
   });
 });
