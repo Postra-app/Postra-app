@@ -37,10 +37,10 @@ jobs:
     timeout-minutes: 60
     steps:
       - name: Checkout repo
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v4
+        uses: aws-actions/configure-aws-credentials@v6
         with:
           role-to-assume: ${{ secrets.AWS_DEPLOY_ROLE_ARN }}
           role-session-name: postra-deploy-${{ github.run_id }}
@@ -83,10 +83,10 @@ jobs:
     timeout-minutes: 45
     steps:
       - name: Checkout repo
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v4
+        uses: aws-actions/configure-aws-credentials@v6
         with:
           role-to-assume: ${{ secrets.AWS_DEPLOY_ROLE_ARN }}
           role-session-name: postra-deploy-${{ github.run_id }}
@@ -107,7 +107,7 @@ jobs:
 
       - name: Upload staging smoke screenshots
         if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: playwright-staging
           path: e2e/playwright/.results/
@@ -125,10 +125,10 @@ jobs:
     timeout-minutes: 60
     steps:
       - name: Checkout repo
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v4
+        uses: aws-actions/configure-aws-credentials@v6
         with:
           role-to-assume: ${{ secrets.AWS_DEPLOY_ROLE_ARN }}
           role-session-name: postra-deploy-${{ github.run_id }}
@@ -376,7 +376,7 @@ jobs:
       # success(), and after a failed smoke nothing is successful any more.
       - name: Upload smoke test screenshots
         if: failure() && steps.smoke.outcome == 'failure'
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: playwright-smoke
           path: e2e/playwright/.results/

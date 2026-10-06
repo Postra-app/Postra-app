@@ -49,9 +49,9 @@ export default {
   ],
   coveragePathIgnorePatterns: ['/node_modules/', '/\\.next/', '/dist/', '/coverage/'],
   // A ratchet, not a target: the floor sits just under what the suite covers
-  // today (2026-10-01: lines 13.2, statements 13.7, functions 7.5, branches
-  // 9.1), so deleting tests fails CI. Raise it whenever coverage goes up.
+  // today (2026-10-06: lines 18.3, statements 18.72, functions 11.92, branches
+  // 13.78), so deleting tests fails CI. Raise it whenever coverage goes up.
   coverageThreshold: {
-    global: { lines: 13, statements: 13, functions: 7, branches: 9 },
+    global: { lines: 17, statements: 18, functions: 11, branches: 13 },
   },
 };
