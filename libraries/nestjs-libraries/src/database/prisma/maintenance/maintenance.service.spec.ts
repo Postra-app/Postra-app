@@ -181,6 +181,27 @@ describe('sweepOrphanMedia', () => {
     expect(removeFile).not.toHaveBeenCalled();
   });
 
+  it('leaves a file a post started using while the sweep ran (E2E-06-33)', async () => {
+    const prisma = buildPrisma({
+      media: [
+        { id: 'm1', path: 'uploads/reused.jpg', thumbnail: null, deletedAt: longAgo },
+      ],
+    });
+    // The first reference scan sees no post; one is saved before the files go.
+    const saved = { id: 'p1', image: JSON.stringify([{ path: 'uploads/reused.jpg' }]) };
+    const scans = prisma.model.post.findMany;
+    let calls = 0;
+    scans.mockImplementation(async () => (calls++ === 0 ? [] : [saved]));
+    const service = new MaintenanceService(prisma as any);
+
+    const report = await service.sweepOrphanMedia(true);
+
+    expect(calls).toBeGreaterThan(1);
+    expect(report.removed).toBe(0);
+    expect(report.stillReferenced).toBe(1);
+    expect(removeFile).not.toHaveBeenCalled();
+  });
+
   it('leaves a file that is still somebody avatar', async () => {
     const prisma = buildPrisma({
       media: [
