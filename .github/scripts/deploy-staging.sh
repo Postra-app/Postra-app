@@ -82,6 +82,6 @@ if [ -z "${E2E_EMAIL:-}" ] || [ -z "${E2E_PASSWORD:-}" ]; then
   echo "::warning::STAGING_E2E_EMAIL / STAGING_E2E_PASSWORD not set — staging checked by health only"
   exit 0
 fi
-npm install --prefix e2e/playwright --no-save --no-package-lock @playwright/test@1.58.2
+npm install --prefix e2e/playwright --no-save --no-package-lock "@playwright/test@$(jq -r '.devDependencies["@playwright/test"]' package.json)"
 e2e/playwright/node_modules/.bin/playwright install --with-deps chromium
 E2E_BASE_URL="$URL" e2e/playwright/node_modules/.bin/playwright test -c e2e/playwright --project smoke

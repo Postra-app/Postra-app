@@ -616,12 +616,14 @@ export const ManageModal: FC<AddEditModalProps> = (props) => {
                   ? t('edit_post_tab', 'Edit')
                   : t('preview', 'Preview')}
               </button>
-              <div
+              <button
+                type="button"
+                aria-label={t('close', 'Close')}
                 onClick={askClose}
                 className="hidden phone:flex absolute end-[16px] top-1/2 -translate-y-1/2 cursor-pointer text-[#A3A3A3] hover:text-white"
               >
                 <CloseIcon />
-              </div>
+              </button>
             </div>
             <div
               className={clsx(
@@ -727,9 +729,16 @@ export const ManageModal: FC<AddEditModalProps> = (props) => {
           >
             <div className="bg-newBgColor h-[65px] rounded-e-[20px] !rounded-b-[0] flex phone:hidden items-center px-[20px] text-[20px] font-[600]">
               <div className="flex-1">{t('post_preview', 'Post Preview')}</div>
-              <div className="cursor-pointer">
-                <CloseIcon onClick={askClose} className="text-[#A3A3A3]" />
-              </div>
+              {/* A real button: the bare icon had no name and no keyboard
+                  access, and Escape is off in this modal. */}
+              <button
+                type="button"
+                aria-label={t('close', 'Close')}
+                onClick={askClose}
+                className="cursor-pointer"
+              >
+                <CloseIcon className="text-[#A3A3A3]" />
+              </button>
             </div>
             <div className="flex-1 relative">
               <Scrollable

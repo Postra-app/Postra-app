@@ -1,0 +1,54 @@
+name: Runner freshness
+
+# CI pins one explicit Ubuntu image (ci-workflows.spec.ts) instead of
+# ubuntu-latest, so a new image never arrives unannounced. This checks once a
+# week whether GitHub offers a newer one and opens an issue when it does.
+# Moving is then a PR: change every runs-on (here, Postra-mobile ci.yml and
+# postra-status), and let CI show whether Playwright already ships browsers
+# for the new image (1.58 had none for 26.04).
+
+on:
+  schedule:
+    - cron: '0 6 * * 1'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  check:
+    runs-on: ubuntu-26.04
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Compare with the newest Ubuntu runner image
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          NEWEST=$(gh api repos/actions/runner-images/contents/README.md -q .content \
+            | base64 -d | grep -o -E '`ubuntu-[0-9]{2}\.04`' | tr -d '`' | sort -V | tail -1)
+          OURS=$(grep -h -o -E "^\s*runs-on: *'?[a-z0-9.-]+" .github/workflows/*.yml \
+            | sed -E "s/.*runs-on: *'?//" | sort -u)
+          echo "Newest image: ${NEWEST}"
+          echo "Ours: ${OURS}"
+          if [ -z "$NEWEST" ]; then
+            echo "::error::Could not read the image list from actions/runner-images"
+            exit 1
+          fi
+          if [ "$OURS" = "$NEWEST" ]; then
+            exit 0
+          fi
+          TITLE="CI runners: move to ${NEWEST}"
+          # A plain list, not --search: the search index lags, and a second
+          # run right after the first opened a duplicate.
+          if [ -n "$(gh issue list --state open --limit 500 --json number,title \
+            --jq ".[] | select(.title == \"${TITLE}\") | .number")" ]; then
+            echo "Issue already open"
+            exit 0
+          fi
+          gh issue create --title "$TITLE" --body "GitHub offers \`${NEWEST}\`; our workflows run on \`$(echo "$OURS" | paste -sd " " -)\`.
+
+          Check in https://github.com/actions/runner-images that the image is GA, not beta. Then, in one PR per repo:
+          - every \`runs-on\` in this repo, Postra-mobile \`.github/workflows/ci.yml\` and postra-status;
+          - Playwright (root \`package.json\`) to a version that ships browsers for the new image — CI on the PR shows it (\`stack-e2e\`, then the deploy smoke and the nightly canary)."

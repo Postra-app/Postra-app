@@ -106,6 +106,21 @@ export const Sets: FC = () => {
 
   const addSet = useCallback(
     (params?: { id?: string; name?: string; content?: string }) => () => {
+      // The editor reads the channel list once, when it opens. Opened before
+      // the list arrived (or with no channel at all) it rendered nothing: a
+      // full-screen blank layer with no close button and Escape switched off,
+      // stuck until a reload. The buttons wait for the list; with no channels
+      // say why instead.
+      if (!integrations?.length) {
+        toaster.show(
+          t(
+            'sets_need_a_channel',
+            'Connect a channel first: a set is a post for your channels.'
+          ),
+          'warning'
+        );
+        return;
+      }
       modal.openModal({
         id: 'add-edit-modal',
         ariaLabel: 'Post editor',
@@ -214,7 +229,11 @@ export const Sets: FC = () => {
                   <div className="flex flex-col justify-center">{p.name}</div>
                   <div className="flex flex-col justify-center">
                     <div>
-                      <Button variant="secondary" onClick={addSet(p)}>
+                      <Button
+                        variant="secondary"
+                        onClick={addSet(p)}
+                        disabled={isLoading}
+                      >
                         {t('edit', 'Edit')}
                       </Button>
                     </div>
@@ -233,6 +252,7 @@ export const Sets: FC = () => {
           <div>
             <Button
               onClick={addSet()}
+              disabled={isLoading}
               className={clsx((data?.length || 0) > 0 && 'my-[16px]')}
             >
               {t('add_a_set', 'Add a set')}

@@ -1,27 +1,22 @@
-# Until launch, version updates are patch-only and arrive as one grouped PR per
-# ecosystem. Security fixes come separately (Dependabot security updates are on);
-# minors and majors wait for a planned upgrade after launch.
+# Latest stable of everything (decision 2026-10-06). Patches and minors come
+# grouped in one weekly PR; each major comes on its own, so it gets its own
+# CI run and review. Security fixes come separately (Dependabot security
+# updates are on).
 version: 2
 updates:
   - package-ecosystem: "npm"
     directory: "/"
     schedule:
       interval: "weekly"
-    open-pull-requests-limit: 2
-    ignore:
-      - dependency-name: "*"
-        update-types: ["version-update:semver-major", "version-update:semver-minor"]
+    open-pull-requests-limit: 5
     groups:
-      npm-patch:
+      npm-minor-patch:
         applies-to: version-updates
-        patterns: ["*"]
+        update-types: ["minor", "patch"]
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:
-      interval: "monthly"
-    ignore:
-      - dependency-name: "*"
-        update-types: ["version-update:semver-major"]
+      interval: "weekly"
     groups:
       actions:
         patterns: ["*"]

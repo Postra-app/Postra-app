@@ -22,25 +22,25 @@ concurrency:
 
 jobs:
   canary:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     timeout-minutes: 30
 
     steps:
       - name: Checkout repo
-        uses: actions/checkout@v5
+        uses: actions/checkout@v7
 
       - name: Setup Node.js 22
-        uses: actions/setup-node@v5
+        uses: actions/setup-node@v7
         with:
           node-version: 22
           # npm only installs the test runner here; no pnpm cache.
           package-manager-cache: false
 
       # Only the test runner, not the whole monorepo — same as the deploy
-      # smoke. Keep the version in step with the root devDependency.
+      # smoke, at the version the root devDependency pins.
       - name: Install Playwright
         run: |
-          npm install --prefix e2e/playwright --no-save --no-package-lock @playwright/test@1.58.2
+          npm install --prefix e2e/playwright --no-save --no-package-lock "@playwright/test@$(jq -r '.devDependencies["@playwright/test"]' package.json)"
           e2e/playwright/node_modules/.bin/playwright install --with-deps chromium webkit
 
       # The smoke only drafts; publish-canary publishes for real, on the
@@ -65,7 +65,7 @@ jobs:
       # Screenshots only: traces are off in CI (they carry the session cookie).
       - name: Upload screenshots
         if: failure()
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: e2e-canary
           path: e2e/playwright/.results/
@@ -76,7 +76,7 @@ jobs:
 
       - name: Open or update the canary issue
         if: failure()
-        uses: actions/github-script@v8
+        uses: actions/github-script@v9
         with:
           script: |
             const run = `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`;
