@@ -23,7 +23,13 @@ const ch = (id: string, providerIdentifier: string, disabled = true): Channel =>
   disabled,
 });
 
-const build = (channels: Channel[], current: { totalChannels: number } | null) => {
+// `underLock` is the list as it reads inside the channels-enable lock; by
+// default the same as before it.
+const build = (
+  channels: Channel[],
+  current: { totalChannels: number } | null,
+  underLock: Channel[] = channels
+) => {
   const repository = {
     getOrganizationByCustomerId: jest.fn().mockResolvedValue({ id: 'org-1' }),
     getSubscriptionByCustomerId: jest.fn().mockResolvedValue(current),
@@ -35,8 +41,16 @@ const build = (channels: Channel[], current: { totalChannels: number } | null) =
     disableIntegrations: jest.fn().mockResolvedValue(undefined),
     disableChannel: jest.fn().mockResolvedValue(undefined),
     enableChannels: jest.fn().mockResolvedValue(undefined),
+    enableChannelsUnderLock: jest.fn(),
     changeActiveCron: jest.fn().mockResolvedValue(undefined),
   };
+  integrationService.enableChannelsUnderLock.mockImplementation(
+    async (org: string, decide: (c: Channel[]) => string[]) => {
+      const ids = decide(underLock);
+      if (ids.length) await integrationService.enableChannels(org, ids);
+      return ids;
+    }
+  );
   const organizationService = {
     reconcileTeamSeats: jest.fn().mockResolvedValue(undefined),
     getOrgById: jest.fn(),
@@ -110,6 +124,19 @@ describe('channels after paying again', () => {
       null
     );
     await subscribe(service, 'ULTIMATE', 12, true);
+    expect(integrationService.enableChannels).not.toHaveBeenCalled();
+  });
+
+  // Codex review 10-06: the decision is made on the list read inside the
+  // lock that connecting a channel also takes.
+  it('a channel connected meanwhile is counted, and then nothing is switched on', async () => {
+    const before = [ch('fb', 'facebook'), ch('ig', 'instagram'), ch('tt', 'tiktok')];
+    const { service, integrationService } = build(before, null, [
+      ...before,
+      ch('li', 'linkedin', false),
+    ]);
+    await subscribe(service, 'STANDARD', 3);
+    expect(integrationService.enableChannelsUnderLock).toHaveBeenCalled();
     expect(integrationService.enableChannels).not.toHaveBeenCalled();
   });
 

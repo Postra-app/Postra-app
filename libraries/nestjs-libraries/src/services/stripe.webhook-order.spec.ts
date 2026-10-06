@@ -5,6 +5,7 @@ const cancelSubscription = jest.fn().mockResolvedValue({});
 const listInvoices = jest.fn();
 const listInvoicePayments = jest.fn();
 const createRefund = jest.fn();
+const listRefunds = jest.fn();
 
 jest.mock('stripe', () => {
   const actual = jest.requireActual('stripe');
@@ -17,7 +18,7 @@ jest.mock('stripe', () => {
     },
     invoices: { list: listInvoices },
     invoicePayments: { list: listInvoicePayments },
-    refunds: { create: createRefund },
+    refunds: { create: createRefund, list: listRefunds },
   }));
   mock.errors = actual.errors ?? actual.default?.errors;
   return mock;
@@ -85,6 +86,7 @@ beforeEach(() => {
   listInvoices.mockResolvedValue({ data: [] });
   listInvoicePayments.mockResolvedValue({ data: [] });
   createRefund.mockImplementation(async () => ({ amount: 2900 }));
+  listRefunds.mockResolvedValue({ data: [] });
 });
 
 describe('subscription events are written from Stripe’s current state', () => {
@@ -271,6 +273,36 @@ describe('a second live subscription for the same customer', () => {
     expect(cancelSubscription).toHaveBeenCalledWith('sub_1');
     expect(res).toMatchObject({ skipped: 'duplicate subscription' });
     expect(notificationService.inAppNotification.mock.calls[0][2]).toContain('contact us');
+  });
+
+  // Codex review 10-06: a crash between refund and cancel must not lose the
+  // refund nor repeat it.
+  it('refunds before cancelling, and a retry does not refund again', async () => {
+    retrieveSubscription.mockResolvedValue(sub('active', 'PRO', { created: 200 }));
+    listSubscriptions.mockResolvedValue({ data: [older, { ...sub('active'), created: 200 }] });
+    listInvoices.mockResolvedValue({ data: [{ id: 'in_1', amount_paid: 2900 }] });
+    listInvoicePayments.mockResolvedValue({
+      data: [{ id: 'inpay_1', payment: { type: 'payment_intent', payment_intent: 'pi_1' } }],
+    });
+    const order: string[] = [];
+    createRefund.mockImplementation(async () => (order.push('refund'), { amount: 2900 }));
+    cancelSubscription.mockImplementationOnce(async () => {
+      order.push('cancel');
+      throw new Error('process died');
+    });
+    const { service, notificationService } = build();
+    const evt = event('customer.subscription.created', sub('active', 'PRO', { created: 200 }));
+
+    await expect(service.createSubscription(evt)).rejects.toThrow('process died');
+    expect(order).toEqual(['refund', 'cancel']);
+
+    // Stripe retries; the duplicate is still live and already refunded.
+    listRefunds.mockResolvedValue({ data: [{ amount: 2900, status: 'succeeded' }] });
+    cancelSubscription.mockResolvedValue({});
+    await service.createSubscription(evt);
+    expect(createRefund).toHaveBeenCalledTimes(1);
+    expect(cancelSubscription).toHaveBeenLastCalledWith('sub_1');
+    expect(notificationService.inAppNotification.mock.calls.at(-1)[2]).toContain('£29.00');
   });
 
   it('the older one is kept and written as usual', async () => {

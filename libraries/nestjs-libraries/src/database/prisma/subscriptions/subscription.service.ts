@@ -249,22 +249,28 @@ export class SubscriptionService {
     // channels the user disabled on purpose, and only when every channel the
     // plan's platforms cover fits, since auto-disabled channels cannot be told
     // apart from the user's. Platforms outside the plan stay off.
-    const covered = channels.filter((c) =>
-      to.allowedProviders.includes(c.providerIdentifier)
-    );
     const limit = channelLimitFor({
       isTrailing: change.isTrailing,
       subscription: { totalChannels },
     });
+    const toEnable = (list: typeof channels) => {
+      const covered = list.filter((c) =>
+        to.allowedProviders.includes(c.providerIdentifier)
+      );
+      return covered.length <= limit
+        ? covered.filter((c) => c.disabled).map((c) => c.id)
+        : [];
+    };
+    // Checked once on the list read above (most webhooks have nothing to
+    // switch on and take no lock), decided again inside the lock.
     if (
       billing !== 'FREE' &&
-      covered.some((c) => c.disabled) &&
-      covered.length <= limit &&
-      totalChannels > change.previousChannels
+      totalChannels > change.previousChannels &&
+      toEnable(channels).length
     ) {
-      await this._integrationService.enableChannels(
+      await this._integrationService.enableChannelsUnderLock(
         organizationId,
-        covered.filter((c) => c.disabled).map((c) => c.id)
+        toEnable
       );
     }
 

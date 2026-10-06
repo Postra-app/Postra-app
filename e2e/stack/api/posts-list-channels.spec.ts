@@ -35,15 +35,17 @@ test('the post list keeps only the chosen channels, and counts them', async () =
     for (const p of all.posts.filter((p) => (p.c ?? p.content ?? '').includes(tag))) created.push(p.g ?? p.group!);
     expect(created.length).toBe(2);
 
+    // Other specs add and delete drafts in organisation A at the same time,
+    // so every check reads one response and only this test's own posts.
+    const mine = (r: Awaited<ReturnType<typeof list>>) =>
+      r.posts.map((p) => p.c ?? p.content ?? '').filter((c) => c.includes(tag));
     const onlyBluesky = await list(`&integrations=${bluesky}`);
-    const channelsSeen = new Set(onlyBluesky.posts.map((p) => p.n?.i ?? p.integration?.id));
-    expect([...channelsSeen]).toEqual([bluesky]);
-    expect(onlyBluesky.posts.some((p) => (p.c ?? p.content ?? '').includes(`${tag} bluesky`))).toBe(true);
+    expect([...new Set(onlyBluesky.posts.map((p) => p.n?.i ?? p.integration?.id))]).toEqual([bluesky]);
+    expect(mine(onlyBluesky)).toEqual([`${tag} bluesky`]);
     expect(onlyBluesky.total).toBe(onlyBluesky.posts.length);
-    expect(onlyBluesky.total).toBeLessThan(all.total);
 
     expect((await list('&integrations=')).total, 'nothing selected → nothing listed').toBe(0);
-    expect((await list(`&integrations=${bluesky},${mastodon}`)).total).toBe(all.total);
+    expect(mine(await list(`&integrations=${bluesky},${mastodon}`)).sort()).toEqual([`${tag} bluesky`, `${tag} mastodon`]);
     // Another organisation's channel id lists nothing of theirs.
     expect((await list(`&integrations=${channelOf('b')}`)).total).toBe(0);
   } finally {

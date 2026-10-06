@@ -192,6 +192,20 @@ export class StripeService {
           const paymentIntent = ref(payment.payment.payment_intent);
           const charge = ref(payment.payment.charge);
           if (!paymentIntent && !charge) continue;
+          // A retry after a crash: what was refunded already counts and is
+          // not refunded again (the idempotency key only lasts 24 hours).
+          const earlier = (
+            await stripe.refunds.list({
+              ...(paymentIntent
+                ? { payment_intent: paymentIntent }
+                : { charge: charge! }),
+              limit: 10,
+            })
+          ).data.filter((r) => r.status !== 'failed' && r.status !== 'canceled');
+          if (earlier.length) {
+            refunded += earlier.reduce((sum, r) => sum + r.amount, 0);
+            continue;
+          }
           const result = await stripe.refunds.create(
             {
               ...(paymentIntent
@@ -257,8 +271,12 @@ export class StripeService {
           (s.created === current.created && s.id < current.id)
       );
       if (isDuplicate) {
-        await stripe.subscriptions.cancel(current.id);
+        // Refund first, then cancel: a crash in between leaves the duplicate
+        // live, so the retried webhook comes back here and finishes. The
+        // other order left a cancelled subscription that a retry skips, and
+        // the payment unrefunded (Codex review 10-06).
         const refund = await this.refundDuplicate(current.id);
+        await stripe.subscriptions.cancel(current.id);
         const org = await this._organizationService.getOrgByCustomerId(
           current.customer as string
         );

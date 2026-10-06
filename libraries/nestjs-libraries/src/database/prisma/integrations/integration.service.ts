@@ -614,9 +614,36 @@ export class IntegrationService {
     return { deleted: true };
   }
 
-  async enableChannels(org: string, ids: string[]) {
-    if (ids.length) {
-      await this._integrationRepository.enableChannels(org, ids);
+  // Switches channels on in bulk under the same per-organisation lock as
+  // connecting a channel and enabling one by hand: `decide` sees the list as
+  // it is inside the lock, so a channel connected meanwhile is counted (a
+  // webhook re-enabling three while a fourth connected left four on a plan
+  // of three). Waits a few seconds for the lock, then throws so the caller's
+  // webhook is retried.
+  async enableChannelsUnderLock(
+    org: string,
+    decide: (
+      channels: Awaited<ReturnType<IntegrationRepository['getIntegrationsList']>>
+    ) => string[]
+  ): Promise<string[]> {
+    const lock = `channels-enable:${org}`;
+    for (let attempt = 0; ; attempt++) {
+      if ((await ioRedis.set(lock, '1', 'EX', 15, 'NX')) === 'OK') break;
+      if (attempt >= 20) {
+        throw new Error(`channels-enable lock busy for ${org}`);
+      }
+      await new Promise((r) => setTimeout(r, 250));
+    }
+    try {
+      const ids = decide(
+        await this._integrationRepository.getIntegrationsList(org)
+      );
+      if (ids.length) {
+        await this._integrationRepository.enableChannels(org, ids);
+      }
+      return ids;
+    } finally {
+      await ioRedis.del(lock).catch(() => undefined);
     }
   }
 
