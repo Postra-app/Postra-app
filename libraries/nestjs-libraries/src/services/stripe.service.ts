@@ -20,6 +20,16 @@ export const POSTRA_INVOICE_SETTINGS = { footer: 'B K Company trading as Postra'
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || 'sk_nothing');
 
+// A subscription that can be charged or cancelled. `incomplete` (first
+// payment never went through) and `incomplete_expired` are not: listed first,
+// one was cancelled in place of the real subscription — the organisation
+// dropped to FREE while the live subscription kept charging (upstream
+// ac65e200).
+export const isLiveSubscription = (s: { status: string }) =>
+  s.status !== 'canceled' &&
+  s.status !== 'incomplete' &&
+  s.status !== 'incomplete_expired';
+
 @Injectable()
 export class StripeService {
   private readonly _logger = new Logger(StripeService.name);
@@ -497,7 +507,7 @@ export class StripeService {
           status: 'all',
           expand: ['data.latest_invoice'],
         })
-      ).data.filter((f) => f.status !== 'canceled'),
+      ).data.filter(isLiveSubscription),
     };
 
     const sub = currentUserSubscription.data[0];
@@ -1171,7 +1181,7 @@ export class StripeService {
 
     const subscriptions = (
       await this.listSubscriptions(customer, organizationId)
-    ).filter((f) => f.status !== 'canceled');
+    ).filter(isLiveSubscription);
 
     if (!subscriptions.length) {
       throw new Error('No active subscription found');
@@ -1194,9 +1204,13 @@ export class StripeService {
       return;
     }
 
+    // Everything that can still bill, `incomplete` included (its open invoice
+    // could still be paid); `incomplete_expired` is already final.
     const subscriptions = (
       await this.listSubscriptions(org.paymentId, organizationId)
-    ).filter((f) => f.status !== 'canceled');
+    ).filter(
+      (f) => f.status !== 'canceled' && f.status !== 'incomplete_expired'
+    );
 
     for (const subscription of subscriptions) {
       await stripe.subscriptions.cancel(subscription.id);
