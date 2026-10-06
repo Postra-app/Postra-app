@@ -22,7 +22,7 @@ concurrency:
 
 jobs:
   canary:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     timeout-minutes: 30
 
     steps:
@@ -37,10 +37,10 @@ jobs:
           package-manager-cache: false
 
       # Only the test runner, not the whole monorepo — same as the deploy
-      # smoke. Keep the version in step with the root devDependency.
+      # smoke, at the version the root devDependency pins.
       - name: Install Playwright
         run: |
-          npm install --prefix e2e/playwright --no-save --no-package-lock @playwright/test@1.58.2
+          npm install --prefix e2e/playwright --no-save --no-package-lock "@playwright/test@$(jq -r '.devDependencies["@playwright/test"]' package.json)"
           e2e/playwright/node_modules/.bin/playwright install --with-deps chromium webkit
 
       # The smoke only drafts; publish-canary publishes for real, on the

@@ -14,7 +14,7 @@ concurrency:
 
 jobs:
   build-test:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     timeout-minutes: 30
 
     steps:
@@ -49,7 +49,7 @@ jobs:
   # no route imports, Nest never compiles specs), and lint never ran in CI
   # before this job (E2E-01-06).
   quality:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     timeout-minutes: 15
 
     steps:
@@ -83,7 +83,7 @@ jobs:
   # Chromium. Catches what unit tests mock away and what production may never
   # be used for (publishing, destructive cases).
   stack-e2e:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     timeout-minutes: 30
 
     steps:
@@ -135,7 +135,7 @@ jobs:
   # silently; nothing does now, and a schema change without a migration would
   # ship code expecting columns the database does not have. Fail the PR instead.
   schema-migrations-match:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     timeout-minutes: 10
 
     services:

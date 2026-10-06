@@ -33,7 +33,7 @@ env:
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     timeout-minutes: 60
     steps:
       - name: Checkout repo
@@ -79,7 +79,7 @@ jobs:
   staging:
     needs: build
     if: vars.STAGING_ENABLED == 'true'
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     timeout-minutes: 45
     steps:
       - name: Checkout repo
@@ -121,7 +121,7 @@ jobs:
     if: always() && needs.build.result == 'success' && (needs.staging.result == 'success' || needs.staging.result == 'skipped')
     # Approval, if any, is set on this environment in the repo settings.
     environment: production
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     timeout-minutes: 60
     steps:
       - name: Checkout repo
@@ -362,9 +362,9 @@ jobs:
             echo "::warning::E2E_EMAIL / E2E_PASSWORD not set — smoke test skipped"
             exit 0
           fi
-          # Only the test runner, not the whole monorepo. Keep the version in
-          # step with the root devDependency.
-          npm install --prefix e2e/playwright --no-save --no-package-lock @playwright/test@1.58.2
+          # Only the test runner, not the whole monorepo, at the version the
+          # root devDependency pins (a hardcoded copy here drifted from it).
+          npm install --prefix e2e/playwright --no-save --no-package-lock "@playwright/test@$(jq -r '.devDependencies["@playwright/test"]' package.json)"
           e2e/playwright/node_modules/.bin/playwright install --with-deps chromium
           # Chromium smoke only: WebKit and the landing run in the nightly
           # canary (e2e-canary.yml) — the landing ships separately and must

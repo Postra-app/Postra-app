@@ -259,7 +259,7 @@
     "@crxjs/vite-plugin": "^2.0.0-beta.32",
     "@nestjs/schematics": "^11.1.0",
     "@nestjs/testing": "^11.1.21",
-    "@playwright/test": "1.58.2",
+    "@playwright/test": "1.63.0",
     "@pmmmwh/react-refresh-webpack-plugin": "^0.5.7",
     "@svgr/webpack": "^8.0.1",
     "@swc-node/register": "1.9.2",

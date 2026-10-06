@@ -11,7 +11,7 @@ import { join } from 'path';
 // with 127.0.0.1.
 
 const conf = readFileSync(
-  join(__dirname, '..', '..', '..', 'var', 'docker', 'nginx.conf'),
+  join(__dirname, '..', '..', '..', '..', 'var', 'docker', 'nginx.conf'),
   'utf8'
 );
 const targets = [...conf.matchAll(/^\s*proxy_pass\s+([^;]+);/gm)].map(
