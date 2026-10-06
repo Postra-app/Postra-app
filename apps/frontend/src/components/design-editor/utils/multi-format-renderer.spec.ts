@@ -2,6 +2,7 @@ import type * as fabric from 'fabric';
 import {
   repositionObjectFromTo,
   isBackgroundBox,
+  fitTemplateToPlatform,
 } from './multi-format-renderer';
 
 /**
@@ -234,5 +235,27 @@ describe('isBackgroundBox', () => {
         SRC_H
       )
     ).toBe(true);
+  });
+});
+
+// E2E-06-35: a template saved as an X post and applied on IG Feed kept its
+// X coordinates, so a headline at the right edge fell outside the export.
+describe('fitTemplateToPlatform', () => {
+  const x = { key: 'x', label: 'X Post', width: 1600, height: 900 };
+  const igFeed = { key: 'ig-feed', label: 'IG Feed', width: 1080, height: 1350 };
+  const saved = JSON.stringify({ objects: [], postraPlatform: x });
+
+  it('moves the layers of a template saved in another format onto the frame', () => {
+    const headline = obj({ left: 1350, top: 400, width: 200, height: 80 });
+    expect(fitTemplateToPlatform([headline as any], saved, igFeed)).toBe(true);
+    expect(headline.left + headline.width * headline.scaleX).toBeLessThanOrEqual(1080);
+    expect(headline.top + headline.height * headline.scaleY).toBeLessThanOrEqual(1350);
+  });
+
+  it('leaves a template in the same format, or saved before the stamp, alone', () => {
+    const layer = obj({ left: 1350, top: 400, width: 200, height: 80 });
+    expect(fitTemplateToPlatform([layer as any], saved, x)).toBe(false);
+    expect(fitTemplateToPlatform([layer as any], JSON.stringify({ objects: [] }), igFeed)).toBe(false);
+    expect(layer.left).toBe(1350);
   });
 });

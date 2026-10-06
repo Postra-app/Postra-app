@@ -1,7 +1,7 @@
 import * as fabric from 'fabric';
 import { PLATFORM_SIZES, PlatformSize } from '../editor.store';
 import { loadCanvasFonts } from './font-loading';
-import { stampPlatform } from './canvas-format';
+import { readStampedPlatform, sameSurface, stampPlatform } from './canvas-format';
 
 export interface FormatRender {
   platform: PlatformSize;
@@ -259,4 +259,30 @@ export const renderAllFormats = async (
 export const dataUrlToBlob = async (dataUrl: string): Promise<Blob> => {
   const res = await window.fetch(dataUrl);
   return res.blob();
+};
+
+/**
+ * A saved template applied in another format: its coordinates belong to the
+ * frame it was saved in, so an X post (1600×900) applied on IG Feed
+ * (1080×1350) left everything near its right edge outside the export
+ * (E2E-06-35). Move the layers onto the current frame the way switching
+ * format does. Templates saved before the stamp existed stay as they are.
+ */
+export const fitTemplateToPlatform = (
+  objects: fabric.Object[],
+  canvasJson: string,
+  platform: PlatformSize
+): boolean => {
+  const stamped = readStampedPlatform(canvasJson);
+  if (!stamped || sameSurface(stamped, platform)) return false;
+  objects.forEach((obj) =>
+    repositionObjectFromTo(
+      obj,
+      stamped.width,
+      stamped.height,
+      platform.width,
+      platform.height
+    )
+  );
+  return true;
 };

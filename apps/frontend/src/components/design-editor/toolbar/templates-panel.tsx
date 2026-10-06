@@ -9,6 +9,7 @@ import { useToaster } from '@gitroom/react/toaster/toaster';
 import { useFetch } from '@gitroom/helpers/utils/custom.fetch';
 import { useAiError } from '@gitroom/frontend/components/ai/use-ai-error';
 import { useEditorStore } from '../editor.store';
+import { fitTemplateToPlatform } from '../utils/multi-format-renderer';
 import { useBrandKit } from '@gitroom/frontend/components/video-studio/use-brand-kit';
 import {
   BUILT_IN_TEMPLATES,
@@ -132,6 +133,11 @@ export const TemplatesPanel: FC<TemplatesPanelProps> = ({ canvas }) => {
         // is what buried the pre-template canvas under a dozen undo steps.
         await withHistoryPaused(canvas.current, async () => {
           await canvas.current!.loadFromJSON(data.canvasJson);
+          fitTemplateToPlatform(
+            canvas.current!.getObjects(),
+            data.canvasJson,
+            useEditorStore.getState().platform
+          );
           // The template names its fonts; without them the text is laid out in
           // the fallback and keeps those line breaks for good.
           await loadCanvasFonts(canvas.current!);
