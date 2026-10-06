@@ -164,3 +164,73 @@ describe('POST /integrations/social-connect/:integration with refresh', () => {
     expect(integrations.createOrUpdateIntegration).toHaveBeenCalled();
   });
 });
+
+/**
+ * E2E-04-34 — a reconnect through a provider with pages (YouTube, Facebook,
+ * Instagram, LinkedIn Page) stored the channel id as the refresh token and
+ * no expiry, so the channel failed its next token refresh.
+ */
+describe('reconnect through a provider with pages keeps the sign-in tokens', () => {
+  const env = process.env.STRIPE_PUBLISHABLE_KEY;
+  beforeAll(() => {
+    process.env.STRIPE_PUBLISHABLE_KEY = 'pk_test_x';
+    process.env.JWT_SECRET = 'test-secret';
+  });
+  afterAll(() => (process.env.STRIPE_PUBLISHABLE_KEY = env));
+
+  it('the refresh token and expiry come from the sign-in, the page from reConnect', async () => {
+    store.clear();
+    store.set('login:st-1', 'cv');
+    store.set('organization:st-1', 'org-1');
+    store.set('refresh:st-1', 'channel-1');
+    const youtube = {
+      authenticate: jest.fn(async () => ({
+        id: 'google-account',
+        accessToken: 'user-at',
+        refreshToken: 'rt-new',
+        expiresIn: 3599,
+        name: 'Account',
+        picture: '',
+        username: 'account',
+      })),
+      reConnect: jest.fn(async () => ({
+        id: 'channel-1',
+        accessToken: 'channel-at',
+        name: 'My channel',
+        picture: 'p.png',
+        username: '@mine',
+      })),
+    };
+    const integrations = integrationService([
+      { providerIdentifier: 'youtube', internalId: 'channel-1' },
+    ]);
+    const controller = new NoAuthIntegrationsController(
+      {
+        getAllowedSocialsIntegrations: () => ['youtube'],
+        getSocialIntegration: () => youtube,
+      } as any,
+      integrations as any,
+      { startRefreshWorkflow: jest.fn(async () => undefined) } as any,
+      {
+        getUserOrgMembership: jest.fn(async () => ({ role: 'ADMIN' })),
+        getSessionMembership: jest.fn(async () => ({ role: 'ADMIN' })),
+        getOrgById: jest.fn(async () => FREE_ORG),
+      } as any,
+      { getSubscriptionByOrganizationId: jest.fn(async () => null) } as any
+    );
+    await controller.connectSocialMedia(
+      'youtube',
+      { state: 'st-1', code: 'c', timezone: '0' } as any,
+      { headers: { auth: AuthService.signJWT({ id: 'user-1' }) }, cookies: {} } as any
+    );
+
+    const args = integrations.createOrUpdateIntegration.mock.calls[0] as any[];
+    expect(args.slice(6, 11)).toEqual([
+      'channel-1',
+      'youtube',
+      'channel-at',
+      'rt-new',
+      3599,
+    ]);
+  });
+});
