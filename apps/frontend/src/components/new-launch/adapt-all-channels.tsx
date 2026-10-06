@@ -29,16 +29,14 @@ export const AdaptAllChannels: FC = () => {
     global,
     selectedIntegrations,
     internal,
-    addRemoveInternal,
-    setInternalValueText,
+    addAdaptedInternal,
   } = useLaunchStore(
     useShallow((state) => ({
       current: state.current,
       global: state.global,
       selectedIntegrations: state.selectedIntegrations,
       internal: state.internal,
-      addRemoveInternal: state.addRemoveInternal,
-      setInternalValueText: state.setInternalValueText,
+      addAdaptedInternal: state.addAdaptedInternal,
     }))
   );
 
@@ -74,6 +72,7 @@ export const AdaptAllChannels: FC = () => {
     setBusy(true);
     let adapted = 0;
     let failed = 0;
+    let kept = 0;
     let stopped: 'credits' | 'rate' | null = null;
 
     try {
@@ -118,10 +117,18 @@ export const AdaptAllChannels: FC = () => {
           continue;
         }
 
-        addRemoveInternal(target.integration.id);
-        rewritten.forEach((html, index) => {
-          if (html) setInternalValueText(target.integration.id, index, html);
-        });
+        // The answer can take a while: the channel may have its own version
+        // by now, or be off the post. Then it stays as the user left it.
+        const now = useLaunchStore.getState();
+        const id = target.integration.id;
+        if (
+          now.internal.some((i) => i.integration.id === id) ||
+          !now.selectedIntegrations.some((i) => i.integration.id === id)
+        ) {
+          kept++;
+          continue;
+        }
+        addAdaptedInternal(id, rewritten);
         adapted++;
       }
     } finally {
@@ -160,7 +167,7 @@ export const AdaptAllChannels: FC = () => {
       t(
         'ai_adapt_all_done',
         'Adapted {{adapted}} channel(s). Kept {{kept}} as they were.',
-        { adapted, kept: internal.length + failed }
+        { adapted, kept: internal.length + failed + kept }
       ),
       'success'
     );
@@ -170,8 +177,7 @@ export const AdaptAllChannels: FC = () => {
     hasText,
     posts,
     fetch,
-    addRemoveInternal,
-    setInternalValueText,
+    addAdaptedInternal,
     internal.length,
     toaster,
     t,
