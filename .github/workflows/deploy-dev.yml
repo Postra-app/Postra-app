@@ -385,6 +385,42 @@ jobs:
           # unless told otherwise.
           include-hidden-files: true
 
+      # The rollback recreates the container, and its logs go with it: after
+      # the smoke failures of 2026-10-05 and 2026-10-06 nothing was left to
+      # say why nginx answered 502. Save what the box saw first. This repo is
+      # public, so only pm2's table, the backend's [boot] stages and nginx
+      # error lines with the query string and headers cut off.
+      - name: Save app errors before the rollback
+        if: failure() && (steps.health.outcome == 'failure' || steps.smoke.outcome == 'failure')
+        continue-on-error: true
+        env:
+          INSTANCE_ID: ${{ steps.resolve.outputs.instance_id }}
+        run: |
+          cat > /tmp/postra-diag.sh <<'EOF'
+          echo "== pm2"
+          docker exec postra-app pm2 ls --no-color | cut -c1-150
+          echo "== backend boot stages"
+          docker exec postra-app sh -c 'grep -h "^\[boot\]" /www/.pm2/logs/backend-out.log | tail -12'
+          echo "== nginx errors, last 15 min"
+          docker logs --since 15m postra-app 2>&1 \
+            | grep -E '\[(error|crit|alert|emerg)\]' \
+            | sed -E 's/, client: .*request: "([A-Z]+) ([^ ?"]*)[^"]*".*$/ \1 \2/' \
+            | tail -40
+          EOF
+          COMMAND_ID=$(aws ssm send-command \
+            --instance-ids "$INSTANCE_ID" \
+            --document-name "AWS-RunShellScript" \
+            --comment "Save app errors before rollback of ${GITHUB_SHA}" \
+            --parameters "$(jq -nc --rawfile s /tmp/postra-diag.sh '{commands: [$s]}')" \
+            --query "Command.CommandId" \
+            --output text)
+          for _ in $(seq 1 20); do
+            STATUS=$(aws ssm get-command-invocation --command-id "$COMMAND_ID" --instance-id "$INSTANCE_ID" --query "Status" --output text 2>/dev/null || true)
+            case "$STATUS" in Success|Failed|Cancelled|TimedOut) break;; esac
+            sleep 3
+          done
+          aws ssm get-command-invocation --command-id "$COMMAND_ID" --instance-id "$INSTANCE_ID" --query "StandardOutputContent" --output text
+
       # A deploy that never turns healthy used to leave the broken image
       # running: the restart above is the only recovery the old workflow had
       # (E2E-01-08). Put the previous image back and say so. The job still
