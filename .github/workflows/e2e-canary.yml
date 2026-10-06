@@ -27,10 +27,10 @@ jobs:
 
     steps:
       - name: Checkout repo
-        uses: actions/checkout@v5
+        uses: actions/checkout@v7
 
       - name: Setup Node.js 22
-        uses: actions/setup-node@v5
+        uses: actions/setup-node@v7
         with:
           node-version: 22
           # npm only installs the test runner here; no pnpm cache.
@@ -65,7 +65,7 @@ jobs:
       # Screenshots only: traces are off in CI (they carry the session cookie).
       - name: Upload screenshots
         if: failure()
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: e2e-canary
           path: e2e/playwright/.results/
@@ -76,7 +76,7 @@ jobs:
 
       - name: Open or update the canary issue
         if: failure()
-        uses: actions/github-script@v8
+        uses: actions/github-script@v9
         with:
           script: |
             const run = `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`;
