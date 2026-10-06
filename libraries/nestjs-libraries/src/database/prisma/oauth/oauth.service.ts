@@ -5,6 +5,19 @@ import { CreateOAuthAppDto } from '@gitroom/nestjs-libraries/dtos/oauth/create-o
 import { UpdateOAuthAppDto } from '@gitroom/nestjs-libraries/dtos/oauth/update-oauth-app.dto';
 import { makeSecureId } from '@gitroom/nestjs-libraries/services/make.secure.id';
 import { AuthService } from '@gitroom/helpers/auth/auth.service';
+import { createHash, timingSafeEqual } from 'crypto';
+
+// RFC 7636 §4.6, S256: BASE64URL(SHA256(code_verifier)) == code_challenge.
+// No challenge on the code ⇒ no verifier allowed either.
+export const pkceMatches = (challenge?: string | null, verifier?: string) => {
+  if (!challenge) return !verifier;
+  if (!verifier) return false;
+  const expected = Buffer.from(
+    createHash('sha256').update(verifier).digest('base64url')
+  );
+  const given = Buffer.from(challenge);
+  return expected.length === given.length && timingSafeEqual(expected, given);
+};
 
 @Injectable()
 export class OAuthService {
@@ -113,7 +126,8 @@ export class OAuthService {
   async createAuthorizationCode(
     oauthAppId: string,
     userId: string,
-    organizationId: string
+    organizationId: string,
+    codeChallenge?: string
   ) {
     const code = makeSecureId(32);
     const encryptedCode = AuthService.fixedEncryption(code);
@@ -125,6 +139,7 @@ export class OAuthService {
       organizationId,
       authorizationCode: encryptedCode,
       codeExpiresAt,
+      codeChallenge: codeChallenge ?? null,
     });
 
     return code;
@@ -133,7 +148,8 @@ export class OAuthService {
   async exchangeCodeForToken(
     code: string,
     clientId: string,
-    clientSecret: string
+    clientSecret: string,
+    codeVerifier?: string
   ) {
     const app = await this._oauthRepository.getAppByClientId(clientId);
     if (!app) {
@@ -162,6 +178,21 @@ export class OAuthService {
     if (!auth.codeExpiresAt || new Date() > auth.codeExpiresAt) {
       throw new HttpException(
         { error: 'invalid_grant', error_description: 'Code has expired' },
+        HttpStatus.BAD_REQUEST
+      );
+    }
+
+    // PKCE: a code asked for with a challenge is only good with its verifier,
+    // and a verifier for a code asked for without one is refused too
+    // (OAuth 2.1 §4.1.3), so a client never believes it is protected when it
+    // is not. The metadata used to promise S256 and nothing checked it
+    // (E2E-08-44).
+    if (!pkceMatches(auth.codeChallenge, codeVerifier)) {
+      throw new HttpException(
+        {
+          error: 'invalid_grant',
+          error_description: 'code_verifier does not match the code_challenge',
+        },
         HttpStatus.BAD_REQUEST
       );
     }

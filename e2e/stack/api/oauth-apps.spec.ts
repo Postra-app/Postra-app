@@ -213,3 +213,70 @@ test('one code is one token, and one organisation gets one app, also at the same
     await prisma.$disconnect();
   }
 });
+
+// E2E-08-44: /.well-known/oauth-authorization-server promised PKCE (S256)
+// and /oauth/token never looked at code_verifier. Vector: RFC 7636 App. B.
+test('PKCE: a code asked for with a challenge is only good with its verifier', async () => {
+  const verifier = 'dBjftJeZ4CVP-mB92K27uhbUJU1p1r_wW1gFWFOEjXk';
+  const challenge = 'E9Melhoa2OwvFrEMTJguCHaoeK1t8URWbuGJSstw-cM';
+  const prisma = database();
+  const owner = await throwawayOrg(prisma, { tier: 'PRO', totalChannels: 5, channels: 0 });
+  try {
+    const created = await owner.api.post('/user/oauth-app', {
+      data: { name: 'Stack PKCE app', redirectUrl: 'https://example.com/callback' },
+    });
+    const { clientId, clientSecret } = await created.json();
+    const withChallenge = async (state: string) => {
+      const res = await owner.api.post('/oauth/authorize', {
+        data: {
+          client_id: clientId,
+          state,
+          action: 'approve',
+          code_challenge: challenge,
+          code_challenge_method: 'S256',
+        },
+      });
+      expect(res.status(), await res.text()).toBe(201);
+      return new URL((await res.json()).redirect).searchParams.get('code')!;
+    };
+    const exchangeWith = (code: string, code_verifier?: string) =>
+      owner.api.post('/oauth/token', {
+        data: {
+          grant_type: 'authorization_code',
+          code,
+          client_id: clientId,
+          client_secret: clientSecret,
+          ...(code_verifier ? { code_verifier } : {}),
+        },
+      });
+
+    // `plain` (or no method, which means plain) is refused up front.
+    for (const method of [undefined, 'plain']) {
+      const consent = await owner.api.get(
+        `/oauth/authorize?client_id=${clientId}&response_type=code&code_challenge=${challenge}` +
+          (method ? `&code_challenge_method=${method}` : '')
+      );
+      expect(consent.status()).toBe(400);
+    }
+    const consent = await owner.api.get(
+      `/oauth/authorize?client_id=${clientId}&response_type=code&code_challenge=${challenge}&code_challenge_method=S256`
+    );
+    expect(consent.status(), await consent.text()).toBe(200);
+
+    // Missing and wrong verifiers do not spend the code; the right one does.
+    const code = await withChallenge('k1');
+    expect((await exchangeWith(code)).status()).toBe(400);
+    expect((await exchangeWith(code, 'x'.repeat(43))).status()).toBe(400);
+    const token = await exchangeWith(code, verifier);
+    expect(token.status(), await token.text()).toBe(201);
+    expect((await token.json()).access_token).toMatch(/^pos_/);
+
+    // A verifier for a code asked for without a challenge is refused too.
+    const plainCode = await approve(owner.api, clientId, 'k2');
+    expect((await exchangeWith(plainCode, verifier)).status()).toBe(400);
+    expect((await exchangeWith(plainCode)).status()).toBe(201);
+  } finally {
+    await owner.remove();
+    await prisma.$disconnect();
+  }
+});

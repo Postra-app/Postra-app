@@ -371,7 +371,12 @@ export class NoAuthIntegrationsController {
               refresh,
               auth.accessToken
             );
-            return res({ ...newAuth, refreshToken: body.refresh });
+            // The page comes from reConnect, the tokens from the sign-in,
+            // as in RefreshIntegrationService. `refreshToken: body.refresh`
+            // stored the channel id as the refresh token and dropped the
+            // expiry, so a reconnected YouTube channel failed its next
+            // refresh (E2E-04-34).
+            return res({ ...auth, ...newAuth });
           } catch (err: any) {
             return res({
               error: err.message,

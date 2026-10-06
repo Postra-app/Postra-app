@@ -1,6 +1,7 @@
 const retrieveSubscription = jest.fn();
 const listSubscriptions = jest.fn();
 const updateSubscription = jest.fn();
+const cancelSubscription = jest.fn().mockResolvedValue({});
 
 jest.mock('stripe', () => {
   const actual = jest.requireActual('stripe');
@@ -9,6 +10,7 @@ jest.mock('stripe', () => {
       retrieve: retrieveSubscription,
       list: listSubscriptions,
       update: updateSubscription,
+      cancel: cancelSubscription,
     },
   }));
   mock.errors = actual.errors ?? actual.default?.errors;
@@ -58,17 +60,22 @@ const build = () => {
   const organizationService = {
     getOrgByCustomerId: jest.fn().mockResolvedValue({ id: 'org-1', allowTrial: false }),
   };
+  const notificationService = { inAppNotification: jest.fn().mockResolvedValue(undefined) };
   const service = new StripeService(
     subscriptionService as any,
     organizationService as any,
     {} as any,
     {} as any,
-    {} as any
+    notificationService as any
   );
-  return { service, subscriptionService };
+  return { service, subscriptionService, notificationService };
 };
 
-beforeEach(() => jest.clearAllMocks());
+beforeEach(() => {
+  jest.clearAllMocks();
+  // No other subscription for the customer unless a test says so.
+  listSubscriptions.mockResolvedValue({ data: [] });
+});
 
 describe('subscription events are written from Stripe’s current state', () => {
   it('a late update does not bring back a cancelled plan', async () => {
@@ -175,5 +182,57 @@ describe('finishing a trial early', () => {
     const { service } = build();
 
     await expect(service.finishTrial('cus_1')).resolves.toEqual({ finish: true });
+  });
+});
+
+// Upstream 28e71678: two checkouts at once left two live subscriptions, both
+// charging. The older one is the plan; a newer one is cancelled.
+describe('a second live subscription for the same customer', () => {
+  const older = { id: 'sub_0', customer: 'cus_1', status: 'active', created: 100 };
+
+  it('the newer one is cancelled and the customer told, the plan is not rewritten', async () => {
+    retrieveSubscription.mockResolvedValue(sub('active', 'PRO', { created: 200 }));
+    listSubscriptions.mockResolvedValue({ data: [older, { ...sub('active'), created: 200 }] });
+    const { service, subscriptionService, notificationService } = build();
+
+    const res = await service.createSubscription(
+      event('customer.subscription.created', sub('active', 'PRO', { created: 200 }))
+    );
+
+    expect(cancelSubscription).toHaveBeenCalledWith('sub_1');
+    expect(res).toMatchObject({ skipped: 'duplicate subscription' });
+    // Stripe's default page of 10 could hide the older plan behind abandoned
+    // checkouts.
+    expect(listSubscriptions).toHaveBeenCalledWith(expect.objectContaining({ limit: 100 }));
+    expect(subscriptionService.createOrUpdateSubscription).not.toHaveBeenCalled();
+    expect(notificationService.inAppNotification).toHaveBeenCalled();
+  });
+
+  it('the older one is kept and written as usual', async () => {
+    retrieveSubscription.mockResolvedValue(sub('active', 'PRO', { created: 50 }));
+    listSubscriptions.mockResolvedValue({ data: [older, { ...sub('active'), created: 50 }] });
+    const { service, subscriptionService } = build();
+
+    await service.updateSubscription(
+      event('customer.subscription.updated', sub('active', 'PRO', { created: 50 }))
+    );
+
+    expect(cancelSubscription).not.toHaveBeenCalled();
+    expect(subscriptionService.createOrUpdateSubscription).toHaveBeenCalled();
+  });
+
+  it('an incomplete checkout next to the plan is not a duplicate of it', async () => {
+    retrieveSubscription.mockResolvedValue(sub('active', 'PRO', { created: 200 }));
+    listSubscriptions.mockResolvedValue({
+      data: [{ ...older, status: 'incomplete' }, { ...sub('active'), created: 200 }],
+    });
+    const { service, subscriptionService } = build();
+
+    await service.updateSubscription(
+      event('customer.subscription.updated', sub('active', 'PRO', { created: 200 }))
+    );
+
+    expect(cancelSubscription).not.toHaveBeenCalled();
+    expect(subscriptionService.createOrUpdateSubscription).toHaveBeenCalled();
   });
 });

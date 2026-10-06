@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { anonymous, channelOf, signedIn } from '../helpers';
+import { anonymous, channelOf, database, signedIn, throwawayOrg } from '../helpers';
 
 // Channel settings over the API.
 
@@ -119,4 +119,38 @@ test('P1a #13: channel endpoints answer 4xx, not 500, for bad input', async () =
     'public provider connect without state'
   ).toBe(400);
   await anon.dispose();
+});
+
+// E2E-04-35: Facebook and Instagram sign in through the same Meta account, so
+// both pending channels carry the same internalId (the Meta user id). The
+// unique key had no provider: the Instagram sign-in turned the waiting
+// Facebook channel into an Instagram one and its page picker broke.
+test('E2E-04-35: pending Facebook and Instagram channels of one Meta account live side by side', async () => {
+  const prisma = database();
+  const org = await throwawayOrg(prisma, { tier: 'PRO', totalChannels: 5, channels: 0 });
+  try {
+    const metaUser = `meta-user-${Date.now()}`;
+    for (const providerIdentifier of ['facebook', 'instagram']) {
+      await prisma.integration.create({
+        data: {
+          internalId: metaUser,
+          rootInternalId: metaUser,
+          organizationId: org.orgId,
+          name: `Pending ${providerIdentifier}`,
+          providerIdentifier,
+          type: 'social',
+          token: 'fake-token',
+          inBetweenSteps: true,
+        },
+      });
+    }
+    const rows = await prisma.integration.findMany({
+      where: { organizationId: org.orgId, internalId: metaUser },
+      orderBy: { providerIdentifier: 'asc' },
+    });
+    expect(rows.map((r) => r.providerIdentifier)).toEqual(['facebook', 'instagram']);
+  } finally {
+    await org.remove();
+    await prisma.$disconnect();
+  }
 });

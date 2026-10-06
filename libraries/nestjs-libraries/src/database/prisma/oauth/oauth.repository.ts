@@ -136,6 +136,7 @@ export class OAuthRepository {
     organizationId: string;
     authorizationCode: string;
     codeExpiresAt: Date;
+    codeChallenge: string | null;
   }) {
     return this._oauthAuth.model.oAuthAuthorization.upsert({
       where: {
@@ -151,10 +152,12 @@ export class OAuthRepository {
         organizationId: data.organizationId,
         authorizationCode: data.authorizationCode,
         codeExpiresAt: data.codeExpiresAt,
+        codeChallenge: data.codeChallenge,
       },
       update: {
         authorizationCode: data.authorizationCode,
         codeExpiresAt: data.codeExpiresAt,
+        codeChallenge: data.codeChallenge,
         accessToken: null,
         revokedAt: null,
       },

@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { useFetch } from '@gitroom/helpers/utils/custom.fetch';
 import { Logo } from '@gitroom/frontend/components/new-layout/logo';
@@ -16,6 +16,18 @@ export default function OAuthAuthorizePage() {
   const clientId = searchParams.get('client_id');
   const responseType = searchParams.get('response_type');
   const state = searchParams.get('state');
+  // PKCE: passed through to the code request, checked at /oauth/token.
+  const codeChallenge = searchParams.get('code_challenge');
+  const codeChallengeMethod = searchParams.get('code_challenge_method');
+  const pkce = useMemo(
+    () => ({
+      ...(codeChallenge ? { code_challenge: codeChallenge } : {}),
+      ...(codeChallengeMethod
+        ? { code_challenge_method: codeChallengeMethod }
+        : {}),
+    }),
+    [codeChallenge, codeChallengeMethod]
+  );
 
   useEffect(() => {
     if (!clientId || !responseType) {
@@ -33,6 +45,7 @@ export default function OAuthAuthorizePage() {
       client_id: clientId,
       response_type: responseType,
       ...(state ? { state } : {}),
+      ...pkce,
     });
 
     fetch(`/oauth/authorize?${params}`)
@@ -49,7 +62,7 @@ export default function OAuthAuthorizePage() {
         setError('Failed to validate OAuth request');
         setLoading(false);
       });
-  }, [clientId, responseType, state]);
+  }, [clientId, responseType, state, pkce]);
 
   const handleAction = useCallback(
     async (action: 'approve' | 'deny') => {
@@ -62,6 +75,7 @@ export default function OAuthAuthorizePage() {
               client_id: clientId,
               state,
               action,
+              ...pkce,
             }),
           })
         ).json();
@@ -74,7 +88,7 @@ export default function OAuthAuthorizePage() {
         setSubmitting(false);
       }
     },
-    [clientId, state]
+    [clientId, state, pkce]
   );
 
   if (loading) {

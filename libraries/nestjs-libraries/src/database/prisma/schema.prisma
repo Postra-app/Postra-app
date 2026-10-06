@@ -176,6 +176,10 @@ model UserOrganization {
   organizationId String
   disabled       Boolean      @default(false)
   role           Role         @default(USER)
+  // Per organisation: one timestamp on User marked every organisation's
+  // notifications read when the bell was opened in one (E2E-02-38). Null
+  // until the bell is first opened here; User.lastReadNotifications stands in.
+  lastReadNotifications DateTime?
   createdAt      DateTime     @default(now())
   updatedAt      DateTime     @updatedAt
   organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
@@ -393,7 +397,10 @@ model Integration {
   plugs                 Plugs[]
   posts                 Post[]
 
-  @@unique([organizationId, internalId])
+  // With the provider: Facebook and Instagram sign in through the same Meta
+  // account, so their pending channels share an internalId, and the second
+  // sign-in turned the first into the other platform (E2E-04-35).
+  @@unique([organizationId, providerIdentifier, internalId])
   @@index([rootInternalId])
   @@index([organizationId])
   @@index([providerIdentifier])
@@ -931,6 +938,9 @@ model OAuthAuthorization {
   accessToken       String?
   authorizationCode String?
   codeExpiresAt     DateTime?
+  // PKCE (RFC 7636, S256 only): the challenge sent with the code request,
+  // checked against code_verifier when the code is exchanged (E2E-08-44).
+  codeChallenge     String?
   revokedAt         DateTime?
   createdAt         DateTime     @default(now())
   updatedAt         DateTime     @updatedAt

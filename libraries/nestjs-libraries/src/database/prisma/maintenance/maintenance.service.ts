@@ -184,6 +184,20 @@ export class MaintenanceService {
       drop.delete(path);
     }
 
+    // A second look right before deleting: the first scan can be minutes old
+    // on a big library, and a post or Studio project saved meanwhile with one
+    // of these URLs would have lost its picture (E2E-06-33, AI-5). Nothing
+    // reserves an object, so this narrows the window rather than closing it.
+    if (apply && drop.size) {
+      const now = await this.collectLiveReferences();
+      for (const [path, ids] of [...drop]) {
+        if (now.paths.has(path) || ids.some((id) => now.ids.has(id))) {
+          drop.delete(path);
+          report.stillReferenced += ids.length;
+        }
+      }
+    }
+
     const notRemoved = new Set<string>();
     for (const path of drop.keys()) {
       if (!apply) {

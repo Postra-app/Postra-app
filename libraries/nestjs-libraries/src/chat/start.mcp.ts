@@ -8,6 +8,7 @@ import { OAuthService } from '@gitroom/nestjs-libraries/database/prisma/oauth/oa
 import { runWithContext } from './async.storage';
 import { ioRedis } from '@gitroom/nestjs-libraries/redis/redis.service';
 import { createOAuthMiddleware } from './oauth-middleware';
+import { publicBackendUrl } from './public-backend-url';
 const fixAcceptHeader = (req: Request) => {
   const value = 'application/json, text/event-stream';
   req.headers.accept = value;
@@ -66,7 +67,10 @@ export const startMcp = async (app: INestApplication) => {
 
   const oauthMiddleware = createOAuthMiddleware({
     oauth: {
-      resource: new URL('/mcp-oauth', process.env.NEXT_PUBLIC_BACKEND_URL!).toString(),
+      // The address clients connect to, which they must find again in the
+      // metadata (RFC 9728 §3.3). `new URL('/mcp-oauth', …/api)` dropped
+      // the /api (E2E-08-45).
+      resource: publicBackendUrl('/mcp-oauth'),
       authorizationServers: [process.env.NEXT_PUBLIC_BACKEND_URL!],
       validateToken: async (token: string) => {
         const org = await resolveAuth(token);
@@ -108,8 +112,13 @@ export const startMcp = async (app: INestApplication) => {
       token_endpoint: `${process.env.NEXT_PUBLIC_OVERRIDE_BACKEND_URL || process.env.NEXT_PUBLIC_BACKEND_URL}/oauth/token`,
       response_types_supported: ['code'],
       grant_types_supported: ['authorization_code'],
+      // The token endpoint reads client_id and client_secret from the body;
+      // without this line RFC 8414 says clients should use HTTP Basic.
+      token_endpoint_auth_methods_supported: ['client_secret_post'],
+      // Checked at /oauth/token since E2E-08-44. No scopes_supported: an
+      // approved app gets the whole organisation, so naming read/write
+      // scopes promised a limit nothing enforced.
       code_challenge_methods_supported: ['S256'],
-      scopes_supported: ['mcp:read', 'mcp:write'],
     });
   });
 

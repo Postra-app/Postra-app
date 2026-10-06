@@ -20,6 +20,20 @@ export const POSTRA_INVOICE_SETTINGS = { footer: 'B K Company trading as Postra'
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || 'sk_nothing');
 
+// A subscription that can be charged or cancelled. `incomplete` (first
+// payment never went through) and `incomplete_expired` are not: listed first,
+// one was cancelled in place of the real subscription — the organisation
+// dropped to FREE while the live subscription kept charging (upstream
+// ac65e200).
+//
+// Every subscriptions.list here asks for 100, Stripe's largest page: the
+// default of 10, newest first, let ten abandoned checkouts hide the live
+// subscription from the duplicate check and the cancel paths.
+export const isLiveSubscription = (s: { status: string }) =>
+  s.status !== 'canceled' &&
+  s.status !== 'incomplete' &&
+  s.status !== 'incomplete_expired';
+
 @Injectable()
 export class StripeService {
   private readonly _logger = new Logger(StripeService.name);
@@ -174,6 +188,44 @@ export class StripeService {
       return { ok: false };
     }
 
+    // Two checkouts finished at once (two tabs, a double click past the 409
+    // guard) leave two live subscriptions, both charging. The older one is
+    // the customer's plan; a newer one is cancelled here (upstream 28e71678).
+    if (isLiveSubscription(current)) {
+      const others = (
+        await stripe.subscriptions.list({
+          customer: current.customer as string,
+          status: 'all',
+          limit: 100,
+        })
+      ).data.filter((s) => s.id !== current.id && isLiveSubscription(s));
+      const isDuplicate = others.some(
+        (s) =>
+          s.created < current.created ||
+          (s.created === current.created && s.id < current.id)
+      );
+      if (isDuplicate) {
+        await stripe.subscriptions.cancel(current.id);
+        const org = await this._organizationService.getOrgByCustomerId(
+          current.customer as string
+        );
+        if (org) {
+          await this._notificationService.inAppNotification(
+            org.id,
+            'Duplicate subscription cancelled',
+            `A second subscription was started while you already had one, so we cancelled it. If you were charged twice, contact us and we will refund it.`,
+            true,
+            false,
+            'info'
+          );
+        }
+        this._logger.warn(
+          `Cancelled duplicate subscription ${current.id} for ${current.customer}`
+        );
+        return { ok: true, skipped: 'duplicate subscription' };
+      }
+    }
+
     const fresh = {
       ...event,
       data: { ...event.data, object: current },
@@ -249,7 +301,7 @@ export class StripeService {
     // The plan row is per customer, not per Stripe subscription. If the
     // customer already bought again, this deletion is for the old one.
     const stillLive = (
-      await stripe.subscriptions.list({ customer, status: 'all' })
+      await stripe.subscriptions.list({ customer, status: 'all', limit: 100 })
     ).data.some(
       (f) =>
         f.id !== event.data.object.id &&
@@ -406,6 +458,7 @@ export class StripeService {
         await stripe.subscriptions.list({
           customer,
           status: 'all',
+          limit: 100,
         })
       ).data.filter((f) => f.status === 'active' || f.status === 'trialing'),
     };
@@ -459,6 +512,7 @@ export class StripeService {
         await stripe.subscriptions.list({
           customer,
           status: 'all',
+          limit: 100,
         })
       ).data;
     } catch (err) {
@@ -495,22 +549,30 @@ export class StripeService {
         await stripe.subscriptions.list({
           customer,
           status: 'all',
+          limit: 100,
           expand: ['data.latest_invoice'],
         })
-      ).data.filter((f) => f.status !== 'canceled'),
+      ).data.filter(isLiveSubscription),
     };
 
     const sub = currentUserSubscription.data[0];
     if (!sub) {
       throw new HttpException('There is no active subscription to cancel.', 400);
     }
+    // Every live subscription follows: with a duplicate left over, cancelling
+    // only the first kept the other one charging (upstream 28e71678).
+    const all = currentUserSubscription.data;
 
     // If the user is toggling back (un-cancelling), just remove the cancel
     if (sub.cancel_at_period_end) {
-      const { cancel_at } = await stripe.subscriptions.update(sub.id, {
-        cancel_at_period_end: false,
-        metadata: { service: 'gitroom', id },
-      });
+      let cancel_at: number | null = null;
+      for (const s of all) {
+        const updated = await stripe.subscriptions.update(s.id, {
+          cancel_at_period_end: false,
+          metadata: { service: 'gitroom', id },
+        });
+        cancel_at = cancel_at || updated.cancel_at;
+      }
 
       await this._subscriptionService.setCancelAt(organizationId, null);
 
@@ -529,7 +591,9 @@ export class StripeService {
 
     if (hasFailedPayment) {
       // Payment already failed — cancel immediately and delete subscription
-      await stripe.subscriptions.cancel(sub.id);
+      for (const s of all) {
+        await stripe.subscriptions.cancel(s.id);
+      }
       await this._subscriptionService.deleteSubscription(customer);
 
       return {
@@ -539,10 +603,14 @@ export class StripeService {
     }
 
     // Payment succeeded — cancel at end of billing period
-    const { cancel_at } = await stripe.subscriptions.update(sub.id, {
-      cancel_at_period_end: true,
-      metadata: { service: 'gitroom', id },
-    });
+    let cancel_at: number | null = null;
+    for (const s of all) {
+      const updated = await stripe.subscriptions.update(s.id, {
+        cancel_at_period_end: true,
+        metadata: { service: 'gitroom', id },
+      });
+      cancel_at = cancel_at || updated.cancel_at;
+    }
 
     const cancelAt = cancel_at ? new Date(cancel_at * 1000) : null;
     await this._subscriptionService.setCancelAt(organizationId, cancelAt);
@@ -743,7 +811,7 @@ export class StripeService {
     paymentId: string
   ): Promise<{ finish: boolean; reason?: string; url?: string }> {
     const trialing = (
-      await stripe.subscriptions.list({ customer: paymentId })
+      await stripe.subscriptions.list({ customer: paymentId, limit: 100 })
     ).data.find((f) => f.status === 'trialing');
     if (!trialing) {
       return { finish: false, reason: 'no-trial' };
@@ -796,6 +864,7 @@ export class StripeService {
         await stripe.subscriptions.list({
           customer,
           status: 'all',
+          limit: 100,
           expand: ['data.discounts'],
         })
       ).data.find((f) => f.status === 'active' || f.status === 'trialing'),
@@ -830,6 +899,7 @@ export class StripeService {
         await stripe.subscriptions.list({
           customer,
           status: 'all',
+          limit: 100,
           expand: ['data.discounts'],
         })
       ).data.find((f) => f.status === 'active' || f.status === 'trialing'),
@@ -1017,6 +1087,7 @@ export class StripeService {
         await stripe.subscriptions.list({
           customer,
           status: 'all',
+          limit: 100,
         })
       ).data.filter((f) => f.status === 'active' || f.status === 'trialing'),
     };
@@ -1171,13 +1242,15 @@ export class StripeService {
 
     const subscriptions = (
       await this.listSubscriptions(customer, organizationId)
-    ).filter((f) => f.status !== 'canceled');
+    ).filter(isLiveSubscription);
 
     if (!subscriptions.length) {
       throw new Error('No active subscription found');
     }
 
-    await stripe.subscriptions.cancel(subscriptions[0].id);
+    for (const subscription of subscriptions) {
+      await stripe.subscriptions.cancel(subscription.id);
+    }
     await this._subscriptionService.deleteSubscription(customer);
 
     return { cancelled: true };
@@ -1194,9 +1267,13 @@ export class StripeService {
       return;
     }
 
+    // Everything that can still bill, `incomplete` included (its open invoice
+    // could still be paid); `incomplete_expired` is already final.
     const subscriptions = (
       await this.listSubscriptions(org.paymentId, organizationId)
-    ).filter((f) => f.status !== 'canceled');
+    ).filter(
+      (f) => f.status !== 'canceled' && f.status !== 'incomplete_expired'
+    );
 
     for (const subscription of subscriptions) {
       await stripe.subscriptions.cancel(subscription.id);

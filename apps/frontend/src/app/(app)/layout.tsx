@@ -15,10 +15,8 @@ import '@copilotkit/react-ui/styles.css';
 import LayoutContext from '@gitroom/frontend/components/layout/layout.context';
 import { ReactNode } from 'react';
 import { GeistSans } from 'geist/font/sans';
-import PlausibleProvider from 'next-plausible';
 import clsx from 'clsx';
 import { VariableContextComponent } from '@gitroom/react/helpers/variable.context';
-import { Fragment } from 'react';
 import { PHProvider } from '@gitroom/react/helpers/posthog';
 import UtmSaver from '@gitroom/helpers/utils/utm.saver';
 import { DubAnalytics } from '@gitroom/frontend/components/layout/dubAnalytics';
@@ -45,9 +43,10 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
     cookieStore.get(cookieName)?.value ||
     (await headers()).get(headerName) ||
     fallbackLng;
-  const Plausible = !!process.env.STRIPE_PUBLISHABLE_KEY
-    ? PlausibleProvider
-    : Fragment;
+  // Plausible (no cookies, no personal data): on only where the site's own
+  // script id is set, e.g. pa-xxxx for app.postra.pl. It used to follow the
+  // Stripe key and report to the postra.pl site (E2E-02-13).
+  const plausibleScript = process.env.PLAUSIBLE_SCRIPT_ID;
   return (
     // lang: screen readers pick their voice from it, and it was missing.
     <html lang={language}>
@@ -61,11 +60,20 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
             strategy="afterInteractive"
           />
         )}
+        {!!plausibleScript && (
+          <>
+            <Script
+              src={`https://plausible.io/js/${plausibleScript}.js`}
+              strategy="afterInteractive"
+            />
+            <Script id="plausible-init" strategy="afterInteractive">
+              {`window.plausible=window.plausible||function(){(plausible.q=plausible.q||[]).push(arguments)},plausible.init=plausible.init||function(i){plausible.o=i||{}};plausible.init()`}
+            </Script>
+          </>
+        )}
       </head>
       <ChangeDirClient />
-      <body
-        className={clsx(GeistSans.className, 'text-primary !bg-primary')}
-      >
+      <body className={clsx(GeistSans.className, 'text-primary !bg-primary')}>
         <VariableContextComponent
           storageProvider={
             process.env.STORAGE_PROVIDER! as 'local' | 'cloudflare' | 's3'
@@ -113,20 +121,16 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
             <DubAnalytics />
             <FacebookComponent />
             <GoogleTagManagerComponent gtmId={process.env.NEXT_PUBLIC_GTM_ID} />
-            <Plausible
-              domain={!!process.env.IS_GENERAL ? 'postra.pl' : 'postra.pl'}
+            <PHProvider
+              phkey={process.env.NEXT_PUBLIC_POSTHOG_KEY}
+              host={process.env.NEXT_PUBLIC_POSTHOG_HOST}
             >
-              <PHProvider
-                phkey={process.env.NEXT_PUBLIC_POSTHOG_KEY}
-                host={process.env.NEXT_PUBLIC_POSTHOG_HOST}
-              >
-                <LayoutContext>
-                  <UtmSaver />
-                  <ConnectionStatus />
-                  <SwrProvider>{children}</SwrProvider>
-                </LayoutContext>
-              </PHProvider>
-            </Plausible>
+              <LayoutContext>
+                <UtmSaver />
+                <ConnectionStatus />
+                <SwrProvider>{children}</SwrProvider>
+              </LayoutContext>
+            </PHProvider>
           </SentryComponent>
         </VariableContextComponent>
       </body>

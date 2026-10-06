@@ -220,14 +220,21 @@ export class IntegrationRepository {
       }
     }
 
-    const existing = await this._integration.model.integration.findUnique({
-      where: {
-        organizationId_internalId: {
-          organizationId: params.organizationId!,
-          internalId: params.internalId,
-        },
-      },
+    const current = await this._integration.model.integration.findUnique({
+      where: { id },
+      select: { providerIdentifier: true },
     });
+    const existing =
+      current &&
+      (await this._integration.model.integration.findUnique({
+        where: {
+          organizationId_providerIdentifier_internalId: {
+            organizationId: params.organizationId!,
+            providerIdentifier: current.providerIdentifier,
+            internalId: params.internalId!,
+          },
+        },
+      }));
 
     if (existing) {
       await this._posts.model.post.updateMany({
@@ -315,8 +322,9 @@ export class IntegrationRepository {
       : {};
     const upsert = await this._integration.model.integration.upsert({
       where: {
-        organizationId_internalId: {
+        organizationId_providerIdentifier_internalId: {
           internalId,
+          providerIdentifier: provider,
           organizationId: org,
         },
       },
@@ -382,6 +390,7 @@ export class IntegrationRepository {
           await this._integration.model.integration.findFirst({
             where: {
               organizationId: org,
+              providerIdentifier: provider,
               internalId: internalId,
             },
           })

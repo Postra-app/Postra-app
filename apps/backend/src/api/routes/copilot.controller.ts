@@ -24,6 +24,10 @@ import { SubscriptionService } from '@gitroom/nestjs-libraries/database/prisma/s
 import { BrandKitService } from '@gitroom/nestjs-libraries/database/prisma/brand-kit/brand-kit.service';
 import { MastraAgent } from '@ag-ui/mastra';
 import { MastraService } from '@gitroom/nestjs-libraries/chat/mastra.service';
+import {
+  isAgentGeneration,
+  takeAgentRunSlot,
+} from '@gitroom/nestjs-libraries/chat/agent-run-slot';
 import { PendingActionService } from '@gitroom/nestjs-libraries/chat/pending-action.service';
 import { PostsService } from '@gitroom/nestjs-libraries/database/prisma/posts/posts.service';
 import { Request, Response } from 'express';
@@ -113,6 +117,22 @@ export class CopilotController {
         });
         return;
       }
+    }
+
+    // Only a reply costs tokens; the chat also asks which agents exist and
+    // loads thread state on every page load.
+    if (isAgentGeneration(req.body)) {
+      const release = await takeAgentRunSlot(organization.id);
+      if (!release) {
+        res.status(429).json({
+          error:
+            'The AI assistant is already answering in another chat. Wait for it to finish, then try again.',
+        });
+        return;
+      }
+      res.on('close', () => {
+        release().catch(() => undefined);
+      });
     }
 
     const mastra = await this._mastraService.mastra();

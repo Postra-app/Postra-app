@@ -66,6 +66,7 @@ interface StoreState {
   deleteGlobalValue: (index: number) => void;
   deleteInternalValue: (integrationId: string, index: number) => void;
   addRemoveInternal: (integrationId: string) => void;
+  addAdaptedInternal: (integrationId: string, texts: (string | null)[]) => void;
   changeOrderGlobal: (index: number, direction: 'up' | 'down') => void;
   changeOrderInternal: (
     integrationId: string,
@@ -329,6 +330,34 @@ export const useLaunchStore = create<StoreState>()((set) => ({
           {
             integration: integration.integration,
             integrationValue: state.global.slice(0).map((p) => p),
+          },
+        ],
+      };
+    }),
+  // A channel version made from AI adaptations of the shared text. Only
+  // creates one: if the channel got its own version, or left the post, while
+  // the AI was answering, nothing changes. The toggle used here before
+  // deleted that hand-made version (E2E-05-60).
+  addAdaptedInternal: (integrationId: string, texts: (string | null)[]) =>
+    set((state) => {
+      const integration = state.selectedIntegrations.find(
+        (i) => i.integration.id === integrationId
+      );
+      if (
+        !integration ||
+        state.internal.some((i) => i.integration.id === integrationId)
+      ) {
+        return {};
+      }
+
+      return {
+        internal: [
+          ...state.internal,
+          {
+            integration: integration.integration,
+            integrationValue: state.global.map((p, index) =>
+              texts[index] ? { ...p, content: texts[index] } : p
+            ),
           },
         ],
       };

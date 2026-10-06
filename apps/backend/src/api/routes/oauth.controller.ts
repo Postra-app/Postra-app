@@ -21,6 +21,23 @@ import {
   Sections,
 } from '@gitroom/nestjs-libraries/services/auth/permission.exception.class';
 
+// RFC 7636 §4.3: a challenge without a method means `plain`, which is not
+// offered. Taking it as S256 would fail the exchange later with no reason.
+const requireS256 = (params: {
+  code_challenge?: string;
+  code_challenge_method?: string;
+}) => {
+  if (params.code_challenge && params.code_challenge_method !== 'S256') {
+    throw new HttpException(
+      {
+        error: 'invalid_request',
+        error_description: 'code_challenge_method must be S256',
+      },
+      HttpStatus.BAD_REQUEST
+    );
+  }
+};
+
 @ApiTags('OAuth')
 @Controller('/oauth')
 export class OAuthController {
@@ -28,6 +45,7 @@ export class OAuthController {
 
   @Get('/authorize')
   async authorize(@Query() query: AuthorizeOAuthQueryDto) {
+    requireS256(query);
     const app = await this._oauthService.validateAuthorizationRequest(
       query.client_id
     );
@@ -57,7 +75,8 @@ export class OAuthController {
     return this._oauthService.exchangeCodeForToken(
       body.code,
       body.client_id,
-      body.client_secret
+      body.client_secret,
+      body.code_verifier
     );
   }
 }
@@ -77,6 +96,7 @@ export class OAuthAuthorizedController {
     @GetUserFromRequest() user: User,
     @GetOrgFromRequest() org: Organization
   ) {
+    requireS256(body);
     const app = await this._oauthService.validateAuthorizationRequest(
       body.client_id
     );
@@ -93,7 +113,8 @@ export class OAuthAuthorizedController {
     const code = await this._oauthService.createAuthorizationCode(
       app.id,
       user.id,
-      org.id
+      org.id,
+      body.code_challenge
     );
 
     const redirectUrl = new URL(app.redirectUrl);

@@ -47,6 +47,11 @@ import { groupBy, random, sortBy } from 'lodash';
 import SafeImage from '@gitroom/react/helpers/safe.image';
 import { extend } from 'dayjs';
 import { isUSCitizen } from './helpers/isuscitizen.utils';
+import {
+  minutesInZone,
+  postingMinutesInZone,
+  slotDate,
+} from './day-view.slots';
 import { useInterval } from '@mantine/hooks';
 import { StatisticsModal } from '@gitroom/frontend/components/launches/statistics';
 import { MissingReleaseModal } from '@gitroom/frontend/components/launches/missing-release.modal';
@@ -68,7 +73,10 @@ import { useVariables } from '@gitroom/react/helpers/variable.context';
 import copy from 'copy-to-clipboard';
 import { readResponseError } from '@gitroom/helpers/utils/response.error';
 import { stripHtmlValidation } from '@gitroom/helpers/utils/strip.html.validation';
-import { newDayjs } from '@gitroom/frontend/components/layout/set.timezone';
+import {
+  getTimezone,
+  newDayjs,
+} from '@gitroom/frontend/components/layout/set.timezone';
 import { Button } from '@gitroom/frontend/components/ui/button';
 
 // Extend dayjs with necessary plugins
@@ -319,7 +327,7 @@ export const DayView = () => {
   const currentLanguage = i18next.resolvedLanguage || 'en';
   dayjs.locale(currentLanguage);
 
-  const currentDay = dayjs.utc(startDate);
+  const tz = getTimezone();
 
   const options = useMemo(() => {
     const createdPosts = posts.map((post) => {
@@ -336,9 +344,7 @@ export const DayView = () => {
         identifier: post?.integration?.providerIdentifier || '',
         id: post?.integration?.id || '',
         name: post?.integration?.name || '',
-        time: dayjs
-          .utc(post.publishDate)
-          .diff(dayjs.utc(post.publishDate).startOf('day'), 'minute'),
+        time: minutesInZone(post.publishDate, tz),
       };
     });
     return sortBy(
@@ -353,7 +359,7 @@ export const DayView = () => {
                 name: p?.name,
                 id: p?.id,
                 image: p?.picture,
-                time: t?.time,
+                time: postingMinutesInZone(t?.time, startDate, tz),
               }))
             ),
           ],
@@ -362,7 +368,7 @@ export const DayView = () => {
       ),
       (p) => p[0].time
     );
-  }, [integrations, posts]);
+  }, [integrations, posts, startDate, tz]);
 
   return (
     <div className="flex flex-col gap-[10px] flex-1 relative">
@@ -370,11 +376,7 @@ export const DayView = () => {
         {options.map((option) => (
           <Fragment key={option[0].time}>
             <div className="text-center text-[14px] min-h-[21px] shrink-0">
-              {newDayjs()
-                .utc()
-                .startOf('day')
-                .add(option[0].time, 'minute')
-                .local()
+              {slotDate(startDate, option[0].time, tz)
                 // Not 'LT': in the English locale that is 12-hour too, so
                 // "24 hours" changed nothing in the day view.
                 .format(isUSCitizen() ? 'hh:mm A' : 'HH:mm')}
@@ -393,10 +395,7 @@ export const DayView = () => {
                 }}
               >
                 <CalendarColumn
-                  getDate={currentDay
-                    .startOf('day')
-                    .add(option[0].time, 'minute')
-                    .local()}
+                  getDate={slotDate(startDate, option[0].time, tz)}
                 />
               </CalendarContext.Provider>
             </div>
