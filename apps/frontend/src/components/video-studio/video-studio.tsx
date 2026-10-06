@@ -112,7 +112,10 @@ export const VideoStudio: FC<VideoStudioProps> = ({
   }, [delivered, router]);
   const fileInputRef = useRef<HTMLInputElement>(null);
   /** In-flight upload, shared so a double click can't start a second one. */
-  const uploadPromiseRef = useRef<Promise<{ id: string; path: string } | null> | null>(null);
+  const uploadPromiseRef = useRef<{
+    source: Blob;
+    run: Promise<{ id: string; path: string } | null>;
+  } | null>(null);
   const user = useUser();
   const orgIdRef = useRef('default');
   orgIdRef.current = user?.orgId || 'default';
@@ -158,6 +161,22 @@ export const VideoStudio: FC<VideoStudioProps> = ({
   }, [showGoalsSignal]);
 
   fileRef.current = file;
+
+  // The clip every tab works on. An upload that finishes after the user
+  // loaded another clip must not become that clip's library id (E2E-06-34):
+  // captions transcribed clip A while preview and render used B. And a tab's
+  // results (subtitles, burned-in captions, exported formats) belong to one
+  // clip, so the tabs start over when it changes.
+  const source: Blob | null = trimmedBlob ?? file;
+  const sourceRef = useRef<Blob | null>(source);
+  sourceRef.current = source;
+  const sourceKeys = useRef({ seen: new WeakMap<Blob, number>(), next: 1 });
+  const sourceKey = (() => {
+    if (!source) return 0;
+    const keys = sourceKeys.current;
+    if (!keys.seen.has(source)) keys.seen.set(source, keys.next++);
+    return keys.seen.get(source)!;
+  })();
 
   // The restore below runs across two awaits; these mirrors let it ask "is the
   // user still waiting for this clip, or did they walk off and start something
@@ -382,11 +401,13 @@ export const VideoStudio: FC<VideoStudioProps> = ({
   // failures (with the reason), so callers only have to check for null.
   const ensureUploaded = useCallback(async (): Promise<{ id: string; path: string } | null> => {
     if (uploadedMedia) return uploadedMedia;
-    // Two clicks on "AI Captions" used to start two uploads and leave two rows
-    // in the library; share the in-flight one instead.
-    if (uploadPromiseRef.current) return uploadPromiseRef.current;
     const source = trimmedBlob ?? file;
     if (!source) return null;
+    // Two clicks on "AI Captions" used to start two uploads and leave two rows
+    // in the library; share the in-flight one instead — for the same clip.
+    if (uploadPromiseRef.current?.source === source) {
+      return uploadPromiseRef.current.run;
+    }
 
     const run = (async (): Promise<{ id: string; path: string } | null> => {
       let blob = source;
@@ -423,15 +444,17 @@ export const VideoStudio: FC<VideoStudioProps> = ({
         reportUploadFailure(result.reason ?? 'network');
         return null;
       }
+      // Another clip was loaded meanwhile: this upload is not its id.
+      if (sourceRef.current !== source) return null;
       setUploadedMedia(result.media);
       return result.media;
     })();
 
-    uploadPromiseRef.current = run;
+    uploadPromiseRef.current = { source, run };
     try {
       return await run;
     } finally {
-      uploadPromiseRef.current = null;
+      if (uploadPromiseRef.current?.run === run) uploadPromiseRef.current = null;
     }
   }, [uploadedMedia, trimmedBlob, file, uploadBlob, reportUploadFailure, toaster, t]);
 
@@ -728,14 +751,19 @@ export const VideoStudio: FC<VideoStudioProps> = ({
         )}
         {visited.has('formats') && (
           <div hidden={showGoals || tab !== 'formats'}>
-            <VideoMultiFormat source={trimmedBlob ?? file} onReady={handleFormatsReady} />
+            <VideoMultiFormat
+              key={sourceKey}
+              source={source}
+              onReady={handleFormatsReady}
+            />
           </div>
         )}
         {visited.has('captions') && (
           <div hidden={showGoals || tab !== 'captions'}>
             <VideoCaptions
+              key={sourceKey}
               mediaId={uploadedMedia?.id ?? null}
-              source={trimmedBlob ?? file}
+              source={source}
               onCaptioned={handleCaptionedReady}
             />
           </div>
