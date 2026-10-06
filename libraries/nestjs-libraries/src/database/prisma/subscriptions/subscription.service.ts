@@ -1,6 +1,7 @@
 import { HttpException, Injectable } from '@nestjs/common';
 import {
   COMPABLE_TIERS,
+  channelLimitFor,
   isCompableTier,
   pricing,
   trialAiAllowance,
@@ -186,13 +187,20 @@ export class SubscriptionService {
   async modifySubscriptionByOrg(
     organizationId: string,
     totalChannels: number,
-    billing: 'FREE' | 'STANDARD' | 'TEAM' | 'PRO' | 'ULTIMATE'
+    billing: 'FREE' | 'STANDARD' | 'TEAM' | 'PRO' | 'ULTIMATE',
+    isTrailing = false
   ) {
     if (!organizationId) {
       return false;
     }
 
-    await this.applyTierLimits(organizationId, totalChannels, billing);
+    const current = await this._subscriptionRepository.getSubscriptionByOrgId(
+      organizationId
+    );
+    await this.applyTierLimits(organizationId, totalChannels, billing, {
+      isTrailing,
+      previousChannels: current?.totalChannels || 0,
+    });
     return true;
   }
 
@@ -205,13 +213,18 @@ export class SubscriptionService {
   private async applyTierLimits(
     organizationId: string,
     totalChannels: number,
-    billing: 'FREE' | 'STANDARD' | 'TEAM' | 'PRO' | 'ULTIMATE'
+    billing: 'FREE' | 'STANDARD' | 'TEAM' | 'PRO' | 'ULTIMATE',
+    change: { isTrailing: boolean; previousChannels: number } = {
+      isTrailing: false,
+      previousChannels: 0,
+    }
   ) {
     const to = pricing[billing];
 
-    const active = (
-      await this._integrationService.getIntegrationsList(organizationId)
-    ).filter((f) => !f.disabled);
+    const channels = await this._integrationService.getIntegrationsList(
+      organizationId
+    );
+    const active = channels.filter((f) => !f.disabled);
 
     const disallowedByPlatform = active.filter(
       (c) => !to.allowedProviders.includes(c.providerIdentifier)
@@ -227,6 +240,31 @@ export class SubscriptionService {
       await this._integrationService.disableIntegrations(
         organizationId,
         remaining.length - totalChannels
+      );
+    }
+
+    // A lapsed trial or cancelled plan drops to FREE and disables channels;
+    // paying again never switched them back on (upstream 4a6ba07f, c145f0c3).
+    // Only when the limit grew, so a renewal or a cancel toggle does not undo
+    // channels the user disabled on purpose, and only when every channel the
+    // plan's platforms cover fits, since auto-disabled channels cannot be told
+    // apart from the user's. Platforms outside the plan stay off.
+    const covered = channels.filter((c) =>
+      to.allowedProviders.includes(c.providerIdentifier)
+    );
+    const limit = channelLimitFor({
+      isTrailing: change.isTrailing,
+      subscription: { totalChannels },
+    });
+    if (
+      billing !== 'FREE' &&
+      covered.some((c) => c.disabled) &&
+      covered.length <= limit &&
+      totalChannels > change.previousChannels
+    ) {
+      await this._integrationService.enableChannels(
+        organizationId,
+        covered.filter((c) => c.disabled).map((c) => c.id)
       );
     }
 
@@ -247,7 +285,8 @@ export class SubscriptionService {
   async modifySubscription(
     customerId: string,
     totalChannels: number,
-    billing: 'FREE' | 'STANDARD' | 'TEAM' | 'PRO' | 'ULTIMATE'
+    billing: 'FREE' | 'STANDARD' | 'TEAM' | 'PRO' | 'ULTIMATE',
+    isTrailing = false
   ) {
     if (!customerId) {
       return false;
@@ -270,11 +309,10 @@ export class SubscriptionService {
       return false;
     }
 
-    await this.applyTierLimits(
-      getOrgByCustomerId.id,
-      totalChannels,
-      billing
-    );
+    await this.applyTierLimits(getOrgByCustomerId.id, totalChannels, billing, {
+      isTrailing,
+      previousChannels: getCurrentSubscription?.totalChannels || 0,
+    });
 
     return true;
   }
@@ -298,8 +336,18 @@ export class SubscriptionService {
       // webhook so Stripe retries instead of the plan being silently lost.
       const load =
         org && !customerId
-          ? await this.modifySubscriptionByOrg(org, totalChannels, billing)
-          : await this.modifySubscription(customerId, totalChannels, billing);
+          ? await this.modifySubscriptionByOrg(
+              org,
+              totalChannels,
+              billing,
+              isTrailing
+            )
+          : await this.modifySubscription(
+              customerId,
+              totalChannels,
+              billing,
+              isTrailing
+            );
       if (!load) {
         return {};
       }

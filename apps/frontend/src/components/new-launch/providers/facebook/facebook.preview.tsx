@@ -132,7 +132,7 @@ export const FacebookPreview: FC<{
           </div>
         </div>
       </div>
-      <div
+      <div dir="auto"
         className="text-[14px] font-[400] whitespace-pre-line"
         dangerouslySetInnerHTML={{
           __html: sanitizePostContent(renderContent?.[0]?.text),
@@ -265,7 +265,7 @@ export const FacebookPreview: FC<{
                         </div>
                       </div>
                     </div>
-                    <div
+                    <div dir="auto"
                       className="whitespace-pre-line text-[14px] font-[400]"
                       dangerouslySetInnerHTML={{
                         __html: sanitizePostContent(value.text),

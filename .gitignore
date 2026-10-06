@@ -75,3 +75,6 @@ apps/orchestrator/uploads/
 
 # Load-test session tokens (e2e/load/seed.mjs)
 e2e/load/users.json
+
+# Stack billing secrets (e2e/stack/README.md)
+backend.env

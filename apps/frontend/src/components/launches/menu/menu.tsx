@@ -43,6 +43,53 @@ const AddEditModal = dynamic(
 import dayjs from 'dayjs';
 import { ModalWrapperComponent } from '@gitroom/frontend/components/new-launch/modal.wrapper.component';
 import copy from 'copy-to-clipboard';
+import { Input } from '@gitroom/react/form/input';
+import { Button } from '@gitroom/react/form/button';
+
+// A name for the channel inside Postra only (upstream 5a1e92b4); posts still
+// go out under the platform's name. Empty puts the platform's name back.
+const RenameChannelModal: FC<{
+  name: string;
+  id: string;
+  close: () => void;
+  onSave: () => void;
+}> = ({ name, id, close, onSave }) => {
+  const t = useT();
+  const fetch = useFetch();
+  const toast = useToaster();
+  const [channelName, setChannelName] = useState<string>(name);
+  const save = useCallback(async () => {
+    const res = await fetch(`/integrations/${id}/custom-name`, {
+      method: 'PUT',
+      body: JSON.stringify({ name: channelName }),
+    });
+    if (!res.ok) {
+      toast.show(
+        (await readResponseError(res)) ||
+          t('channel_rename_failed', 'Could not rename the channel'),
+        'warning'
+      );
+      return;
+    }
+    onSave();
+    close();
+  }, [channelName, id]);
+  return (
+    <div>
+      <Input
+        name="name"
+        disableForm={true}
+        label={t('channel_name', 'Name')}
+        value={channelName}
+        maxLength={100}
+        onChange={(e) => setChannelName(e.target.value)}
+      />
+      <Button onClick={save} className="mt-[16px]">
+        {t('save', 'Save')}
+      </Button>
+    </div>
+  );
+};
 
 export const Menu: FC<{
   canEnable: boolean;
@@ -399,6 +446,40 @@ export const Menu: FC<{
     });
     setShow(false);
   }, [integrations, t]);
+  const renameChannel = useCallback(() => {
+    modal.openModal({
+      title: t('rename_channel', 'Rename channel'),
+      children: (close) => (
+        <RenameChannelModal
+          name={findIntegration?.name || ''}
+          id={id}
+          close={close}
+          onSave={() => {
+            mutate();
+            toast.show(t('channel_renamed', 'Channel renamed'), 'success');
+          }}
+        />
+      ),
+    });
+    setShow(false);
+  }, [findIntegration, id, t]);
+  const resetChannelName = useCallback(async () => {
+    setShow(false);
+    const res = await fetch(`/integrations/${id}/custom-name`, {
+      method: 'PUT',
+      body: JSON.stringify({ name: '' }),
+    });
+    if (!res.ok) {
+      toast.show(
+        (await readResponseError(res)) ||
+          t('channel_rename_failed', 'Could not rename the channel'),
+        'warning'
+      );
+      return;
+    }
+    mutate();
+    toast.show(t('channel_name_reset', 'Channel name reset'), 'success');
+  }, [id, t]);
   const updateCredentials = useCallback(() => {
     modal.openModal({
       title: t('custom_url', 'Custom URL'),
@@ -636,6 +717,56 @@ export const Menu: FC<{
                 {t('move_add_to_customer', 'Move / add to customer')}
               </div>
             </div>
+          )}
+          {canManage && (
+            <div className={menuItemClass} onClick={renameChannel}>
+              <div className={iconClass}>
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  width={18}
+                  height={18}
+                  viewBox="0 0 24 24"
+                  fill="none"
+                >
+                  <path
+                    d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                </svg>
+              </div>
+              <div className="text-[14px] font-[500]">
+                {t('rename_channel', 'Rename channel')}
+              </div>
+            </div>
+          )}
+          {canManage &&
+            !!findIntegration?.originalName &&
+            findIntegration.name !== findIntegration.originalName && (
+              <div className={menuItemClass} onClick={resetChannelName}>
+                <div className={iconClass}>
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    width={18}
+                    height={18}
+                    viewBox="0 0 24 24"
+                    fill="none"
+                  >
+                    <path
+                      d="M3 12a9 9 0 1 0 3-6.7L3 8M3 3v5h5"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    />
+                  </svg>
+                </div>
+                <div className="text-[14px] font-[500]">
+                  {t('reset_channel_name', 'Reset to original name')}
+                </div>
+              </div>
 
           )}
           <div

@@ -20,6 +20,9 @@ export const POSTRA_INVOICE_SETTINGS = { footer: 'B K Company trading as Postra'
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || 'sk_nothing');
 
+// Pence → "£29.00" for messages to the customer.
+const formatAmount = (pence: number) => `£${(pence / 100).toFixed(2)}`;
+
 // A subscription that can be charged or cancelled. `incomplete` (first
 // payment never went through) and `incomplete_expired` are not: listed first,
 // one was cancelled in place of the real subscription — the organisation
@@ -164,6 +167,55 @@ export class StripeService {
   // the payload can be stale: an update queued before a cancellation would
   // bring a cancelled plan back, an older update would restore an older tier.
   // The subscription as Stripe holds it now is the only state worth writing.
+  // Refund what the cancelled duplicate collected (E2E-07-30). Returns the
+  // amount in pence, 0 when it was never paid, null when Stripe refused —
+  // then the customer is told to contact us instead. Keyed per payment, so a
+  // retried webhook cannot refund twice.
+  private async refundDuplicate(subscriptionId: string): Promise<number | null> {
+    try {
+      let refunded = 0;
+      const invoices = await stripe.invoices.list({
+        subscription: subscriptionId,
+        status: 'paid',
+        limit: 10,
+      });
+      for (const invoice of invoices.data) {
+        if (!invoice.amount_paid || !invoice.id) continue;
+        const payments = await stripe.invoicePayments.list({
+          invoice: invoice.id,
+          status: 'paid',
+          limit: 10,
+        });
+        for (const payment of payments.data) {
+          const ref = (v?: string | { id: string } | null) =>
+            typeof v === 'string' ? v : v?.id;
+          const paymentIntent = ref(payment.payment.payment_intent);
+          const charge = ref(payment.payment.charge);
+          if (!paymentIntent && !charge) continue;
+          const result = await stripe.refunds.create(
+            {
+              ...(paymentIntent
+                ? { payment_intent: paymentIntent }
+                : { charge: charge! }),
+              reason: 'duplicate',
+              metadata: { subscription: subscriptionId, invoice: invoice.id },
+            },
+            { idempotencyKey: `duplicate-refund-${payment.id}` }
+          );
+          refunded += result.amount;
+        }
+      }
+      return refunded;
+    } catch (err) {
+      this._logger.error(
+        `Refund of duplicate subscription ${subscriptionId} failed: ${
+          (err as Error)?.message
+        }`
+      );
+      return null;
+    }
+  }
+
   private async syncSubscription(
     event:
       | Stripe.CustomerSubscriptionCreatedEvent
@@ -206,6 +258,7 @@ export class StripeService {
       );
       if (isDuplicate) {
         await stripe.subscriptions.cancel(current.id);
+        const refund = await this.refundDuplicate(current.id);
         const org = await this._organizationService.getOrgByCustomerId(
           current.customer as string
         );
@@ -213,7 +266,11 @@ export class StripeService {
           await this._notificationService.inAppNotification(
             org.id,
             'Duplicate subscription cancelled',
-            `A second subscription was started while you already had one, so we cancelled it. If you were charged twice, contact us and we will refund it.`,
+            refund === null
+              ? `A second subscription was started while you already had one, so we cancelled it. If you were charged twice, contact us and we will refund it.`
+              : refund > 0
+              ? `A second subscription was started while you already had one, so we cancelled it and refunded its payment of ${formatAmount(refund)}. The refund reaches your card in 5–10 days.`
+              : `A second subscription was started while you already had one, so we cancelled it. Nothing was charged for it.`,
             true,
             false,
             'info'

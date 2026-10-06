@@ -114,3 +114,27 @@ test('a tag created in the composer is saved with the draft', async ({ page }) =
   await api.dispose();
 });
 
+
+// The publish date was a div only a mouse could open, and Escape left its
+// calendar open (found at 390 px on 2026-10-06).
+test('the publish date opens from the keyboard and Escape closes it', async ({ page }) => {
+  await page.goto('/launches');
+  await page.getByRole('button', { name: 'Create Post' }).first().click();
+  const date = page.getByRole('button', { name: /^Publish date: / });
+  await date.focus();
+  await page.keyboard.press('Enter');
+  await expect(page.getByRole('dialog', { name: 'Publish date' })).toBeVisible();
+  await expect(date).toHaveAttribute('aria-expanded', 'true');
+  await page.keyboard.press('Escape');
+  await expect(page.getByRole('dialog', { name: 'Publish date' })).toBeHidden();
+  // Only the calendar closed, not the composer under it.
+  await expect(page.getByText('Create Post', { exact: true }).first()).toBeVisible();
+  await expect(page.getByText('Are you sure you want to close this modal?')).toHaveCount(0);
+});
+
+test('the phone-only Preview button stays out of the desktop composer', async ({ page }) => {
+  await page.goto('/launches');
+  await page.getByRole('button', { name: 'Create Post' }).first().click();
+  await expect(page.getByText('Post Preview', { exact: true })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Preview', exact: true })).toBeHidden();
+});

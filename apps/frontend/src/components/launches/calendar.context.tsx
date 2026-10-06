@@ -89,10 +89,17 @@ export const CalendarContext = createContext({
   setListState: (state: ListStateFilter) => {
     /** empty **/
   },
+  // Channels shown in the calendar and list; null = all of them.
+  selectedChannels: null as string[] | null,
+  setSelectedChannels: (channels: string[] | null) => {
+    /** empty **/
+  },
 });
 
 export interface Integrations {
   name: string;
+  // The platform's own name when the channel is renamed in Postra.
+  originalName?: string;
   id: string;
   disabled?: boolean;
   inBetweenSteps: boolean;
@@ -164,6 +171,17 @@ export const CalendarWeekProvider: FC<{
     setListPage(0);
   }, []);
 
+  // Channel filter above the calendar (upstream 9bf96ebc, 2a2c85c4): the grid
+  // filters what it already loaded, the list asks the server so its page
+  // count stays right.
+  const [selectedChannels, setSelectedChannelsRaw] = useState<
+    string[] | null
+  >(null);
+  const setSelectedChannels = useCallback((next: string[] | null) => {
+    setSelectedChannelsRaw(next);
+    setListPage(0);
+  }, []);
+
   // Initialize with current date range based on URL params or defaults
   const initStartDate = searchParams.get('startDate');
   const initEndDate = searchParams.get('endDate');
@@ -180,6 +198,11 @@ export const CalendarWeekProvider: FC<{
     customer: initCustomer || null,
     display,
   });
+
+  // Another agency client has other channels.
+  useEffect(() => {
+    setSelectedChannels(null);
+  }, [filters.customer]);
 
   const params = useMemo(() => {
     return new URLSearchParams({
@@ -210,8 +233,9 @@ export const CalendarWeekProvider: FC<{
       limit: '100',
       customer: filters?.customer?.toString() || '',
       state: listState,
+      ...(selectedChannels ? { integrations: selectedChannels.join(',') } : {}),
     }).toString();
-  }, [listPage, filters.customer, listState]);
+  }, [listPage, filters.customer, listState, selectedChannels]);
 
   const loadListData = useCallback(async () => {
     const response = await fetch(`/posts/list?${listParams}`);
@@ -376,7 +400,13 @@ export const CalendarWeekProvider: FC<{
         trendings,
         reloadCalendarView,
         ...filters,
-        posts: calendarIsLoading ? [] : internalData,
+        posts: calendarIsLoading
+          ? []
+          : selectedChannels
+          ? internalData.filter((p: any) =>
+              selectedChannels.includes(p.integration?.id)
+            )
+          : internalData,
         loading,
         integrations,
         setFilters: setFiltersWrapper,
@@ -392,6 +422,8 @@ export const CalendarWeekProvider: FC<{
         setListPage,
         listState,
         setListState,
+        selectedChannels,
+        setSelectedChannels,
       }}
     >
       {children}

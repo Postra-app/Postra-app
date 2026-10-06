@@ -80,6 +80,36 @@ test('"Post now" reaches the platform and the post is marked published', async (
   expect(after.error ?? null).toBeNull();
 });
 
+// The public API and the agent may send `<p class="…">`: it used to be taken
+// for plain text and reach the platform with its tags (upstream 53ea9c8f).
+test('paragraphs with attributes reach the platform as lines of text', async () => {
+  const tag = Date.now();
+  const res = await api.post('/posts', {
+    data: {
+      type: 'now',
+      shortLink: false,
+      date: new Date().toISOString(),
+      tags: [],
+      posts: [
+        {
+          integration: { id: CHANNEL },
+          value: [{ content: `<p class="lead" dir="auto">[stack] first line ${tag}</p><p class="body" dir="auto">second line</p>`, image: [] }],
+          settings: { __type: 'mastodon' },
+        },
+      ],
+    },
+  });
+  expect(res.status(), await res.text()).toBe(201);
+  const post = (await listPosts(api)).find((p) => p.content.includes(`first line ${tag}`))!;
+  // The editor writes dir="auto" for right-to-left text (upstream 1d4b75fa,
+  // 75cb2f83); the sanitizer used to drop it.
+  expect(post.content).toContain('dir="auto"');
+  await settledState(post.id).toBe('PUBLISHED');
+  const sent = (await received()).find((r) => r.status.includes(`first line ${tag}`));
+  expect(sent?.status).not.toMatch(/<\/?p/);
+  expect(sent?.status.split('\n').map((l) => l.trim())).toEqual([`[stack] first line ${tag}`, 'second line']);
+});
+
 test('a scheduled post waits for its time, then publishes', async () => {
   const content = `[stack] scheduled ${Date.now()}`;
   const at = new Date(Date.now() + 15_000);
@@ -104,6 +134,18 @@ test('a platform refusal marks the post failed, with the reason', async () => {
   // Temporal's JSON with stack traces and container paths.
   expect(after.error).toContain('Text character limit of 500 exceeded');
   expect(after.error).not.toMatch(/\bat \w+|\/app\/|node_modules|workflowId/);
+
+  // The calendar tooltip and the public API read the list, which never
+  // selected the error and showed "An error occurred" (upstream 291b07b4).
+  const window = `startDate=${new Date(Date.now() - 86_400_000).toISOString()}&endDate=${new Date(Date.now() + 86_400_000).toISOString()}`;
+  const calendar: { p: { i: string; error: string | null }[] } = await (await api.get(`/posts?${window}`)).json();
+  const tile = calendar.p.find((p) => p.i === post.id);
+  expect(tile?.error).toContain('Text character limit of 500 exceeded');
+  expect(tile?.error).not.toMatch(/\bat \w+|\/app\/|node_modules|workflowId/);
+  const pub = await api.get(`/public/v1/posts?${window}`, { headers: { Authorization: USERS.a.apiKey } });
+  expect(pub.status()).toBe(200);
+  const listed = (await pub.json()).posts.find((p: { id: string }) => p.id === post.id);
+  expect(listed?.error).toContain('Text character limit of 500 exceeded');
 });
 
 // Editing a scheduled post (composer → save with the same post id): the old

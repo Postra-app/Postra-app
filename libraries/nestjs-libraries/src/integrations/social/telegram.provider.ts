@@ -292,7 +292,8 @@ export class TelegramProvider extends SocialAbstract implements SocialProvider {
     const text = striptags(message.message || '', ['u', 'strong', 'p'])
       .replace(/<strong>/g, '<b>')
       .replace(/<\/strong>/g, '</b>')
-      .replace(/<p>(.*?)<\/p>/g, '$1\n');
+      // With attributes too: dir="auto" from the editor, class from the API.
+      .replace(/<p(?:\s[^>]*)?>([\s\S]*?)<\/p>/g, '$1\n');
 
     // A caption under a photo/video is capped at 1024 characters (a plain
     // message at 4096). A longer text goes out as its own message right after

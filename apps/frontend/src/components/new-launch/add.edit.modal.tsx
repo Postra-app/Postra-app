@@ -172,7 +172,7 @@ export const AddEditModalInnerInner: FC<AddEditModalProps> = (props) => {
         existingData.posts.map((post) => ({
           delay: post.delay,
           content:
-            post.content.indexOf('<p>') > -1
+            /<p[\s>]/i.test(post.content)
               ? post.content
               : post.content
                   .split('\n')
@@ -197,7 +197,7 @@ export const AddEditModalInnerInner: FC<AddEditModalProps> = (props) => {
       props.onlyValues?.length
         ? props.onlyValues.map((p) => ({
             content:
-              p.content.indexOf('<p>') > -1
+              /<p[\s>]/i.test(p.content)
                 ? p.content
                 : p.content
                     .split('\n')
@@ -210,7 +210,7 @@ export const AddEditModalInnerInner: FC<AddEditModalProps> = (props) => {
         ? props.set.posts[0].value.map((p: any) => ({
             id: makeId(10),
             content:
-              p.content.indexOf('<p>') > -1
+              /<p[\s>]/i.test(p.content)
                 ? p.content
                 : p.content
                     .split('\n')

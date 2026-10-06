@@ -75,6 +75,15 @@ test("B cannot post to A's channel", async () => {
   expect(res.status()).toBeLessThan(500);
 });
 
+test("B cannot rename A's channel", async () => {
+  const res = await b.put(`/integrations/${channelOf('a')}/custom-name`, { data: { name: '[stack] foreign name' } });
+  expect(res.status()).toBe(404);
+  const prisma = database();
+  const row = await prisma.integration.findUnique({ where: { id: channelOf('a') }, select: { customName: true } });
+  await prisma.$disconnect();
+  expect(row?.customName ?? null).not.toBe('[stack] foreign name');
+});
+
 test("E2E-05-19: B cannot put a plug on A's channel", async () => {
   const res = await b.post(`/integrations/${channelOf('a')}/plugs`, {
     data: {

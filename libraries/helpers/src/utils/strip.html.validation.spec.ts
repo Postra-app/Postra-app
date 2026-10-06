@@ -22,3 +22,26 @@ describe('stripHtmlValidation entity unescaping', () => {
     expect(stripHtmlValidation('html', '&gt;')).toBe('>');
   });
 });
+
+// Posts from the public API or the agent can carry `<p class="…">`; they were
+// taken for plain text and published with the tags and no line breaks
+// (upstream 53ea9c8f, ec01d331, 08078373).
+describe('stripHtmlValidation paragraphs with attributes', () => {
+  it('turns attributed paragraphs into lines like plain ones', () => {
+    const plain = stripHtmlValidation('normal', '<p>Hello</p><p>World</p>');
+    expect(
+      stripHtmlValidation('normal', '<p class="a">Hello</p><p dir="auto">World</p>')
+    ).toBe(plain);
+    expect(plain).not.toMatch(/<p/);
+  });
+
+  it('keeps markdown headings with attributes', () => {
+    expect(
+      stripHtmlValidation('markdown', '<h2 class="t">Title</h2><p class="b">Body</p>')
+    ).toBe(stripHtmlValidation('markdown', '<h2>Title</h2><p>Body</p>'));
+  });
+
+  it('does not take <pre> for a paragraph', () => {
+    expect(stripHtmlValidation('normal', '<pre>a  b</pre>')).toBe('<pre>a  b</pre>');
+  });
+});

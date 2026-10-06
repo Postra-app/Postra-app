@@ -438,8 +438,8 @@ export const EditorWrapper: FC<{
             ((!canEdit && index > 0) || (!comments && index > 0)) && 'hidden'
           )}
         >
-          <div className="flex gap-[5px] flex-1 w-full">
-            <div className="flex-1 flex w-full">
+          <div className="flex gap-[5px] flex-1 w-full min-w-0">
+            <div className="flex-1 flex w-full min-w-0">
               {index > 0 && (
                 <div className="flex justify-center pl-[12px] text-newSep">
                   <ConnectionLineIcon />
@@ -949,7 +949,13 @@ export const OnlyEditor = forwardRef<
   const editor = useEditor({
     extensions: [
       Document,
-      Paragraph,
+      // Hebrew and Arabic posts read right to left in the editor and the
+      // previews (upstream 1d4b75fa); the attribute travels with the HTML.
+      Paragraph.configure({
+        HTMLAttributes: {
+          dir: 'auto',
+        },
+      }),
       Text,
       Underline,
       Bold,
@@ -1063,6 +1069,9 @@ export const OnlyEditor = forwardRef<
         ? [
             Heading.configure({
               levels: [1, 2, 3],
+              HTMLAttributes: {
+                dir: 'auto',
+              },
             }),
           ]
         : []),

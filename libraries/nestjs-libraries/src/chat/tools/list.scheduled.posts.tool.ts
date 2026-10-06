@@ -14,7 +14,7 @@ export class ListScheduledPostsTool implements AgentToolInterface {
   run() {
     return createTool({
       id: 'listScheduledPosts',
-      description: `List the user's existing posts (their content calendar) between two dates: scheduled, queued, drafts, published and errored. Use this to see what is already planned before scheduling something new, or to find a post the user wants to change — reschedule it with its "id", delete it with its "group".`,
+      description: `List the user's existing posts (their content calendar) between two dates: scheduled, queued, drafts, published and errored. Use this to see what is already planned before scheduling something new, or to find a post the user wants to change — reschedule it with its "id", delete it with its "group". An errored post carries the reason in "error".`,
       inputSchema: z.object({
         startDate: z
           .string()
@@ -41,6 +41,10 @@ export class ListScheduledPostsTool implements AgentToolInterface {
             group: z.string(),
             date: z.string(),
             state: z.string(),
+            error: z
+              .string()
+              .nullable()
+              .describe('Why publishing failed, for errored posts; null otherwise'),
             channel: z.string(),
             platform: z.string(),
             preview: z.string(),
@@ -71,6 +75,7 @@ export class ListScheduledPostsTool implements AgentToolInterface {
             group: p.group,
             date: dayjs(p.publishDate).toISOString(),
             state: p.state,
+            error: p.error ?? null,
             channel: p.integration?.name || '',
             platform: p.integration?.providerIdentifier || '',
             preview: String(

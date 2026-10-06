@@ -622,6 +622,19 @@ export class IntegrationRepository {
     });
   }
 
+  async updateCustomName(org: string, id: string, name: string) {
+    if (!(await this.ownChannel(org, id))) {
+      return null;
+    }
+    // Only the id back: the full row carries the channel's tokens (upstream
+    // bb2e0176).
+    return this._integration.model.integration.update({
+      where: { id },
+      data: { customName: name.trim() || null },
+      select: { id: true },
+    });
+  }
+
   async updateIntegrationGroup(org: string, id: string, group: string) {
     if (!(await this.ownChannel(org, id))) {
       return null;
@@ -703,6 +716,19 @@ export class IntegrationRepository {
     return this._integration.model.integration.updateMany({
       where: {
         id,
+        organizationId: org,
+        deletedAt: null,
+      },
+      data: {
+        disabled: false,
+      },
+    });
+  }
+
+  enableChannels(org: string, ids: string[]) {
+    return this._integration.model.integration.updateMany({
+      where: {
+        id: { in: ids },
         organizationId: org,
         deletedAt: null,
       },

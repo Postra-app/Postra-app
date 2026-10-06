@@ -5,6 +5,7 @@ import clsx from 'clsx';
 import dayjs from 'dayjs';
 import { useCallback } from 'react';
 import { SelectCustomer } from '@gitroom/frontend/components/launches/select.customer';
+import { SelectChannels } from '@gitroom/frontend/components/launches/select.channels';
 import { useT } from '@gitroom/react/translation/get.transation.service.client';
 import i18next from 'i18next';
 import { newDayjs } from '@gitroom/frontend/components/layout/set.timezone';
@@ -431,6 +432,7 @@ export const Filters = () => {
         onChange={(customer: string) => setCustomer(customer)}
         integrations={calendar.integrations}
       />
+      <SelectChannels />
       {!isListView && (
         <div className="launches-toggle-surface flex flex-row p-[4px] border border-white/10 bg-[rgba(15,23,42,0.74)] rounded-[12px] text-[14px] font-[500] shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]">
           <div

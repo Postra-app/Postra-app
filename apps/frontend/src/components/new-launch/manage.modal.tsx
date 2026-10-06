@@ -53,6 +53,9 @@ export const ManageModal: FC<AddEditModalProps> = (props) => {
   const toaster = useToaster();
   const modal = useModals();
   const [showSettings, setShowSettings] = useState(false);
+  // Phones have no room for the preview column beside the editor; the
+  // preview takes the editor's place instead (upstream 48aa7e2c).
+  const [phoneTab, setPhoneTab] = useState<'edit' | 'preview'>('edit');
   const [settingsPulse, setSettingsPulse] = useState(false);
   const { data: shortlinkPreferenceData } = useShortlinkPreference();
 
@@ -570,14 +573,49 @@ export const ManageModal: FC<AddEditModalProps> = (props) => {
   return (
     <div className="w-full h-full flex-1 p-[40px] phone:p-0 flex relative">
       <div className="flex flex-1 bg-white/[0.03] rounded-[20px] flex-col">
-        <div className="flex-1 flex">
-          <div className="flex flex-col flex-1 border-e border-newBorder phone:border-e-0">
+        <div
+          className={clsx(
+            'flex-1 flex',
+            phoneTab === 'preview' && 'phone:flex-col'
+          )}
+        >
+          <div
+            className={clsx(
+              'flex flex-col flex-1 border-e border-newBorder phone:border-e-0',
+              phoneTab === 'preview' && 'phone:flex-none'
+            )}
+          >
             <div className="bg-newBgColor h-[65px] rounded-s-[20px] !rounded-b-[0] flex items-center phone:justify-center gap-[12px] px-[20px] text-[20px] font-[600] relative">
               {t('create_post_title', 'Create Post')}
               <CreationMethodBadge
                 creationMethod={existingData?.posts?.[0]?.creationMethod}
                 size="sm"
               />
+              <button
+                type="button"
+                onClick={() =>
+                  setPhoneTab(phoneTab === 'preview' ? 'edit' : 'preview')
+                }
+                aria-pressed={phoneTab === 'preview'}
+                className={clsx(
+                  'hidden phone:flex absolute start-[16px] top-1/2 -translate-y-1/2 items-center gap-[6px] text-[13px] font-[600] rounded-[8px] px-[10px] h-[32px] border',
+                  phoneTab === 'preview'
+                    ? 'border-sky-400/60 text-sky-300 bg-white/[0.06]'
+                    : 'border-white/10 text-[#A3A3A3]'
+                )}
+              >
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                  <path
+                    d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                  />
+                  <circle cx="12" cy="12" r="3" stroke="currentColor" strokeWidth="2" />
+                </svg>
+                {phoneTab === 'preview'
+                  ? t('edit_post_tab', 'Edit')
+                  : t('preview', 'Preview')}
+              </button>
               <div
                 onClick={askClose}
                 className="hidden phone:flex absolute end-[16px] top-1/2 -translate-y-1/2 cursor-pointer text-[#A3A3A3] hover:text-white"
@@ -585,7 +623,12 @@ export const ManageModal: FC<AddEditModalProps> = (props) => {
                 <CloseIcon />
               </div>
             </div>
-            <div className="flex-1 flex flex-col gap-[16px]">
+            <div
+              className={clsx(
+                'flex-1 flex flex-col gap-[16px]',
+                phoneTab === 'preview' && 'phone:hidden'
+              )}
+            >
               <div
                 className={clsx('flex-1 relative', showSettings && 'hidden')}
               >
@@ -676,8 +719,13 @@ export const ManageModal: FC<AddEditModalProps> = (props) => {
               </div>
             </div>
           </div>
-          <div className="w-[580px] phone:hidden flex flex-col">
-            <div className="bg-newBgColor h-[65px] rounded-e-[20px] !rounded-b-[0] flex items-center px-[20px] text-[20px] font-[600]">
+          <div
+            className={clsx(
+              'w-[580px] flex flex-col',
+              phoneTab === 'preview' ? 'phone:w-full phone:flex-1' : 'phone:hidden'
+            )}
+          >
+            <div className="bg-newBgColor h-[65px] rounded-e-[20px] !rounded-b-[0] flex phone:hidden items-center px-[20px] text-[20px] font-[600]">
               <div className="flex-1">{t('post_preview', 'Post Preview')}</div>
               <div className="cursor-pointer">
                 <CloseIcon onClick={askClose} className="text-[#A3A3A3]" />

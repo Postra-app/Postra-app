@@ -311,6 +311,18 @@ export class IntegrationService {
     return updated;
   }
 
+  async updateCustomName(org: string, id: string, name: string) {
+    const updated = await this._integrationRepository.updateCustomName(
+      org,
+      id,
+      name
+    );
+    if (!updated) {
+      throw new NotFoundException('Channel not found');
+    }
+    return updated;
+  }
+
   async updateOnCustomerName(org: string, id: string, name: string) {
     const updated = await this._integrationRepository.updateOnCustomerName(
       org,
@@ -600,6 +612,12 @@ export class IntegrationService {
       metadata: { integrationId: id, deleted: true },
     });
     return { deleted: true };
+  }
+
+  async enableChannels(org: string, ids: string[]) {
+    if (ids.length) {
+      await this._integrationRepository.enableChannels(org, ids);
+    }
   }
 
   async disableIntegrations(org: string, totalChannels: number) {

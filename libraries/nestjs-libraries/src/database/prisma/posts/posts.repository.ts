@@ -12,6 +12,7 @@ import {
   State,
 } from '@prisma/client';
 import { GetPostsDto } from '@gitroom/nestjs-libraries/dtos/posts/get.posts.dto';
+import { readablePostError } from '@gitroom/nestjs-libraries/database/prisma/posts/post.error.message';
 import { GetPostsListDto } from '@gitroom/nestjs-libraries/dtos/posts/get.posts.list.dto';
 import dayjs from 'dayjs';
 import isoWeek from 'dayjs/plugin/isoWeek';
@@ -209,6 +210,7 @@ export class PostsRepository {
         releaseURL: true,
         releaseId: true,
         state: true,
+        error: true,
         intervalInDays: true,
         group: true,
         creationMethod: true,
@@ -229,7 +231,16 @@ export class PostsRepository {
       },
     });
 
-    return list.reduce((all, post) => {
+    // The calendar tooltip, the public API and the agent's post list all said
+    // only "an error occurred": the error column was never selected (upstream
+    // 291b07b4, c8bf9d8f). Post.error holds the raw Temporal failure; callers
+    // get its sentence, the full trace stays in the Errors table.
+    const readable = list.map((post) => ({
+      ...post,
+      error: readablePostError(post.error),
+    }));
+
+    return readable.reduce((all, post) => {
       if (!post.intervalInDays) {
         return [...all, post];
       }
@@ -332,6 +343,11 @@ export class PostsRepository {
         ...(query.customer
           ? {
               customerId: query.customer,
+            }
+          : {}),
+        ...(query.integrations
+          ? {
+              id: { in: query.integrations },
             }
           : {}),
       },
