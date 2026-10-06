@@ -108,8 +108,13 @@ export const startMcp = async (app: INestApplication) => {
       token_endpoint: `${process.env.NEXT_PUBLIC_OVERRIDE_BACKEND_URL || process.env.NEXT_PUBLIC_BACKEND_URL}/oauth/token`,
       response_types_supported: ['code'],
       grant_types_supported: ['authorization_code'],
+      // The token endpoint reads client_id and client_secret from the body;
+      // without this line RFC 8414 says clients should use HTTP Basic.
+      token_endpoint_auth_methods_supported: ['client_secret_post'],
+      // Checked at /oauth/token since E2E-08-44. No scopes_supported: an
+      // approved app gets the whole organisation, so naming read/write
+      // scopes promised a limit nothing enforced.
       code_challenge_methods_supported: ['S256'],
-      scopes_supported: ['mcp:read', 'mcp:write'],
     });
   });
 

@@ -931,6 +931,9 @@ model OAuthAuthorization {
   accessToken       String?
   authorizationCode String?
   codeExpiresAt     DateTime?
+  // PKCE (RFC 7636, S256 only): the challenge sent with the code request,
+  // checked against code_verifier when the code is exchanged (E2E-08-44).
+  codeChallenge     String?
   revokedAt         DateTime?
   createdAt         DateTime     @default(now())
   updatedAt         DateTime     @updatedAt

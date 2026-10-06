@@ -13,6 +13,7 @@ Postra implements the OAuth 2.0 authorization code grant:
 | Token endpoint | `https://app.postra.pl/api/oauth/token` |
 | Grant type | `authorization_code` only |
 | Client authentication | `client_id` and `client_secret` in the request body |
+| PKCE | Optional, `S256` only |
 
 ## 1. Register your app
 
@@ -41,6 +42,12 @@ https://app.postra.pl/oauth/authorize?client_id=pca_YOUR_CLIENT_ID&response_type
 | `client_id` | yes | Your Client ID |
 | `response_type` | yes | Must be `code` |
 | `state` | recommended | Any value; it comes back unchanged so you can match the response to the request |
+| `code_challenge` | optional | PKCE: `BASE64URL(SHA256(code_verifier))`, 43 characters |
+| `code_challenge_method` | with `code_challenge` | Must be `S256`; `plain` is not supported |
+
+With PKCE, a stolen code is useless without the `code_verifier` that only
+your app holds. A code requested with a `code_challenge` can only be
+exchanged with the matching `code_verifier` (step 4).
 
 The user must be signed in to Postra in that browser. The consent screen
 shows your app's name, description and picture and what it will be able to
@@ -85,6 +92,10 @@ curl https://app.postra.pl/api/oauth/token \
     "client_secret": "pcs_YOUR_CLIENT_SECRET"
   }'
 ```
+
+If you sent a `code_challenge` in step 2, add `"code_verifier"` (the
+43–128 character string you hashed). Send it only then: a `code_verifier`
+for a code requested without a challenge is refused.
 
 Response (`201`):
 
@@ -153,11 +164,13 @@ From the token endpoint:
 | `400` | `{"error": "unsupported_grant_type"}` | `grant_type` is not `authorization_code` |
 | `400` | `{"error": "invalid_grant"}` | The code is unknown, already used, or belongs to another app |
 | `400` | `{"error": "invalid_grant", "error_description": "Code has expired"}` | More than 10 minutes since approval |
+| `400` | `{"error": "invalid_grant", "error_description": "code_verifier does not match the code_challenge"}` | PKCE: missing or wrong `code_verifier`, or one sent for a code requested without a challenge. The code is not used up |
 | `400` | `{"message": [ … ], "error": "Bad Request"}` | A required field is missing |
 | `401` | `{"error": "invalid_client"}` | Unknown `client_id` or wrong `client_secret` |
 | `429` | | More than 30 requests in 5 minutes from one address |
 
-On the authorization page, an unknown `client_id` or a `response_type` other
-than `code` shows an error to the user and does not redirect.
+On the authorization page, an unknown `client_id`, a `response_type` other
+than `code`, or a `code_challenge` without `code_challenge_method=S256`
+shows an error to the user and does not redirect.
 
 For errors from the API itself, see [Errors](README.md#errors).

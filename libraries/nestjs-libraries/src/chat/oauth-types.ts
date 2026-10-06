@@ -83,7 +83,7 @@ export function generateProtectedResourceMetadata(config: MCPServerOAuthConfig):
   return {
     resource: config.resource,
     authorization_servers: config.authorizationServers,
-    scopes_supported: config.scopesSupported ?? ['mcp:read', 'mcp:write'],
+    ...(config.scopesSupported && { scopes_supported: config.scopesSupported }),
     bearer_methods_supported: ['header'],
     ...(config.resourceName && { resource_name: config.resourceName }),
     ...(config.resourceDocumentation && {
