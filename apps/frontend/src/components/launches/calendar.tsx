@@ -1150,7 +1150,8 @@ const CalendarItem: FC<{
       className={clsx(
         'w-full flex h-full flex-1 flex-col group',
         'relative',
-        state === 'ERROR' && 'rounded-[10px] ring-2 ring-red-500'
+        state === 'ERROR' && 'rounded-[10px] ring-2 ring-red-500',
+        state === 'PUBLISHED' && 'rounded-[10px] ring-2 ring-green-500'
       )}
       style={{
         opacity,
@@ -1158,11 +1159,22 @@ const CalendarItem: FC<{
     >
       {state === 'ERROR' && (
         <div
-          className="absolute -top-[6px] -left-[6px] z-20 w-[18px] h-[18px] rounded-full bg-red-500 flex items-center justify-center text-white text-[11px] font-bold cursor-pointer"
+          className="absolute -top-[6px] -start-[6px] z-20 w-[18px] h-[18px] rounded-full bg-red-500 flex items-center justify-center text-white text-[11px] font-bold cursor-pointer"
           data-tooltip-id="tooltip"
+          data-tooltip-class-name="!max-w-[400px] break-words"
           data-tooltip-content={post.error || 'An error occurred while publishing this post'}
         >
           !
+        </div>
+      )}
+      {state === 'PUBLISHED' && (
+        <div
+          className="absolute -top-[6px] -start-[6px] z-20 w-[18px] h-[18px] rounded-full bg-green-500 flex items-center justify-center text-white text-[11px] font-bold"
+          data-tooltip-id="tooltip"
+          data-tooltip-content={t('post_published', 'Published')}
+          aria-hidden="true"
+        >
+          ✓
         </div>
       )}
       {showCreationMethodBadge && (
@@ -1191,7 +1203,7 @@ const CalendarItem: FC<{
       >
         <div
           className={clsx(
-            post?.tags?.[0]?.tag?.color ? 'mix-blend-difference' : '',
+            post?.tags?.[0]?.tag?.color ? 'text-shadow-tags' : '',
             'group-hover:hidden group-focus-within:hidden cursor-pointer'
           )}
         >
@@ -1201,7 +1213,7 @@ const CalendarItem: FC<{
           <button
             className={clsx(
               'hidden group-hover:block group-focus-within:block hover:underline cursor-pointer',
-              post?.tags?.[0]?.tag?.color && 'mix-blend-difference'
+              post?.tags?.[0]?.tag?.color && 'text-shadow-tags'
             )}
             type="button"
           aria-label={t('copy_debug_json', 'Copy Debug JSON')}
@@ -1213,7 +1225,7 @@ const CalendarItem: FC<{
         <button
           className={clsx(
             'hidden group-hover:block group-focus-within:block hover:underline cursor-pointer',
-            post?.tags?.[0]?.tag?.color && 'mix-blend-difference'
+            post?.tags?.[0]?.tag?.color && 'text-shadow-tags'
           )}
           type="button"
         aria-label={t('duplicate_post', 'Duplicate Post')}
@@ -1224,14 +1236,39 @@ const CalendarItem: FC<{
         <button
           className={clsx(
             'hidden group-hover:block group-focus-within:block hover:underline cursor-pointer',
-            post?.tags?.[0]?.tag?.color && 'mix-blend-difference'
+            post?.tags?.[0]?.tag?.color && 'text-shadow-tags'
           )}
           type="button"
-        aria-label={t('preview_post', 'Preview Post')}
-        onClick={preview}
+        aria-label={t('delete_post', 'Delete Post')}
+        onClick={deletePost}
         >
-          <Preview />
+          <span className="text-red-500">
+            <DeletePost />
+          </span>
         </button>{' '}
+        {(state === 'PUBLISHED' || state === 'ERROR') &&
+          !post.intervalInDays &&
+          firstReleaseUrl(post.releaseURL) && (
+            <button
+              className={clsx(
+                'hidden group-hover:block group-focus-within:block hover:underline cursor-pointer',
+                post?.tags?.[0]?.tag?.color && 'text-shadow-tags'
+              )}
+              type="button"
+              aria-label={t('open_post_on_platform', 'Open the published post')}
+              data-tooltip-id="tooltip"
+              data-tooltip-content={t('open_post_on_platform', 'Open the published post')}
+              onClick={() =>
+                window.open(
+                  firstReleaseUrl(post.releaseURL)!,
+                  '_blank',
+                  'noopener,noreferrer'
+                )
+              }
+            >
+              <OpenPublished />
+            </button>
+          )}{' '}
         {(post.integration?.providerIdentifier === 'x' && disableXAnalytics) ||
         !post.releaseId ? (
           <></>
@@ -1239,7 +1276,7 @@ const CalendarItem: FC<{
           <button
             className={clsx(
               'hidden group-hover:block group-focus-within:block hover:underline cursor-pointer',
-              post?.tags?.[0]?.tag?.color && 'mix-blend-difference'
+              post?.tags?.[0]?.tag?.color && 'text-shadow-tags'
             )}
             type="button"
           aria-label={t('post_statistics', 'Post Statistics')}
@@ -1251,7 +1288,7 @@ const CalendarItem: FC<{
           <button
             className={clsx(
               'hidden group-hover:block group-focus-within:block hover:underline cursor-pointer',
-              post?.tags?.[0]?.tag?.color && 'mix-blend-difference'
+              post?.tags?.[0]?.tag?.color && 'text-shadow-tags'
             )}
             type="button"
           aria-label={t('post_statistics', 'Post Statistics')}
@@ -1265,13 +1302,13 @@ const CalendarItem: FC<{
         <button
           className={clsx(
             'hidden group-hover:block group-focus-within:block hover:underline cursor-pointer',
-            post?.tags?.[0]?.tag?.color && 'mix-blend-difference'
+            post?.tags?.[0]?.tag?.color && 'text-shadow-tags'
           )}
           type="button"
-        aria-label={t('delete_post', 'Delete Post')}
-        onClick={deletePost}
+        aria-label={t('preview_post', 'Preview Post')}
+        onClick={preview}
         >
-          <DeletePost />
+          <Preview />
         </button>
       </div>
       {/* Opens the post from the keyboard too (Enter or Space); it was a div
@@ -1369,6 +1406,31 @@ const Duplicate = () => {
     </svg>
   );
 };
+// A post sent to several targets (subreddits, communities) keeps their URLs
+// comma-separated; open the first. Only web links: releaseURL comes from the
+// platform (upstream e70110fe, 163cfbfb, 9af1eb88).
+const firstReleaseUrl = (releaseURL?: string | null) => {
+  const first = releaseURL?.split(',')[0]?.trim();
+  return first && /^https?:\/\//i.test(first) ? first : null;
+};
+const OpenPublished = () => (
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    width="15"
+    height="15"
+    viewBox="0 0 24 24"
+    fill="none"
+    aria-hidden="true"
+  >
+    <path
+      d="M14 4h6v6M20 4l-9 9M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+  </svg>
+);
 const Preview = () => {
   const t = useT();
   return (

@@ -37,7 +37,7 @@ const RenderRedditComponent: FC<{
   switch (type) {
     case 'self':
       return (
-        <div
+        <div dir="auto"
           dangerouslySetInnerHTML={{ __html: sanitizePostContent(firstPost?.content) }}
           style={{
             whiteSpace: 'pre-wrap',
@@ -140,7 +140,7 @@ const RedditPreview: FC = (props) => {
                       <div className="text-[14px] font-[600]">
                         {integration?.name}
                       </div>
-                      <div
+                      <div dir="auto"
                         dangerouslySetInnerHTML={{ __html: sanitizePostContent(p.text) }}
                         style={{
                           whiteSpace: 'pre-wrap',

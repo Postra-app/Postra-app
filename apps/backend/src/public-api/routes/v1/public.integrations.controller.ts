@@ -283,7 +283,7 @@ export class PublicIntegrationsController {
     return (await this._integrationService.getIntegrationsList(org.id)).map(
       (org) => ({
         id: org.id,
-        name: org.name,
+        name: org.customName || org.name,
         identifier: org.providerIdentifier,
         picture: org.picture,
         disabled: org.disabled,

@@ -1,4 +1,4 @@
-import { FC, useCallback, useState } from 'react';
+import { FC, useCallback, useEffect, useState } from 'react';
 import dayjs from 'dayjs';
 import { Calendar, TimeInput } from '@mantine/dates';
 import { useClickOutside } from '@mantine/hooks';
@@ -21,6 +21,19 @@ export const DatePicker: FC<{
   const ref = useClickOutside<HTMLDivElement>(() => {
     setOpen(false);
   });
+  // Escape closes it like any other popup; only the Close button and a click
+  // outside used to.
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        e.stopPropagation();
+        setOpen(false);
+      }
+    };
+    document.addEventListener('keydown', onKey, true);
+    return () => document.removeEventListener('keydown', onKey, true);
+  }, [open]);
   const changeDate = useCallback(
     (type: 'date' | 'time') => (day: Date) => {
       onChange(
@@ -35,19 +48,30 @@ export const DatePicker: FC<{
   );
   return (
     <div
-      className="px-[16px] border border-newTextColor/10 rounded-[8px] justify-center flex gap-[8px] items-center relative h-[44px] text-[15px] font-[600] ml-[7px] select-none flex-1"
-      onClick={changeShow}
+      className="border border-newTextColor/10 rounded-[8px] flex relative h-[44px] text-[15px] font-[600] ml-[7px] select-none flex-1"
       ref={ref}
     >
-      <div className="cursor-pointer">
+      {/* A button, so the publish date can be changed from the keyboard; it
+          was a div that only a mouse could open. */}
+      <button
+        type="button"
+        onClick={changeShow}
+        aria-expanded={open}
+        aria-haspopup="dialog"
+        aria-label={`${t('publish_date', 'Publish date')}: ${date.format(
+          isUSCitizen() ? 'MM/DD/YYYY hh:mm A' : 'DD/MM/YYYY HH:mm'
+        )}`}
+        className="px-[16px] w-full h-full justify-center flex gap-[8px] items-center cursor-pointer"
+      >
         <CalendarIcon />
-      </div>
-      <div className="cursor-pointer">
-        {date.format(isUSCitizen() ? 'MM/DD/YYYY hh:mm A' : 'DD/MM/YYYY HH:mm')}
-      </div>
+        <span>
+          {date.format(isUSCitizen() ? 'MM/DD/YYYY hh:mm A' : 'DD/MM/YYYY HH:mm')}
+        </span>
+      </button>
       {open && (
         <div
-          onClick={(e) => e.stopPropagation()}
+          role="dialog"
+          aria-label={t('publish_date', 'Publish date')}
           className="animate-fadeIn absolute bottom-[100%] mb-[16px] start-[50%] -translate-x-[50%] phone:fixed phone:!bottom-[88px] phone:!mb-0 bg-sixth border border-tableBorder text-textColor rounded-[16px] z-[300] p-[16px] flex flex-col"
         >
           <Calendar
@@ -73,7 +97,7 @@ export const DatePicker: FC<{
           />
           <TimeInput
             onChange={changeDate('time')}
-            label="Pick time"
+            label={t('pick_time', 'Pick time')}
             classNames={{
               label: 'text-textColor py-[12px]',
               input:

@@ -7,7 +7,9 @@ export const deleteDialog = async (
   title?: string,
   cancelButton?: string
 ) => {
+  // Every caller confirms a delete or a disable: the approve button is red.
   return areYouSure({
+    destructive: true,
     title: title || i18next.t('are_you_sure', 'Are you sure?'),
     description: message,
     approveLabel:

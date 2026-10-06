@@ -2,6 +2,10 @@ const retrieveSubscription = jest.fn();
 const listSubscriptions = jest.fn();
 const updateSubscription = jest.fn();
 const cancelSubscription = jest.fn().mockResolvedValue({});
+const listInvoices = jest.fn();
+const listInvoicePayments = jest.fn();
+const createRefund = jest.fn();
+const listRefunds = jest.fn();
 
 jest.mock('stripe', () => {
   const actual = jest.requireActual('stripe');
@@ -12,6 +16,9 @@ jest.mock('stripe', () => {
       update: updateSubscription,
       cancel: cancelSubscription,
     },
+    invoices: { list: listInvoices },
+    invoicePayments: { list: listInvoicePayments },
+    refunds: { create: createRefund, list: listRefunds },
   }));
   mock.errors = actual.errors ?? actual.default?.errors;
   return mock;
@@ -75,6 +82,11 @@ beforeEach(() => {
   jest.clearAllMocks();
   // No other subscription for the customer unless a test says so.
   listSubscriptions.mockResolvedValue({ data: [] });
+  // The duplicate was never paid unless a test says so.
+  listInvoices.mockResolvedValue({ data: [] });
+  listInvoicePayments.mockResolvedValue({ data: [] });
+  createRefund.mockImplementation(async () => ({ amount: 2900 }));
+  listRefunds.mockResolvedValue({ data: [] });
 });
 
 describe('subscription events are written from Stripe’s current state', () => {
@@ -206,6 +218,91 @@ describe('a second live subscription for the same customer', () => {
     expect(listSubscriptions).toHaveBeenCalledWith(expect.objectContaining({ limit: 100 }));
     expect(subscriptionService.createOrUpdateSubscription).not.toHaveBeenCalled();
     expect(notificationService.inAppNotification).toHaveBeenCalled();
+  });
+
+  // E2E-07-30: the duplicate's payment comes back by itself.
+  it('a paid duplicate is refunded, once per payment, and the customer told the amount', async () => {
+    retrieveSubscription.mockResolvedValue(sub('active', 'PRO', { created: 200 }));
+    listSubscriptions.mockResolvedValue({ data: [older, { ...sub('active'), created: 200 }] });
+    listInvoices.mockResolvedValue({ data: [{ id: 'in_1', amount_paid: 2900 }] });
+    listInvoicePayments.mockResolvedValue({
+      data: [{ id: 'inpay_1', payment: { type: 'payment_intent', payment_intent: 'pi_1' } }],
+    });
+    const { service, notificationService } = build();
+
+    await service.createSubscription(
+      event('customer.subscription.created', sub('active', 'PRO', { created: 200 }))
+    );
+
+    expect(listInvoices).toHaveBeenCalledWith(expect.objectContaining({ subscription: 'sub_1', status: 'paid' }));
+    expect(createRefund).toHaveBeenCalledWith(
+      expect.objectContaining({ payment_intent: 'pi_1', reason: 'duplicate' }),
+      { idempotencyKey: 'duplicate-refund-inpay_1' }
+    );
+    expect(notificationService.inAppNotification.mock.calls[0][2]).toContain('refunded its payment of £29.00');
+  });
+
+  it('a duplicate that took no money is not refunded, and the message says so', async () => {
+    retrieveSubscription.mockResolvedValue(sub('active', 'PRO', { created: 200 }));
+    listSubscriptions.mockResolvedValue({ data: [older, { ...sub('active'), created: 200 }] });
+    listInvoices.mockResolvedValue({ data: [{ id: 'in_1', amount_paid: 0 }] });
+    const { service, notificationService } = build();
+
+    await service.createSubscription(
+      event('customer.subscription.created', sub('active', 'PRO', { created: 200 }))
+    );
+
+    expect(createRefund).not.toHaveBeenCalled();
+    expect(notificationService.inAppNotification.mock.calls[0][2]).toContain('Nothing was charged');
+  });
+
+  it('a refund Stripe refuses leaves the cancel in place and asks the customer to contact us', async () => {
+    retrieveSubscription.mockResolvedValue(sub('active', 'PRO', { created: 200 }));
+    listSubscriptions.mockResolvedValue({ data: [older, { ...sub('active'), created: 200 }] });
+    listInvoices.mockResolvedValue({ data: [{ id: 'in_1', amount_paid: 2900 }] });
+    listInvoicePayments.mockResolvedValue({
+      data: [{ id: 'inpay_1', payment: { type: 'payment_intent', payment_intent: 'pi_1' } }],
+    });
+    createRefund.mockRejectedValue(new Error('charge_already_refunded'));
+    const { service, notificationService } = build();
+
+    const res = await service.createSubscription(
+      event('customer.subscription.created', sub('active', 'PRO', { created: 200 }))
+    );
+
+    expect(cancelSubscription).toHaveBeenCalledWith('sub_1');
+    expect(res).toMatchObject({ skipped: 'duplicate subscription' });
+    expect(notificationService.inAppNotification.mock.calls[0][2]).toContain('contact us');
+  });
+
+  // Codex review 10-06: a crash between refund and cancel must not lose the
+  // refund nor repeat it.
+  it('refunds before cancelling, and a retry does not refund again', async () => {
+    retrieveSubscription.mockResolvedValue(sub('active', 'PRO', { created: 200 }));
+    listSubscriptions.mockResolvedValue({ data: [older, { ...sub('active'), created: 200 }] });
+    listInvoices.mockResolvedValue({ data: [{ id: 'in_1', amount_paid: 2900 }] });
+    listInvoicePayments.mockResolvedValue({
+      data: [{ id: 'inpay_1', payment: { type: 'payment_intent', payment_intent: 'pi_1' } }],
+    });
+    const order: string[] = [];
+    createRefund.mockImplementation(async () => (order.push('refund'), { amount: 2900 }));
+    cancelSubscription.mockImplementationOnce(async () => {
+      order.push('cancel');
+      throw new Error('process died');
+    });
+    const { service, notificationService } = build();
+    const evt = event('customer.subscription.created', sub('active', 'PRO', { created: 200 }));
+
+    await expect(service.createSubscription(evt)).rejects.toThrow('process died');
+    expect(order).toEqual(['refund', 'cancel']);
+
+    // Stripe retries; the duplicate is still live and already refunded.
+    listRefunds.mockResolvedValue({ data: [{ amount: 2900, status: 'succeeded' }] });
+    cancelSubscription.mockResolvedValue({});
+    await service.createSubscription(evt);
+    expect(createRefund).toHaveBeenCalledTimes(1);
+    expect(cancelSubscription).toHaveBeenLastCalledWith('sub_1');
+    expect(notificationService.inAppNotification.mock.calls.at(-1)[2]).toContain('£29.00');
   });
 
   it('the older one is kept and written as usual', async () => {

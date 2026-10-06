@@ -4,6 +4,8 @@ import { useFetch } from '@gitroom/helpers/utils/custom.fetch';
 import { timer } from '@gitroom/helpers/utils/timer';
 import { useToaster } from '@gitroom/react/toaster/toaster';
 import { useDecisionModal } from '@gitroom/frontend/components/layout/new-modal';
+import { useT } from '@gitroom/react/translation/get.transation.service.client';
+import { mutate as revalidate } from 'swr';
 export const CheckPayment: FC<{
   check: string;
   mutate: () => void;
@@ -24,6 +26,7 @@ export const CheckPaymentInner: FC<{
   const fetch = useFetch();
   const toaster = useToaster();
   const modal = useDecisionModal();
+  const t = useT();
 
   useEffect(() => {
     if (showLoader) {
@@ -76,6 +79,28 @@ export const CheckPaymentInner: FC<{
     if (status === 2) {
       setShowLoader(false);
       props.mutate();
+      // The webhook switches channels back on when the new plan covers all
+      // of them (subscription.service applyTierLimits); say so when some stay
+      // off, or a paying customer just sees greyed-out channels.
+      try {
+        const { integrations } = await (
+          await fetch('/integrations/list')
+        ).json();
+        revalidate('/integrations/list');
+        if ((integrations || []).some((c: { disabled?: boolean }) => c.disabled)) {
+          modal.open({
+            title: t('channels_still_disabled', 'Some channels are still disabled'),
+            onlyApprove: true,
+            approveLabel: t('ok', 'OK'),
+            description: t(
+              'channels_still_disabled_description',
+              "Your plan doesn't cover all of your connected channels, so some stay disabled. Enable the ones you want from each channel's menu, up to your plan's limit, or upgrade your plan to use all of them."
+            ),
+          });
+        }
+      } catch {
+        // the calendar still shows which channels are disabled
+      }
     }
   }, []);
   useEffect(() => {

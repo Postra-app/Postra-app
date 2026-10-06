@@ -311,6 +311,18 @@ export class IntegrationService {
     return updated;
   }
 
+  async updateCustomName(org: string, id: string, name: string) {
+    const updated = await this._integrationRepository.updateCustomName(
+      org,
+      id,
+      name
+    );
+    if (!updated) {
+      throw new NotFoundException('Channel not found');
+    }
+    return updated;
+  }
+
   async updateOnCustomerName(org: string, id: string, name: string) {
     const updated = await this._integrationRepository.updateOnCustomerName(
       org,
@@ -600,6 +612,39 @@ export class IntegrationService {
       metadata: { integrationId: id, deleted: true },
     });
     return { deleted: true };
+  }
+
+  // Switches channels on in bulk under the same per-organisation lock as
+  // connecting a channel and enabling one by hand: `decide` sees the list as
+  // it is inside the lock, so a channel connected meanwhile is counted (a
+  // webhook re-enabling three while a fourth connected left four on a plan
+  // of three). Waits a few seconds for the lock, then throws so the caller's
+  // webhook is retried.
+  async enableChannelsUnderLock(
+    org: string,
+    decide: (
+      channels: Awaited<ReturnType<IntegrationRepository['getIntegrationsList']>>
+    ) => string[]
+  ): Promise<string[]> {
+    const lock = `channels-enable:${org}`;
+    for (let attempt = 0; ; attempt++) {
+      if ((await ioRedis.set(lock, '1', 'EX', 15, 'NX')) === 'OK') break;
+      if (attempt >= 20) {
+        throw new Error(`channels-enable lock busy for ${org}`);
+      }
+      await new Promise((r) => setTimeout(r, 250));
+    }
+    try {
+      const ids = decide(
+        await this._integrationRepository.getIntegrationsList(org)
+      );
+      if (ids.length) {
+        await this._integrationRepository.enableChannels(org, ids);
+      }
+      return ids;
+    } finally {
+      await ioRedis.del(lock).catch(() => undefined);
+    }
   }
 
   async disableIntegrations(org: string, totalChannels: number) {

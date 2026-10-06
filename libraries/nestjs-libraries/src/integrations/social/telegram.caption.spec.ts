@@ -88,3 +88,15 @@ describe('Telegram 4xx', () => {
     }
   });
 });
+
+// Telegram's HTML has no <p>: paragraphs become lines. A paragraph with an
+// attribute — dir="auto" from the editor (RTL, upstream 1d4b75fa), class from
+// the public API — went out as a raw <p …> tag.
+describe('Telegram paragraphs', () => {
+  it('turns paragraphs with attributes into lines, like plain ones', async () => {
+    await post('<p dir="auto">first</p><p class="x">second</p><p>third</p>');
+    const [, text] = bot.sendMessage.mock.calls[0];
+    expect(text).not.toMatch(/<\/?p/);
+    expect(text).toBe('first\nsecond\nthird\n');
+  });
+});

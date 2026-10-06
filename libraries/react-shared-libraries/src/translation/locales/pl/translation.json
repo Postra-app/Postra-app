@@ -1504,5 +1504,22 @@
   "autopost_feeds_used": "Wykorzystane kanały RSS: {{used}} z {{limit}}",
   "autopost_deleted": "Kanał Auto Post usunięty",
   "billing_trial_limits": "W 7-dniowym okresie próbnym podłączysz do {{channels}} kanałów i korzystasz z puli AI planu Starter ({{images}} obrazów AI); pełny plan odblokuje się przy pierwszej płatności albo od razu, jeśli zakończysz okres próbny wcześniej.",
-  "billing_end_trial_now": "Zakończ okres próbny teraz"
+  "billing_end_trial_now": "Zakończ okres próbny teraz",
+  "channels_still_disabled": "Część kanałów jest nadal wyłączona",
+  "channels_still_disabled_description": "Twój plan nie obejmuje wszystkich podłączonych kanałów, więc część pozostaje wyłączona. Włącz wybrane w menu kanału, do limitu planu, albo zmień plan na wyższy, żeby używać wszystkich.",
+  "rename_channel": "Zmień nazwę kanału",
+  "channel_renamed": "Nazwa kanału zmieniona",
+  "channel_name_reset": "Przywrócono nazwę kanału",
+  "reset_channel_name": "Przywróć oryginalną nazwę",
+  "channel_rename_failed": "Nie udało się zmienić nazwy kanału",
+  "channel_name": "Nazwa",
+  "select_channels_tooltip": "Pokaż kanały",
+  "select_all": "Zaznacz wszystkie",
+  "post_published": "Opublikowany",
+  "open_post_on_platform": "Otwórz opublikowany post",
+  "edit_tag": "Edytuj tag",
+  "tag_save_failed": "Nie udało się zapisać tagu",
+  "publish_date": "Data publikacji",
+  "pick_time": "Wybierz godzinę",
+  "edit_post_tab": "Edytuj"
 }

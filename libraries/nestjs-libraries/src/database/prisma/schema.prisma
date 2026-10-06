@@ -366,6 +366,8 @@ model Integration {
   internalId            String
   organizationId        String
   name                  String
+  // Name shown in Postra only; `name` stays the platform's (upstream 5a1e92b4).
+  customName            String?
   picture               String?
   providerIdentifier    String
   type                  String

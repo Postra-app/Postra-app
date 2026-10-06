@@ -182,16 +182,16 @@ export const stripHtmlValidation = (
     return striptags(
       convertMention(
         value
-          .replace(/<h1>([.\s\S]*?)<\/h1>/g, (match, p1) => {
+          .replace(/<h1(?:\s[^>]*)?>([.\s\S]*?)<\/h1>/g, (match, p1) => {
             return `<h1># ${p1}</h1>\n`;
           })
           .replace(/&nbsp;/gi, ' ')
           .replace(/&quot;/gi, '"')
           .replace(/&#39;/gi, "'")
-          .replace(/<h2>([.\s\S]*?)<\/h2>/g, (match, p1) => {
+          .replace(/<h2(?:\s[^>]*)?>([.\s\S]*?)<\/h2>/g, (match, p1) => {
             return `<h2>## ${p1}</h2>\n`;
           })
-          .replace(/<h3>([.\s\S]*?)<\/h3>/g, (match, p1) => {
+          .replace(/<h3(?:\s[^>]*)?>([.\s\S]*?)<\/h3>/g, (match, p1) => {
             return `<h3>### ${p1}</h3>\n`;
           })
           .replace(/<u>([.\s\S]*?)<\/u>/g, (match, p1) => {
@@ -203,7 +203,9 @@ export const stripHtmlValidation = (
           .replace(/<li.*?>([.\s\S]*?)<\/li.*?>/gm, (match, p1) => {
             return `<li>- ${p1.replace(/\n/gm, '')}</li>`;
           })
-          .replace(/<p>([.\s\S]*?)<\/p>/g, (match, p1) => {
+          // `<p class="…">` from the API or the agent (upstream 53ea9c8f,
+          // 08078373); `<pre>` is not a paragraph.
+          .replace(/<p(?:\s[^>]*)?>([.\s\S]*?)<\/p>/g, (match, p1) => {
             return `<p>${p1}</p>\n`;
           })
           .replace(
@@ -220,7 +222,7 @@ export const stripHtmlValidation = (
       .replace(/&amp;/gi, '&');
   }
 
-  if (value.indexOf('<p>') === -1 && !none) {
+  if (!/<p[\s>]/i.test(value) && !none) {
     return value;
   }
 

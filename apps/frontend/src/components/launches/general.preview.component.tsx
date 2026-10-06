@@ -113,7 +113,7 @@ export const GeneralPreviewComponent: FC<{
                     : integration?.display || '@username'}
                 </div>
               </div>
-              <div
+              <div dir="auto"
                 // pre-wrap keeps the post's line breaks and still wraps; plain `pre`
                 // ran a long link off the panel.
                 className={clsx(

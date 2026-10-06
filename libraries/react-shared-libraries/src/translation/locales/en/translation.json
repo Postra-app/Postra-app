@@ -1504,5 +1504,22 @@
   "autopost_feeds_used": "{{used}} of {{limit}} RSS feeds used",
   "autopost_deleted": "Auto Post feed deleted",
   "billing_trial_limits": "During the 7-day trial you can connect up to {{channels}} channels and use Starter's AI allowance ({{images}} AI images); your full plan unlocks with the first payment, or straight away if you end the trial early.",
-  "billing_end_trial_now": "End the trial now"
+  "billing_end_trial_now": "End the trial now",
+  "channels_still_disabled": "Some channels are still disabled",
+  "channels_still_disabled_description": "Your plan doesn't cover all of your connected channels, so some stay disabled. Enable the ones you want from each channel's menu, up to your plan's limit, or upgrade your plan to use all of them.",
+  "rename_channel": "Rename channel",
+  "channel_renamed": "Channel renamed",
+  "channel_name_reset": "Channel name reset",
+  "reset_channel_name": "Reset to original name",
+  "channel_rename_failed": "Could not rename the channel",
+  "channel_name": "Name",
+  "select_channels_tooltip": "Show channels",
+  "select_all": "Select all",
+  "post_published": "Published",
+  "open_post_on_platform": "Open the published post",
+  "edit_tag": "Edit Tag",
+  "tag_save_failed": "Could not save the tag",
+  "publish_date": "Publish date",
+  "pick_time": "Pick time",
+  "edit_post_tab": "Edit"
 }

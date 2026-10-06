@@ -982,7 +982,10 @@ export const MultiMediaComponent: FC<{
             </ReactSortable>
           )}
         </div>
-        <div className="flex gap-[8px] px-[12px] border-t border-newColColor w-full b1 text-textColor">
+        {/* Wraps: media buttons, toolbar and the character counter in one
+            row were wider than a 390 px phone and pushed the editor 13 px
+            off screen once a channel was picked. */}
+        <div className="flex flex-wrap gap-x-[8px] px-[12px] border-t border-newColColor w-full b1 text-textColor">
           {!mediaNotAvailable && (
             <div className="flex py-[10px] b2 items-center gap-[4px]">
               {/* Studio goes first: "make one" is the step before "attach one",

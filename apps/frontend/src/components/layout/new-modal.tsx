@@ -402,14 +402,24 @@ export const DecisionModal: FC<{
   approveLabel: string;
   cancelLabel: string;
   onlyApprove: boolean;
+  // A delete: the approve button is red (upstream 169c66aa).
+  destructive?: boolean;
   resolution: (value: boolean) => void;
-}> = ({ description, cancelLabel, approveLabel, resolution, onlyApprove }) => {
+}> = ({
+  description,
+  cancelLabel,
+  approveLabel,
+  resolution,
+  onlyApprove,
+  destructive,
+}) => {
   const { closeCurrent } = useModals();
   return (
     <div className="flex flex-col">
       <div>{description}</div>
       <div className="flex gap-[12px] mt-[16px]">
         <Button
+          className={destructive ? '!bg-red-700 hover:!bg-red-600' : undefined}
           onClick={() => {
             resolution(true);
             closeCurrent();
@@ -439,6 +449,7 @@ export const areYouSure = ({
   description = 'Are you sure you want to close this modal?' as any,
   approveLabel = 'Yes',
   cancelLabel = 'No',
+  destructive = false,
 } = {}): Promise<boolean> => {
   return new Promise<boolean>((newRes) => {
     decisionModalEmitter.emit('open', {
@@ -446,6 +457,7 @@ export const areYouSure = ({
       description,
       approveLabel,
       cancelLabel,
+      destructive,
       newRes,
     });
   });
@@ -468,6 +480,7 @@ export const useDecisionModal = () => {
       onlyApprove = false,
       approveLabel = 'Yes',
       cancelLabel = 'No',
+      destructive = false,
       newRes = undefined as any,
     } = {}) => {
       return new Promise<boolean>((res) => {
@@ -478,6 +491,7 @@ export const useDecisionModal = () => {
           children: (
             <DecisionModal
               onlyApprove={onlyApprove}
+              destructive={destructive}
               resolution={(value) => (newRes ? newRes(value) : res(value))}
               description={description}
               approveLabel={approveLabel}
