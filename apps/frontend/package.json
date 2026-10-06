@@ -33,7 +33,7 @@
     "@fontsource/roboto": "^5.2.10",
     "@imgly/background-removal": "^1.7.0",
     "@tabler/icons-react": "^3.44.0",
-    "dompurify": "^3.4.9",
+    "dompurify": "^3.4.16",
     "geist": "^1.7.0",
     "jszip": "^3.10.1",
     "mediabunny": "^1.56.1",
