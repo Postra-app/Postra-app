@@ -176,6 +176,10 @@ model UserOrganization {
   organizationId String
   disabled       Boolean      @default(false)
   role           Role         @default(USER)
+  // Per organisation: one timestamp on User marked every organisation's
+  // notifications read when the bell was opened in one (E2E-02-38). Null
+  // until the bell is first opened here; User.lastReadNotifications stands in.
+  lastReadNotifications DateTime?
   createdAt      DateTime     @default(now())
   updatedAt      DateTime     @updatedAt
   organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)

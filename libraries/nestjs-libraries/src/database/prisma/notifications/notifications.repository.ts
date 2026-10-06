@@ -5,31 +5,38 @@ import { Injectable } from '@nestjs/common';
 export class NotificationsRepository {
   constructor(
     private _notifications: PrismaRepository<'notifications'>,
-    private _user: PrismaRepository<'user'>
+    private _user: PrismaRepository<'user'>,
+    private _userOrg: PrismaRepository<'userOrganization'>
   ) {}
 
-  getLastReadNotification(userId: string) {
-    return this._user.model.user.findFirst({
-      where: {
-        id: userId,
-      },
-      select: {
-        lastReadNotifications: true,
-      },
+  // When this user last opened the bell in this organisation (E2E-02-38).
+  async getLastReadNotification(userId: string, organizationId: string) {
+    const membership = await this._userOrg.model.userOrganization.findUnique({
+      where: { userId_organizationId: { userId, organizationId } },
+      select: { lastReadNotifications: true },
     });
+    if (membership?.lastReadNotifications) {
+      return { lastReadNotifications: membership.lastReadNotifications };
+    }
+    const user = await this._user.model.user.findFirst({
+      where: { id: userId },
+      select: { lastReadNotifications: true },
+    });
+    return { lastReadNotifications: user?.lastReadNotifications ?? new Date(0) };
   }
 
   async getMainPageCount(organizationId: string, userId: string) {
-    const { lastReadNotifications } = (await this.getLastReadNotification(
-      userId
-    ))!;
+    const { lastReadNotifications } = await this.getLastReadNotification(
+      userId,
+      organizationId
+    );
 
     return {
       total: await this._notifications.model.notifications.count({
         where: {
           organizationId,
           createdAt: {
-            gt: lastReadNotifications!,
+            gt: lastReadNotifications,
           },
         },
       }),
@@ -94,17 +101,14 @@ export class NotificationsRepository {
   }
 
   async getNotifications(organizationId: string, userId: string) {
-    const { lastReadNotifications } = (await this.getLastReadNotification(
-      userId
-    ))!;
+    const { lastReadNotifications } = await this.getLastReadNotification(
+      userId,
+      organizationId
+    );
 
-    await this._user.model.user.update({
-      where: {
-        id: userId,
-      },
-      data: {
-        lastReadNotifications: new Date(),
-      },
+    await this._userOrg.model.userOrganization.updateMany({
+      where: { userId, organizationId },
+      data: { lastReadNotifications: new Date() },
     });
 
     return {
