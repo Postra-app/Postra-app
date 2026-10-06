@@ -927,6 +927,7 @@
   "shortlink_yes": "Always shorten",
   "shortlink_no": "Never shorten",
   "add_a_set": "Add a set",
+  "sets_need_a_channel": "Connect a channel first: a set is a post for your channels.",
   "save_as_set": "Save as set",
   "set_name": "Set name",
   "enter_set_name": "Enter a name for this set",
