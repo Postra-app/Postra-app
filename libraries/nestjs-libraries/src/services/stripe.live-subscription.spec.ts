@@ -58,11 +58,13 @@ describe('cancelling picks the live subscription', () => {
     jest.spyOn(service as any, 'listSubscriptions').mockResolvedValue([
       { id: 'sub_dead', status: 'incomplete' },
       { id: 'sub_live', status: 'active' },
+      // A duplicate from two checkouts at once kept charging when only the
+      // first was cancelled (upstream 28e71678).
+      { id: 'sub_twin', status: 'active' },
     ]);
 
     await service.cancelSubscription('org-1');
 
-    expect(cancel).toHaveBeenCalledWith('sub_live');
-    expect(cancel).not.toHaveBeenCalledWith('sub_dead');
+    expect(cancel.mock.calls.map(([id]) => id)).toEqual(['sub_live', 'sub_twin']);
   });
 });
