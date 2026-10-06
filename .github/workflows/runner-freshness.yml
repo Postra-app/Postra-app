@@ -40,7 +40,10 @@ jobs:
             exit 0
           fi
           TITLE="CI runners: move to ${NEWEST}"
-          if [ -n "$(gh issue list --state open --search "\"${TITLE}\" in:title" --json number -q '.[].number')" ]; then
+          # A plain list, not --search: the search index lags, and a second
+          # run right after the first opened a duplicate.
+          if [ -n "$(gh issue list --state open --limit 500 --json number,title \
+            --jq ".[] | select(.title == \"${TITLE}\") | .number")" ]; then
             echo "Issue already open"
             exit 0
           fi
