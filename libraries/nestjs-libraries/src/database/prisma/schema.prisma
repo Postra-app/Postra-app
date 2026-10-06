@@ -393,7 +393,10 @@ model Integration {
   plugs                 Plugs[]
   posts                 Post[]
 
-  @@unique([organizationId, internalId])
+  // With the provider: Facebook and Instagram sign in through the same Meta
+  // account, so their pending channels share an internalId, and the second
+  // sign-in turned the first into the other platform (E2E-04-35).
+  @@unique([organizationId, providerIdentifier, internalId])
   @@index([rootInternalId])
   @@index([organizationId])
   @@index([providerIdentifier])
