@@ -37,9 +37,14 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          # pnpm outdated exits 1 whenever anything is outdated.
-          pnpm outdated --format json > outdated.json || true
-          node scripts/dependency-freshness.mjs outdated.json > body.md 2> count.txt
+          # Every workspace package, not only the root. pnpm outdated exits 1
+          # whenever anything is outdated, and on errors too: the script tells
+          # them apart by whether it got JSON.
+          set +e
+          pnpm outdated -r --format json > outdated.json
+          export PNPM_OUTDATED_EXIT=$?
+          set -e
+          node scripts/dependency-freshness.mjs outdated.json > body.md 2> count.txt || { cat count.txt; exit 1; }
           MAJORS=$(sed -n 's/^MAJORS=//p' count.txt)
           echo "Majors behind: ${MAJORS}"
           if [ -z "$MAJORS" ]; then
