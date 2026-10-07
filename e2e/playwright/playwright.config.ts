@@ -42,6 +42,12 @@ export default defineConfig({
       name: 'smoke-webkit',
       testMatch: /smoke\.spec\.ts/,
       dependencies: ['setup'],
+      // WebKit on the CI's Linux runner takes 45-66 s for what Chromium does
+      // in 6-12 s (and WebKit on a Mac in 5 s): the nightly canary of
+      // 2026-10-07 ran out of the 60 s budget while polling for its draft.
+      // Why it is that slow there is still open (plan); until then the
+      // budget, not the check, is what changes.
+      timeout: 120_000,
       use: {
         ...devices['Desktop Safari'],
         viewport: { width: 1440, height: 900 },
