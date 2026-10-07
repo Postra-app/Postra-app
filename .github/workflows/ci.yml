@@ -170,7 +170,8 @@ jobs:
 
       - name: Migrations reproduce schema.prisma
         run: |
-          pnpm dlx prisma@6.5.0 migrate diff \
+          # No install in this job: dlx, at the version package.json pins.
+          pnpm dlx "prisma@$(jq -r '.devDependencies.prisma' package.json)" migrate diff \
             --from-migrations ./libraries/nestjs-libraries/src/database/prisma/migrations \
             --to-schema-datamodel ./libraries/nestjs-libraries/src/database/prisma/schema.prisma \
             --shadow-database-url postgresql://postgres:postgres@localhost:5432/shadow \

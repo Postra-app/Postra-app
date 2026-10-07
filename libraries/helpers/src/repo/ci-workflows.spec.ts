@@ -49,4 +49,14 @@ describe('CI workflows', () => {
       expect(text).not.toMatch(/@playwright\/test@\d/);
     }
   );
+
+  // Same for the Prisma CLI: `pnpm dlx prisma@6.5.0` in the scripts, the boot
+  // migration and CI kept running 6.5 after @prisma/client moved to 6.19.
+  it.each([
+    ...scripts,
+    { name: 'package.json scripts', text: JSON.stringify(JSON.parse(readFileSync(join(root, 'package.json'), 'utf8')).scripts) },
+    { name: 'scripts/db-migrate.mjs', text: readFileSync(join(root, 'scripts', 'db-migrate.mjs'), 'utf8') },
+  ])('$name runs the Prisma CLI from one version source', ({ text }) => {
+    expect(text).not.toMatch(/prisma@\d/);
+  });
 });
