@@ -385,9 +385,15 @@ export const CalendarWeekProvider: FC<{
     }
   }, [posts]);
 
-  // Combined reload function that handles both calendar and list views
+  // Combined reload function that handles both calendar and list views.
+  // A tile moved before the server answered (changeDate) lives only in
+  // internalData. When the server's posts come back unchanged, SWR keeps the
+  // old object, the effect above does not run, and a refused move stayed on
+  // screen where it was dropped (E2E-05-49) — so reset from the answer.
   const reloadCalendarView = useCallback(() => {
-    mutateCalendar();
+    mutateCalendar().then((fresh) => {
+      if (fresh?.posts) setInternalData(fresh.posts);
+    });
     mutateList();
   }, [mutateCalendar, mutateList]);
 

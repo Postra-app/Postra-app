@@ -921,6 +921,8 @@ export const CalendarColumn: FC<{
           : 'border border-white/[0.05] rounded-[8px]'
       )}
       ref={drop as any}
+      // The slot a dragged post lands in, for tests (E2E-05-49).
+      data-slot={getDate.format('YYYY-MM-DDTHH:mm')}
     >
       {display === 'month' && (
         <div className={clsx('pt-[6px] text-[14px]')}>{getDate.date()}</div>
