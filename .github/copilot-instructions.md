@@ -10,7 +10,7 @@
 - Social channels are the providers in `libraries/nestjs-libraries/src/integrations/social`; the ones offered to customers are `enabledProviders` in `integration.manager.ts`.
 
 ## Developer Workflows
-- Use Node.js 22 (`engines`: `>=22.12.0 <23.0.0`) and pnpm 10.6.1 (`packageManager`).
+- Use Node.js 22: the exact version is `volta.node` in `package.json` (CI and `Dockerfile.dev` follow it); pnpm from `packageManager`.
 - Install dependencies: `pnpm install`
 - Build frontend, backend and orchestrator: `pnpm run build`
 - Run in dev mode: `pnpm run dev`

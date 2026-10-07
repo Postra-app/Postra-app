@@ -18,9 +18,8 @@
 # groups (repo/dependabot.spec.ts checks the lists stay in step).
 #
 # "held" collects minors we cannot take yet, each with its reason in the
-# launch plan (TypeScript 5.9, CopilotKit 1.77, @atproto/api 0.23, polotno,
-# isomorphic-dompurify 3.23). Its PR stays red until the work
-# is done, and it keeps the other groups green and mergeable meanwhile.
+# launch plan (TypeScript 5.9, CopilotKit 1.77, @atproto/api 0.23, polotno).
+# Its PR stays red until the work is done, and it keeps the other groups green and mergeable meanwhile.
 version: 2
 updates:
   - package-ecosystem: "npm"
@@ -35,7 +34,7 @@ updates:
       held:
         applies-to: version-updates
         update-types: ["minor", "patch"]
-        patterns: ["typescript", "@copilotkit/react-core", "@copilotkit/react-textarea", "@copilotkit/react-ui", "@copilotkit/runtime", "@atproto/api", "polotno", "isomorphic-dompurify"]
+        patterns: ["typescript", "@copilotkit/react-core", "@copilotkit/react-textarea", "@copilotkit/react-ui", "@copilotkit/runtime", "@atproto/api", "polotno"]
       ai:
         applies-to: version-updates
         update-types: ["minor", "patch"]
@@ -52,12 +51,19 @@ updates:
         applies-to: version-updates
         dependency-type: "production"
         update-types: ["minor", "patch"]
-        exclude-patterns: ["typescript", "@copilotkit/react-core", "@copilotkit/react-textarea", "@copilotkit/react-ui", "@copilotkit/runtime", "@atproto/api", "polotno", "isomorphic-dompurify", "@ag-ui/*", "@langchain/*", "@mastra/*", "mastra", "openai", "@ai-sdk/*", "@temporalio/*", "nestjs-temporal-core", "react", "react-dom", "next", "@types/react", "@types/react-dom", "eslint-config-next", "swr", "react-*"]
+        exclude-patterns: ["typescript", "@copilotkit/react-core", "@copilotkit/react-textarea", "@copilotkit/react-ui", "@copilotkit/runtime", "@atproto/api", "polotno", "@ag-ui/*", "@langchain/*", "@mastra/*", "mastra", "openai", "@ai-sdk/*", "@temporalio/*", "nestjs-temporal-core", "react", "react-dom", "next", "@types/react", "@types/react-dom", "eslint-config-next", "swr", "react-*"]
       development:
         applies-to: version-updates
         dependency-type: "development"
         update-types: ["minor", "patch"]
-        exclude-patterns: ["typescript", "@copilotkit/react-core", "@copilotkit/react-textarea", "@copilotkit/react-ui", "@copilotkit/runtime", "@atproto/api", "polotno", "isomorphic-dompurify", "@ag-ui/*", "@langchain/*", "@mastra/*", "mastra", "openai", "@ai-sdk/*", "@temporalio/*", "nestjs-temporal-core", "react", "react-dom", "next", "@types/react", "@types/react-dom", "eslint-config-next", "swr", "react-*"]
+        exclude-patterns: ["typescript", "@copilotkit/react-core", "@copilotkit/react-textarea", "@copilotkit/react-ui", "@copilotkit/runtime", "@atproto/api", "polotno", "@ag-ui/*", "@langchain/*", "@mastra/*", "mastra", "openai", "@ai-sdk/*", "@temporalio/*", "nestjs-temporal-core", "react", "react-dom", "next", "@types/react", "@types/react-dom", "eslint-config-next", "swr", "react-*"]
+  # The Node image of Dockerfile.dev. Its version has to equal volta.node in
+  # package.json (ci-workflows.spec.ts), so a PR from here is red until
+  # volta.node moves with it: the reminder, and the place to do both.
+  - package-ecosystem: "docker"
+    directory: "/"
+    schedule:
+      interval: "weekly"
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:
