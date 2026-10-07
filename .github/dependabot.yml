@@ -6,8 +6,18 @@
 # One group for every minor and patch timed out on 2026-10-06: 72 packages
 # behind, the job updated them one by one and GitHub cancelled it after 55
 # minutes, so no PR came at all. Smaller groups each finish, and a group a
-# reviewer can read is a group someone will merge. A package lands in the
-# first group whose rules match.
+# reviewer can read is a group someone will merge.
+#
+# A group by dependency type beats a group by wildcard pattern: on 2026-10-07
+# every @temporalio/*, @copilotkit/*, @langchain/*, @mastra/* and react-*
+# package went to "production", and "ai" and "temporal" were left with the
+# few exact names. So the type groups exclude every pattern of the named
+# groups (repo/dependabot.spec.ts checks the lists stay in step).
+#
+# "held" collects minors we cannot take yet, each with its reason in the
+# launch plan (TypeScript 5.9, CopilotKit 1.77, @atproto/api 0.23, polotno,
+# axe-core 4.14, isomorphic-dompurify 3.23). Its PR stays red until the work
+# is done, and it keeps the other groups green and mergeable meanwhile.
 version: 2
 updates:
   - package-ecosystem: "npm"
@@ -16,10 +26,14 @@ updates:
       interval: "weekly"
     open-pull-requests-limit: 10
     groups:
+      held:
+        applies-to: version-updates
+        update-types: ["minor", "patch"]
+        patterns: ["typescript", "@copilotkit/react-core", "@copilotkit/react-textarea", "@copilotkit/react-ui", "@copilotkit/runtime", "@atproto/api", "polotno", "axe-core", "isomorphic-dompurify"]
       ai:
         applies-to: version-updates
         update-types: ["minor", "patch"]
-        patterns: ["@ag-ui/*", "@copilotkit/*", "@langchain/*", "@mastra/*", "mastra", "openai", "@ai-sdk/*"]
+        patterns: ["@ag-ui/*", "@langchain/*", "@mastra/*", "mastra", "openai", "@ai-sdk/*"]
       temporal:
         applies-to: version-updates
         update-types: ["minor", "patch"]
@@ -32,10 +46,12 @@ updates:
         applies-to: version-updates
         dependency-type: "production"
         update-types: ["minor", "patch"]
+        exclude-patterns: ["typescript", "@copilotkit/react-core", "@copilotkit/react-textarea", "@copilotkit/react-ui", "@copilotkit/runtime", "@atproto/api", "polotno", "axe-core", "isomorphic-dompurify", "@ag-ui/*", "@langchain/*", "@mastra/*", "mastra", "openai", "@ai-sdk/*", "@temporalio/*", "nestjs-temporal-core", "react", "react-dom", "next", "@types/react", "@types/react-dom", "eslint-config-next", "swr", "react-*"]
       development:
         applies-to: version-updates
         dependency-type: "development"
         update-types: ["minor", "patch"]
+        exclude-patterns: ["typescript", "@copilotkit/react-core", "@copilotkit/react-textarea", "@copilotkit/react-ui", "@copilotkit/runtime", "@atproto/api", "polotno", "axe-core", "isomorphic-dompurify", "@ag-ui/*", "@langchain/*", "@mastra/*", "mastra", "openai", "@ai-sdk/*", "@temporalio/*", "nestjs-temporal-core", "react", "react-dom", "next", "@types/react", "@types/react-dom", "eslint-config-next", "swr", "react-*"]
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:
