@@ -1,3 +1,4 @@
+import { lacksSubscription } from '@gitroom/nestjs-libraries/database/prisma/subscriptions/lacks.subscription';
 import { INestApplication } from '@nestjs/common';
 import { Request, Response } from 'express';
 import { MastraService } from '@gitroom/nestjs-libraries/chat/mastra.service';
@@ -77,6 +78,9 @@ export const startMcp = async (app: INestApplication) => {
         if (!org) {
           return { valid: false, error: 'invalid_token', errorDescription: 'Invalid API Key or OAuth token' };
         }
+        if (lacksSubscription(org)) {
+          return { valid: false, error: 'invalid_token', errorDescription: 'No subscription found' };
+        }
         return { valid: true, subject: token };
       },
     },
@@ -140,6 +144,10 @@ export const startMcp = async (app: INestApplication) => {
       res.status(401).json({ error: 'invalid_token', error_description: 'Could not resolve organization' });
       return;
     }
+    if (lacksSubscription(auth)) {
+      res.status(401).json({ error: 'invalid_token', error_description: 'No subscription found' });
+      return;
+    }
 
     if (await mcpRateLimited(auth.id)) {
       res.status(429).send('Too many requests');
@@ -193,6 +201,11 @@ export const startMcp = async (app: INestApplication) => {
       res.status(401).send('Invalid API Key or OAuth token');
       return;
     }
+    // @ts-ignore
+    if (lacksSubscription(req.auth)) {
+      res.status(401).send('No subscription found');
+      return;
+    }
 
     // @ts-ignore
     if (await mcpRateLimited(req.auth.id)) {
@@ -237,6 +250,11 @@ export const startMcp = async (app: INestApplication) => {
     // @ts-ignore
     if (!req.auth) {
       res.status(400).send('Invalid API Key');
+      return;
+    }
+    // @ts-ignore
+    if (lacksSubscription(req.auth)) {
+      res.status(401).send('No subscription found');
       return;
     }
 
@@ -289,6 +307,11 @@ export const startMcp = async (app: INestApplication) => {
     // @ts-ignore
     if (!req.auth) {
       res.status(400).send('Invalid API Key');
+      return;
+    }
+    // @ts-ignore
+    if (lacksSubscription(req.auth)) {
+      res.status(401).send('No subscription found');
       return;
     }
 
