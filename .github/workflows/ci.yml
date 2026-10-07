@@ -24,13 +24,12 @@ jobs:
       - name: Setup pnpm
         uses: pnpm/action-setup@v6
         with:
-          version: 10.6.1
           run_install: false
 
-      - name: Setup Node.js 22
+      - name: Setup Node.js (volta.node)
         uses: actions/setup-node@v7
         with:
-          node-version: 22
+          node-version-file: package.json
           cache: pnpm
 
       - name: Install dependencies
@@ -59,13 +58,12 @@ jobs:
       - name: Setup pnpm
         uses: pnpm/action-setup@v6
         with:
-          version: 10.6.1
           run_install: false
 
-      - name: Setup Node.js 22
+      - name: Setup Node.js (volta.node)
         uses: actions/setup-node@v7
         with:
-          node-version: 22
+          node-version-file: package.json
           cache: pnpm
 
       - name: Install dependencies
@@ -93,13 +91,12 @@ jobs:
       - name: Setup pnpm
         uses: pnpm/action-setup@v6
         with:
-          version: 10.6.1
           run_install: false
 
-      - name: Setup Node.js 22
+      - name: Setup Node.js (volta.node)
         uses: actions/setup-node@v7
         with:
-          node-version: 22
+          node-version-file: package.json
           cache: pnpm
 
       - name: Install dependencies
@@ -160,13 +157,12 @@ jobs:
       - name: Setup pnpm
         uses: pnpm/action-setup@v6
         with:
-          version: 10.6.1
           run_install: false
 
-      - name: Setup Node.js 22
+      - name: Setup Node.js (volta.node)
         uses: actions/setup-node@v7
         with:
-          node-version: 22
+          node-version-file: package.json
 
       - name: Migrations reproduce schema.prisma
         run: |

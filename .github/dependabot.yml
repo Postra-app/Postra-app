@@ -58,6 +58,13 @@ updates:
         dependency-type: "development"
         update-types: ["minor", "patch"]
         exclude-patterns: ["typescript", "@copilotkit/react-core", "@copilotkit/react-textarea", "@copilotkit/react-ui", "@copilotkit/runtime", "@atproto/api", "polotno", "isomorphic-dompurify", "@ag-ui/*", "@langchain/*", "@mastra/*", "mastra", "openai", "@ai-sdk/*", "@temporalio/*", "nestjs-temporal-core", "react", "react-dom", "next", "@types/react", "@types/react-dom", "eslint-config-next", "swr", "react-*"]
+  # The Node image of Dockerfile.dev. Its version has to equal volta.node in
+  # package.json (ci-workflows.spec.ts), so a PR from here is red until
+  # volta.node moves with it: the reminder, and the place to do both.
+  - package-ecosystem: "docker"
+    directory: "/"
+    schedule:
+      interval: "weekly"
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:
