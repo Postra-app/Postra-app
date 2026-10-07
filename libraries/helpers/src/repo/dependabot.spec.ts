@@ -42,7 +42,9 @@ const byType = groups.filter((g) => g.dependencyType);
 const byPattern = groups.filter((g) => !g.dependencyType);
 const matches = (pattern: string, name: string) =>
   new RegExp(
-    '^' + pattern.replace(/[.+?^${}()|[\]\\/]/g, '\\$&').replace(/\*/g, '.*') + '$'
+    '^' +
+      pattern.replace(/[.+?^${}()|[\]\\/]/g, '\\$&').replace(/\*/g, '.*') +
+      '$'
   ).test(name);
 
 describe('Dependabot groups', () => {
