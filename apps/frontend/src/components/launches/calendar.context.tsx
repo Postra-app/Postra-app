@@ -9,7 +9,6 @@ import {
   useContext,
   useEffect,
   useMemo,
-  useRef,
   useState,
 } from 'react';
 import dayjs from 'dayjs';
@@ -70,6 +69,9 @@ export const CalendarContext = createContext({
     /** empty **/
   },
   changeDate: (id: string, date: dayjs.Dayjs) => {
+    /** empty **/
+  },
+  revertDate: (id: string) => {
     /** empty **/
   },
   // List view specific
@@ -244,16 +246,12 @@ export const CalendarWeekProvider: FC<{
   }, [listParams]);
 
   // SWR for calendar view
-  const calendarKey =
-    filters.display !== 'list' ? `/posts-${params}` : null;
-  const calendarKeyRef = useRef(calendarKey);
-  calendarKeyRef.current = calendarKey;
   const {
     data: calendarData,
     isLoading: calendarIsLoading,
     mutate: mutateCalendar,
   } = useSWR(
-    calendarKey,
+    filters.display !== 'list' ? `/posts-${params}` : null,
     loadData,
     {
       refreshInterval: 3600000,
@@ -390,21 +388,28 @@ export const CalendarWeekProvider: FC<{
     }
   }, [posts]);
 
-  // Combined reload function that handles both calendar and list views.
-  // A tile moved before the server answered (changeDate) lives only in
-  // internalData. When the server's posts come back unchanged, SWR keeps the
-  // old object, the effect above does not run, and a refused move stayed on
-  // screen where it was dropped (E2E-05-49) — so reset from the answer, as
-  // long as it is still the week (and customer) on screen.
+  // Combined reload function that handles both calendar and list views
   const reloadCalendarView = useCallback(() => {
-    const key = calendarKeyRef.current;
-    mutateCalendar().then((fresh) => {
-      if (fresh?.posts && calendarKeyRef.current === key) {
-        setInternalData(fresh.posts);
-      }
-    });
+    mutateCalendar();
     mutateList();
   }, [mutateCalendar, mutateList]);
+
+  // A move the server refused: the tile was moved on screen at once
+  // (changeDate) and stays there, because a reload that brings the same
+  // posts back leaves local state alone (E2E-05-49). Put back this post
+  // only, at the date the server has, so another move made meanwhile stays.
+  const revertDate = useCallback(
+    (id: string) => {
+      const saved = posts.find((p: Post) => p.id === id);
+      if (!saved) return;
+      setInternalData((d) =>
+        d.map((post: Post) =>
+          post.id === id ? { ...post, publishDate: saved.publishDate } : post
+        )
+      );
+    },
+    [posts]
+  );
 
   // Determine loading state based on current view
   const loading = filters.display === 'list' ? listIsLoading : calendarIsLoading;
@@ -426,6 +431,7 @@ export const CalendarWeekProvider: FC<{
         integrations,
         setFilters: setFiltersWrapper,
         changeDate,
+        revertDate,
         comments,
         sets: sets || [],
         signature: sign,

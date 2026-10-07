@@ -664,6 +664,7 @@ export const CalendarColumn: FC<{
     integrations,
     posts,
     changeDate,
+    revertDate,
     display,
     reloadCalendarView,
     composerDefaults,
@@ -813,6 +814,7 @@ export const CalendarColumn: FC<{
         // Refused (the post deleted in another tab, a 404): the tile was
         // already moved here and stayed there as if saved (E2E-05-49).
         if (status >= 400) {
+          revertDate(item.id);
           reloadCalendarView();
           return;
         }
