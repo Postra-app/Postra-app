@@ -166,6 +166,7 @@ export const Autopost: FC = () => {
                   <div>
                     <Slider
                       value={p.active ? 'on' : 'off'}
+                      label={p.title || p.url}
                       onChange={changeActive(p)}
                       fill={true}
                     />

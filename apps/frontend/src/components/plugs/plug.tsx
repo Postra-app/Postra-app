@@ -215,6 +215,7 @@ export const PlugItem: FC<{
             <div onClick={(e) => e.stopPropagation()}>
               <Slider
                 value={activated ? 'on' : 'off'}
+                label={plug.title}
                 onChange={changeActivated}
                 fill={true}
               />
