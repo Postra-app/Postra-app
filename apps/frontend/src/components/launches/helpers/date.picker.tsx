@@ -97,6 +97,8 @@ export const DatePicker: FC<{
           />
           <TimeInput
             onChange={changeDate('time')}
+            // Same 12/24 h as the date shown above it (upstream 80d527b4).
+            format={isUSCitizen() ? '12' : '24'}
             label={t('pick_time', 'Pick time')}
             classNames={{
               label: 'text-textColor py-[12px]',

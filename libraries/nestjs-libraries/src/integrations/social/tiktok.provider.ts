@@ -24,6 +24,20 @@ import { makeSecureId } from '@gitroom/nestjs-libraries/services/make.secure.id'
 @Rules(
   'TikTok can have one video or one picture or multiple pictures, it cannot be without an attachment'
 )
+// The published post's link. Photo posts (publish ids p_pub_...) live under
+// /photo/: TikTok answers 403 for /video/<id> of a photo post (upstream
+// 6f79545d). Without a public id yet, the profile.
+export const tiktokPostUrl = (
+  username: string,
+  publishId: string,
+  publicPostId?: string
+) =>
+  !publicPostId
+    ? `https://www.tiktok.com/@${username}`
+    : `https://www.tiktok.com/@${username}/${
+        publishId.indexOf('p_pub_') === 0 ? 'photo' : 'video'
+      }/${publicPostId}`;
+
 export class TiktokProvider extends SocialAbstract implements SocialProvider {
   private readonly _logger = new Logger(TiktokProvider.name);
   identifier = 'tiktok';
@@ -475,10 +489,7 @@ export class TiktokProvider extends SocialAbstract implements SocialProvider {
 
       if (status === 'PUBLISH_COMPLETE') {
         return {
-          url: !publicaly_available_post_id
-            ? `https://www.tiktok.com/@${id}`
-            : `https://www.tiktok.com/@${id}/video/` +
-              publicaly_available_post_id,
+          url: tiktokPostUrl(id, publishId, publicaly_available_post_id?.[0]),
           id: !publicaly_available_post_id
             ? publishId
             : publicaly_available_post_id?.[0],
