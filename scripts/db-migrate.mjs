@@ -36,7 +36,9 @@ const schema = join(
 const migrationsDir = join(dirname(schema), 'migrations');
 
 const prisma = (args, opts = {}) =>
-  execFileSync('pnpm', ['dlx', 'prisma@6.5.0', ...args], {
+  // The CLI from the lockfile, the same version as @prisma/client: a pinned
+  // `pnpm dlx prisma@x` drifted from it and was fetched on every boot.
+  execFileSync('pnpm', ['exec', 'prisma', ...args], {
     cwd: root,
     stdio: opts.quiet ? 'pipe' : 'inherit',
     env: process.env,
@@ -47,7 +49,7 @@ const probe = (relation) => {
   try {
     execFileSync(
       'pnpm',
-      ['dlx', 'prisma@6.5.0', 'db', 'execute', '--schema', schema, '--stdin'],
+      ['exec', 'prisma', 'db', 'execute', '--schema', schema, '--stdin'],
       {
         cwd: root,
         input: `SELECT 1 FROM "${relation}" LIMIT 1;`,
