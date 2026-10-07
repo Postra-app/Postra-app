@@ -259,6 +259,13 @@ export const Filters = () => {
   );
 
   const isListView = calendar.display === 'list';
+  // The arrows were divs a keyboard never reached, with no name at all.
+  const periodLabel =
+    calendar.display === 'day'
+      ? { previous: t('previous_day', 'Previous day'), next: t('next_day', 'Next day') }
+      : calendar.display === 'month'
+      ? { previous: t('previous_month', 'Previous month'), next: t('next_month', 'Next month') }
+      : { previous: t('previous_week', 'Previous week'), next: t('next_week', 'Next week') };
 
   const setListStateFilter = useCallback(
     (next: ListStateFilter) => () => {
@@ -292,8 +299,10 @@ export const Filters = () => {
       {!isListView && (
         <div className="flex flex-grow flex-row phone:flex-col phone:w-full phone:items-stretch items-center gap-[10px]">
           <div className="launches-control-surface phone:w-full h-[42px] border border-white/10 bg-[rgba(15,23,42,0.78)] gap-[1px] flex items-center rounded-[12px] overflow-hidden shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]">
-            <div
+            <button
+              type="button"
               onClick={previous}
+              aria-label={periodLabel.previous}
               className="cursor-pointer text-textColor rtl:rotate-180 px-[11px] bg-transparent h-full flex items-center justify-center hover:text-textItemFocused hover:bg-white/[0.06] transition-colors"
             >
               <svg
@@ -311,14 +320,16 @@ export const Filters = () => {
                   strokeLinejoin="round"
                 />
               </svg>
-            </div>
+            </button>
             <div className="min-w-[220px] phone:min-w-0 phone:flex-1 text-center bg-transparent h-full flex items-center justify-center">
               <div className="py-[3px] px-[9px] rounded-[5px] transition-all text-[14px] font-[600] tracking-[-0.02em]">
                 {getDisplayText()}
               </div>
             </div>
-            <div
+            <button
+              type="button"
               onClick={next}
+              aria-label={periodLabel.next}
               className="cursor-pointer text-textColor rtl:rotate-180 px-[11px] bg-transparent h-full flex items-center justify-center hover:text-textItemFocused hover:bg-white/[0.06] transition-colors"
             >
               <svg
@@ -336,16 +347,17 @@ export const Filters = () => {
                   strokeLinejoin="round"
                 />
               </svg>
-            </div>
+            </button>
           </div>
           <div className="flex-1 text-[14px] font-[500]">
             <div className="text-center flex h-[42px]">
-              <div
+              <button
+                type="button"
                 onClick={setToday}
                 className="launches-control-surface hover:text-textItemFocused hover:bg-white/[0.08] py-[3px] px-[14px] flex justify-center items-center rounded-[12px] transition-all cursor-pointer text-[14px] bg-[rgba(15,23,42,0.78)] border border-white/10 h-[42px] font-[600]"
               >
                 {t('today', 'Today')}
-              </div>
+              </button>
             </div>
           </div>
         </div>
@@ -353,8 +365,11 @@ export const Filters = () => {
       {isListView && (
         <div className="flex flex-grow flex-row phone:flex-col phone:w-full phone:items-stretch items-center gap-[10px]">
           <div className="launches-control-surface phone:w-full h-[42px] border border-white/10 bg-[rgba(15,23,42,0.78)] gap-[1px] flex items-center rounded-[12px] overflow-hidden shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]">
-            <div
+            <button
+              type="button"
               onClick={previousPage}
+              disabled={calendar.listPage <= 0}
+              aria-label={t('previous_page', 'Previous page')}
               className={clsx(
                 'text-textColor rtl:rotate-180 px-[11px] bg-transparent h-full flex items-center justify-center',
                 calendar.listPage > 0
@@ -377,14 +392,17 @@ export const Filters = () => {
                   strokeLinejoin="round"
                 />
               </svg>
-            </div>
+            </button>
             <div className="min-w-[220px] phone:min-w-0 phone:flex-1 text-center bg-transparent h-full flex items-center justify-center">
               <div className="py-[3px] px-[9px] rounded-[5px] transition-all text-[14px] font-[600] tracking-[-0.02em]">
                 {t('page', 'Page')} {calendar.listPage + 1} {t('of', 'of')} {Math.max(1, calendar.listTotalPages)}
               </div>
             </div>
-            <div
+            <button
+              type="button"
               onClick={nextPage}
+              disabled={calendar.listPage >= calendar.listTotalPages - 1}
+              aria-label={t('next_page', 'Next page')}
               className={clsx(
                 'text-textColor rtl:rotate-180 px-[11px] bg-transparent h-full flex items-center justify-center',
                 calendar.listPage < calendar.listTotalPages - 1
@@ -407,13 +425,15 @@ export const Filters = () => {
                   strokeLinejoin="round"
                 />
               </svg>
-            </div>
+            </button>
           </div>
           <div className="flex flex-row phone:flex-wrap phone:justify-center phone:w-full p-[4px] border border-newTableBorder rounded-[8px] text-[14px] font-[500]">
             {listStateOptions.map((option) => (
-              <div
+              <button
+                type="button"
                 key={option.value}
                 onClick={setListStateFilter(option.value)}
+                aria-pressed={calendar.listState === option.value}
                 className={clsx(
                   'pt-[6px] pb-[5px] cursor-pointer min-w-[80px] px-[12px] text-center rounded-[6px] phone:whitespace-nowrap',
                   calendar.listState === option.value &&
@@ -421,7 +441,7 @@ export const Filters = () => {
                 )}
               >
                 {option.label}
-              </div>
+              </button>
             ))}
           </div>
           <div className="flex-1" />
@@ -435,7 +455,9 @@ export const Filters = () => {
       <SelectChannels />
       {!isListView && (
         <div className="launches-toggle-surface flex flex-row p-[4px] border border-white/10 bg-[rgba(15,23,42,0.74)] rounded-[12px] text-[14px] font-[500] shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]">
-          <div
+          <button
+            type="button"
+            aria-pressed={calendar.display === 'day'}
             className={clsx(
               'pt-[7px] pb-[6px] cursor-pointer w-[74px] text-center rounded-[8px] transition-colors',
               calendar.display === 'day'
@@ -445,8 +467,10 @@ export const Filters = () => {
             onClick={setDay}
           >
             {t('day', 'Day')}
-          </div>
-          <div
+          </button>
+          <button
+            type="button"
+            aria-pressed={calendar.display === 'week'}
             className={clsx(
               'pt-[7px] pb-[6px] cursor-pointer w-[74px] text-center rounded-[8px] transition-colors',
               calendar.display === 'week'
@@ -456,8 +480,10 @@ export const Filters = () => {
             onClick={setWeek}
           >
             {t('week', 'Week')}
-          </div>
-          <div
+          </button>
+          <button
+            type="button"
+            aria-pressed={calendar.display === 'month'}
             className={clsx(
               'pt-[7px] pb-[6px] cursor-pointer w-[74px] text-center rounded-[8px] transition-colors',
               calendar.display === 'month'
@@ -467,12 +493,15 @@ export const Filters = () => {
             onClick={setMonth}
           >
             {t('month', 'Month')}
-          </div>
+          </button>
         </div>
       )}
       <div className="launches-toggle-surface phone:hidden flex flex-row p-[4px] border border-white/10 bg-[rgba(15,23,42,0.74)] rounded-[12px] text-[14px] font-[500] shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]">
-        <div
+        <button
+          type="button"
           onClick={setCalendarView}
+          aria-label={t('calendar_view', 'Calendar view')}
+          aria-pressed={!isListView}
           className={clsx(
             'pt-[6px] pb-[5px] cursor-pointer flex justify-center items-center w-[34px] text-center rounded-[8px] transition-colors',
             !isListView
@@ -496,9 +525,12 @@ export const Filters = () => {
               strokeLinejoin="round"
             />
           </svg>
-        </div>
-        <div
+        </button>
+        <button
+          type="button"
           onClick={setList}
+          aria-label={t('list_view', 'List view')}
+          aria-pressed={isListView}
           className={clsx(
             'pt-[6px] pb-[5px] flex justify-center items-center cursor-pointer w-[34px] text-center rounded-[8px] transition-colors',
             isListView
@@ -522,7 +554,7 @@ export const Filters = () => {
               strokeLinejoin="round"
             />
           </svg>
-        </div>
+        </button>
       </div>
     </div>
   );

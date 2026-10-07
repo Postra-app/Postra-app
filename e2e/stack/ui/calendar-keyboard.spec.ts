@@ -1,5 +1,6 @@
 import { expect, test } from '@playwright/test';
 import { createDraft, signedIn, stateFile } from '../helpers';
+import { weekOf } from './ui-helpers';
 
 // A post in the calendar opens from the keyboard, and its actions (duplicate,
 // preview, delete…) appear on focus, not only on mouse hover. Both were divs
@@ -9,7 +10,9 @@ test.use({ storageState: stateFile('b') });
 
 const isoDay = (d: Date) => d.toISOString().slice(0, 10);
 
-test('Tab reaches a post, its actions show, Enter opens it', async ({ page }) => {
+test('Tab reaches a post, its actions show, Enter opens it', async ({
+  page,
+}) => {
   const api = await signedIn('b');
   const text = `Keyboard post ${Date.now()}`;
   const post = await createDraft(api, 'b', text);
@@ -19,11 +22,17 @@ test('Tab reaches a post, its actions show, Enter opens it', async ({ page }) =>
     const monday = new Date(day);
     monday.setUTCDate(day.getUTCDate() - ((day.getUTCDay() + 6) % 7));
     const sunday = new Date(monday.getTime() + 6 * 86_400_000);
-    await page.goto(`/launches?display=week&startDate=${isoDay(monday)}&endDate=${isoDay(sunday)}`);
+    await page.goto(
+      `/launches?display=week&startDate=${isoDay(monday)}&endDate=${isoDay(
+        sunday
+      )}`
+    );
 
     const tile = page.locator('[role=button]', { hasText: text });
     await tile.focus();
-    await expect(page.getByRole('button', { name: 'Preview Post' }).first()).toBeVisible();
+    await expect(
+      page.getByRole('button', { name: 'Preview Post' }).first()
+    ).toBeVisible();
     await page.keyboard.press('Enter');
     await expect(page.locator('.ProseMirror').first()).toContainText(text);
   } finally {
@@ -34,7 +43,9 @@ test('Tab reaches a post, its actions show, Enter opens it', async ({ page }) =>
 
 // The channel panel's collapse toggle and the AI post Creator were divs with
 // click handlers: no name, and Tab never reached them.
-test('the channel panel collapses and the Creator opens from the keyboard', async ({ page }) => {
+test('the channel panel collapses and the Creator opens from the keyboard', async ({
+  page,
+}) => {
   await page.goto('/launches');
   const collapse = page.getByRole('button', { name: 'Collapse channels' });
   await collapse.focus();
@@ -43,9 +54,37 @@ test('the channel panel collapses and the Creator opens from the keyboard', asyn
   await expect(expand).toHaveAttribute('aria-expanded', 'false');
   await expand.focus();
   await page.keyboard.press('Enter');
-  await expect(page.getByRole('button', { name: 'Collapse channels' })).toHaveAttribute('aria-expanded', 'true');
+  await expect(
+    page.getByRole('button', { name: 'Collapse channels' })
+  ).toHaveAttribute('aria-expanded', 'true');
 
   await page.getByRole('button', { name: 'Generate Posts' }).focus();
   await page.keyboard.press('Enter');
-  await expect(page.getByRole('dialog', { name: 'Generate Posts' })).toBeVisible();
+  await expect(
+    page.getByRole('dialog', { name: 'Generate Posts' })
+  ).toBeVisible();
+});
+
+test('the period arrows, Today and the view switch work from the keyboard', async ({
+  page,
+}) => {
+  // They were divs: no name, never reached by Tab.
+  await page.goto(weekOf(new Date()));
+  const range = async () => new URL(page.url()).searchParams.get('startDate');
+  const before = await range();
+  await page.getByRole('button', { name: 'Next week' }).focus();
+  await page.keyboard.press('Enter');
+  await expect.poll(range).not.toBe(before);
+  await page.getByRole('button', { name: 'Today', exact: true }).focus();
+  await page.keyboard.press('Enter');
+  await expect.poll(range).toBe(before);
+  await page.getByRole('button', { name: 'Month', exact: true }).focus();
+  await page.keyboard.press('Enter');
+  await expect(
+    page.getByRole('button', { name: 'Month', exact: true })
+  ).toHaveAttribute('aria-pressed', 'true');
+  await expect(page.getByRole('button', { name: 'Next month' })).toBeVisible();
+  await page.getByRole('button', { name: 'List view' }).focus();
+  await page.keyboard.press('Enter');
+  await expect(page.getByRole('button', { name: 'Next page' })).toBeVisible();
 });

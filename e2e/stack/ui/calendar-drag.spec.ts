@@ -79,3 +79,92 @@ test('E2E-05-49: a move the server refuses puts the post back', async ({
     await api.dispose();
   }
 });
+
+test('E2E-05-49: the old week answering late does not replace the new week', async ({
+  page,
+}) => {
+  // After a refused move the calendar reloads the week it was on. If the
+  // customer moves to the next week before that answer arrives, the late
+  // answer must not replace what the next week shows (Codex, 2026-10-07).
+  const api = await signedIn('a');
+  const stamp = Date.now();
+  const make = async (when: Date, content: string) => {
+    const res = await api.post('/posts', {
+      data: {
+        type: 'draft',
+        shortLink: false,
+        date: when.toISOString(),
+        tags: [],
+        posts: [
+          {
+            type: 'draft',
+            integration: { id: USERS.a.channel.id },
+            value: [{ content, image: [] }],
+            settings: { __type: 'bluesky' },
+          },
+        ],
+      },
+    });
+    expect(res.status(), await res.text()).toBe(201);
+    return (await listPosts(api)).find((p) => p.content.includes(content))!;
+  };
+  const here = await make(SLOT, `[stack ui] this week ${stamp}`);
+  const later = new Date(SLOT.getTime() + 7 * 86_400_000);
+  const there = await make(later, `[stack ui] next week ${stamp}`);
+
+  try {
+    await page.route(`**/posts/${here.id}/date`, (route) =>
+      route.fulfill({
+        status: 404,
+        contentType: 'application/json',
+        body: '{}',
+      })
+    );
+    // The startDate this week's posts are asked with, as the page sends it.
+    const weekLoad = page.waitForRequest((r) =>
+      /\/posts\?.*startDate=/.test(r.url())
+    );
+    await page.goto(weekOf(SLOT));
+    const thisWeek = new URL((await weekLoad).url()).searchParams.get(
+      'startDate'
+    );
+    const tile = page
+      .getByRole('button', { name: `Open post: ${USERS.a.channel.name}` })
+      .filter({ hasText: here.content });
+    await expect(tile).toBeVisible();
+    const fromSlot = (await page
+      .locator('[data-slot]')
+      .filter({ has: tile })
+      .last()
+      .getAttribute('data-slot'))!;
+    const hour = Number(fromSlot.slice(11, 13));
+    const to = page.locator(
+      `[data-slot="${fromSlot.slice(0, 11)}${String(hour - 1).padStart(
+        2,
+        '0'
+      )}:00"]`
+    );
+
+    // From the drop on, this week's posts answer 3 s late.
+    await page.route(/\/posts\?/, async (route) => {
+      const start = new URL(route.request().url()).searchParams.get(
+        'startDate'
+      );
+      if (start === thisWeek) {
+        await new Promise((r) => setTimeout(r, 3_000));
+      }
+      await route.continue();
+    });
+    await tile.dragTo(to);
+    await page.getByRole('button', { name: 'Next week' }).click();
+    await expect(page.getByText(there.content)).toBeVisible();
+    // The late answer for the previous week has arrived by now.
+    await page.waitForTimeout(4_000);
+    await expect(page.getByText(there.content)).toBeVisible();
+    await expect(page.getByText(here.content)).toHaveCount(0);
+  } finally {
+    await api.delete(`/posts/${here.group}`);
+    await api.delete(`/posts/${there.group}`);
+    await api.dispose();
+  }
+});

@@ -9,6 +9,7 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
 } from 'react';
 import dayjs from 'dayjs';
@@ -243,12 +244,16 @@ export const CalendarWeekProvider: FC<{
   }, [listParams]);
 
   // SWR for calendar view
+  const calendarKey =
+    filters.display !== 'list' ? `/posts-${params}` : null;
+  const calendarKeyRef = useRef(calendarKey);
+  calendarKeyRef.current = calendarKey;
   const {
     data: calendarData,
     isLoading: calendarIsLoading,
     mutate: mutateCalendar,
   } = useSWR(
-    filters.display !== 'list' ? `/posts-${params}` : null,
+    calendarKey,
     loadData,
     {
       refreshInterval: 3600000,
@@ -389,10 +394,14 @@ export const CalendarWeekProvider: FC<{
   // A tile moved before the server answered (changeDate) lives only in
   // internalData. When the server's posts come back unchanged, SWR keeps the
   // old object, the effect above does not run, and a refused move stayed on
-  // screen where it was dropped (E2E-05-49) — so reset from the answer.
+  // screen where it was dropped (E2E-05-49) — so reset from the answer, as
+  // long as it is still the week (and customer) on screen.
   const reloadCalendarView = useCallback(() => {
+    const key = calendarKeyRef.current;
     mutateCalendar().then((fresh) => {
-      if (fresh?.posts) setInternalData(fresh.posts);
+      if (fresh?.posts && calendarKeyRef.current === key) {
+        setInternalData(fresh.posts);
+      }
     });
     mutateList();
   }, [mutateCalendar, mutateList]);
