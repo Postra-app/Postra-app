@@ -1,0 +1,59 @@
+name: Dependency freshness
+
+# Dependabot proposes minors and patches in groups (.github/dependabot.yml);
+# majors are left out, because checking ~100 of them one by one ran past its
+# 55-minute limit every week (E2E-01-28). This keeps one issue listing every
+# direct dependency a major version behind, refreshed weekly, so no pin goes
+# stale without anyone seeing it.
+
+on:
+  schedule:
+    - cron: '0 6 * * 1'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  check:
+    runs-on: ubuntu-26.04
+    steps:
+      - uses: actions/checkout@v7
+
+      # pnpm from packageManager, Node from volta.node: one source each.
+      - uses: pnpm/action-setup@v6
+        with:
+          run_install: false
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: package.json
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile --ignore-scripts
+
+      - name: Refresh the "majors behind" issue
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          # pnpm outdated exits 1 whenever anything is outdated.
+          pnpm outdated --format json > outdated.json || true
+          node scripts/dependency-freshness.mjs outdated.json > body.md 2> count.txt
+          MAJORS=$(sed -n 's/^MAJORS=//p' count.txt)
+          echo "Majors behind: ${MAJORS}"
+          if [ -z "$MAJORS" ]; then
+            echo "::error::Could not read pnpm outdated"; cat count.txt; exit 1
+          fi
+          TITLE="Dependencies: majors behind"
+          OPEN=$(gh issue list --state open --limit 500 --json number,title \
+            --jq ".[] | select(.title == \"${TITLE}\") | .number" | head -1)
+          if [ "$MAJORS" = "0" ]; then
+            [ -n "$OPEN" ] && gh issue close "$OPEN" --comment "No direct dependency is a major version behind."
+            exit 0
+          fi
+          if [ -n "$OPEN" ]; then
+            gh issue edit "$OPEN" --body-file body.md
+          else
+            gh issue create --title "$TITLE" --body-file body.md
+          fi

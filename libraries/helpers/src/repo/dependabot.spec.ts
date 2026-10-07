@@ -76,4 +76,19 @@ describe('Dependabot groups', () => {
     const held = byPattern.find((g) => g.name === 'held');
     expect(held?.patterns.filter((p) => !deps.includes(p))).toEqual([]);
   });
+
+  // Majors one by one ran Dependabot past its 55-minute limit (E2E-01-28).
+  // They are ignored for version updates only, and a weekly workflow lists
+  // them in an issue, so they still have a guard.
+  it('leaves majors to the weekly freshness issue', () => {
+    expect(npm).toMatch(
+      /ignore:\n\s+- dependency-name: "\*"\n\s+update-types: \["version-update:semver-major"\]/
+    );
+    const guard = readFileSync(
+      join(root, '.github', 'workflows', 'dependency-freshness.yml'),
+      'utf8'
+    );
+    expect(guard).toMatch(/schedule:/);
+    expect(guard).toContain('node scripts/dependency-freshness.mjs');
+  });
 });

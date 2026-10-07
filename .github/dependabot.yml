@@ -1,7 +1,10 @@
 # Latest stable of everything (decision 2026-10-06). Minors and patches come
-# in a handful of groups; each major comes on its own, so it gets its own CI
-# run and review. Security fixes come separately (Dependabot security
-# updates are on).
+# in a handful of groups. Majors are left to
+# .github/workflows/dependency-freshness.yml, which keeps one issue listing
+# them: checking ~100 majors one by one ran past the 55-minute limit every
+# week (E2E-01-28), and each needs work of its own anyway. Security fixes
+# come separately and are not affected (ignore applies to version updates
+# only).
 #
 # One group for every minor and patch timed out on 2026-10-06: 72 packages
 # behind, the job updated them one by one and GitHub cancelled it after 55
@@ -25,6 +28,9 @@ updates:
     schedule:
       interval: "weekly"
     open-pull-requests-limit: 10
+    ignore:
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
     groups:
       held:
         applies-to: version-updates
