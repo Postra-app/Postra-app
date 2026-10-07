@@ -5,6 +5,7 @@ import { MediaService } from '@gitroom/nestjs-libraries/database/prisma/media/me
 import { toPublicMedia } from '@gitroom/nestjs-libraries/database/prisma/media/public.media';
 import { z } from 'zod';
 import { checkAuth } from '@gitroom/nestjs-libraries/chat/auth.context';
+import { MAX_MEDIA_PAGE } from '@gitroom/nestjs-libraries/dtos/media/get.media.dto';
 
 // Media already in the library, so the agent can attach a file instead of
 // asking for a URL or uploading it again (upstream 5cd4de2f, dda966e4).
@@ -27,6 +28,7 @@ Use the returned path as an attachment URL in integrationSchedulePostTool instea
           .number()
           .int()
           .min(1)
+          .max(MAX_MEDIA_PAGE)
           .optional()
           .describe('Page number, starting at 1'),
       }),

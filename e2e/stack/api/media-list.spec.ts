@@ -31,7 +31,8 @@ test('public API lists the own media library, media fields only', async () => {
     expect(Object.keys(body.results[0]).sort()).toEqual(OWN_FIELDS);
     expect(body.pages).toBe(1);
 
-    for (const page of ['0', '-1', 'abc']) {
+    // 1e308 and 999999999 pass IsInt + Min(1) but overflow Prisma's skip.
+    for (const page of ['0', '-1', 'abc', '1e308', '999999999']) {
       expect((await api.get(`media?page=${page}`)).status(), `page=${page}`).toBe(400);
     }
     expect((await anonymous.get('media')).status()).toBe(401);
