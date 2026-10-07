@@ -155,6 +155,7 @@ const Plug: FC<{
         <div>
           <Slider
             value={active ? 'on' : 'off'}
+            label={plug.title}
             onChange={(p) =>
               setValue(`plug--${plug.identifier}--active`, p === 'on')
             }

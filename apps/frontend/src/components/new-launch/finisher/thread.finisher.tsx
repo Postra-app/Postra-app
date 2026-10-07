@@ -35,6 +35,7 @@ export const ThreadFinisher = () => {
         <div>
           <Slider
             value={slider ? 'on' : 'off'}
+            label="Add a thread finisher"
             onChange={(p) => setValue('active_thread_finisher', p === 'on')}
             fill={true}
           />

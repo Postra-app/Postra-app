@@ -22,6 +22,7 @@ export const Element: FC<{
       <div className="text-[14px] text-textColor/62">{setting.description}</div>
       <Slider
         value={value === true ? 'on' : 'off'}
+        label={setting.title}
         onChange={() => {
           setValue(!value);
           onChange(!value);

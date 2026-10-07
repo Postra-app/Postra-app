@@ -136,6 +136,21 @@ describe('a Stripe customer we stored and Stripe no longer has', () => {
     );
   });
 
+  // The Cancel button of an organisation with nothing live to cancel (E2E-02-03:
+  // it used to answer 500). retrieve is the customer check in createOrGetCustomer.
+  it('answers 400 when there is no live subscription to cancel', async () => {
+    retrieveCustomer.mockResolvedValueOnce({ id: 'cus_1', deleted: false });
+    listSubscriptions.mockResolvedValueOnce({
+      data: [{ id: 'sub_old', status: 'canceled' }],
+    });
+    const { service } = build('cus_1');
+
+    await expect(service.setToCancel('org-1')).rejects.toMatchObject({
+      status: 400,
+      message: 'There is no active subscription to cancel.',
+    });
+  });
+
   it('shows an empty billing history rather than breaking the page', async () => {
     listCharges.mockRejectedValueOnce(noSuchCustomer);
     const { service } = build('cus_dead');

@@ -151,6 +151,7 @@ const EmailNotificationsComponent = () => {
         </div>
         <Slider
           value={localSettings.sendSuccessEmails ? 'on' : 'off'}
+          label={t('success_emails', 'Success emails')}
           onChange={handleSuccessEmailsChange}
           fill={true}
         />
@@ -169,6 +170,7 @@ const EmailNotificationsComponent = () => {
         </div>
         <Slider
           value={localSettings.sendFailureEmails ? 'on' : 'off'}
+          label={t('failure_emails', 'Failure emails')}
           onChange={handleFailureEmailsChange}
           fill={true}
         />

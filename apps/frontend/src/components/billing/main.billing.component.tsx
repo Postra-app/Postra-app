@@ -555,7 +555,11 @@ export const MainBillingComponent: FC<{
         <div className="flex items-center gap-[16px]">
           <div>{t('monthly', 'MONTHLY')}</div>
           <div>
-            <Slider value={monthlyOrYearly} onChange={setMonthlyOrYearly} />
+            <Slider
+              value={monthlyOrYearly}
+              onChange={setMonthlyOrYearly}
+              label={t('bill_yearly', 'Bill yearly')}
+            />
           </div>
           <div>{t('yearly', 'YEARLY')}</div>
         </div>
