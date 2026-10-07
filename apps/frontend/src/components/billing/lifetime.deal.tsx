@@ -149,7 +149,7 @@ export const LifetimeDeal = () => {
 
       <Card className="p-[24px] flex flex-col gap-[20px] flex-1">
         <div className="text-[30px]">
-          {t('next_package', 'Next package:')}
+          {t('next_package', 'Next Package:')}
           {user?.tier?.current === 'PRO'
             ? 'EXTRA'
             : !user?.tier?.current

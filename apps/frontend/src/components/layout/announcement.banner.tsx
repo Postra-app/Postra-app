@@ -59,7 +59,7 @@ const AnnouncementDetailModal: FC<{
         ),
         t('yes_delete', 'Yes, delete'),
         t('confirm_delete', 'Confirm Delete'),
-        t('no_cancel', 'No, cancel')
+        t('no_cancel', 'No, cancel!')
       ))
     ) {
       return;

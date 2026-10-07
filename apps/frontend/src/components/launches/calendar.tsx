@@ -238,7 +238,7 @@ const usePostActions = (onMutate?: () => void) => {
         !(await deleteDialog(
           t(
             'are_you_sure_you_want_to_delete_post',
-            'Are you sure you want to delete post?'
+            'Are you sure you want to delete this post?'
           )
         ))
       ) {
@@ -585,7 +585,7 @@ export const ListView = () => {
   if (loading) {
     return (
       <div className="flex flex-col flex-1 items-center justify-center">
-        <div className="text-textColor">{t('loading', 'Loading...')}</div>
+        <div className="text-textColor">{t('loading', 'Loading')}</div>
       </div>
     );
   }

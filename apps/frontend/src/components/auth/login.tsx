@@ -137,7 +137,7 @@ export function Login() {
                     className={`absolute z-[1] justify-center items-center w-full start-0 -top-[4px] flex`}
                   >
                     <div className="rounded-full border border-white/8 bg-[rgba(15,23,42,0.92)] px-[16px] py-[4px] text-[11px] font-[700] uppercase tracking-[0.08em] text-textColor/52">
-                      {t('or', 'or')}
+                      {t('or', 'OR')}
                     </div>
                   </div>
                 </div>

@@ -210,7 +210,7 @@ const Info: FC<{
       <div>
         <Button disabled={feedback.length < 20} onClick={cancel}>
           {feedback.length < 20
-            ? t('please_add_at_least', 'Please add at least 20 chars')
+            ? t('please_add_at_least', 'Please add at least 20 characters')
             : t('cancel_subscription', 'Cancel Subscription')}
         </Button>
       </div>
@@ -581,8 +581,8 @@ export const MainBillingComponent: FC<{
                 </div>
                 <div className={`text-[14px] text-newTextColor/55`}>
                   {monthlyOrYearly === 'on'
-                    ? t('per_year', '/rok')
-                    : t('per_month', '/mies')}
+                    ? t('per_year', '/year')
+                    : t('per_month', '/mo')}
                 </div>
               </div>
               <div className="text-[14px] flex gap-[10px]">
@@ -626,7 +626,7 @@ export const MainBillingComponent: FC<{
                             .utc(subscription?.cancelAt)
                             .local()
                             .format('D MMM, YYYY')}`
-                        : t('cancel_subscription', 'Cancel subscription')
+                        : t('cancel_subscription', 'Cancel Subscription')
                       : // @ts-expect-error user.tier is typed as PricingInnerInterface, compared to a string literal
                       (user?.tier === 'FREE' ||
                           user?.tier?.current === 'FREE') &&

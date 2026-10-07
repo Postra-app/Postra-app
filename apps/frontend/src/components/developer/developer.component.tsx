@@ -189,7 +189,7 @@ export const DeveloperComponent: FC = () => {
       mutate();
     } catch {
       toaster.show(
-        t('oauth_app_update_failed', 'Failed to update the app'),
+        t('oauth_app_update_failed', 'The app was not updated.'),
         'warning'
       );
     }
@@ -634,7 +634,7 @@ export const DeveloperComponent: FC = () => {
             </div>
           </div>
           <div className="flex gap-[8px]">
-            <CopyButton text={app.clientId} label={t('copy_id', 'Copy ID')} />
+            <CopyButton text={app.clientId} label={t('copy_client_id', 'Copy ID')} />
             {plaintextSecret && (
               <CopyButton
                 text={plaintextSecret}

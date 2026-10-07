@@ -97,7 +97,7 @@ export const AddMember = () => {
         <div className="relative flex gap-[10px] flex-col flex-1 p-[16px] pt-0">
           {sendEmail && (
             <Input
-              label={t('email', 'E-mail')}
+              label={t('email', 'Email')}
               placeholder={t('enter_email', 'Enter email')}
               name="email"
             />

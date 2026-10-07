@@ -43,7 +43,7 @@ export const ApprovedAppsComponent: FC = () => {
             method: 'DELETE',
           });
           toaster.show(
-            t('access_revoked', 'Access revoked successfully'),
+            t('access_revoked', 'Access revoked'),
             'success'
           );
           mutate();
@@ -63,12 +63,12 @@ export const ApprovedAppsComponent: FC = () => {
     <div className="flex flex-col gap-[20px]">
       <div className="flex flex-col">
         <h3 className="text-[22px] font-[650] tracking-[-0.2px] text-newTextColor">
-          {t('approved_apps', 'Approved Apps')}
+          {t('approved_apps', 'Approved apps')}
         </h3>
         <div className="text-[12.5px] text-newTextColor/55 mt-[3px]">
           {t(
             'apps_you_have_authorized',
-            'Applications you have authorized to access your Postra account.'
+            'Apps you have authorized to access your Postra account.'
           )}
         </div>
       </div>
@@ -76,7 +76,7 @@ export const ApprovedAppsComponent: FC = () => {
       <Card className="p-[24px]">
         {!apps?.length ? (
           <div className="text-newTextColor/55">
-            {t('no_approved_apps', 'No approved apps yet.')}
+            {t('no_approved_apps', 'No approved apps.')}
           </div>
         ) : (
           <div className="flex flex-col gap-[16px]">
@@ -113,7 +113,7 @@ export const ApprovedAppsComponent: FC = () => {
                   </div>
                 </div>
                 <Button variant="danger" onClick={revokeApp(app)}>
-                  {t('revoke', 'Revoke')}
+                  {t('revoke', 'Revoke access')}
                 </Button>
               </div>
             ))}

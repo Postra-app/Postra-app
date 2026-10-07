@@ -55,7 +55,7 @@ export const SignaturesComponent: FC<{
         await deleteDialog(
           t(
             'are_you_sure_you_want_to_delete',
-            `Are you sure you want to delete?`,
+            'Are you sure you want to delete {{name}}?',
             { name: data.content.slice(0, 15) + '...' }
           )
         )
