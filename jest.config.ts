@@ -12,6 +12,8 @@ export default {
   // import source files that use them.
   moduleNameMapper: {
     '\\.(css|scss|sass)$': '<rootDir>/jest.style-stub.js',
+    // Jest 29 cannot load jsdom 30 (jest.isomorphic-dompurify.js says why).
+    '^isomorphic-dompurify$': '<rootDir>/jest.isomorphic-dompurify.js',
     '^@gitroom/backend/(.*)$': '<rootDir>/apps/backend/src/$1',
     '^@gitroom/frontend/(.*)$': '<rootDir>/apps/frontend/src/$1',
     '^@gitroom/helpers/(.*)$': '<rootDir>/libraries/helpers/src/$1',
