@@ -4,6 +4,10 @@ import { signedIn } from '../helpers';
 // E2E-08-42: settings that save on click could save out of order or twice.
 // E2E-05-73: the on/off switches were divs a keyboard never reached.
 
+// The first two change the same user's settings: one at a time, or one
+// restores what the other is about to read (the stack runs fully parallel).
+test.describe.configure({ mode: 'serial' });
+
 const settings = async () => {
   const api = await signedIn('a');
   const read = async () =>
