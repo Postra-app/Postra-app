@@ -1,17 +1,40 @@
-# Latest stable of everything (decision 2026-10-06). Patches and minors come
-# grouped in one weekly PR; each major comes on its own, so it gets its own
-# CI run and review. Security fixes come separately (Dependabot security
+# Latest stable of everything (decision 2026-10-06). Minors and patches come
+# in a handful of groups; each major comes on its own, so it gets its own CI
+# run and review. Security fixes come separately (Dependabot security
 # updates are on).
+#
+# One group for every minor and patch timed out on 2026-10-06: 72 packages
+# behind, the job updated them one by one and GitHub cancelled it after 55
+# minutes, so no PR came at all. Smaller groups each finish, and a group a
+# reviewer can read is a group someone will merge. A package lands in the
+# first group whose rules match.
 version: 2
 updates:
   - package-ecosystem: "npm"
     directory: "/"
     schedule:
       interval: "weekly"
-    open-pull-requests-limit: 5
+    open-pull-requests-limit: 10
     groups:
-      npm-minor-patch:
+      ai:
         applies-to: version-updates
+        update-types: ["minor", "patch"]
+        patterns: ["@ag-ui/*", "@copilotkit/*", "@langchain/*", "@mastra/*", "mastra", "openai", "@ai-sdk/*"]
+      temporal:
+        applies-to: version-updates
+        update-types: ["minor", "patch"]
+        patterns: ["@temporalio/*", "nestjs-temporal-core"]
+      react-next:
+        applies-to: version-updates
+        update-types: ["minor", "patch"]
+        patterns: ["react", "react-dom", "next", "@types/react", "@types/react-dom", "eslint-config-next", "swr", "react-*"]
+      production:
+        applies-to: version-updates
+        dependency-type: "production"
+        update-types: ["minor", "patch"]
+      development:
+        applies-to: version-updates
+        dependency-type: "development"
         update-types: ["minor", "patch"]
   - package-ecosystem: "github-actions"
     directory: "/"
