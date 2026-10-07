@@ -25,4 +25,11 @@ test('a long toast is shown in full on a phone', async ({ page }) => {
   expect(t.h, 'the message wraps').toBeGreaterThan(30);
   expect(t.top).toBeGreaterThanOrEqual(b.top);
   expect(t.bottom).toBeLessThanOrEqual(b.bottom);
+
+  // A warning stays up 8 s; the fade-out animation used to end it at 4 s.
+  await page.waitForTimeout(6000);
+  const opacity = await text.evaluate((el) =>
+    Number(getComputedStyle(el.closest('[class*="animate-fadeDown"]') as HTMLElement).opacity)
+  );
+  expect(opacity, 'still visible after 6 s').toBeGreaterThan(0.9);
 });

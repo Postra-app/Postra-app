@@ -80,6 +80,9 @@ const ToastRow = ({
         'animate-fadeDown relative rounded-[8px] gap-[18px] flex items-start overflow-hidden bg-customColor8 p-[16px] min-w-[319px] max-w-[92vw] text-white min-h-[56px]',
         toasterType === 'success' ? 'shadow-greenToast' : 'shadow-yellowToast'
       )}
+      // fadeDown fades the toast out at the end of its run; it has to run as
+      // long as the toast stays up, or a warning vanished at 4 s of its 8.
+      style={{ animationDuration: `${TOAST_MS[toasterType || 'success']}ms` }}
     >
       <div>
         {toasterType === 'success' ? (
