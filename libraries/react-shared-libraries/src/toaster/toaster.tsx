@@ -5,7 +5,9 @@ import EventEmitter from 'events';
 import clsx from 'clsx';
 import { addToast, removeToast, ToastItem } from './toaster.queue';
 const toaster = new EventEmitter();
-const TOAST_MS = 4200;
+// Warnings are usually longer and matter more than a success note: give them
+// time to be read.
+const TOAST_MS = { success: 4200, warning: 8000 } as const;
 
 export const Toaster = () => {
   const [toasts, setToasts] = useState<ToastItem[]>([]);
@@ -29,7 +31,10 @@ export const Toaster = () => {
       const id = nextId.current;
       setToasts((list) => addToast(list, { id, text, type: type || 'success' }));
       timers.current.push(
-        window.setTimeout(() => setToasts((list) => removeToast(list, id)), TOAST_MS)
+        window.setTimeout(
+          () => setToasts((list) => removeToast(list, id)),
+          TOAST_MS[type || 'success']
+        )
       );
     };
     toaster.on('show', handler);
@@ -69,7 +74,10 @@ const ToastRow = ({
   return (
     <div
       className={clsx(
-        'animate-fadeDown relative rounded-[8px] gap-[18px] flex items-center overflow-hidden bg-customColor8 p-[16px] min-w-[319px] max-w-[92vw] text-white h-[56px]',
+        // min-h, not h: a fixed 56 px with overflow-hidden cut the first and
+        // last line off any message longer than one line (three lines at
+        // 390 px). A fix for this from 2026-06-20 never reached main.
+        'animate-fadeDown relative rounded-[8px] gap-[18px] flex items-start overflow-hidden bg-customColor8 p-[16px] min-w-[319px] max-w-[92vw] text-white min-h-[56px]',
         toasterType === 'success' ? 'shadow-greenToast' : 'shadow-yellowToast'
       )}
     >
@@ -102,7 +110,9 @@ const ToastRow = ({
           </svg>
         )}
       </div>
-      <div className="flex-1 text-textColor">{toasterText}</div>
+      <div className="flex-1 min-w-0 break-words text-textColor">
+        {toasterText}
+      </div>
       <button
         onClick={() => onDismiss(toast.id)}
         aria-label="Dismiss"
