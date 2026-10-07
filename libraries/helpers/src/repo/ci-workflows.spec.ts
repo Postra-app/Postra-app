@@ -85,7 +85,7 @@ describe('CI workflows', () => {
   it('builds the production image on the Node in volta.node', () => {
     const pkg = JSON.parse(readFileSync(join(root, 'package.json'), 'utf8'));
     const docker = readFileSync(join(root, 'Dockerfile.dev'), 'utf8');
-    const version = pkg.volta.node.replace(/\./g, '\\.');
-    expect(docker).toMatch(new RegExp(`^FROM node:${version}-`, 'm'));
+    const image = docker.match(/^FROM node:(\S+)/m)?.[1] ?? '';
+    expect(image.startsWith(`${pkg.volta.node}-`)).toBe(true);
   });
 });
