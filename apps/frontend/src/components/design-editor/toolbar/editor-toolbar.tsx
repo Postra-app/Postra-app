@@ -888,7 +888,7 @@ export const EditorToolbar: FC<ToolbarProps> = ({ canvas }) => {
         {activeTool === 'shapes' && (
           <div className="flex flex-col gap-2">
             <span className="text-[11px] text-textColor/60 uppercase tracking-wide">
-              {t('add_shape', 'Add shape')}
+              {t('add_shape', 'Add Shape')}
             </span>
             <div className="grid grid-cols-4 gap-1.5">
               {SHAPE_BUTTONS.map((shape) => (

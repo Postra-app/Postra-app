@@ -119,7 +119,7 @@ export const SettingsPopup: FC<{
     ) {
       arr.push({ tab: 'api', label: t('developers', 'Developers') });
     }
-    arr.push({ tab: 'approved_apps', label: t('approved_apps', 'Approved Apps') });
+    arr.push({ tab: 'approved_apps', label: t('approved_apps', 'Approved apps') });
 
     return arr;
   }, [user, isGeneral, showLogout, t]);

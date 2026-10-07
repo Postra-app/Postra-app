@@ -1220,7 +1220,7 @@ const PostDesignEditor: FC<PostDesignEditorProps> = ({
                       '{n}',
                       String(carouselSlideCount)
                     )
-                  : t('use_in_post', 'Use in post')}
+                  : t('use_in_post', 'Use in Post')}
               </Button>
             </div>
           </div>

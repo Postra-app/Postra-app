@@ -218,7 +218,7 @@ const NewInput: FC<InputProps> = (props) => {
       <Input
         {...props}
         placeholder={t(
-          'write_your_post_placeholder',
+          'write_your_message_placeholder',
           'Write your message...'
         )}
         onChange={setValue}

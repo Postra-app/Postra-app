@@ -199,7 +199,7 @@ export const ContinueIntegration: FC<{
           searchParams.error === 'access_denied'
             ? t('oauth_access_denied', 'You declined the connection request.')
             : searchParams.error_description ||
-                t('could_not_add_provider', 'Could not add provider')
+                t('could_not_add_provider', 'Could not add provider.')
         );
         setError(true);
         return;
@@ -544,12 +544,12 @@ export const ContinueIntegration: FC<{
             </svg>
           </div>
           <div className="text-[28px] font-semibold mb-[12px]">
-            {t('could_not_add_provider', 'Could not add provider')}
+            {t('could_not_add_provider', 'Could not add provider.')}
           </div>
           <div className="text-[16px] text-gray-400 max-w-[400px]">
             {errorMessage ||
               t(
-                'you_are_being_redirected_back',
+                'connect_failed_try_again',
                 'An error occurred. Please try again.'
               )}
           </div>

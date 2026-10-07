@@ -199,7 +199,7 @@ const McpSection = ({
           <div className="text-[13px] text-newTextColor/55 mt-[2px]">
             {t(
               'connect_your_mcp_client_to_postra_to_schedule_your_posts_faster',
-              'Connect Postra MCP server to your client (Http streaming) to schedule your posts faster.'
+              'Connect Postra MCP server to your client (Http streaming) to schedule your posts faster!'
             )}
           </div>
         </div>

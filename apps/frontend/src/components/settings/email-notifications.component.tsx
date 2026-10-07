@@ -90,7 +90,7 @@ const EmailNotificationsComponent = () => {
           );
           return;
         }
-        toaster.show(t('settings_updated', 'Settings updated'), 'success');
+        toaster.show(t('settings_updated', 'Settings Updated'), 'success');
       } catch (e) {
         setLocalSettings(previousSettings); // roll back the toggle
         console.error(
@@ -126,7 +126,7 @@ const EmailNotificationsComponent = () => {
     return (
       <Card className="my-[16px] p-[24px]">
         <div className="animate-pulse">
-          {t('loading', 'Loading...')}
+          {t('loading', 'Loading')}
         </div>
       </Card>
     );
@@ -135,12 +135,12 @@ const EmailNotificationsComponent = () => {
   return (
     <Card className="my-[16px] p-[24px] flex flex-col gap-[24px]">
       <div className="text-[15px] font-[600]">
-        {t('email_notifications', 'Email Notifications')}
+        {t('email_notifications', 'Email notifications')}
       </div>
       <div className="flex items-center justify-between">
         <div className="flex flex-col">
           <div className="text-[14px]">
-            {t('success_emails', 'Success Emails')}
+            {t('success_emails', 'Success emails')}
           </div>
           <div className="text-[12px] text-newTextColor/55">
             {t(
@@ -158,12 +158,12 @@ const EmailNotificationsComponent = () => {
       <div className="flex items-center justify-between">
         <div className="flex flex-col">
           <div className="text-[14px]">
-            {t('failure_emails', 'Failure Emails')}
+            {t('failure_emails', 'Failure emails')}
           </div>
           <div className="text-[12px] text-newTextColor/55">
             {t(
               'failure_emails_description',
-              'Receive email notifications when posts fail to publish'
+              'Receive email notifications when post publishing fails'
             )}
           </div>
         </div>

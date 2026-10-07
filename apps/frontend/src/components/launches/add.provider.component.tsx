@@ -45,7 +45,7 @@ export const useAddProvider = (update?: () => void, invite?: boolean) => {
       modal.openModal({
         title: invite
           ? t('invite_client_title', 'Invite a client to connect a channel')
-          : t('add_channel', 'Add channel'),
+          : t('add_channel', 'Add Channel'),
         withCloseButton: true,
         classNames: {
           modal: 'launches-modal-surface text-textColor',
@@ -101,7 +101,7 @@ export const AddProviderButton: FC<{
           </svg>
         </div>
         <div className="text-start text-[14px] group-[.sidebar]:hidden">
-          {t('add_channel', 'Add channel')}
+          {t('add_channel', 'Add Channel')}
         </div>
       </button>
       <button

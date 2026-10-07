@@ -833,7 +833,7 @@ export const MultiMediaComponent: FC<{
     if (!dummy) {
       modals.openModal({
         askClose: false,
-        title: t('studio_title', '🎨 Studio'),
+        title: t('studio_title', 'Studio'),
         size: '80%',
         height: 'min(92vh, 900px)',
         children: (close) => (

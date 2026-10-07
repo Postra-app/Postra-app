@@ -93,7 +93,7 @@ const OnboardingStep1: FC<{ onNext: () => void; onSkip: () => void }> = ({
     <div className="flex flex-col gap-[24px]">
       <div className="flex gap-[4px] flex-col text-center">
         <div className="text-[24px] font-semibold">
-          {t('connect_your_channels', 'Connect your channels')}
+          {t('connect_your_channels', 'Connect Your Channels')}
         </div>
         <div className="text-[14px] text-newTextColor/55">
           {t(
@@ -107,7 +107,7 @@ const OnboardingStep1: FC<{ onNext: () => void; onSkip: () => void }> = ({
       {sortedIntegrations.length > 0 && (
         <div className="bg-newTableHeader rounded-[8px] p-[16px]">
           <div className="text-[14px] font-medium mb-[12px]">
-            {t('connected_channels', 'Connected channels')} (
+            {t('connected_channels', 'Connected Channels')} (
             {sortedIntegrations.length})
           </div>
           <div className="flex flex-wrap gap-[12px]">

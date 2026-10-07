@@ -167,7 +167,7 @@ export const VideoCaptions: FC<VideoCaptionsProps> = ({ mediaId, source, onCapti
             signal,
           });
           if (!res.ok) {
-            toaster.show(t('video_burn_failed', 'Burning captions failed.'), 'warning');
+            toaster.show(t('video_burn_failed', 'Burning captions failed. Try a different clip — our team has been notified.'), 'warning');
             return null;
           }
           return res.json();

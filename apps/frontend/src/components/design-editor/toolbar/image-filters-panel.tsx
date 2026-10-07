@@ -227,7 +227,7 @@ export const ImageFiltersPanel: FC<Props> = ({ canvas }) => {
 
       {!hasImage ? (
         <p className="text-[11px] text-textColor/65 leading-snug">
-          {t('crop_no_image', 'Select an image on the canvas')}
+          {t('crop_no_image', 'Add an image to the canvas first')}
         </p>
       ) : (
         <>
