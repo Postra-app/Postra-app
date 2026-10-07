@@ -223,7 +223,7 @@
     "redis": "^4.7.1",
     "reflect-metadata": "^0.2.2",
     "remove-markdown": "^0.8.0",
-    "resend": "^3.5.0",
+    "resend": "^6.32.0",
     "rss-parser": "^3.13.0",
     "rxjs": "^7.8.2",
     "sass": "^1.105.1",
