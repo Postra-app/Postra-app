@@ -170,7 +170,7 @@
     "facebook-nodejs-business-sdk": "^21.0.5",
     "fast-xml-parser": "^4.5.7",
     "file-type": "^16.5.4",
-    "google-auth-library": "^9.15.1",
+    "google-auth-library": "^11.1.0",
     "googleapis": "^137.1.0",
     "hot-reload-extension-vite": "^1.1.2",
     "i18n-iso-countries": "^7.14.0",
