@@ -54,12 +54,12 @@ describe('Dependabot groups', () => {
   });
 
   it.each(byType)(
-    '$name excludes every pattern of the named groups',
+    '$name excludes exactly the patterns of the named groups',
     ({ exclude }) => {
-      const missing = byPattern
-        .flatMap((g) => g.patterns)
-        .filter((p) => !exclude.includes(p));
-      expect(missing).toEqual([]);
+      // An extra entry is a package no group updates at all (axe-core stayed
+      // excluded after it left the held group).
+      const patterns = byPattern.flatMap((g) => g.patterns);
+      expect([...exclude].sort()).toEqual([...patterns].sort());
     }
   );
 

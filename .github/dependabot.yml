@@ -16,7 +16,7 @@
 #
 # "held" collects minors we cannot take yet, each with its reason in the
 # launch plan (TypeScript 5.9, CopilotKit 1.77, @atproto/api 0.23, polotno,
-# axe-core 4.14, isomorphic-dompurify 3.23). Its PR stays red until the work
+# isomorphic-dompurify 3.23). Its PR stays red until the work
 # is done, and it keeps the other groups green and mergeable meanwhile.
 version: 2
 updates:
@@ -29,7 +29,7 @@ updates:
       held:
         applies-to: version-updates
         update-types: ["minor", "patch"]
-        patterns: ["typescript", "@copilotkit/react-core", "@copilotkit/react-textarea", "@copilotkit/react-ui", "@copilotkit/runtime", "@atproto/api", "polotno", "axe-core", "isomorphic-dompurify"]
+        patterns: ["typescript", "@copilotkit/react-core", "@copilotkit/react-textarea", "@copilotkit/react-ui", "@copilotkit/runtime", "@atproto/api", "polotno", "isomorphic-dompurify"]
       ai:
         applies-to: version-updates
         update-types: ["minor", "patch"]
@@ -46,12 +46,12 @@ updates:
         applies-to: version-updates
         dependency-type: "production"
         update-types: ["minor", "patch"]
-        exclude-patterns: ["typescript", "@copilotkit/react-core", "@copilotkit/react-textarea", "@copilotkit/react-ui", "@copilotkit/runtime", "@atproto/api", "polotno", "axe-core", "isomorphic-dompurify", "@ag-ui/*", "@langchain/*", "@mastra/*", "mastra", "openai", "@ai-sdk/*", "@temporalio/*", "nestjs-temporal-core", "react", "react-dom", "next", "@types/react", "@types/react-dom", "eslint-config-next", "swr", "react-*"]
+        exclude-patterns: ["typescript", "@copilotkit/react-core", "@copilotkit/react-textarea", "@copilotkit/react-ui", "@copilotkit/runtime", "@atproto/api", "polotno", "isomorphic-dompurify", "@ag-ui/*", "@langchain/*", "@mastra/*", "mastra", "openai", "@ai-sdk/*", "@temporalio/*", "nestjs-temporal-core", "react", "react-dom", "next", "@types/react", "@types/react-dom", "eslint-config-next", "swr", "react-*"]
       development:
         applies-to: version-updates
         dependency-type: "development"
         update-types: ["minor", "patch"]
-        exclude-patterns: ["typescript", "@copilotkit/react-core", "@copilotkit/react-textarea", "@copilotkit/react-ui", "@copilotkit/runtime", "@atproto/api", "polotno", "axe-core", "isomorphic-dompurify", "@ag-ui/*", "@langchain/*", "@mastra/*", "mastra", "openai", "@ai-sdk/*", "@temporalio/*", "nestjs-temporal-core", "react", "react-dom", "next", "@types/react", "@types/react-dom", "eslint-config-next", "swr", "react-*"]
+        exclude-patterns: ["typescript", "@copilotkit/react-core", "@copilotkit/react-textarea", "@copilotkit/react-ui", "@copilotkit/runtime", "@atproto/api", "polotno", "isomorphic-dompurify", "@ag-ui/*", "@langchain/*", "@mastra/*", "mastra", "openai", "@ai-sdk/*", "@temporalio/*", "nestjs-temporal-core", "react", "react-dom", "next", "@types/react", "@types/react-dom", "eslint-config-next", "swr", "react-*"]
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:
