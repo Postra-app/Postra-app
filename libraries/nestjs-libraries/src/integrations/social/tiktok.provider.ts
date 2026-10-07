@@ -21,9 +21,6 @@ import { Integration } from '@prisma/client';
 import { Rules } from '@gitroom/nestjs-libraries/chat/rules.description.decorator';
 import { makeSecureId } from '@gitroom/nestjs-libraries/services/make.secure.id';
 
-@Rules(
-  'TikTok can have one video or one picture or multiple pictures, it cannot be without an attachment'
-)
 // The published post's link. Photo posts (publish ids p_pub_...) live under
 // /photo/: TikTok answers 403 for /video/<id> of a photo post (upstream
 // 6f79545d). Without a public id yet, the profile.
@@ -38,6 +35,9 @@ export const tiktokPostUrl = (
         publishId.indexOf('p_pub_') === 0 ? 'photo' : 'video'
       }/${publicPostId}`;
 
+@Rules(
+  'TikTok can have one video or one picture or multiple pictures, it cannot be without an attachment'
+)
 export class TiktokProvider extends SocialAbstract implements SocialProvider {
   private readonly _logger = new Logger(TiktokProvider.name);
   identifier = 'tiktok';
