@@ -256,7 +256,7 @@
     "zustand": "^5.0.15"
   },
   "devDependencies": {
-    "@crxjs/vite-plugin": "^2.7.1",
+    "@crxjs/vite-plugin": "^3.0.0",
     "@nestjs/schematics": "^11.1.0",
     "@nestjs/testing": "^11.2.7",
     "@playwright/test": "1.63.0",
