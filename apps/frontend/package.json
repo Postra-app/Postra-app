@@ -38,7 +38,7 @@
     "jszip": "^3.10.2",
     "mediabunny": "^1.61.3",
     "mobx-react-lite": "4.1.1",
-    "polotno": "3.0.0-beta.25",
+    "polotno": "3.15.1",
     "wavesurfer.js": "^7"
   }
 }
