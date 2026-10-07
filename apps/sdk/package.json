@@ -1,6 +1,6 @@
 {
   "name": "@postra/node",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Node.js client for the Postra public API: schedule posts, upload media and list channels",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",

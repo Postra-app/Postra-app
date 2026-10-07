@@ -113,12 +113,13 @@ is only checked for having some text or media.
 
 ### Media
 
-Media in a post must be uploaded to Postra first.
+Media in a post must be uploaded to Postra first, or picked from the media library.
 
 | Method and path | What it does |
 |---|---|
 | `POST /upload` | `multipart/form-data` with the file in the `file` field. |
 | `POST /upload-from-url` | `{"url": "https://…"}`. Postra downloads the file; the address must be public HTTPS and its path must end in `.png`, `.jpg`, `.jpeg`, `.gif`, `.webp` or `.mp4`. |
+| `GET /media?page=1&search=…` | The media library, newest first, 18 per page: `{"pages": n, "results": [{"id", "name", "originalName", "path", "createdAt"}]}`. `search` matches the original file name; `page` is 1–100000. Reuse an `id` and `path` in `image` instead of uploading the file again. |
 
 Accepted types are JPEG, PNG, GIF, WebP, AVIF, BMP, TIFF and MP4, recognised
 by content, not by name. `/upload` takes images up to 10 MB and requests up to
@@ -170,7 +171,7 @@ allowance answers `402` instead (see below).
 ## Node.js SDK
 
 [`@postra/node`](https://www.npmjs.com/package/@postra/node) wraps
-`integrations`, `posts` (create, list, delete) and `upload`. It sends the
+`integrations`, `posts` (create, list, delete), `upload` and `mediaList`. It sends the
 credential in the same header, so an OAuth `pos_` token works too.
 
 ```bash
