@@ -664,6 +664,8 @@ export const CalendarColumn: FC<{
     integrations,
     posts,
     changeDate,
+    startMove,
+    revertDate,
     display,
     reloadCalendarView,
     composerDefaults,
@@ -797,6 +799,7 @@ export const CalendarColumn: FC<{
           action = whatToDo;
         }
 
+        const move = startMove(item.id);
         if (!item.interval) {
           changeDate(item.id, getDate);
         }
@@ -813,6 +816,7 @@ export const CalendarColumn: FC<{
         // Refused (the post deleted in another tab, a 404): the tile was
         // already moved here and stayed there as if saved (E2E-05-49).
         if (status >= 400) {
+          revertDate(item.id, move);
           reloadCalendarView();
           return;
         }
@@ -921,6 +925,8 @@ export const CalendarColumn: FC<{
           : 'border border-white/[0.05] rounded-[8px]'
       )}
       ref={drop as any}
+      // The slot a dragged post lands in, for tests (E2E-05-49).
+      data-slot={getDate.format('YYYY-MM-DDTHH:mm')}
     >
       {display === 'month' && (
         <div className={clsx('pt-[6px] text-[14px]')}>{getDate.date()}</div>
@@ -1312,13 +1318,14 @@ const CalendarItem: FC<{
         </button>
       </div>
       {/* Opens the post from the keyboard too (Enter or Space); it was a div
-          that only a mouse could reach. */}
+          that only a mouse could reach. Named from its content: "Open
+          post:", the channel (the avatar's alt), then the text on screen. A
+          name of its own ("Open post: <channel>") left out what the tile
+          shows, so voice control could not reach it by what the customer
+          sees (WCAG 2.5.3, E2E-05-71). */}
       <div
         role="button"
         tabIndex={0}
-        // A name of its own, not the post's text: a post saying "post now"
-        // or "create post" would otherwise answer to those buttons' names.
-        aria-label={`${t('open_post', 'Open post')}: ${post.integration?.name || ''}`}
         onClick={editPost}
         onKeyDown={(e) => {
           if (e.key === 'Enter' || e.key === ' ') {
@@ -1332,6 +1339,7 @@ const CalendarItem: FC<{
           isBeforeNow && '!grayscale'
         )}
       >
+        <span className="sr-only">{t('open_post', 'Open post')}:</span>
         <div className={clsx('relative min-w-[20px]')}>
           <img
             alt={post.integration?.name || ''}

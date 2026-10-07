@@ -9,6 +9,7 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
 } from 'react';
 import dayjs from 'dayjs';
@@ -69,6 +70,10 @@ export const CalendarContext = createContext({
     /** empty **/
   },
   changeDate: (id: string, date: dayjs.Dayjs) => {
+    /** empty **/
+  },
+  startMove: (id: string) => 0 as number,
+  revertDate: (id: string, move: number) => {
     /** empty **/
   },
   // List view specific
@@ -391,6 +396,31 @@ export const CalendarWeekProvider: FC<{
     mutateList();
   }, [mutateCalendar, mutateList]);
 
+  // A move the server refused: the tile was moved on screen at once
+  // (changeDate) and stays there, because a reload that brings the same
+  // posts back leaves local state alone (E2E-05-49). Put back this post
+  // only, at the date the server has, so another move made meanwhile stays.
+  // Each move of a post is numbered; a refusal that arrives after a newer
+  // move of the same post is not undone over it.
+  const postsRef = useRef(posts);
+  postsRef.current = posts;
+  const moves = useRef(new Map<string, number>());
+  const startMove = useCallback((id: string) => {
+    const move = (moves.current.get(id) || 0) + 1;
+    moves.current.set(id, move);
+    return move;
+  }, []);
+  const revertDate = useCallback((id: string, move: number) => {
+    if (moves.current.get(id) !== move) return;
+    const saved = postsRef.current.find((p: Post) => p.id === id);
+    if (!saved) return;
+    setInternalData((d) =>
+      d.map((post: Post) =>
+        post.id === id ? { ...post, publishDate: saved.publishDate } : post
+      )
+    );
+  }, []);
+
   // Determine loading state based on current view
   const loading = filters.display === 'list' ? listIsLoading : calendarIsLoading;
 
@@ -411,6 +441,8 @@ export const CalendarWeekProvider: FC<{
         integrations,
         setFilters: setFiltersWrapper,
         changeDate,
+        startMove,
+        revertDate,
         comments,
         sets: sets || [],
         signature: sign,
