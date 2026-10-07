@@ -1,4 +1,11 @@
 This project is Postra, a tool to schedule social media and chat posts. The channels offered to customers are listed in `enabledProviders` in `libraries/nestjs-libraries/src/integrations/integration.manager.ts`; the rest of the registered providers show as "Coming soon".
+
+## Project direction
+
+Postra is still being built, and we make it better whenever there is a chance. Fix bugs when you find them. Port from upstream Postiz whatever is good for Postra: fixes, security and new features alike, never by `git merge upstream/main`. When a feature or any other part of the project can be improved or extended in a way that is good for Postra as a whole, do it rather than only noting it.
+
+Every such change follows the usual rules: a test that fails on the old code, proof on the real service, review before the PR, one branch and one PR per repo per session. Ask Krzysztof first, with a recommendation, only about text customers see, money, legal matters, or anything irreversible.
+
 You can add posts to the calendar, they will be added into a workflow and posted at the right time.
 You can find things like:
 - Schedule posts
