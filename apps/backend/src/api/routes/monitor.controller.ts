@@ -38,6 +38,18 @@ export class MonitorController {
    * (`maxRetriesPerRequest: null`), so a dead Redis would otherwise hang this
    * request instead of failing it.
    */
+  /**
+   * Liveness of this instance only: the process answers. The load balancer
+   * and the auto scaling group read it to decide whether to replace an
+   * instance, so it must not depend on anything shared — with the database or
+   * Redis in it, one Redis outage marks every instance unhealthy and the group
+   * replaces all of them, each new one failing the same way.
+   */
+  @Get('/live')
+  live() {
+    return { status: 'success' };
+  }
+
   @Get('/queue/:name')
   async getMessagesGroup(@Param('name') name: string) {
     const [database, redis] = await Promise.all([

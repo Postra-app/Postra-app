@@ -54,3 +54,18 @@ describe('GET /monitor/queue/:name', () => {
     expect(res.body.checks).toEqual({ database: 'ok', redis: 'down' });
   });
 });
+
+describe('GET /monitor/live', () => {
+  beforeEach(() => redis.ping.mockReset());
+
+  it('answers from the process alone, with the database and Redis down', async () => {
+    const query = jest.fn(async () => {
+      throw new Error('connection refused');
+    });
+    redis.ping.mockReturnValue(new Promise(() => {}));
+    const c = new MonitorController({ $queryRaw: query } as any);
+    expect(c.live()).toEqual({ status: 'success' });
+    expect(query).not.toHaveBeenCalled();
+    expect(redis.ping).not.toHaveBeenCalled();
+  });
+});
