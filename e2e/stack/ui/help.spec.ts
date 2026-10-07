@@ -21,3 +21,19 @@ test('every channel in the help contents has a section', async ({ page }) => {
     await expect(page.locator(`#${id}`), id).toHaveCount(1);
   }
 });
+
+// The Developers tab (API key, MCP, SDK, OAuth apps) and webhooks are
+// explained in Help before they are promoted (E2E-11-12).
+test('Help explains the Developers tab, the API, SDK, MCP, webhooks and their safety', async ({ page }) => {
+  await page.goto('/help');
+  await expect(page.getByText('Developers', { exact: true }).first()).toBeAttached();
+  for (const question of [
+    'How do I use the Postra API?',
+    'What is the SDK?',
+    'How do I connect an AI assistant (MCP)?',
+    'What do webhooks do?',
+    'Are the API, MCP and webhooks safe to use?',
+  ]) {
+    await expect(page.getByText(question, { exact: true }), question).toBeAttached();
+  }
+});
