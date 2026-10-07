@@ -489,6 +489,12 @@ export const SETTINGS_SECTIONS: SettingsSectionGuide[] = [
       'Reusable text snippets (e.g. hashtags or a call to action) you can append to posts.',
   },
   {
+    name: 'Developers',
+    availability: 'All paid plans and trials, owners and admins',
+    description:
+      'Your API key (with Rotate), the MCP setup for AI assistants, the Node.js SDK and your OAuth apps — everything for connecting Postra to your own tools. See "How do I use the Postra API?" and the questions after it below.',
+  },
+  {
     name: 'Approved Apps',
     availability: 'All plans',
     description:
@@ -526,5 +532,30 @@ export const FAQ_ITEMS: FaqItem[] = [
     question: 'How do first comments and threads work?',
     answer:
       'Depending on the channel, the composer shows an extra button below your post. "Add comment" publishes a first comment right under the post on the platform — supported on LinkedIn, LinkedIn Page and Instagram (text only), Telegram, Discord and Facebook Pages. "Add post" chains additional posts into a thread — that\'s how X, Threads, Bluesky and Mastodon work. In both cases you can add several entries, reorder them, and give each one a Delay (1 min – 2 h presets or a custom number of minutes) so it publishes that long after the previous one. TikTok and YouTube don\'t support first comments. Where a channel supports them but the button is missing, reconnect that channel — the feature follows the permissions the platform granted at connect time. Separately, the comments you see when opening a post on the Calendar are internal team notes — they are never published anywhere.',
+  },
+  {
+    question: 'How do I use the Postra API?',
+    answer:
+      'The API lets your own software, or a no-code tool such as Zapier, Make or n8n, do what you do in Postra: list your channels, upload images and videos, create, list and delete posts, find the next free time slot and read analytics. Copy your API key from Settings → Developers and send it in the Authorization header to https://app.postra.pl/api/public/v1. Posts made through the API follow your plan\'s limits and each platform\'s rules, exactly like posts made in the app. The full reference is in the docs/public-api folder of our open-source repository on GitHub.',
+  },
+  {
+    question: 'What is the SDK?',
+    answer:
+      'The same API in a ready-made package for Node.js developers: npm install @postra/node, then a few lines of code post, list posts, upload media or list your channels. It is for programmers; if you do not write code, use the API through a no-code tool or MCP instead.',
+  },
+  {
+    question: 'How do I connect an AI assistant (MCP)?',
+    answer:
+      'MCP lets an AI assistant work in Postra for you: you ask in plain words ("schedule a post about our sale on Facebook and Instagram tomorrow at 10:00, with a graphic in our colours") and the assistant does it. In Settings → Developers pick your tool — Claude Code, Cursor, VS Code (Copilot), Windsurf, Amp, Codex, Gemini CLI or Warp — and copy the configuration Postra generates into it. The assistant can list your channels, write and schedule posts, create on-brand images, upload media from a link and read analytics. Deleting or moving a post is never done silently: it waits for you to confirm in Postra\'s own chat. Each workspace can make up to 120 requests every 5 minutes.',
+  },
+  {
+    question: 'What do webhooks do?',
+    answer:
+      'They tell your other tools when a post goes out. In Settings → Webhooks add an https:// address and choose all channels or some of them; each time a post publishes, Postra sends that address a JSON message with the post\'s id, text, publish date, the link to the published post and the channel\'s name and platform. Use it to post a note in Slack, add a row to a client report or update your CRM. If your server is briefly down, Postra tries again up to three times. Addresses inside private networks are refused.',
+  },
+  {
+    question: 'Are the API, MCP and webhooks safe to use?',
+    answer:
+      'Your API key gives full access to your workspace, so treat it like a password: keep it on your own server or in your AI tool\'s settings, never in a website\'s code or a public repository. If it ever leaks, press Rotate in Settings → Developers — the old key stops working at once. Only workspace owners and admins can see the key. Apps you signed in to with your Postra account are listed in Settings → Approved Apps, where you can revoke them. Webhook messages carry no passwords or channel tokens, only the post details listed above.',
   },
 ];
