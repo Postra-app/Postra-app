@@ -7,6 +7,7 @@ import {
   pricing,
   TRIAL_CHANNEL_CAP,
   trialAiAllowance,
+  TRIAL_VIDEO_CLIPS,
 } from './pricing';
 
 // Pins the paid-plan matrix so an upstream sync (Postiz ships different
@@ -136,10 +137,10 @@ describe('pricing matrix', () => {
     expect(pricing.ULTIMATE.agent_tokens).toBe(10_000_000);
   });
 
-  it('gives Starter AI images (not videos); videos start at Pro', () => {
+  it('gives Starter AI images; AI video clips per month 0 / 15 / 30 / 60 (K. 2026-10-08)', () => {
     expect(pricing.STANDARD.image_generator).toBe(true);
-    expect(pricing.STANDARD.image_generation_count).toBe(30);
-    expect(pricing.STANDARD.generate_videos).toBe(0);
+    expect(pricing.FREE.generate_videos).toBe(0);
+    expect(pricing.STANDARD.generate_videos).toBe(15);
     expect(pricing.PRO.generate_videos).toBe(30);
     expect(pricing.ULTIMATE.generate_videos).toBe(60);
   });
@@ -290,6 +291,13 @@ describe('trialAiAllowance', () => {
     expect(
       trialAiAllowance(pricing.PRO.agent_tokens, true, 'agent_tokens')
     ).toBe(pricing.STANDARD.agent_tokens);
+  });
+
+  it('gives a trial one AI video clip, whatever the tier (K. 2026-10-08)', () => {
+    expect(TRIAL_VIDEO_CLIPS).toBe(1);
+    for (const tier of ['STANDARD', 'PRO', 'ULTIMATE'] as const) {
+      expect(trialAiAllowance(pricing[tier].generate_videos, true, 'generate_videos')).toBe(1);
+    }
   });
 
   it('leaves a paid plan its full pool', () => {
