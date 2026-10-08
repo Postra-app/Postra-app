@@ -212,6 +212,18 @@ export class PostsService {
     return updated;
   }
 
+  // Whether the post's platform gives apps statistics of a post at all
+  // (Telegram, Discord and a few others do not).
+  async postAnalyticsOffered(orgId: string, postId: string) {
+    const post = await this._postRepository.getPostById(postId, orgId);
+    if (!post?.integration) {
+      return true;
+    }
+    return !!this._integrationManager.getSocialIntegration(
+      post.integration.providerIdentifier
+    )?.postAnalytics;
+  }
+
   async checkPostAnalytics(
     orgId: string,
     postId: string,

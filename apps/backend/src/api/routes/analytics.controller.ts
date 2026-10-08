@@ -31,6 +31,20 @@ export class AnalyticsController {
     @Param('postId') postId: string,
     @Query('date') date: string
   ) {
-    return this._postsService.checkPostAnalytics(org.id, postId, +date);
+    const analytics = await this._postsService.checkPostAnalytics(
+      org.id,
+      postId,
+      +date
+    );
+    // Said apart from "none yet", so the editor can tell the customer the
+    // platform shares none (the public API keeps its empty list).
+    if (
+      Array.isArray(analytics) &&
+      !analytics.length &&
+      !(await this._postsService.postAnalyticsOffered(org.id, postId))
+    ) {
+      return { unsupported: true };
+    }
+    return analytics;
   }
 }
