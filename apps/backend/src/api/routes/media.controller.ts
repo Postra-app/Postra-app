@@ -49,6 +49,12 @@ import {
   pexelsVideoHits,
 } from '@gitroom/nestjs-libraries/media/pexels';
 import {
+  isUnsplashAssetUrl,
+  isUnsplashDownloadLocation,
+  unsplashApiUrl,
+  unsplashPhotoHits,
+} from '@gitroom/nestjs-libraries/media/unsplash';
+import {
   BrandVoiceCheckDto,
   AiEditTextDto,
   SuggestHashtagsDto,
@@ -340,7 +346,39 @@ export class MediaController {
     return {
       pixabay: !!process.env.PIXABAY_API_KEY,
       pexels: !!process.env.PEXELS_API_KEY,
+      unsplash: !!process.env.UNSPLASH_ACCESS_KEY,
     };
+  }
+
+  @Get('/unsplash-images')
+  @Throttle({ default: { ttl: 300_000, limit: 60 } })
+  async unsplashImages(@Query('q') q: unknown, @Query('page') page: unknown) {
+    const key = process.env.UNSPLASH_ACCESS_KEY;
+    if (!key) {
+      return { hits: [], note: 'UNSPLASH_ACCESS_KEY not configured' };
+    }
+    const safeQuery = queryString(q).slice(0, 100).trim().toLowerCase();
+    if (!safeQuery) {
+      return { hits: [] };
+    }
+    const safePage = queryPage(page);
+    // 50 requests an hour until Unsplash approves production: an hour of
+    // cache keeps repeated searches off the limit.
+    const cacheKey = `unsplash:images:${createHash('md5').update(`${safeQuery}|${safePage}`).digest('hex')}`;
+    const cached = await ioRedis.get(cacheKey);
+    if (cached) {
+      return JSON.parse(cached);
+    }
+    const res = await fetch(
+      unsplashApiUrl(`/search/photos?query=${encodeURIComponent(safeQuery)}&page=${safePage}&per_page=24&content_filter=high`),
+      { headers: { Authorization: `Client-ID ${key}`, 'Accept-Version': 'v1' }, signal: AbortSignal.timeout(15_000) }
+    );
+    if (!res.ok) {
+      throw new HttpException(`Unsplash error ${res.status}`, 502);
+    }
+    const result = { hits: unsplashPhotoHits(await res.json()) };
+    await ioRedis.set(cacheKey, JSON.stringify(result), 'EX', 60 * 60);
+    return result;
   }
 
   @Get('/pexels-images')
@@ -439,7 +477,7 @@ export class MediaController {
     if (!isPexelsAssetUrl(body?.url)) {
       throw new HttpException('Invalid Pexels image URL', 400);
     }
-    return this._mediaService.importPexelsAsset(org.id, body.url, 'image', Number(body.sourceId) || undefined);
+    return this._mediaService.importStockAsset(org.id, body.url, 'image', `pexels-${Number(body.sourceId) || 'unknown'}`);
   }
 
   @Post('/pexels-videos/import')
@@ -451,7 +489,28 @@ export class MediaController {
     if (!isPexelsAssetUrl(body?.url)) {
       throw new HttpException('Invalid Pexels video URL', 400);
     }
-    return this._mediaService.importPexelsAsset(org.id, body.url, 'video', Number(body.sourceId) || undefined);
+    return this._mediaService.importStockAsset(org.id, body.url, 'video', `pexels-${Number(body.sourceId) || 'unknown'}`);
+  }
+
+  @Post('/unsplash-images/import')
+  @Throttle({ default: { ttl: 300000, limit: 30 } })
+  async unsplashImagesImport(
+    @GetOrgFromRequest() org: Organization,
+    @Body() body: { url: string; sourceId?: string; downloadLocation?: string }
+  ) {
+    const key = process.env.UNSPLASH_ACCESS_KEY;
+    if (!key || !isUnsplashAssetUrl(body?.url) || !isUnsplashDownloadLocation(body?.downloadLocation)) {
+      throw new HttpException('Invalid Unsplash photo', 400);
+    }
+    const id = String(body.sourceId || 'unknown').replace(/[^\w-]/g, '').slice(0, 40) || 'unknown';
+    const media = await this._mediaService.importStockAsset(org.id, body.url, 'image', `unsplash-${id}`);
+    // Unsplash's terms: report the download. A failed report must not undo
+    // the import the customer just made.
+    await fetch(body.downloadLocation, {
+      headers: { Authorization: `Client-ID ${key}`, 'Accept-Version': 'v1' },
+      signal: AbortSignal.timeout(10_000),
+    }).catch(() => undefined);
+    return media;
   }
 
   @Post('/refine-design')

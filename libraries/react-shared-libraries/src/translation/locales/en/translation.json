@@ -1536,5 +1536,8 @@
   "stock_source": "Photo library",
   "image_stock_pexels_source": "Photos provided by Pexels",
   "image_stock_pexels_licence": "— free to use, commercial use OK.",
-  "image_stock_pexels_credit": "Photo by {{user}} on Pexels"
+  "image_stock_pexels_credit": "Photo by {{user}} on Pexels",
+  "image_stock_unsplash_source": "Photos from Unsplash",
+  "image_stock_photo_by": "Photo by",
+  "image_stock_on": "on"
 }

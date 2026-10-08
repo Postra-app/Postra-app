@@ -1535,5 +1535,8 @@
   "stock_source": "Biblioteka zdjęć",
   "image_stock_pexels_source": "Zdjęcia z Pexels",
   "image_stock_pexels_licence": "— za darmo, także do użytku komercyjnego.",
-  "image_stock_pexels_credit": "Zdjęcie: {{user}}, Pexels"
+  "image_stock_pexels_credit": "Zdjęcie: {{user}}, Pexels",
+  "image_stock_unsplash_source": "Zdjęcia z Unsplash",
+  "image_stock_photo_by": "Zdjęcie:",
+  "image_stock_on": "—"
 }
