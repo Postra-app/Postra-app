@@ -323,6 +323,15 @@ export class NoAuthIntegrationsController {
       await ioRedis.del(`refresh:${body.state}`);
     }
 
+    // A platform still "Coming soon" takes no new channels (E2E-08-50), also
+    // with a state minted for another platform or before it was turned off.
+    if (!refresh && !this._integrationManager.isOffered(integration)) {
+      throw new HttpException(
+        `The ${integration} channel isn't available yet.`,
+        403
+      );
+    }
+
     const onboarding = await ioRedis.get(`onboarding:${body.state}`);
     if (onboarding) {
       await ioRedis.del(`onboarding:${body.state}`);

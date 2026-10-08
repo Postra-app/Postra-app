@@ -340,6 +340,16 @@ export class PublicIntegrationsController {
       throw new HttpException({ msg: 'Integration not allowed' }, 400);
     }
 
+    // `refresh` skips the gates below, so it has to name a channel this org
+    // already has on this platform, as in the dashboard (the callback checks
+    // it again, but only after the customer consented at the platform).
+    if (
+      refresh &&
+      !(await this._integrationService.hasChannel(org.id, integration, refresh))
+    ) {
+      throw new HttpException('The channel to reconnect was not found', 404);
+    }
+
     // Same plan gate as the dashboard: without it a key on a lower plan gets
     // an auth URL, the customer consents at the platform, and only the
     // callback refuses the channel.
@@ -354,6 +364,15 @@ export class PublicIntegrationsController {
           402
         );
       }
+    }
+
+    // A platform still "Coming soon" takes no new channels (E2E-08-50);
+    // after the plan gate, so a plan without it still answers 402.
+    if (!refresh && !this._integrationManager.isOffered(integration)) {
+      throw new HttpException(
+        `The ${integration} channel isn't available yet.`,
+        403
+      );
     }
 
     const integrationProvider =
