@@ -10,6 +10,7 @@ import {
 } from '@gitroom/backend/services/auth/permissions/permissions.ability';
 import { Organization } from '@prisma/client';
 import { saveTypeOfPost } from '@gitroom/nestjs-libraries/dtos/posts/create.post.dto';
+import { postsCountedBy } from '@gitroom/nestjs-libraries/database/prisma/posts/post.cap';
 import { Request } from 'express';
 import {
   PermissionDeniedException,
@@ -55,9 +56,6 @@ export class PoliciesGuard implements CanActivate {
     const { org }: { org: Organization } = request;
 
     const refreshChannelId = typeof request.query?.refresh === 'string' ? request.query.refresh : undefined;
-    // Drafts do not count towards the monthly post cap.
-    // `status` is the body of PUT /posts/:id/status only; a create carries
-    // `type`, and a stray `status: 'draft'` next to it must not make it free.
     // By the path alone: a query string could carry "/public/v1/" (Codex).
     const path = String(request.originalUrl || request.url || '').split('?')[0];
     const publicApi = /(^|\/)public\/v1\//.test(path);
@@ -68,6 +66,9 @@ export class PoliciesGuard implements CanActivate {
     const bodyPosts: any[] = Array.isArray(request.body?.posts)
       ? request.body.posts
       : [];
+    // Drafts do not count towards the monthly post cap.
+    // `status` is the body of PUT /posts/:id/status only; a create carries
+    // `type`, and a stray `status: 'draft'` next to it must not make it free.
     const isDraft = bodyPosts.length
       ? bodyPosts.every((post) => typeOf(post) === 'draft')
       : request.body?.type === 'draft' ||
@@ -78,22 +79,9 @@ export class PoliciesGuard implements CanActivate {
     // below it (BILL-4, POSTS-12). Ids that already exist are edits.
     // Each with the date it is saved on, so it counts against that billing
     // month ("now" posts against this one). The public API saves every post
-    // on the request date (it drops a per-channel one).
-    const at = (post: any) =>
-      typeOf(post) === 'now'
-        ? new Date().toISOString()
-        : [publicApi ? undefined : post?.date, request.body?.date].find(
-            (d) => typeof d === 'string' && !Number.isNaN(Date.parse(d))
-          );
-    // Channels kept as drafts are not posts against the cap.
-    const saved = bodyPosts
-      .filter((p: any) => typeOf(p) !== 'draft')
-      .flatMap((p: any) =>
-        (Array.isArray(p?.value) ? p.value : []).map((v: any) => ({
-          id: typeof v?.id === 'string' && v.id ? v.id : undefined,
-          date: at(p),
-        }))
-      );
+    // on the request date (it drops a per-channel one). Channels kept as
+    // drafts are not posts against the cap.
+    const saved = postsCountedBy(request.body, !publicApi, typeOf);
     // A status change (PUT /posts/:id/status) schedules that one post, which
     // counts against the month of its own publish date.
     const changed =

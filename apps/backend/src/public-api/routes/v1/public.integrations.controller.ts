@@ -1,3 +1,4 @@
+import { PermissionsService } from '@gitroom/backend/services/auth/permissions/permissions.service';
 import {
   Body,
   Controller,
@@ -80,7 +81,8 @@ export class PublicIntegrationsController {
     private _mediaService: MediaService,
     private _notificationService: NotificationService,
     private _integrationManager: IntegrationManager,
-    private _refreshIntegrationService: RefreshIntegrationService
+    private _refreshIntegrationService: RefreshIntegrationService,
+    private _permissionsService: PermissionsService
   ) {}
 
   @Post('/upload')
@@ -283,7 +285,12 @@ export class PublicIntegrationsController {
       ? (rawBody.creationMethod as 'CLI' | 'API')
       : 'API';
 
-    return this._postsService.createPost(org.id, body, creationMethod);
+    return this._postsService.createPost(
+      org.id,
+      body,
+      creationMethod,
+      await this._permissionsService.postCap(org.id, org.createdAt)
+    );
   }
 
   @Delete('/posts/:id')
@@ -535,7 +542,8 @@ export class PublicIntegrationsController {
       org.id,
       id,
       body.status,
-      body.republish === true
+      body.republish === true,
+      await this._permissionsService.postCap(org.id, org.createdAt)
     );
   }
 

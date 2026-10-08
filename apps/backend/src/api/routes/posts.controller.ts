@@ -1,5 +1,3 @@
-import dayjs from 'dayjs';
-import { pricing } from '@gitroom/nestjs-libraries/database/prisma/subscriptions/pricing';
 import { Throttle } from '@nestjs/throttler';
 import { AccountAgeGuard } from '@gitroom/backend/services/auth/account-age.guard';
 import {
@@ -19,6 +17,7 @@ import {
 import { PostsService } from '@gitroom/nestjs-libraries/database/prisma/posts/posts.service';
 import { GetOrgFromRequest } from '@gitroom/nestjs-libraries/user/org.from.request';
 import { Organization, User } from '@prisma/client';
+import { PermissionsService } from '@gitroom/backend/services/auth/permissions/permissions.service';
 import { saveTypeOfPost } from '@gitroom/nestjs-libraries/dtos/posts/create.post.dto';
 import { GetPostsDto } from '@gitroom/nestjs-libraries/dtos/posts/get.posts.dto';
 import { GetPostsListDto } from '@gitroom/nestjs-libraries/dtos/posts/get.posts.list.dto';
@@ -35,7 +34,6 @@ import { CreateCommentDto } from '@gitroom/nestjs-libraries/dtos/posts/create.co
 import {
   AuthorizationActions,
   Sections,
-  SubscriptionException,
 } from '@gitroom/nestjs-libraries/services/auth/permission.exception.class';
 import { PostValidationException } from '@gitroom/backend/api/routes/posts.validation.exception';
 
@@ -45,7 +43,8 @@ export class PostsController {
   constructor(
     private _postsService: PostsService,
     private _agentGraphService: AgentGraphService,
-    private _shortLinkService: ShortLinkService
+    private _shortLinkService: ShortLinkService,
+    private _permissionsService: PermissionsService
   ) {}
 
   @Get('/:id/statistics')
@@ -241,7 +240,8 @@ export class PostsController {
     return this._postsService.createPost(
       org.id,
       body,
-      client === 'mobile' ? 'MOBILE' : 'WEB'
+      client === 'mobile' ? 'MOBILE' : 'WEB',
+      await this._permissionsService.postCap(org.id, org.createdAt)
     );
   }
 
@@ -292,49 +292,14 @@ export class PostsController {
     @Body('action') action: 'schedule' | 'update' = 'update',
     @Body('republish') republish?: boolean
   ) {
-    // A post that counts (scheduled, or scheduled by this move) counts
-    // against the month it moves to: moving one from an emptier month into
-    // a full one went past the allowance (Codex on E2E-07-34).
-    // A draft stays a draft whatever the action (the calendar drags drafts
-    // with "schedule"), so only a post that already counts is checked. An
-    // invalid date is left to changeDate's 400.
-    if (
-      process.env.STRIPE_PUBLISHABLE_KEY &&
-      typeof date === 'string' &&
-      dayjs(date).isValid()
-    ) {
-      const post = await this._postsService.getPostById(id, org.id);
-      // Counted already, or put in the queue by this move; an ERROR post
-      // moved with "update" stays out of the count (Codex).
-      if (
-        post &&
-        (post.state === 'QUEUE' ||
-          post.state === 'PUBLISHED' ||
-          (action === 'schedule' && post.state !== 'DRAFT'))
-      ) {
-        // @ts-ignore subscription is attached to the org by the auth middleware
-        const subscription = org.subscription;
-        if (
-          await this._postsService.postCapReached(
-            org.id,
-            subscription?.createdAt || org.createdAt,
-            pricing[subscription?.subscriptionTier || 'FREE'].posts_per_month,
-            [{ id, date }]
-          )
-        ) {
-          throw new SubscriptionException({
-            section: Sections.POSTS_PER_MONTH,
-            action: AuthorizationActions.Create,
-          });
-        }
-      }
-    }
+    // The month it moves to is checked in changeDate, with the move.
     return this._postsService.changeDate(
       org.id,
       id,
       date,
       action,
-      republish === true
+      republish === true,
+      await this._permissionsService.postCap(org.id, org.createdAt)
     );
   }
 

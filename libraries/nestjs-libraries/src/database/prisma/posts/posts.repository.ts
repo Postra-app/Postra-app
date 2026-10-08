@@ -612,8 +612,14 @@ export class PostsRepository {
     return count ? { id, releaseId } : null;
   }
 
-  async changeState(id: string, state: State, err?: any, body?: any) {
-    const update = await this._post.model.post.update({
+  async changeState(
+    id: string,
+    state: State,
+    err?: any,
+    body?: any,
+    tx?: Prisma.TransactionClient
+  ) {
+    const update = await (tx || this._post.model).post.update({
       where: {
         id,
       },
@@ -685,9 +691,10 @@ export class PostsRepository {
     id: string,
     date: string,
     isDraft: boolean,
-    action: 'schedule' | 'update' = 'schedule'
+    action: 'schedule' | 'update' = 'schedule',
+    tx?: Prisma.TransactionClient
   ) {
-    return this._post.model.post.update({
+    return (tx || this._post.model).post.update({
       where: {
         organizationId: orgId,
         id,
@@ -751,17 +758,34 @@ export class PostsRepository {
     });
   }
 
-  getPublishDates(orgId: string, ids: string[]) {
-    return this._post.model.post.findMany({
+  getPublishDates(
+    orgId: string,
+    ids: string[],
+    tx?: Prisma.TransactionClient
+  ) {
+    return (tx || this._post.model).post.findMany({
       where: { organizationId: orgId, id: { in: ids }, deletedAt: null },
-      select: { id: true, publishDate: true },
+      select: { id: true, publishDate: true, state: true },
     });
+  }
+
+  // Taken before anything else in a write that adds to the monthly post
+  // count, so two of them cannot both pass the check with one post left.
+  async lockPostCap(tx: Prisma.TransactionClient, orgId: string) {
+    // ::text — Prisma cannot read the void pg_advisory_xact_lock returns.
+    await tx.$queryRaw`SELECT pg_advisory_xact_lock(hashtext(${`post-cap:${orgId}`})::bigint)::text`;
   }
 
   // What counts against the monthly cap: scheduled and published posts, by
   // publish date, inside [start, end); of `ids`, only those already counted.
-  countCountedPosts(orgId: string, start: Date, end: Date, ids?: string[]) {
-    return this._post.model.post.count({
+  countCountedPosts(
+    orgId: string,
+    start: Date,
+    end: Date,
+    ids?: string[],
+    tx?: Prisma.TransactionClient
+  ) {
+    return (tx || this._post.model).post.count({
       where: {
         organizationId: orgId,
         ...(ids ? { id: { in: ids } } : {}),

@@ -12,6 +12,11 @@ import { makeId } from '@gitroom/nestjs-libraries/services/make.is';
 import { AllProvidersSettings } from '@gitroom/nestjs-libraries/dtos/posts/providers-settings/all.providers.settings';
 import { Integration } from '@prisma/client';
 import { checkAuth } from '@gitroom/nestjs-libraries/chat/auth.context';
+import { PostCap } from '@gitroom/nestjs-libraries/database/prisma/posts/post.cap';
+import { SubscriptionException } from '@gitroom/nestjs-libraries/services/auth/permission.exception.class';
+
+const POSTS_USED_UP =
+  'This plan has used all of its posts for this month. Save the post as a draft, or upgrade the plan to schedule more.';
 import {
   ValidUrlExtension,
   ValidUrlPath,
@@ -166,11 +171,9 @@ If the tools return errors, you would need to rerun it with the right parameters
             counted
           ))
         ) {
-          return {
-            errors:
-              'This plan has used all of its posts for this month. Save the post as a draft, or upgrade the plan to schedule more.',
-          };
+          return { errors: POSTS_USED_UP };
         }
+        const cap = await this.postCap(organizationId, organization.createdAt);
 
         const integrations = {} as Record<string, Integration>;
         for (const platform of inputData.socialPost) {
@@ -242,36 +245,46 @@ If the tools return errors, you would need to rerun it with the right parameters
             throw new Error('Integration not found');
           }
 
-          const output = await this._postsService.createPost(organizationId, {
-            date: post.date,
-            type: post.type as 'draft' | 'schedule' | 'now',
-            shortLink: post.shortLink,
-            tags: [],
-            posts: [
-              {
-                integration,
-                group: makeId(10),
-                settings: post.settings.reduce(
-                  (acc: AllProvidersSettings, s: { key: string; value: any }) => ({
-                    ...acc,
-                    [s.key]: s.value,
-                  }),
-                  {
-                    __type: integration.providerIdentifier,
-                  } as AllProvidersSettings
-                ),
-                value: post.postsAndComments.map((p: any) => ({
-                  content: p.content,
-                  id: makeId(10),
-                  delay: 0,
-                  image: p.attachments.map((p: any) => ({
+          // Counted again as each post is written, behind the organisation's
+          // lock: the check above alone let saves at once past the cap.
+          let output: Awaited<ReturnType<PostsService['createPost']>>;
+          try {
+            output = await this._postsService.createPost(organizationId, {
+              date: post.date,
+              type: post.type as 'draft' | 'schedule' | 'now',
+              shortLink: post.shortLink,
+              tags: [],
+              posts: [
+                {
+                  integration,
+                  group: makeId(10),
+                  settings: post.settings.reduce(
+                    (acc: AllProvidersSettings, s: { key: string; value: any }) => ({
+                      ...acc,
+                      [s.key]: s.value,
+                    }),
+                    {
+                      __type: integration.providerIdentifier,
+                    } as AllProvidersSettings
+                  ),
+                  value: post.postsAndComments.map((p: any) => ({
+                    content: p.content,
                     id: makeId(10),
-                    path: p,
+                    delay: 0,
+                    image: p.attachments.map((p: any) => ({
+                      id: makeId(10),
+                      path: p,
+                    })),
                   })),
-                })),
-              },
-            ],
-          }, 'MCP');
+                },
+              ],
+            }, 'MCP', cap);
+          } catch (err) {
+            if (err instanceof SubscriptionException) {
+              return { output: finalOutput, errors: POSTS_USED_UP };
+            }
+            throw err;
+          }
           finalOutput.push(...output);
         }
 
@@ -287,15 +300,24 @@ If the tools return errors, you would need to rerun it with the right parameters
     orgCreatedAt: string,
     posts: { date?: string }[]
   ) {
+    const cap = await this.postCap(orgId, orgCreatedAt);
+    return (
+      !!cap &&
+      this._postsService.postCapReached(orgId, cap.anchor, cap.limit, posts)
+    );
+  }
+
+  private async postCap(
+    orgId: string,
+    orgCreatedAt: string
+  ): Promise<PostCap | undefined> {
     if (!process.env.STRIPE_PUBLISHABLE_KEY) {
-      return false;
+      return undefined;
     }
     const subscription = await this._subscriptionService.getSubscription(orgId);
-    return this._postsService.postCapReached(
-      orgId,
-      subscription?.createdAt || orgCreatedAt,
-      pricing[subscription?.subscriptionTier || 'FREE'].posts_per_month,
-      posts
-    );
+    return {
+      anchor: subscription?.createdAt || orgCreatedAt,
+      limit: pricing[subscription?.subscriptionTier || 'FREE'].posts_per_month,
+    };
   }
 }

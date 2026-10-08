@@ -1,3 +1,7 @@
+import {
+  CountedPost,
+  PostCap,
+} from '@gitroom/nestjs-libraries/database/prisma/posts/post.cap';
 import { Ability, AbilityBuilder, AbilityClass } from '@casl/ability';
 import { Injectable } from '@nestjs/common';
 import {
@@ -46,6 +50,21 @@ export class PermissionsService {
     };
   }
 
+  // The monthly post allowance the guard checks, for the check repeated
+  // where a post is written; none while billing is off.
+  async postCap(orgId: string, createdAt: Date): Promise<PostCap | undefined> {
+    if (!process.env.STRIPE_PUBLISHABLE_KEY) {
+      return undefined;
+    }
+    const { options } = await this.getPackageOptions(orgId);
+    return {
+      anchor:
+        (await this._subscriptionService.getSubscription(orgId))?.createdAt ||
+        createdAt,
+      limit: options.posts_per_month,
+    };
+  }
+
   async check(
     orgId: string,
     created_at: Date,
@@ -54,7 +73,7 @@ export class PermissionsService {
     refreshChannelId?: string,
     isTrailing = false,
     isDraft = false,
-    postsRequested: { posts: { id?: string; date?: string }[] } = { posts: [] }
+    postsRequested: { posts: CountedPost[] } = { posts: [] }
   ) {
     const { can, build } = new AbilityBuilder<
       Ability<[AuthorizationActions, Sections]>
