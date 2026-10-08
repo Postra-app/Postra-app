@@ -1,3 +1,4 @@
+import { pricing } from '@gitroom/nestjs-libraries/database/prisma/subscriptions/pricing';
 import { Throttle } from '@nestjs/throttler';
 import { AccountAgeGuard } from '@gitroom/backend/services/auth/account-age.guard';
 import {
@@ -32,6 +33,7 @@ import { CreateCommentDto } from '@gitroom/nestjs-libraries/dtos/posts/create.co
 import {
   AuthorizationActions,
   Sections,
+  SubscriptionException,
 } from '@gitroom/nestjs-libraries/services/auth/permission.exception.class';
 import { PostValidationException } from '@gitroom/backend/api/routes/posts.validation.exception';
 
@@ -278,7 +280,7 @@ export class PostsController {
 
   @Put('/:id/date')
   @Throttle({ default: { ttl: 300_000, limit: 120 } })
-  changeDate(
+  async changeDate(
     @GetOrgFromRequest() org: Organization,
     @Param('id') id: string,
     @Body('date') date: string,
@@ -287,6 +289,29 @@ export class PostsController {
     @Body('action') action: 'schedule' | 'update' = 'update',
     @Body('republish') republish?: boolean
   ) {
+    // A post that counts (scheduled, or scheduled by this move) counts
+    // against the month it moves to: moving one from an emptier month into
+    // a full one went past the allowance (Codex on E2E-07-34).
+    if (process.env.STRIPE_PUBLISHABLE_KEY && typeof date === 'string') {
+      const post = await this._postsService.getPostById(id, org.id);
+      if (post && (post.state !== 'DRAFT' || action === 'schedule')) {
+        // @ts-ignore subscription is attached to the org by the auth middleware
+        const subscription = org.subscription;
+        if (
+          await this._postsService.postCapReached(
+            org.id,
+            subscription?.createdAt || org.createdAt,
+            pricing[subscription?.subscriptionTier || 'FREE'].posts_per_month,
+            [{ id, date }]
+          )
+        ) {
+          throw new SubscriptionException({
+            section: Sections.POSTS_PER_MONTH,
+            action: AuthorizationActions.Create,
+          });
+        }
+      }
+    }
     return this._postsService.changeDate(
       org.id,
       id,
