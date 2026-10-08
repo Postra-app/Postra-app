@@ -14,7 +14,7 @@ test.afterAll(async () => {
 const LIMIT = 400;
 const inDays = (days: number) => new Date(Date.now() + days * 86_400_000);
 
-const fill = async (orgId: string, channel: string, n: number, at: Date, state: 'QUEUE' | 'DRAFT') => {
+const fill = async (orgId: string, channel: string, n: number, at: Date, state: 'QUEUE' | 'DRAFT' | 'ERROR') => {
   const rows = Array.from({ length: n }, (_, i) => ({
     id: `cap-${orgId}-${state}-${+at}-${i}`,
     organizationId: orgId,
@@ -222,6 +222,83 @@ test('Codex: a failed post moves freely, and a far-out date answers', async () =
     // Beyond JavaScript's date range one month on: the backend answers.
     const far = await org.api.put(`/posts/${full[0].id}/date`, { data: { date: '+275760-09-13T00:00:00.000Z', action: 'update' }, timeout: 5_000 });
     expect(far.status()).toBeLessThan(500);
+  } finally {
+    await prisma.post.deleteMany({ where: { organizationId: org.orgId } });
+    await org.remove();
+  }
+});
+
+// Codex: a save of type 'update' keeps each post's state, so editing drafts
+// or failed posts adds nothing to the month; it was refused at a full month.
+test('editing drafts and failed posts with "update" goes through at a full month', async () => {
+  const org = await throwawayOrg(prisma, { tier: 'STANDARD', totalChannels: 3, channels: 1, provider: 'facebook' });
+  const channel = org.channelIds[0];
+  try {
+    await fill(org.orgId, channel, LIMIT, inDays(1), 'QUEUE');
+    const kept = [
+      ...(await fill(org.orgId, channel, 1, inDays(2), 'DRAFT')),
+      ...(await fill(org.orgId, channel, 1, inDays(2), 'ERROR')),
+    ];
+    const res = await org.api.post('/posts', {
+      data: {
+        type: 'update',
+        shortLink: false,
+        date: inDays(2).toISOString(),
+        tags: [],
+        posts: kept.map((p) => ({
+          integration: { id: channel },
+          group: p.group,
+          value: [{ id: p.id, content: 'edited', image: [] }],
+          settings: { __type: 'facebook' },
+        })),
+      },
+    });
+    expect(res.status(), await res.text()).toBe(201);
+    const rows = await prisma.post.findMany({ where: { id: { in: kept.map((p) => p.id) } }, orderBy: { state: 'asc' } });
+    expect(rows.map((r) => [r.state, r.content])).toEqual([
+      ['DRAFT', expect.stringContaining('edited')],
+      ['ERROR', expect.stringContaining('edited')],
+    ]);
+  } finally {
+    await prisma.post.deleteMany({ where: { organizationId: org.orgId } });
+    await org.remove();
+  }
+});
+
+// Codex: the guard counted outside any lock, so saves or moves sent at once
+// with one post left in the month all went through.
+const countIn = (orgId: string, from: Date, to: Date) =>
+  prisma.post.count({ where: { organizationId: orgId, deletedAt: null, state: 'QUEUE', publishDate: { gte: from, lt: to } } });
+
+test('saves sent at once with one post left: only one goes through', async () => {
+  const org = await throwawayOrg(prisma, { tier: 'STANDARD', totalChannels: 3, channels: 1, provider: 'facebook' });
+  const channel = org.channelIds[0];
+  try {
+    await fill(org.orgId, channel, LIMIT - 1, inDays(1), 'QUEUE');
+    const statuses = (
+      await Promise.all(Array.from({ length: 4 }, (_, i) => schedule(org.api, channel, inDays(2), [{ content: `at once ${i}` }])))
+    ).map((r) => r.status());
+    expect(statuses.sort()).toEqual([201, 402, 402, 402]);
+    expect(await countIn(org.orgId, inDays(0), inDays(30))).toBe(LIMIT);
+  } finally {
+    await prisma.post.deleteMany({ where: { organizationId: org.orgId } });
+    await org.remove();
+  }
+});
+
+test('posts moved at once into a month with one post left: only one moves', async () => {
+  const org = await throwawayOrg(prisma, { tier: 'STANDARD', totalChannels: 3, channels: 1, provider: 'facebook' });
+  const channel = org.channelIds[0];
+  try {
+    await fill(org.orgId, channel, LIMIT - 1, inDays(1), 'QUEUE');
+    const later = await fill(org.orgId, channel, 4, inDays(41), 'QUEUE');
+    const statuses = (
+      await Promise.all(
+        later.map((p) => org.api.put(`/posts/${p.id}/date`, { data: { date: inDays(2).toISOString(), action: 'update' } }))
+      )
+    ).map((r) => r.status());
+    expect(statuses.sort()).toEqual([200, 402, 402, 402]);
+    expect(await countIn(org.orgId, inDays(0), inDays(30))).toBe(LIMIT);
   } finally {
     await prisma.post.deleteMany({ where: { organizationId: org.orgId } });
     await org.remove();
