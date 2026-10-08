@@ -1538,5 +1538,22 @@
   "image_stock_pexels_credit": "Zdjęcie: {{user}}, Pexels",
   "image_stock_unsplash_source": "Zdjęcia z Unsplash",
   "image_stock_photo_by": "Zdjęcie:",
-  "image_stock_on": "—"
+  "image_stock_on": "—",
+  "billing_action": "Akcja",
+  "billing_all_statuses": "Wszystkie statusy",
+  "billing_amount": "Kwota",
+  "billing_download_invoice": "Pobierz fakturę",
+  "billing_end_date": "Koniec okresu",
+  "billing_export": "Eksport",
+  "billing_history": "Historia płatności",
+  "billing_invoice": "Faktura",
+  "billing_plan": "Plan",
+  "billing_purchase_date": "Data zakupu",
+  "billing_search": "Szukaj...",
+  "billing_status": "Status",
+  "billing_status_failed": "Nieudana",
+  "billing_status_open": "Oczekuje",
+  "billing_status_paid": "Opłacona",
+  "billing_status_void": "Anulowana",
+  "billing_view_invoice": "Zobacz fakturę"
 }

@@ -33,6 +33,7 @@ import { useDubClickId } from '@gitroom/frontend/components/layout/dubAnalytics'
 import { LogoutComponent } from '@gitroom/frontend/components/layout/logout.component';
 import { TrialLimitsNote } from '@gitroom/frontend/components/billing/trial.limits.note';
 import { AiUsageThisMonth } from '@gitroom/frontend/components/billing/ai.usage.this.month';
+import { BillingHistory } from '@gitroom/frontend/components/billing/billing.history.component';
 import { planFeatures } from '@gitroom/frontend/components/billing/plan.features';
 
 export const Prorate: FC<{
@@ -681,6 +682,7 @@ export const MainBillingComponent: FC<{
           )}
         </div>
       )}
+      {!!subscription?.id && <BillingHistory />}
       {subscription?.cancelAt && isGeneral && (
         <div className="text-center">
           {t(

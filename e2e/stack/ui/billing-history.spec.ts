@@ -25,7 +25,7 @@ test('Billing lists the invoices with our plan names and links, without the £0 
   await expect(page.getByText('Yearly · P-2').locator('..')).toContainText('Business');
   await expect(page.getByText('£19.00')).toBeVisible();
   await expect(page.getByText('£790.00')).toBeVisible();
-  await expect(page.getByText('Failed', { exact: true }).first()).toBeVisible();
+  await expect(page.getByText('Yearly · P-2').locator('../..')).toContainText('Failed');
   await expect(page.getByText(/· P-0/)).toHaveCount(0);
   await expect(page.getByText('£0.00')).toHaveCount(0);
   await expect(page.getByRole('link', { name: 'Download invoice' }).first()).toHaveAttribute('href', 'https://pay.stripe.com/a.pdf');
