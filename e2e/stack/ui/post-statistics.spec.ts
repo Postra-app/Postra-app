@@ -30,6 +30,11 @@ test('Post Statistics says when the platform shares none', async ({ page }) => {
     where: { id: postId },
     data: { state: 'PUBLISHED', releaseId: '987654321' },
   });
+  // The stack's channels all have statistics now; the answer for a platform
+  // without them is the API's (post-statistics.spec.ts, Telegram).
+  await page.route('**/api/analytics/post/**', (route) =>
+    route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ unsupported: true }) })
+  );
   try {
     await page.goto(weekOf(slot));
     await page.locator('[role=button]', { hasText: text }).focus();

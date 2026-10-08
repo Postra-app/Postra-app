@@ -18,6 +18,9 @@
 //   GET  /xrpc/app.bsky.feed.getPosts?uris=u   Bluesky's public AppView
 //                           (stack.env BLUESKY_APPVIEW_URL): any uri, counts
 //                           likes 5, reposts 4, replies 3, quotes 2
+//   GET  /api/channels/:c/messages/:m   Discord's message (stack.env
+//                           DISCORD_API_URL) with reactions 3 + 2; without
+//                           a "Bot " authorization 401, like Discord
 //   POST /oauth/token       exchange any code for a token — the account is
 //   GET  /api/v1/accounts/verify_credentials   named after the code, so each
 //                           connect in a test can be a different account
@@ -120,6 +123,21 @@ createServer(async (req, res) => {
     const found = received.find((r) => r.id === status[1]);
     if (!found) return json(res, 404, { error: 'Record not found' });
     return json(res, 200, { id: found.id, favourites_count: 3, reblogs_count: 2, replies_count: 1 });
+  }
+
+  const message = req.method === 'GET' && req.url?.match(/^\/api\/channels\/([^/]+)\/messages\/([^/?]+)$/);
+  if (message) {
+    if (!String(req.headers.authorization || '').startsWith('Bot ')) {
+      return json(res, 401, { message: '401: Unauthorized', code: 0 });
+    }
+    return json(res, 200, {
+      id: message[2],
+      channel_id: message[1],
+      reactions: [
+        { count: 3, emoji: { name: '👍' } },
+        { count: 2, emoji: { name: '🎉' } },
+      ],
+    });
   }
 
   if (req.method === 'GET' && req.url?.startsWith('/xrpc/app.bsky.feed.getPosts?')) {

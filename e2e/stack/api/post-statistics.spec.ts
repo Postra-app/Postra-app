@@ -94,3 +94,29 @@ test('a post on a platform without post statistics says so', async () => {
     await org.remove();
   }
 });
+
+// 🆕 pkt 2a: a Discord post's reactions, read with the bot from the channel
+// in the post's link.
+test('a published Discord post has its reactions', async () => {
+  const org = await throwawayOrg(prisma, { tier: 'ULTIMATE', totalChannels: 5, channels: 1, provider: 'discord' });
+  try {
+    const post = await prisma.post.create({
+      data: {
+        organizationId: org.orgId,
+        integrationId: org.channelIds[0],
+        content: 'published',
+        group: `stats-discord-${org.orgId}`,
+        publishDate: new Date(),
+        state: 'PUBLISHED',
+        releaseId: '1300000000000000001',
+        releaseURL: 'https://discord.com/channels/1200000000000000001/1100000000000000001/1300000000000000001',
+      },
+    });
+    const res = await org.api.get(`/analytics/post/${post.id}?date=7`);
+    expect(res.status()).toBe(200);
+    expect(counts(await res.json())).toEqual({ Reactions: '5' });
+  } finally {
+    await prisma.post.deleteMany({ where: { organizationId: org.orgId } });
+    await org.remove();
+  }
+});
