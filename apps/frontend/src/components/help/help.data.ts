@@ -541,7 +541,7 @@ export const FAQ_ITEMS: FaqItem[] = [
   {
     question: 'How do I use the Postra API?',
     answer:
-      'The API lets your own software, or a no-code tool such as Zapier, Make or n8n, do what you do in Postra: list your channels, upload images and videos, create, list and delete posts, find the next free time slot and read analytics. Copy your API key from Settings → Developers and send it in the Authorization header to https://app.postra.pl/api/public/v1. Posts made through the API follow your plan\'s limits and each platform\'s rules, exactly like posts made in the app. The full reference is in the docs/public-api folder of our open-source repository on GitHub.',
+      'The API lets your own software, or a no-code tool such as Zapier, Make or n8n, do what you do in Postra: list your channels, upload images and videos, create, list and delete posts, find the next free time slot and read analytics. Copy your API key from Settings → Developers and send it in the Authorization header to https://app.postra.pl/api/public/v1. Posts made through the API follow your plan\'s limits and each platform\'s rules, exactly like posts made in the app. The full reference, with an example for every route, is at postra.co.uk/docs.',
   },
   {
     question: 'What is the SDK?',

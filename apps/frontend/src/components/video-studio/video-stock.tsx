@@ -65,12 +65,17 @@ export const VideoStock: FC<VideoStockProps> = ({ onImported }) => {
   // box already says. That is the fourth click the phase DoD does not allow.
   const autoRan = useRef(false);
 
+  // The newest search wins: the late answer of an older one used to replace
+  // the clips of the one typed after it.
+  const latest = useRef(0);
   const handleSearch = useCallback(async () => {
+    const request = ++latest.current;
     setIsSearching(true);
     try {
       const res = await fetch(
         `/media/pixabay-videos?q=${encodeURIComponent(query)}`
       );
+      if (request !== latest.current) return;
       if (!res.ok) {
         toaster.show(
           t('video_stock_search_failed', 'Video search failed.'),
@@ -81,6 +86,7 @@ export const VideoStock: FC<VideoStockProps> = ({ onImported }) => {
       // Guard an empty / non-JSON 200 body (auth redirect, proxy hiccup) —
       // res.json() on an empty body throws "Unexpected end of JSON input".
       const data = await res.json().catch(() => null);
+      if (request !== latest.current) return;
       if (!data) {
         toaster.show(
           t('video_stock_search_failed', 'Video search failed.'),
@@ -95,7 +101,7 @@ export const VideoStock: FC<VideoStockProps> = ({ onImported }) => {
       setNotConfigured(false);
       setHits(Array.isArray(data?.hits) ? (data.hits as PixabayVideo[]) : []);
     } finally {
-      setIsSearching(false);
+      if (request === latest.current) setIsSearching(false);
     }
   }, [fetch, query, toaster, t]);
 

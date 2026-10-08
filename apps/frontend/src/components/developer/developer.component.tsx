@@ -302,7 +302,7 @@ export const DeveloperComponent: FC = () => {
             <div className="flex gap-[6px] shrink-0 pt-[2px]">
               <a
                 className="cursor-pointer px-[16px] h-[36px] bg-[#38bdf8] hover:brightness-110 text-[#06222e] transition-colors rounded-[8px] text-[13px] font-[600] flex items-center gap-[6px]"
-                href="https://github.com/Postra-app/Postra-app/blob/main/docs/public-api/oauth.md"
+                href="https://postra.co.uk/docs/oauth/"
                 target="_blank"
                 rel="noopener noreferrer"
               >
@@ -466,7 +466,7 @@ export const DeveloperComponent: FC = () => {
           <div className="flex gap-[6px] shrink-0 pt-[2px]">
             <a
               className="cursor-pointer px-[16px] h-[36px] bg-[#38bdf8] hover:brightness-110 text-[#06222e] transition-colors rounded-[8px] text-[13px] font-[600] flex items-center gap-[6px]"
-              href="https://github.com/Postra-app/Postra-app/blob/main/docs/public-api/oauth.md"
+              href="https://postra.co.uk/docs/oauth/"
               target="_blank"
               rel="noopener noreferrer"
             >

@@ -1,5 +1,5 @@
 import { APIRequestContext, expect, request, test } from '@playwright/test';
-import { BACKEND_URL, channelOf } from '../helpers';
+import { BACKEND_URL, channelOf, signedIn } from '../helpers';
 import { USERS } from '../seed';
 
 // The public API (/public/v1) that customers' automations call with an
@@ -87,5 +87,30 @@ test('upload-from-url refuses addresses inside our network', async () => {
     const res = await a.post('upload-from-url', { data: { url } });
     expect(res.status(), url).toBeGreaterThanOrEqual(400);
     expect(res.status(), url).toBeLessThan(500);
+  }
+});
+
+// E2E-08-58: a file uploaded through the API kept only its random stored name,
+// so the library search (by original name) never found it.
+test('a file uploaded through the API is found by its name in the library', async () => {
+  const name = `stack-api-upload-${Date.now()}.png`;
+  // 1×1 transparent PNG.
+  const png = Buffer.from(
+    'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==',
+    'base64'
+  );
+  const res = await a.post('upload', { multipart: { file: { name, mimeType: 'image/png', buffer: png } } });
+  expect(res.status(), await res.text()).toBe(201);
+  const { id } = (await res.json()) as { id: string };
+  const app = await signedIn('a');
+  try {
+    const found = await app.get(`/media?page=1&search=${encodeURIComponent(name)}`);
+    expect(found.status()).toBe(200);
+    const body = await found.json();
+    const results: { id: string }[] = body.results ?? body.media ?? body;
+    expect(results.map((m) => m.id)).toContain(id);
+  } finally {
+    await app.delete(`/media/${id}`);
+    await app.dispose();
   }
 });

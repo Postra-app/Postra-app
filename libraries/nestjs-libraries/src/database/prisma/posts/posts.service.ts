@@ -230,6 +230,10 @@ export class PostsService {
     date: number,
     forceRefresh = false
   ): Promise<AnalyticsData[] | { missing: true }> {
+    // Days to load, as in IntegrationService.checkAnalytics: the public API
+    // passes `+date`, so a missing `date` asked the platform for NaN days
+    // (E2E-08-57).
+    date = date > 0 ? date : 7;
     const post = await this._postRepository.getPostById(postId, orgId);
     if (!post || !post.releaseId) {
       return [];
