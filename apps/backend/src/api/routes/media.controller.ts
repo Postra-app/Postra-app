@@ -50,7 +50,6 @@ import {
 } from '@gitroom/nestjs-libraries/media/pexels';
 import {
   isUnsplashAssetUrl,
-  isUnsplashDownloadLocation,
   unsplashApiUrl,
   unsplashPhotoHits,
 } from '@gitroom/nestjs-libraries/media/unsplash';
@@ -499,14 +498,16 @@ export class MediaController {
     @Body() body: { url: string; sourceId?: string; downloadLocation?: string }
   ) {
     const key = process.env.UNSPLASH_ACCESS_KEY;
-    if (!key || !isUnsplashAssetUrl(body?.url) || !isUnsplashDownloadLocation(body?.downloadLocation)) {
+    // Unsplash photo ids are letters, digits, "-" and "_".
+    const id = String(body?.sourceId || '');
+    if (!key || !isUnsplashAssetUrl(body?.url) || !/^[\w-]{1,40}$/.test(id)) {
       throw new HttpException('Invalid Unsplash photo', 400);
     }
-    const id = String(body.sourceId || 'unknown').replace(/[^\w-]/g, '').slice(0, 40) || 'unknown';
     const media = await this._mediaService.importStockAsset(org.id, body.url, 'image', `unsplash-${id}`);
-    // Unsplash's terms: report the download. A failed report must not undo
-    // the import the customer just made.
-    await fetch(body.downloadLocation, {
+    // Unsplash's terms: report the download. The address is built from the
+    // id, never taken from the request (CodeQL), and a failed report must not
+    // undo the import the customer just made.
+    await fetch(unsplashApiUrl(`/photos/${encodeURIComponent(id)}/download`), {
       headers: { Authorization: `Client-ID ${key}`, 'Accept-Version': 'v1' },
       signal: AbortSignal.timeout(10_000),
     }).catch(() => undefined);

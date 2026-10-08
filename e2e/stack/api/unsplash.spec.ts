@@ -8,6 +8,8 @@ import { database, throwawayOrg } from '../helpers';
 
 const prisma = database();
 test.afterAll(() => prisma.$disconnect());
+// Both tests count the downloads the shared fake recorded: one at a time.
+test.describe.configure({ mode: 'serial' });
 
 test('an Unsplash photo comes with its credit, and importing it reports the download', async () => {
   const org = await throwawayOrg(prisma, { tier: 'STANDARD', totalChannels: 3, channels: 0 });
