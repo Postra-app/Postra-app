@@ -6,7 +6,6 @@ import { IntegrationService } from '@gitroom/nestjs-libraries/database/prisma/in
 import { PostsService } from '@gitroom/nestjs-libraries/database/prisma/posts/posts.service';
 import { SubscriptionService } from '@gitroom/nestjs-libraries/database/prisma/subscriptions/subscription.service';
 import {
-  postsCycleStart,
   pricing,
 } from '@gitroom/nestjs-libraries/database/prisma/subscriptions/pricing';
 import { makeId } from '@gitroom/nestjs-libraries/services/make.is';
@@ -149,19 +148,22 @@ If the tools return errors, you would need to rerun it with the right parameters
         // to ask the same question. Drafts do not count towards the cap.
         // Every post and comment of the batch counts: the check was one
         // `count >= limit` for a batch of any size (AI-8).
-        const adding = inputData.socialPost
+        // Each against the billing month it is published in (E2E-07-34).
+        const counted = inputData.socialPost
           .filter((p: { type: string }) => p.type !== 'draft')
-          .reduce(
-            (n: number, p: { postsAndComments?: unknown[] }) =>
-              n + Math.max(1, p.postsAndComments?.length || 0),
-            0
+          .flatMap(
+            (p: { postsAndComments?: unknown[]; date?: string; type: string }) =>
+              Array.from(
+                { length: Math.max(1, p.postsAndComments?.length || 0) },
+                () => ({ date: p.type === 'now' ? undefined : p.date })
+              )
           );
         if (
-          adding &&
+          counted.length &&
           (await this.postLimitReached(
             organizationId,
             organization.createdAt,
-            adding
+            counted
           ))
         ) {
           return {
@@ -283,17 +285,17 @@ If the tools return errors, you would need to rerun it with the right parameters
   private async postLimitReached(
     orgId: string,
     orgCreatedAt: string,
-    adding = 1
+    posts: { date?: string }[]
   ) {
     if (!process.env.STRIPE_PUBLISHABLE_KEY) {
       return false;
     }
     const subscription = await this._subscriptionService.getSubscription(orgId);
-    const limit = pricing[subscription?.subscriptionTier || 'FREE'].posts_per_month;
-    const count = await this._postsService.countPostsFromDay(
+    return this._postsService.postCapReached(
       orgId,
-      postsCycleStart(subscription?.createdAt || orgCreatedAt)
+      subscription?.createdAt || orgCreatedAt,
+      pricing[subscription?.subscriptionTier || 'FREE'].posts_per_month,
+      posts
     );
-    return count + adding > limit;
   }
 }

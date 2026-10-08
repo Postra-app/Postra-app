@@ -64,16 +64,22 @@ export class PoliciesGuard implements CanActivate {
     // Every channel and every thread part of a save is a post against the
     // monthly cap; the check used to let one request through for any count
     // below it (BILL-4, POSTS-12). Ids that already exist are edits.
-    const values: { id?: unknown }[] = Array.isArray(request.body?.posts)
-      ? request.body.posts.flatMap((p: any) =>
-          Array.isArray(p?.value) ? p.value : []
-        )
-      : [];
+    // Each with its publish date: it counts against that billing month
+    // ("now" posts against this one).
+    const at = (post: any) =>
+      request.body?.type === 'now'
+        ? undefined
+        : [post?.date, request.body?.date].find(
+            (d) => typeof d === 'string' && !Number.isNaN(Date.parse(d))
+          );
     const postsRequested = {
-      total: values.length,
-      ids: values
-        .map((v) => v?.id)
-        .filter((id): id is string => typeof id === 'string' && !!id),
+      posts: (Array.isArray(request.body?.posts) ? request.body.posts : [])
+        .flatMap((p: any) =>
+          (Array.isArray(p?.value) ? p.value : []).map((v: any) => ({
+            id: typeof v?.id === 'string' && v.id ? v.id : undefined,
+            date: at(p),
+          }))
+        ),
     };
 
     // @ts-ignore

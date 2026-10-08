@@ -1,7 +1,6 @@
 import { Ability, AbilityBuilder, AbilityClass } from '@casl/ability';
 import { Injectable } from '@nestjs/common';
 import {
-  postsCycleStart,
   pricing,
   TRIAL_CHANNEL_CAP,
   channelsInUse,
@@ -55,7 +54,7 @@ export class PermissionsService {
     refreshChannelId?: string,
     isTrailing = false,
     isDraft = false,
-    postsRequested: { total: number; ids: string[] } = { total: 0, ids: [] }
+    postsRequested: { posts: { id?: string; date?: string }[] } = { posts: [] }
   ) {
     const { can, build } = new AbilityBuilder<
       Ability<[AuthorizationActions, Sections]>
@@ -159,22 +158,13 @@ export class PermissionsService {
         const createdAt =
           (await this._subscriptionService.getSubscription(orgId))?.createdAt ||
           created_at;
-        const count = await this._postsService.countPostsFromDay(
-          orgId,
-          postsCycleStart(createdAt)
-        );
-
-        const existing = postsRequested.ids.length
-          ? await this._postsService.countExistingPosts(
-              orgId,
-              postsRequested.ids
-            )
-          : 0;
-        const adding = Math.max(0, postsRequested.total - existing);
         if (
-          adding
-            ? count + adding <= options.posts_per_month
-            : count < options.posts_per_month
+          !(await this._postsService.postCapReached(
+            orgId,
+            createdAt,
+            options.posts_per_month,
+            postsRequested.posts
+          ))
         ) {
           can(action, section);
           continue;

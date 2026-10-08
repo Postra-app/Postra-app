@@ -751,6 +751,22 @@ export class PostsRepository {
     });
   }
 
+  // What counts against the monthly cap: scheduled and published posts, by
+  // publish date, inside [start, end); of `ids`, only those already counted.
+  countCountedPosts(orgId: string, start: Date, end: Date, ids?: string[]) {
+    return this._post.model.post.count({
+      where: {
+        organizationId: orgId,
+        ...(ids ? { id: { in: ids } } : {}),
+        publishDate: { gte: start, lt: end },
+        OR: [
+          { deletedAt: null, state: { in: ['QUEUE'] } },
+          { state: 'PUBLISHED' },
+        ],
+      },
+    });
+  }
+
   countPostsFromDay(orgId: string, date: Date) {
     return this._post.model.post.count({
       where: {

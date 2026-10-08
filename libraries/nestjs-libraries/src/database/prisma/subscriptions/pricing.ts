@@ -202,6 +202,23 @@ export const postsCycleStart = (anchor: Date | string): Date => {
   return dayjs(anchor).add(months, 'month').toDate();
 };
 
+// The billing month that holds `at` (now by default), as [start, end). Posts
+// count against the month they are published in: counting from the cycle's
+// start with no end let posts scheduled for later months eat this month's
+// allowance (E2E-07-34).
+export const postsCycleWindow = (
+  anchor: Date | string,
+  at: Date | string = new Date()
+) => {
+  const from = dayjs(anchor);
+  const when = dayjs(at);
+  let start = from.add(Math.max(0, when.diff(from, 'month')), 'month');
+  while (start.isAfter(when)) {
+    start = start.subtract(1, 'month');
+  }
+  return { start: start.toDate(), end: start.add(1, 'month').toDate() };
+};
+
 // AI allowances follow the same rule as channels: a trial runs on Starter's
 // pool, so a Business trial cannot burn 600 images before the first charge.
 export const trialAiAllowance = (

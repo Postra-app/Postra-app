@@ -1,3 +1,4 @@
+import { postsCycleWindow } from '@gitroom/nestjs-libraries/database/prisma/subscriptions/pricing';
 import {
   BadRequestException,
   Injectable,
@@ -847,6 +848,48 @@ export class PostsService {
 
   countExistingPosts(orgId: string, ids: string[]) {
     return this._postRepository.countExistingPosts(orgId, ids);
+  }
+
+  /**
+   * Whether saving these posts would take the organisation past its monthly
+   * post allowance. Each post counts against the billing month of its publish
+   * date (now when it has none), and a post already counted there is an edit.
+   * A draft being scheduled was counted as an edit too, so at 399 of 400 one
+   * request scheduled any number of drafts (E2E-07-34). Without posts (a
+   * status change) it asks whether this month has room for one more.
+   */
+  async postCapReached(
+    orgId: string,
+    anchor: Date | string,
+    limit: number,
+    posts: { id?: string; date?: string | Date }[]
+  ) {
+    const months = new Map<
+      number,
+      { start: Date; end: Date; ids: string[]; total: number }
+    >();
+    for (const post of posts.length ? posts : [{}]) {
+      const { start, end } = postsCycleWindow(anchor, post.date || new Date());
+      const month = months.get(+start) || { start, end, ids: [], total: 0 };
+      month.total += posts.length ? 1 : 0;
+      if (post.id) month.ids.push(post.id);
+      months.set(+start, month);
+    }
+    for (const { start, end, ids, total } of months.values()) {
+      const count = await this._postRepository.countCountedPosts(
+        orgId,
+        start,
+        end
+      );
+      const counted = ids.length
+        ? await this._postRepository.countCountedPosts(orgId, start, end, ids)
+        : 0;
+      const adding = Math.max(0, total - counted);
+      if (adding ? count + adding > limit : count >= limit) {
+        return true;
+      }
+    }
+    return false;
   }
 
   async countPostsFromDay(orgId: string, date: Date) {
