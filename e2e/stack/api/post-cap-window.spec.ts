@@ -397,24 +397,27 @@ test('a save on a date a hundred years out is a 400', async () => {
 });
 
 // Codex: a move read the post's state before the lock, so a draft scheduled
-// meanwhile through the public API moved into a full month uncounted.
+// meanwhile moved into a full month uncounted. Here the scheduling holds the
+// organisation's lock (as a status change does) while the move is sent.
 test('a draft scheduled while it is moved into a full month does not take it past the cap', async () => {
   const org = await throwawayOrg(prisma, { tier: 'STANDARD', totalChannels: 3, channels: 1, provider: 'facebook' });
   const channel = org.channelIds[0];
-  const { apiKey } = await prisma.organization.findUniqueOrThrow({ where: { id: org.orgId } });
-  const api = await pwRequest.newContext({ baseURL: `${BACKEND_URL}/public/v1/`, extraHTTPHeaders: { authorization: apiKey! } });
   try {
     await fill(org.orgId, channel, LIMIT, inDays(1), 'QUEUE');
-    const drafts = await fill(org.orgId, channel, 8, inDays(41), 'DRAFT');
-    await Promise.all(
-      drafts.flatMap((d) => [
-        org.api.put(`/posts/${d.id}/date`, { data: { date: inDays(2).toISOString(), action: 'update' } }),
-        api.put(`posts/${d.id}/status`, { data: { status: 'schedule' } }),
-      ])
+    const [draft] = await fill(org.orgId, channel, 1, inDays(41), 'DRAFT');
+    let move: Promise<{ status(): number }> | undefined;
+    await prisma.$transaction(
+      async (tx) => {
+        await tx.$queryRaw`SELECT pg_advisory_xact_lock(hashtext(${`post-cap:${org.orgId}`})::bigint)::text`;
+        await tx.post.update({ where: { id: draft.id }, data: { state: 'QUEUE' } });
+        move = org.api.put(`/posts/${draft.id}/date`, { data: { date: inDays(2).toISOString(), action: 'update' } });
+        await new Promise((resolve) => setTimeout(resolve, 1_000));
+      },
+      { timeout: 10_000 }
     );
+    expect((await move!).status()).toBe(402);
     expect(await countIn(org.orgId, inDays(0), inDays(30))).toBe(LIMIT);
   } finally {
-    await api.dispose();
     await prisma.post.deleteMany({ where: { organizationId: org.orgId } });
     await org.remove();
   }
