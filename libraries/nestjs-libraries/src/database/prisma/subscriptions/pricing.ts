@@ -194,15 +194,19 @@ export const postsCycleWindow = (
 ) => {
   // Both ends from the subscription date: adding a month to a start already
   // clipped at month end (31 Jan -> 28 Feb -> 28 Mar) left days in no month.
-  // An invalid date never left the loops below and froze the process
-  // (Codex): it counts as now, and the anchor as now too if it is invalid.
-  const from = dayjs(anchor).isValid() ? dayjs(anchor) : dayjs();
-  const when = dayjs(at).isValid() ? dayjs(at) : dayjs();
+  // An invalid date, or one so far out that a month after it is not a date
+  // any more, kept the loops going forever and froze the process (Codex):
+  // such a date counts as now, and the corrections are bounded (diff is off
+  // by one month at most).
+  const sane = (d: dayjs.Dayjs) =>
+    d.isValid() && Math.abs(d.year() - dayjs().year()) <= 100;
+  const from = sane(dayjs(anchor)) ? dayjs(anchor) : dayjs();
+  const when = sane(dayjs(at)) ? dayjs(at) : dayjs();
   let months = when.diff(from, 'month');
-  while (from.add(months, 'month').isAfter(when)) {
+  for (let i = 0; i < 3 && from.add(months, 'month').isAfter(when); i++) {
     months--;
   }
-  while (!from.add(months + 1, 'month').isAfter(when)) {
+  for (let i = 0; i < 3 && !from.add(months + 1, 'month').isAfter(when); i++) {
     months++;
   }
   return {

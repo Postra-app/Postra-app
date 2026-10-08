@@ -210,3 +210,20 @@ test('Codex: a bad date is a 400, a query cannot pass as the public API, a draft
     await org.remove();
   }
 });
+
+test('Codex: a failed post moves freely, and a far-out date answers', async () => {
+  const org = await throwawayOrg(prisma, { tier: 'STANDARD', totalChannels: 3, channels: 1, provider: 'facebook' });
+  const channel = org.channelIds[0];
+  try {
+    const full = await fill(org.orgId, channel, LIMIT, inDays(1), 'QUEUE');
+    const [failed] = await fill(org.orgId, channel, 1, inDays(41), 'QUEUE');
+    await prisma.post.update({ where: { id: failed.id }, data: { state: 'ERROR' } });
+    expect((await org.api.put(`/posts/${failed.id}/date`, { data: { date: inDays(3).toISOString(), action: 'update' } })).status()).toBe(200);
+    // Beyond JavaScript's date range one month on: the backend answers.
+    const far = await org.api.put(`/posts/${full[0].id}/date`, { data: { date: '+275760-09-13T00:00:00.000Z', action: 'update' }, timeout: 5_000 });
+    expect(far.status()).toBeLessThan(500);
+  } finally {
+    await prisma.post.deleteMany({ where: { organizationId: org.orgId } });
+    await org.remove();
+  }
+});

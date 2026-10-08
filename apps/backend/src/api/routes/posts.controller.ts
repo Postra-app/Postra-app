@@ -302,7 +302,14 @@ export class PostsController {
       dayjs(date).isValid()
     ) {
       const post = await this._postsService.getPostById(id, org.id);
-      if (post && post.state !== 'DRAFT') {
+      // Counted already, or put in the queue by this move; an ERROR post
+      // moved with "update" stays out of the count (Codex).
+      if (
+        post &&
+        (post.state === 'QUEUE' ||
+          post.state === 'PUBLISHED' ||
+          (action === 'schedule' && post.state !== 'DRAFT'))
+      ) {
         // @ts-ignore subscription is attached to the org by the auth middleware
         const subscription = org.subscription;
         if (

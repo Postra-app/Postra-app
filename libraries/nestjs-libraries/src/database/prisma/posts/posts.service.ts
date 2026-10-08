@@ -1318,7 +1318,12 @@ export class PostsService {
   ) {
     // Both used to surface as 500s: garbage reached Prisma as Invalid Date, and
     // a post from another org (or none) came back null.
-    if (typeof date !== 'string' || !dayjs(date).isValid()) {
+    // And a date the database cannot hold (years out of range) was a 500.
+    if (
+      typeof date !== 'string' ||
+      !dayjs(date).isValid() ||
+      Math.abs(dayjs(date).year() - dayjs().year()) > 100
+    ) {
       throw new BadRequestException('Invalid date');
     }
 

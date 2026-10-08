@@ -316,3 +316,11 @@ it('postsCycleWindow takes an invalid date as now, and returns', () => {
   expect(+start).toBeLessThanOrEqual(Date.now());
   expect(Date.now()).toBeLessThan(+end);
 });
+
+it('postsCycleWindow takes a date out of range as now, and returns', () => {
+  for (const at of ['+275760-09-13T00:00:00.000Z', '-271821-04-20T00:00:00.000Z', '9999-12-31T00:00:00Z']) {
+    const { start, end } = postsCycleWindow('2026-01-15T00:00:00Z', at);
+    expect(+start).toBeLessThanOrEqual(Date.now());
+    expect(Date.now()).toBeLessThan(+end);
+  }
+});
