@@ -104,5 +104,7 @@ test('a save that fails on a channel brings that channel into view', async ({ pa
   await page.getByRole('img', { name: 'discord', exact: true }).first().click();
   await page.getByRole('button', { name: 'Add to calendar' }).click();
   await expect(page.getByText(`${USERS.a.discord.name} Settings`)).toBeVisible();
+  // With the settings folded the editor is on that channel too.
+  await page.getByText(`${USERS.a.discord.name} Settings`).click();
   await expect(page.getByRole('button', { name: USERS.a.discord.name, exact: true })).toHaveAttribute('aria-pressed', 'true');
 });
