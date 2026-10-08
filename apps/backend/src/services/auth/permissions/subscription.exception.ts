@@ -57,6 +57,10 @@ export const getErrorMessage = (error: {
         default:
           return 'You have reached the maximum number of generated videos for your subscription. Please upgrade your subscription to generate more videos.';
       }
+    // Inviting with every seat taken said "not included in your plan"
+    // (E2E-07-38).
+    case Sections.TEAM_MEMBERS:
+      return "Your plan's team seats are all taken. Remove someone from the team or upgrade your plan to invite more people.";
     case Sections.AUTOPOST:
       return `Auto Post is included in Pro (${pricing.PRO.autoPostLimit} RSS feeds) and Business (${pricing.ULTIMATE.autoPostLimit}), and your plan has no feeds left. Upgrade your subscription to add another feed.`;
     // Every other section (AI, TEAM_MEMBERS, COMMUNITY_FEATURES,

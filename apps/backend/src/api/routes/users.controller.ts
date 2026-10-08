@@ -361,6 +361,13 @@ export class UsersController {
     // old one until the cache ran out.
     await bustAuthContextCache(user.id);
 
+    // A full team is said so (E2E-07-38); the page read a bare {id: null} as
+    // "expired or already used". 200, not 402: the person joining does not
+    // pay for that workspace, and 402 opens the paywall.
+    if (addedOrg === 'no_seats') {
+      response.status(200).json({ id: null, reason: 'no_seats' });
+      return;
+    }
     response.status(200).json({
       id: typeof addedOrg !== 'boolean' ? addedOrg.organizationId : null,
     });

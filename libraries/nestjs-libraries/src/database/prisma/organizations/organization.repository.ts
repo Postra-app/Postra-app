@@ -373,7 +373,9 @@ export class OrganizationRepository {
     }
     if (!create) {
       await ioRedis.del(`invite-used:${id}`);
-      return false;
+      // Told apart from a spent or invalid invite: the person can do
+      // something about it (ask the owner), unlike an expired link.
+      return 'no_seats' as const;
     }
 
     await this._user.model.user.update({

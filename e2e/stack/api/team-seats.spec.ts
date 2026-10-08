@@ -31,7 +31,8 @@ test('Starter cannot invite anyone: the owner is its only seat', async () => {
   const starter = await signedIn('b');
   const res = await starter.post('/settings/team', invite());
   expect(res.status()).toBe(402);
-  expect((await res.json()).message).toContain('not included in your current plan');
+  // About seats (E2E-07-38): Starter's only seat is the owner's.
+  expect((await res.json()).message).toContain('team seats are all taken');
   await starter.dispose();
 });
 

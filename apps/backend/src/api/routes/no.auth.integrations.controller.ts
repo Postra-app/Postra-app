@@ -466,7 +466,12 @@ export class NoAuthIntegrationsController {
         String(id)
       ))
     ) {
-      throw new HttpException('', 412);
+      // The app shows its own text for 412; API clients get it too
+      // (E2E-07-38).
+      throw new HttpException(
+        'This channel was already connected to another Postra account, so it cannot be added during a free trial.',
+        412
+      );
     }
 
     // AE2: the channel count + platform allowlist are checked when the OAuth

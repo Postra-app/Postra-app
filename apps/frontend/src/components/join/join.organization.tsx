@@ -21,7 +21,7 @@ export const JoinOrganization = () => {
   const org = useSearchParams().get('org');
   const [preview, setPreview] = useState<Preview | null>(null);
   const [joining, setJoining] = useState(false);
-  const [refused, setRefused] = useState(false);
+  const [refused, setRefused] = useState<boolean | 'no_seats'>(false);
 
   useEffect(() => {
     if (!org) {
@@ -37,14 +37,14 @@ export const JoinOrganization = () => {
   const join = useCallback(async () => {
     setJoining(true);
     try {
-      const { id } = await (
+      const { id, reason } = await (
         await fetch('/user/join-org', {
           method: 'POST',
           body: JSON.stringify({ org }),
         })
       ).json();
       if (!id) {
-        setRefused(true);
+        setRefused(reason === 'no_seats' ? 'no_seats' : true);
         return;
       }
       await fetch('/user/change-org', {
@@ -74,10 +74,15 @@ export const JoinOrganization = () => {
     return (
       <div className="mx-auto mt-[80px] max-w-[440px] rounded-[16px] border border-white/8 bg-white/[0.03] p-[24px] text-textColor/78">
         <p className="mb-[12px]">
-          {t(
-            'invitation_invalid',
-            'This invitation has expired, was already used, or you are already a member.'
-          )}
+          {refused === 'no_seats'
+            ? t(
+                'invitation_no_seats',
+                'This workspace has no free seats on its plan. Ask its owner to free a seat or upgrade the plan, then open the invitation again.'
+              )
+            : t(
+                'invitation_invalid',
+                'This invitation has expired, was already used, or you are already a member.'
+              )}
         </p>
         {back}
       </div>

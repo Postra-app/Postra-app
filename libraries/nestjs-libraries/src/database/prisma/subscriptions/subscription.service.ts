@@ -384,7 +384,7 @@ export class SubscriptionService {
 
   /**
    * One-off pre-launch backfill. Turning on Stripe billing flips every org that
-   * has no subscription down to FREE (2 channels) — this would strip access from
+   * has no subscription down to FREE (3 channels) — this would strip access from
    * the founder and existing users. This grants each such org a lifetime top-tier
    * (Business/ULTIMATE) subscription instead. Passing a `code` marks it
    * isLifetime and bypasses Stripe entirely (no customer/charge). Idempotent:
