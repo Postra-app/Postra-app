@@ -93,3 +93,38 @@ test('a file finishing first does not drop another still uploading', async ({ pa
   await expect(attached(page)).toHaveCount(2, { timeout: 15_000 });
   expect(problems.filter((p) => !expectedNoise(p))).toEqual([]);
 });
+
+// E2E-06-36: a long upload (a big video picked by mistake) could not be
+// stopped; the customer had to wait or close the tab.
+test('E2E-06-36: a slow upload can be cancelled, and the next one still works', async ({ page }) => {
+  test.setTimeout(60_000);
+  const problems = watchForErrors(page);
+  let release: () => void = () => undefined;
+  const held = new Promise<void>((resolve) => (release = resolve));
+  await page.route('**/media/upload-server', async (route) => {
+    if (nameOf(route).includes('huge-')) {
+      // Never finishes on its own: only Cancel ends it.
+      await held;
+      return route.abort().catch(() => undefined);
+    }
+    return route.continue();
+  });
+
+  try {
+    await openComposer(page, 'bluesky', `[stack ui] upload cancel ${Date.now()}`);
+    await drop(page, [`huge-${Date.now()}.png`]);
+
+    const cancel = page.getByRole('button', { name: 'Cancel upload' });
+    await expect(cancel).toBeVisible();
+    await cancel.click();
+    await expect(cancel).toHaveCount(0);
+    await expect(attached(page)).toHaveCount(0);
+
+    // The composer is not left locked: the next file uploads and attaches.
+    await drop(page, [`after-${Date.now()}.png`]);
+    await expect(attached(page)).toHaveCount(1, { timeout: 15_000 });
+  } finally {
+    release();
+  }
+  expect(problems.filter((p) => !expectedNoise(p))).toEqual([]);
+});
