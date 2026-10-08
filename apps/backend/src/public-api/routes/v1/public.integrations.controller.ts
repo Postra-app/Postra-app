@@ -37,6 +37,10 @@ import {
 import { VideoDto } from '@gitroom/nestjs-libraries/dtos/videos/video.dto';
 import { VideoFunctionDto } from '@gitroom/nestjs-libraries/dtos/videos/video.function.dto';
 import { UploadDto } from '@gitroom/nestjs-libraries/dtos/media/upload.dto';
+import {
+  originalNameFromUrl,
+  originalNameOfFile,
+} from '@gitroom/nestjs-libraries/upload/original.name';
 import { NotificationService } from '@gitroom/nestjs-libraries/database/prisma/notifications/notification.service';
 import { GetNotificationsDto } from '@gitroom/nestjs-libraries/dtos/notifications/get.notifications.dto';
 import { Readable } from 'stream';
@@ -98,11 +102,15 @@ export class PublicIntegrationsController {
       throw new HttpException({ msg: 'No file provided' }, 400);
     }
 
+    // Storage renames the file; the name it came with is what the library
+    // search looks at (E2E-08-58).
+    const originalName = originalNameOfFile(file.originalname);
     const getFile = await this.storage.uploadFile(file);
     return this._mediaService.saveFile(
       org.id,
       getFile.originalname,
-      getFile.path
+      getFile.path,
+      originalName
     );
   }
 
@@ -150,7 +158,8 @@ export class PublicIntegrationsController {
     return this._mediaService.saveFile(
       org.id,
       getFile.originalname,
-      getFile.path
+      getFile.path,
+      originalNameFromUrl(body.url, ext)
     );
   }
 
