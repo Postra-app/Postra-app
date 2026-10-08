@@ -30,7 +30,8 @@
 //                                 its first poll
 //   GET  /api/v1/jobs/recordInfo  the task's state; a finished clip is a
 //                                 tiny MP4 as a data: URL (the app's
-//                                 uploader refuses local http URLs)
+//                                 uploader refuses local http URLs), in the
+//                                 shape kie.ai really sends for veo-3-1
 import { createServer } from 'node:http';
 
 const PORT = Number(process.env.FAKE_OPENAI_PORT || 58090);
@@ -253,7 +254,14 @@ createServer((req, res) => {
       }
       return json(res, 200, {
         code: 200,
-        data: { taskId, state: 'success', resultJson: JSON.stringify({ resultUrls: [MP4] }) },
+        // The shape kie.ai really answers for veo-3-1 (prod 2026-10-08): the
+        // URLs sit under data, as result_urls (1080p) and origin_urls (720p),
+        // not as the documented top-level resultUrls.
+        data: {
+          taskId,
+          state: 'success',
+          resultJson: JSON.stringify({ code: 200, data: { origin_urls: [MP4], result_urls: [MP4], resolution: '1080p' } }),
+        },
       });
     }
 
