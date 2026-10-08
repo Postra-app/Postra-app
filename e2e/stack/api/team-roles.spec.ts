@@ -68,6 +68,11 @@ test('E2E-08-24: the organisation list every browser loads carries no API key or
       expect(org).toHaveProperty('name');
       expect(org).not.toHaveProperty('apiKey');
       expect(org).not.toHaveProperty('paymentId');
+      // Only what the switchers read (web and mobile): a column added to
+      // Organization later must not reach every member by default.
+      expect(Object.keys(org).sort()).toEqual(
+        ['id', 'name', 'subscription', 'users'].sort()
+      );
     }
   }
 });
