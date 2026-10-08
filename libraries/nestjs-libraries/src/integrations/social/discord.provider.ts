@@ -67,10 +67,13 @@ export class DiscordProvider extends SocialAbstract implements SocialProvider {
   }
   async generateAuthUrl() {
     const state = makeSecureId(6);
+    // View Channel, Send Messages, Attach Files, Read Message History and the
+    // thread permissions: posting with media and post statistics work on any
+    // server, not only where everyone has them (Codex).
     return {
       url: `https://discord.com/oauth2/authorize?client_id=${
         process.env.DISCORD_CLIENT_ID
-      }&permissions=377957124096&response_type=code&redirect_uri=${encodeURIComponent(
+      }&permissions=377957223424&response_type=code&redirect_uri=${encodeURIComponent(
         `${process.env.FRONTEND_URL}/integrations/social/discord`
       )}&integration_type=0&scope=bot+identify+guilds&state=${state}`,
       codeVerifier: makeSecureId(10),
