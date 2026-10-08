@@ -73,7 +73,9 @@ export class PermissionsService {
     refreshChannelId?: string,
     isTrailing = false,
     isDraft = false,
-    postsRequested: { posts: CountedPost[] } = { posts: [] }
+    postsRequested: { posts: CountedPost[]; released?: string[] } = {
+      posts: [],
+    }
   ) {
     const { can, build } = new AbilityBuilder<
       Ability<[AuthorizationActions, Sections]>
@@ -182,7 +184,8 @@ export class PermissionsService {
             orgId,
             createdAt,
             options.posts_per_month,
-            postsRequested.posts
+            postsRequested.posts,
+            postsRequested.released
           ))
         ) {
           can(action, section);

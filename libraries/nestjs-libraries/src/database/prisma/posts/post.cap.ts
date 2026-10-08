@@ -37,3 +37,16 @@ export const postsCountedBy = (
         })
       );
     });
+
+// Existing posts a save keeps as drafts: they leave the count as the save's
+// other posts join it, so a save at a full month that swaps one for another
+// fits (Codex).
+export const postsReleasedBy = (
+  body: any,
+  typeOf: (post: any) => unknown = (post) => saveTypeOfPost(body, post)
+): string[] =>
+  (Array.isArray(body?.posts) ? body.posts : [])
+    .filter((post: any) => typeOf(post) === 'draft')
+    .flatMap((post: any) => (Array.isArray(post?.value) ? post.value : []))
+    .map((value: any) => value?.id)
+    .filter((id: unknown): id is string => typeof id === 'string' && !!id);

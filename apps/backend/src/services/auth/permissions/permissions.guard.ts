@@ -10,7 +10,10 @@ import {
 } from '@gitroom/backend/services/auth/permissions/permissions.ability';
 import { Organization } from '@prisma/client';
 import { saveTypeOfPost } from '@gitroom/nestjs-libraries/dtos/posts/create.post.dto';
-import { postsCountedBy } from '@gitroom/nestjs-libraries/database/prisma/posts/post.cap';
+import {
+  postsCountedBy,
+  postsReleasedBy,
+} from '@gitroom/nestjs-libraries/database/prisma/posts/post.cap';
 import { Request } from 'express';
 import {
   PermissionDeniedException,
@@ -88,7 +91,10 @@ export class PoliciesGuard implements CanActivate {
       !saved.length && typeof request.params?.id === 'string'
         ? [{ id: request.params.id }]
         : [];
-    const postsRequested = { posts: saved.length ? saved : changed };
+    const postsRequested = {
+      posts: saved.length ? saved : changed,
+      released: postsReleasedBy(request.body, typeOf),
+    };
 
     // @ts-ignore
     const ability = await this._authorizationService.check(org.id, org.createdAt, org.users[0].role, policyHandlers, refreshChannelId, org.isTrailing, isDraft, postsRequested);

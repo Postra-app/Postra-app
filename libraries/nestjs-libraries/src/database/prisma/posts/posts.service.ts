@@ -26,6 +26,7 @@ import {
   CountedPost,
   PostCap,
   postsCountedBy,
+  postsReleasedBy,
 } from '@gitroom/nestjs-libraries/database/prisma/posts/post.cap';
 import {
   AuthorizationActions,
@@ -871,17 +872,20 @@ export class PostsService {
    * A draft being scheduled was counted as an edit too, so at 399 of 400 one
    * request scheduled any number of drafts (E2E-07-34). Without posts (a
    * status change) it asks whether this month has room for one more.
+   * `released` are posts of the same save that leave the count (kept as
+   * drafts); a post moved to another month leaves its old one.
    */
   async postCapReached(
     orgId: string,
     anchor: Date | string,
     limit: number,
     requested: (Omit<CountedPost, 'date'> & { date?: string | Date })[],
+    released: string[] = [],
     tx?: Prisma.TransactionClient
   ) {
     const months = new Map<
       number,
-      { start: Date; end: Date; ids: string[]; total: number }
+      { start: Date; end: Date; total: number }
     >();
     // A post named without a date (a status change) counts on its own date,
     // and an update keeps a post's state.
@@ -910,12 +914,19 @@ export class PostsService {
         anchor,
         post.date || (post.id && savedOn.get(post.id)) || new Date()
       );
-      const month = months.get(+start) || { start, end, ids: [], total: 0 };
+      const month = months.get(+start) || { start, end, total: 0 };
       month.total += posts.length ? 1 : 0;
-      if (post.id) month.ids.push(post.id);
       months.set(+start, month);
     }
-    for (const { start, end, ids, total } of months.values()) {
+    // Every post the save touches, wherever it is counted now: a month
+    // gets the ones saved into it and loses the ones leaving it.
+    const touched = [
+      ...new Set([
+        ...requested.map((p) => p.id).filter((id): id is string => !!id),
+        ...released,
+      ]),
+    ];
+    for (const { start, end, total } of months.values()) {
       const count = await this._postRepository.countCountedPosts(
         orgId,
         start,
@@ -923,19 +934,20 @@ export class PostsService {
         undefined,
         tx
       );
-      const counted = ids.length
+      const leaving = touched.length
         ? await this._postRepository.countCountedPosts(
             orgId,
             start,
             end,
-            ids,
+            touched,
             tx
           )
         : 0;
       // Editing posts already counted adds nothing, so it goes through at a
-      // full month too; with no posts named, one more has to fit.
-      const adding = Math.max(0, total - counted);
-      if (total ? count + adding > limit : count >= limit) {
+      // full month too; a month that does not grow is never refused; with no
+      // posts named, one more has to fit.
+      const adding = total - leaving;
+      if (total ? adding > 0 && count + adding > limit : count >= limit) {
         return true;
       }
     }
@@ -946,10 +958,20 @@ export class PostsService {
     tx: Prisma.TransactionClient,
     orgId: string,
     cap: PostCap,
-    posts: CountedPost[]
+    posts: CountedPost[],
+    released: string[] = []
   ) {
     await this._postRepository.lockPostCap(tx, orgId);
-    if (await this.postCapReached(orgId, cap.anchor, cap.limit, posts, tx)) {
+    if (
+      await this.postCapReached(
+        orgId,
+        cap.anchor,
+        cap.limit,
+        posts,
+        released,
+        tx
+      )
+    ) {
       throw new SubscriptionException({
         section: Sections.POSTS_PER_MONTH,
         action: AuthorizationActions.Create,
@@ -1255,7 +1277,13 @@ export class PostsService {
       // take the last post of the month (Codex). Counted again here, behind a
       // lock of the organisation taken before the rows'.
       if (cap && counted.length) {
-        await this.refuseOverPostCap(tx, orgId, cap, counted);
+        await this.refuseOverPostCap(
+          tx,
+          orgId,
+          cap,
+          counted,
+          postsReleasedBy(body)
+        );
       }
       await this._postRepository.lockForSave(
         tx,
