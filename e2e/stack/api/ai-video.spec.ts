@@ -143,3 +143,23 @@ test('the same clip asked for twice is made and paid for once', async () => {
     await pro.remove();
   }
 });
+
+// Codex: a clip deleted from the library left its id behind, and asking for
+// it again within the reuse window answered 409 "already being made".
+test('a clip deleted from the library can be made again', async () => {
+  const pro = await throwawayOrg(prisma, { tier: 'PRO', totalChannels: 6, channels: 0 });
+  try {
+    const prompt = `A kite over the Downs ${Date.now()}`;
+    const first = await generate(pro.api, prompt);
+    expect(first.status(), await first.text()).toBe(201);
+    const { id } = await first.json();
+    expect((await pro.api.delete(`/media/${id}`)).status()).toBeLessThan(300);
+
+    const again = await generate(pro.api, prompt);
+    expect(again.status(), await again.text()).toBe(201);
+    expect((await again.json()).id).not.toBe(id);
+    expect(await kieTasks(pro.api, prompt)).toHaveLength(2);
+  } finally {
+    await pro.remove();
+  }
+});
