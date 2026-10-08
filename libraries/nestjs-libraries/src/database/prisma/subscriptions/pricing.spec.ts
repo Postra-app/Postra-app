@@ -144,6 +144,60 @@ describe('pricing matrix', () => {
   });
 });
 
+// E2E-07-39: the limits the landing and Help promise, pinned, so a change in
+// pricing.ts has to be a deliberate change here too (and of the landing).
+describe('pricing limits the landing promises', () => {
+  it('keeps posts a month: Starter 400, Pro and Business unlimited', () => {
+    expect(pricing.STANDARD.posts_per_month).toBe(400);
+    expect(pricing.PRO.posts_per_month).toBe(1_000_000);
+    expect(pricing.ULTIMATE.posts_per_month).toBe(1_000_000);
+  });
+
+  it('keeps webhooks at FREE=0, Starter=2, Pro=30, Business=10000', () => {
+    expect(pricing.FREE.webhooks).toBe(0);
+    expect(pricing.STANDARD.webhooks).toBe(2);
+    expect(pricing.PRO.webhooks).toBe(30);
+    expect(pricing.ULTIMATE.webhooks).toBe(10_000);
+  });
+
+  it('keeps Auto Post at Pro=3 and Business=10 feeds, none below', () => {
+    expect([pricing.FREE.autoPost, pricing.FREE.autoPostLimit]).toEqual([false, 0]);
+    expect([pricing.STANDARD.autoPost, pricing.STANDARD.autoPostLimit]).toEqual([false, 0]);
+    expect([pricing.PRO.autoPost, pricing.PRO.autoPostLimit]).toEqual([true, 3]);
+    expect([pricing.ULTIMATE.autoPost, pricing.ULTIMATE.autoPostLimit]).toEqual([true, 10]);
+  });
+
+  it('keeps AI images a month at FREE=0, Starter=30, Pro=150, Business=600', () => {
+    expect(pricing.FREE.image_generation_count).toBe(0);
+    expect(pricing.STANDARD.image_generation_count).toBe(30);
+    expect(pricing.PRO.image_generation_count).toBe(150);
+    expect(pricing.ULTIMATE.image_generation_count).toBe(600);
+  });
+
+  it('includes the public API in every paid plan, not in FREE', () => {
+    expect(pricing.FREE.public_api).toBe(false);
+    for (const tier of ['STANDARD', 'PRO', 'ULTIMATE'] as const) {
+      expect(pricing[tier].public_api).toBe(true);
+    }
+  });
+
+  // TEAM is no longer sold; organisations that had it keep these limits.
+  it('keeps the legacy TEAM tier as it was', () => {
+    const { channel, posts_per_month, image_generation_count, team_members, webhooks, autoPost, autoPostLimit, public_api } =
+      pricing.TEAM;
+    expect({ channel, posts_per_month, image_generation_count, team_members, webhooks, autoPost, autoPostLimit, public_api }).toEqual({
+      channel: 10,
+      posts_per_month: 1_000_000,
+      image_generation_count: 100,
+      team_members: 1_000_000,
+      webhooks: 10,
+      autoPost: true,
+      autoPostLimit: 5,
+      public_api: true,
+    });
+  });
+});
+
 describe('planLabel', () => {
   it('maps internal enum keys to user-facing names', () => {
     expect(planLabels.FREE).toBe('Trial');
