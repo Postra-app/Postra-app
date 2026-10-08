@@ -868,8 +868,22 @@ export class PostsService {
       number,
       { start: Date; end: Date; ids: string[]; total: number }
     >();
+    // A post named without a date (a status change) counts on its own date.
+    const undated = posts
+      .filter((p) => p.id && !p.date)
+      .map((p) => p.id as string);
+    const savedOn = new Map(
+      undated.length
+        ? (await this._postRepository.getPublishDates(orgId, undated)).map(
+            (p) => [p.id, p.publishDate] as const
+          )
+        : []
+    );
     for (const post of posts.length ? posts : [{}]) {
-      const { start, end } = postsCycleWindow(anchor, post.date || new Date());
+      const { start, end } = postsCycleWindow(
+        anchor,
+        post.date || (post.id && savedOn.get(post.id)) || new Date()
+      );
       const month = months.get(+start) || { start, end, ids: [], total: 0 };
       month.total += posts.length ? 1 : 0;
       if (post.id) month.ids.push(post.id);
@@ -884,8 +898,10 @@ export class PostsService {
       const counted = ids.length
         ? await this._postRepository.countCountedPosts(orgId, start, end, ids)
         : 0;
+      // Editing posts already counted adds nothing, so it goes through at a
+      // full month too; with no posts named, one more has to fit.
       const adding = Math.max(0, total - counted);
-      if (adding ? count + adding > limit : count >= limit) {
+      if (total ? count + adding > limit : count >= limit) {
         return true;
       }
     }

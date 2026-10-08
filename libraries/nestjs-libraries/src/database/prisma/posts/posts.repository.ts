@@ -751,6 +751,13 @@ export class PostsRepository {
     });
   }
 
+  getPublishDates(orgId: string, ids: string[]) {
+    return this._post.model.post.findMany({
+      where: { organizationId: orgId, id: { in: ids }, deletedAt: null },
+      select: { id: true, publishDate: true },
+    });
+  }
+
   // What counts against the monthly cap: scheduled and published posts, by
   // publish date, inside [start, end); of `ids`, only those already counted.
   countCountedPosts(orgId: string, start: Date, end: Date, ids?: string[]) {

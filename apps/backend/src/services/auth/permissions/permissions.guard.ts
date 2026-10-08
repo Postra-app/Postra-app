@@ -64,23 +64,32 @@ export class PoliciesGuard implements CanActivate {
     // Every channel and every thread part of a save is a post against the
     // monthly cap; the check used to let one request through for any count
     // below it (BILL-4, POSTS-12). Ids that already exist are edits.
-    // Each with its publish date: it counts against that billing month
-    // ("now" posts against this one).
+    // Each with the date it is saved on, so it counts against that billing
+    // month ("now" posts against this one). The public API saves every post
+    // on the request date (it drops a per-channel one).
+    const publicApi = String(request.originalUrl || request.url || '').includes(
+      '/public/v1/'
+    );
     const at = (post: any) =>
       request.body?.type === 'now'
         ? undefined
-        : [post?.date, request.body?.date].find(
+        : [publicApi ? undefined : post?.date, request.body?.date].find(
             (d) => typeof d === 'string' && !Number.isNaN(Date.parse(d))
           );
-    const postsRequested = {
-      posts: (Array.isArray(request.body?.posts) ? request.body.posts : [])
-        .flatMap((p: any) =>
-          (Array.isArray(p?.value) ? p.value : []).map((v: any) => ({
-            id: typeof v?.id === 'string' && v.id ? v.id : undefined,
-            date: at(p),
-          }))
-        ),
-    };
+    const saved = (Array.isArray(request.body?.posts) ? request.body.posts : [])
+      .flatMap((p: any) =>
+        (Array.isArray(p?.value) ? p.value : []).map((v: any) => ({
+          id: typeof v?.id === 'string' && v.id ? v.id : undefined,
+          date: at(p),
+        }))
+      );
+    // A status change (PUT /posts/:id/status) schedules that one post, which
+    // counts against the month of its own publish date.
+    const changed =
+      !saved.length && typeof request.params?.id === 'string'
+        ? [{ id: request.params.id }]
+        : [];
+    const postsRequested = { posts: saved.length ? saved : changed };
 
     // @ts-ignore
     const ability = await this._authorizationService.check(org.id, org.createdAt, org.users[0].role, policyHandlers, refreshChannelId, org.isTrailing, isDraft, postsRequested);

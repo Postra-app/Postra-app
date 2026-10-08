@@ -192,13 +192,21 @@ export const postsCycleWindow = (
   anchor: Date | string,
   at: Date | string = new Date()
 ) => {
+  // Both ends from the subscription date: adding a month to a start already
+  // clipped at month end (31 Jan -> 28 Feb -> 28 Mar) left days in no month.
   const from = dayjs(anchor);
   const when = dayjs(at);
-  let start = from.add(Math.max(0, when.diff(from, 'month')), 'month');
-  while (start.isAfter(when)) {
-    start = start.subtract(1, 'month');
+  let months = when.diff(from, 'month');
+  while (from.add(months, 'month').isAfter(when)) {
+    months--;
   }
-  return { start: start.toDate(), end: start.add(1, 'month').toDate() };
+  while (!from.add(months + 1, 'month').isAfter(when)) {
+    months++;
+  }
+  return {
+    start: from.add(months, 'month').toDate(),
+    end: from.add(months + 1, 'month').toDate(),
+  };
 };
 
 // AI allowances follow the same rule as channels: a trial runs on Starter's

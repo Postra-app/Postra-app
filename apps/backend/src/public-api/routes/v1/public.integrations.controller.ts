@@ -203,7 +203,11 @@ export class PublicIntegrationsController {
         // A date per channel is an editor feature (a post saved for several
         // channels, edited later); the public API keeps one date per request.
         posts: Array.isArray(rawBody?.posts)
-          ? rawBody.posts.map(({ date, ...post }: any) => post)
+          ? rawBody.posts.map((post: any) => {
+              if (!post || typeof post !== 'object') return post;
+              const { date, ...rest } = post;
+              return rest;
+            })
           : rawBody?.posts,
       },
       org.id,
