@@ -40,17 +40,11 @@ export class HousekeepingActivity {
   async checkAiMargins() {
     const report = await this._aiUsage.marginReport();
     const month = dayjs().format('YYYY-MM');
-    const fresh = [];
+    const fresh: { key: string; row: (typeof report.organizations)[number] }[] = [];
     for (const row of report.organizations.filter((r) => r.alert)) {
       const level = row.share >= 1 ? 100 : 70;
-      const first = await ioRedis.set(
-        `margin-alert:${row.organizationId}:${month}:${level}`,
-        '1',
-        'EX',
-        40 * 86_400,
-        'NX'
-      );
-      if (first === 'OK') fresh.push(row);
+      const key = `margin-alert:${row.organizationId}:${month}:${level}`;
+      if (!(await ioRedis.get(key))) fresh.push({ key, row });
     }
     if (!fresh.length) {
       return { alerts: 0 };
@@ -59,9 +53,21 @@ export class HousekeepingActivity {
       where: { isSuperAdmin: true, activated: true },
       select: { email: true },
     });
-    const { subject, html } = marginAlertMail(fresh, report);
+    const { subject, html } = marginAlertMail(
+      fresh.map((f) => f.row),
+      report
+    );
+    let delivered = false;
     for (const admin of admins) {
-      await this._email.sendEmailSync(admin.email, subject, html);
+      delivered = (await this._email.sendEmailSync(admin.email, subject, html)) || delivered;
+    }
+    // Marked only once someone got it (Codex): a failed send is tried again
+    // by the activity's retry and by tomorrow's run.
+    if (!delivered) {
+      throw new Error(`margin guard: alert for ${fresh.length} organisation(s) not delivered`);
+    }
+    for (const { key } of fresh) {
+      await ioRedis.set(key, '1', 'EX', 40 * 86_400);
     }
     this._logger.log(`margin guard: ${fresh.length} organisation(s) over ${report.threshold * 100}%`);
     return { alerts: fresh.length };

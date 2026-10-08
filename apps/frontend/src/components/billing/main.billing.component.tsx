@@ -682,7 +682,9 @@ export const MainBillingComponent: FC<{
           )}
         </div>
       )}
-      {!!subscription?.id && <BillingHistory />}
+      {/* Not tied to a live subscription: when one ends its row goes, and
+          its invoices must stay reachable (Codex). Nothing shows without any. */}
+      <BillingHistory />
       {subscription?.cancelAt && isGeneral && (
         <div className="text-center">
           {t(
