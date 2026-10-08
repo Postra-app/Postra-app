@@ -41,6 +41,32 @@ test('Tab reaches a post, its actions show, Enter opens it', async ({
   }
 });
 
+// Upstream adf1a8f5: the actions end with Preview, Duplicate, Delete, so
+// Delete is the last one and not between Duplicate and the statistics.
+test('the post actions end with Preview, Duplicate and Delete', async ({ page }) => {
+  const api = await signedIn('b');
+  const text = `Action order ${Date.now()}`;
+  const post = await createDraft(api, 'b', text);
+  try {
+    const day = new Date(Date.now() + 2 * 86_400_000);
+    const monday = new Date(day);
+    monday.setUTCDate(day.getUTCDate() - ((day.getUTCDay() + 6) % 7));
+    const sunday = new Date(monday.getTime() + 6 * 86_400_000);
+    await page.goto(`/launches?display=week&startDate=${isoDay(monday)}&endDate=${isoDay(sunday)}`);
+    await page.locator('[role=button]', { hasText: text }).focus();
+    const actions = page.getByRole('button', { name: /^(Preview|Duplicate|Delete) Post$/ });
+    await expect(actions.first()).toBeVisible();
+    expect(await actions.evaluateAll((els) => els.map((e) => e.getAttribute('aria-label')))).toEqual([
+      'Preview Post',
+      'Duplicate Post',
+      'Delete Post',
+    ]);
+  } finally {
+    await api.delete(`/posts/${post.group}`);
+    await api.dispose();
+  }
+});
+
 // The channel panel's collapse toggle and the AI post Creator were divs with
 // click handlers: no name, and Tab never reached them.
 test('the channel panel collapses and the Creator opens from the keyboard', async ({
