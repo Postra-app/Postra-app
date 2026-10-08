@@ -141,3 +141,25 @@ test('a scheduled post can still be edited when its month is full', async () => 
     await org.remove();
   }
 });
+
+test('"Post now" on a post scheduled for next month counts against this month', async () => {
+  const org = await throwawayOrg(prisma, { tier: 'STANDARD', totalChannels: 3, channels: 1, provider: 'facebook' });
+  const channel = org.channelIds[0];
+  try {
+    await fill(org.orgId, channel, LIMIT, inDays(1), 'QUEUE');
+    const [later] = await fill(org.orgId, channel, 1, inDays(41), 'QUEUE');
+    const res = await org.api.post('/posts', {
+      data: {
+        type: 'now',
+        shortLink: false,
+        date: new Date().toISOString(),
+        tags: [],
+        posts: [{ integration: { id: channel }, group: `cap-g-${later.id}`, value: [{ id: later.id, content: 'now', image: [] }], settings: { __type: 'facebook' } }],
+      },
+    });
+    expect(res.status(), await res.text()).toBe(402);
+  } finally {
+    await prisma.post.deleteMany({ where: { organizationId: org.orgId } });
+    await org.remove();
+  }
+});

@@ -75,3 +75,28 @@ test('a downgrade keeps the oldest feeds and webhooks within the new plan, and t
     await target.remove();
   }
 });
+
+// Codex: the count and the switch-on were separate, so two feeds switched on
+// at once both saw room for one.
+test('two feeds switched on at once with room for one: only one runs', async () => {
+  const org = await throwawayOrg(prisma, { tier: 'PRO', totalChannels: 6, channels: 0 });
+  try {
+    const feed = (n: number, active: boolean) =>
+      prisma.autoPost.create({
+        data: {
+          organizationId: org.orgId, title: `race ${n}`, url: `https://example.com/race-${n}.xml`, lastUrl: '',
+          onSlot: false, syncLast: false, active, addPicture: false, generateContent: false, integrations: '[]',
+        },
+      });
+    await feed(0, true);
+    await feed(1, true);
+    const [a, b] = [await feed(2, false), await feed(3, false)];
+    const results = await Promise.all([a, b].map((f) => org.api.post(`/autopost/${f.id}/active`, { data: { active: true } })));
+    expect(results.map((r) => r.status()).sort()).toEqual([201, 402]);
+    expect(await prisma.autoPost.count({ where: { organizationId: org.orgId, active: true } })).toBe(3);
+  } finally {
+    await prisma.autoPost.deleteMany({ where: { organizationId: org.orgId } });
+    await org.remove();
+  }
+});
+
