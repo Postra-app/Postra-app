@@ -21,6 +21,8 @@ export class OAuthRepository {
     return this._oauthApp.model.oAuthApp.findFirst({
       where: {
         organizationId: orgId,
+        // A connector that registered itself is nobody's own app.
+        dynamic: false,
         deletedAt: null,
       },
       include: {
@@ -131,6 +133,27 @@ export class OAuthRepository {
     });
   }
 
+  createDynamicApp(data: {
+    name: string;
+    redirectUris: string[];
+    clientId: string;
+    clientSecret: string | null;
+    tokenEndpointAuthMethod: string;
+  }) {
+    return this._oauthApp.model.oAuthApp.create({
+      data: {
+        organizationId: null,
+        name: data.name,
+        redirectUrl: data.redirectUris[0],
+        redirectUris: data.redirectUris,
+        clientId: data.clientId,
+        clientSecret: data.clientSecret,
+        dynamic: true,
+        tokenEndpointAuthMethod: data.tokenEndpointAuthMethod,
+      },
+    });
+  }
+
   createAuthorization(data: {
     oauthAppId: string;
     userId: string;
@@ -138,6 +161,7 @@ export class OAuthRepository {
     authorizationCode: string;
     codeExpiresAt: Date;
     codeChallenge: string | null;
+    redirectUri: string | null;
   }) {
     return this._oauthAuth.model.oAuthAuthorization.upsert({
       where: {
@@ -154,11 +178,13 @@ export class OAuthRepository {
         authorizationCode: data.authorizationCode,
         codeExpiresAt: data.codeExpiresAt,
         codeChallenge: data.codeChallenge,
+        redirectUri: data.redirectUri,
       },
       update: {
         authorizationCode: data.authorizationCode,
         codeExpiresAt: data.codeExpiresAt,
         codeChallenge: data.codeChallenge,
+        redirectUri: data.redirectUri,
         accessToken: null,
         revokedAt: null,
       },

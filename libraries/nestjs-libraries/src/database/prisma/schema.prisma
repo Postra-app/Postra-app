@@ -917,26 +917,34 @@ model mastra_workflow_snapshot {
   @@unique([workflow_name, run_id], map: "public_mastra_workflow_snapshot_workflow_name_run_id_key")
 }
 
+// An organisation's own app (Settings → Developers), or — dynamic = true — a
+// client that registered itself (RFC 7591: Claude, ChatGPT and other MCP
+// clients). A dynamic client belongs to no organisation, may have no secret
+// (a public client, PKCE instead) and lists the addresses it may be sent to.
 model OAuthApp {
-  id             String               @id @default(uuid())
-  organizationId String
-  name           String
-  description    String?
-  pictureId      String?
-  redirectUrl    String
-  clientId       String               @unique
-  clientSecret   String
-  createdAt      DateTime             @default(now())
-  updatedAt      DateTime             @updatedAt
-  deletedAt      DateTime?
-  organization   Organization         @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  picture        Media?               @relation(fields: [pictureId], references: [id], onDelete: SetNull)
-  authorizations OAuthAuthorization[]
+  id                      String               @id @default(uuid())
+  organizationId          String?
+  name                    String
+  description             String?
+  pictureId               String?
+  redirectUrl             String
+  redirectUris            String[]             @default([])
+  clientId                String               @unique
+  clientSecret            String?
+  dynamic                 Boolean              @default(false)
+  tokenEndpointAuthMethod String?
+  createdAt               DateTime             @default(now())
+  updatedAt               DateTime             @updatedAt
+  deletedAt               DateTime?
+  organization            Organization?        @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  picture                 Media?               @relation(fields: [pictureId], references: [id], onDelete: SetNull)
+  authorizations          OAuthAuthorization[]
 
   @@unique([organizationId, deletedAt])
   @@index([clientId])
   @@index([organizationId])
   @@index([deletedAt])
+  @@index([dynamic])
 }
 
 model OAuthAuthorization {
@@ -950,6 +958,9 @@ model OAuthAuthorization {
   // PKCE (RFC 7636, S256 only): the challenge sent with the code request,
   // checked against code_verifier when the code is exchanged (E2E-08-44).
   codeChallenge     String?
+  // The address the code was sent to (dynamic clients): the exchange must name
+  // the same one (RFC 6749 §4.1.3).
+  redirectUri       String?
   revokedAt         DateTime?
   createdAt         DateTime     @default(now())
   updatedAt         DateTime     @updatedAt

@@ -18,6 +18,12 @@ export class AuthorizeOAuthQueryDto {
   @IsOptional()
   state?: string;
 
+  // Required for a dynamic client (checked in OAuthService): one of the
+  // addresses it registered.
+  @IsString()
+  @IsOptional()
+  redirect_uri?: string;
+
   @IsString()
   @IsOptional()
   @Matches(S256_CHALLENGE, { message: 'code_challenge must be an S256 hash' })
@@ -42,6 +48,12 @@ export class ApproveOAuthDto {
   @IsDefined()
   @IsIn(['approve', 'deny'])
   action: 'approve' | 'deny';
+
+  // Required for a dynamic client (checked in OAuthService): one of the
+  // addresses it registered.
+  @IsString()
+  @IsOptional()
+  redirect_uri?: string;
 
   @IsString()
   @IsOptional()
