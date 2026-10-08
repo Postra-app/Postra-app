@@ -1254,7 +1254,7 @@
   "image_stock_search_ph": "e.g. coffee, office, summer",
   "image_stock_search_failed": "Image search failed.",
   "image_stock_import_failed": "Image import failed.",
-  "image_stock_hint": "Free photos (Pixabay License, commercial use OK). Click a photo to add it to the canvas — it is also saved to your media library.",
+  "image_stock_hint": "Click a photo to add it to the canvas — it is also saved to your media library.",
   "brand_kit_nudge": "Set up your Brand Kit once — AI writes in your tone, designs come out in your colours and font, and your logo goes on every generated design.",
   "brand_kit_nudge_cta": "Set up brand",
   "filter_section": "Filters",
@@ -1532,5 +1532,9 @@
   "billing_this_month": "This month",
   "billing_ai_images_left": "{{left}} of {{total}} AI images left",
   "billing_ai_videos_left": "{{left}} of {{total}} AI videos left",
-  "agent_fair_use_description": "You have asked the AI assistant {{questions}} questions this month — the fair-use limit, the same on every plan. It resets with your next billing month."
+  "agent_fair_use_description": "You have asked the AI assistant {{questions}} questions this month — the fair-use limit, the same on every plan. It resets with your next billing month.",
+  "stock_source": "Photo library",
+  "image_stock_pexels_source": "Photos provided by Pexels",
+  "image_stock_pexels_licence": "— free to use, commercial use OK.",
+  "image_stock_pexels_credit": "Photo by {{user}} on Pexels"
 }

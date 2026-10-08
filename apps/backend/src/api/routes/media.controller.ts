@@ -333,6 +333,16 @@ export class MediaController {
     return result;
   }
 
+  // Which free stock libraries have a key on this server — the Studio shows
+  // the Pexels switch only when it would find something.
+  @Get('/stock-sources')
+  stockSources() {
+    return {
+      pixabay: !!process.env.PIXABAY_API_KEY,
+      pexels: !!process.env.PEXELS_API_KEY,
+    };
+  }
+
   @Get('/pexels-images')
   @Throttle({ default: { ttl: 300_000, limit: 60 } })
   pexelsImages(@Query('q') q: unknown, @Query('page') page: unknown) {

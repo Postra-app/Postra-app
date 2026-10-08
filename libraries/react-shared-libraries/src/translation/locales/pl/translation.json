@@ -1253,7 +1253,7 @@
   "image_stock_search_ph": "np. kawa, biuro, lato",
   "image_stock_search_failed": "Wyszukiwanie zdjęć nie powiodło się.",
   "image_stock_import_failed": "Import zdjęcia nie powiódł się.",
-  "image_stock_hint": "Darmowe zdjęcia (Pixabay License, użycie komercyjne OK). Kliknij zdjęcie, aby dodać je na canvas — zapisze się też w Twojej bibliotece mediów.",
+  "image_stock_hint": "Kliknij zdjęcie, żeby dodać je do projektu — trafi też do biblioteki mediów.",
   "brand_kit_nudge": "Ustaw Brand Kit raz — AI pisze Twoim tonem, projekty wychodzą w Twoich kolorach i foncie, a logo trafia na każdy wygenerowany projekt.",
   "brand_kit_nudge_cta": "Ustaw markę",
   "filter_section": "Filtry",
@@ -1531,5 +1531,9 @@
   "billing_this_month": "W tym miesiącu",
   "billing_ai_images_left": "zostało {{left}} z {{total}} obrazów AI",
   "billing_ai_videos_left": "zostało {{left}} z {{total}} wideo AI",
-  "agent_fair_use_description": "W tym miesiącu zadałeś asystentowi AI {{questions}} pytań — to limit uczciwego korzystania, taki sam w każdym planie. Odnowi się z kolejnym okresem rozliczeniowym."
+  "agent_fair_use_description": "W tym miesiącu zadałeś asystentowi AI {{questions}} pytań — to limit uczciwego korzystania, taki sam w każdym planie. Odnowi się z kolejnym okresem rozliczeniowym.",
+  "stock_source": "Biblioteka zdjęć",
+  "image_stock_pexels_source": "Zdjęcia z Pexels",
+  "image_stock_pexels_licence": "— za darmo, także do użytku komercyjnego.",
+  "image_stock_pexels_credit": "Zdjęcie: {{user}}, Pexels"
 }
