@@ -53,3 +53,17 @@ test('with more than one organisation, the person picks which one', async ({ pag
   await select.selectOption('org-two');
   await expect.poll(() => changed).toEqual(['org-two']);
 });
+
+// Codex on -08-f: a failed switch (network error) left the form disabled for
+// good — no reload, Authorize and Deny greyed out.
+test('a failed organisation switch leaves the form usable', async ({ page }) => {
+  await page.route('**/api/user/organizations', (route) =>
+    route.fulfill({ json: [{ id: 'org-one', name: 'First Org' }, { id: 'org-two', name: 'Second Org' }] })
+  );
+  await page.route('**/api/user/change-org', (route) => route.abort('failed'));
+  await page.goto(await consentUrl());
+  await expect(page.getByRole('button', { name: 'Authorize' })).toBeVisible({ timeout: 20_000 });
+  await page.getByLabel('Organisation').selectOption('org-two');
+  await expect(page.getByRole('button', { name: 'Authorize' })).toBeEnabled();
+  await expect(page.getByLabel('Organisation')).toBeEnabled();
+});
