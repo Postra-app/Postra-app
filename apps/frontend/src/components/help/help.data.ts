@@ -298,7 +298,7 @@ export const APP_TABS: AppTabGuide[] = [
   {
     id: 'analytics',
     name: 'Analytics',
-    description: 'Follower growth and post performance for Facebook, Instagram, Threads, X, YouTube, TikTok and LinkedIn Pages; post statistics (likes, reposts, replies) for Bluesky and Mastodon, and reactions for Discord. Telegram and personal LinkedIn profiles have no analytics.',
+    description: 'Follower growth and post performance for Facebook, Instagram, Threads, X, YouTube and TikTok; post statistics (likes, reposts, replies) for Bluesky and Mastodon, and reactions for Discord. Telegram and personal LinkedIn profiles have no analytics.',
   },
   {
     id: 'studio',
@@ -322,7 +322,7 @@ export const APP_TABS: AppTabGuide[] = [
     id: 'plugs',
     name: 'Plugs',
     description:
-      'Small per-channel automations that run in the background to boost reach — available for X, Threads, Bluesky and LinkedIn Pages.',
+      'Small per-channel automations that run in the background to boost reach — available for X, Threads and Bluesky.',
   },
   {
     id: 'billing',
@@ -511,7 +511,7 @@ export const FAQ_ITEMS: FaqItem[] = [
   {
     question: 'A post failed to publish — what should I do?',
     answer:
-      "Open the post from the Calendar to see the error returned by the platform. The usual causes: the channel needs reconnecting (red badge on its avatar), the media doesn't meet the platform's requirements, or the platform flagged a duplicate. Fix the cause and reschedule — still stuck? Email us.",
+      "Hover the red ! on the post in the Calendar to see the error returned by the platform. The usual causes: the channel needs reconnecting (red badge on its avatar), the media doesn't meet the platform's requirements, or the platform flagged a duplicate. Fix the cause and reschedule — still stuck? Email us.",
   },
   {
     question: 'How does the trial work?',
