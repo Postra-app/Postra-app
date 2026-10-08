@@ -972,7 +972,7 @@
   "oauth_app_updated": "Aplikacja zaktualizowana",
   "oauth_app_update_failed": "Nie udało się zaktualizować aplikacji",
   "oauth_rotate_secret_title": "Wygenerować nowy Client Secret?",
-  "oauth_rotate_secret_description": "Wygeneruje to nowy client secret i unieważni obecny. Integracje używające starego przestaną działać.",
+  "oauth_rotate_secret_description": "To tworzy nowy sekret klienta i unieważnia obecny. Od teraz aplikacja musi używać nowego sekretu przy wymianie kodów; tokeny, które już ma, działają dalej.",
   "oauth_secret_rotated_copy": "Sekret wygenerowany! Skopiuj teraz nowy client secret.",
   "oauth_rotate_secret_failed": "Nie udało się wygenerować sekretu",
   "oauth_delete_app_title": "Usunąć aplikację OAuth?",

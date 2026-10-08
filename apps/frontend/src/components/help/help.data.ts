@@ -556,7 +556,7 @@ export const FAQ_ITEMS: FaqItem[] = [
   {
     question: 'What do webhooks do?',
     answer:
-      'They tell your other tools when a post goes out. In Settings → Webhooks add an https:// address and choose all channels or some of them; each time a post publishes, Postra sends that address a JSON message with the post\'s id, text, publish date, the link to the published post and the channel\'s name and platform. Use it to post a note in Slack, add a row to a client report or update your CRM. If your server is briefly down, Postra tries again up to three times. Addresses inside private networks are refused.',
+      'They tell your other tools when a post goes out. In Settings → Webhooks add an https:// address and choose all channels or some of them; each time a post publishes, Postra sends that address a JSON message with the post\'s id, text, publish date, the link to the published post and the channel\'s name and platform. Use it to post a note in Slack, add a row to a client report or update your CRM. If your server is briefly down, Postra tries twice more (three attempts in all). Addresses inside private networks are refused.',
   },
   {
     question: 'How do I check that a webhook came from Postra?',

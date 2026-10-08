@@ -973,7 +973,7 @@
   "oauth_app_updated": "App updated",
   "oauth_app_update_failed": "The app was not updated.",
   "oauth_rotate_secret_title": "Generate a new client secret?",
-  "oauth_rotate_secret_description": "This generates a new client secret and invalidates the current one. Integrations using the old secret will stop working.",
+  "oauth_rotate_secret_description": "This generates a new client secret and invalidates the current one. Your app must use the new secret to exchange codes from now on; tokens it already has keep working.",
   "oauth_secret_rotated_copy": "Secret generated! Copy the new client secret now.",
   "oauth_rotate_secret_failed": "Failed to generate the secret",
   "oauth_delete_app_title": "Delete the OAuth app?",
