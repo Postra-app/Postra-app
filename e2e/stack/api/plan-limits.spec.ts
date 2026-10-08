@@ -1,5 +1,5 @@
-import { expect, test } from '@playwright/test';
-import { database, signedIn, throwawayOrg } from '../helpers';
+import { expect, request, test } from '@playwright/test';
+import { BACKEND_URL, database, signedIn, throwawayOrg } from '../helpers';
 
 // What a plan pays for (pricing.ts allowedProviders). Organisation A is on
 // Pro, B on Starter; billing is on in the stack like in production.
@@ -124,4 +124,55 @@ test.describe('channel count', () => {
     expect(res.status(), await res.text()).not.toBe(402);
     expect(res.status()).toBeLessThan(500);
   });
+});
+
+// E2E-08-50: a platform still "Coming soon" in the app (LinkedIn Page) was
+// refused only by the UI. On Pro the API handed out its auth URL, through the
+// dashboard route and the public API, and the callback connected it. A page
+// connected before stays reconnectable.
+test('a "Coming soon" platform takes no new channels; one already there can be reconnected', async () => {
+  const prisma = database();
+  const org = await throwawayOrg(prisma, { tier: 'PRO', totalChannels: 5, channels: 0 });
+  const { apiKey } = await prisma.organization.findUniqueOrThrow({ where: { id: org.orgId } });
+  const publicApi = await request.newContext({
+    baseURL: `${BACKEND_URL}/public/v1/`,
+    extraHTTPHeaders: { authorization: apiKey! },
+  });
+  try {
+    const dashboard = await org.api.get(connect('linkedin-page'));
+    expect(dashboard.status(), await dashboard.text()).toBe(403);
+    expect(await dashboard.text()).toContain("isn't available yet");
+    expect((await publicApi.get('social/linkedin-page')).status()).toBe(403);
+    expect((await publicApi.get('social/linkedin-page?refresh=not-my-page')).status()).toBe(404);
+
+    // A state minted for an offered platform cannot finish one that is not.
+    const minted = await org.api.get(connect('mastodon'));
+    expect(minted.status()).toBe(200);
+    const state = new URL((await minted.json()).url).searchParams.get('state');
+    const callback = await org.api.post('/integrations/social-connect/linkedin-page', {
+      data: { state, code: 'x', timezone: '0' },
+    });
+    expect(callback.status(), await callback.text()).toBe(403);
+
+    await prisma.integration.create({
+      data: {
+        id: `stack-li-page-${org.orgId}`,
+        internalId: `li-page-${org.orgId}`,
+        organizationId: org.orgId,
+        name: 'Page connected earlier',
+        providerIdentifier: 'linkedin-page',
+        type: 'social',
+        token: 'fake-token',
+        profile: 'page',
+      },
+    });
+    const reconnect = await org.api.get(`${connect('linkedin-page')}?refresh=li-page-${org.orgId}`);
+    expect(reconnect.status(), await reconnect.text()).toBe(200);
+    expect((await publicApi.get(`social/linkedin-page?refresh=li-page-${org.orgId}`)).status()).toBe(200);
+  } finally {
+    await publicApi.dispose();
+    await prisma.integration.deleteMany({ where: { organizationId: org.orgId } });
+    await org.remove();
+    await prisma.$disconnect();
+  }
 });
