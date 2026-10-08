@@ -270,7 +270,9 @@ export class MastodonProvider extends SocialAbstract implements SocialProvider {
   }
 
   // Statistics of one post (status) from the instance: favourites, boosts
-  // and replies.
+  // and replies. Read without the channel's token: Postra asks Mastodon only
+  // for write scopes, and a GET with that token is refused (read:statuses),
+  // while a public or unlisted status reads without one.
   async postAnalytics(
     integrationId: string,
     accessToken: string,
@@ -283,10 +285,7 @@ export class MastodonProvider extends SocialAbstract implements SocialProvider {
         `${
           process.env.MASTODON_URL || 'https://mastodon.social'
         }/api/v1/statuses/${encodeURIComponent(postId)}`,
-        {
-          headers: { Authorization: `Bearer ${accessToken}` },
-          signal: AbortSignal.timeout(10_000),
-        }
+        { signal: AbortSignal.timeout(10_000) }
       );
       if (!res.ok) {
         return [];
