@@ -125,7 +125,9 @@ export const PlugPop: FC<{
     mode: 'all',
   });
   const submit: SubmitHandler<any> = useCallback(async (data) => {
-    await fetch(`/integrations/${settings.providerId}/plugs`, {
+    // A failed save used to report success (or nothing at all when the request
+    // was refused) and the plug never ran.
+    const saved = await fetch(`/integrations/${settings.providerId}/plugs`, {
       method: 'POST',
       body: JSON.stringify({
         func: plug.methodName,
@@ -134,8 +136,17 @@ export const PlugPop: FC<{
           value: data[key],
         })),
       }),
-    });
-    toaster.show(t('plugin_updated', 'Plugin updated'), 'success');
+    })
+      .then((res) => res.ok)
+      .catch(() => false);
+    if (!saved) {
+      toaster.show(
+        t('plug_not_saved', 'Could not save the plug. Please try again.'),
+        'warning'
+      );
+      return;
+    }
+    toaster.show(t('plugin_updated', 'Plug updated'), 'success');
     closeAll();
   }, [t]);
 

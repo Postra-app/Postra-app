@@ -101,7 +101,7 @@
   "login_register_to_add_comments": "Zaloguj się / Zarejestruj się, aby móc dodawać komentarze",
   "status": "Status:",
   "there_are_not_plugs_matching_your_channels": "Brak wtyczek pasujących do Twoich kanałów",
-  "you_have_to_add_x_or_linkedin_or_threads": "Musisz dodać: X lub LinkedIn lub Threads",
+  "you_have_to_add_x_or_linkedin_or_threads": "Musisz dodać: X lub Bluesky lub Threads",
   "go_to_the_calendar_to_add_channels": "Przejdź do kalendarza, aby dodać kanały",
   "channels": "Kanały",
   "activate": "Aktywuj",
@@ -1556,5 +1556,6 @@
   "billing_status_paid": "Opłacona",
   "billing_status_void": "Anulowana",
   "billing_view_invoice": "Zobacz fakturę",
-  "remote_server_oauth_hint": "Dodaj ten adres jako własny konektor w ChatGPT albo Claude. Poproszą o zalogowanie do Postry i zatwierdzenie asystenta. Klucz API nie jest potrzebny."
+  "remote_server_oauth_hint": "Dodaj ten adres jako własny konektor w ChatGPT albo Claude. Poproszą o zalogowanie do Postry i zatwierdzenie asystenta. Klucz API nie jest potrzebny.",
+  "plug_not_saved": "Nie udało się zapisać wtyczki. Spróbuj ponownie."
 }
