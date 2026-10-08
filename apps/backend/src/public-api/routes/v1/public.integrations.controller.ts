@@ -26,6 +26,8 @@ import { FileInterceptor } from '@nestjs/platform-express';
 import { UploadFactory } from '@gitroom/nestjs-libraries/upload/upload.factory';
 import { MediaService } from '@gitroom/nestjs-libraries/database/prisma/media/media.service';
 import { GetPostsDto } from '@gitroom/nestjs-libraries/dtos/posts/get.posts.dto';
+import { GetMediaDto } from '@gitroom/nestjs-libraries/dtos/media/get.media.dto';
+import { toPublicMedia } from '@gitroom/nestjs-libraries/database/prisma/media/public.media';
 import { ChangePostStatusDto } from '@gitroom/nestjs-libraries/dtos/posts/change.post.status.dto';
 import {
   AuthorizationActions,
@@ -157,6 +159,22 @@ export class PublicIntegrationsController {
   ) {
     Sentry.metrics.count('public_api-request', 1);
     return { date: await this._postsService.findFreeDateTime(org.id, id) };
+  }
+
+  // The organisation's media library, newest first, 18 per page (upstream
+  // 5cd4de2f + 063ee509, 4be38e1a: validated page, media fields only).
+  @Get('/media')
+  async getMedia(
+    @GetOrgFromRequest() org: Organization,
+    @Query() query: GetMediaDto
+  ) {
+    Sentry.metrics.count('public_api-request', 1);
+    const { pages, results } = await this._mediaService.getMedia(
+      org.id,
+      query.page ?? 1,
+      query.search
+    );
+    return { pages, results: results.map(toPublicMedia) };
   }
 
   @Get('/posts')

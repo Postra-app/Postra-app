@@ -29,6 +29,7 @@ The second argument is the API base URL. It defaults to
 | `post(posts)` | `POST /public/v1/posts` | Schedule, publish now or save a draft |
 | `postList(filters)` | `GET /public/v1/posts` | Posts between `startDate` and `endDate` |
 | `upload(file, extension)` | `POST /public/v1/upload` | Upload an image or MP4 to the media library |
+| `mediaList({ page, search })` | `GET /public/v1/media` | The media library, newest first, 18 per page; reuse a `path` instead of uploading again |
 | `deletePost(id)` | `DELETE /public/v1/posts/:id` | Delete a post and its thread |
 
 A response other than 2xx throws `PostraError` with `status` and the API's

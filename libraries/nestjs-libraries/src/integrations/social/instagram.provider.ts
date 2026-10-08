@@ -117,6 +117,15 @@ export class InstagramProvider
         value: 'An unknown error occurred, please try again later',
       };
     }
+    // Instagram caps how many Trial Reels an account may publish (upstream
+    // 66d21018).
+    if (body.indexOf('2207078') > -1) {
+      return {
+        type: 'bad-body' as const,
+        value:
+          'Instagram Trial Reel publish limit reached for this account, please try again later or publish the post as a regular Reel',
+      };
+    }
     if (body.indexOf('2207081') > -1) {
       return {
         type: 'bad-body' as const,

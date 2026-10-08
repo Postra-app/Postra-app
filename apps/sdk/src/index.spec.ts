@@ -62,4 +62,11 @@ describe('@postra/node', () => {
     expect(calls[0].url).toBe('https://app.postra.pl/api/public/v1/posts/a%2Fb');
     expect(calls[0].init.method).toBe('DELETE');
   });
+  it('lists the media library with page and search in the query', async () => {
+    next = () => respond(200, '{"pages":1,"results":[]}');
+    await new Postra('key').mediaList({ page: 2, search: 'logo' });
+    expect(calls[0].url).toMatch(/\/public\/v1\/media\?page=2&search=logo$/);
+    await new Postra('key').mediaList();
+    expect(calls[1].url).toMatch(/\/public\/v1\/media\?$/);
+  });
 });

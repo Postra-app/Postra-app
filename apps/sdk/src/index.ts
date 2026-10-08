@@ -87,6 +87,12 @@ export default class Postra {
     return this.request('/upload', { method: 'POST', body: formData });
   }
 
+  // The media library, newest first, 18 per page; reuse a path as a post's
+  // image instead of uploading the file again.
+  mediaList(filters: { page?: number; search?: string } = {}) {
+    return this.request(`/media?${toQueryString(filters)}`);
+  }
+
   integrations() {
     return this.request('/integrations');
   }

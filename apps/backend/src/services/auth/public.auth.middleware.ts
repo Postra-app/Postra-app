@@ -1,3 +1,4 @@
+import { lacksSubscription } from '@gitroom/nestjs-libraries/database/prisma/subscriptions/lacks.subscription';
 import { HttpStatus, Injectable, NestMiddleware } from '@nestjs/common';
 import { Request, Response, NextFunction } from 'express';
 import { OrganizationService } from '@gitroom/nestjs-libraries/database/prisma/organizations/organization.service';
@@ -28,7 +29,7 @@ export class PublicAuthMiddleware implements NestMiddleware {
         }
 
         const org = authorization.organization;
-        if (!!process.env.STRIPE_SECRET_KEY && !org.subscription) {
+        if (lacksSubscription(org)) {
           res
             .status(HttpStatus.UNAUTHORIZED)
             .json({ msg: 'No subscription found' });
@@ -46,7 +47,7 @@ export class PublicAuthMiddleware implements NestMiddleware {
           return;
         }
 
-        if (!!process.env.STRIPE_SECRET_KEY && !org.subscription) {
+        if (lacksSubscription(org)) {
           res
             .status(HttpStatus.UNAUTHORIZED)
             .json({ msg: 'No subscription found' });
