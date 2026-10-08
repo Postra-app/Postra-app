@@ -60,10 +60,11 @@ test('a downgrade keeps the oldest feeds and webhooks within the new plan, and t
     expect((await target.api.post(`/autopost/${first.id}/active`, { data: { active: false } })).status()).toBe(201);
     expect((await target.api.post(`/autopost/${fourth.id}/active`, { data: { active: true } })).status()).toBe(201);
 
-    // Pro -> Starter: no feeds, 2 webhooks; the newer three are paused.
+    // Pro -> Starter: 2 feeds (the oldest two still running: feed 0 was
+    // switched off above) and 2 webhooks; the newer three are paused.
     const toStarter = await staff.api.post('/admin/comp-subscription', { data: { organizationId: target.orgId, subscription: 'STANDARD' } });
     expect(toStarter.status(), await toStarter.text()).toBe(201);
-    expect(await feeds()).toEqual([false, false, false, false, false]);
+    expect(await feeds()).toEqual([false, true, true, false, false]);
     const hooks = ((await (await target.api.get('/webhooks')).json()) as { name: string; paused: boolean }[]).map(
       (h) => `${h.name}:${h.paused}`
     );
