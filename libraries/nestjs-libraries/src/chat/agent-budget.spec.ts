@@ -1,5 +1,7 @@
 import {
+  AGENT_DEFAULT_MODEL,
   AGENT_MAX_STEPS,
+  agentModelId,
   BUDGET_CHECK_EVERY_STEPS,
   shouldStopForBudget,
 } from '@gitroom/nestjs-libraries/chat/agent-budget';
@@ -64,5 +66,17 @@ describe('agent budget stop condition', () => {
   it('bounds the run at a number a real conversation stays under', () => {
     expect(AGENT_MAX_STEPS).toBeGreaterThanOrEqual(10);
     expect(AGENT_MAX_STEPS).toBeLessThanOrEqual(50);
+  });
+});
+
+describe('agent model', () => {
+  it('takes AGENT_MODEL when it is set, to try a model without a release', () => {
+    expect(agentModelId('gpt-5.4-mini')).toBe('gpt-5.4-mini');
+    expect(agentModelId('  gpt-5.6-luna ')).toBe('gpt-5.6-luna');
+  });
+
+  it('falls back to the default when AGENT_MODEL is unset or blank', () => {
+    expect(agentModelId(undefined)).toBe(AGENT_DEFAULT_MODEL);
+    expect(agentModelId('')).toBe(AGENT_DEFAULT_MODEL);
   });
 });
