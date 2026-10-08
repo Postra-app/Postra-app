@@ -48,10 +48,16 @@ export class IntegrationService {
     private _auditService: AuditService
   ) {}
 
-  async changeActiveCron(orgId: string) {
+  // Stops the organisation's Auto Post feeds, all of them or all but the
+  // `keep` oldest running ones (a downgrade to a plan with fewer feeds,
+  // E2E-07-33).
+  async changeActiveCron(orgId: string, keep = 0) {
     const data = await this._autopostsRepository.getAutoposts(orgId);
+    const running = data
+      .filter((f) => f.active)
+      .sort((a, b) => +a.createdAt - +b.createdAt);
 
-    for (const item of data.filter((f) => f.active)) {
+    for (const item of running.slice(keep)) {
       try {
         await this._temporalService.terminateWorkflow(`autopost-${item.id}`);
       } catch (err) {}

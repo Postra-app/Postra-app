@@ -282,10 +282,13 @@ export class SubscriptionService {
     );
 
     // Every plan without Auto Post stops the feeds, not only FREE: a Pro org
-    // moving to Starter kept generating and publishing (BILL-7).
-    if (!to.autoPost) {
-      await this._integrationService.changeActiveCron(organizationId);
-    }
+    // moving to Starter kept generating and publishing (BILL-7). A plan with
+    // fewer feeds keeps the oldest running ones (E2E-07-33). Webhooks over the
+    // new limit are paused where they are delivered (WebhooksService).
+    await this._integrationService.changeActiveCron(
+      organizationId,
+      to.autoPost ? to.autoPostLimit : 0
+    );
   }
 
   async modifySubscription(

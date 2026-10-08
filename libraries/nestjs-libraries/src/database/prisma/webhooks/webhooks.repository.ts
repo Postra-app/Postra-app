@@ -6,13 +6,15 @@ import { BadRequestException, Injectable } from '@nestjs/common';
 import { WebhooksDto } from '@gitroom/nestjs-libraries/dtos/webhooks/webhooks.dto';
 import { newWebhookSecret } from '@gitroom/nestjs-libraries/dtos/webhooks/webhook.signature';
 import { AuthService } from '@gitroom/helpers/auth/auth.service';
+import { pricing } from '@gitroom/nestjs-libraries/database/prisma/subscriptions/pricing';
 
 @Injectable()
 export class WebhooksRepository {
   constructor(
     private _webhooks: PrismaRepository<'webhooks'>,
     private _integration: PrismaRepository<'integration'>,
-    private _transaction: PrismaTransaction
+    private _transaction: PrismaTransaction,
+    private _subscription: PrismaRepository<'subscription'>
   ) {}
 
   getTotal(orgId: string) {
@@ -33,6 +35,8 @@ export class WebhooksRepository {
         deletedAt: null,
       },
       omit: { secret: !withSecret },
+      // Oldest first: over a plan's limit the newest ones are paused.
+      orderBy: { createdAt: 'asc' },
       include: {
         integrations: {
           select: {
@@ -47,6 +51,21 @@ export class WebhooksRepository {
         },
       },
     });
+  }
+
+  // How many of the organisation's webhooks its plan delivers to. Checked
+  // where they are delivered, not only when one is added: after a downgrade
+  // (even to FREE, 0) every webhook kept receiving (E2E-07-33). Without
+  // billing there is no limit.
+  async getDeliveryLimit(orgId: string) {
+    if (!process.env.STRIPE_PUBLISHABLE_KEY) {
+      return Infinity;
+    }
+    const subscription = await this._subscription.model.subscription.findFirst({
+      where: { organizationId: orgId, deletedAt: null },
+      select: { subscriptionTier: true },
+    });
+    return pricing[subscription?.subscriptionTier || 'FREE']?.webhooks ?? 0;
   }
 
   // The webhook's signing secret, decrypted; made now for a webhook created

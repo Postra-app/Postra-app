@@ -11,15 +11,22 @@ export class WebhooksService {
     return this._webhooksRepository.getTotal(orgId);
   }
 
-  getWebhooks(orgId: string) {
-    return this._webhooksRepository.getWebhooks(orgId);
+  // `paused`: over the plan's limit, so not delivered to (the newest ones).
+  async getWebhooks(orgId: string) {
+    const limit = await this._webhooksRepository.getDeliveryLimit(orgId);
+    return (await this._webhooksRepository.getWebhooks(orgId)).map(
+      (webhook, index) => ({ ...webhook, paused: index >= limit })
+    );
   }
 
-  // For delivery: each webhook with its signing secret, decrypted (made now
-  // for a webhook that has none yet).
+  // For delivery: the webhooks the plan covers (oldest first), each with its
+  // signing secret, decrypted (made now for a webhook that has none yet).
   async getWebhooksForDelivery(orgId: string) {
+    const limit = await this._webhooksRepository.getDeliveryLimit(orgId);
     return Promise.all(
-      (await this._webhooksRepository.getWebhooks(orgId, true)).map(
+      (await this._webhooksRepository.getWebhooks(orgId, true))
+        .slice(0, limit)
+        .map(
         async ({ secret, ...webhook }) => ({
           ...webhook,
           secret: secret

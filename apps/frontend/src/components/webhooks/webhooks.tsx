@@ -91,7 +91,19 @@ export const Webhooks: FC = () => {
               <div>{t('delete', 'Delete')}</div>
               {data?.map((p: any) => (
                 <Fragment key={p.id}>
-                  <div className="flex flex-col justify-center">{p.name}</div>
+                  <div className="flex flex-col justify-center">
+                    {p.name}
+                    {/* Over the plan's limit: not delivered to until there
+                        is room (an upgrade, or an older one deleted). */}
+                    {p.paused && (
+                      <span className="text-[12px] text-amber-300">
+                        {t(
+                          'webhook_paused_over_limit',
+                          "Paused — over your plan's webhook limit"
+                        )}
+                      </span>
+                    )}
+                  </div>
                   <div className="flex flex-col justify-center">{p.url}</div>
                   <div className="flex flex-col justify-center">
                     <div>

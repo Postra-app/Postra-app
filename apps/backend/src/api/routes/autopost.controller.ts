@@ -1,3 +1,4 @@
+import { pricing } from '@gitroom/nestjs-libraries/database/prisma/subscriptions/pricing';
 import { Throttle } from '@nestjs/throttler';
 import { ioRedis } from '@gitroom/nestjs-libraries/redis/redis.service';
 import {
@@ -89,6 +90,21 @@ export class AutopostController {
     // allowed, so a plan change never leaves a feed nobody can stop.
     if (active) {
       await this.requireAutopost(org, AuthorizationActions.Update);
+      // And only up to the plan's number of running feeds: the ones a
+      // downgrade switched off could all be switched on again (E2E-07-33).
+      if (process.env.STRIPE_PUBLISHABLE_KEY) {
+        // @ts-ignore subscription is attached to the org by the auth middleware
+        const tier = org?.subscription?.subscriptionTier || 'FREE';
+        const limit = pricing[tier]?.autoPostLimit ?? 0;
+        const running = (await this._autopostsService.getAutoposts(org.id))
+          .filter((f) => f.active && f.id !== id).length;
+        if (running >= limit) {
+          throw new SubscriptionException({
+            section: Sections.AUTOPOST,
+            action: AuthorizationActions.Create,
+          });
+        }
+      }
     }
     return this._autopostsService.changeActive(org.id, id, active);
   }
