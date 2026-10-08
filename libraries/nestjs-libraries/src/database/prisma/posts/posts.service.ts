@@ -1320,7 +1320,7 @@ export class PostsService {
             ? dayjs().format('YYYY-MM-DDTHH:mm:00')
             : post.date || body.date,
           post,
-          body.tags,
+          post.tags || body.tags,
           creationMethod,
           body.inter,
           tx,

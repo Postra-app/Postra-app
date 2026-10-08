@@ -202,13 +202,13 @@ export class PublicIntegrationsController {
     const body = await this._postsService.mapTypeToPost(
       {
         ...rawBody,
-        // A date and a type per channel are editor features (a post saved
-        // for several channels, edited later); the public API keeps one of
-        // each per request.
+        // A date, a type and tags per channel are editor features (a post
+        // saved for several channels, edited later); the public API keeps one
+        // of each per request.
         posts: Array.isArray(rawBody?.posts)
           ? rawBody.posts.map((post: any) => {
               if (!post || typeof post !== 'object') return post;
-              const { date, type, ...rest } = post;
+              const { date, type, tags, ...rest } = post;
               return rest;
             })
           : rawBody?.posts,

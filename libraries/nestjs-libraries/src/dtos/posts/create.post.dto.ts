@@ -65,6 +65,16 @@ export const saveTypeOfPost = (
   post: { type?: unknown } | undefined
 ) => (typeof post?.type === 'string' ? post.type : body?.type);
 
+class Tags {
+  @IsDefined()
+  @IsString()
+  value: string;
+
+  @IsDefined()
+  @IsString()
+  label: string;
+}
+
 export class Post {
   // Defaults to CreatePostDto.type (see saveTypeOfPost); the @ValidateIf below
   // reads it to skip settings validation for drafts. Must stay decorated or
@@ -98,6 +108,15 @@ export class Post {
   @IsDateString()
   date?: string;
 
+  // Tags of their own, for the same reason: the editor saves the other
+  // channels of a post with the tags they have unless the tags were changed.
+  @IsOptional()
+  @IsArray()
+  @ArrayMaxSize(100)
+  @Type(() => Tags)
+  @ValidateNested({ each: true })
+  tags?: Tags[];
+
   @ValidateIf((o) => o.type !== 'draft')
   @ValidateNested()
   @Type(() => EmptySettings, {
@@ -110,15 +129,6 @@ export class Post {
   settings: AllProvidersSettings;
 }
 
-class Tags {
-  @IsDefined()
-  @IsString()
-  value: string;
-
-  @IsDefined()
-  @IsString()
-  label: string;
-}
 
 export class CreatePostDto {
   @IsDefined()

@@ -441,8 +441,15 @@ export class PostsRepository {
         deletedAt: null,
         integration: { deletedAt: null },
       },
+      // With their tags, which the editor saves them with (Codex).
       include: {
         integration: true,
+        tags: {
+          where: { tag: { deletedAt: null } },
+          select: {
+            tag: true,
+          },
+        },
       },
       orderBy: {
         createdAt: 'asc',

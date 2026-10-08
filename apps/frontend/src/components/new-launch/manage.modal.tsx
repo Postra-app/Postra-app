@@ -753,12 +753,31 @@ export const ManageModal: FC<AddEditModalProps> = (props) => {
           } else {
             // One request for every channel, each with the type it is saved
             // as, so a refusal on one channel leaves the others unsaved too.
+            // The other channels keep their own tags unless the tags were
+            // changed here (they all got the open channel's, Codex).
+            const tagsOf = (p: any) =>
+              (p?.posts?.[0]?.tags || []).map((t: any) => ({
+                label: t.tag.name,
+                value: t.tag.name,
+              }));
+            const names = (list: { value: string }[]) =>
+              JSON.stringify(list.map((t) => t.value).sort());
+            const tagsKept = names(tags) === names(tagsOf(existingData));
             const request: Record<string, any> = {
               ...data,
-              posts: posts.map((p: any) => ({
-                ...p,
-                type: saveTypeOf(p.integration.id),
-              })),
+              posts: posts.map((p: any) => {
+                const loaded = existingPosts.find(
+                  (e) => e.integration === p.integration.id
+                );
+                return {
+                  ...p,
+                  type: saveTypeOf(p.integration.id),
+                  // The server post payload isn't typed with tags.
+                  ...(tagsKept && (loaded?.posts?.[0] as any)?.tags
+                    ? { tags: tagsOf(loaded) }
+                    : {}),
+                };
+              }),
             };
             let saveResponse = await fetch('/posts', {
               method: 'POST',
