@@ -59,12 +59,23 @@ export const startMcp = async (app: INestApplication) => {
         resolve(true);
       })
     );
-  // Refuses the call when the month's fair use is spent; otherwise counts
-  // each `ask_postra` in it as one assistant message.
-  const agentAllowanceSpent = async (auth: any, body: unknown) => {
+  // Every ask_postra is a whole agent run, and the rate limit below counts
+  // requests, not the calls batched into one (CodeQL on #348).
+  const MAX_AGENT_CALLS_PER_REQUEST = 5;
+  const AGENT_BATCH_LIMIT = `Ask at most ${MAX_AGENT_CALLS_PER_REQUEST} questions in one request.`;
+
+  // The refusal for the request, if any: a batch over the cap, or the
+  // month's fair use spent. Otherwise its questions are counted, in one write.
+  const agentRunRefusal = async (
+    auth: any,
+    body: unknown
+  ): Promise<string | null> => {
     const calls = agentCalls(body).length;
     if (!calls) {
-      return false;
+      return null;
+    }
+    if (calls > MAX_AGENT_CALLS_PER_REQUEST) {
+      return AGENT_BATCH_LIMIT;
     }
     if (process.env.STRIPE_PUBLISHABLE_KEY) {
       try {
@@ -73,22 +84,20 @@ export const startMcp = async (app: INestApplication) => {
           'ai_agent'
         );
         if (credits <= 0) {
-          return true;
+          return AGENT_LIMIT;
         }
       } catch {
         // Same as the run's own check: never refuse because a check failed.
       }
     }
-    for (let i = 0; i < calls; i++) {
-      recordAgentMessage(auth?.id);
-    }
-    return false;
+    recordAgentMessage(auth?.id, calls);
+    return null;
   };
-  const refuseAgentRun = (req: Request, res: Response) => {
+  const refuseAgentRun = (req: Request, res: Response, text: string) => {
     const answers = agentCalls(req.body).map((m: any) => ({
       jsonrpc: '2.0',
       id: m.id,
-      result: { content: [{ type: 'text', text: AGENT_LIMIT }], isError: true },
+      result: { content: [{ type: 'text', text }], isError: true },
     }));
     res.status(200).json(Array.isArray(req.body) ? answers : answers[0]);
   };
@@ -224,8 +233,9 @@ export const startMcp = async (app: INestApplication) => {
     if (!(await readBody(req, res))) {
       return;
     }
-    if (await agentAllowanceSpent(auth, req.body)) {
-      refuseAgentRun(req, res);
+    const refusal = await agentRunRefusal(auth, req.body);
+    if (refusal) {
+      refuseAgentRun(req, res, refusal);
       return;
     }
 
@@ -292,8 +302,9 @@ export const startMcp = async (app: INestApplication) => {
       return;
     }
     // @ts-ignore
-    if (await agentAllowanceSpent(req.auth, req.body)) {
-      refuseAgentRun(req, res);
+    const refusal = await agentRunRefusal(req.auth, req.body);
+    if (refusal) {
+      refuseAgentRun(req, res, refusal);
       return;
     }
 
@@ -352,8 +363,9 @@ export const startMcp = async (app: INestApplication) => {
       return;
     }
     // @ts-ignore
-    if (await agentAllowanceSpent(req.auth, req.body)) {
-      refuseAgentRun(req, res);
+    const refusal = await agentRunRefusal(req.auth, req.body);
+    if (refusal) {
+      refuseAgentRun(req, res, refusal);
       return;
     }
 
@@ -420,8 +432,9 @@ export const startMcp = async (app: INestApplication) => {
       return;
     }
     // @ts-ignore
-    if (await agentAllowanceSpent(req.auth, req.body)) {
-      res.status(402).send(AGENT_LIMIT);
+    const refusal = await agentRunRefusal(req.auth, req.body);
+    if (refusal) {
+      res.status(refusal === AGENT_LIMIT ? 402 : 400).send(refusal);
       return;
     }
 

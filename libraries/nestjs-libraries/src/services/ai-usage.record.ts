@@ -52,11 +52,14 @@ export const recordAiUsage = (event: AiUsageEvent) => {
 
 // One question to the assistant (chat or MCP ask_postra): what the monthly
 // fair use (pricing.agent_messages) counts.
-export const recordAgentMessage = (organizationId?: string | null) =>
+export const recordAgentMessage = (
+  organizationId?: string | null,
+  questions = 1
+) =>
   recordAiUsage({
     organizationId: organizationId ?? null,
     engine: 'agent',
     model: 'message',
     unit: 'messages',
-    inputAmount: 1,
+    inputAmount: questions,
   });

@@ -29,15 +29,18 @@ export class AiUsageService {
 
   // Questions asked to the assistant since `from` — the unit of its monthly
   // fair use (pricing.agent_messages).
-  agentMessagesSince(organizationId: string, from: Date) {
-    return this._prisma.aiUsage.count({
+  async agentMessagesSince(organizationId: string, from: Date) {
+    // A row can count several questions (an MCP batch).
+    const sum = await this._prisma.aiUsage.aggregate({
       where: {
         organizationId,
         engine: 'agent',
         unit: 'messages',
         createdAt: { gte: from },
       },
+      _sum: { inputAmount: true },
     });
+    return sum._sum.inputAmount ?? 0;
   }
 
   summary(from: Date, to: Date) {
