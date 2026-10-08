@@ -96,11 +96,19 @@ export default function OAuthAuthorizePage() {
 
   const changeOrg = useCallback(async (id: string) => {
     setSubmitting(true);
-    await fetch('/user/change-org', {
-      method: 'POST',
-      body: JSON.stringify({ id }),
-    });
-    window.location.reload();
+    try {
+      const res = await fetch('/user/change-org', {
+        method: 'POST',
+        body: JSON.stringify({ id }),
+      });
+      if (res.ok) {
+        window.location.reload();
+        return;
+      }
+    } catch {
+      // A network error or a handled 402: stay on the screen, still usable.
+    }
+    setSubmitting(false);
   }, []);
 
   const currentOrg = orgs.find((o) => o.id === orgId) || (orgs.length === 1 ? orgs[0] : undefined);
