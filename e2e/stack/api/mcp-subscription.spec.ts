@@ -26,10 +26,7 @@ test('no subscription: MCP and the public API refuse the key', async () => {
   try {
     const bearer = await api.post('/mcp', { headers: mcpHeaders({ authorization: `Bearer ${apiKey}` }), data: init });
     expect(bearer.status(), 'POST /mcp').toBe(401);
-    const inPath = await api.post(`/mcp/${apiKey}`, { headers: mcpHeaders(), data: init });
-    expect(inPath.status(), 'POST /mcp/:key').toBe(401);
-    const sse = await api.get(`/sse/${apiKey}`, { headers: { accept: 'text/event-stream' }, timeout: 10_000 });
-    expect(sse.status(), 'GET /sse/:key').toBe(401);
+    // The key-in-path routes are gone (mcp-key-in-path.spec.ts).
     const rest = await api.get('/public/v1/is-connected', { headers: { authorization: apiKey! } });
     expect(rest.status(), 'public API').toBe(401);
   } finally {
