@@ -33,6 +33,7 @@ test('Help explains the Developers tab, the API, SDK, MCP, webhooks and their sa
     'How do I connect an AI assistant (MCP)?',
     'What do webhooks do?',
     'Are the API, MCP and webhooks safe to use?',
+    'How do I check that a webhook came from Postra?',
   ]) {
     await expect(page.getByText(question, { exact: true }), question).toBeAttached();
   }

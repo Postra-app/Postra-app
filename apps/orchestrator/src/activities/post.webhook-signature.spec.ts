@@ -12,7 +12,7 @@ import { verifyWebhookSignature } from '@gitroom/nestjs-libraries/dtos/webhooks/
 // E2E-08-49: deliveries carried no signature, so a receiver could not tell a
 // request from Postra from one anybody sent to its address.
 const post = [{ id: 'p1', content: 'Hello', integration: { id: 'i1', name: 'Channel' } }];
-const webhooks = [
+const webhooks: { id: string; url: string; integrations: unknown[]; secret: string }[] = [
   { id: 'w1', url: 'https://one.example/hook', integrations: [], secret: 'whsec_one' },
   { id: 'w2', url: 'https://two.example/hook', integrations: [], secret: 'whsec_two' },
 ];

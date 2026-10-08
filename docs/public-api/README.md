@@ -193,3 +193,30 @@ The same credentials work with Postra's MCP server at
 `https://app.postra.pl/api/mcp`. MCP clients send them as
 `Authorization: Bearer <credential>`. **Settings → Developers → Access**
 generates the configuration for common clients.
+
+## Webhooks
+
+Settings → Webhooks sends a `POST` with a JSON body to your HTTPS address each time a post publishes: an array of the published posts (`id`, `content`, `publishDate`, `releaseURL`, `state`, and the channel's `id`, `name`, `providerIdentifier`, `picture`, `type`). A receiver that answers 429, a 5xx or nothing within 5 seconds gets it again, up to three attempts.
+
+Every delivery is signed with the webhook's own secret (Settings → Webhooks → Edit → Signing secret, owners and admins only; `GET /webhooks/:id/secret` in the app's API). Two headers:
+
+- `Postra-Webhook-Id` — which webhook sent it, if one address receives several.
+- `Postra-Signature: t=<unix seconds>,v1=<hex>` — `v1` is the HMAC-SHA256 of `<t>.<raw body>` with the secret. Each retry is signed again with its own time.
+
+Check it against the body exactly as received (before any JSON parsing), and refuse old timestamps so a captured delivery cannot be replayed:
+
+```js
+import { createHmac, timingSafeEqual } from 'node:crypto';
+
+export function verifyPostraWebhook(secret, rawBody, header, toleranceSeconds = 300) {
+  const parts = Object.fromEntries(header.split(',').map((p) => p.split('=', 2)));
+  const t = Number(parts.t);
+  if (!parts.v1 || !Number.isInteger(t)) return false;
+  if (Math.abs(Date.now() / 1000 - t) > toleranceSeconds) return false;
+  const expected = createHmac('sha256', secret).update(`${t}.${rawBody}`).digest();
+  const given = Buffer.from(parts.v1, 'hex');
+  return given.length === expected.length && timingSafeEqual(given, expected);
+}
+```
+
+A new secret (Generate a new secret, or `POST /webhooks/:id/secret`) replaces the old one at once. Send Test on a saved webhook is signed the same way, so it can be used to try the check.

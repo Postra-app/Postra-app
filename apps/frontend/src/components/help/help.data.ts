@@ -554,8 +554,13 @@ export const FAQ_ITEMS: FaqItem[] = [
       'They tell your other tools when a post goes out. In Settings → Webhooks add an https:// address and choose all channels or some of them; each time a post publishes, Postra sends that address a JSON message with the post\'s id, text, publish date, the link to the published post and the channel\'s name and platform. Use it to post a note in Slack, add a row to a client report or update your CRM. If your server is briefly down, Postra tries again up to three times. Addresses inside private networks are refused.',
   },
   {
+    question: 'How do I check that a webhook came from Postra?',
+    answer:
+      'Every message is signed. Each webhook has its own signing secret (Settings → Webhooks → Edit → Signing secret; only owners and admins can see it). The Postra-Signature header looks like t=1760000000,v1=5f2b…: t is the time it was sent, v1 an HMAC-SHA256 of the time, a dot and the raw request body, made with the secret. On your server, compute the same HMAC over the body exactly as received, compare it with v1, and refuse messages older than five minutes. If the secret leaks, generate a new one there — the old one stops working at once. Send Test on a saved webhook is signed the same way.',
+  },
+  {
     question: 'Are the API, MCP and webhooks safe to use?',
     answer:
-      'Your API key gives full access to your workspace, so treat it like a password: keep it on your own server or in your AI tool\'s settings, never in a website\'s code or a public repository. If it ever leaks, press Rotate in Settings → Developers — the old key stops working at once. Only workspace owners and admins can see the key. Apps you signed in to with your Postra account are listed in Settings → Approved Apps, where you can revoke them. Webhook messages carry no passwords or channel tokens, only the post details listed above.',
+      'Your API key gives full access to your workspace, so treat it like a password: keep it on your own server or in your AI tool\'s settings, never in a website\'s code or a public repository. If it ever leaks, press Rotate in Settings → Developers — the old key stops working at once. Only workspace owners and admins can see the key. Apps you signed in to with your Postra account are listed in Settings → Approved Apps, where you can revoke them. Webhook messages carry no passwords or channel tokens, only the post details listed above, and each is signed so your server can tell it came from Postra.',
   },
 ];
