@@ -34,6 +34,34 @@ export class CompressionWrapper<M = any, B = any> extends Compressor<any, any> {
   }
 }
 
+// Shown over the upload progress bar while a file is uploading: a big video
+// picked by mistake could not be stopped (E2E-06-36).
+export const UploadCancelButton = ({ uppy }: { uppy: Uppy<any, any> }) => {
+  const t = useT();
+  const [uploading, setUploading] = useState(false);
+  useEffect(() => {
+    const update = () =>
+      setUploading(Object.keys(uppy.getState().currentUploads ?? {}).length > 0);
+    uppy.on('state-update', update);
+    update();
+    return () => {
+      uppy.off('state-update', update);
+    };
+  }, [uppy]);
+  if (!uploading) {
+    return null;
+  }
+  return (
+    <button
+      type="button"
+      onClick={() => uppy.cancelAll()}
+      className="pointer-events-auto absolute end-[8px] top-[9px] z-[2] h-[28px] px-[12px] rounded-[6px] text-[13px] text-white bg-[rgba(10,14,26,0.9)] border border-white/20 hover:bg-white/10"
+    >
+      {t('cancel_upload', 'Cancel upload')}
+    </button>
+  );
+};
+
 /** "image/*,video/mp4" in words a person uses. */
 const describeAllowed = (allowed: string) => {
   const kinds = allowed.split(',').map((t) => t.trim());
@@ -232,6 +260,14 @@ export function useUppyUploader(props: {
     });
     uppy2.on('upload-start', () => {
       props.onStart();
+    });
+    // Cancel upload (E2E-06-36): cancelAll() aborts the requests (and an S3
+    // multipart upload through abortMultipartUpload) but fires no 'complete',
+    // so the composer would stay locked.
+    uppy2.on('cancel-all', () => {
+      setLocked(false);
+      props.onEnd();
+      fileOrderIndex = 0;
     });
     uppy2.on('complete', async (result) => {
       const failed = result.failed || [];
