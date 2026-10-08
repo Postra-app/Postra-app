@@ -422,3 +422,35 @@ test('a draft scheduled while it is moved into a full month does not take it pas
     await org.remove();
   }
 });
+
+// Codex: "now" was counted to the second and saved to the minute, so a post
+// sent just after a billing month began counted in the new month and was
+// saved in the full one before it.
+test('"Post now" just after a billing month begins counts where it is saved', async () => {
+  const org = await throwawayOrg(prisma, { tier: 'STANDARD', totalChannels: 3, channels: 1, provider: 'facebook' });
+  const channel = org.channelIds[0];
+  try {
+    // Seconds 2–45 of a minute, so the month begins inside this minute.
+    while (new Date().getSeconds() < 2 || new Date().getSeconds() > 45) {
+      await new Promise((resolve) => setTimeout(resolve, 500));
+    }
+    const begins = new Date(Date.now() - 1_000);
+    const anchor = new Date(begins);
+    anchor.setMonth(anchor.getMonth() - 1);
+    await prisma.subscription.updateMany({ where: { organizationId: org.orgId }, data: { createdAt: anchor } });
+    await fill(org.orgId, channel, LIMIT, new Date(begins.getTime() - 3_600_000), 'QUEUE');
+    const res = await org.api.post('/posts', {
+      data: {
+        type: 'now',
+        shortLink: false,
+        date: new Date().toISOString(),
+        tags: [],
+        posts: [{ integration: { id: channel }, value: [{ content: 'now', image: [] }], settings: { __type: 'facebook' } }],
+      },
+    });
+    expect(res.status(), await res.text()).toBe(402);
+  } finally {
+    await prisma.post.deleteMany({ where: { organizationId: org.orgId } });
+    await org.remove();
+  }
+});

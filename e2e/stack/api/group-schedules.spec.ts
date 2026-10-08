@@ -298,3 +298,43 @@ test('the other channels of a post open with their tags', async () => {
     await org.remove();
   }
 });
+
+// Codex: the editor sent one version for the whole save, the newest of its
+// reads; a post opens with its other channels read separately, so a newer
+// channel hid an older read of another and the save replaced newer work.
+test('each channel of a save is checked against the version it was read at', async () => {
+  const org = await throwawayOrg(prisma, { tier: 'PRO', totalChannels: 5, channels: 2 });
+  try {
+    const [a, b] = org.channelIds;
+    const saved = await mixed(org.api, 'draft', [channelPost(a, 'A first'), channelPost(b, 'B first')]);
+    expect(saved.status(), await saved.text()).toBe(201);
+    const [postA, postB] = (await saved.json()) as { postId: string }[];
+    const row = (id: string) => prisma.post.findUniqueOrThrow({ where: { id } });
+    const readA = (await row(postA.postId)).updatedAt.toISOString();
+    const edit = async (channel: string, id: string, content: string) =>
+      mixed(org.api, 'draft', [{ ...channelPost(channel, content), group: await groupOf(id), value: [{ id, content, image: [] }] }]);
+    // A colleague saves A, then B, after A was read.
+    expect((await edit(a, postA.postId, 'A by a colleague')).status()).toBe(201);
+    expect((await edit(b, postB.postId, 'B by a colleague')).status()).toBe(201);
+    const readB = (await row(postB.postId)).updatedAt.toISOString();
+
+    const res = await org.api.post('/posts', {
+      data: {
+        type: 'draft',
+        shortLink: false,
+        date: inDays(2),
+        tags: [],
+        expectedUpdatedAt: readB,
+        posts: [
+          { ...channelPost(a, 'A stale'), group: await groupOf(postA.postId), expectedUpdatedAt: readA, value: [{ id: postA.postId, content: 'A stale', image: [] }] },
+          { ...channelPost(b, 'B mine'), group: await groupOf(postB.postId), expectedUpdatedAt: readB, value: [{ id: postB.postId, content: 'B mine', image: [] }] },
+        ],
+      },
+    });
+    expect(res.status(), await res.text()).toBe(409);
+    expect((await row(postA.postId)).content).toContain('A by a colleague');
+    expect((await row(postB.postId)).content).toContain('B by a colleague');
+  } finally {
+    await org.remove();
+  }
+});
