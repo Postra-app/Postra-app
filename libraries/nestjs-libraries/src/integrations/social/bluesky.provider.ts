@@ -3,6 +3,7 @@ import { assertSafeInstanceUrl } from '@gitroom/nestjs-libraries/dtos/webhooks/w
 import {
   AuthTokenDetails,
   PostDetails,
+  AnalyticsData,
   PostResponse,
   SocialProvider,
 } from '@gitroom/nestjs-libraries/integrations/social/social.integrations.interface';
@@ -371,6 +372,49 @@ export class BlueskyProvider extends SocialAbstract implements SocialProvider {
     }
 
     return { embed, images };
+  }
+
+  // Statistics of one post from Bluesky's public AppView: likes, reposts,
+  // replies and quotes. A public post needs no sign-in, and postAnalytics is
+  // not given the account's app password anyway.
+  async postAnalytics(
+    integrationId: string,
+    accessToken: string,
+    postId: string,
+    fromDate: number
+  ): Promise<AnalyticsData[]> {
+    const today = dayjs().format('YYYY-MM-DD');
+    try {
+      const res = await fetch(
+        `${
+          process.env.BLUESKY_APPVIEW_URL || 'https://public.api.bsky.app'
+        }/xrpc/app.bsky.feed.getPosts?uris=${encodeURIComponent(postId)}`,
+        { signal: AbortSignal.timeout(10_000) }
+      );
+      if (!res.ok) {
+        return [];
+      }
+      const post = (await res.json())?.posts?.[0];
+      if (!post) {
+        return [];
+      }
+      return (
+        [
+          ['Likes', post.likeCount],
+          ['Reposts', post.repostCount],
+          ['Replies', post.replyCount],
+          ['Quotes', post.quoteCount],
+        ] as const
+      )
+        .filter(([, value]) => typeof value === 'number')
+        .map(([label, value]) => ({
+          label,
+          percentageChange: 0,
+          data: [{ total: String(value), date: today }],
+        }));
+    } catch {
+      return [];
+    }
   }
 
   async post(

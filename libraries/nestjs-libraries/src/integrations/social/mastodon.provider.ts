@@ -1,4 +1,5 @@
 import {
+  AnalyticsData,
   AuthTokenDetails,
   PostDetails,
   PostResponse,
@@ -266,6 +267,47 @@ export class MastodonProvider extends SocialAbstract implements SocialProvider {
         status: 'completed',
       },
     ];
+  }
+
+  // Statistics of one post (status) from the instance: favourites, boosts
+  // and replies.
+  async postAnalytics(
+    integrationId: string,
+    accessToken: string,
+    postId: string,
+    fromDate: number
+  ): Promise<AnalyticsData[]> {
+    const today = dayjs().format('YYYY-MM-DD');
+    try {
+      const res = await fetch(
+        `${
+          process.env.MASTODON_URL || 'https://mastodon.social'
+        }/api/v1/statuses/${encodeURIComponent(postId)}`,
+        {
+          headers: { Authorization: `Bearer ${accessToken}` },
+          signal: AbortSignal.timeout(10_000),
+        }
+      );
+      if (!res.ok) {
+        return [];
+      }
+      const status = await res.json();
+      return (
+        [
+          ['Favourites', status?.favourites_count],
+          ['Boosts', status?.reblogs_count],
+          ['Replies', status?.replies_count],
+        ] as const
+      )
+        .filter(([, value]) => typeof value === 'number')
+        .map(([label, value]) => ({
+          label,
+          percentageChange: 0,
+          data: [{ total: String(value), date: today }],
+        }));
+    } catch {
+      return [];
+    }
   }
 
   async post(
