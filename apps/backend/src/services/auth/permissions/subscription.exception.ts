@@ -62,7 +62,7 @@ export const getErrorMessage = (error: {
     case Sections.TEAM_MEMBERS:
       return "Your plan's team seats are all taken. Remove someone from the team or upgrade your plan to invite more people.";
     case Sections.AUTOPOST:
-      return `Auto Post is included in Pro (${pricing.PRO.autoPostLimit} RSS feeds) and Business (${pricing.ULTIMATE.autoPostLimit}), and your plan has no feeds left. Upgrade your subscription to add another feed.`;
+      return `Auto Post feeds by plan: Starter (${pricing.STANDARD.autoPostLimit} RSS feeds), Pro (${pricing.PRO.autoPostLimit}) and Business (${pricing.ULTIMATE.autoPostLimit}), and your plan has no feeds left. Upgrade your subscription to add another feed.`;
     // Every other section (AI, ADMIN, ...) used to fall out of this switch as
     // `undefined`,
     // which JSON.stringify then dropped: the client received a bare

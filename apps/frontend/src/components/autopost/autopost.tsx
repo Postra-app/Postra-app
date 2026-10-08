@@ -116,8 +116,9 @@ export const Autopost: FC = () => {
               <div className="text-newTextColor/70 max-w-[640px]">
                 {t(
                   'autopost_upsell_body',
-                  "Auto Post watches your blog's RSS feed. When you publish a new article, AI writes a post about it for your channels and schedules it. Included in Pro ({{pro}} RSS feeds) and Business ({{business}}).",
+                  "Auto Post watches your blog's RSS feed. When you publish a new article, AI writes a post about it for your channels and schedules it. Included in every plan: Starter ({{starter}} RSS feeds), Pro ({{pro}}) and Business ({{business}}).",
                   {
+                    starter: pricing.STANDARD.autoPostLimit,
                     pro: pricing.PRO.autoPostLimit,
                     business: pricing.ULTIMATE.autoPostLimit,
                   }

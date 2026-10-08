@@ -1497,7 +1497,7 @@
   "billing_plan_api_unlimited": "Publiczne API i webhooki bez limitu",
   "billing_plan_api": "Publiczne API i {{count}} webhooków",
   "autopost_upsell_title": "Zamień swój blog w posty",
-  "autopost_upsell_body": "Auto Post obserwuje kanał RSS Twojego bloga. Gdy opublikujesz nowy artykuł, AI pisze o nim post na Twoje kanały i go planuje. W planach Pro ({{pro}} kanały RSS) i Business ({{business}}).",
+  "autopost_upsell_body": "Auto Post obserwuje kanał RSS Twojego bloga. Gdy opublikujesz nowy artykuł, AI pisze o nim post na Twoje kanały i go planuje. W każdym planie: Starter ({{starter}} kanały RSS), Pro ({{pro}}) i Business ({{business}}).",
   "autopost_upsell_cta": "Zobacz plany",
   "autopost_feeds_used": "Wykorzystane kanały RSS: {{used}} z {{limit}}",
   "autopost_deleted": "Kanał Auto Post usunięty",
