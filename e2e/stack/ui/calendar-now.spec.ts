@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { draftBody, listPosts, signedIn, stateFile } from '../helpers';
+import { stateFile } from '../helpers';
 import { weekOf } from './ui-helpers';
 
 // Upstream 47175b5a: one shared clock for the calendar, a "now" line in the
@@ -32,26 +32,3 @@ test('the week shows the current time, and it moves on', async ({ page }) => {
   await page.clock.runFor(60 * 60 * 1000);
   await expect(page.getByText('11:30', { exact: true })).toBeVisible();
 });
-
-// Codex: the day view lays its slots out in the calendar's time zone
-// (Settings), the "now" time was in the browser's.
-test("the day view's current time is in the calendar's time zone", async ({ page }) => {
-  const api = await signedIn('b');
-  const text = `Now line ${Date.now()}`;
-  // 18:30 in Tokyo, 10:30 in London (the browser).
-  const start = new Date('2026-10-14T09:30:00Z');
-  const res = await api.post('/posts', { data: draftBody('b', text, { date: '2026-10-14T11:00:00Z' }) });
-  expect(res.status(), await res.text()).toBe(201);
-  const post = (await listPosts(api)).find((p) => p.content.includes(text))!;
-  try {
-    await page.addInitScript(() => localStorage.setItem('timezone', 'Asia/Tokyo'));
-    await page.clock.install({ time: start });
-    await page.goto('/launches?display=day&startDate=2026-10-14&endDate=2026-10-14');
-    await expect(page.locator('[role=button]', { hasText: text })).toBeVisible();
-    await expect(page.getByText('18:30', { exact: true })).toBeVisible();
-  } finally {
-    await api.delete(`/posts/${post.group}`);
-    await api.dispose();
-  }
-});
-

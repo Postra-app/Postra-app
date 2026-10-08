@@ -6,6 +6,7 @@ import {
   Controller,
   Delete,
   Get,
+  HttpException,
   Param,
   Post,
   Put,
@@ -93,16 +94,34 @@ export class AutopostController {
       // And only up to the plan's number of running feeds: the ones a
       // downgrade switched off could all be switched on again (E2E-07-33).
       if (process.env.STRIPE_PUBLISHABLE_KEY) {
-        // @ts-ignore subscription is attached to the org by the auth middleware
-        const tier = org?.subscription?.subscriptionTier || 'FREE';
-        const limit = pricing[tier]?.autoPostLimit ?? 0;
-        const running = (await this._autopostsService.getAutoposts(org.id))
-          .filter((f) => f.active && f.id !== id).length;
-        if (running >= limit) {
-          throw new SubscriptionException({
-            section: Sections.AUTOPOST,
-            action: AuthorizationActions.Create,
-          });
+        // One switch-on at a time per organisation: two at once both saw
+        // room for one (Codex).
+        const lock = `autopost-activate:${org.id}`;
+        let locked = false;
+        for (let i = 0; i < 50 && !locked; i++) {
+          locked =
+            (await ioRedis.set(lock, '1', 'EX', 30, 'NX')) === 'OK';
+          if (!locked) await new Promise((r) => setTimeout(r, 100));
+        }
+        if (!locked) {
+          throw new HttpException('Try again in a moment', 409);
+        }
+        try {
+          // @ts-ignore subscription is attached to the org by the auth middleware
+          const tier = org?.subscription?.subscriptionTier || 'FREE';
+          const limit = pricing[tier]?.autoPostLimit ?? 0;
+          const running = (
+            await this._autopostsService.getAutoposts(org.id)
+          ).filter((f) => f.active && f.id !== id).length;
+          if (running >= limit) {
+            throw new SubscriptionException({
+              section: Sections.AUTOPOST,
+              action: AuthorizationActions.Create,
+            });
+          }
+          return await this._autopostsService.changeActive(org.id, id, active);
+        } finally {
+          await ioRedis.del(lock).catch(() => undefined);
         }
       }
     }

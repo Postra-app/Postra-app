@@ -72,7 +72,7 @@ export class PoliciesGuard implements CanActivate {
     );
     const at = (post: any) =>
       request.body?.type === 'now'
-        ? undefined
+        ? new Date().toISOString()
         : [publicApi ? undefined : post?.date, request.body?.date].find(
             (d) => typeof d === 'string' && !Number.isNaN(Date.parse(d))
           );

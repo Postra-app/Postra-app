@@ -481,7 +481,7 @@ export const DayView = () => {
             {/* sits in the 20px gap under the previous slot */}
             {index === nowIndex && (
               <DayNowLine
-                now={now}
+                now={now.tz(tz)}
                 className={clsx(index > 0 && '-mt-[20px]')}
               />
             )}
@@ -503,7 +503,7 @@ export const DayView = () => {
           </Fragment>
         ))}
         {nowIndex === options.length && (
-          <DayNowLine now={now} className="-mt-[20px]" />
+          <DayNowLine now={now.tz(tz)} className="-mt-[20px]" />
         )}
       </div>
     </div>
