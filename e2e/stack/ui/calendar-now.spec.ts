@@ -19,7 +19,8 @@ test('an hour that passes while the calendar is open gets blocked', async ({ pag
   await expect(eleven).toBeVisible();
   await expect(eleven).not.toHaveClass(/repeated-strip/);
 
-  await page.clock.runFor(60 * 60 * 1000);
+  // At 12:00 the 11:00 hour is over (the current hour itself stays open).
+  await page.clock.runFor(90 * 60 * 1000);
   await expect(eleven).toHaveClass(/repeated-strip/);
 });
 
