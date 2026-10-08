@@ -189,7 +189,7 @@
     "mime-types": "^2.1.35",
     "mobx-react-lite": "4.1.1",
     "multer": "^2.4.0",
-    "music-metadata": "^7.14.0",
+    "music-metadata": "^11.16.0",
     "nestjs-command": "^3.1.5",
     "nestjs-real-ip": "^3.0.1",
     "nestjs-temporal-core": "^3.5.0",
