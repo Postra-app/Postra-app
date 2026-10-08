@@ -17,6 +17,7 @@ import {
   organizationOfRun,
   shouldStopForBudget,
   agentModelId,
+  agentProviderOptions,
 } from '@gitroom/nestjs-libraries/chat/agent-budget';
 import {
   describeAgentRun,
@@ -138,7 +139,7 @@ export class LoadToolsService {
       - Always make sure you use this tool before you schedule any post.
       - In every message I will send you the list of needed social medias (id and platform), if you already have the information use it, if not, use the integrationSchema tool to get it.
       - Make sure you always take the last information I give you about the socials, it might have changed.
-      - Before scheduling a post, always make sure you ask the user confirmation by providing all the details of the post (text, images, videos, date, time, social media platform, account).
+      - Before scheduling a post, always make sure you ask the user confirmation by providing all the details of the post (text, images, videos, date, time, social media platform, account). There is no card for a new post: ask them to reply to confirm.
       - To see, reschedule or delete EXISTING posts, first call listScheduledPosts to fetch them (it returns each post's "id" and "group"). Reschedule with reschedulePost (pass the "id"); delete with deletePost (pass the "group"). Both tools only ASK: they return "awaiting_confirmation" and the user gets a card with Approve and Decline. Nothing is deleted or moved until they click. So after calling one, say in one sentence what will happen and point at the card - do not ask them to type "yes", do not claim the post is already deleted or moved, and do not call the tool again for the same post while a card is open. Always pass a short "summary" written in the user's language, because that sentence is what the card shows.
       - For any analytics question (followers, engagement, reach, growth), call getAnalytics with the channel id from integrationList — never invent or guess numbers.
       - To reuse media that was already uploaded, use mediaListTool (search by filename) and pass the returned path as the attachment, instead of asking the user for a URL or uploading it again.
@@ -171,6 +172,11 @@ ${brandKit}
       defaultOptions: ({ requestContext }) =>
         ({
           maxSteps: AGENT_MAX_STEPS,
+          providerOptions: agentProviderOptions(
+            organizationIdFromContext(
+              organizationOfRun(requestContext as never)
+            )
+          ),
           // One line per step and one per run: the only way to answer "why did
           // it do that" until an exporter exists. Content stays out on purpose.
           onStepFinish: (event: Parameters<typeof describeAgentStep>[1]) => {

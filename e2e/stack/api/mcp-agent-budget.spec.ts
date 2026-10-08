@@ -53,6 +53,9 @@ test('the agent asked through MCP is metered to the organisation', async () => {
     const res = await ask(`Say hello (${marker})`);
     expect(res.status(), await res.text()).toBe(200);
     expect(await seen(marker)).toBeGreaterThan(0);
+    // The organisation's prompt cache key goes with the call (OpenAI keeps one
+    // org's turns in one cache).
+    expect(await seen(`"prompt_cache_key":"postra-agent-${org.orgId}"`)).toBeGreaterThan(0);
     await expect
       .poll(() => prisma.aiUsage.count({ where: { organizationId: org.orgId, engine: 'agent' } }))
       .toBeGreaterThan(0);

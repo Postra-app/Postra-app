@@ -12,9 +12,27 @@ export const BUDGET_CHECK_EVERY_STEPS = 3;
  * AGENT_MODEL overrides it, so another model can be tried on a stack or on
  * production without a release.
  */
-export const AGENT_DEFAULT_MODEL = 'gpt-5.5';
+// gpt-5.6-luna since 2026-10-08: on the stack's agent scenarios (channels,
+// schedule with UK time, Polish, next free slot, branded draft, reschedule)
+// it used the same tools as gpt-5.5 and kept the "confirm before
+// scheduling" rule, at ~1/25 of the price; gpt-5.4-mini scheduled without
+// asking and put a "next free slot" post at the current minute.
+export const AGENT_DEFAULT_MODEL = 'gpt-5.6-luna';
 export const agentModelId = (value = process.env.AGENT_MODEL): string =>
   value?.trim() || AGENT_DEFAULT_MODEL;
+
+/**
+ * OpenAI routes calls with the same prompt_cache_key to the same cache, so
+ * one organisation's turns (same instructions, tools and history) hit it
+ * more often; a cached input token costs a tenth.
+ */
+export const agentProviderOptions = (organizationId: string | undefined) => ({
+  openai: {
+    promptCacheKey: organizationId
+      ? `postra-agent-${organizationId}`
+      : 'postra-agent',
+  },
+});
 
 import { getAuth } from '@gitroom/nestjs-libraries/chat/async.storage';
 
