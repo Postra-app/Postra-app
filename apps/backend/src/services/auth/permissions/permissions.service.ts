@@ -192,32 +192,9 @@ export class PermissionsService {
         continue;
       }
 
-      if (
-        section === Sections.COMMUNITY_FEATURES &&
-        options.community_features
-      ) {
-        can(action, section);
-        continue;
-      }
-
-      if (
-        section === Sections.FEATURED_BY_GITROOM &&
-        options.featured_by_gitroom
-      ) {
-        can(action, section);
-        continue;
-      }
-
       if (section === Sections.AI && options.ai) {
         can(action, section);
         continue;
-      }
-
-      if (
-        section === Sections.IMPORT_FROM_CHANNELS &&
-        options.import_from_channels
-      ) {
-        can(action, section);
       }
     }
 

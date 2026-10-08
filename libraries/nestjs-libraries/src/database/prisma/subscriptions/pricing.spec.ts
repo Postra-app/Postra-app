@@ -174,6 +174,14 @@ describe('pricing limits the landing promises', () => {
     expect(pricing.ULTIMATE.image_generation_count).toBe(600);
   });
 
+  // The editor and Studio offer AI images by image_generator; the backend
+  // gates the same routes by `ai` (E2E-08-48): they must not disagree.
+  it('offers AI images in the app exactly where the backend allows AI', () => {
+    for (const tier of Object.keys(pricing) as (keyof typeof pricing)[]) {
+      expect(`${tier}: ${pricing[tier].image_generator}`).toBe(`${tier}: ${pricing[tier].ai}`);
+    }
+  });
+
   it('includes the public API in every paid plan, not in FREE', () => {
     expect(pricing.FREE.public_api).toBe(false);
     for (const tier of ['STANDARD', 'PRO', 'ULTIMATE'] as const) {

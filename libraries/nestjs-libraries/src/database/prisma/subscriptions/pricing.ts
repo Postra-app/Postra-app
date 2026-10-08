@@ -19,10 +19,7 @@ export interface PricingInnerInterface {
   // invite). Enforced at invite (permissions.service TEAM_MEMBERS) and
   // reconciled on tier change (subscription.service → reconcileTeamSeats).
   team_members: number;
-  community_features: boolean;
-  featured_by_gitroom: boolean;
   ai: boolean;
-  import_from_channels: boolean;
   image_generator?: boolean;
   image_generation_count: number;
   generate_videos: number;
@@ -74,10 +71,7 @@ export const pricing: PricingInterface = {
     image_generation_count: 0,
     posts_per_month: 0,
     team_members: 1,
-    community_features: false,
-    featured_by_gitroom: false,
     ai: false,
-    import_from_channels: false,
     image_generator: false,
     public_api: false,
     webhooks: 0,
@@ -96,9 +90,6 @@ export const pricing: PricingInterface = {
     image_generation_count: 30,
     team_members: 1,
     ai: true,
-    community_features: false,
-    featured_by_gitroom: false,
-    import_from_channels: true,
     image_generator: true,
     public_api: true,
     webhooks: 2,
@@ -117,11 +108,8 @@ export const pricing: PricingInterface = {
     allowedProviders: BUSINESS_PROVIDERS,
     posts_per_month: 1000000,
     image_generation_count: 100,
-    community_features: true,
     team_members: 1000000,
-    featured_by_gitroom: true,
     ai: true,
-    import_from_channels: true,
     image_generator: true,
     public_api: true,
     webhooks: 10,
@@ -138,11 +126,8 @@ export const pricing: PricingInterface = {
     allowedProviders: PRO_PROVIDERS,
     posts_per_month: 1000000,
     image_generation_count: 150,
-    community_features: true,
     team_members: 2,
-    featured_by_gitroom: true,
     ai: true,
-    import_from_channels: true,
     image_generator: true,
     public_api: true,
     webhooks: 30,
@@ -161,11 +146,8 @@ export const pricing: PricingInterface = {
     allowedProviders: BUSINESS_PROVIDERS,
     posts_per_month: 1000000,
     image_generation_count: 600,
-    community_features: true,
     team_members: 5,
-    featured_by_gitroom: true,
     ai: true,
-    import_from_channels: true,
     image_generator: true,
     public_api: true,
     webhooks: 10000,
