@@ -45,6 +45,37 @@ const kieHeaders = () => ({
   Authorization: `Bearer ${process.env.KIEAI_API_KEY}`,
 });
 
+const parseJson = (value: unknown): any => {
+  if (value && typeof value === 'object') return value;
+  try {
+    return JSON.parse(String(value || '{}')) || {};
+  } catch {
+    return {};
+  }
+};
+
+// Where the finished clip is. The Market API documents a top-level
+// `resultUrls`, but for veo-3-1 kie.ai answers
+// `{ code, data: { result_urls: [1080p], origin_urls: [720p] } }` — the first
+// prod clip (2026-10-08) was paid for and then lost reading only the former.
+// The same data also arrives under `response`.
+export const videoUrlOf = (record: any): string | undefined => {
+  const result = parseJson(record?.resultJson);
+  const response = parseJson(record?.response);
+  const candidates = [
+    result?.resultUrls,
+    result?.data?.result_urls,
+    result?.data?.origin_urls,
+    response?.data?.result_urls,
+    response?.data?.origin_urls,
+  ];
+  for (const list of candidates) {
+    const url = Array.isArray(list) ? list.find((u) => typeof u === 'string' && u) : undefined;
+    if (url) return url;
+  }
+  return undefined;
+};
+
 @Video({
   identifier: 'veo3',
   title: 'Veo 3.1 (video with sound)',
@@ -129,15 +160,15 @@ export class Veo3 extends VideoAbstract<Veo3Params> {
       }
 
       if (state === 'success') {
-        let result: any = {};
-        try {
-          result = JSON.parse(info.data.resultJson || '{}');
-        } catch {
-          result = {};
-        }
-        const url = result?.resultUrls?.[0];
+        const url = videoUrlOf(info.data);
         if (!url) {
-          throw new Error(`kie.ai task ${taskId} finished without a video`);
+          // Paid for at kie.ai by now: name the task so the clip can still
+          // be fetched by hand.
+          throw new Error(
+            `kie.ai task ${taskId} finished without a video URL we can read (resultJson keys: ${Object.keys(
+              parseJson(info.data.resultJson)
+            ).join(', ')})`
+          );
         }
         return url;
       }
