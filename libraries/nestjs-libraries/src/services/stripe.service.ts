@@ -37,6 +37,9 @@ export const isLiveSubscription = (s: { status: string }) =>
   s.status !== 'incomplete' &&
   s.status !== 'incomplete_expired';
 
+// Lowest to highest, for comparing plans.
+const TIER_ORDER = ['FREE', 'STANDARD', 'TEAM', 'PRO', 'ULTIMATE'];
+
 @Injectable()
 export class StripeService {
   private readonly _logger = new Logger(StripeService.name);
@@ -1389,15 +1392,25 @@ export class StripeService {
         };
       }
 
-      const nextPackage = !getCurrentSubscription ? 'STANDARD' : 'PRO';
+      // The first code gives Starter, each one after it Pro (+5 channels once
+      // on Pro). A code never lowers the plan: on a lifetime Business (an
+      // admin grant) it set Pro and Pro's channels (E2E-07-36).
+      const stacked = !getCurrentSubscription ? 'STANDARD' : 'PRO';
+      const keepsTier =
+        !!getCurrentSubscription &&
+        TIER_ORDER.indexOf(getCurrentSubscription.subscriptionTier) >=
+          TIER_ORDER.indexOf(stacked);
+      const nextPackage = keepsTier
+        ? getCurrentSubscription!.subscriptionTier
+        : stacked;
       const findPricing = pricing[nextPackage];
 
       await this._subscriptionService.createOrUpdateSubscription(
         false,
         makeId(10),
         organizationId,
-        getCurrentSubscription?.subscriptionTier === 'PRO'
-          ? getCurrentSubscription.totalChannels + 5
+        keepsTier
+          ? getCurrentSubscription!.totalChannels + 5
           : findPricing.channel!,
         nextPackage,
         'MONTHLY',
