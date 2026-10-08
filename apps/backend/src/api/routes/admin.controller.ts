@@ -693,6 +693,14 @@ export class AdminController {
     };
   }
 
+  // The margin guard on demand; the same report is mailed daily when an
+  // organisation passes the threshold (HousekeepingActivity).
+  @Get('/ai-costs')
+  async aiCosts(@GetUserFromRequest() user: User) {
+    this.assertSuperAdmin(user);
+    return this._aiUsageService.marginReport();
+  }
+
   @Get('/ai-usage')
   async getAiUsage(
     @GetUserFromRequest() user: User,

@@ -21,3 +21,13 @@ it('the token refresh workflow can reach its activities', () => {
   );
   expect([...methods.keys()].sort()).toEqual(['getIntegrationsById', 'refreshToken']);
 });
+
+it('the housekeeping workflow can reach the margin guard', () => {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const { HousekeepingActivity } = require('./housekeeping.activity');
+  const accessor = new (TemporalMetadataAccessor as any)();
+  const { methods } = accessor.extractActivityMethods(
+    new HousekeepingActivity({} as any, {} as any, {} as any, {} as any)
+  );
+  expect([...methods.keys()].sort()).toEqual(['checkAiMargins', 'purgeOldRecords']);
+});
