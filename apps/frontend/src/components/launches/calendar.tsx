@@ -888,14 +888,30 @@ export const CalendarColumn: FC<{
           action = whatToDo;
         }
 
+        // A Month cell stands for the whole day (its date is the day's end):
+        // the post keeps its own time of day there instead of moving to 23:59.
+        // Today, with that time already gone, it goes to the next full hour.
+        let target = getDate;
+        if (randomHour && post) {
+          const own = dayjs.utc(post.publishDate).local();
+          target = getDate
+            .startOf('day')
+            .hour(own.hour())
+            .minute(own.minute())
+            .second(0);
+          if (target.isBefore(dayjs())) {
+            target = dayjs().add(1, 'hour').startOf('hour');
+          }
+        }
+
         const move = startMove(item.id);
         if (!item.interval) {
-          changeDate(item.id, getDate);
+          changeDate(item.id, target);
         }
         const { status } = await fetch(`/posts/${item.id}/date`, {
           method: 'PUT',
           body: JSON.stringify({
-            date: getDate.utc().format('YYYY-MM-DDTHH:mm:ss'),
+            date: target.utc().format('YYYY-MM-DDTHH:mm:ss'),
             action,
             // A published post asks first (above); without the flag the server
             // refuses to put it back in the queue. No effect on queued posts.
