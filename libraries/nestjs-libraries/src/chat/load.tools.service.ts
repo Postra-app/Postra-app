@@ -11,11 +11,9 @@ import { toolList } from '@gitroom/nestjs-libraries/chat/tools/tool.list';
 import dayjs from 'dayjs';
 import { buildBrandAgentPrompt } from '@gitroom/nestjs-libraries/openai/brand-prompt';
 import { languageRule } from '@gitroom/nestjs-libraries/openai/language-rule';
-import { SubscriptionService } from '@gitroom/nestjs-libraries/database/prisma/subscriptions/subscription.service';
 import {
   AGENT_MAX_STEPS,
   organizationOfRun,
-  shouldStopForBudget,
   agentModelId,
   agentProviderOptions,
 } from '@gitroom/nestjs-libraries/chat/agent-budget';
@@ -167,8 +165,10 @@ ${brandKit}
       // AGENT_DEFAULT_MODEL, or AGENT_MODEL when set (agent-budget.ts).
       model: meterLanguageModel(openai(agentModelId()), 'agent'),
       tools,
-      // Bound the run and re-check the monthly allowance while it is going,
-      // not just before it starts.
+      // Bound the run. The fair use counts questions and is checked before a
+      // question is taken, so a run that started is allowed to finish — a
+      // re-check mid-run cut off the answer to the last allowed question
+      // (Codex); AGENT_MAX_STEPS stops a loop.
       defaultOptions: ({ requestContext }) =>
         ({
           maxSteps: AGENT_MAX_STEPS,
@@ -203,15 +203,6 @@ ${brandKit}
               )
             );
           },
-          stopWhen: async ({ steps }: { steps: unknown[] }) =>
-            shouldStopForBudget(
-              steps.length,
-              organizationOfRun(requestContext as never),
-              (organization) =>
-                this._moduleRef
-                  .get(SubscriptionService, { strict: false })
-                  .checkCredits(organization as never, 'ai_agent')
-            ),
           // The options type resolves to a branch that demands
           // `structuredOutput`, which a chat agent streaming free text does not
           // have. The runtime shape is what Mastra reads.

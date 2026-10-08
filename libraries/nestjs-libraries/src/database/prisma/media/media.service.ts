@@ -656,7 +656,21 @@ export class MediaService {
       return null;
     }
     const media = await this.getMediaByIdOrg(org, id);
-    return media && !media.deletedAt ? media : null;
+    if (media && !media.deletedAt) {
+      return media;
+    }
+    // Deleted from the library: forget it, so the same request can make the
+    // clip again instead of reading as "already being made" (Codex). Only
+    // while the key still names that clip — a new run may own it by now.
+    await ioRedis
+      .eval(
+        "if redis.call('get', KEYS[1]) == ARGV[1] then return redis.call('del', KEYS[1]) end return 0",
+        1,
+        key,
+        id
+      )
+      .catch(() => undefined);
+    return null;
   }
 
   async videoFunction(identifier: string, functionName: string, body: any) {
