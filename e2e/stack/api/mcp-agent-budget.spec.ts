@@ -94,7 +94,7 @@ test('an organisation past its agent allowance gets no agent run through MCP', a
     expect(res.status(), await res.text()).toBe(200);
     const answer = parse(await res.text());
     expect(answer.result?.isError).toBe(true);
-    expect(JSON.stringify(answer.result?.content)).toContain('monthly AI assistant limit');
+    expect(JSON.stringify(answer.result?.content)).toContain('fair-use limit for the AI assistant');
     expect(await seen(marker)).toBe(0);
   } finally {
     await prisma.aiUsage.deleteMany({ where: { organizationId: org.orgId } });

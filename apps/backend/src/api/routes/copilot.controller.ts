@@ -32,6 +32,8 @@ import { PendingActionService } from '@gitroom/nestjs-libraries/chat/pending-act
 import { PostsService } from '@gitroom/nestjs-libraries/database/prisma/posts/posts.service';
 import { Request, Response } from 'express';
 import { RequestContext } from '@mastra/core/di';
+import { recordAgentMessage } from '@gitroom/nestjs-libraries/services/ai-usage.record';
+import { AGENT_FAIR_USE_MESSAGES } from '@gitroom/nestjs-libraries/database/prisma/subscriptions/pricing';
 import { CheckPolicies } from '@gitroom/backend/services/auth/permissions/permissions.ability';
 import { AuthorizationActions, Sections } from '@gitroom/nestjs-libraries/services/auth/permission.exception.class';
 
@@ -100,7 +102,7 @@ export class CopilotController {
       return;
     }
 
-    // Monthly agent budget (pricing.agent_tokens, weighted tokens from
+    // Monthly fair use (pricing.agent_messages, questions counted in
     // AiUsage). Like the image/video paths, only enforced with billing on —
     // without a publishable key the ledger is advisory. The chat UI checks the
     // same budget via GET /copilot/credits?type=ai_agent and shows a banner,
@@ -113,7 +115,7 @@ export class CopilotController {
       if (credits <= 0) {
         res.status(402).json({
           error:
-            'You have reached your monthly AI assistant limit. It resets with your next billing month — or upgrade your plan for a higher limit.',
+            `You have reached this month's fair-use limit for the AI assistant (${AGENT_FAIR_USE_MESSAGES.toLocaleString('en-GB')} questions, the same on every plan). It resets with your next billing month.`,
         });
         return;
       }
@@ -133,6 +135,7 @@ export class CopilotController {
       res.on('close', () => {
         release().catch(() => undefined);
       });
+      recordAgentMessage(organization.id);
     }
 
     const mastra = await this._mastraService.mastra();

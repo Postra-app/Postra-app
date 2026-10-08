@@ -1370,8 +1370,6 @@
   "layer_forward": "Przesuń do przodu",
   "layer_backward": "Przesuń do tyłu",
   "agent_limit_title": "Miesięczny limit asystenta AI wyczerpany",
-  "agent_limit_description": "Wykorzystałeś tegomiesięczny limit asystenta AI. Odnowi się z kolejnym okresem rozliczeniowym — albo podnieś plan, żeby mieć wyższy limit.",
-  "agent_limit_upgrade": "Zobacz plany",
   "video_generation_failed": "Nie udało się wygenerować wideo, spróbuj ponownie.",
   "output_voice": "Głos wypowiedzi",
   "add_pictures_cost": "Jeden kredyt obrazkowy na post — wątek kosztuje po jednym za każdą część.",
@@ -1532,5 +1530,6 @@
   "billing_plan_videos": "{{count}} wideo AI miesięcznie",
   "billing_this_month": "W tym miesiącu",
   "billing_ai_images_left": "zostało {{left}} z {{total}} obrazów AI",
-  "billing_ai_videos_left": "zostało {{left}} z {{total}} wideo AI"
+  "billing_ai_videos_left": "zostało {{left}} z {{total}} wideo AI",
+  "agent_fair_use_description": "W tym miesiącu zadałeś asystentowi AI {{count}} pytań — to limit uczciwego korzystania, taki sam w każdym planie. Odnowi się z kolejnym okresem rozliczeniowym."
 }

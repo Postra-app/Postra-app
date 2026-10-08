@@ -30,15 +30,14 @@ export interface PricingInnerInterface {
   // polls hourly and burns AI tokens per new article, so it is capped per plan
   // independently of the `autoPost` on/off flag.
   autoPostLimit: number;
-  // Monthly budget for the gpt-5.5 agent chat, in WEIGHTED tokens:
-  // input + 6×output (output costs 6× input — $30 vs $5 per 1M). This is the
-  // only text-AI surface without a natural cap (posts_per_month caps the
-  // creator, autoPostLimit caps RSS), so a heavy chatter could otherwise burn
-  // more than the plan price. Budgets keep worst-case agent COGS at ~25-30%
-  // of the plan price (~95/250/600 typical chats). Enforced in
-  // copilot.controller via SubscriptionService.checkCredits('ai_agent'),
-  // measured from AiUsage (engine='agent').
-  agent_tokens: number;
+  // The assistant (chat and MCP ask_postra) has no visible limit: a monthly
+  // fair use of questions per organisation stops a bot or a script, not a
+  // person (~100 per working day). On gpt-5.6-luna a typical question costs
+  // ~$0.0025, the whole allowance ~$5.50 (Plan/lunchdayfinal.md, "💷
+  // Analiza", K. 2026-10-08). Enforced in copilot.controller and start.mcp
+  // via SubscriptionService.checkCredits('ai_agent'), counted from AiUsage
+  // (engine 'agent', unit 'messages').
+  agent_messages: number;
 }
 export interface PricingInterface {
   [key: string]: PricingInnerInterface;
@@ -61,6 +60,9 @@ const PRO_PROVIDERS = [
 ];
 const BUSINESS_PROVIDERS = [...PRO_PROVIDERS, 'x', 'discord'];
 
+// Assistant questions a month, every paid plan (see agent_messages).
+export const AGENT_FAIR_USE_MESSAGES = 2200;
+
 export const pricing: PricingInterface = {
   FREE: {
     current: 'FREE',
@@ -78,7 +80,7 @@ export const pricing: PricingInterface = {
     autoPost: false,
     autoPostLimit: 0,
     generate_videos: 0,
-    agent_tokens: 0,
+    agent_messages: 0,
   },
   STANDARD: {
     current: 'STANDARD',
@@ -96,7 +98,7 @@ export const pricing: PricingInterface = {
     autoPost: false,
     autoPostLimit: 0,
     generate_videos: 15,
-    agent_tokens: 1_500_000,
+    agent_messages: AGENT_FAIR_USE_MESSAGES,
   },
   // Legacy, not purchasable (removed from BillingSubscribeDto). Kept so any
   // existing/grandfathered TEAM subscription still resolves.
@@ -116,7 +118,7 @@ export const pricing: PricingInterface = {
     autoPost: true,
     autoPostLimit: 5,
     generate_videos: 10,
-    agent_tokens: 4_000_000,
+    agent_messages: AGENT_FAIR_USE_MESSAGES,
   },
   PRO: {
     current: 'PRO',
@@ -134,7 +136,7 @@ export const pricing: PricingInterface = {
     autoPost: true,
     autoPostLimit: 3,
     generate_videos: 30,
-    agent_tokens: 4_000_000,
+    agent_messages: AGENT_FAIR_USE_MESSAGES,
   },
   ULTIMATE: {
     current: 'ULTIMATE',
@@ -154,7 +156,7 @@ export const pricing: PricingInterface = {
     autoPost: true,
     autoPostLimit: 10,
     generate_videos: 60,
-    agent_tokens: 10_000_000,
+    agent_messages: AGENT_FAIR_USE_MESSAGES,
   },
 };
 
@@ -225,7 +227,7 @@ export const TRIAL_VIDEO_CLIPS = 1;
 export const trialAiAllowance = (
   allowance: number,
   isTrailing: boolean | undefined,
-  type: 'image_generation_count' | 'agent_tokens' | 'generate_videos'
+  type: 'image_generation_count' | 'agent_messages' | 'generate_videos'
 ): number => {
   if (!isTrailing) {
     return allowance;

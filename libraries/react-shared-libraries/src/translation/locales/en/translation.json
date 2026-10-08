@@ -1371,8 +1371,6 @@
   "layer_forward": "Bring forward",
   "layer_backward": "Send backward",
   "agent_limit_title": "Monthly AI assistant limit reached",
-  "agent_limit_description": "You have used this month's AI assistant allowance. It resets with your next billing month — or upgrade your plan for a higher limit.",
-  "agent_limit_upgrade": "See plans",
   "video_generation_failed": "Could not generate the video, please try again.",
   "output_voice": "Output voice",
   "add_pictures_cost": "One image credit per post — a thread costs one per part.",
@@ -1533,5 +1531,6 @@
   "billing_plan_videos": "{{count}} AI videos a month",
   "billing_this_month": "This month",
   "billing_ai_images_left": "{{left}} of {{total}} AI images left",
-  "billing_ai_videos_left": "{{left}} of {{total}} AI videos left"
+  "billing_ai_videos_left": "{{left}} of {{total}} AI videos left",
+  "agent_fair_use_description": "You have asked the AI assistant {{count}} questions this month — the fair-use limit, the same on every plan. It resets with your next billing month."
 }

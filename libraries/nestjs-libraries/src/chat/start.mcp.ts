@@ -1,3 +1,5 @@
+import { recordAgentMessage } from '@gitroom/nestjs-libraries/services/ai-usage.record';
+import { AGENT_FAIR_USE_MESSAGES } from '@gitroom/nestjs-libraries/database/prisma/subscriptions/pricing';
 import { lacksSubscription } from '@gitroom/nestjs-libraries/database/prisma/subscriptions/lacks.subscription';
 import { INestApplication } from '@nestjs/common';
 import { json, Request, Response } from 'express';
@@ -29,11 +31,11 @@ export const startMcp = async (app: INestApplication) => {
   const subscriptionService = app.get(SubscriptionService, { strict: false });
 
   // The agent asked through MCP (`ask_postra`) spends the same monthly
-  // allowance as the chat, and like the chat it is checked before a run
+  // fair use (pricing.agent_messages) as the chat, and like the chat it is checked before a run
   // starts; the run itself re-checks only every few steps (E2E-08-47).
   // Answered as a tool error, which MCP clients show to the person.
   const AGENT_LIMIT =
-    'You have reached your monthly AI assistant limit. It resets with your next billing month — or upgrade your plan for a higher limit.';
+    `You have reached this month's fair-use limit for the AI assistant (${AGENT_FAIR_USE_MESSAGES.toLocaleString('en-GB')} questions, the same on every plan). It resets with your next billing month.`;
   const agentCalls = (body: unknown) =>
     (Array.isArray(body) ? body : [body]).filter(
       (m: any) => m?.method === 'tools/call' && m?.params?.name === 'ask_postra'
@@ -57,20 +59,30 @@ export const startMcp = async (app: INestApplication) => {
         resolve(true);
       })
     );
+  // Refuses the call when the month's fair use is spent; otherwise counts
+  // each `ask_postra` in it as one assistant message.
   const agentAllowanceSpent = async (auth: any, body: unknown) => {
-    if (!process.env.STRIPE_PUBLISHABLE_KEY || !agentCalls(body).length) {
+    const calls = agentCalls(body).length;
+    if (!calls) {
       return false;
     }
-    try {
-      const { credits } = await subscriptionService.checkCredits(
-        auth,
-        'ai_agent'
-      );
-      return credits <= 0;
-    } catch {
-      // Same as the run's own check: never refuse because a check failed.
-      return false;
+    if (process.env.STRIPE_PUBLISHABLE_KEY) {
+      try {
+        const { credits } = await subscriptionService.checkCredits(
+          auth,
+          'ai_agent'
+        );
+        if (credits <= 0) {
+          return true;
+        }
+      } catch {
+        // Same as the run's own check: never refuse because a check failed.
+      }
     }
+    for (let i = 0; i < calls; i++) {
+      recordAgentMessage(auth?.id);
+    }
+    return false;
   };
   const refuseAgentRun = (req: Request, res: Response) => {
     const answers = agentCalls(req.body).map((m: any) => ({

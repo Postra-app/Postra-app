@@ -43,6 +43,7 @@ const AddEditModal = dynamic(
 import dayjs from 'dayjs';
 import { makeId } from '@gitroom/nestjs-libraries/services/make.is';
 import { ExistingDataContextProvider } from '@gitroom/frontend/components/launches/helpers/use.existing.data';
+import { AGENT_FAIR_USE_MESSAGES } from '@gitroom/nestjs-libraries/database/prisma/subscriptions/pricing';
 import { useT } from '@gitroom/react/translation/get.transation.service.client';
 import { hasExtension } from '@gitroom/helpers/utils/has.extension';
 import useSWR from 'swr';
@@ -54,7 +55,7 @@ export const AgentChat: FC = () => {
   const t = useT();
   const fetch = useFetch();
 
-  // Same budget the backend enforces with a 402 (pricing.agent_tokens) —
+  // Same fair use the backend enforces with a 402 (pricing.agent_messages) —
   // checked up-front so the user gets a clear banner instead of a failed send.
   const { data: agentCredits } = useSWR('/copilot/credits?type=ai_agent', async (url: string) =>
     (await fetch(url)).json()
@@ -68,16 +69,11 @@ export const AgentChat: FC = () => {
           </div>
           <div className="text-[13.5px] text-newTextColor/70">
             {t(
-              'agent_limit_description',
-              'You have used this month\'s AI assistant allowance. It resets with your next billing month — or upgrade your plan for a higher limit.'
+              'agent_fair_use_description',
+              "You have asked the AI assistant {{count}} questions this month — the fair-use limit, the same on every plan. It resets with your next billing month.",
+              { count: AGENT_FAIR_USE_MESSAGES.toLocaleString('en-GB') }
             )}
           </div>
-          <a
-            href="/billing"
-            className="text-[13.5px] underline underline-offset-4 text-[#38bdf8]"
-          >
-            {t('agent_limit_upgrade', 'See plans')}
-          </a>
         </div>
       </div>
     );
