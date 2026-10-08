@@ -197,7 +197,10 @@ test('Pro: two invites sent with one seat free, only the first person gets in', 
     const join = async (who: typeof pro, token: string) =>
       (await (await who.api.post('/user/join-org', { data: { org: token } })).json()).id as string | null;
     expect(await join(first, one)).toBe(pro.orgId);
-    expect(await join(second, two)).toBeNull();
+    // E2E-07-38: refused with the reason, not a bare {id: null} that the
+    // invitation page read as "expired or already used".
+    const refused = await second.api.post('/user/join-org', { data: { org: two } });
+    expect(await refused.json()).toEqual({ id: null, reason: 'no_seats' });
     expect(await prisma.userOrganization.count({ where: { organizationId: pro.orgId, disabled: false } })).toBe(2);
   } finally {
     for (const o of [pro, first, second]) await o.remove();

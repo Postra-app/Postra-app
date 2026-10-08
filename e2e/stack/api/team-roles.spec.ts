@@ -85,6 +85,8 @@ test('a full Pro team: the owner still sees and manages it, but cannot invite', 
     data: { email: 'third@example.com', role: 'USER', sendEmail: false },
   });
   expect(invite.status()).toBe(402);
+  // E2E-07-38: about seats, not "not included in your plan".
+  expect((await invite.json()).message).toContain('seats');
   expect((await owner.get('/settings/team')).status()).toBe(200);
 });
 
