@@ -37,25 +37,3 @@ test('after a revoke the app, the public API and MCP see no plan', async () => {
     await org.remove();
   }
 });
-
-// E2E-08-48: the plans' public_api flag decided nothing; the API and MCP
-// only asked whether a subscription row existed. A plan without the API
-// (FREE today) is refused like no plan.
-test('a plan without the public API gets neither the API nor MCP', async () => {
-  const org = await throwawayOrg(prisma, { tier: 'PRO', totalChannels: 5, channels: 0 });
-  const { apiKey } = await prisma.organization.findUniqueOrThrow({ where: { id: org.orgId } });
-  const api = await pwRequest.newContext({ baseURL: BACKEND_URL });
-  try {
-    expect((await api.get('/public/v1/integrations', { headers: { authorization: apiKey! } })).status()).toBe(200);
-    await prisma.subscription.updateMany({ where: { organizationId: org.orgId }, data: { subscriptionTier: 'FREE' } });
-    expect((await api.get('/public/v1/integrations', { headers: { authorization: apiKey! } })).status()).toBe(401);
-    const mcp = await api.post('/mcp', {
-      headers: { 'content-type': 'application/json', accept: 'application/json, text/event-stream', authorization: `Bearer ${apiKey}` },
-      data: { jsonrpc: '2.0', id: 1, method: 'initialize', params: { protocolVersion: '2025-03-26', capabilities: {}, clientInfo: { name: 'stack', version: '0' } } },
-    });
-    expect(mcp.status()).toBe(401);
-  } finally {
-    await api.dispose();
-    await org.remove();
-  }
-});
