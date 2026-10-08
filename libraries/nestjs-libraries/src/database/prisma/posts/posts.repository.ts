@@ -769,6 +769,19 @@ export class PostsRepository {
     });
   }
 
+  async getPostState(
+    tx: Prisma.TransactionClient,
+    orgId: string,
+    id: string
+  ) {
+    return (
+      await tx.post.findFirst({
+        where: { id, organizationId: orgId, deletedAt: null },
+        select: { state: true },
+      })
+    )?.state;
+  }
+
   // Taken before anything else in a write that adds to the monthly post
   // count, so two of them cannot both pass the check with one post left.
   async lockPostCap(tx: Prisma.TransactionClient, orgId: string) {

@@ -25,6 +25,7 @@ import {
 import {
   CountedPost,
   PostCap,
+  isPostDate,
   postsCountedBy,
   postsReleasedBy,
 } from '@gitroom/nestjs-libraries/database/prisma/posts/post.cap';
@@ -80,6 +81,12 @@ type PostWithConditionals = Post & {
   integration?: Integration;
   childrenPost: Post[];
 };
+
+const postCapException = () =>
+  new SubscriptionException({
+    section: Sections.POSTS_PER_MONTH,
+    action: AuthorizationActions.Create,
+  });
 
 @Injectable()
 export class PostsService {
@@ -972,10 +979,7 @@ export class PostsService {
         tx
       )
     ) {
-      throw new SubscriptionException({
-        section: Sections.POSTS_PER_MONTH,
-        action: AuthorizationActions.Create,
-      });
+      throw postCapException();
     }
   }
 
@@ -1214,6 +1218,17 @@ export class PostsService {
     creationMethod: CreationMethod,
     cap?: PostCap
   ): Promise<any[]> {
+    // Every date it saves on, the request's and each channel's ("now" posts
+    // go out now): a year out of range was saved, and counted as this month.
+    for (const post of body.posts || []) {
+      if (
+        saveTypeOfPost(body, post) !== 'now' &&
+        !isPostDate(post.date || body.date)
+      ) {
+        throw new BadRequestException('Invalid date');
+      }
+    }
+
     // Two people editing one post: the later save used to replace the
     // earlier one without a word, and an agency lost a colleague's changes.
     const editedIds = (body.posts || []).flatMap((post) =>
@@ -1421,11 +1436,7 @@ export class PostsService {
     // Both used to surface as 500s: garbage reached Prisma as Invalid Date, and
     // a post from another org (or none) came back null.
     // And a date the database cannot hold (years out of range) was a 500.
-    if (
-      typeof date !== 'string' ||
-      !dayjs(date).isValid() ||
-      Math.abs(dayjs(date).year() - dayjs().year()) > 100
-    ) {
+    if (typeof date !== 'string' || !isPostDate(date)) {
       throw new BadRequestException('Invalid date');
     }
 
@@ -1443,24 +1454,40 @@ export class PostsService {
     // a draft whatever the action (the calendar drags drafts with
     // "schedule"), and a failed post moved with "update" stays out of the
     // count.
-    const counts =
-      getPostById.state === 'QUEUE' ||
-      getPostById.state === 'PUBLISHED' ||
-      (action === 'schedule' && getPostById.state !== 'DRAFT');
-
     // schedule: Set status to QUEUE and change date (reschedule the post)
     // update: Just change the date without changing the status
     const newDate = await this._postRepository.transaction(async (tx) => {
       // Counted and moved behind one lock: two moves at once both found the
-      // last post of the month free (Codex).
-      if (cap && counts) {
-        await this.refuseOverPostCap(tx, orgId, cap, [{ id, date }]);
+      // last post of the month free; and the state is read behind it too, or
+      // a draft scheduled meanwhile moved as a draft (Codex).
+      let state = getPostById.state;
+      if (cap) {
+        await this._postRepository.lockPostCap(tx, orgId);
+        state =
+          (await this._postRepository.getPostState(tx, orgId, id)) || state;
+        const counts =
+          state === 'QUEUE' ||
+          state === 'PUBLISHED' ||
+          (action === 'schedule' && state !== 'DRAFT');
+        if (
+          counts &&
+          (await this.postCapReached(
+            orgId,
+            cap.anchor,
+            cap.limit,
+            [{ id, date }],
+            [],
+            tx
+          ))
+        ) {
+          throw postCapException();
+        }
       }
       return this._postRepository.changeDate(
         orgId,
         id,
         date,
-        getPostById.state === 'DRAFT',
+        state === 'DRAFT',
         action,
         tx
       );

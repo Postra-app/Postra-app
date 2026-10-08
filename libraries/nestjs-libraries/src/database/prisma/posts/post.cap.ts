@@ -1,4 +1,13 @@
+import dayjs from 'dayjs';
 import { saveTypeOfPost } from '@gitroom/nestjs-libraries/dtos/posts/create.post.dto';
+
+// A publish date a post can be saved on: a date, within a hundred years. The
+// database cannot hold some years, and the monthly count treats a date it
+// cannot place as now, while the post would be saved on the far date (Codex).
+export const isPostDate = (date: unknown): boolean =>
+  (typeof date === 'string' || date instanceof Date) &&
+  dayjs(date).isValid() &&
+  Math.abs(dayjs(date).year() - dayjs().year()) <= 100;
 
 // A post against the monthly allowance: an id when it already exists (an
 // edit), the date it is saved on, and whether the save keeps its state
