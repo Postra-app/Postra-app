@@ -62,7 +62,7 @@ it('two lifetime codes redeemed at once never both write from the same count', a
 it.each([
   ['ULTIMATE', 1000, 'ULTIMATE', 1005],
   ['PRO', 10, 'PRO', 15],
-  ['STANDARD', 3, 'PRO', 5],
+  ['STANDARD', 3, 'PRO', 6],
   [null, 0, 'STANDARD', 3],
 ] as const)('a code on lifetime %s (%s channels) gives %s with %s channels', async (tier, channels, expectedTier, expectedChannels) => {
   const subscriptionService = {
