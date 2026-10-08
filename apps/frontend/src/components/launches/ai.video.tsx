@@ -38,7 +38,9 @@ export const Modal: FC<{
     ).json();
   }, []);
 
-  const { data } = useSWR('copilot-credits', loadCredits);
+  // Its own key: 'copilot-credits' is the Studio image generator's, and the
+  // first one opened showed its count in the other.
+  const { data, mutate } = useSWR('copilot-credits-videos', loadCredits);
 
   const generate = useCallback(async () => {
     // validate before locking the composer — a failed validation used to
@@ -80,6 +82,18 @@ export const Modal: FC<{
         }),
       });
 
+      if (image.status === 504 || image.status === 502) {
+        // The load balancer gives up after 3 minutes; the clip is still being
+        // made and lands in the media library (asking again returns it).
+        toaster.show(
+          t(
+            'video_generation_still_running',
+            'Your video is taking longer than usual. It will appear in your media library when it is ready.'
+          ),
+          'warning'
+        );
+        return;
+      }
       if (!image.ok) {
         await showAiError(
           image,
@@ -91,6 +105,7 @@ export const Modal: FC<{
         return;
       }
       onChange(await image.json());
+      mutate();
     } catch (e) {
       console.error('[Postra:ai-video] generate failed', e);
       toaster.show(
@@ -104,7 +119,7 @@ export const Modal: FC<{
       setLocked(false);
       setLoading(false);
     }
-  }, [type, position, showAiError, t]);
+  }, [type, position, showAiError, t, mutate]);
 
   return (
     // Start with an empty prompt — we no longer copy the post's text field.
@@ -114,7 +129,12 @@ export const Modal: FC<{
         className="flex flex-col gap-[10px]"
       >
         {createPortal(
-          <>{data?.credits || 0} credits left</>,
+          <>
+            {t('ai_videos_left', '{n} video credits left').replace(
+              '{n}',
+              String(data?.credits || 0)
+            )}
+          </>,
           document.querySelector('.top-title-content') ||
             document.createElement('div')
         )}
@@ -255,8 +275,13 @@ export const AiVideo: FC<{
 
   return (
     <div className="relative">
-      <div
+      {/* A button with its words always shown: below 1560 px the label used
+          to hide, leaving a bare icon on a div — no name, no keyboard. */}
+      <button
+        type="button"
         onClick={openVideoModal}
+        aria-label={t('ai_video', 'AI Video')}
+        title={t('ai_video', 'AI Video')}
         className={clsx(
           'cursor-pointer h-[30px] rounded-[6px] justify-center items-center flex bg-newColColor px-[8px]'
         )}
@@ -296,11 +321,11 @@ export const AiVideo: FC<{
               </defs>
             </svg>
           </div>
-          <div className="text-[10px] font-[600] iconBreak:hidden block">
-            {t('ai', 'AI')} Video
+          <div className="text-[10px] font-[600] block whitespace-nowrap">
+            {t('ai_video', 'AI Video')}
           </div>
         </div>
-      </div>
+      </button>
     </div>
   );
 };

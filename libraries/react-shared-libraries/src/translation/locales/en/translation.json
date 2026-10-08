@@ -1504,7 +1504,7 @@
   "autopost_upsell_cta": "See plans",
   "autopost_feeds_used": "{{used}} of {{limit}} RSS feeds used",
   "autopost_deleted": "Auto Post feed deleted",
-  "billing_trial_limits": "During the 7-day trial you can connect up to {{channels}} channels and use Starter's AI allowance ({{images}} AI images); your full plan unlocks with the first payment, or straight away if you end the trial early.",
+  "billing_trial_limits": "During the 7-day trial you can connect up to {{channels}} channels and use Starter's AI allowance ({{images}} AI images, {{videos}} AI video); your full plan unlocks with the first payment, or straight away if you end the trial early.",
   "billing_end_trial_now": "End the trial now",
   "channels_still_disabled": "Some channels are still disabled",
   "channels_still_disabled_description": "Your plan doesn't cover all of your connected channels, so some stay disabled. Enable the ones you want from each channel's menu, up to your plan's limit, or upgrade your plan to use all of them.",
@@ -1525,5 +1525,13 @@
   "edit_post_tab": "Edit",
   "connect_failed_try_again": "An error occurred. Please try again.",
   "copy_client_id": "Copy ID",
-  "write_your_message_placeholder": "Write your message..."
+  "write_your_message_placeholder": "Write your message...",
+  "ai_video": "AI Video",
+  "ai_image": "AI Image",
+  "ai_videos_left": "{n} video credits left",
+  "video_generation_still_running": "Your video is taking longer than usual. It will appear in your media library when it is ready.",
+  "billing_plan_videos": "{{count}} AI videos a month",
+  "billing_this_month": "This month",
+  "billing_ai_images_left": "{{left}} of {{total}} AI images left",
+  "billing_ai_videos_left": "{{left}} of {{total}} AI videos left"
 }

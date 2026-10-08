@@ -4,6 +4,9 @@ export type URL = string;
 
 export abstract class VideoAbstract<T> {
   dto: Type<T>;
+  // The model a finished clip is logged under in AiUsage (unit 'videos'), so
+  // the margin guard can price it; the video's identifier when unset.
+  usageModel?: string;
 
   async processAndValidate(customParams?: T) {
     const validationPipe = new ValidationPipe({

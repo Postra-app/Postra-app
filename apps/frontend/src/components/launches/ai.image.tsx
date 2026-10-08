@@ -195,8 +195,12 @@ export const AiImage: FC<{
 
   return (
     <div className="relative">
-      <div
+      {/* See AiVideo: a labelled button at every width. */}
+      <button
+        type="button"
         onClick={openImageModal}
+        aria-label={t('ai_image', 'AI Image')}
+        title={t('ai_image', 'AI Image')}
         className={clsx(
           'cursor-pointer h-[30px] rounded-[6px] justify-center items-center flex bg-newColColor px-[8px]'
         )}
@@ -236,11 +240,11 @@ export const AiImage: FC<{
               </defs>
             </svg>
           </div>
-          <div className="text-[10px] font-[600] iconBreak:hidden block">
-            {t('ai', 'AI')} Image
+          <div className="text-[10px] font-[600] block whitespace-nowrap">
+            {t('ai_image', 'AI Image')}
           </div>
         </div>
-      </div>
+      </button>
     </div>
   );
 };

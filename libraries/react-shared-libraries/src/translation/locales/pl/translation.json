@@ -1503,7 +1503,7 @@
   "autopost_upsell_cta": "Zobacz plany",
   "autopost_feeds_used": "Wykorzystane kanały RSS: {{used}} z {{limit}}",
   "autopost_deleted": "Kanał Auto Post usunięty",
-  "billing_trial_limits": "W 7-dniowym okresie próbnym podłączysz do {{channels}} kanałów i korzystasz z puli AI planu Starter ({{images}} obrazów AI); pełny plan odblokuje się przy pierwszej płatności albo od razu, jeśli zakończysz okres próbny wcześniej.",
+  "billing_trial_limits": "W 7-dniowym okresie próbnym podłączysz do {{channels}} kanałów i korzystasz z puli AI planu Starter ({{images}} obrazów AI, {{videos}} wideo AI); pełny plan odblokuje się przy pierwszej płatności albo od razu, jeśli zakończysz okres próbny wcześniej.",
   "billing_end_trial_now": "Zakończ okres próbny teraz",
   "channels_still_disabled": "Część kanałów jest nadal wyłączona",
   "channels_still_disabled_description": "Twój plan nie obejmuje wszystkich podłączonych kanałów, więc część pozostaje wyłączona. Włącz wybrane w menu kanału, do limitu planu, albo zmień plan na wyższy, żeby używać wszystkich.",
@@ -1524,5 +1524,13 @@
   "edit_post_tab": "Edytuj",
   "connect_failed_try_again": "Wystąpił błąd. Spróbuj ponownie.",
   "copy_client_id": "Skopiuj ID",
-  "write_your_message_placeholder": "Napisz wiadomość..."
+  "write_your_message_placeholder": "Napisz wiadomość...",
+  "ai_video": "Wideo AI",
+  "ai_image": "Obraz AI",
+  "ai_videos_left": "zostało {n} kredytów na wideo",
+  "video_generation_still_running": "Wideo powstaje dłużej niż zwykle. Pojawi się w bibliotece mediów, gdy będzie gotowe.",
+  "billing_plan_videos": "{{count}} wideo AI miesięcznie",
+  "billing_this_month": "W tym miesiącu",
+  "billing_ai_images_left": "zostało {{left}} z {{total}} obrazów AI",
+  "billing_ai_videos_left": "zostało {{left}} z {{total}} wideo AI"
 }

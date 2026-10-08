@@ -95,7 +95,7 @@ export const pricing: PricingInterface = {
     webhooks: 2,
     autoPost: false,
     autoPostLimit: 0,
-    generate_videos: 0,
+    generate_videos: 15,
     agent_tokens: 1_500_000,
   },
   // Legacy, not purchasable (removed from BillingSubscribeDto). Kept so any
@@ -215,14 +215,27 @@ export const postsCycleWindow = (
   };
 };
 
+// A trial shows AI video with one clip (~$0.33 at kie.ai), whatever the plan
+// (K. 2026-10-08).
+export const TRIAL_VIDEO_CLIPS = 1;
+
 // AI allowances follow the same rule as channels: a trial runs on Starter's
 // pool, so a Business trial cannot burn 600 images before the first charge.
+// Video is the exception: one clip.
 export const trialAiAllowance = (
   allowance: number,
   isTrailing: boolean | undefined,
   type: 'image_generation_count' | 'agent_tokens' | 'generate_videos'
-): number =>
-  isTrailing ? Math.min(allowance, pricing.STANDARD[type] || 0) : allowance;
+): number => {
+  if (!isTrailing) {
+    return allowance;
+  }
+  const cap =
+    type === 'generate_videos'
+      ? TRIAL_VIDEO_CLIPS
+      : pricing.STANDARD[type] || 0;
+  return Math.min(allowance, cap);
+};
 
 /**
  * Channels that take a slot: every channel that is not disabled — including

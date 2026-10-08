@@ -26,7 +26,8 @@ export interface AiUsageEvent {
     // Scripts for the video generators (slides, avatar voice).
     | 'video';
   model: string;
-  unit?: 'tokens' | 'seconds' | 'images';
+  // 'videos': finished AI video clips (inputAmount = clips).
+  unit?: 'tokens' | 'seconds' | 'images' | 'videos';
   inputAmount?: number;
   // Input tokens the provider served from its prompt cache (OpenAI
   // prompt_tokens_details.cached_tokens) — part of inputAmount, billed cheaper.

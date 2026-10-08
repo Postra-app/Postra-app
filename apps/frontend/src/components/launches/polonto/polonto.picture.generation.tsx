@@ -33,7 +33,7 @@ const GenerateTab = observer(({ store }: any) => {
       })
     ).json();
   }, []);
-  const { data, mutate } = useSWR('copilot-credits', loadCredits);
+  const { data, mutate } = useSWR('copilot-credits-polotno', loadCredits);
   const t = useT();
   const showAiError = useAiError();
 
