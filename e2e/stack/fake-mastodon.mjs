@@ -13,7 +13,8 @@
 //                           n ms later — a platform that accepted the post
 //                           while the worker that sent it dies (restart/)
 //   GET  /api/v1/statuses/:id   a received status with its counts (favourites
-//                           3, boosts 2, replies 1) — post statistics
+//                           3, boosts 2, replies 1) — post statistics; with a
+//                           token 403, as for Postra's write-only scopes
 //   GET  /xrpc/app.bsky.feed.getPosts?uris=u   Bluesky's public AppView
 //                           (stack.env BLUESKY_APPVIEW_URL): any uri, counts
 //                           likes 5, reposts 4, replies 3, quotes 2
@@ -111,6 +112,11 @@ createServer(async (req, res) => {
 
   const status = req.method === 'GET' && req.url?.match(/^\/api\/v1\/statuses\/(\d+)$/);
   if (status) {
+    // Like Mastodon: a token without read:statuses (Postra asks only for
+    // write scopes) is refused; a public status reads without one.
+    if (req.headers.authorization) {
+      return json(res, 403, { error: 'This action is outside the authorized scopes' });
+    }
     const found = received.find((r) => r.id === status[1]);
     if (!found) return json(res, 404, { error: 'Record not found' });
     return json(res, 200, { id: found.id, favourites_count: 3, reblogs_count: 2, replies_count: 1 });
