@@ -33,6 +33,7 @@ import { PostsService } from '@gitroom/nestjs-libraries/database/prisma/posts/po
 import { Request, Response } from 'express';
 import { RequestContext } from '@mastra/core/di';
 import { recordAgentMessage } from '@gitroom/nestjs-libraries/services/ai-usage.record';
+import { threadStateClient } from '@gitroom/nestjs-libraries/chat/thread-state';
 import { AGENT_FAIR_USE_MESSAGES } from '@gitroom/nestjs-libraries/database/prisma/subscriptions/pricing';
 import { CheckPolicies } from '@gitroom/backend/services/auth/permissions/permissions.ability';
 import { AuthorizationActions, Sections } from '@gitroom/nestjs-libraries/services/auth/permission.exception.class';
@@ -158,6 +159,16 @@ export class CopilotController {
       mastra,
       requestContext: requestContext as any,
     });
+    // Without a state client CopilotKit's loadAgentState answered "no
+    // messages" and the browser emptied a chat opened again (K. 2026-10-08).
+    const memory = await mastra.getAgent('postra').getMemory();
+    for (const agent of Object.values(agents)) {
+      Object.assign(agent, {
+        client: threadStateClient((threadId) =>
+          memory!.recall({ resourceId: organization.id, threadId })
+        ),
+      });
+    }
 
     const runtime = new CopilotRuntime({
       agents,
