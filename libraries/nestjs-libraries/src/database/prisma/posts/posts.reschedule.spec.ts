@@ -8,6 +8,7 @@ const build = (post: Record<string, unknown>) => {
     getPostById: jest.fn().mockResolvedValue({ id: 'p1', group: 'g1', integration: { providerIdentifier: 'x' }, ...post }),
     changeDate: jest.fn().mockResolvedValue({}),
     changeState: jest.fn().mockResolvedValue({}),
+    transaction: jest.fn((write: (tx: unknown) => unknown) => write({})),
     clearReleases: jest.fn().mockResolvedValue({}),
     clearGroupReleases: jest.fn().mockResolvedValue({}),
   };

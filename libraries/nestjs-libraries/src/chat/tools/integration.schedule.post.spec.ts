@@ -77,3 +77,24 @@ describe('agent post cap', () => {
     expect(postsService.postCapReached).not.toHaveBeenCalled();
   });
 });
+
+// Codex: the check above runs before any post is written, so saves at once
+// could all pass it. createPost counts again behind a lock with this cap.
+describe('agent post cap passed to createPost', () => {
+  const key = process.env.STRIPE_PUBLISHABLE_KEY;
+  afterAll(() => (process.env.STRIPE_PUBLISHABLE_KEY = key));
+
+  it("is the plan's monthly posts from the subscription's start", async () => {
+    process.env.STRIPE_PUBLISHABLE_KEY = 'pk_test';
+    const { tool } = build('STANDARD', 0);
+    const cap = await tool.postCap('org-1', new Date(0).toISOString());
+    expect(cap.limit).toBe(400);
+    expect(cap.anchor).toBeInstanceOf(Date);
+  });
+
+  it('is none when billing is off', async () => {
+    delete process.env.STRIPE_PUBLISHABLE_KEY;
+    const { tool } = build('STANDARD', 0);
+    await expect(tool.postCap('org-1', new Date().toISOString())).resolves.toBeUndefined();
+  });
+});

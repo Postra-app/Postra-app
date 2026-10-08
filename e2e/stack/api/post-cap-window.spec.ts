@@ -254,8 +254,8 @@ test('editing drafts and failed posts with "update" goes through at a full month
       },
     });
     expect(res.status(), await res.text()).toBe(201);
-    const rows = await prisma.post.findMany({ where: { id: { in: kept.map((p) => p.id) } }, orderBy: { state: 'asc' } });
-    expect(rows.map((r) => [r.state, r.content])).toEqual([
+    const rows = await prisma.post.findMany({ where: { id: { in: kept.map((p) => p.id) } } });
+    expect(rows.map((r) => [r.state, r.content]).sort()).toEqual([
       ['DRAFT', expect.stringContaining('edited')],
       ['ERROR', expect.stringContaining('edited')],
     ]);
