@@ -5,6 +5,15 @@ const ExistingDataContext = createContext({
   group: undefined as undefined | string,
   posts: [] as Post[],
   settings: {} as any,
+  // The other channels the post was saved with (group schedules).
+  siblings: undefined as
+    | undefined
+    | {
+        integration: string;
+        group: string;
+        posts: Post[];
+        settings: any;
+      }[],
 });
 export const ExistingDataContextProvider: FC<{
   children: ReactNode;

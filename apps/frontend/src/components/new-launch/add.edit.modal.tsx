@@ -109,6 +109,16 @@ export const AddEditModalInner: FC<AddEditModalProps> = (props) => {
         return;
       }
       addOrRemoveSelectedIntegration(integration, existingData.settings);
+
+      // The other channels the post was saved with (group schedules).
+      for (const sibling of existingData.siblings || []) {
+        const siblingIntegration = integrations.find(
+          (i) => i.id === sibling.integration
+        );
+        if (siblingIntegration) {
+          addOrRemoveSelectedIntegration(siblingIntegration, sibling.settings);
+        }
+      }
     }
 
     if (props?.selectedChannels?.length) {
@@ -128,6 +138,21 @@ export const AddEditModalInner: FC<AddEditModalProps> = (props) => {
   return <AddEditModalInnerInner {...props} />;
 };
 
+// An existing post as the values of the editor.
+const postValues = (posts: any[]) =>
+  posts.map((post) => ({
+    delay: post.delay,
+    content: /<p[\s>]/i.test(post.content)
+      ? post.content
+      : post.content
+          .split('\n')
+          .map((line: string) => `<p>${line}</p>`)
+          .join(''),
+    id: post.id,
+    // post.image arrives parsed from the server
+    media: post.image as any[],
+  }));
+
 export const AddEditModalInnerInner: FC<AddEditModalProps> = (props) => {
   const existingData = useExistingData();
   const {
@@ -140,8 +165,12 @@ export const AddEditModalInnerInner: FC<AddEditModalProps> = (props) => {
     setTags,
     setEditor,
     setRepeater,
+    selectedIntegrations,
+    setChannelDate,
   } = useLaunchStore(
     useShallow((state) => ({
+      selectedIntegrations: state.selectedIntegrations,
+      setChannelDate: state.setChannelDate,
       reset: state.reset,
       addGlobalValue: state.addGlobalValue,
       addInternalValue: state.addInternalValue,
@@ -169,20 +198,24 @@ export const AddEditModalInnerInner: FC<AddEditModalProps> = (props) => {
       addInternalValue(
         0,
         existingData.integration,
-        existingData.posts.map((post) => ({
-          delay: post.delay,
-          content:
-            /<p[\s>]/i.test(post.content)
-              ? post.content
-              : post.content
-                  .split('\n')
-                  .map((line: string) => `<p>${line}</p>`)
-                  .join(''),
-          id: post.id,
-          // @ts-expect-error post.image is a string being cast to any[]
-          media: post.image as any[],
-        }))
+        postValues(existingData.posts)
       );
+
+      // The other channels the post was saved with, each with its own
+      // content and date.
+      for (const sibling of existingData.siblings || []) {
+        if (
+          selectedIntegrations.some(
+            (p) => p.integration.id === sibling.integration
+          )
+        ) {
+          addInternalValue(0, sibling.integration, postValues(sibling.posts));
+          setChannelDate(
+            sibling.integration,
+            dayjs.utc(sibling.posts[0].publishDate).local()
+          );
+        }
+      }
       setCurrent(existingData.integration);
     } else {
       setEditor('normal');
