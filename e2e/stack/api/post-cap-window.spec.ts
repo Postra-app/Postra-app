@@ -304,3 +304,63 @@ test('posts moved at once into a month with one post left: only one moves', asyn
     await org.remove();
   }
 });
+
+// Codex: a save at a full month that takes one post out of the count (kept as
+// a draft, or moved to another month) and puts another in leaves the month as
+// full as it was; it was refused.
+const saveAs = (api: APIRequestContext, channel: string, posts: { id: string; group: string; type: string; date: Date }[]) =>
+  api.post('/posts', {
+    data: {
+      type: 'schedule',
+      shortLink: false,
+      date: inDays(2).toISOString(),
+      tags: [],
+      posts: posts.map((p) => ({
+        integration: { id: channel },
+        group: p.group,
+        type: p.type,
+        date: p.date.toISOString(),
+        value: [{ id: p.id, content: `swapped ${p.type}`, image: [] }],
+        settings: { __type: 'facebook' },
+      })),
+    },
+  });
+
+test('a save at a full month that swaps one post for another goes through', async () => {
+  const org = await throwawayOrg(prisma, { tier: 'STANDARD', totalChannels: 3, channels: 1, provider: 'facebook' });
+  const channel = org.channelIds[0];
+  try {
+    const queued = await fill(org.orgId, channel, LIMIT, inDays(1), 'QUEUE');
+    const [draft] = await fill(org.orgId, channel, 1, inDays(2), 'DRAFT');
+    const res = await saveAs(org.api, channel, [
+      { id: queued[0].id, group: queued[0].group, type: 'draft', date: inDays(1) },
+      { id: draft.id, group: draft.group, type: 'schedule', date: inDays(2) },
+    ]);
+    expect(res.status(), await res.text()).toBe(201);
+    expect(await countIn(org.orgId, inDays(0), inDays(30))).toBe(LIMIT);
+    // Still nothing to spare: one more is refused.
+    const more = await schedule(org.api, channel, inDays(2), [{ content: 'one more' }]);
+    expect(more.status(), await more.text()).toBe(402);
+  } finally {
+    await prisma.post.deleteMany({ where: { organizationId: org.orgId } });
+    await org.remove();
+  }
+});
+
+test('two full months can swap a post each in one save', async () => {
+  const org = await throwawayOrg(prisma, { tier: 'STANDARD', totalChannels: 3, channels: 1, provider: 'facebook' });
+  const channel = org.channelIds[0];
+  try {
+    const [a] = await fill(org.orgId, channel, LIMIT, inDays(1), 'QUEUE');
+    const [b] = await fill(org.orgId, channel, LIMIT, inDays(41), 'QUEUE');
+    const res = await saveAs(org.api, channel, [
+      { id: a.id, group: a.group, type: 'schedule', date: inDays(42) },
+      { id: b.id, group: b.group, type: 'schedule', date: inDays(2) },
+    ]);
+    expect(res.status(), await res.text()).toBe(201);
+    expect(await countIn(org.orgId, inDays(0), inDays(30))).toBe(LIMIT);
+  } finally {
+    await prisma.post.deleteMany({ where: { organizationId: org.orgId } });
+    await org.remove();
+  }
+});
