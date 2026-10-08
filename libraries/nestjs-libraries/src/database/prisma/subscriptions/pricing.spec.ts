@@ -16,9 +16,10 @@ import {
 // for. If one of these fails, the change must be deliberate: update the test
 // together with Stripe prices and the landing/pricing copy.
 describe('pricing matrix', () => {
-  it('keeps GBP prices at £12/£29/£79 (yearly = 10x monthly)', () => {
+  it('keeps GBP prices at £19/£29/£79 (yearly = 10x monthly; Starter from £12, K. 2026-10-08)', () => {
     expect(pricing.FREE.month_price).toBe(0);
-    expect(pricing.STANDARD.month_price).toBe(12);
+    expect(pricing.STANDARD.month_price).toBe(19);
+    expect(pricing.STANDARD.year_price).toBe(190);
     expect(pricing.PRO.month_price).toBe(29);
     expect(pricing.ULTIMATE.month_price).toBe(79);
     for (const tier of ['STANDARD', 'PRO', 'ULTIMATE']) {
@@ -164,17 +165,17 @@ describe('pricing limits the landing promises', () => {
     expect(pricing.ULTIMATE.webhooks).toBe(10_000);
   });
 
-  it('keeps Auto Post at Pro=3 and Business=10 feeds, none below', () => {
+  it('keeps Auto Post at Starter=2, Pro=3 and Business=10 feeds, none on FREE', () => {
     expect([pricing.FREE.autoPost, pricing.FREE.autoPostLimit]).toEqual([false, 0]);
-    expect([pricing.STANDARD.autoPost, pricing.STANDARD.autoPostLimit]).toEqual([false, 0]);
+    expect([pricing.STANDARD.autoPost, pricing.STANDARD.autoPostLimit]).toEqual([true, 2]);
     expect([pricing.PRO.autoPost, pricing.PRO.autoPostLimit]).toEqual([true, 3]);
     expect([pricing.ULTIMATE.autoPost, pricing.ULTIMATE.autoPostLimit]).toEqual([true, 10]);
   });
 
-  it('keeps AI images a month at FREE=0, Starter=30, Pro=150, Business=600', () => {
+  it('keeps AI images a month at FREE=0, Starter=75, Pro=200, Business=600', () => {
     expect(pricing.FREE.image_generation_count).toBe(0);
-    expect(pricing.STANDARD.image_generation_count).toBe(30);
-    expect(pricing.PRO.image_generation_count).toBe(150);
+    expect(pricing.STANDARD.image_generation_count).toBe(75);
+    expect(pricing.PRO.image_generation_count).toBe(200);
     expect(pricing.ULTIMATE.image_generation_count).toBe(600);
   });
 

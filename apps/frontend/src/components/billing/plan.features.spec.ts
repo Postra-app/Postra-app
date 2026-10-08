@@ -16,9 +16,10 @@ describe('planFeatures', () => {
       '400 posts a month',
       '1 person',
       'AI writer, assistant and auto-complete',
-      '30 AI images a month',
+      '75 AI images a month',
       '15 AI videos a month',
       'Studio image editor',
+      'Blog to posts from 2 RSS feeds',
       'Public API and 2 webhooks',
     ]);
   });
@@ -56,7 +57,7 @@ describe('planFeatures', () => {
   });
 
   it('never promises Blog to posts on a plan without it', () => {
-    expect(texts('STANDARD').some((t) => t.startsWith('Blog to posts'))).toBe(
+    expect(texts('FREE').some((t) => t.startsWith('Blog to posts'))).toBe(
       false
     );
   });
