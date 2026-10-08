@@ -6,7 +6,10 @@ import {
   NotFoundException,
   ValidationPipe,
 } from '@nestjs/common';
-import { PostsRepository } from '@gitroom/nestjs-libraries/database/prisma/posts/posts.repository';
+import {
+  PostsRepository,
+  PostVersion,
+} from '@gitroom/nestjs-libraries/database/prisma/posts/posts.repository';
 import {
   CreatePostDto,
   saveTypeOfPost,
@@ -1234,14 +1237,21 @@ export class PostsService {
     const editedIds = (body.posts || []).flatMap((post) =>
       (post.value || []).map((value) => value.id).filter(Boolean)
     ) as string[];
+    // Each channel against the version it was read at.
+    const versions = (body.posts || [])
+      .map((post) => ({
+        ids: (post.value || [])
+          .map((value) => value.id)
+          .filter(Boolean) as string[],
+        expectedUpdatedAt: post.expectedUpdatedAt || body.expectedUpdatedAt,
+      }))
+      .filter(
+        (v): v is PostVersion => !!v.ids.length && !!v.expectedUpdatedAt
+      );
     // Refused here before any work is done; the write below checks again
     // with the rows locked, which is what stops two saves at once.
-    if (body.expectedUpdatedAt && editedIds.length) {
-      await this._postRepository.refuseIfChangedSince(
-        orgId,
-        editedIds,
-        body.expectedUpdatedAt
-      );
+    if (versions.length) {
+      await this._postRepository.refuseIfChangedSince(orgId, versions);
     }
 
     // Every post of the request is checked before the first one is written.
@@ -1286,7 +1296,11 @@ export class PostsService {
     // check of lockForSave. Written one transaction per channel, a save refused (or
     // failing) on the second channel left the first one saved, and already
     // publishing.
-    const counted = cap ? postsCountedBy(body, true) : [];
+    // "Now" once, for the count and the save alike: counted to the second
+    // and saved to the minute, a post at the start of a billing month
+    // counted in one month and was saved in the one before (Codex).
+    const now = dayjs().format('YYYY-MM-DDTHH:mm:00');
+    const counted = cap ? postsCountedBy(body, true, undefined, now) : [];
     const written = await this._postRepository.transaction(async (tx) => {
       // The guard counted outside any lock, so two saves at once could both
       // take the last post of the month (Codex). Counted again here, behind a
@@ -1300,12 +1314,7 @@ export class PostsService {
           postsReleasedBy(body)
         );
       }
-      await this._postRepository.lockForSave(
-        tx,
-        orgId,
-        editedIds,
-        body.expectedUpdatedAt
-      );
+      await this._postRepository.lockForSave(tx, orgId, editedIds, versions);
 
       // The channels of one save share a batch, so opening one of them in the
       // editor brings the others (an edited post keeps its own batch).
@@ -1316,9 +1325,7 @@ export class PostsService {
         const { posts } = await this._postRepository.createOrUpdatePost(
           kind,
           orgId,
-          kind === 'now'
-            ? dayjs().format('YYYY-MM-DDTHH:mm:00')
-            : post.date || body.date,
+          kind === 'now' ? now : post.date || body.date,
           post,
           post.tags || body.tags,
           creationMethod,

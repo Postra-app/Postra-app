@@ -769,9 +769,18 @@ export const ManageModal: FC<AddEditModalProps> = (props) => {
                 const loaded = existingPosts.find(
                   (e) => e.integration === p.integration.id
                 );
+                // Each channel against the version it was read at.
+                const readAt = (loaded?.posts || [])
+                  .map((post: any) => post?.updatedAt)
+                  .filter(Boolean)
+                  .sort()
+                  .pop();
                 return {
                   ...p,
                   type: saveTypeOf(p.integration.id),
+                  ...(readAt && data.expectedUpdatedAt
+                    ? { expectedUpdatedAt: readAt }
+                    : {}),
                   // The server post payload isn't typed with tags.
                   ...(tagsKept && (loaded?.posts?.[0] as any)?.tags
                     ? { tags: tagsOf(loaded) }
@@ -799,6 +808,9 @@ export const ManageModal: FC<AddEditModalProps> = (props) => {
                 return;
               }
               delete request.expectedUpdatedAt;
+              for (const post of request.posts) {
+                delete post.expectedUpdatedAt;
+              }
               saveResponse = await fetch('/posts', {
                 method: 'POST',
                 body: JSON.stringify(request),

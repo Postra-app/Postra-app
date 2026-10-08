@@ -28,7 +28,8 @@ const validDate = (d: unknown): d is string =>
 export const postsCountedBy = (
   body: any,
   perPostDate: boolean,
-  typeOf: (post: any) => unknown = (post) => saveTypeOfPost(body, post)
+  typeOf: (post: any) => unknown = (post) => saveTypeOfPost(body, post),
+  now: string = new Date().toISOString()
 ): CountedPost[] =>
   (Array.isArray(body?.posts) ? body.posts : [])
     .filter((post: any) => typeOf(post) !== 'draft')
@@ -36,7 +37,7 @@ export const postsCountedBy = (
       const kind = typeOf(post);
       const date =
         kind === 'now'
-          ? new Date().toISOString()
+          ? now
           : [perPostDate ? post?.date : undefined, body?.date].find(validDate);
       return (Array.isArray(post?.value) ? post.value : []).map(
         (value: any) => ({

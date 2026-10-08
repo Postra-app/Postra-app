@@ -31,6 +31,9 @@ dayjs.extend(weekOfYear);
 dayjs.extend(isSameOrAfter);
 dayjs.extend(utc);
 
+// The posts of one channel of a save and when the editor read them.
+export type PostVersion = { ids: string[]; expectedUpdatedAt: string };
+
 @Injectable()
 export class PostsRepository {
   constructor(
@@ -535,16 +538,16 @@ export class PostsRepository {
   }
 
   // By id, not by group: every save moves the posts to a new group.
-  async refuseIfChangedSince(
-    orgId: string,
-    ids: string[],
-    expectedUpdatedAt: string
-  ) {
-    const { _max } = await this._post.model.post.aggregate({
-      _max: { updatedAt: true },
+  async refuseIfChangedSince(orgId: string, versions: PostVersion[]) {
+    const ids = versions.flatMap((v) => v.ids);
+    if (!ids.length) {
+      return;
+    }
+    const rows = await this._post.model.post.findMany({
       where: { organizationId: orgId, id: { in: ids } },
+      select: { id: true, updatedAt: true },
     });
-    this.refuseIfNewer(_max.updatedAt, expectedUpdatedAt);
+    this.refuseIfNewer(rows, versions);
   }
 
   // First thing in a save's transaction: lock every post it overwrites, in
@@ -558,34 +561,42 @@ export class PostsRepository {
     tx: Prisma.TransactionClient,
     orgId: string,
     ids: string[],
-    expectedUpdatedAt?: string
+    versions: PostVersion[] = []
   ) {
     if (!ids.length) {
       return;
     }
 
-    const rows = await tx.$queryRaw<{ updatedAt: Date }[]>`
-      SELECT "updatedAt" FROM "Post"
+    const rows = await tx.$queryRaw<{ id: string; updatedAt: Date }[]>`
+      SELECT "id", "updatedAt" FROM "Post"
       WHERE "id" = ANY(${ids}::text[]) AND "organizationId" = ${orgId}
       ORDER BY "id"
       FOR UPDATE`;
 
-    if (expectedUpdatedAt) {
-      const latest = rows.reduce<Date | null>(
-        (max, { updatedAt }) => (!max || updatedAt > max ? updatedAt : max),
-        null
-      );
-      this.refuseIfNewer(latest, expectedUpdatedAt);
-    }
+    this.refuseIfNewer(rows, versions);
   }
 
-  private refuseIfNewer(latest: Date | null, expectedUpdatedAt: string) {
-    if (latest && latest.getTime() > Date.parse(expectedUpdatedAt)) {
-      throw new ConflictException({
-        statusCode: 409,
-        message: 'Someone else saved changes to this post after you opened it.',
-        updatedAt: latest.toISOString(),
-      });
+  // Each channel against the version it was read at.
+  private refuseIfNewer(
+    rows: { id: string; updatedAt: Date }[],
+    versions: PostVersion[]
+  ) {
+    const updatedAt = new Map(rows.map((r) => [r.id, r.updatedAt] as const));
+    for (const { ids, expectedUpdatedAt } of versions) {
+      const latest = ids
+        .map((id) => updatedAt.get(id))
+        .reduce<Date | null>(
+          (max, at) => (at && (!max || at > max) ? at : max),
+          null
+        );
+      if (latest && latest.getTime() > Date.parse(expectedUpdatedAt)) {
+        throw new ConflictException({
+          statusCode: 409,
+          message:
+            'Someone else saved changes to this post after you opened it.',
+          updatedAt: latest.toISOString(),
+        });
+      }
     }
   }
 

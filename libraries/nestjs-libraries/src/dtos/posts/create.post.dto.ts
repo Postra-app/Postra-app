@@ -108,6 +108,13 @@ export class Post {
   @IsDateString()
   date?: string;
 
+  // When the editor read this channel: a post opens with its other channels
+  // read separately, and the newest of them hid an older read of another
+  // (Codex). Without it the request's expectedUpdatedAt applies.
+  @IsOptional()
+  @IsDateString()
+  expectedUpdatedAt?: string;
+
   // Tags of their own, for the same reason: the editor saves the other
   // channels of a post with the tags they have unless the tags were changed.
   @IsOptional()
