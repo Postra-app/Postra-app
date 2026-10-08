@@ -309,3 +309,10 @@ describe('postsCycleStart', () => {
     expect(Date.now() - start.getTime()).toBeLessThan(32 * 24 * 3600 * 1000);
   });
 });
+
+// Codex: an invalid date never left the window's loop.
+it('postsCycleWindow takes an invalid date as now, and returns', () => {
+  const { start, end } = postsCycleWindow('2026-01-15T00:00:00Z', 'invalid');
+  expect(+start).toBeLessThanOrEqual(Date.now());
+  expect(Date.now()).toBeLessThan(+end);
+});

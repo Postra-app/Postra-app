@@ -181,3 +181,32 @@ test('moving a scheduled post into a full month is refused, within it is fine', 
     await org.remove();
   }
 });
+
+test('Codex: a bad date is a 400, a query cannot pass as the public API, a draft moves freely', async () => {
+  const org = await throwawayOrg(prisma, { tier: 'STANDARD', totalChannels: 3, channels: 1, provider: 'facebook' });
+  const channel = org.channelIds[0];
+  try {
+    const full = await fill(org.orgId, channel, LIMIT, inDays(1), 'QUEUE');
+    // An invalid date looped forever in the month window and froze the backend.
+    const bad = await org.api.put(`/posts/${full[0].id}/date`, { data: { date: 'invalid', action: 'update' }, timeout: 5_000 });
+    expect(bad.status()).toBe(400);
+
+    const sneaky = await org.api.post('/posts?x=/public/v1/', {
+      data: {
+        type: 'schedule',
+        shortLink: false,
+        date: inDays(41).toISOString(),
+        tags: [],
+        posts: [{ integration: { id: channel }, date: inDays(2).toISOString(), value: [{ content: 'x', image: [] }], settings: { __type: 'facebook' } }],
+      },
+    });
+    expect(sneaky.status(), await sneaky.text()).toBe(402);
+
+    // The calendar drags a draft with action "schedule"; it stays a draft.
+    const [draft] = await fill(org.orgId, channel, 1, inDays(42), 'DRAFT');
+    expect((await org.api.put(`/posts/${draft.id}/date`, { data: { date: inDays(3).toISOString(), action: 'schedule' } })).status()).toBe(200);
+  } finally {
+    await prisma.post.deleteMany({ where: { organizationId: org.orgId } });
+    await org.remove();
+  }
+});
