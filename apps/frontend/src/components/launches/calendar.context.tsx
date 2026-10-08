@@ -99,6 +99,7 @@ export const CalendarContext = createContext({
   setSelectedChannels: (channels: string[] | null) => {
     /** empty **/
   },
+  currentHour: newDayjs().startOf('hour'),
 });
 
 export interface Integrations {
@@ -130,6 +131,24 @@ export interface Integrations {
 }
 
 // Helper function to get start and end dates based on display type
+// The current time rounded down to the unit. It checks every minute, so it
+// also catches up within a minute after the computer wakes from sleep
+// (upstream 47175b5a).
+export const useNow = (unit: 'minute' | 'hour' = 'minute') => {
+  const [now, setNow] = useState(() => newDayjs().startOf(unit).valueOf());
+  useEffect(() => {
+    let timeout: ReturnType<typeof setTimeout>;
+    const tick = () => {
+      // the same number is no re-render, so the hour clock renders once an hour
+      setNow(newDayjs().startOf(unit).valueOf());
+      timeout = setTimeout(tick, 60000 - (Date.now() % 60000));
+    };
+    tick();
+    return () => clearTimeout(timeout);
+  }, [unit]);
+  return useMemo(() => newDayjs(now), [now]);
+};
+
 function getDateRange(display: string, referenceDate?: string) {
   const date = referenceDate ? newDayjs(referenceDate) : newDayjs();
 
@@ -424,6 +443,9 @@ export const CalendarWeekProvider: FC<{
   // Determine loading state based on current view
   const loading = filters.display === 'list' ? listIsLoading : calendarIsLoading;
 
+  // One clock for every calendar cell, instead of a timer per cell.
+  const currentHour = useNow('hour');
+
   return (
     <CalendarContext.Provider
       value={{
@@ -456,6 +478,7 @@ export const CalendarWeekProvider: FC<{
         setListState,
         selectedChannels,
         setSelectedChannels,
+        currentHour,
       }}
     >
       {children}
