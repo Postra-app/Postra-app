@@ -102,3 +102,63 @@ test('an organisation past its agent allowance gets no agent run through MCP', a
     await org.remove();
   }
 });
+
+// CodeQL on #348: the questions of a JSON-RPC batch were counted one write
+// each, and every ask_postra in a batch is a whole agent run while the MCP
+// rate limit counts requests. A batch is now at most 5 questions, counted
+// in one write.
+test('a batch of questions is capped at 5 and counted in one write', async () => {
+  test.setTimeout(90_000);
+  const org = await throwawayOrg(prisma, { tier: 'PRO', totalChannels: 5, channels: 0 });
+  const { apiKey } = await prisma.organization.findUniqueOrThrow({ where: { id: org.orgId } });
+  const api = await pwRequest.newContext({ baseURL: BACKEND_URL });
+  const headers = (sid?: string) => ({
+    'content-type': 'application/json',
+    accept: 'application/json, text/event-stream',
+    authorization: `Bearer ${apiKey}`,
+    ...(sid ? { 'mcp-session-id': sid } : {}),
+  });
+  const ask = (id: number, marker: string) => ({
+    jsonrpc: '2.0',
+    id,
+    method: 'tools/call',
+    params: { name: 'ask_postra', arguments: { message: `Say hello (${marker})` } },
+  });
+  try {
+    const hello = await api.post('/mcp', { headers: headers(), data: init });
+    const sid = hello.headers()['mcp-session-id'];
+    await api.post('/mcp', { headers: headers(sid), data: { jsonrpc: '2.0', method: 'notifications/initialized' } });
+
+    const tooMany = `mcp-batch-6-${Date.now()}`;
+    const refused = await api.post('/mcp', {
+      headers: headers(sid),
+      data: Array.from({ length: 6 }, (_, i) => ask(10 + i, tooMany)),
+    });
+    expect(refused.status()).toBe(200);
+    const answers = JSON.parse(await refused.text());
+    expect(answers).toHaveLength(6);
+    for (const a of answers) {
+      expect(a.result?.isError).toBe(true);
+      expect(JSON.stringify(a.result?.content)).toContain('at most 5');
+    }
+    expect(await seen(tooMany)).toBe(0);
+
+    const two = `mcp-batch-2-${Date.now()}`;
+    await api.post('/mcp', { headers: headers(sid), data: [ask(20, two), ask(21, two)], timeout: 60_000 });
+    await expect
+      .poll(async () =>
+        (
+          await prisma.aiUsage.aggregate({
+            where: { organizationId: org.orgId, engine: 'agent', unit: 'messages' },
+            _sum: { inputAmount: true },
+            _count: { _all: true },
+          })
+        )
+      )
+      .toMatchObject({ _sum: { inputAmount: 2 }, _count: { _all: 1 } });
+  } finally {
+    await prisma.aiUsage.deleteMany({ where: { organizationId: org.orgId } });
+    await api.dispose();
+    await org.remove();
+  }
+});
