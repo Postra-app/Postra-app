@@ -163,3 +163,21 @@ test('"Post now" on a post scheduled for next month counts against this month', 
     await org.remove();
   }
 });
+
+test('moving a scheduled post into a full month is refused, within it is fine', async () => {
+  const org = await throwawayOrg(prisma, { tier: 'STANDARD', totalChannels: 3, channels: 1, provider: 'facebook' });
+  const channel = org.channelIds[0];
+  try {
+    const full = await fill(org.orgId, channel, LIMIT, inDays(1), 'QUEUE');
+    const [later] = await fill(org.orgId, channel, 1, inDays(41), 'QUEUE');
+    const move = (id: string, date: Date) => org.api.put(`/posts/${id}/date`, { data: { date: date.toISOString(), action: 'update' } });
+    expect((await move(later.id, inDays(3))).status()).toBe(402);
+    expect((await move(full[0].id, inDays(4))).status()).toBe(200);
+    // A draft moves freely: it does not count.
+    const [draft] = await fill(org.orgId, channel, 1, inDays(42), 'DRAFT');
+    expect((await move(draft.id, inDays(3))).status()).toBe(200);
+  } finally {
+    await prisma.post.deleteMany({ where: { organizationId: org.orgId } });
+    await org.remove();
+  }
+});

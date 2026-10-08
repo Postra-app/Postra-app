@@ -100,3 +100,30 @@ test('two feeds switched on at once with room for one: only one runs', async () 
   }
 });
 
+// Codex: PUT /autopost/:id with active: true switched a feed on past the limit.
+test('an edit that switches a feed on counts against the limit too', async () => {
+  const org = await throwawayOrg(prisma, { tier: 'PRO', totalChannels: 6, channels: 0 });
+  try {
+    const feed = (n: number, active: boolean) =>
+      prisma.autoPost.create({
+        data: {
+          organizationId: org.orgId, title: `edit ${n}`, url: `https://example.com/edit-${n}.xml`, lastUrl: '',
+          onSlot: false, syncLast: false, active, addPicture: false, generateContent: false, integrations: '[]',
+        },
+      });
+    for (let n = 0; n < 3; n++) await feed(n, true);
+    const off = await feed(3, false);
+    const res = await org.api.put(`/autopost/${off.id}`, {
+      data: {
+        title: 'edit 3', url: 'https://example.com/edit-3.xml', onSlot: false, syncLast: false, active: true,
+        addPicture: false, generateContent: false, integrations: [],
+      },
+    });
+    expect(res.status(), await res.text()).toBe(402);
+    expect(await prisma.autoPost.count({ where: { organizationId: org.orgId, active: true } })).toBe(3);
+  } finally {
+    await prisma.autoPost.deleteMany({ where: { organizationId: org.orgId } });
+    await org.remove();
+  }
+});
+
