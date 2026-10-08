@@ -20,6 +20,8 @@ test('a B-roll search typed while another is running shows its own clips', async
     }
   });
   await page.goto('/studio');
+  await expect(page.locator('canvas').first()).toBeVisible({ timeout: 30_000 });
+  await page.getByRole('button', { name: /Blank canvas/ }).click();
   await page.getByRole('button', { name: 'Video', exact: true }).click();
   await page.getByRole('button', { name: /Stock B-roll/ }).first().click();
   const box = page.getByPlaceholder('e.g. nature timelapse, city street, ocean');
