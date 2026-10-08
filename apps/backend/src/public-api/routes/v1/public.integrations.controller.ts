@@ -200,12 +200,13 @@ export class PublicIntegrationsController {
     const body = await this._postsService.mapTypeToPost(
       {
         ...rawBody,
-        // A date per channel is an editor feature (a post saved for several
-        // channels, edited later); the public API keeps one date per request.
+        // A date and a type per channel are editor features (a post saved
+        // for several channels, edited later); the public API keeps one of
+        // each per request.
         posts: Array.isArray(rawBody?.posts)
           ? rawBody.posts.map((post: any) => {
               if (!post || typeof post !== 'object') return post;
-              const { date, ...rest } = post;
+              const { date, type, ...rest } = post;
               return rest;
             })
           : rawBody?.posts,
@@ -214,6 +215,10 @@ export class PublicIntegrationsController {
       rawBody.type === 'draft'
     );
     body.type = rawBody.type;
+    // A draft is checked as a scheduled post above, then saved as a draft.
+    for (const post of body.posts) {
+      post.type = body.type;
+    }
 
     if (
       process.env.RESTRICT_UPLOAD_DOMAINS &&

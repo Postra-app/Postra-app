@@ -9,6 +9,7 @@ import {
   CHECK_POLICIES_KEY,
 } from '@gitroom/backend/services/auth/permissions/permissions.ability';
 import { Organization } from '@prisma/client';
+import { saveTypeOfPost } from '@gitroom/nestjs-libraries/dtos/posts/create.post.dto';
 import { Request } from 'express';
 import {
   PermissionDeniedException,
@@ -57,9 +58,20 @@ export class PoliciesGuard implements CanActivate {
     // Drafts do not count towards the monthly post cap.
     // `status` is the body of PUT /posts/:id/status only; a create carries
     // `type`, and a stray `status: 'draft'` next to it must not make it free.
-    const isDraft =
-      request.body?.type === 'draft' ||
-      (request.body?.type === undefined && request.body?.status === 'draft');
+    // By the path alone: a query string could carry "/public/v1/" (Codex).
+    const path = String(request.originalUrl || request.url || '').split('?')[0];
+    const publicApi = /(^|\/)public\/v1\//.test(path);
+    // The editor saves each channel with its own type; the public API uses
+    // the request's type for every channel (it drops a per-channel one).
+    const typeOf = (post: any) =>
+      publicApi ? request.body?.type : saveTypeOfPost(request.body, post);
+    const bodyPosts: any[] = Array.isArray(request.body?.posts)
+      ? request.body.posts
+      : [];
+    const isDraft = bodyPosts.length
+      ? bodyPosts.every((post) => typeOf(post) === 'draft')
+      : request.body?.type === 'draft' ||
+        (request.body?.type === undefined && request.body?.status === 'draft');
 
     // Every channel and every thread part of a save is a post against the
     // monthly cap; the check used to let one request through for any count
@@ -67,16 +79,15 @@ export class PoliciesGuard implements CanActivate {
     // Each with the date it is saved on, so it counts against that billing
     // month ("now" posts against this one). The public API saves every post
     // on the request date (it drops a per-channel one).
-    // By the path alone: a query string could carry "/public/v1/" (Codex).
-    const path = String(request.originalUrl || request.url || '').split('?')[0];
-    const publicApi = /(^|\/)public\/v1\//.test(path);
     const at = (post: any) =>
-      request.body?.type === 'now'
+      typeOf(post) === 'now'
         ? new Date().toISOString()
         : [publicApi ? undefined : post?.date, request.body?.date].find(
             (d) => typeof d === 'string' && !Number.isNaN(Date.parse(d))
           );
-    const saved = (Array.isArray(request.body?.posts) ? request.body.posts : [])
+    // Channels kept as drafts are not posts against the cap.
+    const saved = bodyPosts
+      .filter((p: any) => typeOf(p) !== 'draft')
       .flatMap((p: any) =>
         (Array.isArray(p?.value) ? p.value : []).map((v: any) => ({
           id: typeof v?.id === 'string' && v.id ? v.id : undefined,

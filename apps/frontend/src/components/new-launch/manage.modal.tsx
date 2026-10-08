@@ -751,68 +751,50 @@ export const ManageModal: FC<AddEditModalProps> = (props) => {
           if (addEditSets) {
             addEditSets(data);
           } else {
-            // Every type of save is its own request, the drafts last, since a
-            // draft save skips the checks the others still run.
-            let saved = false;
-            let overwrite = false;
-            for (const requestType of ['update', 'schedule', 'now', 'draft']) {
-              const request: Record<string, any> = {
-                ...data,
-                type: requestType,
-                posts: posts.filter(
-                  (p: any) => saveTypeOf(p.integration.id) === requestType
+            // One request for every channel, each with the type it is saved
+            // as, so a refusal on one channel leaves the others unsaved too.
+            const request: Record<string, any> = {
+              ...data,
+              posts: posts.map((p: any) => ({
+                ...p,
+                type: saveTypeOf(p.integration.id),
+              })),
+            };
+            let saveResponse = await fetch('/posts', {
+              method: 'POST',
+              body: JSON.stringify(request),
+            });
+            if (saveResponse.status === 409) {
+              const overwrite = await deleteDialog(
+                t(
+                  'post_changed_meanwhile',
+                  'Someone else saved changes to this post after you opened it. Replace their version with yours, or keep theirs and close the editor?'
                 ),
-              };
-              if (!request.posts.length) {
-                continue;
+                t('overwrite_with_mine', 'Replace with mine'),
+                t('post_changed_title', 'This post was changed'),
+                t('keep_their_version', 'Keep theirs')
+              );
+              if (!overwrite) {
+                mutate();
+                modal.closeAll();
+                return;
               }
-              if (overwrite) {
-                delete request.expectedUpdatedAt;
-              }
-              let saveResponse = await fetch('/posts', {
+              delete request.expectedUpdatedAt;
+              saveResponse = await fetch('/posts', {
                 method: 'POST',
                 body: JSON.stringify(request),
               });
-              if (saveResponse.status === 409) {
-                overwrite = await deleteDialog(
-                  t(
-                    'post_changed_meanwhile',
-                    'Someone else saved changes to this post after you opened it. Replace their version with yours, or keep theirs and close the editor?'
-                  ),
-                  t('overwrite_with_mine', 'Replace with mine'),
-                  t('post_changed_title', 'This post was changed'),
-                  t('keep_their_version', 'Keep theirs')
-                );
-                if (!overwrite) {
-                  mutate();
-                  modal.closeAll();
-                  return;
-                }
-                delete request.expectedUpdatedAt;
-                saveResponse = await fetch('/posts', {
-                  method: 'POST',
-                  body: JSON.stringify(request),
-                });
-              }
-              if (!saveResponse.ok) {
-                console.error(
-                  '[Postra:posts] save failed',
-                  saveResponse.status
-                );
-                toaster.show(
-                  `${t(
-                    'post_save_failed',
-                    'Could not save the post'
-                  )}: ${await readResponseError(saveResponse)}`,
-                  'warning'
-                );
-                // The channels saved before the failure show in the calendar.
-                if (saved) {
-                  mutate();
-                }
-                return;
-              }
-              saved = true;
+            }
+            if (!saveResponse.ok) {
+              console.error('[Postra:posts] save failed', saveResponse.status);
+              toaster.show(
+                `${t(
+                  'post_save_failed',
+                  'Could not save the post'
+                )}: ${await readResponseError(saveResponse)}`,
+                'warning'
+              );
+              return;
             }
             mutate();
             toaster.show(

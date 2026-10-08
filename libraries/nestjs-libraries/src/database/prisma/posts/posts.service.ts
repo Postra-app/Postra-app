@@ -7,7 +7,10 @@ import {
   ValidationPipe,
 } from '@nestjs/common';
 import { PostsRepository } from '@gitroom/nestjs-libraries/database/prisma/posts/posts.repository';
-import { CreatePostDto } from '@gitroom/nestjs-libraries/dtos/posts/create.post.dto';
+import {
+  CreatePostDto,
+  saveTypeOfPost,
+} from '@gitroom/nestjs-libraries/dtos/posts/create.post.dto';
 import dayjs from 'dayjs';
 import { IntegrationManager } from '@gitroom/nestjs-libraries/integrations/integration.manager';
 import {
@@ -1158,10 +1161,11 @@ export class PostsService {
     }
 
     // Every post of the request is checked before the first one is written.
-    if ((body.type === 'now' || body.type === 'schedule') && !body.republish) {
+    if (!body.republish) {
       for (const post of body.posts) {
+        const kind = saveTypeOfPost(body, post);
         const existingId = post.value?.[0]?.id;
-        if (existingId) {
+        if (existingId && (kind === 'now' || kind === 'schedule')) {
           this.guardAgainstRepublish(
             await this._postRepository.getPostById(existingId, orgId),
             `save it with type 'update'`
@@ -1211,10 +1215,11 @@ export class PostsService {
       const batchId = uuidv4();
       const saved = [];
       for (const post of body.posts) {
+        const kind = saveTypeOfPost(body, post) as CreatePostDto['type'];
         const { posts } = await this._postRepository.createOrUpdatePost(
-          body.type,
+          kind,
           orgId,
-          body.type === 'now'
+          kind === 'now'
             ? dayjs().format('YYYY-MM-DDTHH:mm:00')
             : post.date || body.date,
           post,
@@ -1234,18 +1239,19 @@ export class PostsService {
       if (!posts?.length) {
         return [] as any[];
       }
+      const kind = saveTypeOfPost(body, post);
 
       // The publish guard skips a post that already has a release, so a
       // republish saved with "Update" (type 'schedule') went nowhere. Clear it,
       // as "Post now" on a published post already did in the workflow.
-      if (body.republish && body.type !== 'draft' && body.type !== 'update') {
+      if (body.republish && kind !== 'draft' && kind !== 'update') {
         await this._postRepository.clearReleases(
           orgId,
           posts.map((p) => p.id)
         );
       }
 
-      if (body.type !== 'update') {
+      if (kind !== 'update') {
         this.startWorkflow(
           post.settings.__type.split('-')[0].toLowerCase(),
           posts[0].id,

@@ -19,6 +19,7 @@ import {
 import { PostsService } from '@gitroom/nestjs-libraries/database/prisma/posts/posts.service';
 import { GetOrgFromRequest } from '@gitroom/nestjs-libraries/user/org.from.request';
 import { Organization, User } from '@prisma/client';
+import { saveTypeOfPost } from '@gitroom/nestjs-libraries/dtos/posts/create.post.dto';
 import { GetPostsDto } from '@gitroom/nestjs-libraries/dtos/posts/get.posts.dto';
 import { GetPostsListDto } from '@gitroom/nestjs-libraries/dtos/posts/get.posts.list.dto';
 import { CheckPolicies } from '@gitroom/backend/services/auth/permissions/permissions.ability';
@@ -221,8 +222,9 @@ export class PostsController {
       }
     }
 
-    if (rawBody?.type !== 'draft') {
-      for (const item of validation) {
+    // A channel kept as a draft gets these checks once it's scheduled.
+    for (const [index, item] of validation.entries()) {
+      if (saveTypeOfPost(rawBody, rawBody?.posts?.[index]) !== 'draft') {
         if (!item.valid) {
           fail(item, item.settingsError || 'Please fix your settings');
         }
