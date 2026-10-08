@@ -81,8 +81,10 @@ test('a search typed while another is running shows its own photos', async ({ pa
     if (q.includes('slow')) {
       await new Promise((r) => setTimeout(r, 3_000));
       await route.fulfill({ json: hit('OldLens') });
-    } else {
+    } else if (q.includes('fast')) {
       await route.fulfill({ json: hit('NewLens') });
+    } else {
+      await route.fulfill({ json: hit('FirstLens') });
     }
   });
   await page.goto('/studio');
@@ -90,6 +92,8 @@ test('a search typed while another is running shows its own photos', async ({ pa
   await page.getByRole('button', { name: /Blank canvas/ }).click();
   await page.getByRole('button', { name: 'Stock photos', exact: true }).click();
   await page.getByRole('button', { name: 'Unsplash', exact: true }).click();
+  // The panel's own first search, done before the two that race.
+  await expect(page.getByRole('link', { name: 'FirstLens' })).toBeVisible();
   const box = page.getByPlaceholder('e.g. coffee, office, summer');
   await box.fill('slow query');
   await box.press('Enter');
