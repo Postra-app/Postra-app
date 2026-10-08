@@ -21,6 +21,11 @@ import { AuthorizationActions, Sections } from '@gitroom/nestjs-libraries/servic
 import { fetch } from 'undici';
 import { ssrfSafeDispatcher } from '@gitroom/nestjs-libraries/dtos/webhooks/ssrf.safe.dispatcher';
 import { isSafePublicHttpsUrl } from '@gitroom/nestjs-libraries/dtos/webhooks/webhook.url.validator';
+import {
+  signWebhookBody,
+  WEBHOOK_ID_HEADER,
+  WEBHOOK_SIGNATURE_HEADER,
+} from '@gitroom/nestjs-libraries/dtos/webhooks/webhook.signature';
 
 @ApiTags('Webhooks')
 @Controller('/webhooks')
@@ -57,6 +62,30 @@ export class WebhookController {
     return this._webhooksService.createWebhook(org.id, body);
   }
 
+  // The secret that signs this webhook's deliveries (E2E-08-49). It lets
+  // whoever holds it forge a delivery to the customer's endpoint: admins only,
+  // like the webhooks themselves, and never in the list above.
+  @Get('/:id/secret')
+  @CheckPolicies([AuthorizationActions.Create, Sections.ADMIN])
+  @Throttle({ default: { ttl: 300_000, limit: 30 } })
+  async getSecret(
+    @GetOrgFromRequest() org: Organization,
+    @Param('id') id: string
+  ) {
+    return this._webhooksService.getSecret(org.id, id);
+  }
+
+  // A new secret; the old one stops working at once.
+  @Post('/:id/secret')
+  @CheckPolicies([AuthorizationActions.Create, Sections.ADMIN])
+  @Throttle({ default: { ttl: 300_000, limit: 10 } })
+  async rotateSecret(
+    @GetOrgFromRequest() org: Organization,
+    @Param('id') id: string
+  ) {
+    return this._webhooksService.rotateSecret(org.id, id);
+  }
+
   @Delete('/:id')
   @CheckPolicies([AuthorizationActions.Create, Sections.ADMIN])
   async deleteWebhook(
@@ -69,17 +98,33 @@ export class WebhookController {
   @Post('/send')
   @CheckPolicies([AuthorizationActions.Create, Sections.ADMIN])
   @Throttle({ default: { ttl: 300_000, limit: 10 } })
-  async sendWebhook(@Body() body: any, @Query() query: OnlyURL) {
+  async sendWebhook(
+    @GetOrgFromRequest() org: Organization,
+    @Body() body: any,
+    @Query() query: OnlyURL
+  ) {
     // User-supplied URL — pin DNS + refuse private ranges so this test call
     // can't be turned into an SSRF probe of the VPC/IMDS.
     if (!(await isSafePublicHttpsUrl(query.url))) {
       return { send: false };
     }
+    // A saved webhook's test is signed like its deliveries, so the receiver's
+    // check can be tried with it (unknown id: 404).
+    const raw = JSON.stringify(body);
+    const signature = query.id
+      ? {
+          [WEBHOOK_ID_HEADER]: query.id,
+          [WEBHOOK_SIGNATURE_HEADER]: signWebhookBody(
+            (await this._webhooksService.getSecret(org.id, query.id)).secret,
+            raw
+          ),
+        }
+      : {};
     try {
       await fetch(query.url, {
         method: 'POST',
-        body: JSON.stringify(body),
-        headers: { 'Content-Type': 'application/json' },
+        body: raw,
+        headers: { 'Content-Type': 'application/json', ...signature },
         dispatcher: ssrfSafeDispatcher,
         redirect: 'error',
         signal: AbortSignal.timeout(5000),

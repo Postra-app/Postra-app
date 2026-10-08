@@ -4,13 +4,17 @@ import {
 } from '@gitroom/nestjs-libraries/database/prisma/prisma.service';
 import { BadRequestException, Injectable } from '@nestjs/common';
 import { WebhooksDto } from '@gitroom/nestjs-libraries/dtos/webhooks/webhooks.dto';
+import { newWebhookSecret } from '@gitroom/nestjs-libraries/dtos/webhooks/webhook.signature';
+import { AuthService } from '@gitroom/helpers/auth/auth.service';
+import { pricing } from '@gitroom/nestjs-libraries/database/prisma/subscriptions/pricing';
 
 @Injectable()
 export class WebhooksRepository {
   constructor(
     private _webhooks: PrismaRepository<'webhooks'>,
     private _integration: PrismaRepository<'integration'>,
-    private _transaction: PrismaTransaction
+    private _transaction: PrismaTransaction,
+    private _subscription: PrismaRepository<'subscription'>
   ) {}
 
   getTotal(orgId: string) {
@@ -22,12 +26,17 @@ export class WebhooksRepository {
     });
   }
 
-  getWebhooks(orgId: string) {
+  // Every member's settings page reads this: the signing secret stays out
+  // (admins read it on its own route).
+  getWebhooks(orgId: string, withSecret = false) {
     return this._webhooks.model.webhooks.findMany({
       where: {
         organizationId: orgId,
         deletedAt: null,
       },
+      omit: { secret: !withSecret },
+      // Oldest first: over a plan's limit the newest ones are paused.
+      orderBy: { createdAt: 'asc' },
       include: {
         integrations: {
           select: {
@@ -42,6 +51,52 @@ export class WebhooksRepository {
         },
       },
     });
+  }
+
+  // How many of the organisation's webhooks its plan delivers to. Checked
+  // where they are delivered, not only when one is added: after a downgrade
+  // (even to FREE, 0) every webhook kept receiving (E2E-07-33). Without
+  // billing there is no limit.
+  async getDeliveryLimit(orgId: string) {
+    if (!process.env.STRIPE_PUBLISHABLE_KEY) {
+      return Infinity;
+    }
+    const subscription = await this._subscription.model.subscription.findFirst({
+      where: { organizationId: orgId, deletedAt: null },
+      select: { subscriptionTier: true },
+    });
+    return pricing[subscription?.subscriptionTier || 'FREE']?.webhooks ?? 0;
+  }
+
+  // The webhook's signing secret, decrypted; made now for a webhook created
+  // before secrets existed. Null for a webhook this org does not have.
+  async getSecret(orgId: string, id: string): Promise<string | null> {
+    const where = { id, organizationId: orgId, deletedAt: null as null };
+    const row = await this._webhooks.model.webhooks.findFirst({
+      where,
+      select: { secret: true },
+    });
+    if (!row) {
+      return null;
+    }
+    if (!row.secret) {
+      // Only where it is still empty, so two first deliveries at once agree
+      // on one secret.
+      await this._webhooks.model.webhooks.updateMany({
+        where: { ...where, secret: null },
+        data: { secret: AuthService.encryptIntegrationToken(newWebhookSecret()) },
+      });
+      return this.getSecret(orgId, id);
+    }
+    return AuthService.decryptIntegrationToken(row.secret);
+  }
+
+  async rotateSecret(orgId: string, id: string) {
+    const { count } = await this._webhooks.model.webhooks.updateMany({
+      where: { id, organizationId: orgId, deletedAt: null },
+      data: { secret: AuthService.encryptIntegrationToken(newWebhookSecret()) },
+    });
+    return count ? this.getSecret(orgId, id) : null;
   }
 
   // updateMany, not update: update throws on a missing row (an unknown id or
@@ -86,6 +141,7 @@ export class WebhooksRepository {
             organizationId: orgId,
             url: body.url,
             name: body.name,
+            secret: AuthService.encryptIntegrationToken(newWebhookSecret()),
             integrations: { create: links },
           },
         });

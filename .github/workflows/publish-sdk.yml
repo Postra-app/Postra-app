@@ -38,7 +38,8 @@ jobs:
         with:
           node-version-file: package.json
           cache: pnpm
-          registry-url: https://registry.npmjs.org
+          # No registry-url: it writes an .npmrc whose _authToken is
+          # ${NODE_AUTH_TOKEN}, and there is no token here, only OIDC.
 
       # Trusted publishing needs npm 11.5.1+; Node 22 ships npm 10.
       - name: Update npm
@@ -59,6 +60,8 @@ jobs:
       - name: Test
         run: pnpm exec jest apps/sdk --forceExit
 
+      # npm logs a failed OIDC exchange only at "verbose": the 2026-10-08
+      # publish of 1.1.0 ended in a bare E404 with no reason.
       - name: Publish
         working-directory: apps/sdk
-        run: npm publish --access public
+        run: npm publish --access public --loglevel verbose

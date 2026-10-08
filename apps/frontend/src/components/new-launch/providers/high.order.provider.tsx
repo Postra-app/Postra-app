@@ -82,7 +82,7 @@ export const withProvider = function <T extends object>(params: {
       setHide,
     } = useLaunchStore(
       useShallow((state) => ({
-        date: state.date,
+        date: state.channelDates[props.id] || state.date,
         tab: state.tab,
         global: state.global,
         dummy: state.dummy,
@@ -210,14 +210,6 @@ export const withProvider = function <T extends object>(params: {
                       selectedIntegration.integration.additionalSettings, []
                     )
                   ),
-            fix: () => {
-              setCurrent(props.id);
-              setHide(true);
-            },
-            preview: () => {
-              setCurrent(props.id);
-              setHide(true);
-            },
           };
         },
         getValues: () => {
@@ -230,6 +222,19 @@ export const withProvider = function <T extends object>(params: {
         },
         trigger: () => {
           return form.trigger();
+        },
+        // A save that failed on this channel brings it into view, with its
+        // settings showing what is wrong. They sat on the object isValid()
+        // returns, where the editor's focus() never looked, so a failed save
+        // stayed on whatever channel was open (upstream 003a77eb).
+        fix: () => {
+          setCurrent(props.id);
+          setHide(true);
+          form.trigger();
+        },
+        preview: () => {
+          setCurrent(props.id);
+          setHide(true);
         },
       }),
       [value]

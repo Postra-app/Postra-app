@@ -325,6 +325,15 @@ export class IntegrationsController {
       }
     }
 
+    // A platform still "Coming soon" takes no new channels (E2E-08-50);
+    // after the plan gate, so a plan without it still answers 402.
+    if (!refresh && !this._integrationManager.isOffered(integration)) {
+      throw new HttpException(
+        `The ${integration} channel isn't available yet.`,
+        403
+      );
+    }
+
     const integrationProvider =
       this._integrationManager.getSocialIntegration(integration);
 

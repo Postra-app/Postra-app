@@ -1,3 +1,4 @@
 .auth/
-.results/
-node_modules/
+# Local proofs on production after a deploy: never committed.
+proof.*
+.results-proof/

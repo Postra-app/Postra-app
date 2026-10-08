@@ -14,6 +14,7 @@ import { languageRule } from '@gitroom/nestjs-libraries/openai/language-rule';
 import { SubscriptionService } from '@gitroom/nestjs-libraries/database/prisma/subscriptions/subscription.service';
 import {
   AGENT_MAX_STEPS,
+  organizationOfRun,
   shouldStopForBudget,
 } from '@gitroom/nestjs-libraries/chat/agent-budget';
 import {
@@ -178,7 +179,7 @@ ${brandKit}
               JSON.stringify(
                 describeAgentStep(
                   organizationIdFromContext(
-                    requestContext.get('organization' as never) as string
+                    organizationOfRun(requestContext as never)
                   ),
                   event
                 )
@@ -190,7 +191,7 @@ ${brandKit}
               JSON.stringify(
                 describeAgentRun(
                   organizationIdFromContext(
-                    requestContext.get('organization' as never) as string
+                    organizationOfRun(requestContext as never)
                   ),
                   event
                 )
@@ -200,7 +201,7 @@ ${brandKit}
           stopWhen: async ({ steps }: { steps: unknown[] }) =>
             shouldStopForBudget(
               steps.length,
-              requestContext.get('organization' as never) as string,
+              organizationOfRun(requestContext as never),
               (organization) =>
                 this._moduleRef
                   .get(SubscriptionService, { strict: false })

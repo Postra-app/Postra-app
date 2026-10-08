@@ -361,6 +361,13 @@ export class UsersController {
     // old one until the cache ran out.
     await bustAuthContextCache(user.id);
 
+    // A full team is said so (E2E-07-38); the page read a bare {id: null} as
+    // "expired or already used". 200, not 402: the person joining does not
+    // pay for that workspace, and 402 opens the paywall.
+    if (addedOrg === 'no_seats') {
+      response.status(200).json({ id: null, reason: 'no_seats' });
+      return;
+    }
     response.status(200).json({
       id: typeof addedOrg !== 'boolean' ? addedOrg.organizationId : null,
     });
@@ -370,11 +377,19 @@ export class UsersController {
   // carried the API key (a SUPERADMIN credential for the public API and MCP)
   // and the Stripe customer id to every member, USER included (E2E-08-24);
   // /user/self shows the key to admins only, and nothing here needs either.
+  // Only the fields the switchers read (web and mobile), so a column added to
+  // Organization later does not reach every member by default (upstream
+  // 8ad0df3d).
   @Get('/organizations')
   async getOrgs(@GetUserFromRequest() user: User) {
     return (await this._orgService.getOrgsByUserId(user.id))
       .filter((f) => !f.users[0].disabled)
-      .map(({ apiKey, paymentId, ...org }) => org);
+      .map(({ id, name, users, subscription }) => ({
+        id,
+        name,
+        users,
+        subscription,
+      }));
   }
 
   @Post('/change-org')

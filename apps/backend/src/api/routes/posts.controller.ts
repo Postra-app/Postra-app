@@ -17,6 +17,8 @@ import {
 import { PostsService } from '@gitroom/nestjs-libraries/database/prisma/posts/posts.service';
 import { GetOrgFromRequest } from '@gitroom/nestjs-libraries/user/org.from.request';
 import { Organization, User } from '@prisma/client';
+import { PermissionsService } from '@gitroom/backend/services/auth/permissions/permissions.service';
+import { saveTypeOfPost } from '@gitroom/nestjs-libraries/dtos/posts/create.post.dto';
 import { GetPostsDto } from '@gitroom/nestjs-libraries/dtos/posts/get.posts.dto';
 import { GetPostsListDto } from '@gitroom/nestjs-libraries/dtos/posts/get.posts.list.dto';
 import { CheckPolicies } from '@gitroom/backend/services/auth/permissions/permissions.ability';
@@ -41,7 +43,8 @@ export class PostsController {
   constructor(
     private _postsService: PostsService,
     private _agentGraphService: AgentGraphService,
-    private _shortLinkService: ShortLinkService
+    private _shortLinkService: ShortLinkService,
+    private _permissionsService: PermissionsService
   ) {}
 
   @Get('/:id/statistics')
@@ -218,8 +221,9 @@ export class PostsController {
       }
     }
 
-    if (rawBody?.type !== 'draft') {
-      for (const item of validation) {
+    // A channel kept as a draft gets these checks once it's scheduled.
+    for (const [index, item] of validation.entries()) {
+      if (saveTypeOfPost(rawBody, rawBody?.posts?.[index]) !== 'draft') {
         if (!item.valid) {
           fail(item, item.settingsError || 'Please fix your settings');
         }
@@ -236,7 +240,8 @@ export class PostsController {
     return this._postsService.createPost(
       org.id,
       body,
-      client === 'mobile' ? 'MOBILE' : 'WEB'
+      client === 'mobile' ? 'MOBILE' : 'WEB',
+      await this._permissionsService.postCap(org.id, org.createdAt)
     );
   }
 
@@ -278,7 +283,7 @@ export class PostsController {
 
   @Put('/:id/date')
   @Throttle({ default: { ttl: 300_000, limit: 120 } })
-  changeDate(
+  async changeDate(
     @GetOrgFromRequest() org: Organization,
     @Param('id') id: string,
     @Body('date') date: string,
@@ -287,18 +292,24 @@ export class PostsController {
     @Body('action') action: 'schedule' | 'update' = 'update',
     @Body('republish') republish?: boolean
   ) {
+    // The month it moves to is checked in changeDate, with the move.
     return this._postsService.changeDate(
       org.id,
       id,
       date,
       action,
-      republish === true
+      republish === true,
+      await this._permissionsService.postCap(org.id, org.createdAt)
     );
   }
 
+  // Splits a long post into a thread with OpenAI: a plan with AI, like every
+  // other AI route (E2E-07-35; without it an organisation with no plan spent
+  // our key).
   @Post('/separate-posts')
   @Throttle({ default: { ttl: 300000, limit: 20 } })
   @UseGuards(AccountAgeGuard)
+  @CheckPolicies([AuthorizationActions.Create, Sections.AI])
   async separatePosts(
     @GetOrgFromRequest() org: Organization,
     @Body() body: { content: string; len: number }

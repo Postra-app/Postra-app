@@ -56,3 +56,27 @@ it('two lifetime codes redeemed at once never both write from the same count', a
   expect(subscription.totalChannels).toBe(10 + 5 * succeeded);
   expect(used.size).toBe(succeeded);
 });
+
+// E2E-07-36: a code redeemed on a lifetime Business organisation (granted by
+// an admin) set it to Pro with Pro's channels. A code never lowers the plan.
+it.each([
+  ['ULTIMATE', 1000, 'ULTIMATE', 1005],
+  ['PRO', 10, 'PRO', 15],
+  ['STANDARD', 3, 'PRO', 6],
+  [null, 0, 'STANDARD', 3],
+] as const)('a code on lifetime %s (%s channels) gives %s with %s channels', async (tier, channels, expectedTier, expectedChannels) => {
+  const subscriptionService = {
+    getSubscriptionByOrganizationId: jest.fn(async () =>
+      tier ? { isLifetime: true, subscriptionTier: tier, totalChannels: channels } : null
+    ),
+    getCode: jest.fn(async () => false),
+    createOrUpdateSubscription: jest.fn(async () => undefined),
+  };
+  const service = new StripeService(subscriptionService as any, {} as any, {} as any, {} as any, {} as any);
+  jest.spyOn(AuthService, 'fixedDecryption').mockImplementation((v: string) => v);
+
+  expect(await service.lifetimeDeal('org-1', `code-${tier}`)).toEqual({ success: true });
+  const [, , , totalChannels, subscriptionTier] = subscriptionService.createOrUpdateSubscription.mock.calls[0] as any[];
+  expect(subscriptionTier).toBe(expectedTier);
+  expect(totalChannels).toBe(expectedChannels);
+});

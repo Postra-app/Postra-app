@@ -7,7 +7,11 @@ import useSWR from 'swr';
 import { useUser } from '@gitroom/frontend/components/layout/user.context';
 import { Button } from '@gitroom/frontend/components/ui/button';
 import { Card } from '@gitroom/frontend/components/ui/card';
-import { useModals } from '@gitroom/frontend/components/layout/new-modal';
+import {
+  useDecisionModal,
+  useModals,
+} from '@gitroom/frontend/components/layout/new-modal';
+import { CopyButton } from '@gitroom/frontend/components/ui/copy-button';
 import { Input } from '@gitroom/react/form/input';
 import { FormProvider, useForm } from 'react-hook-form';
 import { array, object, string } from 'yup';
@@ -87,18 +91,38 @@ export const Webhooks: FC = () => {
               <div>{t('delete', 'Delete')}</div>
               {data?.map((p: any) => (
                 <Fragment key={p.id}>
-                  <div className="flex flex-col justify-center">{p.name}</div>
+                  <div className="flex flex-col justify-center">
+                    {p.name}
+                    {/* Over the plan's limit: not delivered to until there
+                        is room (an upgrade, or an older one deleted). */}
+                    {p.paused && (
+                      <span className="text-[12px] text-amber-300">
+                        {t(
+                          'webhook_paused_over_limit',
+                          "Paused — over your plan's webhook limit"
+                        )}
+                      </span>
+                    )}
+                  </div>
                   <div className="flex flex-col justify-center">{p.url}</div>
                   <div className="flex flex-col justify-center">
                     <div>
-                      <Button variant="secondary" onClick={addWebhook(p)}>
+                      <Button
+                        variant="secondary"
+                        aria-label={`${t('edit', 'Edit')} ${p.name}`}
+                        onClick={addWebhook(p)}
+                      >
                         {t('edit', 'Edit')}
                       </Button>
                     </div>
                   </div>
                   <div className="flex flex-col justify-center">
                     <div>
-                      <Button variant="danger" onClick={deleteHook(p)}>
+                      <Button
+                        variant="danger"
+                        aria-label={`${t('delete', 'Delete')} ${p.name}`}
+                        onClick={deleteHook(p)}
+                      >
                         {t('delete', 'Delete')}
                       </Button>
                     </div>
@@ -120,6 +144,79 @@ export const Webhooks: FC = () => {
     </div>
   );
 };
+// The secret that signs this webhook's deliveries (Postra-Signature header).
+// Read only when asked for: it lets whoever holds it forge a delivery.
+const WebhookSecret: FC<{ id: string }> = ({ id }) => {
+  const fetch = useFetch();
+  const t = useT();
+  const toast = useToaster();
+  const decision = useDecisionModal();
+  const [secret, setSecret] = useState<string | null>(null);
+
+  const load = useCallback(async () => {
+    const res = await fetch(`/webhooks/${id}/secret`);
+    if (res.ok) {
+      setSecret((await res.json()).secret);
+    }
+  }, [id]);
+
+  const rotate = useCallback(async () => {
+    const approved = await decision.open({
+      title: t('webhook_new_secret_title', 'Generate a new signing secret?'),
+      description: t(
+        'webhook_new_secret_description',
+        'Deliveries are signed with the new secret from now on. A receiver that still checks the old one will reject them until you update it.'
+      ),
+      approveLabel: t('generate', 'Generate'),
+      cancelLabel: t('cancel', 'Cancel'),
+    });
+    if (!approved) return;
+    const res = await fetch(`/webhooks/${id}/secret`, { method: 'POST' });
+    if (res.ok) {
+      setSecret((await res.json()).secret);
+      toast.show(
+        t('webhook_new_secret_done', 'New signing secret generated'),
+        'success'
+      );
+    }
+  }, [id]);
+
+  return (
+    <div className="flex flex-col gap-[8px] mt-[16px]">
+      <div className="text-[14px] font-[600]">
+        {t('webhook_signing_secret', 'Signing secret')}
+      </div>
+      <div className="text-[12.5px] text-newTextColor/55">
+        {t(
+          'webhook_signing_secret_note',
+          'Every delivery carries a Postra-Signature header made with this secret. Check it on your server to know the request came from Postra (see Help).'
+        )}
+      </div>
+      <div className="bg-white/[0.03] border border-white/10 rounded-[8px] px-[16px] h-[44px] flex items-center overflow-hidden">
+        <code className="text-[14px] flex-1 truncate">
+          {secret || (
+            <span className="blur-sm select-none">
+              whsec_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+            </span>
+          )}
+        </code>
+      </div>
+      <div className="flex gap-[8px]">
+        {secret ? (
+          <CopyButton text={secret} label={t('copy', 'Copy')} />
+        ) : (
+          <Button type="button" variant="secondary" onClick={load}>
+            {t('reveal', 'Reveal')}
+          </Button>
+        )}
+        <Button type="button" variant="secondary" onClick={rotate}>
+          {t('webhook_new_secret', 'Generate a new secret')}
+        </Button>
+      </div>
+    </div>
+  );
+};
+
 const details = object().shape({
   name: string().required(),
   url: string().url().required(),
@@ -219,7 +316,12 @@ export const AddOrEditWebhook: FC<{
     const url = form.getValues('url');
     toast.show(t('webhook_sent', 'Webhook send'), 'success');
     try {
-      await fetch(`/webhooks/send?url=${encodeURIComponent(url)}`, {
+      // A saved webhook's test is signed like its deliveries.
+      await fetch(
+        `/webhooks/send?url=${encodeURIComponent(url)}${
+          data?.id ? `&id=${encodeURIComponent(data.id)}` : ''
+        }`,
+        {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -258,7 +360,7 @@ export const AddOrEditWebhook: FC<{
     } catch (e: any) {
       /** empty **/
     }
-  }, []);
+  }, [data]);
 
   return (
     <FormProvider {...form}>
@@ -299,6 +401,7 @@ export const AddOrEditWebhook: FC<{
                 isMain={true}
               />
             )}
+            {data?.id && <WebhookSecret id={data.id} />}
             <div className="flex gap-[10px]">
               <Button
                 type="submit"

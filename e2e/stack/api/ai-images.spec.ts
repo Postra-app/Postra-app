@@ -78,6 +78,8 @@ test('an organisation without a plan gets 402 from every AI route, and OpenAI he
       ['/media/suggest-hashtags', { text: marker }],
       ['/media/brand-voice-check', { text: marker }],
       ['/media/search-templates', { query: marker }],
+      // E2E-07-35: splitting a long post into a thread asks OpenAI too.
+      ['/posts/separate-posts', { content: `${marker} ${'word '.repeat(80)}`, len: 200 }],
     ] as const) {
       expect((await free.api.post(route, { data })).status(), route).toBe(402);
     }

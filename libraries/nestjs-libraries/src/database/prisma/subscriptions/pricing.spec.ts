@@ -1,4 +1,5 @@
 import {
+  postsCycleWindow,
   channelLimitFor,
   planLabel,
   planLabels,
@@ -144,6 +145,90 @@ describe('pricing matrix', () => {
   });
 });
 
+// E2E-07-39: the limits the landing and Help promise, pinned, so a change in
+// pricing.ts has to be a deliberate change here too (and of the landing).
+describe('pricing limits the landing promises', () => {
+  it('keeps posts a month: Starter 400, Pro and Business unlimited', () => {
+    expect(pricing.STANDARD.posts_per_month).toBe(400);
+    expect(pricing.PRO.posts_per_month).toBe(1_000_000);
+    expect(pricing.ULTIMATE.posts_per_month).toBe(1_000_000);
+  });
+
+  it('keeps webhooks at FREE=0, Starter=2, Pro=30, Business=10000', () => {
+    expect(pricing.FREE.webhooks).toBe(0);
+    expect(pricing.STANDARD.webhooks).toBe(2);
+    expect(pricing.PRO.webhooks).toBe(30);
+    expect(pricing.ULTIMATE.webhooks).toBe(10_000);
+  });
+
+  it('keeps Auto Post at Pro=3 and Business=10 feeds, none below', () => {
+    expect([pricing.FREE.autoPost, pricing.FREE.autoPostLimit]).toEqual([false, 0]);
+    expect([pricing.STANDARD.autoPost, pricing.STANDARD.autoPostLimit]).toEqual([false, 0]);
+    expect([pricing.PRO.autoPost, pricing.PRO.autoPostLimit]).toEqual([true, 3]);
+    expect([pricing.ULTIMATE.autoPost, pricing.ULTIMATE.autoPostLimit]).toEqual([true, 10]);
+  });
+
+  it('keeps AI images a month at FREE=0, Starter=30, Pro=150, Business=600', () => {
+    expect(pricing.FREE.image_generation_count).toBe(0);
+    expect(pricing.STANDARD.image_generation_count).toBe(30);
+    expect(pricing.PRO.image_generation_count).toBe(150);
+    expect(pricing.ULTIMATE.image_generation_count).toBe(600);
+  });
+
+  // The editor and Studio offer AI images by image_generator; the backend
+  // gates the same routes by `ai` (E2E-08-48): they must not disagree.
+  it('offers AI images in the app exactly where the backend allows AI', () => {
+    for (const tier of Object.keys(pricing) as (keyof typeof pricing)[]) {
+      expect(`${tier}: ${pricing[tier].image_generator}`).toBe(`${tier}: ${pricing[tier].ai}`);
+    }
+  });
+
+  it('includes the public API in every paid plan, not in FREE', () => {
+    expect(pricing.FREE.public_api).toBe(false);
+    for (const tier of ['STANDARD', 'PRO', 'ULTIMATE'] as const) {
+      expect(pricing[tier].public_api).toBe(true);
+    }
+  });
+
+  // TEAM is no longer sold; organisations that had it keep these limits.
+  it('keeps the legacy TEAM tier as it was', () => {
+    const { channel, posts_per_month, image_generation_count, team_members, webhooks, autoPost, autoPostLimit, public_api } =
+      pricing.TEAM;
+    expect({ channel, posts_per_month, image_generation_count, team_members, webhooks, autoPost, autoPostLimit, public_api }).toEqual({
+      channel: 10,
+      posts_per_month: 1_000_000,
+      image_generation_count: 100,
+      team_members: 1_000_000,
+      webhooks: 10,
+      autoPost: true,
+      autoPostLimit: 5,
+      public_api: true,
+    });
+  });
+});
+
+// E2E-07-34 (Codex): both ends of a billing month come from the subscription
+// date, so a month-end start leaves no gap and no day counts twice.
+describe('postsCycleWindow', () => {
+  it.each([
+    ['2026-01-31T10:00:00Z', '2026-03-29T12:00:00Z'],
+    ['2026-01-31T10:00:00Z', '2026-02-28T09:00:00Z'],
+    ['2026-01-31T10:00:00Z', '2026-03-31T10:00:00Z'],
+    ['2026-01-15T00:00:00Z', '2026-01-15T00:00:00Z'],
+    ['2026-03-10T00:00:00Z', '2026-02-01T00:00:00Z'],
+  ])('a subscription from %s puts %s inside its month', (anchor, at) => {
+    const { start, end } = postsCycleWindow(anchor, at);
+    expect(+start).toBeLessThanOrEqual(+new Date(at));
+    expect(+new Date(at)).toBeLessThan(+end);
+  });
+
+  it('meets the next month exactly', () => {
+    const anchor = '2026-01-31T10:00:00Z';
+    const march = postsCycleWindow(anchor, '2026-03-29T12:00:00Z');
+    expect(+postsCycleWindow(anchor, march.end).start).toBe(+march.end);
+  });
+});
+
 describe('planLabel', () => {
   it('maps internal enum keys to user-facing names', () => {
     expect(planLabels.FREE).toBe('Trial');
@@ -223,4 +308,19 @@ describe('postsCycleStart', () => {
     expect(start.getTime()).toBeLessThanOrEqual(Date.now());
     expect(Date.now() - start.getTime()).toBeLessThan(32 * 24 * 3600 * 1000);
   });
+});
+
+// Codex: an invalid date never left the window's loop.
+it('postsCycleWindow takes an invalid date as now, and returns', () => {
+  const { start, end } = postsCycleWindow('2026-01-15T00:00:00Z', 'invalid');
+  expect(+start).toBeLessThanOrEqual(Date.now());
+  expect(Date.now()).toBeLessThan(+end);
+});
+
+it('postsCycleWindow takes a date out of range as now, and returns', () => {
+  for (const at of ['+275760-09-13T00:00:00.000Z', '-271821-04-20T00:00:00.000Z', '9999-12-31T00:00:00Z']) {
+    const { start, end } = postsCycleWindow('2026-01-15T00:00:00Z', at);
+    expect(+start).toBeLessThanOrEqual(Date.now());
+    expect(Date.now()).toBeLessThan(+end);
+  }
 });

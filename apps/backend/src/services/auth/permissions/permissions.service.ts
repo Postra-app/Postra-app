@@ -1,7 +1,10 @@
+import {
+  CountedPost,
+  PostCap,
+} from '@gitroom/nestjs-libraries/database/prisma/posts/post.cap';
 import { Ability, AbilityBuilder, AbilityClass } from '@casl/ability';
 import { Injectable } from '@nestjs/common';
 import {
-  postsCycleStart,
   pricing,
   TRIAL_CHANNEL_CAP,
   channelsInUse,
@@ -47,6 +50,21 @@ export class PermissionsService {
     };
   }
 
+  // The monthly post allowance the guard checks, for the check repeated
+  // where a post is written; none while billing is off.
+  async postCap(orgId: string, createdAt: Date): Promise<PostCap | undefined> {
+    if (!process.env.STRIPE_PUBLISHABLE_KEY) {
+      return undefined;
+    }
+    const { options } = await this.getPackageOptions(orgId);
+    return {
+      anchor:
+        (await this._subscriptionService.getSubscription(orgId))?.createdAt ||
+        createdAt,
+      limit: options.posts_per_month,
+    };
+  }
+
   async check(
     orgId: string,
     created_at: Date,
@@ -55,7 +73,9 @@ export class PermissionsService {
     refreshChannelId?: string,
     isTrailing = false,
     isDraft = false,
-    postsRequested: { total: number; ids: string[] } = { total: 0, ids: [] }
+    postsRequested: { posts: CountedPost[]; released?: string[] } = {
+      posts: [],
+    }
   ) {
     const { can, build } = new AbilityBuilder<
       Ability<[AuthorizationActions, Sections]>
@@ -159,22 +179,14 @@ export class PermissionsService {
         const createdAt =
           (await this._subscriptionService.getSubscription(orgId))?.createdAt ||
           created_at;
-        const count = await this._postsService.countPostsFromDay(
-          orgId,
-          postsCycleStart(createdAt)
-        );
-
-        const existing = postsRequested.ids.length
-          ? await this._postsService.countExistingPosts(
-              orgId,
-              postsRequested.ids
-            )
-          : 0;
-        const adding = Math.max(0, postsRequested.total - existing);
         if (
-          adding
-            ? count + adding <= options.posts_per_month
-            : count < options.posts_per_month
+          !(await this._postsService.postCapReached(
+            orgId,
+            createdAt,
+            options.posts_per_month,
+            postsRequested.posts,
+            postsRequested.released
+          ))
         ) {
           can(action, section);
           continue;
@@ -202,32 +214,9 @@ export class PermissionsService {
         continue;
       }
 
-      if (
-        section === Sections.COMMUNITY_FEATURES &&
-        options.community_features
-      ) {
-        can(action, section);
-        continue;
-      }
-
-      if (
-        section === Sections.FEATURED_BY_GITROOM &&
-        options.featured_by_gitroom
-      ) {
-        can(action, section);
-        continue;
-      }
-
       if (section === Sections.AI && options.ai) {
         can(action, section);
         continue;
-      }
-
-      if (
-        section === Sections.IMPORT_FROM_CHANNELS &&
-        options.import_from_channels
-      ) {
-        can(action, section);
       }
     }
 

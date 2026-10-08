@@ -1,5 +1,7 @@
 import { fetchMediaBlob } from '@gitroom/nestjs-libraries/media/fetch.media.buffer';
+import dayjs from 'dayjs';
 import {
+  AnalyticsData,
   AuthTokenDetails,
   PostDetails,
   PostResponse,
@@ -315,6 +317,56 @@ export class DiscordProvider extends SocialAbstract implements SocialProvider {
         status: 'success',
       },
     ];
+  }
+
+  // Reactions on the post, read with the bot (the channel comes from the
+  // post's link; the message id alone does not find it).
+  async postAnalytics(
+    integrationId: string,
+    accessToken: string,
+    postId: string,
+    fromDate: number,
+    releaseURL?: string
+  ): Promise<AnalyticsData[]> {
+    const channel = releaseURL?.match(
+      /^https:\/\/discord\.com\/channels\/\d+\/(\d+)\/\d+$/
+    )?.[1];
+    if (!channel || !/^\d+$/.test(postId)) {
+      return [];
+    }
+    try {
+      const res = await fetch(
+        `${
+          process.env.DISCORD_API_URL || 'https://discord.com/api'
+        }/channels/${channel}/messages/${postId}`,
+        {
+          headers: { Authorization: `Bot ${process.env.DISCORD_BOT_TOKEN_ID}` },
+          signal: AbortSignal.timeout(10_000),
+        }
+      );
+      if (!res.ok) {
+        return [];
+      }
+      const message = await res.json();
+      const reactions = (
+        Array.isArray(message?.reactions) ? message.reactions : []
+      ).reduce(
+        (sum: number, reaction: { count?: unknown }) =>
+          sum + (typeof reaction?.count === 'number' ? reaction.count : 0),
+        0
+      );
+      return [
+        {
+          label: 'Reactions',
+          percentageChange: 0,
+          data: [
+            { total: String(reactions), date: dayjs().format('YYYY-MM-DD') },
+          ],
+        },
+      ];
+    } catch {
+      return [];
+    }
   }
 
   async changeNickname(id: string, accessToken: string, name: string) {

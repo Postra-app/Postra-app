@@ -31,7 +31,8 @@ test('Starter cannot invite anyone: the owner is its only seat', async () => {
   const starter = await signedIn('b');
   const res = await starter.post('/settings/team', invite());
   expect(res.status()).toBe(402);
-  expect((await res.json()).message).toContain('not included in your current plan');
+  // About seats (E2E-07-38): Starter's only seat is the owner's.
+  expect((await res.json()).message).toContain('team seats are all taken');
   await starter.dispose();
 });
 
@@ -197,7 +198,10 @@ test('Pro: two invites sent with one seat free, only the first person gets in', 
     const join = async (who: typeof pro, token: string) =>
       (await (await who.api.post('/user/join-org', { data: { org: token } })).json()).id as string | null;
     expect(await join(first, one)).toBe(pro.orgId);
-    expect(await join(second, two)).toBeNull();
+    // E2E-07-38: refused with the reason, not a bare {id: null} that the
+    // invitation page read as "expired or already used".
+    const refused = await second.api.post('/user/join-org', { data: { org: two } });
+    expect(await refused.json()).toEqual({ id: null, reason: 'no_seats' });
     expect(await prisma.userOrganization.count({ where: { organizationId: pro.orgId, disabled: false } })).toBe(2);
   } finally {
     for (const o of [pro, first, second]) await o.remove();

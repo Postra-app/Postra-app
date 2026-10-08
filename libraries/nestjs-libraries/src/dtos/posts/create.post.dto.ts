@@ -56,13 +56,32 @@ export class PostContent {
   image: MediaDto[];
 }
 
+// The editor saves every channel of a post in one request, each with the
+// type it is saved as (one kept as a draft, another scheduled), so a refusal
+// on one channel leaves the others unsaved too. A post without a type of its
+// own is saved as the request says.
+export const saveTypeOfPost = (
+  body: { type?: unknown } | undefined,
+  post: { type?: unknown } | undefined
+) => (typeof post?.type === 'string' ? post.type : body?.type);
+
+class Tags {
+  @IsDefined()
+  @IsString()
+  value: string;
+
+  @IsDefined()
+  @IsString()
+  label: string;
+}
+
 export class Post {
-  // Mirrors CreatePostDto.type on each group entry; the @ValidateIf below
+  // Defaults to CreatePostDto.type (see saveTypeOfPost); the @ValidateIf below
   // reads it to skip settings validation for drafts. Must stay decorated or
   // ValidationPipe's whitelist strips it before the condition runs (AE7).
   @IsOptional()
-  @IsString()
-  type?: string;
+  @IsIn(['draft', 'schedule', 'now', 'update'])
+  type?: 'draft' | 'schedule' | 'now' | 'update';
 
   @IsDefined()
   @Type(() => Integration)
@@ -83,6 +102,28 @@ export class Post {
   @IsString()
   group: string;
 
+  // A channel of an existing post that keeps a date of its own (a post saved
+  // for several channels, edited later); the others use the request date.
+  @IsOptional()
+  @IsDateString()
+  date?: string;
+
+  // When the editor read this channel: a post opens with its other channels
+  // read separately, and the newest of them hid an older read of another
+  // (Codex). Without it the request's expectedUpdatedAt applies.
+  @IsOptional()
+  @IsDateString()
+  expectedUpdatedAt?: string;
+
+  // Tags of their own, for the same reason: the editor saves the other
+  // channels of a post with the tags they have unless the tags were changed.
+  @IsOptional()
+  @IsArray()
+  @ArrayMaxSize(100)
+  @Type(() => Tags)
+  @ValidateNested({ each: true })
+  tags?: Tags[];
+
   @ValidateIf((o) => o.type !== 'draft')
   @ValidateNested()
   @Type(() => EmptySettings, {
@@ -95,15 +136,6 @@ export class Post {
   settings: AllProvidersSettings;
 }
 
-class Tags {
-  @IsDefined()
-  @IsString()
-  value: string;
-
-  @IsDefined()
-  @IsString()
-  label: string;
-}
 
 export class CreatePostDto {
   @IsDefined()

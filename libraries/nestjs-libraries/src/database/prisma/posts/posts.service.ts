@@ -1,3 +1,4 @@
+import { postsCycleWindow } from '@gitroom/nestjs-libraries/database/prisma/subscriptions/pricing';
 import {
   BadRequestException,
   Injectable,
@@ -5,8 +6,14 @@ import {
   NotFoundException,
   ValidationPipe,
 } from '@nestjs/common';
-import { PostsRepository } from '@gitroom/nestjs-libraries/database/prisma/posts/posts.repository';
-import { CreatePostDto } from '@gitroom/nestjs-libraries/dtos/posts/create.post.dto';
+import {
+  PostsRepository,
+  PostVersion,
+} from '@gitroom/nestjs-libraries/database/prisma/posts/posts.repository';
+import {
+  CreatePostDto,
+  saveTypeOfPost,
+} from '@gitroom/nestjs-libraries/dtos/posts/create.post.dto';
 import dayjs from 'dayjs';
 import { IntegrationManager } from '@gitroom/nestjs-libraries/integrations/integration.manager';
 import {
@@ -15,11 +22,25 @@ import {
   Media,
   From,
   CreationMethod,
+  Prisma,
   State,
 } from '@prisma/client';
+import {
+  CountedPost,
+  PostCap,
+  isPostDate,
+  postsCountedBy,
+  postsReleasedBy,
+} from '@gitroom/nestjs-libraries/database/prisma/posts/post.cap';
+import {
+  AuthorizationActions,
+  Sections,
+  SubscriptionException,
+} from '@gitroom/nestjs-libraries/services/auth/permission.exception.class';
 import { GetPostsDto } from '@gitroom/nestjs-libraries/dtos/posts/get.posts.dto';
 import { GetPostsListDto } from '@gitroom/nestjs-libraries/dtos/posts/get.posts.list.dto';
-import { shuffle } from 'lodash';
+import { groupBy, shuffle, uniqBy } from 'lodash';
+import { v4 as uuidv4 } from 'uuid';
 import { CreateGeneratedPostsDto } from '@gitroom/nestjs-libraries/dtos/generator/create.generated.posts.dto';
 import { IntegrationService } from '@gitroom/nestjs-libraries/database/prisma/integrations/integration.service';
 import { makeId } from '@gitroom/nestjs-libraries/services/make.is';
@@ -63,6 +84,12 @@ type PostWithConditionals = Post & {
   integration?: Integration;
   childrenPost: Post[];
 };
+
+const postCapException = () =>
+  new SubscriptionException({
+    section: Sections.POSTS_PER_MONTH,
+    action: AuthorizationActions.Create,
+  });
 
 @Injectable()
 export class PostsService {
@@ -185,6 +212,18 @@ export class PostsService {
     return updated;
   }
 
+  // Whether the post's platform gives apps statistics of a post at all
+  // (Telegram, Discord and a few others do not).
+  async postAnalyticsOffered(orgId: string, postId: string) {
+    const post = await this._postRepository.getPostById(postId, orgId);
+    if (!post?.integration) {
+      return true;
+    }
+    return !!this._integrationManager.getSocialIntegration(
+      post.integration.providerIdentifier
+    )?.postAnalytics;
+  }
+
   async checkPostAnalytics(
     orgId: string,
     postId: string,
@@ -255,7 +294,8 @@ export class PostsService {
         getIntegration.internalId,
         getIntegration.token,
         post.releaseId,
-        date
+        date,
+        post.releaseURL || undefined
       );
       await ioRedis.set(
         `integration:${orgId}:${post.id}:${date}`,
@@ -604,6 +644,44 @@ export class PostsService {
       throw new NotFoundException('Post not found');
     }
 
+    const batch = posts[0].batchId
+      ? await this._postRepository.getPostsByBatch(
+          orgId,
+          posts[0].batchId,
+          group
+        )
+      : [];
+
+    // The other channels the post was saved with. The editor holds one post
+    // per channel, and a channel that repeats differently is a post of its own.
+    const siblings = uniqBy(
+      Object.values(groupBy(batch, (post) => post.group))
+        .map((batchPosts) => this.arrangePostsByGroup(batchPosts, undefined))
+        .filter(
+          (batchPosts) =>
+            batchPosts.length &&
+            batchPosts[0].integrationId !== posts[0].integrationId &&
+            batchPosts[0].intervalInDays === posts[0].intervalInDays
+        ),
+      (batchPosts) => batchPosts[0].integrationId
+    );
+
+    return {
+      ...(await this.groupForEditor(orgId, posts, convertToJPEG)),
+      siblings: await Promise.all(
+        siblings.map((batchPosts) =>
+          this.groupForEditor(orgId, batchPosts, convertToJPEG)
+        )
+      ),
+    };
+  }
+
+  // A post as the editor loads it: its channel without the tokens.
+  private async groupForEditor(
+    orgId: string,
+    posts: PostWithConditionals[],
+    convertToJPEG = false
+  ) {
     return {
       group: posts?.[0]?.group,
       posts: await Promise.all(
@@ -656,23 +734,7 @@ export class PostsService {
       throw new NotFoundException('Post not found');
     }
 
-    return {
-      group: posts[0].group,
-      posts: await Promise.all(
-        posts.map(async (post) => ({
-          ...this.stripIntegrationSecrets(post),
-          image: await this.updateMedia(
-            orgId,
-            post.id,
-            JSON.parse(post.image || '[]'),
-            convertToJPEG
-          ),
-        }))
-      ),
-      integrationPicture: posts[0].integration?.picture,
-      integration: posts[0].integrationId,
-      settings: JSON.parse(posts[0].settings || '{}'),
-    };
+    return this.groupForEditor(orgId, posts, convertToJPEG);
   }
 
   async getOldPosts(orgId: string, date: string) {
@@ -824,6 +886,117 @@ export class PostsService {
 
   countExistingPosts(orgId: string, ids: string[]) {
     return this._postRepository.countExistingPosts(orgId, ids);
+  }
+
+  /**
+   * Whether saving these posts would take the organisation past its monthly
+   * post allowance. Each post counts against the billing month of its publish
+   * date (now when it has none), and a post already counted there is an edit.
+   * A draft being scheduled was counted as an edit too, so at 399 of 400 one
+   * request scheduled any number of drafts (E2E-07-34). Without posts (a
+   * status change) it asks whether this month has room for one more.
+   * `released` are posts of the same save that leave the count (kept as
+   * drafts); a post moved to another month leaves its old one.
+   */
+  async postCapReached(
+    orgId: string,
+    anchor: Date | string,
+    limit: number,
+    requested: (Omit<CountedPost, 'date'> & { date?: string | Date })[],
+    released: string[] = [],
+    tx?: Prisma.TransactionClient
+  ) {
+    const months = new Map<
+      number,
+      { start: Date; end: Date; total: number }
+    >();
+    // A post named without a date (a status change) counts on its own date,
+    // and an update keeps a post's state.
+    const looked = requested
+      .filter((p) => p.id && (!p.date || p.keepsState))
+      .map((p) => p.id as string);
+    const existing = looked.length
+      ? await this._postRepository.getPublishDates(orgId, looked, tx)
+      : [];
+    const savedOn = new Map(existing.map((p) => [p.id, p.publishDate] as const));
+    // A draft or a failed post edited with 'update' stays one, out of the
+    // count; it was counted as a new post (Codex).
+    const uncounted = new Set(
+      existing
+        .filter((p) => p.state !== 'QUEUE' && p.state !== 'PUBLISHED')
+        .map((p) => p.id)
+    );
+    const posts = requested.filter(
+      (p) => !(p.keepsState && p.id && uncounted.has(p.id))
+    );
+    if (requested.length && !posts.length) {
+      return false;
+    }
+    for (const post of posts.length ? posts : [{} as (typeof posts)[number]]) {
+      const { start, end } = postsCycleWindow(
+        anchor,
+        post.date || (post.id && savedOn.get(post.id)) || new Date()
+      );
+      const month = months.get(+start) || { start, end, total: 0 };
+      month.total += posts.length ? 1 : 0;
+      months.set(+start, month);
+    }
+    // Every post the save touches, wherever it is counted now: a month
+    // gets the ones saved into it and loses the ones leaving it.
+    const touched = [
+      ...new Set([
+        ...requested.map((p) => p.id).filter((id): id is string => !!id),
+        ...released,
+      ]),
+    ];
+    for (const { start, end, total } of months.values()) {
+      const count = await this._postRepository.countCountedPosts(
+        orgId,
+        start,
+        end,
+        undefined,
+        tx
+      );
+      const leaving = touched.length
+        ? await this._postRepository.countCountedPosts(
+            orgId,
+            start,
+            end,
+            touched,
+            tx
+          )
+        : 0;
+      // Editing posts already counted adds nothing, so it goes through at a
+      // full month too; a month that does not grow is never refused; with no
+      // posts named, one more has to fit.
+      const adding = total - leaving;
+      if (total ? adding > 0 && count + adding > limit : count >= limit) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  private async refuseOverPostCap(
+    tx: Prisma.TransactionClient,
+    orgId: string,
+    cap: PostCap,
+    posts: CountedPost[],
+    released: string[] = []
+  ) {
+    await this._postRepository.lockPostCap(tx, orgId);
+    if (
+      await this.postCapReached(
+        orgId,
+        cap.anchor,
+        cap.limit,
+        posts,
+        released,
+        tx
+      )
+    ) {
+      throw postCapException();
+    }
   }
 
   async countPostsFromDay(orgId: string, date: Date) {
@@ -1058,28 +1231,48 @@ export class PostsService {
   async createPost(
     orgId: string,
     body: CreatePostDto,
-    creationMethod: CreationMethod
+    creationMethod: CreationMethod,
+    cap?: PostCap
   ): Promise<any[]> {
+    // Every date it saves on, the request's and each channel's ("now" posts
+    // go out now): a year out of range was saved, and counted as this month.
+    for (const post of body.posts || []) {
+      if (
+        saveTypeOfPost(body, post) !== 'now' &&
+        !isPostDate(post.date || body.date)
+      ) {
+        throw new BadRequestException('Invalid date');
+      }
+    }
+
     // Two people editing one post: the later save used to replace the
     // earlier one without a word, and an agency lost a colleague's changes.
     const editedIds = (body.posts || []).flatMap((post) =>
       (post.value || []).map((value) => value.id).filter(Boolean)
     ) as string[];
+    // Each channel against the version it was read at.
+    const versions = (body.posts || [])
+      .map((post) => ({
+        ids: (post.value || [])
+          .map((value) => value.id)
+          .filter(Boolean) as string[],
+        expectedUpdatedAt: post.expectedUpdatedAt || body.expectedUpdatedAt,
+      }))
+      .filter(
+        (v): v is PostVersion => !!v.ids.length && !!v.expectedUpdatedAt
+      );
     // Refused here before any work is done; the write below checks again
     // with the rows locked, which is what stops two saves at once.
-    if (body.expectedUpdatedAt && editedIds.length) {
-      await this._postRepository.refuseIfChangedSince(
-        orgId,
-        editedIds,
-        body.expectedUpdatedAt
-      );
+    if (versions.length) {
+      await this._postRepository.refuseIfChangedSince(orgId, versions);
     }
 
     // Every post of the request is checked before the first one is written.
-    if ((body.type === 'now' || body.type === 'schedule') && !body.republish) {
+    if (!body.republish) {
       for (const post of body.posts) {
+        const kind = saveTypeOfPost(body, post);
         const existingId = post.value?.[0]?.id;
-        if (existingId) {
+        if (existingId && (kind === 'now' || kind === 'schedule')) {
           this.guardAgainstRepublish(
             await this._postRepository.getPostById(existingId, orgId),
             `save it with type 'update'`
@@ -1116,27 +1309,42 @@ export class PostsService {
     // check of lockForSave. Written one transaction per channel, a save refused (or
     // failing) on the second channel left the first one saved, and already
     // publishing.
+    // "Now" once, for the count and the save alike: counted to the second
+    // and saved to the minute, a post at the start of a billing month
+    // counted in one month and was saved in the one before (Codex).
+    const now = dayjs().format('YYYY-MM-DDTHH:mm:00');
+    const counted = cap ? postsCountedBy(body, true, undefined, now) : [];
     const written = await this._postRepository.transaction(async (tx) => {
-      await this._postRepository.lockForSave(
-        tx,
-        orgId,
-        editedIds,
-        body.expectedUpdatedAt
-      );
+      // The guard counted outside any lock, so two saves at once could both
+      // take the last post of the month (Codex). Counted again here, behind a
+      // lock of the organisation taken before the rows'.
+      if (cap && counted.length) {
+        await this.refuseOverPostCap(
+          tx,
+          orgId,
+          cap,
+          counted,
+          postsReleasedBy(body)
+        );
+      }
+      await this._postRepository.lockForSave(tx, orgId, editedIds, versions);
 
+      // The channels of one save share a batch, so opening one of them in the
+      // editor brings the others (an edited post keeps its own batch).
+      const batchId = uuidv4();
       const saved = [];
       for (const post of body.posts) {
+        const kind = saveTypeOfPost(body, post) as CreatePostDto['type'];
         const { posts } = await this._postRepository.createOrUpdatePost(
-          body.type,
+          kind,
           orgId,
-          body.type === 'now'
-            ? dayjs().format('YYYY-MM-DDTHH:mm:00')
-            : body.date,
+          kind === 'now' ? now : post.date || body.date,
           post,
-          body.tags,
+          post.tags || body.tags,
           creationMethod,
           body.inter,
-          tx
+          tx,
+          batchId
         );
         saved.push({ post, posts });
       }
@@ -1148,18 +1356,19 @@ export class PostsService {
       if (!posts?.length) {
         return [] as any[];
       }
+      const kind = saveTypeOfPost(body, post);
 
       // The publish guard skips a post that already has a release, so a
       // republish saved with "Update" (type 'schedule') went nowhere. Clear it,
       // as "Post now" on a published post already did in the workflow.
-      if (body.republish && body.type !== 'draft' && body.type !== 'update') {
+      if (body.republish && kind !== 'draft' && kind !== 'update') {
         await this._postRepository.clearReleases(
           orgId,
           posts.map((p) => p.id)
         );
       }
 
-      if (body.type !== 'update') {
+      if (kind !== 'update') {
         this.startWorkflow(
           post.settings.__type.split('-')[0].toLowerCase(),
           posts[0].id,
@@ -1190,7 +1399,8 @@ export class PostsService {
     orgId: string,
     id: string,
     status: 'draft' | 'schedule',
-    republish = false
+    republish = false,
+    cap?: PostCap
   ) {
     const getPostById = await this._postRepository.getPostById(id, orgId);
     if (!getPostById) {
@@ -1201,7 +1411,19 @@ export class PostsService {
     }
 
     const state: State = status === 'draft' ? 'DRAFT' : 'QUEUE';
-    await this._postRepository.changeState(id, state);
+    await this._postRepository.transaction(async (tx) => {
+      // Counted and scheduled behind one lock, like a save (Codex).
+      if (cap && state === 'QUEUE') {
+        await this.refuseOverPostCap(tx, orgId, cap, [{ id }]);
+      }
+      await this._postRepository.changeState(
+        id,
+        state,
+        undefined,
+        undefined,
+        tx
+      );
+    });
     // The publish guard returns a saved release instead of publishing, so a
     // republish through the public API reported success and sent nothing
     // (POSTS-8). The editor's republish clears it the same way.
@@ -1228,11 +1450,13 @@ export class PostsService {
     id: string,
     date: string,
     action: 'schedule' | 'update' = 'update',
-    republish = false
+    republish = false,
+    cap?: PostCap
   ) {
     // Both used to surface as 500s: garbage reached Prisma as Invalid Date, and
     // a post from another org (or none) came back null.
-    if (typeof date !== 'string' || !dayjs(date).isValid()) {
+    // And a date the database cannot hold (years out of range) was a 500.
+    if (typeof date !== 'string' || !isPostDate(date)) {
       throw new BadRequestException('Invalid date');
     }
 
@@ -1244,15 +1468,50 @@ export class PostsService {
       this.guardAgainstRepublish(getPostById, `use action 'update'`);
     }
 
+    // A post that counts (scheduled, or scheduled by this move) counts
+    // against the month it moves to: moving one from an emptier month into
+    // a full one went past the allowance (Codex on E2E-07-34). A draft stays
+    // a draft whatever the action (the calendar drags drafts with
+    // "schedule"), and a failed post moved with "update" stays out of the
+    // count.
     // schedule: Set status to QUEUE and change date (reschedule the post)
     // update: Just change the date without changing the status
-    const newDate = await this._postRepository.changeDate(
-      orgId,
-      id,
-      date,
-      getPostById.state === 'DRAFT',
-      action
-    );
+    const newDate = await this._postRepository.transaction(async (tx) => {
+      // Counted and moved behind one lock: two moves at once both found the
+      // last post of the month free; and the state is read behind it too, or
+      // a draft scheduled meanwhile moved as a draft (Codex).
+      let state = getPostById.state;
+      if (cap) {
+        await this._postRepository.lockPostCap(tx, orgId);
+        state =
+          (await this._postRepository.getPostState(tx, orgId, id)) || state;
+        const counts =
+          state === 'QUEUE' ||
+          state === 'PUBLISHED' ||
+          (action === 'schedule' && state !== 'DRAFT');
+        if (
+          counts &&
+          (await this.postCapReached(
+            orgId,
+            cap.anchor,
+            cap.limit,
+            [{ id, date }],
+            [],
+            tx
+          ))
+        ) {
+          throw postCapException();
+        }
+      }
+      return this._postRepository.changeDate(
+        orgId,
+        id,
+        date,
+        state === 'DRAFT',
+        action,
+        tx
+      );
+    });
 
     // A new date for a post still waiting to go out has to reach its
     // workflow, which otherwise kept sleeping until the old time and

@@ -56,6 +56,8 @@ export const StatisticsModal: FC<{
   );
 
   const isMissing = analyticsData && !Array.isArray(analyticsData) && analyticsData.missing;
+  const isUnsupported =
+    analyticsData && !Array.isArray(analyticsData) && analyticsData.unsupported;
 
   const dateOptions = useMemo(() => {
     return [
@@ -191,8 +193,18 @@ export const StatisticsModal: FC<{
             )}
           </div>
 
+          {isUnsupported && (
+            <div className="py-[20px] text-center text-textColor/45">
+              {t(
+                'platform_shares_no_post_statistics',
+                "This platform doesn't share post statistics with apps, so Postra can't show any for this post."
+              )}
+            </div>
+          )}
+
           {/* No analytics available message */}
-          {(!analyticsData || !Array.isArray(analyticsData) || analyticsData.length === 0) &&
+          {!isUnsupported &&
+            (!analyticsData || !Array.isArray(analyticsData) || analyticsData.length === 0) &&
             (!statisticsData?.clicks || statisticsData.clicks.length === 0) && (
               <div className="py-[20px] text-center text-textColor/45">
                 {t('no_statistics_available', 'No statistics available for this post')}

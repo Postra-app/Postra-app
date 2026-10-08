@@ -19,10 +19,7 @@ export interface PricingInnerInterface {
   // invite). Enforced at invite (permissions.service TEAM_MEMBERS) and
   // reconciled on tier change (subscription.service → reconcileTeamSeats).
   team_members: number;
-  community_features: boolean;
-  featured_by_gitroom: boolean;
   ai: boolean;
-  import_from_channels: boolean;
   image_generator?: boolean;
   image_generation_count: number;
   generate_videos: number;
@@ -74,10 +71,7 @@ export const pricing: PricingInterface = {
     image_generation_count: 0,
     posts_per_month: 0,
     team_members: 1,
-    community_features: false,
-    featured_by_gitroom: false,
     ai: false,
-    import_from_channels: false,
     image_generator: false,
     public_api: false,
     webhooks: 0,
@@ -96,9 +90,6 @@ export const pricing: PricingInterface = {
     image_generation_count: 30,
     team_members: 1,
     ai: true,
-    community_features: false,
-    featured_by_gitroom: false,
-    import_from_channels: true,
     image_generator: true,
     public_api: true,
     webhooks: 2,
@@ -117,11 +108,8 @@ export const pricing: PricingInterface = {
     allowedProviders: BUSINESS_PROVIDERS,
     posts_per_month: 1000000,
     image_generation_count: 100,
-    community_features: true,
     team_members: 1000000,
-    featured_by_gitroom: true,
     ai: true,
-    import_from_channels: true,
     image_generator: true,
     public_api: true,
     webhooks: 10,
@@ -138,11 +126,8 @@ export const pricing: PricingInterface = {
     allowedProviders: PRO_PROVIDERS,
     posts_per_month: 1000000,
     image_generation_count: 150,
-    community_features: true,
     team_members: 2,
-    featured_by_gitroom: true,
     ai: true,
-    import_from_channels: true,
     image_generator: true,
     public_api: true,
     webhooks: 30,
@@ -161,11 +146,8 @@ export const pricing: PricingInterface = {
     allowedProviders: BUSINESS_PROVIDERS,
     posts_per_month: 1000000,
     image_generation_count: 600,
-    community_features: true,
     team_members: 5,
-    featured_by_gitroom: true,
     ai: true,
-    import_from_channels: true,
     image_generator: true,
     public_api: true,
     webhooks: 10000,
@@ -200,6 +182,37 @@ export const TRIAL_CHANNEL_CAP = 3;
 export const postsCycleStart = (anchor: Date | string): Date => {
   const months = Math.abs(dayjs(anchor).diff(dayjs(), 'month'));
   return dayjs(anchor).add(months, 'month').toDate();
+};
+
+// The billing month that holds `at` (now by default), as [start, end). Posts
+// count against the month they are published in: counting from the cycle's
+// start with no end let posts scheduled for later months eat this month's
+// allowance (E2E-07-34).
+export const postsCycleWindow = (
+  anchor: Date | string,
+  at: Date | string = new Date()
+) => {
+  // Both ends from the subscription date: adding a month to a start already
+  // clipped at month end (31 Jan -> 28 Feb -> 28 Mar) left days in no month.
+  // An invalid date, or one so far out that a month after it is not a date
+  // any more, kept the loops going forever and froze the process (Codex):
+  // such a date counts as now, and the corrections are bounded (diff is off
+  // by one month at most).
+  const sane = (d: dayjs.Dayjs) =>
+    d.isValid() && Math.abs(d.year() - dayjs().year()) <= 100;
+  const from = sane(dayjs(anchor)) ? dayjs(anchor) : dayjs();
+  const when = sane(dayjs(at)) ? dayjs(at) : dayjs();
+  let months = when.diff(from, 'month');
+  for (let i = 0; i < 3 && from.add(months, 'month').isAfter(when); i++) {
+    months--;
+  }
+  for (let i = 0; i < 3 && !from.add(months + 1, 'month').isAfter(when); i++) {
+    months++;
+  }
+  return {
+    start: from.add(months, 'month').toDate(),
+    end: from.add(months + 1, 'month').toDate(),
+  };
 };
 
 // AI allowances follow the same rule as channels: a trial runs on Starter's

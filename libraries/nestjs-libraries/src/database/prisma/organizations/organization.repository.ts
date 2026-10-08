@@ -1,3 +1,4 @@
+import { withLiveSubscription } from '@gitroom/nestjs-libraries/database/prisma/subscriptions/live.subscription';
 import {
   PrismaRepository,
   PrismaTransaction,
@@ -67,8 +68,8 @@ export class OrganizationRepository {
     });
   }
 
-  getOrgByApiKey(api: string) {
-    return this._organization.model.organization.findFirst({
+  async getOrgByApiKey(api: string) {
+    const org = await this._organization.model.organization.findFirst({
       where: {
         apiKey: api,
       },
@@ -81,10 +82,12 @@ export class OrganizationRepository {
             // The credit cycle starts here; without it the public API and
             // MCP counted from the time of the request (API-7).
             createdAt: true,
+            deletedAt: true,
           },
         },
       },
     });
+    return org && withLiveSubscription(org);
   }
 
   getCount() {
@@ -101,8 +104,8 @@ export class OrganizationRepository {
    *. The disabled-seat case is the realistic one: it is exactly the
    * state an admin would be looking into after reconcileTeamSeats.
    */
-  getUserOrg(id: string) {
-    return this._userOrg.model.userOrganization.findFirst({
+  async getUserOrg(id: string) {
+    const membership = await this._userOrg.model.userOrganization.findFirst({
       where: {
         id,
         disabled: false,
@@ -125,12 +128,19 @@ export class OrganizationRepository {
                 subscriptionTier: true,
                 totalChannels: true,
                 isLifetime: true,
+                deletedAt: true,
               },
             },
           },
         },
       },
     });
+    return (
+      membership && {
+        ...membership,
+        organization: withLiveSubscription(membership.organization),
+      }
+    );
   }
 
   getImpersonateUser(name: string) {
@@ -195,7 +205,7 @@ export class OrganizationRepository {
   }
 
   async getOrgsByUserId(userId: string) {
-    return this._organization.model.organization.findMany({
+    const orgs = await this._organization.model.organization.findMany({
       where: {
         users: {
           some: {
@@ -219,10 +229,12 @@ export class OrganizationRepository {
             totalChannels: true,
             isLifetime: true,
             createdAt: true,
+            deletedAt: true,
           },
         },
       },
     });
+    return orgs.map(withLiveSubscription);
   }
 
   async getOrgById(id: string) {
@@ -361,7 +373,9 @@ export class OrganizationRepository {
     }
     if (!create) {
       await ioRedis.del(`invite-used:${id}`);
-      return false;
+      // Told apart from a spent or invalid invite: the person can do
+      // something about it (ask the owner), unlike an expired link.
+      return 'no_seats' as const;
     }
 
     await this._user.model.user.update({

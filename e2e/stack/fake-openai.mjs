@@ -10,6 +10,9 @@
 //   GET  /__seen?text=t         how many /v1 requests carried t in their
 //                               body — a spec counts its own calls by a
 //                               unique marker while others run in parallel
+//   POST /v1/responses          the Responses API the agent's model uses
+//                               (@ai-sdk/openai): plain text, usage, also as
+//                               a stream of response.* events
 //   POST /v1/images/generations a 1x1 PNG as b64_json, like gpt-image; a
 //                               prompt containing "stack-refuse" is refused
 //                               the way the safety filter refuses
@@ -150,6 +153,40 @@ createServer((req, res) => {
             finish_reason: 'stop',
           },
         ],
+        usage,
+      });
+    }
+
+    if (req.method === 'POST' && req.url === '/v1/responses') {
+      requests.push({ path: req.url, model: body.model, stream: !!body.stream });
+      const created = Math.floor(Date.now() / 1000);
+      const usage = {
+        input_tokens: 11,
+        input_tokens_details: { cached_tokens: 0 },
+        output_tokens: 7,
+        output_tokens_details: { reasoning_tokens: 0 },
+      };
+      const message = { type: 'message', role: 'assistant', id: 'msg_stack' };
+      if (body.stream) {
+        res.writeHead(200, { 'content-type': 'text/event-stream' });
+        const event = (data) => res.write(`event: ${data.type}\ndata: ${JSON.stringify(data)}\n\n`);
+        event({ type: 'response.created', response: { id: 'resp_stack', created_at: created, model: body.model } });
+        event({ type: 'response.output_item.added', output_index: 0, item: { ...message, content: [] } });
+        event({ type: 'response.output_text.delta', item_id: 'msg_stack', delta: TEXT });
+        event({
+          type: 'response.output_item.done',
+          output_index: 0,
+          item: { ...message, content: [{ type: 'output_text', text: TEXT, annotations: [] }] },
+        });
+        event({ type: 'response.completed', response: { usage } });
+        res.end();
+        return;
+      }
+      return json(res, 200, {
+        id: 'resp_stack',
+        created_at: created,
+        model: body.model,
+        output: [{ ...message, content: [{ type: 'output_text', text: TEXT, annotations: [] }] }],
         usage,
       });
     }

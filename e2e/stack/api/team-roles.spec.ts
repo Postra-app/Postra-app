@@ -68,6 +68,11 @@ test('E2E-08-24: the organisation list every browser loads carries no API key or
       expect(org).toHaveProperty('name');
       expect(org).not.toHaveProperty('apiKey');
       expect(org).not.toHaveProperty('paymentId');
+      // Only what the switchers read (web and mobile): a column added to
+      // Organization later must not reach every member by default.
+      expect(Object.keys(org).sort()).toEqual(
+        ['id', 'name', 'subscription', 'users'].sort()
+      );
     }
   }
 });
@@ -80,6 +85,8 @@ test('a full Pro team: the owner still sees and manages it, but cannot invite', 
     data: { email: 'third@example.com', role: 'USER', sendEmail: false },
   });
   expect(invite.status()).toBe(402);
+  // E2E-07-38: about seats, not "not included in your plan".
+  expect((await invite.json()).message).toContain('seats');
   expect((await owner.get('/settings/team')).status()).toBe(200);
 });
 

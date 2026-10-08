@@ -1,6 +1,6 @@
 import { lacksSubscription } from '@gitroom/nestjs-libraries/database/prisma/subscriptions/lacks.subscription';
 import { INestApplication } from '@nestjs/common';
-import { Request, Response } from 'express';
+import { json, Request, Response } from 'express';
 import { MastraService } from '@gitroom/nestjs-libraries/chat/mastra.service';
 import { MCPServer } from '@mastra/mcp';
 import { randomUUID } from 'crypto';
@@ -10,6 +10,7 @@ import { runWithContext } from './async.storage';
 import { ioRedis } from '@gitroom/nestjs-libraries/redis/redis.service';
 import { createOAuthMiddleware } from './oauth-middleware';
 import { publicBackendUrl } from './public-backend-url';
+import { SubscriptionService } from '@gitroom/nestjs-libraries/database/prisma/subscriptions/subscription.service';
 const fixAcceptHeader = (req: Request) => {
   const value = 'application/json, text/event-stream';
   req.headers.accept = value;
@@ -25,6 +26,60 @@ export const startMcp = async (app: INestApplication) => {
   const mastraService = app.get(MastraService, { strict: false });
   const organizationService = app.get(OrganizationService, { strict: false });
   const oauthService = app.get(OAuthService, { strict: false });
+  const subscriptionService = app.get(SubscriptionService, { strict: false });
+
+  // The agent asked through MCP (`ask_postra`) spends the same monthly
+  // allowance as the chat, and like the chat it is checked before a run
+  // starts; the run itself re-checks only every few steps (E2E-08-47).
+  // Answered as a tool error, which MCP clients show to the person.
+  const AGENT_LIMIT =
+    'You have reached your monthly AI assistant limit. It resets with your next billing month — or upgrade your plan for a higher limit.';
+  const agentCalls = (body: unknown) =>
+    (Array.isArray(body) ? body : [body]).filter(
+      (m: any) => m?.method === 'tools/call' && m?.params?.name === 'ask_postra'
+    );
+  // These routes are mounted before Nest's body parser, so req.body is empty
+  // here; parse it (4mb, the MCP SDK's own limit) and Mastra reuses it. A body
+  // that fails to parse is answered here: the stream is spent by then.
+  const jsonBody = json({ limit: '4mb' });
+  const readBody = (req: Request, res: Response) =>
+    new Promise<boolean>((resolve) =>
+      jsonBody(req, res, (err?: unknown) => {
+        if (err) {
+          res.status(400).json({
+            jsonrpc: '2.0',
+            id: null,
+            error: { code: -32700, message: 'Parse error' },
+          });
+          resolve(false);
+          return;
+        }
+        resolve(true);
+      })
+    );
+  const agentAllowanceSpent = async (auth: any, body: unknown) => {
+    if (!process.env.STRIPE_PUBLISHABLE_KEY || !agentCalls(body).length) {
+      return false;
+    }
+    try {
+      const { credits } = await subscriptionService.checkCredits(
+        auth,
+        'ai_agent'
+      );
+      return credits <= 0;
+    } catch {
+      // Same as the run's own check: never refuse because a check failed.
+      return false;
+    }
+  };
+  const refuseAgentRun = (req: Request, res: Response) => {
+    const answers = agentCalls(req.body).map((m: any) => ({
+      jsonrpc: '2.0',
+      id: m.id,
+      result: { content: [{ type: 'text', text: AGENT_LIMIT }], isError: true },
+    }));
+    res.status(200).json(Array.isArray(req.body) ? answers : answers[0]);
+  };
 
   // These raw express handlers bypass Nest's ThrottlerGuard entirely — an
   // API-key holder could loop the full agent toolset unmetered. Redis-count
@@ -154,6 +209,14 @@ export const startMcp = async (app: INestApplication) => {
       return;
     }
 
+    if (!(await readBody(req, res))) {
+      return;
+    }
+    if (await agentAllowanceSpent(auth, req.body)) {
+      refuseAgentRun(req, res);
+      return;
+    }
+
     fixAcceptHeader(req);
     await runWithContext({ requestId: token!, auth }, async () => {
       await server.startHTTP({
@@ -213,6 +276,15 @@ export const startMcp = async (app: INestApplication) => {
       return;
     }
 
+    if (!(await readBody(req, res))) {
+      return;
+    }
+    // @ts-ignore
+    if (await agentAllowanceSpent(req.auth, req.body)) {
+      refuseAgentRun(req, res);
+      return;
+    }
+
     const url = new URL('/mcp', process.env.NEXT_PUBLIC_BACKEND_URL);
 
     fixAcceptHeader(req);
@@ -261,6 +333,15 @@ export const startMcp = async (app: INestApplication) => {
     // @ts-ignore
     if (await mcpRateLimited(req.auth.id)) {
       res.status(429).send('Too many requests');
+      return;
+    }
+
+    if (!(await readBody(req, res))) {
+      return;
+    }
+    // @ts-ignore
+    if (await agentAllowanceSpent(req.auth, req.body)) {
+      refuseAgentRun(req, res);
       return;
     }
 
@@ -318,6 +399,17 @@ export const startMcp = async (app: INestApplication) => {
     // @ts-ignore
     if (await mcpRateLimited(req.auth.id)) {
       res.status(429).send('Too many requests');
+      return;
+    }
+
+    // The SSE transport answers on the stream, so here the refusal is the
+    // POST's own status.
+    if (!(await readBody(req, res))) {
+      return;
+    }
+    // @ts-ignore
+    if (await agentAllowanceSpent(req.auth, req.body)) {
+      res.status(402).send(AGENT_LIMIT);
       return;
     }
 

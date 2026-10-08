@@ -9,6 +9,11 @@ import {
   CHECK_POLICIES_KEY,
 } from '@gitroom/backend/services/auth/permissions/permissions.ability';
 import { Organization } from '@prisma/client';
+import { saveTypeOfPost } from '@gitroom/nestjs-libraries/dtos/posts/create.post.dto';
+import {
+  postsCountedBy,
+  postsReleasedBy,
+} from '@gitroom/nestjs-libraries/database/prisma/posts/post.cap';
 import { Request } from 'express';
 import {
   PermissionDeniedException,
@@ -54,26 +59,41 @@ export class PoliciesGuard implements CanActivate {
     const { org }: { org: Organization } = request;
 
     const refreshChannelId = typeof request.query?.refresh === 'string' ? request.query.refresh : undefined;
+    // By the path alone: a query string could carry "/public/v1/" (Codex).
+    const path = String(request.originalUrl || request.url || '').split('?')[0];
+    const publicApi = /(^|\/)public\/v1\//.test(path);
+    // The editor saves each channel with its own type; the public API uses
+    // the request's type for every channel (it drops a per-channel one).
+    const typeOf = (post: any) =>
+      publicApi ? request.body?.type : saveTypeOfPost(request.body, post);
+    const bodyPosts: any[] = Array.isArray(request.body?.posts)
+      ? request.body.posts
+      : [];
     // Drafts do not count towards the monthly post cap.
     // `status` is the body of PUT /posts/:id/status only; a create carries
     // `type`, and a stray `status: 'draft'` next to it must not make it free.
-    const isDraft =
-      request.body?.type === 'draft' ||
-      (request.body?.type === undefined && request.body?.status === 'draft');
+    const isDraft = bodyPosts.length
+      ? bodyPosts.every((post) => typeOf(post) === 'draft')
+      : request.body?.type === 'draft' ||
+        (request.body?.type === undefined && request.body?.status === 'draft');
 
     // Every channel and every thread part of a save is a post against the
     // monthly cap; the check used to let one request through for any count
     // below it (BILL-4, POSTS-12). Ids that already exist are edits.
-    const values: { id?: unknown }[] = Array.isArray(request.body?.posts)
-      ? request.body.posts.flatMap((p: any) =>
-          Array.isArray(p?.value) ? p.value : []
-        )
-      : [];
+    // Each with the date it is saved on, so it counts against that billing
+    // month ("now" posts against this one). The public API saves every post
+    // on the request date (it drops a per-channel one). Channels kept as
+    // drafts are not posts against the cap.
+    const saved = postsCountedBy(request.body, !publicApi, typeOf);
+    // A status change (PUT /posts/:id/status) schedules that one post, which
+    // counts against the month of its own publish date.
+    const changed =
+      !saved.length && typeof request.params?.id === 'string'
+        ? [{ id: request.params.id }]
+        : [];
     const postsRequested = {
-      total: values.length,
-      ids: values
-        .map((v) => v?.id)
-        .filter((id): id is string => typeof id === 'string' && !!id),
+      posts: saved.length ? saved : changed,
+      released: postsReleasedBy(request.body, typeOf),
     };
 
     // @ts-ignore

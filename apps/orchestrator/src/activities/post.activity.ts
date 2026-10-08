@@ -1,3 +1,8 @@
+import {
+  signWebhookBody,
+  WEBHOOK_ID_HEADER,
+  WEBHOOK_SIGNATURE_HEADER,
+} from '@gitroom/nestjs-libraries/dtos/webhooks/webhook.signature';
 import { Injectable, Logger } from '@nestjs/common';
 import {
   afterPublishing,
@@ -597,7 +602,9 @@ export class PostActivity {
 
   @ActivityMethod()
   async sendWebhooks(postId: string, orgId: string, integrationId: string) {
-    const webhooks = (await this._webhookService.getWebhooks(orgId)).filter(
+    const webhooks = (
+      await this._webhookService.getWebhooksForDelivery(orgId)
+    ).filter(
       (f) => {
         return (
           f.integrations.length === 0 ||
@@ -610,6 +617,9 @@ export class PostActivity {
       postId,
       integrationId
     );
+    // Signed with each webhook's secret, so the receiver can check that the
+    // request came from Postra and the body is as sent (E2E-08-49).
+    const body = JSON.stringify(post);
     await Promise.all(
       webhooks.map(async (webhook) => {
         try {
@@ -629,8 +639,14 @@ export class PostActivity {
               method: 'POST',
               headers: {
                 'Content-Type': 'application/json',
+                [WEBHOOK_ID_HEADER]: webhook.id,
+                // A fresh time on every attempt: a retry is not a replay.
+                [WEBHOOK_SIGNATURE_HEADER]: signWebhookBody(
+                  webhook.secret,
+                  body
+                ),
               },
-              body: JSON.stringify(post),
+              body,
               dispatcher: ssrfSafeDispatcher,
               redirect: 'error',
               signal: AbortSignal.timeout(5000),

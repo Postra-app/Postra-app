@@ -21,6 +21,7 @@ function service(post: any) {
   const repository = {
     getPostById: jest.fn().mockResolvedValue(post),
     changeDate: jest.fn().mockResolvedValue({ id: 'p1' }),
+    transaction: jest.fn((write: (tx: unknown) => unknown) => write({})),
   };
   const integrations = { getIntegrationsByIds: jest.fn().mockResolvedValue([]) };
   const s = Object.create(PostsService.prototype) as PostsService;
@@ -66,7 +67,7 @@ describe('PostsService.changeDate — bad input', () => {
     const { s, repository } = service({ id: 'p1', state: 'QUEUE' });
     await s.changeDate('org', 'p1', '2026-10-01T10:00:00', 'update');
     expect(repository.changeDate).toHaveBeenCalledWith(
-      'org', 'p1', '2026-10-01T10:00:00', false, 'update'
+      'org', 'p1', '2026-10-01T10:00:00', false, 'update', {}
     );
   });
 });

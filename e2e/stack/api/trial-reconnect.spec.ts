@@ -43,7 +43,10 @@ test('a trial cannot connect a channel another organisation had; a paying one ca
     // The state is minted on Pro; the trial flag is what the callback checks.
     const trialState = await stateFor(trial.api);
     await prisma.organization.update({ where: { id: trial.orgId }, data: { isTrailing: true } });
-    expect((await connect(trial.api, trialState, code)).status()).toBe(412);
+    const refused = await connect(trial.api, trialState, code);
+    expect(refused.status()).toBe(412);
+    // E2E-07-38: with a reason for API clients (the app shows its own text).
+    expect((await refused.json()).message).toContain('free trial');
     expect(await prisma.integration.count({ where: { organizationId: trial.orgId } })).toBe(0);
 
     const payingState = await stateFor(paying.api);

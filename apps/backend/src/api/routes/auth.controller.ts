@@ -121,7 +121,7 @@ export class AuthController {
         response.header('auth', jwt);
       }
 
-      if (typeof addedOrg !== 'boolean' && addedOrg?.organizationId) {
+      if (typeof addedOrg === 'object' && addedOrg?.organizationId) {
         response.cookie(
           'showorg',
           addedOrg.organizationId,
@@ -142,7 +142,7 @@ export class AuthController {
           ? {
               token: this._authService.mobileJwt(jwt),
               org:
-                typeof addedOrg !== 'boolean'
+                typeof addedOrg === 'object'
                   ? addedOrg?.organizationId
                   : undefined,
             }
@@ -193,7 +193,7 @@ export class AuthController {
         response.header('auth', jwt);
       }
 
-      if (typeof addedOrg !== 'boolean' && addedOrg?.organizationId) {
+      if (typeof addedOrg === 'object' && addedOrg?.organizationId) {
         response.cookie(
           'showorg',
           addedOrg.organizationId,
@@ -215,7 +215,7 @@ export class AuthController {
           ? {
               token: this._authService.mobileJwt(jwt),
               org:
-                typeof addedOrg !== 'boolean'
+                typeof addedOrg === 'object'
                   ? addedOrg?.organizationId
                   : undefined,
             }

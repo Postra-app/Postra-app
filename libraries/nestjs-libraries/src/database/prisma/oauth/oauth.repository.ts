@@ -1,3 +1,4 @@
+import { withLiveSubscription } from '@gitroom/nestjs-libraries/database/prisma/subscriptions/live.subscription';
 import { Injectable } from '@nestjs/common';
 import { PrismaRepository } from '@gitroom/nestjs-libraries/database/prisma/prisma.service';
 
@@ -199,8 +200,8 @@ export class OAuthRepository {
     return count;
   }
 
-  findByAccessToken(encryptedToken: string) {
-    return this._oauthAuth.model.oAuthAuthorization.findFirst({
+  async findByAccessToken(encryptedToken: string) {
+    const authorization = await this._oauthAuth.model.oAuthAuthorization.findFirst({
       where: {
         accessToken: encryptedToken,
         revokedAt: null,
@@ -216,6 +217,7 @@ export class OAuthRepository {
                 // The credit cycle starts here; without it the public API and
                 // MCP counted from the time of the request (API-7).
                 createdAt: true,
+                deletedAt: true,
               },
             },
           },
@@ -235,6 +237,12 @@ export class OAuthRepository {
         },
       },
     });
+    return (
+      authorization && {
+        ...authorization,
+        organization: withLiveSubscription(authorization.organization),
+      }
+    );
   }
 
   getApprovedApps(userId: string) {

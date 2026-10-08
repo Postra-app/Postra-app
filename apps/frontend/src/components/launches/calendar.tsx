@@ -5,7 +5,6 @@ import React, {
   Fragment,
   memo,
   useCallback,
-  useEffect,
   useMemo,
   useState,
 } from 'react';
@@ -13,6 +12,7 @@ import {
   CalendarContext,
   Integrations,
   useCalendar,
+  useNow,
 } from '@gitroom/frontend/components/launches/calendar.context';
 import dayjs from 'dayjs';
 import localeEn from 'dayjs/locale/en';
@@ -43,7 +43,7 @@ import { useToaster } from '@gitroom/react/toaster/toaster';
 import { useUser } from '@gitroom/frontend/components/layout/user.context';
 import isSameOrAfter from 'dayjs/plugin/isSameOrAfter';
 import isSameOrBefore from 'dayjs/plugin/isSameOrBefore';
-import { groupBy, random, sortBy } from 'lodash';
+import { groupBy, sortBy } from 'lodash';
 import SafeImage from '@gitroom/react/helpers/safe.image';
 import { extend } from 'dayjs';
 import { isUSCitizen } from './helpers/isuscitizen.utils';
@@ -52,7 +52,6 @@ import {
   postingMinutesInZone,
   slotDate,
 } from './day-view.slots';
-import { useInterval } from '@mantine/hooks';
 import { StatisticsModal } from '@gitroom/frontend/components/launches/statistics';
 import { MissingReleaseModal } from '@gitroom/frontend/components/launches/missing-release.modal';
 import { useT } from '@gitroom/react/translation/get.transation.service.client';
@@ -123,6 +122,77 @@ export const hours = Array.from(
     length: 24,
   },
   (_, i) => i
+);
+
+// The current time badge at the start of the now line (upstream 47175b5a).
+const NowTime: FC<{ time: string }> = ({ time }) => (
+  <div className="rounded-[6px] bg-[#38bdf8] px-[6px] text-[12px] leading-[20px] font-[600] text-[#06222e] whitespace-nowrap">
+    {time}
+  </div>
+);
+
+// The current time across the week. It ticks on its own, so the grid does not
+// re-render every minute. An absolute grid child sits inside the grid area it
+// names: the current hour's row (after the header row).
+const WeekNowLine: FC<{ days: dayjs.Dayjs[] }> = ({ days }) => {
+  const now = useNow();
+  const todayIndex = days.findIndex((day) => day.isSame(now, 'day'));
+  if (todayIndex === -1) {
+    return null;
+  }
+
+  const gridRow = `${now.hour() + 2} / ${now.hour() + 3}`;
+  const top = `${(now.minute() / 60) * 100}%`;
+  return (
+    <>
+      {/* covers this hour's label; the current time takes its place */}
+      <div
+        className="absolute inset-0 rounded-[10px] bg-[rgb(13,19,34)] pointer-events-none"
+        style={{ gridColumn: '1 / 2', gridRow }}
+        aria-hidden="true"
+      >
+        <div className="absolute end-[8px] -translate-y-1/2" style={{ top }}>
+          <NowTime time={now.format(isUSCitizen() ? 'h:mm A' : 'H:mm')} />
+        </div>
+      </div>
+      {/* a piece per day, so nothing shows through the gaps of the sticky header */}
+      {days.map((day, index) => (
+        <div
+          key={day.format('YYYY-MM-DD')}
+          className="absolute start-0 end-0 h-0 flex items-center z-[15] pointer-events-none"
+          style={{ gridColumn: `${index + 2} / ${index + 3}`, gridRow, top }}
+          aria-hidden="true"
+        >
+          {index === todayIndex ? (
+            <>
+              <div className="w-[3px] h-[12px] rounded-full bg-[#38bdf8]" />
+              <div className="flex-1 h-[3px] bg-[#38bdf8]" />
+            </>
+          ) : (
+            <div className="flex-1 h-[1px] bg-[#38bdf8] opacity-40" />
+          )}
+        </div>
+      ))}
+    </>
+  );
+};
+
+// The current time between the slots of the day view, as tall as a slot's
+// bottom margin.
+const DayNowLine: FC<{ now: dayjs.Dayjs; className?: string }> = ({
+  now,
+  className,
+}) => (
+  <div
+    className={clsx(
+      'flex items-center h-[20px] shrink-0 pointer-events-none',
+      className
+    )}
+    aria-hidden="true"
+  >
+    <NowTime time={now.format(isUSCitizen() ? 'hh:mm A' : 'HH:mm')} />
+    <div className="flex-1 h-[3px] bg-[#38bdf8]" />
+  </div>
 );
 
 // Shared hook for post actions (edit, delete, statistics)
@@ -319,6 +389,23 @@ const usePostActions = (onMutate?: () => void) => {
   return { editPost, deletePost, copyDebugJson, openStatistics, openMissingRelease };
 };
 
+// One day view slot. Memoized, so the now line's minute tick does not
+// re-render the slots.
+const DaySlotColumn: FC<{ option: any[]; startDate: string; tz: string }> =
+  memo(({ option, startDate, tz }) => {
+    const calendar = useCalendar();
+    return (
+      <CalendarContext.Provider
+        value={{
+          ...calendar,
+          integrations: option.flatMap((p) => p.integration),
+        }}
+      >
+        <CalendarColumn getDate={slotDate(startDate, option[0].time, tz)} />
+      </CalendarContext.Provider>
+    );
+  });
+
 export const DayView = () => {
   const calendar = useCalendar();
   const { integrations, posts, startDate } = calendar;
@@ -370,11 +457,34 @@ export const DayView = () => {
     );
   }, [integrations, posts, startDate, tz]);
 
+  // The now line goes right before the first upcoming slot.
+  const now = useNow();
+  const nowIndex = useMemo(() => {
+    const upcoming = options.findIndex((option) =>
+      slotDate(startDate, option[0].time, tz).isAfter(now)
+    );
+    if (upcoming > 0) {
+      return upcoming;
+    }
+    // before the first or after the last slot: only on today
+    if (!options.length || !slotDate(startDate, 0, tz).isSame(now.tz(tz), 'day')) {
+      return -1;
+    }
+    return upcoming === -1 ? options.length : upcoming;
+  }, [options, startDate, tz, now]);
+
   return (
     <div className="flex flex-col gap-[10px] flex-1 relative">
       <div className="absolute start-0 top-0 w-full h-full flex flex-col overflow-auto scrollbar scrollbar-thumb-fifth scrollbar-track-newBgColor">
-        {options.map((option) => (
+        {options.map((option, index) => (
           <Fragment key={option[0].time}>
+            {/* sits in the 20px gap under the previous slot */}
+            {index === nowIndex && (
+              <DayNowLine
+                now={now.tz(tz)}
+                className={clsx(index > 0 && '-mt-[20px]')}
+              />
+            )}
             <div className="text-center text-[14px] min-h-[21px] shrink-0">
               {slotDate(startDate, option[0].time, tz)
                 // Not 'LT': in the English locale that is 12-hour too, so
@@ -388,19 +498,13 @@ export const DayView = () => {
               // the neighbouring slots, hiding a failed post.
               className="min-h-[60px] shrink-0 rounded-[10px] flex justify-center items-center gap-[10px] mb-[20px]"
             >
-              <CalendarContext.Provider
-                value={{
-                  ...calendar,
-                  integrations: option.flatMap((p) => p.integration),
-                }}
-              >
-                <CalendarColumn
-                  getDate={slotDate(startDate, option[0].time, tz)}
-                />
-              </CalendarContext.Provider>
+              <DaySlotColumn option={option} startDate={startDate} tz={tz} />
             </div>
           </Fragment>
         ))}
+        {nowIndex === options.length && (
+          <DayNowLine now={now.tz(tz)} className="-mt-[20px]" />
+        )}
       </div>
     </div>
   );
@@ -471,6 +575,7 @@ export const WeekView = () => {
               ))}
             </Fragment>
           ))}
+          <WeekNowLine days={localizedDays.map((day) => day.date)} />
         </div>
       </div>
     </div>
@@ -658,7 +763,6 @@ export const CalendarColumn: FC<{
   const t = useT();
 
   const { getDate, randomHour } = props;
-  const [num, setNum] = useState(0);
   const user = useUser();
   const {
     integrations,
@@ -670,6 +774,7 @@ export const CalendarColumn: FC<{
     reloadCalendarView,
     composerDefaults,
     loading,
+    currentHour,
   } = useCalendar();
   const modal = useModals();
   const fetch = useFetch();
@@ -705,29 +810,13 @@ export const CalendarColumn: FC<{
     return postList.slice(0, 3);
   }, [postList, showAll]);
 
-  const isBeforeNow = useMemo(() => {
-    const originalUtc = getDate.startOf('hour');
-    return originalUtc
-      .startOf('hour')
-      .isBefore(newDayjs().startOf('hour').utc());
-  }, [getDate, num]);
-
-  const { start, stop } = useInterval(
-    useCallback(() => {
-      if (isBeforeNow) {
-        return;
-      }
-      setNum(num + 1);
-    }, [isBeforeNow]),
-    random(120000, 150000)
+  // currentHour comes from one shared clock, so the hours that pass get
+  // blocked while the calendar stays open. Each cell had its own timer, and
+  // `setNum(num + 1)` read a stale `num`, so a cell went past at most once.
+  const isBeforeNow = useMemo(
+    () => getDate.startOf('hour').isBefore(currentHour),
+    [getDate, currentHour]
   );
-
-  useEffect(() => {
-    start();
-    return () => {
-      stop();
-    };
-  }, []);
   const [{ canDrop }, drop] = useDrop(
     () => ({
       accept: 'post',
@@ -834,7 +923,7 @@ export const CalendarColumn: FC<{
           : !!monitor.canDrop() && !!monitor.isOver(),
       }),
     }),
-    [posts]
+    [posts, isBeforeNow]
   );
 
   const addModal = useCallback(async () => {
@@ -929,7 +1018,18 @@ export const CalendarColumn: FC<{
       data-slot={getDate.format('YYYY-MM-DDTHH:mm')}
     >
       {display === 'month' && (
-        <div className={clsx('pt-[6px] text-[14px]')}>{getDate.date()}</div>
+        <div className="pt-[3px] text-[14px] flex justify-center">
+          {/* every day number has the same box, so only today's is filled */}
+          <div
+            className={clsx(
+              'h-[24px] min-w-[24px] px-[5px] rounded-[6px] flex items-center justify-center',
+              getDate.isSame(currentHour, 'day') &&
+                'bg-[#38bdf8] text-[#06222e] font-[600]'
+            )}
+          >
+            {getDate.date()}
+          </div>
+        </div>
       )}
       <div
         className={clsx(
@@ -1228,30 +1328,6 @@ const CalendarItem: FC<{
             <CopyDebug />
           </button>
         )}
-        <button
-          className={clsx(
-            'hidden group-hover:block group-focus-within:block hover:underline cursor-pointer',
-            post?.tags?.[0]?.tag?.color && 'text-shadow-tags'
-          )}
-          type="button"
-        aria-label={t('duplicate_post', 'Duplicate Post')}
-        onClick={duplicatePost}
-        >
-          <Duplicate />
-        </button>
-        <button
-          className={clsx(
-            'hidden group-hover:block group-focus-within:block hover:underline cursor-pointer',
-            post?.tags?.[0]?.tag?.color && 'text-shadow-tags'
-          )}
-          type="button"
-        aria-label={t('delete_post', 'Delete Post')}
-        onClick={deletePost}
-        >
-          <span className="text-red-500">
-            <DeletePost />
-          </span>
-        </button>{' '}
         {(state === 'PUBLISHED' || state === 'ERROR') &&
           !post.intervalInDays &&
           firstReleaseUrl(post.releaseURL) && (
@@ -1315,6 +1391,31 @@ const CalendarItem: FC<{
         onClick={preview}
         >
           <Preview />
+        </button>
+        {/* Delete last, after Preview and Duplicate (upstream adf1a8f5). */}
+        <button
+          className={clsx(
+            'hidden group-hover:block group-focus-within:block hover:underline cursor-pointer',
+            post?.tags?.[0]?.tag?.color && 'text-shadow-tags'
+          )}
+          type="button"
+        aria-label={t('duplicate_post', 'Duplicate Post')}
+        onClick={duplicatePost}
+        >
+          <Duplicate />
+        </button>
+        <button
+          className={clsx(
+            'hidden group-hover:block group-focus-within:block hover:underline cursor-pointer',
+            post?.tags?.[0]?.tag?.color && 'text-shadow-tags'
+          )}
+          type="button"
+        aria-label={t('delete_post', 'Delete Post')}
+        onClick={deletePost}
+        >
+          <span className="text-red-500">
+            <DeletePost />
+          </span>
         </button>
       </div>
       {/* Opens the post from the keyboard too (Enter or Space); it was a div

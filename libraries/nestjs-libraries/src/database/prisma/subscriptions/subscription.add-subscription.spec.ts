@@ -1,3 +1,4 @@
+import { pricing } from '@gitroom/nestjs-libraries/database/prisma/subscriptions/pricing';
 // Importing the service for real drags integration.manager → nostr-tools into
 // the run, which is ESM and stops jest dead. Stubbing the injected modules
 // keeps this a unit test of addSubscription.
@@ -182,16 +183,17 @@ describe('tier change by org applies the same limits as the webhook path', () =>
   });
 
   // BILL-7: only FREE stopped Auto Post; Starter has no Auto Post either.
+  // E2E-07-33: a plan with fewer feeds keeps only its number running.
   it.each([
-    ['STANDARD', true],
-    ['TEAM', false],
-    ['FREE', true],
-    ['PRO', false],
-    ['ULTIMATE', false],
-  ] as const)('moving to %s stops Auto Post: %s', async (tier, stops) => {
+    ['STANDARD', 0],
+    ['TEAM', pricing.TEAM.autoPostLimit],
+    ['FREE', 0],
+    ['PRO', pricing.PRO.autoPostLimit],
+    ['ULTIMATE', pricing.ULTIMATE.autoPostLimit],
+  ] as const)('moving to %s keeps %s Auto Post feeds running', async (tier, keep) => {
     const { service, integrationService } = setup();
     integrationService.changeActiveCron.mockClear();
     await service.modifySubscriptionByOrg('org-1', 3, tier);
-    expect(integrationService.changeActiveCron).toHaveBeenCalledTimes(stops ? 1 : 0);
+    expect(integrationService.changeActiveCron).toHaveBeenCalledWith('org-1', keep);
   });
 });

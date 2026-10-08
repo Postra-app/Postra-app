@@ -21,7 +21,7 @@ const useFaqList = () => {
             ),
             description: t(
               'faq_to_confirm_credit_card_information_postra_will_hold',
-              'To confirm credit card information Postra will hold $2 and release it immediately, you can cancel your subscription anytime from settings without talking to a person'
+              'To confirm credit card information Postra will hold £1 and release it immediately, you can cancel your subscription anytime from settings without talking to a person'
             ),
           },
         ]
@@ -42,7 +42,7 @@ const useFaqList = () => {
         'faq_postra_gitroom_allows_you_to_schedule_posts',
         `Postra allows you to schedule your posts between different channels.
 A channel is a publishing platform where you can schedule your posts.
-For example, you can schedule your posts on X, Facebook, Instagram, TikTok, YouTube, Reddit, Linkedin, Dribbble, Threads and Pinterest.`
+For example, you can schedule your posts on X, Facebook, Instagram, TikTok, YouTube, LinkedIn, Threads, Bluesky, Mastodon, Telegram and Discord.`
       ),
     },
     {

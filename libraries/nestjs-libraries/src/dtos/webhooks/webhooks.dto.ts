@@ -49,6 +49,11 @@ export class OnlyURL {
       'URL must be a public HTTPS URL and cannot point to internal network addresses',
   })
   url: string;
+
+  // A saved webhook: the test is signed with its secret, like a delivery.
+  @IsOptional()
+  @IsString()
+  id?: string;
 }
 
 export class UpdateDto {

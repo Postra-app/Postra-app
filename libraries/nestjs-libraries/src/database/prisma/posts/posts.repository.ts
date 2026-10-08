@@ -31,6 +31,9 @@ dayjs.extend(weekOfYear);
 dayjs.extend(isSameOrAfter);
 dayjs.extend(utc);
 
+// The posts of one channel of a save and when the editor read them.
+export type PostVersion = { ids: string[]; expectedUpdatedAt: string };
+
 @Injectable()
 export class PostsRepository {
   constructor(
@@ -430,6 +433,33 @@ export class PostsRepository {
     });
   }
 
+  // The posts of the other channels saved in the same batch, without the
+  // given group.
+  getPostsByBatch(orgId: string, batchId: string, exceptGroup: string) {
+    return this._post.model.post.findMany({
+      where: {
+        organizationId: orgId,
+        batchId,
+        group: { not: exceptGroup },
+        deletedAt: null,
+        integration: { deletedAt: null },
+      },
+      // With their tags, which the editor saves them with (Codex).
+      include: {
+        integration: true,
+        tags: {
+          where: { tag: { deletedAt: null } },
+          select: {
+            tag: true,
+          },
+        },
+      },
+      orderBy: {
+        createdAt: 'asc',
+      },
+    });
+  }
+
   getPostsByGroup(orgId: string, group: string) {
     return this._post.model.post.findMany({
       where: {
@@ -508,16 +538,16 @@ export class PostsRepository {
   }
 
   // By id, not by group: every save moves the posts to a new group.
-  async refuseIfChangedSince(
-    orgId: string,
-    ids: string[],
-    expectedUpdatedAt: string
-  ) {
-    const { _max } = await this._post.model.post.aggregate({
-      _max: { updatedAt: true },
+  async refuseIfChangedSince(orgId: string, versions: PostVersion[]) {
+    const ids = versions.flatMap((v) => v.ids);
+    if (!ids.length) {
+      return;
+    }
+    const rows = await this._post.model.post.findMany({
       where: { organizationId: orgId, id: { in: ids } },
+      select: { id: true, updatedAt: true },
     });
-    this.refuseIfNewer(_max.updatedAt, expectedUpdatedAt);
+    this.refuseIfNewer(rows, versions);
   }
 
   // First thing in a save's transaction: lock every post it overwrites, in
@@ -531,34 +561,42 @@ export class PostsRepository {
     tx: Prisma.TransactionClient,
     orgId: string,
     ids: string[],
-    expectedUpdatedAt?: string
+    versions: PostVersion[] = []
   ) {
     if (!ids.length) {
       return;
     }
 
-    const rows = await tx.$queryRaw<{ updatedAt: Date }[]>`
-      SELECT "updatedAt" FROM "Post"
+    const rows = await tx.$queryRaw<{ id: string; updatedAt: Date }[]>`
+      SELECT "id", "updatedAt" FROM "Post"
       WHERE "id" = ANY(${ids}::text[]) AND "organizationId" = ${orgId}
       ORDER BY "id"
       FOR UPDATE`;
 
-    if (expectedUpdatedAt) {
-      const latest = rows.reduce<Date | null>(
-        (max, { updatedAt }) => (!max || updatedAt > max ? updatedAt : max),
-        null
-      );
-      this.refuseIfNewer(latest, expectedUpdatedAt);
-    }
+    this.refuseIfNewer(rows, versions);
   }
 
-  private refuseIfNewer(latest: Date | null, expectedUpdatedAt: string) {
-    if (latest && latest.getTime() > Date.parse(expectedUpdatedAt)) {
-      throw new ConflictException({
-        statusCode: 409,
-        message: 'Someone else saved changes to this post after you opened it.',
-        updatedAt: latest.toISOString(),
-      });
+  // Each channel against the version it was read at.
+  private refuseIfNewer(
+    rows: { id: string; updatedAt: Date }[],
+    versions: PostVersion[]
+  ) {
+    const updatedAt = new Map(rows.map((r) => [r.id, r.updatedAt] as const));
+    for (const { ids, expectedUpdatedAt } of versions) {
+      const latest = ids
+        .map((id) => updatedAt.get(id))
+        .reduce<Date | null>(
+          (max, at) => (at && (!max || at > max) ? at : max),
+          null
+        );
+      if (latest && latest.getTime() > Date.parse(expectedUpdatedAt)) {
+        throw new ConflictException({
+          statusCode: 409,
+          message:
+            'Someone else saved changes to this post after you opened it.',
+          updatedAt: latest.toISOString(),
+        });
+      }
     }
   }
 
@@ -592,8 +630,14 @@ export class PostsRepository {
     return count ? { id, releaseId } : null;
   }
 
-  async changeState(id: string, state: State, err?: any, body?: any) {
-    const update = await this._post.model.post.update({
+  async changeState(
+    id: string,
+    state: State,
+    err?: any,
+    body?: any,
+    tx?: Prisma.TransactionClient
+  ) {
+    const update = await (tx || this._post.model).post.update({
       where: {
         id,
       },
@@ -665,9 +709,10 @@ export class PostsRepository {
     id: string,
     date: string,
     isDraft: boolean,
-    action: 'schedule' | 'update' = 'schedule'
+    action: 'schedule' | 'update' = 'schedule',
+    tx?: Prisma.TransactionClient
   ) {
-    return this._post.model.post.update({
+    return (tx || this._post.model).post.update({
       where: {
         organizationId: orgId,
         id,
@@ -731,6 +776,59 @@ export class PostsRepository {
     });
   }
 
+  getPublishDates(
+    orgId: string,
+    ids: string[],
+    tx?: Prisma.TransactionClient
+  ) {
+    return (tx || this._post.model).post.findMany({
+      where: { organizationId: orgId, id: { in: ids }, deletedAt: null },
+      select: { id: true, publishDate: true, state: true },
+    });
+  }
+
+  async getPostState(
+    tx: Prisma.TransactionClient,
+    orgId: string,
+    id: string
+  ) {
+    return (
+      await tx.post.findFirst({
+        where: { id, organizationId: orgId, deletedAt: null },
+        select: { state: true },
+      })
+    )?.state;
+  }
+
+  // Taken before anything else in a write that adds to the monthly post
+  // count, so two of them cannot both pass the check with one post left.
+  async lockPostCap(tx: Prisma.TransactionClient, orgId: string) {
+    // ::text — Prisma cannot read the void pg_advisory_xact_lock returns.
+    await tx.$queryRaw`SELECT pg_advisory_xact_lock(hashtext(${`post-cap:${orgId}`})::bigint)::text`;
+  }
+
+  // What counts against the monthly cap: scheduled and published posts, by
+  // publish date, inside [start, end); of `ids`, only those already counted.
+  countCountedPosts(
+    orgId: string,
+    start: Date,
+    end: Date,
+    ids?: string[],
+    tx?: Prisma.TransactionClient
+  ) {
+    return (tx || this._post.model).post.count({
+      where: {
+        organizationId: orgId,
+        ...(ids ? { id: { in: ids } } : {}),
+        publishDate: { gte: start, lt: end },
+        OR: [
+          { deletedAt: null, state: { in: ['QUEUE'] } },
+          { state: 'PUBLISHED' },
+        ],
+      },
+    });
+  }
+
   countPostsFromDay(orgId: string, date: Date) {
     return this._post.model.post.count({
       where: {
@@ -761,7 +859,10 @@ export class PostsRepository {
     tags: { value: string; label: string }[],
     creationMethod: CreationMethod,
     inter?: number,
-    outer?: Prisma.TransactionClient
+    outer?: Prisma.TransactionClient,
+    // Shared by the posts saved together for several channels, so opening one
+    // of them in the editor brings the others.
+    batchId?: string
   ) {
     // Creating a thread is a multi-step write (per-part upserts, tag rewrite,
     // soft-delete of the previous group). A failure mid-way used to leave a
@@ -770,6 +871,27 @@ export class PostsRepository {
     const write = async (tx: Prisma.TransactionClient) => {
     const posts: Post[] = [];
     const uuid = uuidv4();
+
+    // An edited post stays in the batch it was created in, also when it is
+    // saved on its own. Read before the writes below give it a new group.
+    const ids = body.value.map((value) => value.id).filter(Boolean) as string[];
+    const existingBatchId =
+      body.group || ids.length
+        ? (
+            await tx.post.findFirst({
+              where: {
+                organizationId: orgId,
+                deletedAt: null,
+                batchId: { not: null },
+                OR: [
+                  ...(body.group ? [{ group: body.group }] : []),
+                  ...(ids.length ? [{ id: { in: ids } }] : []),
+                ],
+              },
+              select: { batchId: true },
+            })
+          )?.batchId
+        : undefined;
 
     for (const value of body.value) {
       const updateData = (type: 'create' | 'update') => ({
@@ -798,6 +920,7 @@ export class PostsRepository {
         content: value.content,
         delay: value.delay || 0,
         group: uuid,
+        batchId: existingBatchId || batchId || null,
         intervalInDays: inter && +inter >= 1 ? Math.floor(+inter) : null,
         approvedSubmitForOrder: APPROVED_SUBMIT_FOR_ORDER.NO,
         ...(type === 'create' ? { creationMethod } : {}),

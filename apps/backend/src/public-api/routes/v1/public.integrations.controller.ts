@@ -1,3 +1,4 @@
+import { PermissionsService } from '@gitroom/backend/services/auth/permissions/permissions.service';
 import {
   Body,
   Controller,
@@ -80,7 +81,8 @@ export class PublicIntegrationsController {
     private _mediaService: MediaService,
     private _notificationService: NotificationService,
     private _integrationManager: IntegrationManager,
-    private _refreshIntegrationService: RefreshIntegrationService
+    private _refreshIntegrationService: RefreshIntegrationService,
+    private _permissionsService: PermissionsService
   ) {}
 
   @Post('/upload')
@@ -198,11 +200,27 @@ export class PublicIntegrationsController {
   ) {
     Sentry.metrics.count('public_api-request', 1);
     const body = await this._postsService.mapTypeToPost(
-      rawBody,
+      {
+        ...rawBody,
+        // A date, a type and tags per channel are editor features (a post
+        // saved for several channels, edited later); the public API keeps one
+        // of each per request.
+        posts: Array.isArray(rawBody?.posts)
+          ? rawBody.posts.map((post: any) => {
+              if (!post || typeof post !== 'object') return post;
+              const { date, type, tags, ...rest } = post;
+              return rest;
+            })
+          : rawBody?.posts,
+      },
       org.id,
       rawBody.type === 'draft'
     );
     body.type = rawBody.type;
+    // A draft is checked as a scheduled post above, then saved as a draft.
+    for (const post of body.posts) {
+      post.type = body.type;
+    }
 
     if (
       process.env.RESTRICT_UPLOAD_DOMAINS &&
@@ -267,7 +285,12 @@ export class PublicIntegrationsController {
       ? (rawBody.creationMethod as 'CLI' | 'API')
       : 'API';
 
-    return this._postsService.createPost(org.id, body, creationMethod);
+    return this._postsService.createPost(
+      org.id,
+      body,
+      creationMethod,
+      await this._permissionsService.postCap(org.id, org.createdAt)
+    );
   }
 
   @Delete('/posts/:id')
@@ -333,6 +356,16 @@ export class PublicIntegrationsController {
       throw new HttpException({ msg: 'Integration not allowed' }, 400);
     }
 
+    // `refresh` skips the gates below, so it has to name a channel this org
+    // already has on this platform, as in the dashboard (the callback checks
+    // it again, but only after the customer consented at the platform).
+    if (
+      refresh &&
+      !(await this._integrationService.hasChannel(org.id, integration, refresh))
+    ) {
+      throw new HttpException('The channel to reconnect was not found', 404);
+    }
+
     // Same plan gate as the dashboard: without it a key on a lower plan gets
     // an auth URL, the customer consents at the platform, and only the
     // callback refuses the channel.
@@ -347,6 +380,15 @@ export class PublicIntegrationsController {
           402
         );
       }
+    }
+
+    // A platform still "Coming soon" takes no new channels (E2E-08-50);
+    // after the plan gate, so a plan without it still answers 402.
+    if (!refresh && !this._integrationManager.isOffered(integration)) {
+      throw new HttpException(
+        `The ${integration} channel isn't available yet.`,
+        403
+      );
     }
 
     const integrationProvider =
@@ -500,7 +542,8 @@ export class PublicIntegrationsController {
       org.id,
       id,
       body.status,
-      body.republish === true
+      body.republish === true,
+      await this._permissionsService.postCap(org.id, org.createdAt)
     );
   }
 

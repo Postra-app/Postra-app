@@ -1,3 +1,4 @@
+import { pricing } from '@gitroom/nestjs-libraries/database/prisma/subscriptions/pricing';
 import { Throttle } from '@nestjs/throttler';
 import { ioRedis } from '@gitroom/nestjs-libraries/redis/redis.service';
 import {
@@ -5,6 +6,7 @@ import {
   Controller,
   Delete,
   Get,
+  HttpException,
   Param,
   Post,
   Put,
@@ -67,6 +69,11 @@ export class AutopostController {
     @Body() body: AutopostDto,
     @Param('id') id: string
   ) {
+    if (body.active) {
+      return this.withRoomToRun(org, id, () =>
+        this._autopostsService.createAutopost(org.id, body, id)
+      );
+    }
     return this._autopostsService.createAutopost(org.id, body, id);
   }
 
@@ -89,8 +96,51 @@ export class AutopostController {
     // allowed, so a plan change never leaves a feed nobody can stop.
     if (active) {
       await this.requireAutopost(org, AuthorizationActions.Update);
+      return this.withRoomToRun(org, id, () =>
+        this._autopostsService.changeActive(org.id, id, active)
+      );
     }
     return this._autopostsService.changeActive(org.id, id, active);
+  }
+
+  // Switching a feed on counts the running ones against the plan: the ones a
+  // downgrade switched off could all be switched on again (E2E-07-33). One at
+  // a time per organisation, so two at once cannot both see room for one, and
+  // the same for an edit that switches a feed on (Codex).
+  private async withRoomToRun<T>(
+    org: Organization,
+    id: string,
+    run: () => Promise<T>
+  ): Promise<T> {
+    if (!process.env.STRIPE_PUBLISHABLE_KEY) {
+      return run();
+    }
+    const lock = `autopost-activate:${org.id}`;
+    let locked = false;
+    for (let i = 0; i < 50 && !locked; i++) {
+      locked = (await ioRedis.set(lock, '1', 'EX', 30, 'NX')) === 'OK';
+      if (!locked) await new Promise((r) => setTimeout(r, 100));
+    }
+    if (!locked) {
+      throw new HttpException('Try again in a moment', 409);
+    }
+    try {
+      // @ts-ignore subscription is attached to the org by the auth middleware
+      const tier = org?.subscription?.subscriptionTier || 'FREE';
+      const limit = pricing[tier]?.autoPostLimit ?? 0;
+      const running = (await this._autopostsService.getAutoposts(org.id)).filter(
+        (f) => f.active && f.id !== id
+      ).length;
+      if (running >= limit) {
+        throw new SubscriptionException({
+          section: Sections.AUTOPOST,
+          action: AuthorizationActions.Create,
+        });
+      }
+      return await run();
+    } finally {
+      await ioRedis.del(lock).catch(() => undefined);
+    }
   }
 
   @Post('/send')

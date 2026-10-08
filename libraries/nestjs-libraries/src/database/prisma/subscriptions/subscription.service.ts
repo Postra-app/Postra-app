@@ -282,10 +282,13 @@ export class SubscriptionService {
     );
 
     // Every plan without Auto Post stops the feeds, not only FREE: a Pro org
-    // moving to Starter kept generating and publishing (BILL-7).
-    if (!to.autoPost) {
-      await this._integrationService.changeActiveCron(organizationId);
-    }
+    // moving to Starter kept generating and publishing (BILL-7). A plan with
+    // fewer feeds keeps the oldest running ones (E2E-07-33). Webhooks over the
+    // new limit are paused where they are delivered (WebhooksService).
+    await this._integrationService.changeActiveCron(
+      organizationId,
+      to.autoPost ? to.autoPostLimit : 0
+    );
   }
 
   async modifySubscription(
@@ -381,7 +384,7 @@ export class SubscriptionService {
 
   /**
    * One-off pre-launch backfill. Turning on Stripe billing flips every org that
-   * has no subscription down to FREE (2 channels) — this would strip access from
+   * has no subscription down to FREE (3 channels) — this would strip access from
    * the founder and existing users. This grants each such org a lifetime top-tier
    * (Business/ULTIMATE) subscription instead. Passing a `code` marks it
    * isLifetime and bypasses Stripe entirely (no customer/charge). Idempotent:
