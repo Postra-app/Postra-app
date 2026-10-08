@@ -294,7 +294,8 @@ export class PostsService {
         getIntegration.internalId,
         getIntegration.token,
         post.releaseId,
-        date
+        date,
+        post.releaseURL || undefined
       );
       await ioRedis.set(
         `integration:${orgId}:${post.id}:${date}`,

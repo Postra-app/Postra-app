@@ -33,6 +33,9 @@ export interface IAuthenticator {
     accessToken: string,
     postId: string,
     fromDate: number,
+    // The post's link, for platforms whose post id alone is not enough to
+    // find it (Discord: the channel).
+    releaseURL?: string
   ): Promise<AnalyticsData[]>;
   changeNickname?(
     id: string,
