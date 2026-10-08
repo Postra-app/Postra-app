@@ -20,6 +20,10 @@ export default function OAuthAuthorizePage() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
+  // The approval goes to the organisation selected in Postra; say which,
+  // and let a person in several pick (E2E-08-61).
+  const [orgs, setOrgs] = useState<{ id: string; name: string }[]>([]);
+  const [orgId, setOrgId] = useState('');
 
   const clientId = searchParams.get('client_id');
   const responseType = searchParams.get('response_type');
@@ -75,6 +79,31 @@ export default function OAuthAuthorizePage() {
         setLoading(false);
       });
   }, [clientId, responseType, state, pkce]);
+
+  useEffect(() => {
+    Promise.all([
+      fetch('/user/organizations').then((r) => r.json()),
+      fetch('/user/self').then((r) => r.json()),
+    ])
+      .then(([list, self]) => {
+        if (Array.isArray(list)) {
+          setOrgs(list.map(({ id, name }: any) => ({ id, name })));
+        }
+        setOrgId(self?.orgId || '');
+      })
+      .catch(() => undefined);
+  }, []);
+
+  const changeOrg = useCallback(async (id: string) => {
+    setSubmitting(true);
+    await fetch('/user/change-org', {
+      method: 'POST',
+      body: JSON.stringify({ id }),
+    });
+    window.location.reload();
+  }, []);
+
+  const currentOrg = orgs.find((o) => o.id === orgId) || (orgs.length === 1 ? orgs[0] : undefined);
 
   const handleAction = useCallback(
     async (action: 'approve' | 'deny') => {
@@ -219,6 +248,32 @@ export default function OAuthAuthorizePage() {
               <li>Read your post analytics</li>
             </ul>
           </div>
+
+          {orgs.length > 1 ? (
+            <label className="flex flex-col gap-[6px] text-[14px] text-gray-400">
+              Organisation
+              <select
+                aria-label="Organisation"
+                value={currentOrg?.id || ''}
+                disabled={submitting}
+                onChange={(e) => changeOrg(e.target.value)}
+                className="bg-[#2A2929] text-white rounded-[8px] py-[8px] px-[12px] text-[14px]"
+              >
+                {orgs.map((o) => (
+                  <option key={o.id} value={o.id}>
+                    {o.name}
+                  </option>
+                ))}
+              </select>
+            </label>
+          ) : (
+            currentOrg && (
+              <div data-testid="oauth-organisation" className="text-[14px] text-gray-400">
+                Access is for the <strong className="text-white">{currentOrg.name}</strong>{' '}
+                organisation.
+              </div>
+            )
+          )}
 
           <div className="flex gap-[12px]">
             <button
