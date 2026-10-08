@@ -178,16 +178,19 @@ const McpSection = ({
     user.publicApi
   );
 
-  const remoteUrl = `${mcpBase}/mcp/${user.publicApi}`;
+  // ChatGPT and Claude sign in by OAuth (dynamic client registration): the
+  // address carries no key. It used to be `${mcpBase}/mcp/<API key>`.
+  const remoteUrl = `${mcpBase}/mcp-oauth`;
   const cliUrl = `${mcpBase}/mcp`;
 
   const maskedConfig = revealed
     ? config
-    : config.replace(new RegExp(user.publicApi.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g'), '*'.repeat(user.publicApi.length));
+    : config.replace(
+        new RegExp(user.publicApi.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g'),
+        '*'.repeat(user.publicApi.length)
+      );
 
-  const maskedRemoteUrl = revealed
-    ? remoteUrl
-    : remoteUrl.replace(user.publicApi, '*'.repeat(user.publicApi.length));
+  const maskedRemoteUrl = remoteUrl;
 
   return (
     <div className="bg-white/[0.03] backdrop-blur-[8px] rounded-[16px] border border-white/10 overflow-hidden">
@@ -258,53 +261,52 @@ const McpSection = ({
             {method === 'header'
               ? hint
               : t(
-                  'remote_server_url_hint',
-                  'Paste this URL into your remote MCP client (ChatGPT, Claude, etc.).'
+                  'remote_server_oauth_hint',
+                  'Add this address as a custom connector in ChatGPT or Claude. They will ask you to sign in to Postra and approve the assistant. No API key is needed.'
                 )}
           </div>
           <pre className="bg-white/[0.03] border border-white/10 rounded-[8px] p-[16px] text-[13px] whitespace-pre-wrap break-all overflow-x-auto leading-[1.6]">
             {method === 'header' ? maskedConfig : maskedRemoteUrl}
           </pre>
           <div className="flex gap-[8px]">
-            <button
-              type="button"
-              onClick={() => setRevealed(!revealed)}
-              className="cursor-pointer px-[16px] h-[36px] bg-btnSimple hover:bg-boxHover transition-colors rounded-[8px] text-[13px] font-[600] flex items-center gap-[6px]"
-            >
-              <svg
-                width="14"
-                height="14"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
+            {method === 'header' && (
+              <button
+                type="button"
+                onClick={() => setRevealed(!revealed)}
+                className="cursor-pointer px-[16px] h-[36px] bg-btnSimple hover:bg-boxHover transition-colors rounded-[8px] text-[13px] font-[600] flex items-center gap-[6px]"
               >
-                {revealed ? (
-                  <>
-                    <path d="M17.94 17.94A10.07 10.07 0 0112 20c-7 0-11-8-11-8a18.45 18.45 0 015.06-5.94" />
-                    <path d="M9.9 4.24A9.12 9.12 0 0112 4c7 0 11 8 11 8a18.5 18.5 0 01-2.16 3.19" />
-                    <line x1="1" y1="1" x2="23" y2="23" />
-                  </>
-                ) : (
-                  <>
-                    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
-                    <circle cx="12" cy="12" r="3" />
-                  </>
-                )}
-              </svg>
-              {revealed ? t('hide', 'Hide') : t('reveal', 'Reveal')}
-            </button>
+                <svg
+                  width="14"
+                  height="14"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  {revealed ? (
+                    <>
+                      <path d="M17.94 17.94A10.07 10.07 0 0112 20c-7 0-11-8-11-8a18.45 18.45 0 015.06-5.94" />
+                      <path d="M9.9 4.24A9.12 9.12 0 0112 4c7 0 11 8 11 8a18.5 18.5 0 01-2.16 3.19" />
+                      <line x1="1" y1="1" x2="23" y2="23" />
+                    </>
+                  ) : (
+                    <>
+                      <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+                      <circle cx="12" cy="12" r="3" />
+                    </>
+                  )}
+                </svg>
+                {revealed ? t('hide', 'Hide') : t('reveal', 'Reveal')}
+              </button>
+            )}
             <CopyButton
               text={method === 'header' ? config : remoteUrl}
               label={t('copy', 'Copy')}
             />
             {method === 'header' && (
-              <CopyButton
-                text={cliUrl}
-                label={t('copy_url', 'Copy URL')}
-              />
+              <CopyButton text={cliUrl} label={t('copy_url', 'Copy URL')} />
             )}
           </div>
         </div>
@@ -344,7 +346,20 @@ const SdkSection = ({ apiKey }: { apiKey: string }) => {
             target="_blank"
             rel="noopener noreferrer"
           >
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6" /><polyline points="15 3 21 3 21 9" /><line x1="10" y1="14" x2="21" y2="3" /></svg>
+            <svg
+              width="13"
+              height="13"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6" />
+              <polyline points="15 3 21 3 21 9" />
+              <line x1="10" y1="14" x2="21" y2="3" />
+            </svg>
             {t('npm_package', 'npm package')}
           </a>
         </div>
@@ -582,9 +597,7 @@ export const PublicComponent = () => {
             )}
             onClick={() => setSubTab(tab)}
           >
-            {tab === 'api'
-              ? t('access', 'Access')
-              : t('apps', 'Apps')}
+            {tab === 'api' ? t('access', 'Access') : t('apps', 'Apps')}
           </button>
         ))}
       </div>

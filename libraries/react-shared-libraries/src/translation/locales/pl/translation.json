@@ -1555,5 +1555,6 @@
   "billing_status_open": "Oczekuje",
   "billing_status_paid": "Opłacona",
   "billing_status_void": "Anulowana",
-  "billing_view_invoice": "Zobacz fakturę"
+  "billing_view_invoice": "Zobacz fakturę",
+  "remote_server_oauth_hint": "Dodaj ten adres jako własny konektor w ChatGPT albo Claude. Poproszą o zalogowanie do Postry i zatwierdzenie asystenta. Klucz API nie jest potrzebny."
 }

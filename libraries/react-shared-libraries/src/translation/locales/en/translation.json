@@ -1556,5 +1556,6 @@
   "billing_status_open": "Pending",
   "billing_status_paid": "Paid",
   "billing_status_void": "Void",
-  "billing_view_invoice": "View invoice"
+  "billing_view_invoice": "View invoice",
+  "remote_server_oauth_hint": "Add this address as a custom connector in ChatGPT or Claude. They will ask you to sign in to Postra and approve the assistant. No API key is needed."
 }
