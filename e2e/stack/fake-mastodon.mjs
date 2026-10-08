@@ -27,6 +27,10 @@
 //                           GET /__pexels/photo.png and /__pexels/clip.mp4 are
 //                           the files they point to; GET /__pexels/seen is
 //                           every search received
+//   GET  /unsplash/search/photos   Unsplash (stack.env UNSPLASH_API_URL): one
+//                           photo for any query, only with "Client-ID <stack
+//                           key>"; GET /unsplash/photos/:id/download records a
+//                           download (GET /__unsplash/downloads lists them)
 //   POST /oauth/token       exchange any code for a token — the account is
 //   GET  /api/v1/accounts/verify_credentials   named after the code, so each
 //                           connect in a test can be a different account
@@ -41,6 +45,7 @@ const PNG_1x1 =
   'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==';
 const MP4 = 'AAAAGGZ0eXBpc29tAAACAGlzb21pc28ybXA0MQAAAAhmcmVl';
 const pexelsSeen = [];
+const unsplashDownloads = [];
 
 const readBody = (req) =>
   new Promise((resolve) => {
@@ -141,6 +146,36 @@ createServer(async (req, res) => {
         },
       ],
     });
+  }
+  if (req.method === 'GET' && req.url === '/__unsplash/downloads') return json(res, 200, unsplashDownloads);
+  const unsplashAuthorized = () =>
+    req.headers.authorization === `Client-ID ${process.env.UNSPLASH_ACCESS_KEY || 'stack-fake-unsplash'}`;
+  if (req.method === 'GET' && req.url?.startsWith('/unsplash/search/photos?')) {
+    if (!unsplashAuthorized()) return json(res, 401, { errors: ['OAuth error: The access token is invalid'] });
+    const q = new URL(req.url, 'http://fake').searchParams.get('query');
+    const base = `http://localhost:${PORT}`;
+    return json(res, 200, {
+      total: 1,
+      total_pages: 1,
+      results: [
+        {
+          id: 'StackUnspl1',
+          alt_description: `${q} on a wooden table`,
+          urls: { small: `${base}/__pexels/photo.png`, regular: `${base}/__pexels/photo.png`, full: `${base}/__pexels/photo.png` },
+          links: {
+            html: 'https://unsplash.com/photos/StackUnspl1',
+            download_location: `${base}/unsplash/photos/StackUnspl1/download?ixid=stack`,
+          },
+          user: { name: 'Stack Lens', links: { html: 'https://unsplash.com/@stacklens' } },
+        },
+      ],
+    });
+  }
+  const unsplashDownload = req.method === 'GET' && req.url?.match(/^\/unsplash\/photos\/([^/?]+)\/download/);
+  if (unsplashDownload) {
+    if (!unsplashAuthorized()) return json(res, 401, { errors: ['OAuth error'] });
+    unsplashDownloads.push(unsplashDownload[1]);
+    return json(res, 200, { url: `http://localhost:${PORT}/__pexels/photo.png` });
   }
   if (req.method === 'POST' && req.url === '/oauth/token') {
     const { code } = formFields(body, req.headers['content-type']);
