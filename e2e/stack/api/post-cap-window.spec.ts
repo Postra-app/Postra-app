@@ -128,3 +128,16 @@ test("scheduling a draft counts against the draft's month", async () => {
     await org.remove();
   }
 });
+
+test('a scheduled post can still be edited when its month is full', async () => {
+  const org = await throwawayOrg(prisma, { tier: 'STANDARD', totalChannels: 3, channels: 1, provider: 'facebook' });
+  const channel = org.channelIds[0];
+  try {
+    const rows = await fill(org.orgId, channel, LIMIT, inDays(2), 'QUEUE');
+    const res = await schedule(org.api, channel, inDays(2), [{ id: rows[0].id, content: 'edited' }]);
+    expect(res.status(), await res.text()).toBe(201);
+  } finally {
+    await prisma.post.deleteMany({ where: { organizationId: org.orgId } });
+    await org.remove();
+  }
+});
