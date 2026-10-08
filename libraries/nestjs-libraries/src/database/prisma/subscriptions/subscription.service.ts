@@ -556,7 +556,7 @@ export class SubscriptionService {
       checkType === 'ai_images'
         ? 'image_generation_count'
         : checkType === 'ai_agent'
-        ? 'agent_tokens'
+        ? 'agent_messages'
         : 'generate_videos';
     const allowance = trialAiAllowance(
       pricing[type][field] || 0,
@@ -564,11 +564,11 @@ export class SubscriptionService {
       field
     );
 
-    // Agent chat is measured from AiUsage (weighted tokens written by the
-    // metering wrapper), not the Credits ledger the image/video paths use.
+    // The assistant is measured from AiUsage (one row per question), not
+    // the Credits ledger the image/video paths use.
     const totalUse =
       checkType === 'ai_agent'
-        ? await this._aiUsageService.weightedAgentUsageSince(
+        ? await this._aiUsageService.agentMessagesSince(
             organization.id,
             checkFromMonth.toDate()
           )

@@ -2,8 +2,17 @@ import { pricing } from '@gitroom/nestjs-libraries/database/prisma/subscriptions
 import { autopostAccess } from '@gitroom/frontend/components/autopost/autopost.access';
 
 describe('autopostAccess', () => {
-  it('Starter does not include Auto Post', () => {
-    expect(autopostAccess(pricing.STANDARD, 0)).toMatchObject({
+  it('Starter allows two feeds, then is at its limit (since 2026-10-08)', () => {
+    expect(autopostAccess(pricing.STANDARD, 1)).toMatchObject({
+      included: true,
+      limit: 2,
+      atLimit: false,
+    });
+    expect(autopostAccess(pricing.STANDARD, 2)).toMatchObject({ atLimit: true });
+  });
+
+  it('a plan without Auto Post does not include it', () => {
+    expect(autopostAccess(pricing.FREE, 0)).toMatchObject({
       included: false,
       atLimit: false,
     });

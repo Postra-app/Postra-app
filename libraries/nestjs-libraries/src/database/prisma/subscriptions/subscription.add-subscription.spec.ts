@@ -182,10 +182,10 @@ describe('tier change by org applies the same limits as the webhook path', () =>
     );
   });
 
-  // BILL-7: only FREE stopped Auto Post; Starter has no Auto Post either.
-  // E2E-07-33: a plan with fewer feeds keeps only its number running.
+  // BILL-7: only FREE stopped Auto Post. E2E-07-33: a plan with fewer feeds
+  // keeps only its number running (Starter 2 since 2026-10-08).
   it.each([
-    ['STANDARD', 0],
+    ['STANDARD', 2],
     ['TEAM', pricing.TEAM.autoPostLimit],
     ['FREE', 0],
     ['PRO', pricing.PRO.autoPostLimit],

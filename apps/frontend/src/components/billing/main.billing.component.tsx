@@ -32,6 +32,7 @@ import { newDayjs } from '@gitroom/frontend/components/layout/set.timezone';
 import { useDubClickId } from '@gitroom/frontend/components/layout/dubAnalytics';
 import { LogoutComponent } from '@gitroom/frontend/components/layout/logout.component';
 import { TrialLimitsNote } from '@gitroom/frontend/components/billing/trial.limits.note';
+import { AiUsageThisMonth } from '@gitroom/frontend/components/billing/ai.usage.this.month';
 import { planFeatures } from '@gitroom/frontend/components/billing/plan.features';
 
 export const Prorate: FC<{
@@ -567,6 +568,12 @@ export const MainBillingComponent: FC<{
 
       {finishTrial && <FinishTrial close={() => setFinishTrial(false)} />}
       {!!user?.isTrailing && <TrialLimitsNote endTrialLink />}
+      {!!subscription?.subscriptionTier && (
+        <AiUsageThisMonth
+          tier={subscription.subscriptionTier}
+          isTrailing={!!user?.isTrailing}
+        />
+      )}
       <div className="flex gap-[16px] [@media(max-width:1024px)]:flex-col [@media(max-width:1024px)]:text-center">
         {Object.entries(pricing)
           .filter((f) => f[0] !== 'TEAM' && (!isGeneral || f[0] !== 'FREE'))

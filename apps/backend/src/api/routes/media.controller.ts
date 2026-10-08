@@ -43,6 +43,12 @@ import { CaptionsService } from '@gitroom/nestjs-libraries/videos/captions/capti
 import { createHash } from 'crypto';
 import { ioRedis } from '@gitroom/nestjs-libraries/redis/redis.service';
 import {
+  isPexelsAssetUrl,
+  pexelsApiUrl,
+  pexelsPhotoHits,
+  pexelsVideoHits,
+} from '@gitroom/nestjs-libraries/media/pexels';
+import {
   BrandVoiceCheckDto,
   AiEditTextDto,
   SuggestHashtagsDto,
@@ -296,6 +302,59 @@ export class MediaController {
     return data;
   }
 
+  // Pexels, the second free stock library. Same 24 h cache and throttle as
+  // Pixabay; Pexels allows 200 requests an hour on a free key.
+  private async pexelsSearch(kind: 'images' | 'videos', q: unknown, page: unknown) {
+    const apiKey = process.env.PEXELS_API_KEY;
+    if (!apiKey) {
+      return { hits: [], note: 'PEXELS_API_KEY not configured' };
+    }
+    const safeQuery = queryString(q).slice(0, 100).trim().toLowerCase();
+    if (!safeQuery) {
+      return { hits: [] };
+    }
+    const safePage = queryPage(page);
+    const cacheKey = `pexels:${kind}:${createHash('md5').update(`${safeQuery}|${safePage}`).digest('hex')}`;
+    const cached = await ioRedis.get(cacheKey);
+    if (cached) {
+      return JSON.parse(cached);
+    }
+    const path = kind === 'images' ? '/v1/search' : '/videos/search';
+    const res = await fetch(
+      pexelsApiUrl(`${path}?query=${encodeURIComponent(safeQuery)}&page=${safePage}&per_page=${kind === 'images' ? 24 : 20}`),
+      { headers: { Authorization: apiKey }, signal: AbortSignal.timeout(15_000) }
+    );
+    if (!res.ok) {
+      throw new HttpException(`Pexels error ${res.status}`, 502);
+    }
+    const data = await res.json();
+    const result = { hits: kind === 'images' ? pexelsPhotoHits(data) : pexelsVideoHits(data) };
+    await ioRedis.set(cacheKey, JSON.stringify(result), 'EX', 60 * 60 * 24);
+    return result;
+  }
+
+  // Which free stock libraries have a key on this server — the Studio shows
+  // the Pexels switch only when it would find something.
+  @Get('/stock-sources')
+  stockSources() {
+    return {
+      pixabay: !!process.env.PIXABAY_API_KEY,
+      pexels: !!process.env.PEXELS_API_KEY,
+    };
+  }
+
+  @Get('/pexels-images')
+  @Throttle({ default: { ttl: 300_000, limit: 60 } })
+  pexelsImages(@Query('q') q: unknown, @Query('page') page: unknown) {
+    return this.pexelsSearch('images', q, page);
+  }
+
+  @Get('/pexels-videos')
+  @Throttle({ default: { ttl: 300_000, limit: 60 } })
+  pexelsVideos(@Query('q') q: unknown, @Query('page') page: unknown) {
+    return this.pexelsSearch('videos', q, page);
+  }
+
   @Get('/:id')
   async getMediaForEdit(
     @GetOrgFromRequest() org: Organization,
@@ -369,6 +428,30 @@ export class MediaController {
     }
     // Pixabay TOS: store the image on our server rather than hotlinking.
     return this._mediaService.importPixabayImage(org.id, body.url, body.sourceId);
+  }
+
+  @Post('/pexels-images/import')
+  @Throttle({ default: { ttl: 300000, limit: 30 } })
+  pexelsImagesImport(
+    @GetOrgFromRequest() org: Organization,
+    @Body() body: { url: string; sourceId?: number }
+  ) {
+    if (!isPexelsAssetUrl(body?.url)) {
+      throw new HttpException('Invalid Pexels image URL', 400);
+    }
+    return this._mediaService.importPexelsAsset(org.id, body.url, 'image', Number(body.sourceId) || undefined);
+  }
+
+  @Post('/pexels-videos/import')
+  @Throttle({ default: { ttl: 300000, limit: 30 } })
+  pexelsVideosImport(
+    @GetOrgFromRequest() org: Organization,
+    @Body() body: { url: string; sourceId?: number }
+  ) {
+    if (!isPexelsAssetUrl(body?.url)) {
+      throw new HttpException('Invalid Pexels video URL', 400);
+    }
+    return this._mediaService.importPexelsAsset(org.id, body.url, 'video', Number(body.sourceId) || undefined);
   }
 
   @Post('/refine-design')

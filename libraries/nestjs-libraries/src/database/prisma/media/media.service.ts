@@ -36,7 +36,10 @@ import {
   RefineDesignDto,
   TemplateSearchDto,
 } from '@gitroom/nestjs-libraries/studio/studio.dto';
-import { AiUsageEvent } from '@gitroom/nestjs-libraries/services/ai-usage.record';
+import {
+  AiUsageEvent,
+  recordAiUsage,
+} from '@gitroom/nestjs-libraries/services/ai-usage.record';
 import { MediaType } from '@gitroom/helpers/utils/media.type';
 import {
   ImageOrientation,
@@ -66,6 +69,15 @@ const DESIGN_PLATFORM_BY_SOCIAL: Record<string, PostDesignPlatform> = {
 };
 const TEMPLATE_EMBED_CACHE_TTL = 60 * 60 * 24 * 30; // 30 days
 const RECENT_POSTS_FOR_VOICE = 5;
+
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+const { fromBuffer: fileTypeFromBuffer } = require('file-type');
+
+// See generateVideo: how long a clip being made blocks the same request
+// (longer than the ~10 minute poll), and how long a finished one is reused.
+const VIDEO_PENDING = 'pending';
+const VIDEO_PENDING_SECONDS = 15 * 60;
+const VIDEO_REUSE_SECONDS = 10 * 60;
 
 @Injectable()
 export class MediaService {
@@ -496,6 +508,39 @@ export class MediaService {
     );
   }
 
+  // Pexels: hosts checked by the controller (isPexelsAssetUrl); the type is
+  // read from the bytes, not trusted from the URL.
+  async importPexelsAsset(
+    org: string,
+    sourceUrl: string,
+    kind: 'image' | 'video',
+    sourceId?: number
+  ) {
+    const { res, buffer } = await this.fetchPixabayAsset(
+      sourceUrl,
+      (kind === 'video' ? 100 : 30) * 1024 * 1024
+    );
+    if (!res.ok || !buffer) {
+      throw new HttpException(`Failed to fetch the Pexels ${kind} (${res.status})`, 502);
+    }
+    const detected = await fileTypeFromBuffer(buffer);
+    const allowed =
+      kind === 'video'
+        ? detected?.mime === 'video/mp4'
+        : ['image/jpeg', 'image/png', 'image/webp'].includes(detected?.mime || '');
+    if (!detected || !allowed) {
+      throw new HttpException(`That Pexels file is not a supported ${kind}`, 422);
+    }
+    const name = `pexels-${sourceId ?? 'unknown'}`;
+    const uploaded = await this.storage.uploadFile({
+      buffer,
+      originalname: `${name}.${detected.ext}`,
+      mimetype: detected.mime,
+      size: buffer.length,
+    } as unknown as Express.Multer.File);
+    return this._mediaRepository.saveFile(org, uploaded.originalname, uploaded.path, name);
+  }
+
   saveFile(
     org: string,
     fileName: string,
@@ -548,6 +593,20 @@ export class MediaService {
   }
 
   async generateVideo(org: Organization, body: VideoDto) {
+    // One clip, one payment: a double click, a retry after the browser gave
+    // up, or the assistant calling the tool twice used to pay kie.ai again
+    // for the same video. The same request from the same organization is
+    // refused while it is being made and answered from the library for
+    // VIDEO_REUSE_SECONDS after — even with no credits left, it is paid for.
+    const key = `ai-video:${createHash('sha256')
+      .update(
+        JSON.stringify([org.id, body.type, body.output, body.customParams])
+      )
+      .digest('hex')}`;
+    const reused = await this.finishedVideo(org.id, key);
+    if (reused) {
+      return reused;
+    }
     const totalCredits = await this._subscriptionService.checkCredits(
       org,
       'ai_videos'
@@ -565,7 +624,7 @@ export class MediaService {
 
     const video = this._videoManager.getVideoByName(body.type);
     if (!video) {
-      throw new Error(`Video type ${body.type} not found`);
+      throw new HttpException(`Video type ${body.type} not found`, 404);
     }
 
     if (!video.trial && org.isTrailing) {
@@ -574,19 +633,80 @@ export class MediaService {
 
     await video.instance.processAndValidate(body.customParams);
 
-    return await this._subscriptionService.useCredit(
-      org,
-      'ai_videos',
-      async () => {
-        const loadedData = await video.instance.process(
-          body.output,
-          body.customParams
-        );
-
-        const file = await this.storage.uploadSimple(loadedData);
-        return this.saveFile(org.id, file.split('/').pop(), file, undefined, true);
+    if (
+      (await ioRedis.set(key, VIDEO_PENDING, 'EX', VIDEO_PENDING_SECONDS, 'NX')) !==
+      'OK'
+    ) {
+      const finished = await this.finishedVideo(org.id, key);
+      if (finished) {
+        return finished;
       }
-    );
+      throw new HttpException(
+        'This video is already being made — it will appear in your media library when it is ready.',
+        409
+      );
+    }
+
+    try {
+      const saved = await this._subscriptionService.useCredit(
+        org,
+        'ai_videos',
+        async () => {
+          const loadedData = await video.instance.process(
+            body.output,
+            body.customParams
+          );
+
+          const file = await this.storage.uploadSimple(loadedData);
+          return this.saveFile(
+            org.id,
+            file.split('/').pop(),
+            file,
+            undefined,
+            true
+          );
+        }
+      );
+      // What the clip cost us, for the margin guard (images and text are
+      // logged where they are made; a clip only once it is in the library).
+      recordAiUsage({
+        organizationId: org.id,
+        engine: 'video',
+        model: video.instance.usageModel || body.type,
+        unit: 'videos',
+        inputAmount: 1,
+      });
+      await ioRedis
+        .set(key, saved.id, 'EX', VIDEO_REUSE_SECONDS)
+        .catch(() => undefined);
+      return saved;
+    } catch (err) {
+      await ioRedis.del(key).catch(() => undefined);
+      throw err;
+    }
+  }
+
+  private async finishedVideo(org: string, key: string) {
+    const id = await ioRedis.get(key);
+    if (!id || id === VIDEO_PENDING) {
+      return null;
+    }
+    const media = await this.getMediaByIdOrg(org, id);
+    if (media && !media.deletedAt) {
+      return media;
+    }
+    // Deleted from the library: forget it, so the same request can make the
+    // clip again instead of reading as "already being made" (Codex). Only
+    // while the key still names that clip — a new run may own it by now.
+    await ioRedis
+      .eval(
+        "if redis.call('get', KEYS[1]) == ARGV[1] then return redis.call('del', KEYS[1]) end return 0",
+        1,
+        key,
+        id
+      )
+      .catch(() => undefined);
+    return null;
   }
 
   async videoFunction(identifier: string, functionName: string, body: any) {

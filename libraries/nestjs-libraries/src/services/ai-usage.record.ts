@@ -26,7 +26,9 @@ export interface AiUsageEvent {
     // Scripts for the video generators (slides, avatar voice).
     | 'video';
   model: string;
-  unit?: 'tokens' | 'seconds' | 'images';
+  // 'videos': finished AI video clips; 'messages': questions to the
+  // assistant, its monthly fair use (inputAmount = how many).
+  unit?: 'tokens' | 'seconds' | 'images' | 'videos' | 'messages';
   inputAmount?: number;
   // Input tokens the provider served from its prompt cache (OpenAI
   // prompt_tokens_details.cached_tokens) — part of inputAmount, billed cheaper.
@@ -47,3 +49,17 @@ export const recordAiUsage = (event: AiUsageEvent) => {
     // observational only — never let metering break the AI call
   }
 };
+
+// One question to the assistant (chat or MCP ask_postra): what the monthly
+// fair use (pricing.agent_messages) counts.
+export const recordAgentMessage = (
+  organizationId?: string | null,
+  questions = 1
+) =>
+  recordAiUsage({
+    organizationId: organizationId ?? null,
+    engine: 'agent',
+    model: 'message',
+    unit: 'messages',
+    inputAmount: questions,
+  });

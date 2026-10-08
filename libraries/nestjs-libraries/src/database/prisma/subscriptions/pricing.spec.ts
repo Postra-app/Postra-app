@@ -7,6 +7,8 @@ import {
   pricing,
   TRIAL_CHANNEL_CAP,
   trialAiAllowance,
+  AGENT_FAIR_USE_MESSAGES,
+  TRIAL_VIDEO_CLIPS,
 } from './pricing';
 
 // Pins the paid-plan matrix so an upstream sync (Postiz ships different
@@ -14,9 +16,10 @@ import {
 // for. If one of these fails, the change must be deliberate: update the test
 // together with Stripe prices and the landing/pricing copy.
 describe('pricing matrix', () => {
-  it('keeps GBP prices at £12/£29/£79 (yearly = 10x monthly)', () => {
+  it('keeps GBP prices at £19/£29/£79 (yearly = 10x monthly; Starter from £12, K. 2026-10-08)', () => {
     expect(pricing.FREE.month_price).toBe(0);
-    expect(pricing.STANDARD.month_price).toBe(12);
+    expect(pricing.STANDARD.month_price).toBe(19);
+    expect(pricing.STANDARD.year_price).toBe(190);
     expect(pricing.PRO.month_price).toBe(29);
     expect(pricing.ULTIMATE.month_price).toBe(79);
     for (const tier of ['STANDARD', 'PRO', 'ULTIMATE']) {
@@ -129,17 +132,18 @@ describe('pricing matrix', () => {
     expect(pricing.ULTIMATE.team_members).toBe(5);
   });
 
-  it('keeps agent-chat budgets: FREE=0, Starter=1.5M, Pro=4M, Business=10M weighted tokens', () => {
-    expect(pricing.FREE.agent_tokens).toBe(0);
-    expect(pricing.STANDARD.agent_tokens).toBe(1_500_000);
-    expect(pricing.PRO.agent_tokens).toBe(4_000_000);
-    expect(pricing.ULTIMATE.agent_tokens).toBe(10_000_000);
+  it('gives every paid plan the assistant without a visible limit: fair use of 2200 messages a month (K. 2026-10-08)', () => {
+    expect(pricing.FREE.agent_messages).toBe(0);
+    for (const tier of ['STANDARD', 'PRO', 'ULTIMATE'] as const) {
+      expect(pricing[tier].agent_messages).toBe(AGENT_FAIR_USE_MESSAGES);
+    }
+    expect(AGENT_FAIR_USE_MESSAGES).toBe(2200);
   });
 
-  it('gives Starter AI images (not videos); videos start at Pro', () => {
+  it('gives Starter AI images; AI video clips per month 0 / 15 / 30 / 60 (K. 2026-10-08)', () => {
     expect(pricing.STANDARD.image_generator).toBe(true);
-    expect(pricing.STANDARD.image_generation_count).toBe(30);
-    expect(pricing.STANDARD.generate_videos).toBe(0);
+    expect(pricing.FREE.generate_videos).toBe(0);
+    expect(pricing.STANDARD.generate_videos).toBe(15);
     expect(pricing.PRO.generate_videos).toBe(30);
     expect(pricing.ULTIMATE.generate_videos).toBe(60);
   });
@@ -161,17 +165,17 @@ describe('pricing limits the landing promises', () => {
     expect(pricing.ULTIMATE.webhooks).toBe(10_000);
   });
 
-  it('keeps Auto Post at Pro=3 and Business=10 feeds, none below', () => {
+  it('keeps Auto Post at Starter=2, Pro=3 and Business=10 feeds, none on FREE', () => {
     expect([pricing.FREE.autoPost, pricing.FREE.autoPostLimit]).toEqual([false, 0]);
-    expect([pricing.STANDARD.autoPost, pricing.STANDARD.autoPostLimit]).toEqual([false, 0]);
+    expect([pricing.STANDARD.autoPost, pricing.STANDARD.autoPostLimit]).toEqual([true, 2]);
     expect([pricing.PRO.autoPost, pricing.PRO.autoPostLimit]).toEqual([true, 3]);
     expect([pricing.ULTIMATE.autoPost, pricing.ULTIMATE.autoPostLimit]).toEqual([true, 10]);
   });
 
-  it('keeps AI images a month at FREE=0, Starter=30, Pro=150, Business=600', () => {
+  it('keeps AI images a month at FREE=0, Starter=75, Pro=200, Business=600', () => {
     expect(pricing.FREE.image_generation_count).toBe(0);
-    expect(pricing.STANDARD.image_generation_count).toBe(30);
-    expect(pricing.PRO.image_generation_count).toBe(150);
+    expect(pricing.STANDARD.image_generation_count).toBe(75);
+    expect(pricing.PRO.image_generation_count).toBe(200);
     expect(pricing.ULTIMATE.image_generation_count).toBe(600);
   });
 
@@ -288,8 +292,15 @@ describe('trialAiAllowance', () => {
       trialAiAllowance(pricing.ULTIMATE.image_generation_count, true, 'image_generation_count')
     ).toBe(pricing.STANDARD.image_generation_count);
     expect(
-      trialAiAllowance(pricing.PRO.agent_tokens, true, 'agent_tokens')
-    ).toBe(pricing.STANDARD.agent_tokens);
+      trialAiAllowance(pricing.PRO.agent_messages, true, 'agent_messages')
+    ).toBe(pricing.STANDARD.agent_messages);
+  });
+
+  it('gives a trial one AI video clip, whatever the tier (K. 2026-10-08)', () => {
+    expect(TRIAL_VIDEO_CLIPS).toBe(1);
+    for (const tier of ['STANDARD', 'PRO', 'ULTIMATE'] as const) {
+      expect(trialAiAllowance(pricing[tier].generate_videos, true, 'generate_videos')).toBe(1);
+    }
   });
 
   it('leaves a paid plan its full pool', () => {

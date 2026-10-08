@@ -27,19 +27,20 @@ export class AiUsageService {
     });
   }
 
-  // Weighted agent usage since `from`: input + 6×output — the same unit as the
-  // pricing.agent_tokens budget (gpt-5.5 output costs 6× input).
-  async weightedAgentUsageSince(organizationId: string, from: Date) {
+  // Questions asked to the assistant since `from` — the unit of its monthly
+  // fair use (pricing.agent_messages).
+  async agentMessagesSince(organizationId: string, from: Date) {
+    // A row can count several questions (an MCP batch).
     const sum = await this._prisma.aiUsage.aggregate({
       where: {
         organizationId,
         engine: 'agent',
-        unit: 'tokens',
+        unit: 'messages',
         createdAt: { gte: from },
       },
-      _sum: { inputAmount: true, outputAmount: true },
+      _sum: { inputAmount: true },
     });
-    return (sum._sum.inputAmount ?? 0) + 6 * (sum._sum.outputAmount ?? 0);
+    return sum._sum.inputAmount ?? 0;
   }
 
   summary(from: Date, to: Date) {

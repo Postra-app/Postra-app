@@ -30,15 +30,14 @@ export interface PricingInnerInterface {
   // polls hourly and burns AI tokens per new article, so it is capped per plan
   // independently of the `autoPost` on/off flag.
   autoPostLimit: number;
-  // Monthly budget for the gpt-5.5 agent chat, in WEIGHTED tokens:
-  // input + 6×output (output costs 6× input — $30 vs $5 per 1M). This is the
-  // only text-AI surface without a natural cap (posts_per_month caps the
-  // creator, autoPostLimit caps RSS), so a heavy chatter could otherwise burn
-  // more than the plan price. Budgets keep worst-case agent COGS at ~25-30%
-  // of the plan price (~95/250/600 typical chats). Enforced in
-  // copilot.controller via SubscriptionService.checkCredits('ai_agent'),
-  // measured from AiUsage (engine='agent').
-  agent_tokens: number;
+  // The assistant (chat and MCP ask_postra) has no visible limit: a monthly
+  // fair use of questions per organisation stops a bot or a script, not a
+  // person (~100 per working day). On gpt-5.6-luna a typical question costs
+  // ~$0.0025, the whole allowance ~$5.50 (Plan/lunchdayfinal.md, "💷
+  // Analiza", K. 2026-10-08). Enforced in copilot.controller and start.mcp
+  // via SubscriptionService.checkCredits('ai_agent'), counted from AiUsage
+  // (engine 'agent', unit 'messages').
+  agent_messages: number;
 }
 export interface PricingInterface {
   [key: string]: PricingInnerInterface;
@@ -61,6 +60,9 @@ const PRO_PROVIDERS = [
 ];
 const BUSINESS_PROVIDERS = [...PRO_PROVIDERS, 'x', 'discord'];
 
+// Assistant questions a month, every paid plan (see agent_messages).
+export const AGENT_FAIR_USE_MESSAGES = 2200;
+
 export const pricing: PricingInterface = {
   FREE: {
     current: 'FREE',
@@ -78,25 +80,28 @@ export const pricing: PricingInterface = {
     autoPost: false,
     autoPostLimit: 0,
     generate_videos: 0,
-    agent_tokens: 0,
+    agent_messages: 0,
   },
+  // £19 from 2026-10-08 (was £12; K.): with 75 AI images, 15 AI videos and
+  // 2 Auto Post feeds. Stripe prices are found or made by amount
+  // (stripe.service), so a running £12 subscription keeps its price.
   STANDARD: {
     current: 'STANDARD',
-    month_price: 12,
-    year_price: 120,
+    month_price: 19,
+    year_price: 190,
     channel: 3,
     allowedProviders: STARTER_PROVIDERS,
     posts_per_month: 400,
-    image_generation_count: 30,
+    image_generation_count: 75,
     team_members: 1,
     ai: true,
     image_generator: true,
     public_api: true,
     webhooks: 2,
-    autoPost: false,
-    autoPostLimit: 0,
-    generate_videos: 0,
-    agent_tokens: 1_500_000,
+    autoPost: true,
+    autoPostLimit: 2,
+    generate_videos: 15,
+    agent_messages: AGENT_FAIR_USE_MESSAGES,
   },
   // Legacy, not purchasable (removed from BillingSubscribeDto). Kept so any
   // existing/grandfathered TEAM subscription still resolves.
@@ -116,7 +121,7 @@ export const pricing: PricingInterface = {
     autoPost: true,
     autoPostLimit: 5,
     generate_videos: 10,
-    agent_tokens: 4_000_000,
+    agent_messages: AGENT_FAIR_USE_MESSAGES,
   },
   PRO: {
     current: 'PRO',
@@ -125,7 +130,7 @@ export const pricing: PricingInterface = {
     channel: 6,
     allowedProviders: PRO_PROVIDERS,
     posts_per_month: 1000000,
-    image_generation_count: 150,
+    image_generation_count: 200,
     team_members: 2,
     ai: true,
     image_generator: true,
@@ -134,7 +139,7 @@ export const pricing: PricingInterface = {
     autoPost: true,
     autoPostLimit: 3,
     generate_videos: 30,
-    agent_tokens: 4_000_000,
+    agent_messages: AGENT_FAIR_USE_MESSAGES,
   },
   ULTIMATE: {
     current: 'ULTIMATE',
@@ -154,7 +159,7 @@ export const pricing: PricingInterface = {
     autoPost: true,
     autoPostLimit: 10,
     generate_videos: 60,
-    agent_tokens: 10_000_000,
+    agent_messages: AGENT_FAIR_USE_MESSAGES,
   },
 };
 
@@ -215,14 +220,27 @@ export const postsCycleWindow = (
   };
 };
 
+// A trial shows AI video with one clip (~$0.33 at kie.ai), whatever the plan
+// (K. 2026-10-08).
+export const TRIAL_VIDEO_CLIPS = 1;
+
 // AI allowances follow the same rule as channels: a trial runs on Starter's
 // pool, so a Business trial cannot burn 600 images before the first charge.
+// Video is the exception: one clip.
 export const trialAiAllowance = (
   allowance: number,
   isTrailing: boolean | undefined,
-  type: 'image_generation_count' | 'agent_tokens' | 'generate_videos'
-): number =>
-  isTrailing ? Math.min(allowance, pricing.STANDARD[type] || 0) : allowance;
+  type: 'image_generation_count' | 'agent_messages' | 'generate_videos'
+): number => {
+  if (!isTrailing) {
+    return allowance;
+  }
+  const cap =
+    type === 'generate_videos'
+      ? TRIAL_VIDEO_CLIPS
+      : pricing.STANDARD[type] || 0;
+  return Math.min(allowance, cap);
+};
 
 /**
  * Channels that take a slot: every channel that is not disabled — including

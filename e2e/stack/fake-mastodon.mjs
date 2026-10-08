@@ -21,6 +21,12 @@
 //   GET  /api/channels/:c/messages/:m   Discord's message (stack.env
 //                           DISCORD_API_URL) with reactions 3 + 2; without
 //                           a "Bot " authorization 401, like Discord
+//   GET  /pexels/v1/search, /pexels/videos/search   Pexels (stack.env
+//                           PEXELS_API_URL): one photo / one video for any
+//                           query, only with the stack key in Authorization;
+//                           GET /__pexels/photo.png and /__pexels/clip.mp4 are
+//                           the files they point to; GET /__pexels/seen is
+//                           every search received
 //   POST /oauth/token       exchange any code for a token — the account is
 //   GET  /api/v1/accounts/verify_credentials   named after the code, so each
 //                           connect in a test can be a different account
@@ -30,6 +36,11 @@ const PORT = Number(process.env.FAKE_MASTODON_PORT || 58080);
 const received = [];
 const failMatching = new Set();
 let holdNextMs = 0;
+
+const PNG_1x1 =
+  'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==';
+const MP4 = 'AAAAGGZ0eXBpc29tAAACAGlzb21pc28ybXA0MQAAAAhmcmVl';
+const pexelsSeen = [];
 
 const readBody = (req) =>
   new Promise((resolve) => {
@@ -78,6 +89,59 @@ createServer(async (req, res) => {
     return json(res, 200, { holdNextMs });
   }
 
+  if (req.method === 'GET' && req.url === '/__pexels/photo.png') {
+    res.writeHead(200, { 'content-type': 'image/png' });
+    return res.end(Buffer.from(PNG_1x1, 'base64'));
+  }
+  if (req.method === 'GET' && req.url === '/__pexels/clip.mp4') {
+    res.writeHead(200, { 'content-type': 'video/mp4' });
+    return res.end(Buffer.from(MP4, 'base64'));
+  }
+  if (req.method === 'GET' && req.url === '/__pexels/seen') return json(res, 200, pexelsSeen);
+  if (req.method === 'GET' && req.url?.match(/^\/pexels\/(v1|videos)\/search\?/)) {
+    const q = new URL(req.url, 'http://fake').searchParams.get('query');
+    pexelsSeen.push({ path: req.url.split('?')[0], query: q, auth: req.headers.authorization || '' });
+    if (req.headers.authorization !== (process.env.PEXELS_API_KEY || 'stack-fake-pexels')) {
+      return json(res, 401, { error: 'Unauthorized' });
+    }
+    const base = `http://localhost:${PORT}/__pexels`;
+    if (req.url.startsWith('/pexels/v1/')) {
+      return json(res, 200, {
+        page: 1,
+        per_page: 24,
+        total_results: 1,
+        photos: [
+          {
+            id: 1001,
+            url: 'https://www.pexels.com/photo/stack-cake-1001/',
+            photographer: 'Stack Photographer',
+            photographer_url: 'https://www.pexels.com/@stack',
+            alt: `A ${q} on a table`,
+            src: { medium: `${base}/photo.png`, large2x: `${base}/photo.png`, original: `${base}/photo.png` },
+          },
+        ],
+      });
+    }
+    return json(res, 200, {
+      page: 1,
+      per_page: 20,
+      total_results: 1,
+      videos: [
+        {
+          id: 2002,
+          url: 'https://www.pexels.com/video/stack-clip-2002/',
+          image: `${base}/photo.png`,
+          duration: 8,
+          user: { name: 'Stack Filmmaker', url: 'https://www.pexels.com/@stack-film' },
+          video_files: [
+            { id: 1, quality: 'sd', file_type: 'video/mp4', width: 640, height: 360, link: `${base}/clip.mp4` },
+            { id: 2, quality: 'hd', file_type: 'video/mp4', width: 1920, height: 1080, link: `${base}/clip.mp4` },
+            { id: 3, quality: 'uhd', file_type: 'video/mp4', width: 3840, height: 2160, link: `${base}/clip.mp4` },
+          ],
+        },
+      ],
+    });
+  }
   if (req.method === 'POST' && req.url === '/oauth/token') {
     const { code } = formFields(body, req.headers['content-type']);
     return json(res, 200, { access_token: `fake-${code || 'none'}`, token_type: 'Bearer' });

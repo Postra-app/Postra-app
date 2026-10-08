@@ -516,7 +516,12 @@ export const FAQ_ITEMS: FaqItem[] = [
   {
     question: 'How does the trial work?',
     answer:
-      "Paid plans start with a 7-day free trial, capped at 3 channels. Cancel any time in Billing before the trial ends and you won't be charged.",
+      "Paid plans start with a 7-day free trial, capped at 3 channels, with Starter's AI image allowance and one AI video. Cancel any time in Billing before the trial ends and you won't be charged.",
+  },
+  {
+    question: 'How do AI videos work?',
+    answer:
+      'In the post editor, click AI Video (on a computer or tablet), describe the scene, pick vertical (Stories, Reels) or horizontal, and optionally add up to 3 of your images for the video to feature. Google\'s Veo 3.1 model makes an 8-second clip with sound in one to three minutes; it is attached to your post and saved in your media library. Each clip uses one video credit: 15 a month on Starter, 30 on Pro and 60 on Business, and 1 during the trial. A clip that fails costs nothing, and asking for exactly the same clip again within 10 minutes returns the one already made instead of using another credit.',
   },
   {
     question: 'Can I post to multiple channels at once?',

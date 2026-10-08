@@ -91,6 +91,13 @@ export const planFeatures = (tier: string): PlanFeature[] => {
       vars: { count: plan.image_generation_count },
     });
   }
+  if (plan.generate_videos > 0) {
+    list.push({
+      key: 'billing_plan_videos',
+      text: '{{count}} AI videos a month',
+      vars: { count: plan.generate_videos },
+    });
+  }
   list.push({ key: 'billing_plan_studio', text: 'Studio image editor' });
   if (plan.autoPost && plan.autoPostLimit > 0) {
     list.push({

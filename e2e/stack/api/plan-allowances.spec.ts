@@ -28,24 +28,24 @@ const imagesLeft = async (api: Awaited<ReturnType<typeof org>>['api']) => {
 };
 
 test.describe('AI images a month', () => {
-  test('Starter has 30; at 30 used the next image is refused before any AI call', async () => {
+  test('Starter has 75; at 75 used the next image is refused before any AI call', async () => {
     const { api, orgId } = await org({ tier: 'STANDARD', totalChannels: 3, channels: 0 });
-    expect(await imagesLeft(api)).toBe(30);
+    expect(await imagesLeft(api)).toBe(75);
 
-    await useImages(orgId, 30);
+    await useImages(orgId, 75);
     expect(await imagesLeft(api)).toBe(0);
     const res = await api.post('/media/generate-image', { data: { prompt: 'a cup of coffee' } });
     expect(res.status()).toBe(402);
     expect((await res.json()).message).toContain('No image generation credits');
   });
 
-  test('Pro has 150 once paid, but a Pro trial runs on Starter\'s 30', async () => {
+  test('Pro has 200 once paid, but a Pro trial runs on Starter\'s 75', async () => {
     const paid = await org({ tier: 'PRO', totalChannels: 6, channels: 0 });
     await useImages(paid.orgId, 30);
-    expect(await imagesLeft(paid.api)).toBe(120);
+    expect(await imagesLeft(paid.api)).toBe(170);
 
     const trial = await org({ tier: 'PRO', totalChannels: 6, channels: 0, isTrailing: true });
-    expect(await imagesLeft(trial.api)).toBe(30);
+    expect(await imagesLeft(trial.api)).toBe(75);
   });
 
   test('Business has 600 once paid', async () => {
@@ -94,11 +94,12 @@ test.describe('Auto Post feeds', () => {
       })),
     });
 
-  test('Starter has none, and the refusal names the plans that do', async () => {
-    const { api } = await org({ tier: 'STANDARD', totalChannels: 3, channels: 0 });
-    const res = await api.post('/autopost', { data: feed(1) });
+  test('Starter holds 2 feeds and refuses a 3rd, naming what each plan holds', async () => {
+    const { api, orgId } = await org({ tier: 'STANDARD', totalChannels: 3, channels: 0 });
+    await seedFeeds(orgId, 2);
+    const res = await api.post('/autopost', { data: feed(3) });
     expect(res.status()).toBe(402);
-    expect((await res.json()).message).toContain('Pro (3 RSS feeds)');
+    expect((await res.json()).message).toContain('Starter (2 RSS feeds), Pro (3) and Business (10)');
   });
 
   test('Pro with 3 feeds refuses a 4th; Business with 3 does not', async () => {
@@ -112,23 +113,19 @@ test.describe('Auto Post feeds', () => {
     expect((await business.api.post('/autopost', { data: feed(4) })).status()).toBe(201);
   });
 
-  // BILL-7: a feed made on Pro could be switched back on after moving to
-  // Starter, which has no Auto Post. Switching off stays possible.
-  test('a plan without Auto Post cannot switch a feed on, only off', async () => {
+  // BILL-7: a feed could be switched back on past the plan's feeds (made on
+  // Pro, then moved to Starter). Switching off stays possible.
+  test('a plan cannot switch on more feeds than it holds, only off', async () => {
     const starter = await org({ tier: 'STANDARD', totalChannels: 3, channels: 0 });
-    await seedFeeds(starter.orgId, 1);
-    const [seeded] = await prisma.autoPost.findMany({ where: { organizationId: starter.orgId } });
-
-    const on = await starter.api.post(`/autopost/${seeded.id}/active`, { data: { active: true } });
-    expect(on.status()).toBe(402);
-    expect((await prisma.autoPost.findUniqueOrThrow({ where: { id: seeded.id } })).active).toBe(false);
-    expect((await starter.api.post(`/autopost/${seeded.id}/active`, { data: { active: false } })).status()).toBe(201);
-
-    const pro = await org({ tier: 'PRO', totalChannels: 6, channels: 0 });
-    await seedFeeds(pro.orgId, 1);
-    const [proFeed] = await prisma.autoPost.findMany({ where: { organizationId: pro.orgId } });
-    expect((await pro.api.post(`/autopost/${proFeed.id}/active`, { data: { active: true } })).status()).toBe(201);
-    expect((await pro.api.post(`/autopost/${proFeed.id}/active`, { data: { active: false } })).status()).toBe(201);
+    await seedFeeds(starter.orgId, 3);
+    const seeded = await prisma.autoPost.findMany({ where: { organizationId: starter.orgId }, orderBy: { title: 'asc' } });
+    for (const f of seeded.slice(0, 2)) {
+      expect((await starter.api.post(`/autopost/${f.id}/active`, { data: { active: true } })).status()).toBe(201);
+    }
+    const third = await starter.api.post(`/autopost/${seeded[2].id}/active`, { data: { active: true } });
+    expect(third.status()).toBe(402);
+    expect((await prisma.autoPost.findUniqueOrThrow({ where: { id: seeded[2].id } })).active).toBe(false);
+    expect((await starter.api.post(`/autopost/${seeded[0].id}/active`, { data: { active: false } })).status()).toBe(201);
   });
 
   // AI-13: a feed that does not exist (or is another org's) answered 500.

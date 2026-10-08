@@ -21,6 +21,16 @@
 //                               every /v1 call whose body contains t answers
 //                               500 while on; each spec uses its own t, so
 //                               specs running in parallel are unaffected
+//
+// It also stands in for kie.ai (stack.env: KIEAI_API_URL), the Veo video
+// API, on the same port:
+//   POST /api/v1/jobs/createTask  a task id; a prompt with "stack-kie-fail"
+//                                 ends in state "fail", one with
+//                                 "stack-kie-slow" reports "generating" on
+//                                 its first poll
+//   GET  /api/v1/jobs/recordInfo  the task's state; a finished clip is a
+//                                 tiny MP4 as a data: URL (the app's
+//                                 uploader refuses local http URLs)
 import { createServer } from 'node:http';
 
 const PORT = Number(process.env.FAKE_OPENAI_PORT || 58090);
@@ -65,6 +75,10 @@ const instanceOf = (schema, defs = schema?.$defs ?? schema?.definitions ?? {}) =
 // A valid 1x1 PNG, so the upload path (type sniffing, sharp) runs for real.
 const PNG_1x1 =
   'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==';
+
+// The smallest header that sniffs as video/mp4.
+const MP4 = 'data:video/mp4;base64,AAAAGGZ0eXBpc29tAAACAGlzb21pc28ybXA0MQAAAAhmcmVl';
+const kieTasks = new Map();
 
 const json = (res, status, data) => {
   res.writeHead(status, { 'content-type': 'application/json' });
@@ -206,6 +220,40 @@ createServer((req, res) => {
         created: Math.floor(Date.now() / 1000),
         data: [{ b64_json: PNG_1x1 }],
         usage: { input_tokens: 9, output_tokens: 1056, total_tokens: 1065 },
+      });
+    }
+
+    if (req.method === 'POST' && req.url === '/api/v1/jobs/createTask') {
+      requests.push({ path: req.url, model: body.model, input: body.input });
+      if (req.headers.authorization !== `Bearer ${process.env.KIEAI_API_KEY || 'stack-fake-kie'}`) {
+        return json(res, 200, { code: 401, msg: 'You do not have access permissions' });
+      }
+      const taskId = `stack-kie-${kieTasks.size + 1}-${Date.now()}`;
+      const prompt = String(body.input?.prompt || '');
+      kieTasks.set(taskId, {
+        fail: prompt.includes('stack-kie-fail'),
+        pending: prompt.includes('stack-kie-slow') ? 1 : 0,
+      });
+      return json(res, 200, { code: 200, msg: 'success', data: { taskId } });
+    }
+
+    if (req.method === 'GET' && req.url?.startsWith('/api/v1/jobs/recordInfo?')) {
+      const taskId = new URL(req.url, 'http://fake').searchParams.get('taskId');
+      const task = kieTasks.get(taskId);
+      if (!task) return json(res, 200, { code: 422, msg: 'recordInfo is null' });
+      if (task.pending > 0) {
+        task.pending--;
+        return json(res, 200, { code: 200, data: { taskId, state: 'generating' } });
+      }
+      if (task.fail) {
+        return json(res, 200, {
+          code: 200,
+          data: { taskId, state: 'fail', resultJson: '', failCode: '400', failMsg: 'stack: refused' },
+        });
+      }
+      return json(res, 200, {
+        code: 200,
+        data: { taskId, state: 'success', resultJson: JSON.stringify({ resultUrls: [MP4] }) },
       });
     }
 
