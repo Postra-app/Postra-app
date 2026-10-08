@@ -68,3 +68,29 @@ test('a published Bluesky post has likes, reposts, replies and quotes', async ()
     await org.remove();
   }
 });
+
+// K. 2026-10-07 (🆕 pkt 2b): a platform that gives apps no post statistics
+// (Telegram, Discord…) showed "No statistics available for this post", as if
+// they were still to come. The editor's API now says the platform has none.
+test('a post on a platform without post statistics says so', async () => {
+  const org = await throwawayOrg(prisma, { tier: 'PRO', totalChannels: 5, channels: 1, provider: 'telegram' });
+  try {
+    const post = await prisma.post.create({
+      data: {
+        organizationId: org.orgId,
+        integrationId: org.channelIds[0],
+        content: 'published',
+        group: `stats-none-${org.orgId}`,
+        publishDate: new Date(),
+        state: 'PUBLISHED',
+        releaseId: '12345',
+      },
+    });
+    const res = await org.api.get(`/analytics/post/${post.id}?date=7`);
+    expect(res.status()).toBe(200);
+    expect(await res.json()).toEqual({ unsupported: true });
+  } finally {
+    await prisma.post.deleteMany({ where: { organizationId: org.orgId } });
+    await org.remove();
+  }
+});
