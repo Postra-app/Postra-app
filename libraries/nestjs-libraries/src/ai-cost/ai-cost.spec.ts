@@ -34,6 +34,17 @@ describe('AI cost', () => {
     expect(usd).toBeCloseTo(0.53 + 0.65 + 0.06, 6);
   });
 
+  // /admin/ai-costs on prod 2026-10-09 listed gpt-4o (Studio's vision call,
+  // studio-ai.service.ts) as unknown, priced like gpt-5.5.
+  it('prices the Studio vision model gpt-4o at its own price', () => {
+    const { usd, unknownModels } = costOfUsage([
+      { model: 'gpt-4o', unit: 'tokens', inputAmount: 1_000_000, cachedAmount: 200_000, outputAmount: 100_000 },
+    ]);
+    // 0.8 × 2.50 + 0.2 × 1.25 + 0.1 × 10
+    expect(usd).toBeCloseTo(2 + 0.25 + 1, 6);
+    expect(unknownModels).toEqual([]);
+  });
+
   it('prices an unknown model like the dearest one, and says which it was', () => {
     const { usd, unknownModels } = costOfUsage([
       { model: 'gpt-9-mystery', unit: 'tokens', inputAmount: 1_000_000, outputAmount: 0 },
