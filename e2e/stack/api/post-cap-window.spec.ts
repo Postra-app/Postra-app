@@ -1,5 +1,5 @@
-import { APIRequestContext, expect, test } from '@playwright/test';
-import { database, throwawayOrg } from '../helpers';
+import { APIRequestContext, expect, request as pwRequest, test } from '@playwright/test';
+import { BACKEND_URL, database, throwawayOrg } from '../helpers';
 
 // E2E-07-34: two ways past Starter's 400 posts a month. Scheduling drafts
 // that already exist counted as an edit (adding = 0), so at 399 one request
@@ -74,6 +74,56 @@ test("posts for next month count against next month, not this one", async () => 
     const nextMonth = await schedule(org.api, channel, inDays(41), [{ content: 'next month' }]);
     expect(nextMonth.status(), await nextMonth.text()).toBe(402);
   } finally {
+    await prisma.post.deleteMany({ where: { organizationId: org.orgId } });
+    await org.remove();
+  }
+});
+
+// Codex on E2E-07-34: the public API drops a per-channel date and saves on
+// the request date, so the check has to count there too; and a draft
+// scheduled through PUT /posts/:id/status counts against its own month.
+test('the public API counts a post where it saves it', async () => {
+  const org = await throwawayOrg(prisma, { tier: 'STANDARD', totalChannels: 3, channels: 1, provider: 'facebook' });
+  const channel = org.channelIds[0];
+  const { apiKey } = await prisma.organization.findUniqueOrThrow({ where: { id: org.orgId } });
+  const api = await pwRequest.newContext({ baseURL: `${BACKEND_URL}/public/v1/`, extraHTTPHeaders: { authorization: apiKey! } });
+  try {
+    await fill(org.orgId, channel, LIMIT, inDays(1), 'QUEUE');
+    const res = await api.post('posts', {
+      data: {
+        type: 'schedule',
+        shortLink: false,
+        date: inDays(2).toISOString(),
+        tags: [],
+        posts: [{ integration: { id: channel }, date: inDays(41).toISOString(), value: [{ content: 'x', image: [] }], settings: { __type: 'facebook' } }],
+      },
+    });
+    expect(res.status(), await res.text()).toBe(402);
+    expect((await api.post('posts', { data: { type: 'draft', date: inDays(2).toISOString(), tags: [], shortLink: false, posts: [null] } })).status()).toBe(400);
+  } finally {
+    await api.dispose();
+    await prisma.post.deleteMany({ where: { organizationId: org.orgId } });
+    await org.remove();
+  }
+});
+
+test("scheduling a draft counts against the draft's month", async () => {
+  const org = await throwawayOrg(prisma, { tier: 'STANDARD', totalChannels: 3, channels: 1, provider: 'facebook' });
+  const channel = org.channelIds[0];
+  const { apiKey } = await prisma.organization.findUniqueOrThrow({ where: { id: org.orgId } });
+  const api = await pwRequest.newContext({ baseURL: `${BACKEND_URL}/public/v1/`, extraHTTPHeaders: { authorization: apiKey! } });
+  try {
+    // This month full, next month empty: a draft for next month goes through.
+    await fill(org.orgId, channel, LIMIT, inDays(1), 'QUEUE');
+    const [nextDraft] = await fill(org.orgId, channel, 1, inDays(41), 'DRAFT');
+    const ok = await api.put(`posts/${nextDraft.id}/status`, { data: { status: 'schedule' } });
+    expect(ok.status(), await ok.text()).toBe(200);
+    // Next month full too: another draft for it is refused.
+    await fill(org.orgId, channel, LIMIT, inDays(42), 'QUEUE');
+    const [another] = await fill(org.orgId, channel, 1, inDays(43), 'DRAFT');
+    expect((await api.put(`posts/${another.id}/status`, { data: { status: 'schedule' } })).status()).toBe(402);
+  } finally {
+    await api.dispose();
     await prisma.post.deleteMany({ where: { organizationId: org.orgId } });
     await org.remove();
   }

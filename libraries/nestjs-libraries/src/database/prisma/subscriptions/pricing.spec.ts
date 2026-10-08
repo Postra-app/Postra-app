@@ -1,4 +1,5 @@
 import {
+  postsCycleWindow,
   channelLimitFor,
   planLabel,
   planLabels,
@@ -203,6 +204,28 @@ describe('pricing limits the landing promises', () => {
       autoPostLimit: 5,
       public_api: true,
     });
+  });
+});
+
+// E2E-07-34 (Codex): both ends of a billing month come from the subscription
+// date, so a month-end start leaves no gap and no day counts twice.
+describe('postsCycleWindow', () => {
+  it.each([
+    ['2026-01-31T10:00:00Z', '2026-03-29T12:00:00Z'],
+    ['2026-01-31T10:00:00Z', '2026-02-28T09:00:00Z'],
+    ['2026-01-31T10:00:00Z', '2026-03-31T10:00:00Z'],
+    ['2026-01-15T00:00:00Z', '2026-01-15T00:00:00Z'],
+    ['2026-03-10T00:00:00Z', '2026-02-01T00:00:00Z'],
+  ])('a subscription from %s puts %s inside its month', (anchor, at) => {
+    const { start, end } = postsCycleWindow(anchor, at);
+    expect(+start).toBeLessThanOrEqual(+new Date(at));
+    expect(+new Date(at)).toBeLessThan(+end);
+  });
+
+  it('meets the next month exactly', () => {
+    const anchor = '2026-01-31T10:00:00Z';
+    const march = postsCycleWindow(anchor, '2026-03-29T12:00:00Z');
+    expect(+postsCycleWindow(anchor, march.end).start).toBe(+march.end);
   });
 });
 
