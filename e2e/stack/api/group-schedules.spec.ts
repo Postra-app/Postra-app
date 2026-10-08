@@ -180,3 +180,76 @@ test('the public API keeps one date per request and the public preview has no ba
     await org.remove();
   }
 });
+
+// Codex: the editor saved the channels of one post in a request per type
+// (one kept as a draft, another scheduled), so a refusal on the second request
+// left the first one saved. One request now carries every channel, each with
+// the type it is saved as.
+const mixed = (api: APIRequestContext, type: string, posts: Record<string, unknown>[]) =>
+  api.post('/posts', { data: { type, shortLink: false, date: inDays(2), tags: [], posts } });
+
+const fillCap = (orgId: string, channel: string, n: number) =>
+  prisma.post.createMany({
+    data: Array.from({ length: n }, (_, i) => ({
+      id: `mixed-${orgId}-${i}`,
+      organizationId: orgId,
+      integrationId: channel,
+      content: `cap ${i}`,
+      group: `mixed-${orgId}-${i}`,
+      publishDate: new Date(Date.now() + 86_400_000),
+      state: 'QUEUE' as const,
+    })),
+  });
+
+test('one save schedules one channel and keeps the other a draft, which the cap does not count', async () => {
+  const org = await throwawayOrg(prisma, { tier: 'STANDARD', totalChannels: 3, channels: 2 });
+  try {
+    const [a, b] = org.channelIds;
+    // Starter allows 400 posts a month: room for one more.
+    await fillCap(org.orgId, a, 399);
+    const saved = await mixed(org.api, 'schedule', [
+      channelPost(a, 'scheduled', { type: 'schedule' }),
+      channelPost(b, 'kept as a draft', { type: 'draft' }),
+    ]);
+    expect(saved.status(), await saved.text()).toBe(201);
+    const [postA, postB] = (await saved.json()) as { postId: string }[];
+    const stateOf = async (id: string) => (await prisma.post.findUniqueOrThrow({ where: { id } })).state;
+    expect(await stateOf(postA.postId)).toBe('QUEUE');
+    expect(await stateOf(postB.postId)).toBe('DRAFT');
+    const [rowA, rowB] = await prisma.post.findMany({ where: { id: { in: [postA.postId, postB.postId] } } });
+    expect(rowA.batchId).toBe(rowB.batchId);
+
+    // A request called a draft with a channel scheduled in it is not free.
+    const sneaky = await mixed(org.api, 'draft', [channelPost(a, 'not a draft', { type: 'schedule' })]);
+    expect(sneaky.status(), await sneaky.text()).toBe(402);
+  } finally {
+    await org.remove();
+  }
+});
+
+test('a channel refused in a save leaves the other channels of it unsaved', async () => {
+  const org = await throwawayOrg(prisma, { tier: 'PRO', totalChannels: 5, channels: 2 });
+  try {
+    const [a, b] = org.channelIds;
+    const res = await mixed(org.api, 'draft', [
+      channelPost(a, 'a draft', { type: 'draft' }),
+      // Bluesky takes 300 characters; a draft may be longer, a scheduled post not.
+      channelPost(b, 'x'.repeat(400), { type: 'schedule' }),
+    ]);
+    expect(res.status(), await res.text()).toBe(400);
+    expect(await prisma.post.count({ where: { organizationId: org.orgId, deletedAt: null } })).toBe(0);
+
+    // The same text kept as a draft on both is fine.
+    const drafts = await mixed(org.api, 'schedule', [
+      channelPost(a, 'a draft', { type: 'draft' }),
+      channelPost(b, 'x'.repeat(400), { type: 'draft' }),
+    ]);
+    expect(drafts.status(), await drafts.text()).toBe(201);
+    expect(await prisma.post.count({ where: { organizationId: org.orgId, deletedAt: null, state: 'DRAFT' } })).toBe(2);
+
+    const unknown = await mixed(org.api, 'draft', [channelPost(a, 'odd', { type: 'later' })]);
+    expect(unknown.status(), await unknown.text()).toBe(400);
+  } finally {
+    await org.remove();
+  }
+});
