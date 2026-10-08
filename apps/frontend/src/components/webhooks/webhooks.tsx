@@ -95,14 +95,22 @@ export const Webhooks: FC = () => {
                   <div className="flex flex-col justify-center">{p.url}</div>
                   <div className="flex flex-col justify-center">
                     <div>
-                      <Button variant="secondary" onClick={addWebhook(p)}>
+                      <Button
+                        variant="secondary"
+                        aria-label={`${t('edit', 'Edit')} ${p.name}`}
+                        onClick={addWebhook(p)}
+                      >
                         {t('edit', 'Edit')}
                       </Button>
                     </div>
                   </div>
                   <div className="flex flex-col justify-center">
                     <div>
-                      <Button variant="danger" onClick={deleteHook(p)}>
+                      <Button
+                        variant="danger"
+                        aria-label={`${t('delete', 'Delete')} ${p.name}`}
+                        onClick={deleteHook(p)}
+                      >
                         {t('delete', 'Delete')}
                       </Button>
                     </div>
