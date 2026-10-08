@@ -364,3 +364,58 @@ test('two full months can swap a post each in one save', async () => {
     await org.remove();
   }
 });
+
+// Codex: a date a hundred years out passed validation, counted as this month
+// and was saved on its own year, so posts never filled any month.
+test('a save on a date a hundred years out is a 400', async () => {
+  const org = await throwawayOrg(prisma, { tier: 'STANDARD', totalChannels: 3, channels: 1, provider: 'facebook' });
+  const channel = org.channelIds[0];
+  const { apiKey } = await prisma.organization.findUniqueOrThrow({ where: { id: org.orgId } });
+  const api = await pwRequest.newContext({ baseURL: `${BACKEND_URL}/public/v1/`, extraHTTPHeaders: { authorization: apiKey! } });
+  const far = '2200-01-01T12:00:00Z';
+  const body = (date: string, perChannel?: string) => ({
+    type: 'schedule',
+    shortLink: false,
+    date,
+    tags: [],
+    posts: [{ integration: { id: channel }, ...(perChannel ? { date: perChannel } : {}), value: [{ content: 'far out', image: [] }], settings: { __type: 'facebook' } }],
+  });
+  try {
+    for (const res of [
+      await org.api.post('/posts', { data: body(far) }),
+      await org.api.post('/posts', { data: body(inDays(2).toISOString(), far) }),
+      await api.post('posts', { data: body(far) }),
+    ]) {
+      expect(res.status(), await res.text()).toBe(400);
+    }
+    expect(await prisma.post.count({ where: { organizationId: org.orgId } })).toBe(0);
+  } finally {
+    await api.dispose();
+    await prisma.post.deleteMany({ where: { organizationId: org.orgId } });
+    await org.remove();
+  }
+});
+
+// Codex: a move read the post's state before the lock, so a draft scheduled
+// meanwhile through the public API moved into a full month uncounted.
+test('a draft scheduled while it is moved into a full month does not take it past the cap', async () => {
+  const org = await throwawayOrg(prisma, { tier: 'STANDARD', totalChannels: 3, channels: 1, provider: 'facebook' });
+  const channel = org.channelIds[0];
+  const { apiKey } = await prisma.organization.findUniqueOrThrow({ where: { id: org.orgId } });
+  const api = await pwRequest.newContext({ baseURL: `${BACKEND_URL}/public/v1/`, extraHTTPHeaders: { authorization: apiKey! } });
+  try {
+    await fill(org.orgId, channel, LIMIT, inDays(1), 'QUEUE');
+    const drafts = await fill(org.orgId, channel, 8, inDays(41), 'DRAFT');
+    await Promise.all(
+      drafts.flatMap((d) => [
+        org.api.put(`/posts/${d.id}/date`, { data: { date: inDays(2).toISOString(), action: 'update' } }),
+        api.put(`posts/${d.id}/status`, { data: { status: 'schedule' } }),
+      ])
+    );
+    expect(await countIn(org.orgId, inDays(0), inDays(30))).toBe(LIMIT);
+  } finally {
+    await api.dispose();
+    await prisma.post.deleteMany({ where: { organizationId: org.orgId } });
+    await org.remove();
+  }
+});
