@@ -1,3 +1,4 @@
+import dayjs from 'dayjs';
 import { pricing } from '@gitroom/nestjs-libraries/database/prisma/subscriptions/pricing';
 import { Throttle } from '@nestjs/throttler';
 import { AccountAgeGuard } from '@gitroom/backend/services/auth/account-age.guard';
@@ -292,9 +293,16 @@ export class PostsController {
     // A post that counts (scheduled, or scheduled by this move) counts
     // against the month it moves to: moving one from an emptier month into
     // a full one went past the allowance (Codex on E2E-07-34).
-    if (process.env.STRIPE_PUBLISHABLE_KEY && typeof date === 'string') {
+    // A draft stays a draft whatever the action (the calendar drags drafts
+    // with "schedule"), so only a post that already counts is checked. An
+    // invalid date is left to changeDate's 400.
+    if (
+      process.env.STRIPE_PUBLISHABLE_KEY &&
+      typeof date === 'string' &&
+      dayjs(date).isValid()
+    ) {
       const post = await this._postsService.getPostById(id, org.id);
-      if (post && (post.state !== 'DRAFT' || action === 'schedule')) {
+      if (post && post.state !== 'DRAFT') {
         // @ts-ignore subscription is attached to the org by the auth middleware
         const subscription = org.subscription;
         if (

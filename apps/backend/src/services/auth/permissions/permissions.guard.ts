@@ -67,9 +67,9 @@ export class PoliciesGuard implements CanActivate {
     // Each with the date it is saved on, so it counts against that billing
     // month ("now" posts against this one). The public API saves every post
     // on the request date (it drops a per-channel one).
-    const publicApi = String(request.originalUrl || request.url || '').includes(
-      '/public/v1/'
-    );
+    // By the path alone: a query string could carry "/public/v1/" (Codex).
+    const path = String(request.originalUrl || request.url || '').split('?')[0];
+    const publicApi = /(^|\/)public\/v1\//.test(path);
     const at = (post: any) =>
       request.body?.type === 'now'
         ? new Date().toISOString()
