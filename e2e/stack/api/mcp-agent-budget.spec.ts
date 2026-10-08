@@ -2,7 +2,7 @@ import { APIRequestContext, expect, request as pwRequest, test } from '@playwrig
 import { BACKEND_URL, database, throwawayOrg } from '../helpers';
 
 // E2E-08-47: the agent asked through MCP (`ask_postra`) ran outside the
-// organisation's monthly allowance (`agent_tokens`): its usage was recorded
+// organisation's monthly allowance (now `agent_messages`): its usage was recorded
 // with no organisation, and the budget check never knew whose run it was.
 // The fake OpenAI answers the Responses API the agent's model uses.
 
@@ -59,6 +59,12 @@ test('the agent asked through MCP is metered to the organisation', async () => {
     await expect
       .poll(() => prisma.aiUsage.count({ where: { organizationId: org.orgId, engine: 'agent' } }))
       .toBeGreaterThan(0);
+    // One question is one message of the monthly fair use.
+    await expect
+      .poll(() =>
+        prisma.aiUsage.count({ where: { organizationId: org.orgId, engine: 'agent', unit: 'messages' } })
+      )
+      .toBe(1);
   } finally {
     await prisma.aiUsage.deleteMany({ where: { organizationId: org.orgId } });
     await api.dispose();
@@ -70,9 +76,15 @@ test('an organisation past its agent allowance gets no agent run through MCP', a
   test.setTimeout(90_000);
   const org = await throwawayOrg(prisma, { tier: 'PRO', totalChannels: 5, channels: 0 });
   const { apiKey } = await prisma.organization.findUniqueOrThrow({ where: { id: org.orgId } });
-  // Pro allows 4M weighted tokens a month.
-  await prisma.aiUsage.create({
-    data: { organizationId: org.orgId, engine: 'agent', model: 'gpt-5.5', inputAmount: 5_000_000 },
+  // Every plan's fair use is 2200 assistant messages a month.
+  await prisma.aiUsage.createMany({
+    data: Array.from({ length: 2200 }, () => ({
+      organizationId: org.orgId,
+      engine: 'agent',
+      model: 'message',
+      unit: 'messages',
+      inputAmount: 1,
+    })),
   });
   const api = await pwRequest.newContext({ baseURL: BACKEND_URL });
   try {

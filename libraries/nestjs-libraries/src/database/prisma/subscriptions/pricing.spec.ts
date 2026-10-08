@@ -7,6 +7,7 @@ import {
   pricing,
   TRIAL_CHANNEL_CAP,
   trialAiAllowance,
+  AGENT_FAIR_USE_MESSAGES,
   TRIAL_VIDEO_CLIPS,
 } from './pricing';
 
@@ -130,11 +131,12 @@ describe('pricing matrix', () => {
     expect(pricing.ULTIMATE.team_members).toBe(5);
   });
 
-  it('keeps agent-chat budgets: FREE=0, Starter=1.5M, Pro=4M, Business=10M weighted tokens', () => {
-    expect(pricing.FREE.agent_tokens).toBe(0);
-    expect(pricing.STANDARD.agent_tokens).toBe(1_500_000);
-    expect(pricing.PRO.agent_tokens).toBe(4_000_000);
-    expect(pricing.ULTIMATE.agent_tokens).toBe(10_000_000);
+  it('gives every paid plan the assistant without a visible limit: fair use of 2200 messages a month (K. 2026-10-08)', () => {
+    expect(pricing.FREE.agent_messages).toBe(0);
+    for (const tier of ['STANDARD', 'PRO', 'ULTIMATE'] as const) {
+      expect(pricing[tier].agent_messages).toBe(AGENT_FAIR_USE_MESSAGES);
+    }
+    expect(AGENT_FAIR_USE_MESSAGES).toBe(2200);
   });
 
   it('gives Starter AI images; AI video clips per month 0 / 15 / 30 / 60 (K. 2026-10-08)', () => {
@@ -289,8 +291,8 @@ describe('trialAiAllowance', () => {
       trialAiAllowance(pricing.ULTIMATE.image_generation_count, true, 'image_generation_count')
     ).toBe(pricing.STANDARD.image_generation_count);
     expect(
-      trialAiAllowance(pricing.PRO.agent_tokens, true, 'agent_tokens')
-    ).toBe(pricing.STANDARD.agent_tokens);
+      trialAiAllowance(pricing.PRO.agent_messages, true, 'agent_messages')
+    ).toBe(pricing.STANDARD.agent_messages);
   });
 
   it('gives a trial one AI video clip, whatever the tier (K. 2026-10-08)', () => {
