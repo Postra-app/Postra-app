@@ -278,3 +278,23 @@ test('each channel of a save can keep tags of its own', async () => {
     await org.remove();
   }
 });
+
+test('the other channels of a post open with their tags', async () => {
+  const org = await throwawayOrg(prisma, { tier: 'PRO', totalChannels: 5, channels: 2 });
+  try {
+    const [a, b] = org.channelIds;
+    await prisma.tags.create({ data: { orgId: org.orgId, name: 'gamma', color: '#38bdf8' } });
+    const saved = await mixed(org.api, 'draft', [
+      channelPost(a, 'untagged', { tags: [] }),
+      channelPost(b, 'tagged gamma', { tags: [{ value: 'gamma', label: 'gamma' }] }),
+    ]);
+    expect(saved.status(), await saved.text()).toBe(201);
+    const [postA] = (await saved.json()) as { postId: string }[];
+    const opened = (await open(org.api, await groupOf(postA.postId))) as Opened & {
+      siblings: { posts: { tags?: { tag: { name: string } }[] }[] }[];
+    };
+    expect(opened.siblings[0].posts[0].tags?.map((t) => t.tag.name)).toEqual(['gamma']);
+  } finally {
+    await org.remove();
+  }
+});
