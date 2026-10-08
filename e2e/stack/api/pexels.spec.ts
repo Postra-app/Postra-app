@@ -12,7 +12,9 @@ test.afterAll(() => prisma.$disconnect());
 test('a Pexels photo is found with its credit and imported into the library', async () => {
   const org = await throwawayOrg(prisma, { tier: 'STANDARD', totalChannels: 3, channels: 0 });
   try {
-    const search = await org.api.get('/media/pexels-images?q=carrot cake');
+    // Unique per run: searches are cached for 24 h, and specs run in parallel.
+    const query = `carrot cake ${Date.now()}`;
+    const search = await org.api.get(`/media/pexels-images?q=${encodeURIComponent(query)}`);
     expect(search.status(), await search.text()).toBe(200);
     const { hits } = await search.json();
     expect(hits).toHaveLength(1);
@@ -21,11 +23,14 @@ test('a Pexels photo is found with its credit and imported into the library', as
       user: 'Stack Photographer',
       userURL: 'https://www.pexels.com/@stack',
       pageURL: 'https://www.pexels.com/photo/stack-cake-1001/',
-      alt: 'A carrot cake on a table',
+      alt: `A ${query} on a table`,
     });
     // The key went to Pexels from the server, never to the browser.
     const seen = await (await org.api.get('http://localhost:58080/__pexels/seen')).json();
-    expect(seen.at(-1)).toMatchObject({ path: '/pexels/v1/search', query: 'carrot cake', auth: 'stack-fake-pexels' });
+    expect(seen.find((s: { query: string }) => s.query === query)).toMatchObject({
+      path: '/pexels/v1/search',
+      auth: 'stack-fake-pexels',
+    });
     expect(JSON.stringify(hits)).not.toContain('stack-fake-pexels');
 
     const imported = await org.api.post('/media/pexels-images/import', {
@@ -34,7 +39,7 @@ test('a Pexels photo is found with its credit and imported into the library', as
     expect(imported.status(), await imported.text()).toBe(201);
     const media = await prisma.media.findUniqueOrThrow({ where: { id: (await imported.json()).id } });
     expect(media.organizationId).toBe(org.orgId);
-    expect(media.name).toBe('pexels-1001');
+    expect(media.originalName).toBe('pexels-1001');
   } finally {
     await org.remove();
   }
@@ -43,7 +48,7 @@ test('a Pexels photo is found with its credit and imported into the library', as
 test('a Pexels video is found and imported as an MP4', async () => {
   const org = await throwawayOrg(prisma, { tier: 'STANDARD', totalChannels: 3, channels: 0 });
   try {
-    const { hits } = await (await org.api.get('/media/pexels-videos?q=harbour')).json();
+    const { hits } = await (await org.api.get(`/media/pexels-videos?q=harbour ${Date.now()}`)).json();
     expect(hits[0]).toMatchObject({ id: 2002, user: 'Stack Filmmaker', duration: 8 });
     const imported = await org.api.post('/media/pexels-videos/import', {
       data: { url: hits[0].importURL, sourceId: hits[0].id },

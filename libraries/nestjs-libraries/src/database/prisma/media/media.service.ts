@@ -70,6 +70,9 @@ const DESIGN_PLATFORM_BY_SOCIAL: Record<string, PostDesignPlatform> = {
 const TEMPLATE_EMBED_CACHE_TTL = 60 * 60 * 24 * 30; // 30 days
 const RECENT_POSTS_FOR_VOICE = 5;
 
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+const { fromBuffer: fileTypeFromBuffer } = require('file-type');
+
 // See generateVideo: how long a clip being made blocks the same request
 // (longer than the ~10 minute poll), and how long a finished one is reused.
 const VIDEO_PENDING = 'pending';
@@ -503,6 +506,39 @@ export class MediaService {
       uploaded.path,
       `pixabay-${sourceId ?? 'unknown'}`
     );
+  }
+
+  // Pexels: hosts checked by the controller (isPexelsAssetUrl); the type is
+  // read from the bytes, not trusted from the URL.
+  async importPexelsAsset(
+    org: string,
+    sourceUrl: string,
+    kind: 'image' | 'video',
+    sourceId?: number
+  ) {
+    const { res, buffer } = await this.fetchPixabayAsset(
+      sourceUrl,
+      (kind === 'video' ? 100 : 30) * 1024 * 1024
+    );
+    if (!res.ok || !buffer) {
+      throw new HttpException(`Failed to fetch the Pexels ${kind} (${res.status})`, 502);
+    }
+    const detected = await fileTypeFromBuffer(buffer);
+    const allowed =
+      kind === 'video'
+        ? detected?.mime === 'video/mp4'
+        : ['image/jpeg', 'image/png', 'image/webp'].includes(detected?.mime || '');
+    if (!detected || !allowed) {
+      throw new HttpException(`That Pexels file is not a supported ${kind}`, 422);
+    }
+    const name = `pexels-${sourceId ?? 'unknown'}`;
+    const uploaded = await this.storage.uploadFile({
+      buffer,
+      originalname: `${name}.${detected.ext}`,
+      mimetype: detected.mime,
+      size: buffer.length,
+    } as unknown as Express.Multer.File);
+    return this._mediaRepository.saveFile(org, uploaded.originalname, uploaded.path, name);
   }
 
   saveFile(
