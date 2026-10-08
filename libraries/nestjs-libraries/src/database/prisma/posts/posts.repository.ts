@@ -430,6 +430,26 @@ export class PostsRepository {
     });
   }
 
+  // The posts of the other channels saved in the same batch, without the
+  // given group.
+  getPostsByBatch(orgId: string, batchId: string, exceptGroup: string) {
+    return this._post.model.post.findMany({
+      where: {
+        organizationId: orgId,
+        batchId,
+        group: { not: exceptGroup },
+        deletedAt: null,
+        integration: { deletedAt: null },
+      },
+      include: {
+        integration: true,
+      },
+      orderBy: {
+        createdAt: 'asc',
+      },
+    });
+  }
+
   getPostsByGroup(orgId: string, group: string) {
     return this._post.model.post.findMany({
       where: {
@@ -761,7 +781,10 @@ export class PostsRepository {
     tags: { value: string; label: string }[],
     creationMethod: CreationMethod,
     inter?: number,
-    outer?: Prisma.TransactionClient
+    outer?: Prisma.TransactionClient,
+    // Shared by the posts saved together for several channels, so opening one
+    // of them in the editor brings the others.
+    batchId?: string
   ) {
     // Creating a thread is a multi-step write (per-part upserts, tag rewrite,
     // soft-delete of the previous group). A failure mid-way used to leave a
@@ -770,6 +793,27 @@ export class PostsRepository {
     const write = async (tx: Prisma.TransactionClient) => {
     const posts: Post[] = [];
     const uuid = uuidv4();
+
+    // An edited post stays in the batch it was created in, also when it is
+    // saved on its own. Read before the writes below give it a new group.
+    const ids = body.value.map((value) => value.id).filter(Boolean) as string[];
+    const existingBatchId =
+      body.group || ids.length
+        ? (
+            await tx.post.findFirst({
+              where: {
+                organizationId: orgId,
+                deletedAt: null,
+                batchId: { not: null },
+                OR: [
+                  ...(body.group ? [{ group: body.group }] : []),
+                  ...(ids.length ? [{ id: { in: ids } }] : []),
+                ],
+              },
+              select: { batchId: true },
+            })
+          )?.batchId
+        : undefined;
 
     for (const value of body.value) {
       const updateData = (type: 'create' | 'update') => ({
@@ -798,6 +842,7 @@ export class PostsRepository {
         content: value.content,
         delay: value.delay || 0,
         group: uuid,
+        batchId: existingBatchId || batchId || null,
         intervalInDays: inter && +inter >= 1 ? Math.floor(+inter) : null,
         approvedSubmitForOrder: APPROVED_SUBMIT_FOR_ORDER.NO,
         ...(type === 'create' ? { creationMethod } : {}),

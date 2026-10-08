@@ -198,7 +198,14 @@ export class PublicIntegrationsController {
   ) {
     Sentry.metrics.count('public_api-request', 1);
     const body = await this._postsService.mapTypeToPost(
-      rawBody,
+      {
+        ...rawBody,
+        // A date per channel is an editor feature (a post saved for several
+        // channels, edited later); the public API keeps one date per request.
+        posts: Array.isArray(rawBody?.posts)
+          ? rawBody.posts.map(({ date, ...post }: any) => post)
+          : rawBody?.posts,
+      },
       org.id,
       rawBody.type === 'draft'
     );

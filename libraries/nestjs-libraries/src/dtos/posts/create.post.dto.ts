@@ -83,6 +83,12 @@ export class Post {
   @IsString()
   group: string;
 
+  // A channel of an existing post that keeps a date of its own (a post saved
+  // for several channels, edited later); the others use the request date.
+  @IsOptional()
+  @IsDateString()
+  date?: string;
+
   @ValidateIf((o) => o.type !== 'draft')
   @ValidateNested()
   @Type(() => EmptySettings, {

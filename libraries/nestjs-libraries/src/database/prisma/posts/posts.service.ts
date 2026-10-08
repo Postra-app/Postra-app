@@ -19,7 +19,8 @@ import {
 } from '@prisma/client';
 import { GetPostsDto } from '@gitroom/nestjs-libraries/dtos/posts/get.posts.dto';
 import { GetPostsListDto } from '@gitroom/nestjs-libraries/dtos/posts/get.posts.list.dto';
-import { shuffle } from 'lodash';
+import { groupBy, shuffle, uniqBy } from 'lodash';
+import { v4 as uuidv4 } from 'uuid';
 import { CreateGeneratedPostsDto } from '@gitroom/nestjs-libraries/dtos/generator/create.generated.posts.dto';
 import { IntegrationService } from '@gitroom/nestjs-libraries/database/prisma/integrations/integration.service';
 import { makeId } from '@gitroom/nestjs-libraries/services/make.is';
@@ -604,6 +605,44 @@ export class PostsService {
       throw new NotFoundException('Post not found');
     }
 
+    const batch = posts[0].batchId
+      ? await this._postRepository.getPostsByBatch(
+          orgId,
+          posts[0].batchId,
+          group
+        )
+      : [];
+
+    // The other channels the post was saved with. The editor holds one post
+    // per channel, and a channel that repeats differently is a post of its own.
+    const siblings = uniqBy(
+      Object.values(groupBy(batch, (post) => post.group))
+        .map((batchPosts) => this.arrangePostsByGroup(batchPosts, undefined))
+        .filter(
+          (batchPosts) =>
+            batchPosts.length &&
+            batchPosts[0].integrationId !== posts[0].integrationId &&
+            batchPosts[0].intervalInDays === posts[0].intervalInDays
+        ),
+      (batchPosts) => batchPosts[0].integrationId
+    );
+
+    return {
+      ...(await this.groupForEditor(orgId, posts, convertToJPEG)),
+      siblings: await Promise.all(
+        siblings.map((batchPosts) =>
+          this.groupForEditor(orgId, batchPosts, convertToJPEG)
+        )
+      ),
+    };
+  }
+
+  // A post as the editor loads it: its channel without the tokens.
+  private async groupForEditor(
+    orgId: string,
+    posts: PostWithConditionals[],
+    convertToJPEG = false
+  ) {
     return {
       group: posts?.[0]?.group,
       posts: await Promise.all(
@@ -656,23 +695,7 @@ export class PostsService {
       throw new NotFoundException('Post not found');
     }
 
-    return {
-      group: posts[0].group,
-      posts: await Promise.all(
-        posts.map(async (post) => ({
-          ...this.stripIntegrationSecrets(post),
-          image: await this.updateMedia(
-            orgId,
-            post.id,
-            JSON.parse(post.image || '[]'),
-            convertToJPEG
-          ),
-        }))
-      ),
-      integrationPicture: posts[0].integration?.picture,
-      integration: posts[0].integrationId,
-      settings: JSON.parse(posts[0].settings || '{}'),
-    };
+    return this.groupForEditor(orgId, posts, convertToJPEG);
   }
 
   async getOldPosts(orgId: string, date: string) {
@@ -1124,6 +1147,9 @@ export class PostsService {
         body.expectedUpdatedAt
       );
 
+      // The channels of one save share a batch, so opening one of them in the
+      // editor brings the others (an edited post keeps its own batch).
+      const batchId = uuidv4();
       const saved = [];
       for (const post of body.posts) {
         const { posts } = await this._postRepository.createOrUpdatePost(
@@ -1131,12 +1157,13 @@ export class PostsService {
           orgId,
           body.type === 'now'
             ? dayjs().format('YYYY-MM-DDTHH:mm:00')
-            : body.date,
+            : post.date || body.date,
           post,
           body.tags,
           creationMethod,
           body.inter,
-          tx
+          tx,
+          batchId
         );
         saved.push({ post, posts });
       }

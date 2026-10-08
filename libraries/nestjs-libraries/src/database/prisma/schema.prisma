@@ -460,6 +460,9 @@ model Post {
   content                    String
   delay                      Int                       @default(0)
   group                      String
+  // Shared by the posts saved together for several channels, so opening one
+  // of them in the editor brings the others (upstream "group schedules").
+  batchId                    String?
   title                      String?
   description                String?
   parentPostId               String?
@@ -490,6 +493,7 @@ model Post {
   tags                       TagsPosts[]
 
   @@index([group])
+  @@index([batchId])
   @@index([deletedAt])
   @@index([publishDate])
   @@index([state])
