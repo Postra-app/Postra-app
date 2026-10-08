@@ -16,7 +16,9 @@ test('after a revoke the app, the public API and MCP see no plan', async () => {
   const { apiKey } = await prisma.organization.findUniqueOrThrow({ where: { id: org.orgId } });
   const api = await pwRequest.newContext({ baseURL: BACKEND_URL });
   try {
-    expect((await (await org.api.get('/user/self')).json()).tier).toBe('PRO');
+    // As revokeSubscription does it (it also clears the 30-second auth cache,
+    // so nothing here may load the session before).
+    expect((await prisma.subscription.findFirstOrThrow({ where: { organizationId: org.orgId } })).subscriptionTier).toBe('PRO');
     await prisma.subscription.updateMany({ where: { organizationId: org.orgId }, data: { deletedAt: new Date() } });
 
     expect((await (await org.api.get('/user/self')).json()).tier).toBe('FREE');
