@@ -163,11 +163,13 @@ model UsedCodes {
   // squashed migrations/00000000000000_init. Boot runs `prisma migrate deploy`
   // (scripts/db-migrate.mjs); adding this @unique while boot still ran
   // `prisma db push` took prod down (502, 2026-07-08).
-  code         String       @unique
-  orgId        String
-  createdAt    DateTime     @default(now())
-  updatedAt    DateTime     @updatedAt
-  organization Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  code         String        @unique
+  // Null once the organisation is deleted: the code stays used, so deleting
+  // the account and signing up again cannot redeem it twice (E2E-02-17).
+  orgId        String?
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+  organization Organization? @relation(fields: [orgId], references: [id], onDelete: SetNull)
 }
 
 model UserOrganization {
