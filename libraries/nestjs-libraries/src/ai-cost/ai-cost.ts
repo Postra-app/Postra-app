@@ -17,6 +17,8 @@ export const AI_PRICES_USD: Record<string, { input: number; cached: number; outp
   'gpt-5.5': { input: 5, cached: 0.5, output: 30 },
   'gpt-5.4-mini': { input: 0.75, cached: 0.075, output: 4.5 },
   'gpt-4.1': { input: 2, cached: 0.5, output: 8 },
+  // Studio's vision call (studio-ai.service.ts MODEL_VISION).
+  'gpt-4o': { input: 2.5, cached: 1.25, output: 10 },
   'gpt-4.1-mini': { input: 0.4, cached: 0.1, output: 1.6 },
   'text-embedding-3-small': { input: 0.02, cached: 0.02, output: 0 },
   'text-embedding-3-large': { input: 0.13, cached: 0.13, output: 0 },
