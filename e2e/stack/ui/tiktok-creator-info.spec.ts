@@ -17,6 +17,8 @@ test('E2E-08-63: the composer says when TikTok settings could not be loaded', as
     await page.goto('/launches');
     await page.getByRole('button', { name: 'Create Post' }).click();
     await page.getByRole('img', { name: 'tiktok', exact: true }).first().click();
+    // The channel's own tab, then its settings panel.
+    await page.getByRole('button', { name: 'Throwaway tiktok 0', exact: true }).click();
     await page.getByText('Throwaway tiktok 0 Settings').click();
     await expect(page.getByText("Couldn't load your TikTok settings", { exact: false })).toBeVisible();
     await expect(page.getByText('Loading your TikTok settings')).toHaveCount(0);
