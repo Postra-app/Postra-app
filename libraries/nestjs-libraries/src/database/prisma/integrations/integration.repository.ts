@@ -311,12 +311,14 @@ export class IntegrationRepository {
     token = AuthService.encryptIntegrationToken(token);
     refreshToken = AuthService.encryptIntegrationToken(refreshToken);
 
-    const postTimes = timezone
+    // 0 is a real offset (the UK in winter); only a missing one keeps the
+    // schema defaults.
+    const postTimes = Number.isFinite(timezone)
       ? {
           postingTimes: JSON.stringify([
-            { time: 560 - timezone },
-            { time: 850 - timezone },
-            { time: 1140 - timezone },
+            { time: 560 - timezone! },
+            { time: 850 - timezone! },
+            { time: 1140 - timezone! },
           ]),
         }
       : {};
