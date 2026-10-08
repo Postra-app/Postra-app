@@ -79,10 +79,15 @@ export const StockImagesPanel: FC<Props> = ({ canvas, defaultQuery }) => {
   const [searched, setSearched] = useState(false);
   const [importingId, setImportingId] = useState<number | string | null>(null);
 
+  // The newest search wins: one typed while another runs (switching the
+  // source starts one) used to be dropped, and the late answer of the older
+  // one must not replace the newer.
+  const latest = useRef(0);
   const search = useCallback(
     async (term?: string, from: StockSource = source) => {
     const q = (term ?? query).trim();
-    if (!q || searching) return;
+    if (!q) return;
+    const request = ++latest.current;
     setSearching(true);
     try {
       const res = await fetch(
@@ -90,18 +95,20 @@ export const StockImagesPanel: FC<Props> = ({ canvas, defaultQuery }) => {
       );
       if (!res.ok) throw new Error(`search ${res.status}`);
       const data = await res.json();
+      if (request !== latest.current) return;
       setHits((data?.hits ?? []).map((h: any) => toHit(from, h)));
       setSearched(true);
     } catch {
+      if (request !== latest.current) return;
       toaster.show(
         t('image_stock_search_failed', 'Image search failed.'),
         'warning'
       );
     } finally {
-      setSearching(false);
+      if (request === latest.current) setSearching(false);
     }
     },
-    [query, searching, source, fetch, toaster, t]
+    [query, source, fetch, toaster, t]
   );
 
   const switchSource = useCallback(
