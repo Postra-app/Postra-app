@@ -72,6 +72,60 @@ test('a post saved for two channels opens with both, and each keeps its own text
   }
 });
 
+// Codex: saving the post from one channel gave the other channel its tags.
+test('editing one channel of a post leaves the tags of the other', async ({ page }) => {
+  test.setTimeout(90_000);
+  const api = await signedIn('a');
+  const tag = `[stack ui] group tags ${Date.now()}`;
+  const slot = quietSlot(5);
+  const names = [`gs-alpha-${Date.now()}`, `gs-beta-${Date.now()}`];
+  const created: string[] = [];
+  try {
+    for (const name of names) {
+      const res = await api.post('/posts/tags', { data: { name, color: '#38bdf8' } });
+      expect(res.ok(), await res.text()).toBe(true);
+      created.push(((await res.json()) as { id: string }).id);
+    }
+    const res = await api.post('/posts', {
+      data: {
+        type: 'draft',
+        shortLink: false,
+        date: slot.toISOString(),
+        tags: [],
+        posts: [
+          { integration: { id: BLUESKY.id }, tags: [{ value: names[0], label: names[0] }], value: [{ content: `${tag} bluesky`, image: [] }], settings: { __type: 'bluesky' } },
+          { integration: { id: MASTODON.id }, tags: [{ value: names[1], label: names[1] }], value: [{ content: `${tag} mastodon`, image: [] }], settings: { __type: 'mastodon' } },
+        ],
+      },
+    });
+    expect(res.status(), await res.text()).toBe(201);
+
+    const editor = await openFromCalendar(page, slot, BLUESKY.name, `${tag} bluesky`);
+    const text = editor.getByRole('textbox').first();
+    await text.click();
+    await page.keyboard.press('End');
+    await page.keyboard.type(' edited');
+    await editor.getByRole('button', { name: 'Save as Draft' }).click();
+    await expect(editor).toBeHidden();
+
+    const posts = (await listPosts(api)).filter((p) => p.content.includes(tag));
+    const tagsOf = async (channel: string) => {
+      const post = posts.find((p) => p.content.includes(channel))!;
+      const group = await (await api.get(`/posts/group/${post.group}`)).json();
+      return (group.posts[0].tags || []).map((t: { tag: { name: string } }) => t.tag.name);
+    };
+    expect(posts.find((p) => p.content.includes('bluesky'))!.content).toContain('edited');
+    expect(await tagsOf('bluesky')).toEqual([names[0]]);
+    expect(await tagsOf('mastodon')).toEqual([names[1]]);
+  } finally {
+    await cleanUp(api, tag);
+    for (const id of created) {
+      await api.delete(`/posts/tags/${id}`);
+    }
+    await api.dispose();
+  }
+});
+
 test('deleting a post saved for two channels can remove it from only one', async ({ page }) => {
   test.setTimeout(90_000);
   const api = await signedIn('a');

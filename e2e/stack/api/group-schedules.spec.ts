@@ -253,3 +253,28 @@ test('a channel refused in a save leaves the other channels of it unsaved', asyn
     await org.remove();
   }
 });
+
+// Codex: one save gave every channel the request's tags, so saving the post
+// from one channel replaced the tags another channel had.
+test('each channel of a save can keep tags of its own', async () => {
+  const org = await throwawayOrg(prisma, { tier: 'PRO', totalChannels: 5, channels: 2 });
+  try {
+    const [a, b] = org.channelIds;
+    await prisma.tags.createMany({
+      data: ['alpha', 'beta'].map((name) => ({ orgId: org.orgId, name, color: '#38bdf8' })),
+    });
+    const tag = (name: string) => [{ value: name, label: name }];
+    const saved = await mixed(org.api, 'draft', [
+      channelPost(a, 'tagged alpha', { tags: tag('alpha') }),
+      channelPost(b, 'tagged beta', { tags: tag('beta') }),
+    ]);
+    expect(saved.status(), await saved.text()).toBe(201);
+    const [postA, postB] = (await saved.json()) as { postId: string }[];
+    const tagsOf = async (id: string) =>
+      (await prisma.tagsPosts.findMany({ where: { postId: id }, include: { tag: true } })).map((t) => t.tag.name);
+    expect(await tagsOf(postA.postId)).toEqual(['alpha']);
+    expect(await tagsOf(postB.postId)).toEqual(['beta']);
+  } finally {
+    await org.remove();
+  }
+});
