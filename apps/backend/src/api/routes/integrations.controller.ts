@@ -480,9 +480,19 @@ export class IntegrationsController {
 
   @Post('/function')
   @Throttle({ default: { ttl: 300_000, limit: 120 } })
-  async functionIntegration(
+  functionIntegration(
     @GetOrgFromRequest() org: Organization,
     @Body() body: IntegrationFunctionDto
+  ): Promise<any> {
+    return this.runProviderFunction(org, body, false);
+  }
+
+  // One refresh per request: a platform refusing the refreshed token too made
+  // the route refresh and call itself with no end (Codex review, E2E-08-63).
+  private async runProviderFunction(
+    org: Organization,
+    body: IntegrationFunctionDto,
+    refreshed: boolean
   ): Promise<any> {
     const getIntegration = await this._integrationService.getIntegrationById(
       org.id,
@@ -521,6 +531,9 @@ export class IntegrationsController {
         return withoutProviderTokens(load);
       } catch (err) {
         if (err instanceof RefreshToken) {
+          if (refreshed) {
+            return false;
+          }
           const data = await this._refreshIntegrationService.refresh(
             getIntegration
           );
@@ -535,7 +548,7 @@ export class IntegrationsController {
             if (integrationProvider.refreshWait) {
               await timer(10000);
             }
-            return this.functionIntegration(org, body);
+            return this.runProviderFunction(org, body, true);
           }
 
           return false;
