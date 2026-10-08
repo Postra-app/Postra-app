@@ -43,6 +43,7 @@ const VEO3Settings: FC = () => {
       <MultiMediaComponent
         allData={[]}
         dummy={true}
+        imagesOnly={true}
         text="Images"
         description="Images"
         name="images"

@@ -508,20 +508,20 @@ export class MediaService {
     );
   }
 
-  // Pexels: hosts checked by the controller (isPexelsAssetUrl); the type is
-  // read from the bytes, not trusted from the URL.
-  async importPexelsAsset(
+  // Stock files (Pexels, Unsplash): hosts checked by the controller; the type
+  // is read from the bytes, not trusted from the URL.
+  async importStockAsset(
     org: string,
     sourceUrl: string,
     kind: 'image' | 'video',
-    sourceId?: number
+    name: string
   ) {
     const { res, buffer } = await this.fetchPixabayAsset(
       sourceUrl,
       (kind === 'video' ? 100 : 30) * 1024 * 1024
     );
     if (!res.ok || !buffer) {
-      throw new HttpException(`Failed to fetch the Pexels ${kind} (${res.status})`, 502);
+      throw new HttpException(`Failed to fetch the stock ${kind} (${res.status})`, 502);
     }
     const detected = await fileTypeFromBuffer(buffer);
     const allowed =
@@ -529,9 +529,8 @@ export class MediaService {
         ? detected?.mime === 'video/mp4'
         : ['image/jpeg', 'image/png', 'image/webp'].includes(detected?.mime || '');
     if (!detected || !allowed) {
-      throw new HttpException(`That Pexels file is not a supported ${kind}`, 422);
+      throw new HttpException(`That file is not a supported ${kind}`, 422);
     }
-    const name = `pexels-${sourceId ?? 'unknown'}`;
     const uploaded = await this.storage.uploadFile({
       buffer,
       originalname: `${name}.${detected.ext}`,

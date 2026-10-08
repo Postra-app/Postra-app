@@ -5,6 +5,14 @@ import { useSearchParams } from 'next/navigation';
 import { useFetch } from '@gitroom/helpers/utils/custom.fetch';
 import { Logo } from '@gitroom/frontend/components/new-layout/logo';
 
+const safeHost = (url?: string) => {
+  try {
+    return new URL(url || '').host;
+  } catch {
+    return '';
+  }
+};
+
 export default function OAuthAuthorizePage() {
   const searchParams = useSearchParams();
   const fetch = useFetch();
@@ -19,14 +27,18 @@ export default function OAuthAuthorizePage() {
   // PKCE: passed through to the code request, checked at /oauth/token.
   const codeChallenge = searchParams.get('code_challenge');
   const codeChallengeMethod = searchParams.get('code_challenge_method');
+  // A connector that registered itself (Claude, ChatGPT) names the address
+  // it wants the code at; the server checks it is one it registered.
+  const redirectUri = searchParams.get('redirect_uri');
   const pkce = useMemo(
     () => ({
       ...(codeChallenge ? { code_challenge: codeChallenge } : {}),
       ...(codeChallengeMethod
         ? { code_challenge_method: codeChallengeMethod }
         : {}),
+      ...(redirectUri ? { redirect_uri: redirectUri } : {}),
     }),
-    [codeChallenge, codeChallengeMethod]
+    [codeChallenge, codeChallengeMethod, redirectUri]
   );
 
   useEffect(() => {
@@ -183,6 +195,15 @@ export default function OAuthAuthorizePage() {
             {appInfo.app.description && (
               <div className="text-gray-400 text-center text-[14px]">
                 {appInfo.app.description}
+              </div>
+            )}
+            {appInfo.app.dynamic && (
+              // A connector names itself when it registers: show where the
+              // approval really goes, so a look-alike name cannot hide it.
+              <div className="text-gray-400 text-center text-[13px]">
+                An AI assistant that connected itself to Postra. After you
+                approve, you go back to{' '}
+                <strong>{safeHost(appInfo.app.redirectUrl)}</strong>.
               </div>
             )}
           </div>

@@ -1,12 +1,23 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { Activity, ActivityMethod } from 'nestjs-temporal-core';
+import dayjs from 'dayjs';
 import { MaintenanceService } from '@gitroom/nestjs-libraries/database/prisma/maintenance/maintenance.service';
+import { AiUsageService } from '@gitroom/nestjs-libraries/database/prisma/ai-usage/ai-usage.service';
+import { EmailService } from '@gitroom/nestjs-libraries/services/email.service';
+import { PrismaService } from '@gitroom/nestjs-libraries/database/prisma/prisma.service';
+import { ioRedis } from '@gitroom/nestjs-libraries/redis/redis.service';
+import { marginAlertMail } from '@gitroom/nestjs-libraries/ai-cost/margin-alert.mail';
 
 @Injectable()
 @Activity()
 export class HousekeepingActivity {
   private readonly _logger = new Logger(HousekeepingActivity.name);
-  constructor(private _maintenance: MaintenanceService) {}
+  constructor(
+    private _maintenance: MaintenanceService,
+    private _aiUsage: AiUsageService,
+    private _email: EmailService,
+    private _prisma: PrismaService
+  ) {}
 
   // What `purge-old-records --apply` does, with its default windows. It
   // existed as a command only and nothing ran it, so rows outlived their
@@ -20,5 +31,45 @@ export class HousekeepingActivity {
       `housekeeping: rows deleted Errors ${purge.errors}, AuditLog ${purge.auditLog}, AiUsage ${purge.aiUsage}; media objects removed ${sweep.removed}${sweep.failed ? `, failed ${sweep.failed}` : ''}`
     );
     return { ...purge, removed: sweep.removed, failed: sweep.failed };
+  }
+
+  // The margin guard, daily: Postra administrators get one mail when an
+  // organisation's AI cost passes 70% of its plan price, and one more past
+  // 100% — at most once per level per organisation per month.
+  @ActivityMethod()
+  async checkAiMargins() {
+    const report = await this._aiUsage.marginReport();
+    const month = dayjs().format('YYYY-MM');
+    const fresh: { key: string; row: (typeof report.organizations)[number] }[] = [];
+    for (const row of report.organizations.filter((r) => r.alert)) {
+      const level = row.share >= 1 ? 100 : 70;
+      const key = `margin-alert:${row.organizationId}:${month}:${level}`;
+      if (!(await ioRedis.get(key))) fresh.push({ key, row });
+    }
+    if (!fresh.length) {
+      return { alerts: 0 };
+    }
+    const admins = await this._prisma.user.findMany({
+      where: { isSuperAdmin: true, activated: true },
+      select: { email: true },
+    });
+    const { subject, html } = marginAlertMail(
+      fresh.map((f) => f.row),
+      report
+    );
+    let delivered = false;
+    for (const admin of admins) {
+      delivered = (await this._email.sendEmailSync(admin.email, subject, html)) || delivered;
+    }
+    // Marked only once someone got it (Codex): a failed send is tried again
+    // by the activity's retry and by tomorrow's run.
+    if (!delivered) {
+      throw new Error(`margin guard: alert for ${fresh.length} organisation(s) not delivered`);
+    }
+    for (const { key } of fresh) {
+      await ioRedis.set(key, '1', 'EX', 40 * 86_400);
+    }
+    this._logger.log(`margin guard: ${fresh.length} organisation(s) over ${report.threshold * 100}%`);
+    return { alerts: fresh.length };
   }
 }

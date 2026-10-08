@@ -1,5 +1,22 @@
-import { CreatePostDto } from '@gitroom/nestjs-libraries/dtos/posts/create.post.dto';
+import {
+  CreatePostDto,
+  Post,
+  PostContent,
+} from '@gitroom/nestjs-libraries/dtos/posts/create.post.dto';
 import { GetPostsDto } from '@gitroom/nestjs-libraries/dtos/posts/get.posts.dto';
+
+// What the API accepts, not the server's DTO classes as written: those mark
+// fields the API treats as optional as required, so the README example did
+// not compile in strict TypeScript (E2E-08-56).
+type Optional<T, K extends keyof T> = Omit<T, K> & Partial<Pick<T, K>>;
+export type PostValueInput = Optional<PostContent, 'id' | 'delay'>;
+export type PostInput = Optional<Omit<Post, 'value'>, 'group' | 'settings'> & {
+  value: PostValueInput[];
+};
+export type CreatePostInput = Omit<CreatePostDto, 'posts'> & {
+  posts: PostInput[];
+};
+export type GetPostsInput = Optional<GetPostsDto, 'customer'>;
 
 // The public API lives under /api on app.postra.pl; without it every call
 // landed on the web app and came back as a redirect to the login page.
@@ -64,7 +81,7 @@ export default class Postra {
     return body as any;
   }
 
-  post(posts: CreatePostDto) {
+  post(posts: CreatePostInput) {
     return this.request('/posts', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -72,7 +89,7 @@ export default class Postra {
     });
   }
 
-  postList(filters: GetPostsDto) {
+  postList(filters: GetPostsInput) {
     return this.request(`/posts?${toQueryString(filters)}`);
   }
 

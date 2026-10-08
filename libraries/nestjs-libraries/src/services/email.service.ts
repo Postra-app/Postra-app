@@ -60,21 +60,22 @@ export class EmailService {
       });
   }
 
+  // true once the mail was handed to the provider, false if it could not be.
   async sendEmailSync(
     to: string,
     subject: string,
     html: string,
     replyTo?: string
-  ) {
+  ): Promise<boolean> {
     if (to.indexOf('@') === -1) {
-      return;
+      return false;
     }
 
     if (!process.env.EMAIL_FROM_ADDRESS || !process.env.EMAIL_FROM_NAME) {
       this._logger.error(
         'Email sender information not found in environment variables'
       );
-      return;
+      return false;
     }
 
     const modifiedHtml = `
@@ -142,7 +143,7 @@ export class EmailService {
           process.env.EMAIL_FROM_ADDRESS,
           replyTo
         );
-        return;
+        return true;
       } catch (err) {
         lastErr = err;
         this._logger.warn(
@@ -160,5 +161,6 @@ export class EmailService {
         (lastErr as Error)?.message ?? lastErr
       }`
     );
+    return false;
   }
 }

@@ -13,9 +13,15 @@ export class TokenExchangeDto {
   @IsDefined()
   client_id: string;
 
+  // A public client (a connector registered with
+  // token_endpoint_auth_method "none") has no secret and uses PKCE.
   @IsString()
-  @IsDefined()
-  client_secret: string;
+  @IsOptional()
+  client_secret?: string;
+
+  @IsString()
+  @IsOptional()
+  redirect_uri?: string;
 
   // RFC 7636 §4.1: 43–128 unreserved characters.
   @IsString()

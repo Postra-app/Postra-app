@@ -5,6 +5,13 @@ import {
   setAiUsageSink,
 } from '@gitroom/nestjs-libraries/services/ai-usage.record';
 
+import {
+  costOfUsage,
+  marginReport,
+  marginSettings,
+  UsageRow,
+} from '@gitroom/nestjs-libraries/ai-cost/ai-cost';
+
 @Injectable()
 export class AiUsageService {
   constructor(private _prisma: PrismaService) {
@@ -41,6 +48,61 @@ export class AiUsageService {
       _sum: { inputAmount: true },
     });
     return sum._sum.inputAmount ?? 0;
+  }
+
+  // The margin guard: each paying organisation's AI cost over the last 30
+  // days against its plan price (ai-cost.ts).
+  async marginReport(days = 30) {
+    const from = new Date(Date.now() - days * 86_400_000);
+    const rows = await this._prisma.aiUsage.groupBy({
+      by: ['organizationId', 'model', 'unit'],
+      where: { createdAt: { gte: from }, organizationId: { not: null } },
+      _sum: { inputAmount: true, cachedAmount: true, outputAmount: true },
+    });
+    const byOrg: Record<string, UsageRow[]> = {};
+    for (const r of rows) {
+      (byOrg[r.organizationId!] ||= []).push({
+        model: r.model,
+        unit: r.unit,
+        inputAmount: r._sum.inputAmount,
+        cachedAmount: r._sum.cachedAmount,
+        outputAmount: r._sum.outputAmount,
+      });
+    }
+    const unknownModels = new Set<string>();
+    const costUsdByOrg: Record<string, number> = {};
+    for (const [org, usage] of Object.entries(byOrg)) {
+      const cost = costOfUsage(usage);
+      costUsdByOrg[org] = cost.usd;
+      cost.unknownModels.forEach((m) => unknownModels.add(m));
+    }
+    const subscriptions = await this._prisma.subscription.findMany({
+      where: { deletedAt: null, organizationId: { in: Object.keys(byOrg) } },
+      select: {
+        subscriptionTier: true,
+        period: true,
+        isLifetime: true,
+        organization: { select: { id: true, name: true, isTrailing: true } },
+      },
+    });
+    const settings = marginSettings();
+    return {
+      days,
+      ...settings,
+      unknownModels: [...unknownModels],
+      organizations: marginReport(
+        subscriptions.map((s) => ({
+          id: s.organization.id,
+          name: s.organization.name,
+          tier: s.subscriptionTier,
+          period: s.period,
+          isLifetime: s.isLifetime,
+          isTrailing: !!s.organization.isTrailing,
+        })),
+        costUsdByOrg,
+        settings
+      ),
+    };
   }
 
   summary(from: Date, to: Date) {

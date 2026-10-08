@@ -194,7 +194,10 @@ export const startMcp = async (app: INestApplication) => {
       grant_types_supported: ['authorization_code'],
       // The token endpoint reads client_id and client_secret from the body;
       // without this line RFC 8414 says clients should use HTTP Basic.
-      token_endpoint_auth_methods_supported: ['client_secret_post'],
+      token_endpoint_auth_methods_supported: ['client_secret_post', 'none'],
+      // Claude, ChatGPT and other MCP clients register themselves here
+      // (RFC 7591); "none" is a public client using PKCE.
+      registration_endpoint: `${process.env.NEXT_PUBLIC_OVERRIDE_BACKEND_URL || process.env.NEXT_PUBLIC_BACKEND_URL}/oauth/register`,
       // Checked at /oauth/token since E2E-08-44. No scopes_supported: an
       // approved app gets the whole organisation, so naming read/write
       // scopes promised a limit nothing enforced.

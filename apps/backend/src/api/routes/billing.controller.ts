@@ -143,6 +143,14 @@ export class BillingController {
     );
   }
 
+  // Billing history on the Billing page (upstream 3bd88cee9).
+  @Get('/invoices')
+  @CheckPolicies(BILLING_ADMIN)
+  @Throttle({ default: { ttl: 300_000, limit: 30 } })
+  getInvoices(@GetOrgFromRequest() org: Organization) {
+    return this._stripeService.getInvoices(org.id);
+  }
+
   @Get('/portal')
   @CheckPolicies(BILLING_ADMIN)
   @Throttle({ default: { ttl: 300_000, limit: 10 } })

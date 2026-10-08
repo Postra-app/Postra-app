@@ -551,12 +551,12 @@ export const FAQ_ITEMS: FaqItem[] = [
   {
     question: 'How do I connect an AI assistant (MCP)?',
     answer:
-      'MCP lets an AI assistant work in Postra for you: you ask in plain words ("schedule a post about our sale on Facebook and Instagram tomorrow at 10:00, with a graphic in our colours") and the assistant does it. In Settings → Developers pick your tool — Claude Code, Cursor, VS Code (Copilot), Windsurf, Amp, Codex, Gemini CLI or Warp — and copy the configuration Postra generates into it. The assistant can list your channels, write and schedule posts, create on-brand images, upload media from a link and read analytics. Deleting or moving a post is never done silently: it waits for you to confirm in Postra\'s own chat. Each workspace can make up to 120 requests every 5 minutes.',
+      'MCP lets an AI assistant work in Postra for you: you ask in plain words ("schedule a post about our sale on Facebook and Instagram tomorrow at 10:00, with a graphic in our colours") and the assistant does it. In Settings → Developers pick your tool — Claude Code, Cursor, VS Code (Copilot), Windsurf, Amp, Codex, Gemini CLI or Warp — and copy the configuration Postra generates into it. The assistant can list your channels, write and schedule posts, create on-brand images, upload media from a link and read analytics. Through MCP the assistant does not move or delete posts: do that in the Calendar, or ask the assistant inside Postra, where you approve each change. Each workspace can make up to 120 requests every 5 minutes.',
   },
   {
     question: 'What do webhooks do?',
     answer:
-      'They tell your other tools when a post goes out. In Settings → Webhooks add an https:// address and choose all channels or some of them; each time a post publishes, Postra sends that address a JSON message with the post\'s id, text, publish date, the link to the published post and the channel\'s name and platform. Use it to post a note in Slack, add a row to a client report or update your CRM. If your server is briefly down, Postra tries again up to three times. Addresses inside private networks are refused.',
+      'They tell your other tools when a post goes out. In Settings → Webhooks add an https:// address and choose all channels or some of them; each time a post publishes, Postra sends that address a JSON message with the post\'s id, text, publish date, the link to the published post and the channel\'s name and platform. Use it to post a note in Slack, add a row to a client report or update your CRM. If your server is briefly down, Postra tries twice more (three attempts in all). Addresses inside private networks are refused.',
   },
   {
     question: 'How do I check that a webhook came from Postra?',

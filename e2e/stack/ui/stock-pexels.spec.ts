@@ -32,3 +32,27 @@ test('Pexels photos in the Studio show their credit and import on click', async 
   await page.getByTitle(/Stack Photographer \(Pexels\)/).click();
   expect((await imported).status()).toBe(201);
 });
+
+test('Unsplash photos in the Studio credit the photographer and Unsplash, and import on click', async ({ page }) => {
+  test.setTimeout(60_000);
+  await page.goto('/studio');
+  await expect(page.locator('canvas').first()).toBeVisible({ timeout: 30_000 });
+  await page.getByRole('button', { name: /Blank canvas/ }).click();
+  await page.getByRole('button', { name: 'Stock photos', exact: true }).click();
+
+  await page.getByRole('button', { name: 'Unsplash', exact: true }).click();
+  await expect(page.getByRole('link', { name: /Photos from Unsplash/ })).toBeVisible();
+  await page.getByPlaceholder('e.g. coffee, office, summer').fill(`rye loaf ${Date.now()}`);
+  await page.keyboard.press('Enter');
+  await expect(page.getByRole('link', { name: 'Stack Lens' })).toHaveAttribute(
+    'href',
+    'https://unsplash.com/@stacklens?utm_source=postra&utm_medium=referral'
+  );
+  await expect(page.getByRole('link', { name: 'Unsplash', exact: true })).toBeVisible();
+
+  const imported = page.waitForResponse(
+    (r) => r.url().endsWith('/media/unsplash-images/import') && r.request().method() === 'POST'
+  );
+  await page.getByTitle(/Stack Lens \(Unsplash\)/).click();
+  expect((await imported).status()).toBe(201);
+});

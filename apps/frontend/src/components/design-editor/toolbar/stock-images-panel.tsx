@@ -17,21 +17,29 @@ import { Skeleton } from '@gitroom/frontend/components/ui/skeleton';
 import { StudioIcon } from '@gitroom/frontend/components/studio/studio-icons';
 import useSWR from 'swr';
 
-type StockSource = 'pixabay' | 'pexels';
+type StockSource = 'pixabay' | 'pexels' | 'unsplash';
+
+const SOURCE_NAME: Record<StockSource, string> = {
+  pixabay: 'Pixabay',
+  pexels: 'Pexels',
+  unsplash: 'Unsplash',
+};
 
 // One shape for both libraries.
 interface StockImageHit {
-  id: number;
+  id: number | string;
   previewURL: string;
   importURL: string;
   alt: string;
   user: string;
   userURL?: string;
   pageURL: string;
+  // Unsplash: where to report the download (its API terms).
+  downloadLocation?: string;
 }
 
 const toHit = (source: StockSource, h: any): StockImageHit =>
-  source === 'pexels'
+  source !== 'pixabay'
     ? h
     : {
         id: h.id,
@@ -52,10 +60,10 @@ interface Props {
   defaultQuery?: string;
 }
 
-// Free stock photos from Pixabay or Pexels, imported to the media library on
-// click (neither allows hotlinking) and dropped onto the canvas. Saves an AI
-// credit every time a stock photo does the job instead of generating one.
-// Pexels asks for a visible link to Pexels and the photographer's credit.
+// Free stock photos from Pixabay, Pexels or Unsplash, imported to the media
+// library on click and dropped onto the canvas. Saves an AI credit every time
+// a stock photo does the job instead of generating one. Pexels and Unsplash
+// ask for a visible credit to the photographer and to them.
 export const StockImagesPanel: FC<Props> = ({ canvas, defaultQuery }) => {
   const fetch = useFetch();
   const toaster = useToaster();
@@ -69,7 +77,7 @@ export const StockImagesPanel: FC<Props> = ({ canvas, defaultQuery }) => {
   );
   const [searching, setSearching] = useState(false);
   const [searched, setSearched] = useState(false);
-  const [importingId, setImportingId] = useState<number | null>(null);
+  const [importingId, setImportingId] = useState<number | string | null>(null);
 
   const search = useCallback(
     async (term?: string, from: StockSource = source) => {
@@ -161,7 +169,11 @@ export const StockImagesPanel: FC<Props> = ({ canvas, defaultQuery }) => {
       try {
         const res = await fetch(`/media/${source}-images/import`, {
           method: 'POST',
-          body: JSON.stringify({ url: hit.importURL, sourceId: hit.id }),
+          body: JSON.stringify({
+            url: hit.importURL,
+            sourceId: hit.id,
+            downloadLocation: hit.downloadLocation,
+          }),
         });
         if (!res.ok) throw new Error(`import ${res.status}`);
         const media = await res.json();
@@ -184,9 +196,11 @@ export const StockImagesPanel: FC<Props> = ({ canvas, defaultQuery }) => {
       <span className="text-[11px] text-textColor/60 uppercase tracking-wide">
         {t('image_stock_title', 'Stock photos')}
       </span>
-      {!!sources?.pexels && (
+      {(!!sources?.pexels || !!sources?.unsplash) && (
         <div className="flex gap-1" role="group" aria-label={t('stock_source', 'Photo library')}>
-          {(['pixabay', 'pexels'] as const).map((s) => (
+          {(['pixabay', 'unsplash', 'pexels'] as const)
+            .filter((s) => s === 'pixabay' || !!sources?.[s])
+            .map((s) => (
             <button
               key={s}
               type="button"
@@ -198,7 +212,7 @@ export const StockImagesPanel: FC<Props> = ({ canvas, defaultQuery }) => {
                   : 'border-newBorder text-textColor/70 hover:text-textColor'
               }`}
             >
-              {s === 'pixabay' ? 'Pixabay' : 'Pexels'}
+              {SOURCE_NAME[s]}
             </button>
           ))}
         </div>
@@ -219,6 +233,18 @@ export const StockImagesPanel: FC<Props> = ({ canvas, defaultQuery }) => {
           >
             {t('video_stock_license', 'Pixabay License')} ↗
           </a>
+        </p>
+      ) : source === 'unsplash' ? (
+        <p className="text-[11px] text-textColor/65 leading-snug">
+          <a
+            href="https://unsplash.com/?utm_source=postra&utm_medium=referral"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-newAccent hover:underline"
+          >
+            {t('image_stock_unsplash_source', 'Photos from Unsplash')} ↗
+          </a>{' '}
+          {t('image_stock_pexels_licence', '— free to use, commercial use OK.')}
         </p>
       ) : (
         <p className="text-[11px] text-textColor/65 leading-snug">
@@ -257,7 +283,7 @@ export const StockImagesPanel: FC<Props> = ({ canvas, defaultQuery }) => {
               <button
                 onClick={() => importImage(hit)}
                 disabled={importingId !== null}
-                title={`${hit.alt} — ${hit.user} (${source === 'pexels' ? 'Pexels' : 'Pixabay'})`}
+                title={`${hit.alt} — ${hit.user} (${SOURCE_NAME[source]})`}
                 className="relative aspect-square rounded overflow-hidden border border-newBorder/50 hover:border-forth transition-colors disabled:opacity-60"
               >
                 {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -282,6 +308,19 @@ export const StockImagesPanel: FC<Props> = ({ canvas, defaultQuery }) => {
                 >
                   {t('image_stock_pexels_credit', 'Photo by {{user}} on Pexels', { user: hit.user })}
                 </a>
+              )}
+              {source === 'unsplash' && (
+                // Unsplash: the photographer and Unsplash, each linked.
+                <span className="text-[10px] text-textColor/60 truncate">
+                  {t('image_stock_photo_by', 'Photo by')}{' '}
+                  <a href={hit.userURL} target="_blank" rel="noopener noreferrer" className="hover:underline">
+                    {hit.user}
+                  </a>{' '}
+                  {t('image_stock_on', 'on')}{' '}
+                  <a href={hit.pageURL} target="_blank" rel="noopener noreferrer" className="hover:underline">
+                    Unsplash
+                  </a>
+                </span>
               )}
             </div>
           ))}

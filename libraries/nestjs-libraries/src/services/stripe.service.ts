@@ -1,4 +1,8 @@
 import Stripe from 'stripe';
+import {
+  invoiceRows,
+  PaymentInvoice,
+} from '@gitroom/nestjs-libraries/services/stripe.invoices';
 import { HttpException, Injectable, Logger } from '@nestjs/common';
 import { ioRedis } from '@gitroom/nestjs-libraries/redis/redis.service';
 import { Organization, User } from '@prisma/client';
@@ -391,6 +395,17 @@ export class StripeService {
 
     await this._subscriptionService.deleteSubscription(customer);
     return { ok: true };
+  }
+
+  // Billing history: the organisation's invoices, newest first. No Stripe
+  // customer (a comp or lifetime plan) = nothing to list.
+  async getInvoices(organizationId: string): Promise<PaymentInvoice[]> {
+    const customer = await this.getCustomerByOrganizationId(organizationId);
+    if (!customer || !customer.startsWith('cus_')) {
+      return [];
+    }
+    const invoices = await stripe.invoices.list({ customer, limit: 100 });
+    return invoiceRows(invoices.data);
   }
 
   async createOrGetCustomer(organization: Organization) {

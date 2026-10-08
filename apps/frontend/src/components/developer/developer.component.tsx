@@ -214,7 +214,7 @@ export const DeveloperComponent: FC = () => {
       title: t('oauth_rotate_secret_title', 'Generate a new client secret?'),
       description: t(
         'oauth_rotate_secret_description',
-        'This generates a new client secret and invalidates the current one. Integrations using the old secret will stop working.'
+        'This generates a new client secret and invalidates the current one. Your app must use the new secret to exchange codes from now on; tokens it already has keep working.'
       ),
       approveLabel: t('generate', 'Generate'),
       cancelLabel: t('cancel', 'Cancel'),

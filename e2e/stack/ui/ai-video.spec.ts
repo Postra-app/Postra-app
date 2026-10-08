@@ -22,6 +22,11 @@ test('AI Image and AI Video are labelled buttons on a laptop-width screen', asyn
   await page.getByRole('button', { name: 'AI Video', exact: true }).focus();
   await page.keyboard.press('Enter');
   await expect(page.getByText(/\d+ video credits left/)).toBeVisible();
+  // E2E-05-80: the picture picker of the video window offered AI Video too —
+  // a video cannot be one of the pictures the clip is made from.
+  const pictures = page.locator('form').filter({ hasText: 'Images (max 3)' });
+  await expect(pictures.getByRole('button', { name: 'AI Image', exact: true })).toBeVisible();
+  await expect(pictures.getByRole('button', { name: 'AI Video', exact: true })).toHaveCount(0);
   expect(problems).toEqual([]);
 });
 

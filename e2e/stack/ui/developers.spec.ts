@@ -36,3 +36,16 @@ test('Settings → Developers: API key, the SDK and MCP, and nothing that does n
     'https://github.com/Postra-app/Postra-app/blob/main/docs/public-api/oauth.md'
   );
 });
+
+// ChatGPT and Claude used to get the API key inside the server address
+// (https://…/mcp/<key>): in every log on the way, full access, and cutting one
+// assistant off meant rotating the key for everything. They sign in by OAuth
+// now (dynamic client registration): the address carries no key.
+test('Remote servers (ChatGPT, Claude) get the OAuth address, never the API key', async ({ page }) => {
+  await page.goto('/settings');
+  await page.getByRole('tab', { name: 'Developers' }).click();
+  await page.getByRole('button', { name: 'Remote servers (ChatGPT, Claude)' }).click();
+  await expect(page.getByText(/\/api\/mcp-oauth$/)).toBeVisible();
+  await expect(page.getByText(/sign in to Postra and approve/i)).toBeVisible();
+  await expect(page.getByText(/\/mcp\/[*\w]{8,}/)).toHaveCount(0);
+});
