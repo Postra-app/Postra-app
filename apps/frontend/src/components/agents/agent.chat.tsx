@@ -70,8 +70,8 @@ export const AgentChat: FC = () => {
           <div className="text-[13.5px] text-newTextColor/70">
             {t(
               'agent_fair_use_description',
-              "You have asked the AI assistant {{count}} questions this month — the fair-use limit, the same on every plan. It resets with your next billing month.",
-              { count: AGENT_FAIR_USE_MESSAGES.toLocaleString('en-GB') }
+              "You have asked the AI assistant {{questions}} questions this month — the fair-use limit, the same on every plan. It resets with your next billing month.",
+              { questions: AGENT_FAIR_USE_MESSAGES.toLocaleString('en-GB') }
             )}
           </div>
         </div>

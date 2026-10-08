@@ -1531,5 +1531,5 @@
   "billing_this_month": "W tym miesiącu",
   "billing_ai_images_left": "zostało {{left}} z {{total}} obrazów AI",
   "billing_ai_videos_left": "zostało {{left}} z {{total}} wideo AI",
-  "agent_fair_use_description": "W tym miesiącu zadałeś asystentowi AI {{count}} pytań — to limit uczciwego korzystania, taki sam w każdym planie. Odnowi się z kolejnym okresem rozliczeniowym."
+  "agent_fair_use_description": "W tym miesiącu zadałeś asystentowi AI {{questions}} pytań — to limit uczciwego korzystania, taki sam w każdym planie. Odnowi się z kolejnym okresem rozliczeniowym."
 }

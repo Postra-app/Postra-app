@@ -1532,5 +1532,5 @@
   "billing_this_month": "This month",
   "billing_ai_images_left": "{{left}} of {{total}} AI images left",
   "billing_ai_videos_left": "{{left}} of {{total}} AI videos left",
-  "agent_fair_use_description": "You have asked the AI assistant {{count}} questions this month — the fair-use limit, the same on every plan. It resets with your next billing month."
+  "agent_fair_use_description": "You have asked the AI assistant {{questions}} questions this month — the fair-use limit, the same on every plan. It resets with your next billing month."
 }
