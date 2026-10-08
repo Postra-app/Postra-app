@@ -4,6 +4,9 @@ jest.mock('undici', () => ({
     throw new Error('elevenlabs timeout');
   }),
 }));
+// music-metadata 11 ships ESM only, which Jest's CommonJS runtime cannot
+// load; this test fails before any audio is read.
+jest.mock('music-metadata', () => ({ parseBuffer: jest.fn() }));
 jest.mock('@gitroom/nestjs-libraries/upload/upload.factory', () => ({
   UploadFactory: { createStorage: () => ({ uploadFile: jest.fn() }) },
 }));
