@@ -664,6 +664,9 @@ model Webhooks {
   name           String
   organizationId String
   url            String
+  // Signs every delivery (Postra-Signature header), stored encrypted
+  // (enc::). Made on first use for webhooks created before it existed.
+  secret         String?
   deletedAt      DateTime?
   createdAt      DateTime               @default(now())
   updatedAt      DateTime               @updatedAt

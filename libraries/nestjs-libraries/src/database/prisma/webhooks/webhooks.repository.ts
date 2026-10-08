@@ -4,6 +4,8 @@ import {
 } from '@gitroom/nestjs-libraries/database/prisma/prisma.service';
 import { BadRequestException, Injectable } from '@nestjs/common';
 import { WebhooksDto } from '@gitroom/nestjs-libraries/dtos/webhooks/webhooks.dto';
+import { newWebhookSecret } from '@gitroom/nestjs-libraries/dtos/webhooks/webhook.signature';
+import { AuthService } from '@gitroom/helpers/auth/auth.service';
 
 @Injectable()
 export class WebhooksRepository {
@@ -22,12 +24,15 @@ export class WebhooksRepository {
     });
   }
 
-  getWebhooks(orgId: string) {
+  // Every member's settings page reads this: the signing secret stays out
+  // (admins read it on its own route).
+  getWebhooks(orgId: string, withSecret = false) {
     return this._webhooks.model.webhooks.findMany({
       where: {
         organizationId: orgId,
         deletedAt: null,
       },
+      omit: { secret: !withSecret },
       include: {
         integrations: {
           select: {
@@ -42,6 +47,37 @@ export class WebhooksRepository {
         },
       },
     });
+  }
+
+  // The webhook's signing secret, decrypted; made now for a webhook created
+  // before secrets existed. Null for a webhook this org does not have.
+  async getSecret(orgId: string, id: string): Promise<string | null> {
+    const where = { id, organizationId: orgId, deletedAt: null as null };
+    const row = await this._webhooks.model.webhooks.findFirst({
+      where,
+      select: { secret: true },
+    });
+    if (!row) {
+      return null;
+    }
+    if (!row.secret) {
+      // Only where it is still empty, so two first deliveries at once agree
+      // on one secret.
+      await this._webhooks.model.webhooks.updateMany({
+        where: { ...where, secret: null },
+        data: { secret: AuthService.encryptIntegrationToken(newWebhookSecret()) },
+      });
+      return this.getSecret(orgId, id);
+    }
+    return AuthService.decryptIntegrationToken(row.secret);
+  }
+
+  async rotateSecret(orgId: string, id: string) {
+    const { count } = await this._webhooks.model.webhooks.updateMany({
+      where: { id, organizationId: orgId, deletedAt: null },
+      data: { secret: AuthService.encryptIntegrationToken(newWebhookSecret()) },
+    });
+    return count ? this.getSecret(orgId, id) : null;
   }
 
   // updateMany, not update: update throws on a missing row (an unknown id or
@@ -86,6 +122,7 @@ export class WebhooksRepository {
             organizationId: orgId,
             url: body.url,
             name: body.name,
+            secret: AuthService.encryptIntegrationToken(newWebhookSecret()),
             integrations: { create: links },
           },
         });
