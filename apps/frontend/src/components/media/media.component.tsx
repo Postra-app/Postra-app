@@ -715,6 +715,9 @@ export const MultiMediaComponent: FC<{
   label: string;
   description: string;
   mediaNotAvailable?: boolean;
+  // A picker for pictures only (the pictures an AI video is made from): no
+  // AI Video in its toolbar (E2E-05-80).
+  imagesOnly?: boolean;
   dummy: boolean;
   allData: {
     content: string;
@@ -756,6 +759,7 @@ export const MultiMediaComponent: FC<{
     value,
     allData,
     dummy,
+    imagesOnly,
     toolBar,
     information,
     mediaNotAvailable,
@@ -1060,9 +1064,11 @@ export const MultiMediaComponent: FC<{
               {!!user?.tier?.ai && (
                 <>
                   <AiImage value={text} onChange={changeMedia} />
-                  <div className="phone:hidden flex">
-                    <AiVideo value={text} onChange={changeMedia} />
-                  </div>
+                  {!imagesOnly && (
+                    <div className="phone:hidden flex">
+                      <AiVideo value={text} onChange={changeMedia} />
+                    </div>
+                  )}
                 </>
               )}
             </div>
