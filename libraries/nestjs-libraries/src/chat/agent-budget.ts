@@ -7,6 +7,15 @@ export const AGENT_MAX_STEPS = 25;
 /** Re-reading the ledger every step would put a query between every tool. */
 export const BUDGET_CHECK_EVERY_STEPS = 3;
 
+/**
+ * The OpenAI model behind the assistant (chat and MCP `ask_postra`).
+ * AGENT_MODEL overrides it, so another model can be tried on a stack or on
+ * production without a release.
+ */
+export const AGENT_DEFAULT_MODEL = 'gpt-5.5';
+export const agentModelId = (value = process.env.AGENT_MODEL): string =>
+  value?.trim() || AGENT_DEFAULT_MODEL;
+
 import { getAuth } from '@gitroom/nestjs-libraries/chat/async.storage';
 
 /**

@@ -16,6 +16,7 @@ import {
   AGENT_MAX_STEPS,
   organizationOfRun,
   shouldStopForBudget,
+  agentModelId,
 } from '@gitroom/nestjs-libraries/chat/agent-budget';
 import {
   describeAgentRun,
@@ -162,10 +163,8 @@ ${brandKit}
         - Date (UTC): ${dayjs().format('YYYY-MM-DD HH:mm:ss')}
 `;
       },
-      // gpt-5.5 is the official successor to gpt-5.2 (retired from ChatGPT
-      // 2026-06-12, API snapshot shutdown ~2026-08-10). gpt-5.4-mini is a
-      // cheaper lever if agent cost climbs.
-      model: meterLanguageModel(openai('gpt-5.5'), 'agent'),
+      // AGENT_DEFAULT_MODEL, or AGENT_MODEL when set (agent-budget.ts).
+      model: meterLanguageModel(openai(agentModelId()), 'agent'),
       tools,
       // Bound the run and re-check the monthly allowance while it is going,
       // not just before it starts.
