@@ -401,11 +401,12 @@ export class TiktokProvider extends SocialAbstract implements SocialProvider {
     };
   }
 
-  async maxVideoLength(accessToken: string) {
-    const {
-      data: { max_video_post_duration_sec },
-    } = await (
-      await fetch(
+  // Through this.fetch, so an expired token (401 access_token_invalid — TikTok
+  // tokens live 24 h) raises RefreshToken and the caller refreshes and retries,
+  // instead of the composer getting an empty privacy list (E2E-08-63).
+  private async queryCreatorInfo(accessToken: string) {
+    const body = await (
+      await this.fetch(
         'https://open.tiktokapis.com/v2/post/publish/creator_info/query/',
         {
           method: 'POST',
@@ -413,9 +414,22 @@ export class TiktokProvider extends SocialAbstract implements SocialProvider {
             'Content-Type': 'application/json; charset=UTF-8',
             Authorization: `Bearer ${accessToken}`,
           },
-        }
+        },
+        'creator info'
       )
     ).json();
+
+    if (body?.error?.code && body.error.code !== 'ok') {
+      throw new Error(body.error.message || body.error.code);
+    }
+
+    return body?.data ?? {};
+  }
+
+  async maxVideoLength(accessToken: string) {
+    const { max_video_post_duration_sec } = await this.queryCreatorInfo(
+      accessToken
+    );
 
     return {
       maxDurationSeconds: max_video_post_duration_sec,
@@ -427,18 +441,7 @@ export class TiktokProvider extends SocialAbstract implements SocialProvider {
   // populated from creator_info (not hardcoded) and the comment/duet/stitch
   // toggles to respect the creator's disabled flags.
   async creatorInfo(accessToken: string) {
-    const { data } = await (
-      await fetch(
-        'https://open.tiktokapis.com/v2/post/publish/creator_info/query/',
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json; charset=UTF-8',
-            Authorization: `Bearer ${accessToken}`,
-          },
-        }
-      )
-    ).json();
+    const data = await this.queryCreatorInfo(accessToken);
 
     return {
       privacyOptions: (data?.privacy_level_options as string[]) ?? [],

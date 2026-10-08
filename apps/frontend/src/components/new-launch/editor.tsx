@@ -33,7 +33,10 @@ import { UpDownArrow } from '@gitroom/frontend/components/launches/up.down.arrow
 import { deleteDialog } from '@gitroom/react/helpers/delete.dialog';
 import { useExistingData } from '@gitroom/frontend/components/launches/helpers/use.existing.data';
 import { useDropzone } from 'react-dropzone';
-import { useUppyUploader } from '@gitroom/frontend/components/media/new.uploader';
+import {
+  UploadCancelButton,
+  useUppyUploader,
+} from '@gitroom/frontend/components/media/new.uploader';
 import { Dashboard } from '@uppy/react';
 import Link from '@tiptap/extension-link';
 import {
@@ -785,6 +788,7 @@ export const Editor: FC<{
                   hideCancelButton={true}
                   hideProgressAfterFinish={true}
                 />
+                <UploadCancelButton uppy={uppy} />
               </div>
             </div>
             <div

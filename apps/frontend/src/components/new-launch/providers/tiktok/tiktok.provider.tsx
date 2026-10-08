@@ -51,6 +51,9 @@ const TikTokSettings: FC<{
     nickname?: string;
     avatarUrl?: string;
   } | null>(null);
+  // The backend answers `false` when TikTok refused even after a token refresh;
+  // without this the selector said "Loading…" forever (E2E-08-63).
+  const [creatorInfoFailed, setCreatorInfoFailed] = useState(false);
 
   // Detected duration (seconds) of the attached video, used to enforce the
   // creator's TikTok max_video_post_duration_sec client-side before posting.
@@ -60,6 +63,10 @@ const TikTokSettings: FC<{
     customFunc
       .get('creatorInfo')
       .then((data) => {
+        if (!Array.isArray(data?.privacyOptions)) {
+          setCreatorInfoFailed(true);
+          return;
+        }
         setCreatorInfo(data);
         // Force-off any interaction the creator has disabled so we never send an
         // "allow" that TikTok would reject server-side.
@@ -67,7 +74,10 @@ const TikTokSettings: FC<{
         if (data?.duetDisabled) setValue('duet', false);
         if (data?.stitchDisabled) setValue('stitch', false);
       })
-      .catch(() => setCreatorInfo(null));
+      .catch(() => {
+        setCreatorInfo(null);
+        setCreatorInfoFailed(true);
+      });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -243,6 +253,11 @@ const TikTokSettings: FC<{
         <option value="">
           {creatorInfo
             ? t('select', 'Select')
+            : creatorInfoFailed
+            ? t(
+                'tiktok_settings_failed',
+                "Couldn't load your TikTok settings - reconnect the channel and try again"
+              )
             : t('loading_tiktok_settings', 'Loading your TikTok settings…')}
         </option>
         {privacyLevel.map((item) => (

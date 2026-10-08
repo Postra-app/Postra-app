@@ -168,3 +168,55 @@ test('E2E-05-49: the old week answering late does not replace the new week', asy
     await api.dispose();
   }
 });
+
+// A post dropped on another day in Month view kept no time of its own: the
+// cell stands for the whole day and the drop sent its end, 23:59 (found while
+// writing the calendar docs, 2026-10-09). It keeps its time of day.
+test('a post moved in Month view keeps its time of day', async ({ page }) => {
+  const api = await signedIn('a');
+  const content = `[stack ui] month drag ${Date.now()}`;
+  const slot = quietSlot(4);
+  const target = new Date(slot);
+  // Another day of the same month, still in the future.
+  target.setDate(slot.getDate() === 1 ? slot.getDate() + 1 : slot.getDate() - 1);
+  const ymd = (d: Date) =>
+    `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  const created = await api.post('/posts', {
+    data: {
+      type: 'draft',
+      shortLink: false,
+      date: slot.toISOString(),
+      tags: [],
+      posts: [
+        {
+          type: 'draft',
+          integration: { id: USERS.a.channel.id },
+          value: [{ content, image: [] }],
+          settings: { __type: 'bluesky' },
+        },
+      ],
+    },
+  });
+  expect(created.status(), await created.text()).toBe(201);
+  const { id, group } = (await listPosts(api)).find((p) => p.content.includes(content))!;
+
+  try {
+    const first = new Date(slot.getFullYear(), slot.getMonth(), 1);
+    const last = new Date(slot.getFullYear(), slot.getMonth() + 1, 0);
+    await page.goto(`/launches?display=month&startDate=${ymd(first)}&endDate=${ymd(last)}`);
+    const tile = page
+      .getByRole('button', { name: `Open post: ${USERS.a.channel.name}` })
+      .filter({ hasText: content });
+    await expect(tile).toBeVisible();
+    const saved = page.waitForResponse((r) => r.url().includes(`/posts/${id}/date`) && r.request().method() === 'PUT');
+    await tile.dragTo(page.locator(`[data-slot="${ymd(target)}T23:59"]`));
+    expect((await saved).status()).toBeLessThan(300);
+
+    const expected = new Date(target);
+    expected.setHours(slot.getHours(), slot.getMinutes(), 0, 0);
+    expect((await (await api.get(`/posts/${id}`)).json()).posts[0].publishDate).toBe(expected.toISOString());
+  } finally {
+    await api.delete(`/posts/${group}`);
+    await api.dispose();
+  }
+});

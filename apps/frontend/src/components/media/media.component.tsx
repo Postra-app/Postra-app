@@ -24,7 +24,10 @@ import EventEmitter from 'events';
 import { useToaster } from '@gitroom/react/toaster/toaster';
 import clsx from 'clsx';
 import { VideoFrame } from '@gitroom/react/helpers/video.frame';
-import { useUppyUploader } from '@gitroom/frontend/components/media/new.uploader';
+import {
+  UploadCancelButton,
+  useUppyUploader,
+} from '@gitroom/frontend/components/media/new.uploader';
 import dynamic from 'next/dynamic';
 import { useRouter } from 'next/navigation';
 import { useUser } from '@gitroom/frontend/components/layout/user.context';
@@ -515,6 +518,7 @@ export const MediaBox: FC<{
               hideCancelButton={true}
               hideProgressAfterFinish={true}
             />
+            <UploadCancelButton uppy={uppy} />
           </div>
           <div className="w-full h-[46px] uppyChange" />
         </div>
