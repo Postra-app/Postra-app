@@ -298,7 +298,7 @@ export const APP_TABS: AppTabGuide[] = [
   {
     id: 'analytics',
     name: 'Analytics',
-    description: 'Follower growth and post performance for Facebook, Instagram, Threads, X, YouTube, TikTok and LinkedIn Pages. Bluesky, Mastodon, Telegram, Discord and personal LinkedIn profiles have no analytics.',
+    description: 'Follower growth and post performance for Facebook, Instagram, Threads, X, YouTube, TikTok and LinkedIn Pages; post statistics (likes, reposts, replies) for Bluesky and Mastodon. Telegram, Discord and personal LinkedIn profiles have no analytics.',
   },
   {
     id: 'studio',
