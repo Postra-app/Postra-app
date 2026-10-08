@@ -12,6 +12,11 @@
 //   POST /__hold {"ms": n}  the next status is recorded at once but answered
 //                           n ms later — a platform that accepted the post
 //                           while the worker that sent it dies (restart/)
+//   GET  /api/v1/statuses/:id   a received status with its counts (favourites
+//                           3, boosts 2, replies 1) — post statistics
+//   GET  /xrpc/app.bsky.feed.getPosts?uris=u   Bluesky's public AppView
+//                           (stack.env BLUESKY_APPVIEW_URL): any uri, counts
+//                           likes 5, reposts 4, replies 3, quotes 2
 //   POST /oauth/token       exchange any code for a token — the account is
 //   GET  /api/v1/accounts/verify_credentials   named after the code, so each
 //                           connect in a test can be a different account
@@ -102,6 +107,20 @@ createServer(async (req, res) => {
     holdNextMs = 0;
     if (hold) await new Promise((r) => setTimeout(r, hold));
     return json(res, 200, { id, url: `http://localhost:${PORT}/@stack/${id}` });
+  }
+
+  const status = req.method === 'GET' && req.url?.match(/^\/api\/v1\/statuses\/(\d+)$/);
+  if (status) {
+    const found = received.find((r) => r.id === status[1]);
+    if (!found) return json(res, 404, { error: 'Record not found' });
+    return json(res, 200, { id: found.id, favourites_count: 3, reblogs_count: 2, replies_count: 1 });
+  }
+
+  if (req.method === 'GET' && req.url?.startsWith('/xrpc/app.bsky.feed.getPosts?')) {
+    const uri = new URL(req.url, 'http://fake').searchParams.get('uris');
+    return json(res, 200, {
+      posts: uri ? [{ uri, likeCount: 5, repostCount: 4, replyCount: 3, quoteCount: 2 }] : [],
+    });
   }
 
   json(res, 404, { error: 'Record not found' });
