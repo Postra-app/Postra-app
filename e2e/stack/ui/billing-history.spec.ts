@@ -9,6 +9,10 @@ const day = (d: string) => Math.floor(new Date(d).getTime() / 1000);
 
 test('Billing lists the invoices with our plan names and links, without the £0 trial one', async ({ page }) => {
   const problems = watchForErrors(page);
+  // The plan cards ask Stripe for an upgrade quote, and the stack has no
+  // Stripe (502 by design): whether that answer landed before the end of the
+  // test decided the result.
+  await page.route('**/api/billing/prorate', (route) => route.fulfill({ json: { price: 10 } }));
   await page.route('**/api/billing/invoices', (route) =>
     route.fulfill({
       json: [
