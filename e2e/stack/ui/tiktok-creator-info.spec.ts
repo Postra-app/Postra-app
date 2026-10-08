@@ -20,8 +20,9 @@ test('E2E-08-63: the composer says when TikTok settings could not be loaded', as
     // The channel's own tab, then its settings panel.
     await page.getByRole('button', { name: 'Throwaway tiktok 0', exact: true }).click();
     await page.getByText('Throwaway tiktok 0 Settings').click();
-    await expect(page.getByText("Couldn't load your TikTok settings", { exact: false })).toBeVisible();
-    await expect(page.getByText('Loading your TikTok settings')).toHaveCount(0);
+    const privacy = page.getByRole('combobox', { name: 'Who can see this video?' });
+    await expect(privacy).toContainText("Couldn't load your TikTok settings");
+    await expect(privacy).not.toContainText('Loading your TikTok settings');
   } finally {
     await org.remove();
     await prisma.$disconnect();
