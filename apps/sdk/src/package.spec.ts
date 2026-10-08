@@ -59,7 +59,8 @@ main();
     expect(() =>
       run(
         join(sdk, '..', '..', 'node_modules', '.bin', 'tsc'),
-        ['--noEmit', '--strict', '--module', 'nodenext', '--moduleResolution', 'nodenext', '--skipLibCheck', 'false', 'example.ts'],
+        // A Node project has @types/node (Buffer in upload()); borrow the repo's.
+        ['--noEmit', '--strict', '--module', 'nodenext', '--moduleResolution', 'nodenext', '--typeRoots', join(sdk, '..', '..', 'node_modules', '@types'), '--types', 'node', 'example.ts'],
         app
       )
     ).not.toThrow();
