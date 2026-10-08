@@ -24,7 +24,7 @@ const report = {
   days: 30,
   usdPerGbp: 1.34,
   threshold: 0.7,
-  unknownModels: [],
+  unknownModels: [] as string[],
   organizations: [
     { organizationId: 'o1', name: 'Bakery', tier: 'STANDARD', trial: false, planGbp: 19, costUsd: 19.5, share: 0.77, alert: true },
   ],

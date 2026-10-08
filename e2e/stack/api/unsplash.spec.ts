@@ -46,20 +46,29 @@ test('an Unsplash photo comes with its credit, and importing it reports the down
   }
 });
 
-test('an Unsplash import from anywhere but Unsplash is refused, and so is a foreign download URL', async () => {
+test('an Unsplash import from anywhere but Unsplash is refused, and the download report never follows a client address', async () => {
   const org = await throwawayOrg(prisma, { tier: 'STANDARD', totalChannels: 3, channels: 0 });
   try {
     for (const url of ['https://example.com/x.jpg', 'http://169.254.169.254/', 'https://images.unsplash.com.evil.test/x.jpg']) {
       expect((await org.api.post('/media/unsplash-images/import', { data: { url } })).status(), url).toBe(400);
     }
+    // The download report goes to Unsplash's API for the photo's id, never
+    // to an address the client sends (CodeQL on #350).
+    const before = (await (await org.api.get('http://localhost:58080/__unsplash/downloads')).json()).length;
     const res = await org.api.post('/media/unsplash-images/import', {
       data: {
         url: 'http://localhost:58080/__pexels/photo.png',
-        sourceId: 'x',
+        sourceId: 'StackUnspl1',
         downloadLocation: 'http://169.254.169.254/latest/meta-data',
       },
     });
-    expect(res.status()).toBe(400);
+    expect(res.status(), await res.text()).toBe(201);
+    const downloads = await (await org.api.get('http://localhost:58080/__unsplash/downloads')).json();
+    expect(downloads.slice(before)).toEqual(['StackUnspl1']);
+    // No photo id, nothing to report: refused.
+    expect(
+      (await org.api.post('/media/unsplash-images/import', { data: { url: 'http://localhost:58080/__pexels/photo.png', sourceId: '../me' } })).status()
+    ).toBe(400);
   } finally {
     await org.remove();
   }
