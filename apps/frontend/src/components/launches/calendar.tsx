@@ -1228,30 +1228,6 @@ const CalendarItem: FC<{
             <CopyDebug />
           </button>
         )}
-        <button
-          className={clsx(
-            'hidden group-hover:block group-focus-within:block hover:underline cursor-pointer',
-            post?.tags?.[0]?.tag?.color && 'text-shadow-tags'
-          )}
-          type="button"
-        aria-label={t('duplicate_post', 'Duplicate Post')}
-        onClick={duplicatePost}
-        >
-          <Duplicate />
-        </button>
-        <button
-          className={clsx(
-            'hidden group-hover:block group-focus-within:block hover:underline cursor-pointer',
-            post?.tags?.[0]?.tag?.color && 'text-shadow-tags'
-          )}
-          type="button"
-        aria-label={t('delete_post', 'Delete Post')}
-        onClick={deletePost}
-        >
-          <span className="text-red-500">
-            <DeletePost />
-          </span>
-        </button>{' '}
         {(state === 'PUBLISHED' || state === 'ERROR') &&
           !post.intervalInDays &&
           firstReleaseUrl(post.releaseURL) && (
@@ -1315,6 +1291,31 @@ const CalendarItem: FC<{
         onClick={preview}
         >
           <Preview />
+        </button>
+        {/* Delete last, after Preview and Duplicate (upstream adf1a8f5). */}
+        <button
+          className={clsx(
+            'hidden group-hover:block group-focus-within:block hover:underline cursor-pointer',
+            post?.tags?.[0]?.tag?.color && 'text-shadow-tags'
+          )}
+          type="button"
+        aria-label={t('duplicate_post', 'Duplicate Post')}
+        onClick={duplicatePost}
+        >
+          <Duplicate />
+        </button>
+        <button
+          className={clsx(
+            'hidden group-hover:block group-focus-within:block hover:underline cursor-pointer',
+            post?.tags?.[0]?.tag?.color && 'text-shadow-tags'
+          )}
+          type="button"
+        aria-label={t('delete_post', 'Delete Post')}
+        onClick={deletePost}
+        >
+          <span className="text-red-500">
+            <DeletePost />
+          </span>
         </button>
       </div>
       {/* Opens the post from the keyboard too (Enter or Space); it was a div
