@@ -47,3 +47,14 @@ test('a clip generated from the composer is attached to the post', async ({ page
   expect(await left()).toBe(before - 1);
   expect(problems).toEqual([]);
 });
+
+test('Billing shows the AI images and videos left this month', async ({ page }) => {
+  const problems = watchForErrors(page);
+  const left = async (type: string) =>
+    (await (await page.request.get(`/api/copilot/credits?type=${type}`)).json()).credits as number;
+  await page.goto('/billing');
+  const usage = page.getByRole('region', { name: 'This month' });
+  await expect(usage).toContainText(`${await left('ai_images')} of 150 AI images left`);
+  await expect(usage).toContainText(`${await left('ai_videos')} of 30 AI videos left`);
+  expect(problems).toEqual([]);
+});

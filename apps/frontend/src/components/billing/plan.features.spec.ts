@@ -17,6 +17,7 @@ describe('planFeatures', () => {
       '1 person',
       'AI writer, assistant and auto-complete',
       '30 AI images a month',
+      '15 AI videos a month',
       'Studio image editor',
       'Public API and 2 webhooks',
     ]);
@@ -30,6 +31,8 @@ describe('planFeatures', () => {
     expect(pro).toContain('Blog to posts from 3 RSS feeds');
     expect(pro).toContain('Unlimited posts');
     expect(pro).toContain('2 people');
+    expect(pro).toContain('30 AI videos a month');
+    expect(texts('ULTIMATE')).toContain('60 AI videos a month');
   });
 
   it('names every platform a plan unlocks, nothing more', () => {
