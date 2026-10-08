@@ -370,11 +370,19 @@ export class UsersController {
   // carried the API key (a SUPERADMIN credential for the public API and MCP)
   // and the Stripe customer id to every member, USER included (E2E-08-24);
   // /user/self shows the key to admins only, and nothing here needs either.
+  // Only the fields the switchers read (web and mobile), so a column added to
+  // Organization later does not reach every member by default (upstream
+  // 8ad0df3d).
   @Get('/organizations')
   async getOrgs(@GetUserFromRequest() user: User) {
     return (await this._orgService.getOrgsByUserId(user.id))
       .filter((f) => !f.users[0].disabled)
-      .map(({ apiKey, paymentId, ...org }) => org);
+      .map(({ id, name, users, subscription }) => ({
+        id,
+        name,
+        users,
+        subscription,
+      }));
   }
 
   @Post('/change-org')
