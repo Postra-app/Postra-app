@@ -31,3 +31,19 @@ test('Billing lists the invoices with our plan names and links, without the £0 
   await expect(page.getByRole('link', { name: 'Download invoice' }).first()).toHaveAttribute('href', 'https://pay.stripe.com/a.pdf');
   expect(problems).toEqual([]);
 });
+
+// Codex on -08-e: after a subscription ends its row is deleted, and the
+// history was only shown with a subscription — the old invoices disappeared.
+test('an organisation without a subscription still sees its past invoices', async ({ page }) => {
+  await page.route('**/api/user/subscription', (route) => route.fulfill({ json: { subscription: null } }));
+  await page.route('**/api/billing/invoices', (route) =>
+    route.fulfill({
+      json: [
+        { id: 'in_old', number: 'P-9', tier: 'PRO', period: 'MONTHLY', description: null, amount: 2900, currency: 'gbp', created: day('2026-09-10'), periodEnd: day('2026-10-10'), status: 'paid', downloadUrl: 'https://pay.stripe.com/old.pdf', viewUrl: null },
+      ],
+    })
+  );
+  await page.goto('/billing');
+  await expect(page.getByText('Billing History')).toBeVisible({ timeout: 20_000 });
+  await expect(page.getByText('Monthly · P-9')).toBeVisible();
+});
