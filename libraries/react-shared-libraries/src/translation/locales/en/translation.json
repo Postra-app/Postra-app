@@ -101,7 +101,7 @@
   "login_register_to_add_comments": "Login / Register to add comments",
   "status": "Status:",
   "there_are_not_plugs_matching_your_channels": "No plugs matching your channels",
-  "you_have_to_add_x_or_linkedin_or_threads": "Add an X, LinkedIn or Threads channel to get started here",
+  "you_have_to_add_x_or_linkedin_or_threads": "Add an X, Bluesky or Threads channel to get started here",
   "go_to_the_calendar_to_add_channels": "Go to the calendar to add channels",
   "channels": "Channels",
   "activate": "Activate",
@@ -980,7 +980,7 @@
   "oauth_delete_app_description": "This will delete the OAuth application and revoke all user authorizations. This action cannot be undone.",
   "oauth_app_deleted": "OAuth app deleted",
   "oauth_app_delete_failed": "Failed to delete the app",
-  "plugin_updated": "Plugin updated",
+  "plugin_updated": "Plug updated",
   "video_bad_type": "Choose a video file (MP4, WebM, MOV).",
   "video_disk_too_big": "File is too large to edit in the browser (200 MB limit).",
   "video_library_too_big": "This clip is too large to edit in the browser (200 MB limit). Use a shorter one.",
@@ -1557,5 +1557,6 @@
   "billing_status_paid": "Paid",
   "billing_status_void": "Void",
   "billing_view_invoice": "View invoice",
-  "remote_server_oauth_hint": "Add this address as a custom connector in ChatGPT or Claude. They will ask you to sign in to Postra and approve the assistant. No API key is needed."
+  "remote_server_oauth_hint": "Add this address as a custom connector in ChatGPT or Claude. They will ask you to sign in to Postra and approve the assistant. No API key is needed.",
+  "plug_not_saved": "Could not save the plug. Please try again."
 }

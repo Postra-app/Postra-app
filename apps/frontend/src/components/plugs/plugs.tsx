@@ -109,7 +109,7 @@ export const Plugs = () => {
           <br />
           {t(
             'you_have_to_add_x_or_linkedin_or_threads',
-            'Add an X, LinkedIn or Threads channel to get started here'
+            'Add an X, Bluesky or Threads channel to get started here'
           )}
         </div>
         <Button onClick={() => router.push('/launches')}>

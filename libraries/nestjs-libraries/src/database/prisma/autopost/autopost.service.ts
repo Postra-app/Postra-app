@@ -731,9 +731,10 @@ export class AutopostService {
       if (!newest.success) {
         return;
       }
-      // "sync last": remember the current latest item as already seen so
-      // enabling an autopost doesn't immediately republish an old article.
-      if (getPost.syncLast) {
+      // "Should we sync the current last post?" — Yes posts the newest
+      // article now; otherwise it is remembered as seen and only later ones
+      // are posted. (The form already saves it as seen on "No".)
+      if (!getPost.syncLast) {
         await this._autopostsRepository.updateUrl(id, newest.url);
         return;
       }

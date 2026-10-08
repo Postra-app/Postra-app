@@ -566,7 +566,8 @@ export class BlueskyProvider extends SocialAbstract implements SocialProvider {
       return true;
     }
 
-    return true;
+    // Below the threshold: not done, check again at the next run.
+    return false;
   }
 
   @Plug({
@@ -644,7 +645,8 @@ export class BlueskyProvider extends SocialAbstract implements SocialProvider {
       return true;
     }
 
-    return true;
+    // Below the threshold: not done, check again at the next run.
+    return false;
   }
 
   override async mention(

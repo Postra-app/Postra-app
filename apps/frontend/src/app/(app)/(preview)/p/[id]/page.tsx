@@ -185,7 +185,9 @@ export default async function Auth(props: {
                       <span className="text-sm text-gray-500">
                         @{integration.profile}
                       </span>
-                      {index === 0 && (
+                      {/* How the post was made is for the team, not the
+                          client opening the shared link. */}
+                      {index === 0 && !!searchParams?.share && (
                         <CreationMethodBadge
                           creationMethod={p.creationMethod}
                           size="md"
