@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { signedIn } from '../helpers';
+import { signedIn, stateFile } from '../helpers';
 import { USERS } from '../seed';
 
 // Adding a channel. Meta platforms first show a checklist; "Not yet — show me
@@ -162,5 +162,18 @@ test.describe('posting times in London', () => {
       }
       await api.dispose();
     }
+  });
+});
+
+test.describe('Bluesky channel of organisation B', () => {
+  test.use({ storageState: stateFile('b') });
+
+  test('"Update Credentials" opens a window with that title (E2E-05-82)', async ({ page }) => {
+    // The window was titled "Custom URL".
+    await page.goto('/launches');
+    await page.getByRole('button', { name: 'Channel options' }).first().click();
+    await page.getByText('Update Credentials', { exact: true }).click();
+    await expect(page.getByRole('dialog').getByText('Update Credentials', { exact: true })).toBeVisible();
+    await expect(page.getByRole('dialog').getByText('Custom URL', { exact: true })).toHaveCount(0);
   });
 });
