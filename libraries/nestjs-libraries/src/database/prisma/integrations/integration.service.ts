@@ -24,7 +24,11 @@ import { RefreshToken } from '@gitroom/nestjs-libraries/integrations/social.abst
 import { IntegrationTimeDto } from '@gitroom/nestjs-libraries/dtos/integrations/integration.time.dto';
 import { UploadFactory } from '@gitroom/nestjs-libraries/upload/upload.factory';
 import { PlugDto } from '@gitroom/nestjs-libraries/dtos/plugs/plug.dto';
-import { difference, uniq } from 'lodash';
+import { difference, uniqBy } from 'lodash';
+import {
+  isTimeZone,
+  PostingTime,
+} from '@gitroom/helpers/utils/posting.times';
 import utc from 'dayjs/plugin/utc';
 import { AutopostRepository } from '@gitroom/nestjs-libraries/database/prisma/autopost/autopost.repository';
 import { RefreshIntegrationService } from '@gitroom/nestjs-libraries/integrations/refresh.integration.service';
@@ -131,7 +135,7 @@ export class IntegrationService {
     username?: string,
     isBetweenSteps = false,
     refresh?: string,
-    timezone?: number,
+    timezone?: number | string,
     customInstanceDetails?: string,
     grantedScopes?: string[]
   ) {
@@ -958,20 +962,19 @@ export class IntegrationService {
   async findFreeDateTime(
     orgId: string,
     integrationsId?: string
-  ): Promise<number[]> {
+  ): Promise<PostingTime[]> {
     const findTimes = await this._integrationRepository.getPostingTimes(
       orgId,
       integrationsId
     );
-    return uniq(
-      findTimes.reduce((all: any, current: any) => {
-        return [
-          ...all,
-          ...JSON.parse(current.postingTimes).map(
-            (p: { time: number }) => p.time
-          ),
-        ];
-      }, [] as number[])
+    return uniqBy(
+      findTimes.flatMap((current: { postingTimes: string }) =>
+        (JSON.parse(current.postingTimes) as PostingTime[]).map(
+          ({ time, tz }) => (isTimeZone(tz) ? { time, tz } : { time })
+        )
+      ),
+      ({ time, tz }) => `${time}|${tz || ''}`
     );
   }
+
 }

@@ -1175,34 +1175,21 @@ export class PostsRepository {
     });
   }
 
-  async getPostsCountsByDates(
-    orgId: string,
-    times: number[],
-    date: dayjs.Dayjs
-  ) {
-    const dates = await this._post.model.post.findMany({
+  // Which of these moments already have a post of this org.
+  async findTakenDates(orgId: string, dates: Date[]) {
+    const posts = await this._post.model.post.findMany({
       where: {
         deletedAt: null,
         organizationId: orgId,
         publishDate: {
-          in: times.map((time) => {
-            return date.clone().add(time, 'minutes').toDate();
-          }),
+          in: dates,
         },
       },
+      select: {
+        publishDate: true,
+      },
     });
-
-    return times.filter(
-      (time) =>
-        date.clone().add(time, 'minutes').isAfter(dayjs.utc()) &&
-        !dates.find((dateFind) => {
-          return (
-            dayjs
-              .utc(dateFind.publishDate)
-              .diff(date.clone().startOf('day'), 'minutes') == time
-          );
-        })
-    );
+    return posts.map((post) => post.publishDate);
   }
 
   async getComments(postId: string) {

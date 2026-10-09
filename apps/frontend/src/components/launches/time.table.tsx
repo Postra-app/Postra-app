@@ -15,7 +15,14 @@ import { useModals } from '@gitroom/frontend/components/layout/new-modal';
 import { sortBy } from 'lodash';
 import { usePreventWindowUnload } from '@gitroom/react/helpers/use.prevent.window.unload';
 import { useT } from '@gitroom/react/translation/get.transation.service.client';
-import { newDayjs } from '@gitroom/frontend/components/layout/set.timezone';
+import {
+  getTimezone,
+  newDayjs,
+} from '@gitroom/frontend/components/layout/set.timezone';
+import {
+  PostingTime,
+  postingMinutesIn,
+} from '@gitroom/helpers/utils/posting.times';
 import clsx from 'clsx';
 import {
   TrashIcon,
@@ -71,7 +78,7 @@ export const TimeTable: FC<{
   // not (a new slot is appended), so the bin next to 09:00 removed whatever
   // sat at that position in the unsorted array — another slot entirely.
   const removeSlot = useCallback(
-    (value: number) => async () => {
+    (value: PostingTime) => async () => {
       if (
         !(await deleteDialog(
           t(
@@ -83,45 +90,40 @@ export const TimeTable: FC<{
         return;
       }
       setCurrentTimes((prev) => {
-        const at = prev.findIndex(({ time }) => time === value);
+        const at = prev.findIndex(
+          ({ time, tz }) => time === value.time && tz === value.tz
+        );
         return at === -1 ? prev : prev.filter((_, i) => i !== at);
       });
     },
     []
   );
 
+  // Local time with the zone, so 09:00 stays 09:00 when the clocks change.
+  // It used to be stored as minutes after UTC midnight from today's offset,
+  // and moved by an hour twice a year (E2E-05-85).
   const addHour = useCallback(() => {
-    const calculateMinutes =
-      newDayjs()
-        .utc()
-        .startOf('day')
-        .add(hour, 'hours')
-        .add(minute, 'minutes')
-        .diff(newDayjs().utc().startOf('day'), 'minutes') -
-      dayjs.tz().utcOffset();
-    // Local time minus the UTC offset can leave the day (00:30 in London in
-    // summer is -30); keep it within 0..1439 like the server does.
-    const DAY = 24 * 60;
     setCurrentTimes((prev) => [
       ...prev,
-      {
-        time: ((calculateMinutes % DAY) + DAY) % DAY,
-      },
+      { time: hour * 60 + minute, tz: getTimezone() },
     ]);
   }, [hour, minute]);
 
   const times = useMemo(() => {
+    const today = newDayjs().tz(getTimezone()).format('YYYY-MM-DD');
     return sortBy(
-      currentTimes.map(({ time }) => ({
-        value: time,
-        formatted: dayjs
-          .utc()
-          .startOf('day')
-          .add(time, 'minutes')
-          .local()
-          .format('HH:mm'),
-      })),
-      (p) => p.value
+      currentTimes.map((slot) => {
+        const minutes = postingMinutesIn(slot, today, getTimezone());
+        return {
+          value: slot,
+          minutes,
+          formatted: `${String(Math.floor(minutes / 60)).padStart(
+            2,
+            '0'
+          )}:${String(minutes % 60).padStart(2, '0')}`,
+        };
+      }),
+      (p) => p.minutes
     );
   }, [currentTimes]);
 
@@ -203,7 +205,7 @@ export const TimeTable: FC<{
           <div className="flex flex-col gap-[8px]">
             {times.map((timeSlot, index) => (
               <div
-                key={`${timeSlot.value}-${index}`}
+                key={`${timeSlot.value.time}-${timeSlot.value.tz}-${index}`}
                 className={clsx(
                   'group flex items-center justify-between',
                   'h-[48px] px-[16px] rounded-[14px]',

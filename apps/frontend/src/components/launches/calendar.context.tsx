@@ -121,8 +121,10 @@ export interface Integrations {
   // Whether first comment works on THIS channel — the platform scope it needs
   // isn't granted to every account. Absent on older payloads: treat as allowed.
   canComment?: boolean;
+  // See PostingTime: local minutes with an IANA zone, or UTC minutes.
   time: {
     time: number;
+    tz?: string;
   }[];
   customer?: {
     name?: string;

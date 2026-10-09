@@ -550,7 +550,7 @@ export class NoAuthIntegrationsController {
           username,
           refresh ? false : integrationProvider.isBetweenSteps,
           body.refresh,
-          +body.timezone,
+          body.timezone,
           details
             ? AuthService.fixedEncryption(details)
             : integrationProvider.customFields
