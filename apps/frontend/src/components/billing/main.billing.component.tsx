@@ -20,7 +20,10 @@ import { useSWRConfig } from 'swr';
 import { useUser } from '@gitroom/frontend/components/layout/user.context';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useVariables } from '@gitroom/react/helpers/variable.context';
-import { useModals } from '@gitroom/frontend/components/layout/new-modal';
+import {
+  areYouSure,
+  useModals,
+} from '@gitroom/frontend/components/layout/new-modal';
 import { Textarea } from '@gitroom/react/form/textarea';
 import { useFireEvents } from '@gitroom/helpers/utils/use.fire.events';
 import { useUtmUrl } from '@gitroom/helpers/utils/utm.saver';
@@ -249,6 +252,58 @@ export const MainBillingComponent: FC<{
   const [monthlyOrYearly, setMonthlyOrYearly] = useState<'on' | 'off'>(
     period === 'MONTHLY' ? 'off' : 'on'
   );
+
+  const confirmPlanChange = useCallback(
+    async (billing: string, current: string) => {
+      const period = monthlyOrYearly === 'on' ? 'YEARLY' : 'MONTHLY';
+      let quote: { price?: number; renewsOn?: string | null; renewalPrice?: number } = {};
+      try {
+        quote = await (
+          await fetch('/billing/prorate', {
+            method: 'POST',
+            body: JSON.stringify({ period, billing }),
+          })
+        ).json();
+      } catch {
+        quote = {};
+      }
+      const today = `£${Math.max(quote.price || 0, 0).toFixed(2)}`;
+      const plan = planLabel(billing);
+      const renewal =
+        quote.renewsOn && quote.renewalPrice
+          ? t(
+              period === 'YEARLY' ? 'plan_change_renewal_year' : 'plan_change_renewal_month',
+              period === 'YEARLY'
+                ? 'From {{date}}: £{{price}} a year.'
+                : 'From {{date}}: £{{price}} a month.',
+              {
+                date: dayjs(quote.renewsOn).format('D MMMM'),
+                price: quote.renewalPrice,
+              }
+            )
+          : '';
+      const upgrade = (quote.price || 0) > 0;
+      return areYouSure({
+        title: t('plan_change_title', 'Change your plan'),
+        description: upgrade
+          ? `${t(
+              'plan_change_upgrade',
+              'Upgrade to {{plan}} now? Today: {{amount}} for the rest of this billing month (what is left of {{current}} is taken off).',
+              { plan, amount: today, current: planLabel(current) }
+            )} ${renewal}`.trim()
+          : `${t(
+              'plan_change_down',
+              'Change to {{plan}} now? Nothing to pay today.',
+              { plan }
+            )} ${renewal}`.trim(),
+        approveLabel: upgrade
+          ? t('plan_change_pay', 'Upgrade and pay {{amount}}', { amount: today })
+          : t('plan_change_confirm', 'Change plan'),
+        cancelLabel: t('cancel', 'Cancel'),
+      });
+    },
+    [monthlyOrYearly, t]
+  );
   const [initialChannels, setInitialChannels] = useState(
     sub?.totalChannels || 1
   );
@@ -449,6 +504,16 @@ export const MainBillingComponent: FC<{
           if (
             messages.length &&
             !(await deleteDialog(messages.join(', '), 'Yes, continue'))
+          ) {
+            return;
+          }
+          // A paying account's change charges the card at once: ask first,
+          // with a fresh quote — the "Pay today" next to the button is from
+          // when the page loaded (E2E-07-43: £50.00 shown, £49.68 charged).
+          if (
+            subscription?.subscriptionTier &&
+            !subscription?.isLifetime &&
+            !(await confirmPlanChange(billing, subscription.subscriptionTier))
           ) {
             return;
           }

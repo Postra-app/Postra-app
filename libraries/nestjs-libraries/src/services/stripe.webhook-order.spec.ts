@@ -389,7 +389,7 @@ describe('the quote shown before changing plan (E2E-07-43)', () => {
     });
     retrieveCustomer.mockResolvedValue({ id: 'cus_1' });
     listSubscriptions.mockResolvedValue({
-      data: [sub('active', 'PRO', { items: { data: [{ id: 'si_1', current_period_end: 1794210951 }] } })],
+      data: [sub('active', 'PRO', { items: { data: [{ id: 'si_1', current_period_end: 1794216951 }] } })],
     });
     createPreview.mockResolvedValue({ amount_remaining: 4968 });
     const { service } = build();

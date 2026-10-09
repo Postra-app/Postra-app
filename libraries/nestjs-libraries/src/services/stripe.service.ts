@@ -583,8 +583,15 @@ export class StripeService {
         },
       });
 
+      // The confirmation before changing plan says what renews when, at
+      // what price (E2E-07-43).
+      const periodEnd =
+        currentUserSubscription?.data?.[0]?.items?.data?.[0]
+          ?.current_period_end;
       return {
         price: price?.amount_remaining ? price?.amount_remaining / 100 : 0,
+        renewsOn: periodEnd ? new Date(periodEnd * 1000).toISOString() : null,
+        renewalPrice: (findPrice?.unit_amount ?? 0) / 100,
       };
     } catch (err) {
       this._logger.error(

@@ -52,10 +52,14 @@ export const weekOf = (date: Date) => {
 // cell's centre holds the "+" button, which made it fail there every time
 // during the day (E2E-01-36).
 export const dragWithMouse = async (page: Page, from: Locator, to: Locator) => {
+  // A tile at the bottom of a crowded day is cut off by the calendar's scroll
+  // box: its centre is "visible" to Playwright but the press lands on nothing.
+  await from.scrollIntoViewIfNeeded();
   const a = (await from.boundingBox())!;
   const b = (await to.boundingBox())!;
   await page.mouse.move(a.x + a.width / 2, a.y + a.height / 2);
   await page.mouse.down();
-  await page.mouse.move(b.x + b.width / 2, b.y + b.height / 2, { steps: 15 });
+  // The top of a tall month cell, not its centre, which can be off screen.
+  await page.mouse.move(b.x + b.width / 2, b.y + Math.min(b.height / 2, 30), { steps: 15 });
   await page.mouse.up();
 };

@@ -1572,5 +1572,12 @@
   "team_seats_used": "Zajęte miejsca: {{used}} z {{seats}}",
   "help_read_more_guide": "Więcej w przewodniku",
   "help_user_guide": "Przewodnik",
-  "webhooks_count_unlimited": "{{count}} · bez limitu"
+  "webhooks_count_unlimited": "{{count}} · bez limitu",
+  "plan_change_title": "Zmiana planu",
+  "plan_change_upgrade": "Przejść teraz na {{plan}}? Dziś: {{amount}} za resztę tego okresu rozliczeniowego (niewykorzystana część {{current}} zostaje odjęta).",
+  "plan_change_down": "Zmienić teraz na {{plan}}? Dziś nic nie płacisz.",
+  "plan_change_renewal_month": "Od {{date}}: £{{price}} miesięcznie.",
+  "plan_change_renewal_year": "Od {{date}}: £{{price}} rocznie.",
+  "plan_change_pay": "Zmień i zapłać {{amount}}",
+  "plan_change_confirm": "Zmień plan"
 }

@@ -1809,5 +1809,12 @@
   "team_seats_used": "{{used}} of {{seats}} seats used",
   "help_read_more_guide": "Read more in the guide",
   "help_user_guide": "User guide",
-  "webhooks_count_unlimited": "{{count}} · unlimited"
+  "webhooks_count_unlimited": "{{count}} · unlimited",
+  "plan_change_title": "Change your plan",
+  "plan_change_upgrade": "Upgrade to {{plan}} now? Today: {{amount}} for the rest of this billing month (what is left of {{current}} is taken off).",
+  "plan_change_down": "Change to {{plan}} now? Nothing to pay today.",
+  "plan_change_renewal_month": "From {{date}}: £{{price}} a month.",
+  "plan_change_renewal_year": "From {{date}}: £{{price}} a year.",
+  "plan_change_pay": "Upgrade and pay {{amount}}",
+  "plan_change_confirm": "Change plan"
 }
