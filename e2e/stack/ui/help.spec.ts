@@ -38,3 +38,24 @@ test('Help explains the Developers tab, the API, SDK, MCP, webhooks and their sa
     await expect(page.getByText(question, { exact: true }), question).toBeAttached();
   }
 });
+
+// K. 10-09: the in-app Help keeps its short answers and links to the full
+// user guide on postra.co.uk — at the top, and from each section to its page.
+test('Help links to the user guide, at the top and from each section', async ({ page }) => {
+  await page.goto('/help');
+  const guide = page.getByRole('link', { name: 'User guide' });
+  await expect(guide).toHaveAttribute('href', 'https://postra.co.uk/docs/guide/');
+  await expect(guide).toHaveAttribute('target', '_blank');
+  for (const [section, slug] of [
+    ['getting-started', 'first-post'],
+    ['channels', 'channels'],
+    ['tabs', 'app-map'],
+    ['studio', 'media-and-ai'],
+    ['settings', 'settings'],
+    ['faq', 'troubleshooting'],
+  ]) {
+    await expect(
+      page.locator(`#${section}`).getByRole('link', { name: 'Read more in the guide' })
+    ).toHaveAttribute('href', `https://postra.co.uk/docs/guide/${slug}/`);
+  }
+});
