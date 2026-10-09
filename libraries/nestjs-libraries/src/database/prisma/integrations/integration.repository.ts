@@ -398,7 +398,9 @@ export class IntegrationRepository {
         profile: username,
         providerIdentifier: provider,
         token,
-        refreshToken,
+        // A reconnect without a new refresh token (Google sends one only on
+        // first consent) must not wipe the stored one (upstream 49aa92ac).
+        ...(refreshToken ? { refreshToken } : {}),
         ...(expiresIn
           ? { tokenExpiration: new Date(Date.now() + expiresIn * 1000) }
           : {}),

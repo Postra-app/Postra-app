@@ -403,7 +403,12 @@ export class IntegrationService {
     }
   }
 
-  async disconnectChannel(orgId: string, integration: Integration) {
+  // `reason` goes into the notice the customer gets.
+  async disconnectChannel(
+    orgId: string,
+    integration: Integration,
+    reason = ''
+  ) {
     this._auditService.record({
       action: 'integration.disconnect',
       organizationId: orgId,
@@ -413,7 +418,7 @@ export class IntegrationService {
       },
     });
     await this._integrationRepository.disconnectChannel(orgId, integration.id);
-    await this.informAboutRefreshError(orgId, integration);
+    await this.informAboutRefreshError(orgId, integration, reason);
   }
 
   async informAboutRefreshError(

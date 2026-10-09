@@ -118,12 +118,24 @@ export class RefreshIntegrationService {
     cause = ''
   ): Promise<AuthTokenDetails | false> {
     let transient = false;
+    let refreshError: any;
     const refresh: false | AuthTokenDetails = await socialProvider
       .refreshToken(AuthService.decryptIntegrationToken(integration.refreshToken))
       .catch((err) => {
+        refreshError = err;
         transient = isTransientRefreshError(err);
         return false;
       });
+
+    // The reason was swallowed, so a dead channel left nothing to go on
+    // (upstream 49aa92ac). The message only, never the request.
+    if (refreshError) {
+      console.error(
+        `[refresh] ${integration.providerIdentifier} ${integration.id} failed${
+          transient ? ' (transient)' : ''
+        }: ${refreshError?.message || refreshError}`
+      );
+    }
 
     // A 503, a 429 or a dropped connection used to mark a healthy channel
     // "reconnect needed" and disconnect it (INT-13). This attempt still
@@ -138,15 +150,12 @@ export class RefreshIntegrationService {
         integration.id
       );
 
-      await this._integrationService.informAboutRefreshError(
+      // disconnectChannel tells the customer; telling them here as well sent
+      // the same notice twice (upstream 49aa92ac).
+      await this._integrationService.disconnectChannel(
         integration.organizationId,
         integration,
         cause
-      );
-
-      await this._integrationService.disconnectChannel(
-        integration.organizationId,
-        integration
       );
 
       return false;
