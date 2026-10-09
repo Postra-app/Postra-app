@@ -138,13 +138,16 @@ export class LinkedinProvider extends SocialAbstract implements SocialProvider {
       })
     );
 
-    const { vanityName } = await linkedinJson(
-      await fetch('https://api.linkedin.com/v2/me', {
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-        },
-      })
-    );
+    // Optional: with the OIDC scopes alone /v2/me answers 403, and the
+    // vanity name is a nicety — a good refresh must not fail over it (Codex).
+    const meResponse = await fetch('https://api.linkedin.com/v2/me', {
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+      },
+    });
+    const { vanityName } = meResponse.ok
+      ? await meResponse.json().catch(() => ({}))
+      : ({} as { vanityName?: string });
 
     const {
       name,

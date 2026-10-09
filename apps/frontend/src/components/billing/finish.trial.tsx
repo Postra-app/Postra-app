@@ -6,10 +6,7 @@ import { timer } from '@gitroom/helpers/utils/timer';
 import { useSWRConfig } from 'swr';
 import { Button } from '@gitroom/frontend/components/ui/button';
 import { useT } from '@gitroom/react/translation/get.transation.service.client';
-import {
-  planLabel,
-  pricing,
-} from '@gitroom/nestjs-libraries/database/prisma/subscriptions/pricing';
+import { planLabel } from '@gitroom/nestjs-libraries/database/prisma/subscriptions/pricing';
 
 type Step = 'confirm' | 'working' | 'done' | 'already' | 'problem';
 
@@ -20,9 +17,12 @@ type Step = 'confirm' | 'working' | 'done' | 'already' | 'problem';
 export const FinishTrial: FC<{ close: () => void }> = (props) => {
   const [step, setStep] = useState<Step>('confirm');
   const [problem, setProblem] = useState<{ url?: string }>({});
-  const [plan, setPlan] = useState<{ tier: string; period: string } | null>(
-    null
-  );
+  const [plan, setPlan] = useState<{
+    amount: number;
+    currency: string;
+    tier: string | null;
+    period: string | null;
+  } | null>(null);
   const fetch = useFetch();
   const t = useT();
   const { mutate } = useSWRConfig();
@@ -35,14 +35,13 @@ export const FinishTrial: FC<{ close: () => void }> = (props) => {
     }
     (async () => {
       try {
-        const { subscription } = await (
-          await fetch('/user/subscription')
+        // What Stripe will charge for this subscription now, not today's
+        // price list (an older price or a discount differ — Codex).
+        const preview = await (
+          await fetch('/billing/finish-trial/preview')
         ).json();
-        if (subscription?.subscriptionTier) {
-          setPlan({
-            tier: subscription.subscriptionTier,
-            period: subscription.period || 'MONTHLY',
-          });
+        if (preview && Number.isFinite(preview.amount)) {
+          setPlan(preview);
         }
       } catch {
         // The question still works without the price line.
@@ -50,10 +49,13 @@ export const FinishTrial: FC<{ close: () => void }> = (props) => {
     })();
   }, []);
 
-  const tierPrices = plan ? (pricing as any)[plan.tier] : undefined;
   const yearly = plan?.period === 'YEARLY';
-  const amount = tierPrices
-    ? `£${yearly ? tierPrices.year_price : tierPrices.month_price}`
+  const amount = plan
+    ? `${plan.currency === 'gbp' ? '£' : `${plan.currency.toUpperCase()} `}${
+        plan.amount % 100 === 0
+          ? plan.amount / 100
+          : (plan.amount / 100).toFixed(2)
+      }`
     : '';
 
   const checkFinished = useCallback(async (attempt = 0) => {

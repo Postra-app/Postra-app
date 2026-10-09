@@ -906,6 +906,28 @@ export class StripeService {
     return { url };
   }
 
+  // What ending the trial now would charge, from Stripe's invoice preview:
+  // the price list is wrong for an older price or a discount (Codex).
+  async finishTrialPreview(paymentId: string) {
+    const trialing = (
+      await stripe.subscriptions.list({ customer: paymentId, limit: 100 })
+    ).data.find((f) => f.status === 'trialing');
+    if (!trialing) {
+      return null;
+    }
+    const preview = await stripe.invoices.createPreview({
+      customer: paymentId,
+      subscription: trialing.id,
+      subscription_details: { trial_end: 'now' },
+    });
+    return {
+      amount: preview.amount_due,
+      currency: preview.currency,
+      tier: trialing.metadata?.billing || null,
+      period: trialing.metadata?.period || null,
+    };
+  }
+
   async finishTrial(
     paymentId: string
   ): Promise<{ finish: boolean; reason?: string; url?: string }> {

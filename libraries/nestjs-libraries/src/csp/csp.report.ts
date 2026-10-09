@@ -38,7 +38,10 @@ const one = (r: Record<string, any>): CspViolation | undefined => {
     return undefined;
   }
   const file = withoutQuery(r['source-file'] || r.sourceFile);
-  const line = r['line-number'] || r.lineNumber;
+  const rawLine = r['line-number'] ?? r.lineNumber;
+  // Anything but a number is dropped: an object here threw on interpolation
+  // and the endpoint answered 500 (Codex).
+  const line = Number.isFinite(rawLine) ? rawLine : undefined;
   return {
     directive: directive.split(' ')[0].slice(0, 60),
     blocked: withoutQuery(r['blocked-uri'] || r.blockedURL),

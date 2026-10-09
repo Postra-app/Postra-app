@@ -82,6 +82,24 @@ export class BillingController {
     await this._stripeService.applyDiscount(org.paymentId);
   }
 
+  @Get('/finish-trial/preview')
+  @CheckPolicies(BILLING_ADMIN)
+  @Throttle({ default: { ttl: 300_000, limit: 30 } })
+  async finishTrialPreview(@GetOrgFromRequest() org: Organization) {
+    if (!org.paymentId) {
+      return null;
+    }
+    try {
+      return await this._stripeService.finishTrialPreview(org.paymentId);
+    } catch (err) {
+      Logger.error(
+        `finish-trial preview failed for org ${org.id}: ${(err as Error)?.message}`,
+        'Billing'
+      );
+      return null;
+    }
+  }
+
   @Post('/finish-trial')
   @CheckPolicies(BILLING_ADMIN)
   @Throttle({ default: { ttl: 300_000, limit: 10 } })
