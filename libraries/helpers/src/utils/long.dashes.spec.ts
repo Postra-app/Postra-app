@@ -1,4 +1,4 @@
-import { withoutLongDashes } from './long.dashes';
+import { withoutLongDashes, deepWithoutLongDashes } from './long.dashes';
 
 // K. 10-09: no long dashes in anything a customer reads — our texts and the
 // AI's suggestions alike. They become a plain hyphen.
@@ -19,8 +19,6 @@ describe('withoutLongDashes', () => {
 
 describe('deepWithoutLongDashes', () => {
   it('cleans every string in an AI answer, and leaves the rest', () => {
-    // eslint-disable-next-line @typescript-eslint/no-var-requires
-    const { deepWithoutLongDashes } = require('./long.dashes');
     expect(
       deepWithoutLongDashes({ caption: 'One — two', slides: [{ headline: 'A–B' }, 3], ok: true, none: null })
     ).toEqual({ caption: 'One - two', slides: [{ headline: 'A - B' }, 3], ok: true, none: null });
