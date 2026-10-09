@@ -199,6 +199,12 @@ export class BillingController {
     };
   }
 
+  // A lower plan waiting for the next billing period (E2E-07-44).
+  @Get('/pending-change')
+  pendingChange(@GetOrgFromRequest() org: Organization) {
+    return this._stripeService.pendingChange(org.id);
+  }
+
   @Get('/')
   getCurrentBilling(@GetOrgFromRequest() org: Organization) {
     return this._subscriptionService.getSubscriptionByOrganizationId(org.id);

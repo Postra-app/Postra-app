@@ -107,11 +107,31 @@ test('#5 #11 downgrade Business → Starter: what switches off, and a member kee
   }
   await prisma.userOrganization.create({ data: { userId: members[1], organizationId: other.orgId, role: 'USER' } });
 
-  expect((await subscribe(org.api, 'STANDARD')).status()).toBe(201);
-  await expect.poll(() => tierOf(org.orgId), { timeout: 60_000 }).toBe('STANDARD');
+  // E2E-07-44 (Kris Company, 2026-10-09): the downgrade took effect at once
+  // and the unused Business went to the Stripe balance as a credit, lost on
+  // cancelling. The subscription terms say a downgrade starts with the next
+  // billing period: Business stays until then, nothing is credited.
+  const changed = await subscribe(org.api, 'STANDARD');
+  expect(changed.status(), await changed.text()).toBe(201);
+  const periodEnd = (await stripe.subscriptions.retrieve(org.sub)).items.data[0].current_period_end;
+  expect((await changed.json()).scheduled).toEqual({ billing: 'STANDARD', period: 'MONTHLY', on: new Date(periodEnd * 1000).toISOString() });
+  expect(await (await org.api.get('/billing/pending-change')).json()).toEqual({ billing: 'STANDARD', period: 'MONTHLY', on: new Date(periodEnd * 1000).toISOString() });
+  await new Promise((r) => setTimeout(r, 10_000));
+  expect(await tierOf(org.orgId), 'Business until the period ends').toBe('ULTIMATE');
+  expect(await prisma.integration.count({ where: { organizationId: org.orgId, disabled: true } }), 'nothing switched off yet').toBe(0);
+  const early = (await stripe.invoices.list({ customer: org.customer, limit: 5 })).data;
+  expect(early.filter((i) => i.billing_reason === 'subscription_update'), 'no proration invoice').toHaveLength(0);
+  expect(((await stripe.customers.retrieve(org.customer)) as Stripe.Customer).balance, 'no credit on the balance').toBe(0);
+
+  await advance(org.clock, 32 * DAY);
+  await expect.poll(() => tierOf(org.orgId), { timeout: 120_000, intervals: [3_000] }).toBe('STANDARD');
   await expect
     .poll(async () => (await prisma.userOrganization.count({ where: { organizationId: org.orgId, disabled: false } })), { timeout: 30_000 })
     .toBe(1);
+  const renewal = (await stripe.invoices.list({ customer: org.customer, limit: 1 })).data[0];
+  expect(renewal.billing_reason).toBe('subscription_cycle');
+  expect(renewal.amount_paid, 'the renewal is the Starter price').toBe(1900);
+  expect(await (await org.api.get('/billing/pending-change')).json()).toEqual({});
 
   const channels = await prisma.integration.findMany({ where: { organizationId: org.orgId, deletedAt: null }, select: { providerIdentifier: true, disabled: true } });
   const active = channels.filter((c) => !c.disabled).map((c) => c.providerIdentifier);
@@ -127,8 +147,37 @@ test('#5 #11 downgrade Business → Starter: what switches off, and a member kee
   const elsewhere = await prisma.userOrganization.findFirst({ where: { userId: members[1], organizationId: other.orgId } });
   expect(elsewhere?.disabled, 'membership in the other organisation untouched').toBe(false);
 
-  const credit = (await stripe.invoices.list({ customer: org.customer, limit: 3 })).data.find((i) => i.billing_reason === 'subscription_update');
-  test.info().annotations.push({ type: 'downgrade invoice', description: `total ${credit?.total} ${credit?.currency}` });
+});
+
+test('a scheduled downgrade gives way to an upgrade, or to cancelling', async () => {
+  const up = await payingOrg('PRO');
+  expect((await subscribe(up.api, 'STANDARD')).status()).toBe(201);
+  expect((await stripe.subscriptions.retrieve(up.sub)).schedule, 'downgrade scheduled').toBeTruthy();
+  const upgraded = await subscribe(up.api, 'ULTIMATE');
+  expect(upgraded.status(), await upgraded.text()).toBe(201);
+  expect((await upgraded.json()).scheduled).toBeUndefined();
+  await expect.poll(() => tierOf(up.orgId), { timeout: 60_000 }).toBe('ULTIMATE');
+  const afterUp = await stripe.subscriptions.retrieve(up.sub);
+  expect(afterUp.schedule, 'the scheduled Starter is dropped').toBeNull();
+  expect(afterUp.items.data[0].price.unit_amount).toBe(7900);
+  expect(await (await up.api.get('/billing/pending-change')).json()).toEqual({});
+
+  const down = await payingOrg('PRO');
+  expect((await subscribe(down.api, 'STANDARD')).status()).toBe(201);
+  const cancelled = await down.api.post('/billing/cancel', { data: { feedback: 'Testing a cancel after a scheduled downgrade' } });
+  expect(cancelled.status(), await cancelled.text()).toBe(201);
+  const afterCancel = await stripe.subscriptions.retrieve(down.sub);
+  expect(afterCancel.schedule, 'cancelling drops the scheduled Starter').toBeNull();
+  expect(afterCancel.cancel_at_period_end).toBe(true);
+  expect(afterCancel.items.data[0].price.unit_amount, 'Pro until the end').toBe(2900);
+  expect(await (await down.api.get('/billing/pending-change')).json()).toEqual({});
+
+  // Deleting the account stops the subscription at once, schedule or not.
+  const gone = await payingOrg('PRO');
+  expect((await subscribe(gone.api, 'STANDARD')).status()).toBe(201);
+  const deleted = await gone.api.post('/user/delete');
+  expect(deleted.status(), await deleted.text()).toBe(200);
+  expect((await stripe.subscriptions.retrieve(gone.sub)).status).toBe('canceled');
 });
 
 test('#6 #10 cancel → two emails → reactivate → cancel → period ends → FREE → re-purchase offers no trial', async () => {
