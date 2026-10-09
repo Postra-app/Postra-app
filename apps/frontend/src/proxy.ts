@@ -188,19 +188,20 @@ export async function proxy(request: NextRequest) {
   ) {
     return NextResponse.redirect(new URL(`/${url}`, nextUrl.href));
   }
+  const orgCookieOptions = !process.env.NOT_SECURED
+    ? {
+        path: '/',
+        secure: true,
+        httpOnly: true,
+        sameSite: 'lax' as const,
+        domain: getCookieUrlFromDomain(process.env.FRONTEND_URL!),
+      }
+    : {};
   if (nextUrl.pathname.startsWith('/auth') && !authCookie) {
     if (org) {
       const redirect = NextResponse.redirect(new URL(`/`, nextUrl.href));
       redirect.cookies.set('org', org, {
-        ...(!process.env.NOT_SECURED
-          ? {
-              path: '/',
-              secure: true,
-              httpOnly: true,
-              sameSite: 'lax',
-              domain: getCookieUrlFromDomain(process.env.FRONTEND_URL!),
-            }
-          : {}),
+        ...orgCookieOptions,
         expires: new Date(Date.now() + 15 * 60 * 1000),
       });
       return redirect;
@@ -208,6 +209,20 @@ export async function proxy(request: NextRequest) {
     return topResponse;
   }
   try {
+    // An invitation opened before logging in waits in the `org` cookie. A
+    // password login does not read it, so the person landed in their own
+    // calendar and the invitation was lost (E2E-05-95): ask on /join, once.
+    const invitedTo = request.cookies.get('org')?.value;
+    if (!org && invitedTo && nextUrl.pathname !== '/join') {
+      const redirect = NextResponse.redirect(
+        new URL(`/join?org=${encodeURIComponent(invitedTo)}`, nextUrl.href)
+      );
+      redirect.cookies.set('org', '', {
+        ...orgCookieOptions,
+        expires: new Date(0),
+      });
+      return redirect;
+    }
     // An invitation is accepted on a page that asks first. Joining right
     // here let any site send a signed-in person into its organisation, as
     // whichever account the browser happened to hold (E2E-08-34).
