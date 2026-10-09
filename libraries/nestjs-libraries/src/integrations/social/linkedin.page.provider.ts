@@ -7,7 +7,10 @@ import {
   SocialProvider,
 } from '@gitroom/nestjs-libraries/integrations/social/social.integrations.interface';
 import { makeSecureId } from '@gitroom/nestjs-libraries/services/make.secure.id';
-import { LinkedinProvider } from '@gitroom/nestjs-libraries/integrations/social/linkedin.provider';
+import {
+  LinkedinProvider,
+  linkedinJson,
+} from '@gitroom/nestjs-libraries/integrations/social/linkedin.provider';
 import dayjs from 'dayjs';
 import { Integration } from '@prisma/client';
 import { Plug } from '@gitroom/helpers/decorators/plug.decorator';
@@ -48,7 +51,7 @@ export class LinkedinPageProvider
       access_token: accessToken,
       expires_in,
       refresh_token: refreshToken,
-    } = await (
+    } = await linkedinJson(
       await fetch('https://www.linkedin.com/oauth/v2/accessToken', {
         method: 'POST',
         headers: {
@@ -61,7 +64,7 @@ export class LinkedinPageProvider
           client_secret: process.env.LINKEDIN_PAGE_CLIENT_SECRET!,
         }),
       })
-    ).json();
+    );
 
     const { id, name, picture, username } = await this.fetchMemberIdentity(
       accessToken
