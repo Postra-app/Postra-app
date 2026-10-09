@@ -8,7 +8,7 @@ import { ConnectInviteClient } from '@gitroom/frontend/components/launches/conne
 export const dynamic = 'force-dynamic';
 
 export const metadata: Metadata = {
-  title: 'Postra — connect a channel',
+  title: 'Postra - connect a channel',
   description: '',
 };
 
@@ -83,7 +83,7 @@ export default async function ConnectInvitePage(props: {
                 )
               : t(
                   'connect_invite_expired',
-                  'This invite link has expired — they are valid for one hour. Ask whoever sent it for a fresh one.'
+                  'This invite link has expired - they are valid for one hour. Ask whoever sent it for a fresh one.'
                 )}
           </p>
         )}

@@ -341,7 +341,7 @@ export const VideoStudio: FC<VideoStudioProps> = ({
           : reason === 'rejected'
           ? t(
               'video_upload_rejected',
-              "The server didn't accept that file. Trim the clip first — that re-saves it as a standard MP4."
+              "The server didn't accept that file. Trim the clip first - that re-saves it as a standard MP4."
             )
           : t('video_upload_failed', 'Upload failed.'),
         'warning'
@@ -388,7 +388,7 @@ export const VideoStudio: FC<VideoStudioProps> = ({
       toaster.show(
         t(
           'video_trimmed_ready',
-          'Trimmed clip ready — save it to your library or use it in a post with the buttons below.'
+          'Trimmed clip ready - save it to your library or use it in a post with the buttons below.'
         ),
         'success'
       );
@@ -529,7 +529,7 @@ export const VideoStudio: FC<VideoStudioProps> = ({
     const m = await ensureUploaded();
     if (m) {
       toaster.show(
-        t('video_saved_to_library', 'Saved to media library — you can use it in any post.'),
+        t('video_saved_to_library', 'Saved to media library - you can use it in any post.'),
         'success'
       );
     }
@@ -597,7 +597,7 @@ export const VideoStudio: FC<VideoStudioProps> = ({
         <div className="flex gap-2 flex-wrap">
           <button
             onClick={() => setShowGoals(true)}
-            title={t('video_goals_back', 'What do you want to make? — back to goals')}
+            title={t('video_goals_back', 'What do you want to make? - back to goals')}
             className={`text-xs px-2 py-1 rounded transition-colors ${
               showGoals
                 ? 'bg-newAccent text-[#06222e] font-[600]'
@@ -656,8 +656,8 @@ export const VideoStudio: FC<VideoStudioProps> = ({
             : isImportingLibrary
             ? t('video_importing_clip', 'Loading the clip from your library…')
             : isConverting
-            ? t('video_converting_clip', 'Converting the clip to MP4 — keep this page open…')
-            : t('video_uploading_clip', 'Uploading the clip — keep this page open…')}
+            ? t('video_converting_clip', 'Converting the clip to MP4 - keep this page open…')
+            : t('video_uploading_clip', 'Uploading the clip - keep this page open…')}
         </div>
       )}
 
@@ -667,7 +667,7 @@ export const VideoStudio: FC<VideoStudioProps> = ({
             <StudioIcon name="done" size={14} className="inline-block shrink-0" />{' '}
             {t(
               'video_result_saved',
-              'Saved to your media library — use it now or keep working.'
+              'Saved to your media library - use it now or keep working.'
             )}
           </span>
           <Button size="sm" onClick={useDeliveredInPost}>
@@ -732,7 +732,7 @@ export const VideoStudio: FC<VideoStudioProps> = ({
               ))}
             </div>
             <div className="text-[11px] text-textColor/65 text-center">
-              {t('video_goals_hint', 'Same tools as the tabs above — this is just the quickest way in.')}
+              {t('video_goals_hint', 'Same tools as the tabs above - this is just the quickest way in.')}
               <br />
               {t('video_goals_free', 'Every tool here is included on all plans.')}
             </div>

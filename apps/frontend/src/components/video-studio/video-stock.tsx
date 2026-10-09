@@ -164,7 +164,7 @@ export const VideoStock: FC<VideoStockProps> = ({ onImported }) => {
       <div className="text-xs text-textColor/80">
         {t(
           'video_stock_explainer',
-          'Stock B-roll from Pixabay — click Import to download a video into your media library. The Pixabay License allows commercial use.'
+          'Stock B-roll from Pixabay - click Import to download a video into your media library. The Pixabay License allows commercial use.'
         )}{' '}
         <a
           href="https://pixabay.com/service/license-summary/"

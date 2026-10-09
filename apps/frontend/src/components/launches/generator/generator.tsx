@@ -296,7 +296,7 @@ const FirstStep: FC = (props) => {
                     <div className="text-[12px] text-newTextColor/70">
                       {t(
                         'add_pictures_cost',
-                        'One image credit per post — a thread costs one per part.'
+                        'One image credit per post - a thread costs one per part.'
                       )}
                     </div>
                   )}

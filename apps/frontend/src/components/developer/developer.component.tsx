@@ -151,7 +151,7 @@ export const DeveloperComponent: FC = () => {
         toaster.show(
           t(
             'oauth_app_created_copy_secret',
-            'App created! Copy the client secret now — it is shown only once.'
+            'App created! Copy the client secret now - it is shown only once.'
           ),
           'success'
         );
@@ -283,7 +283,7 @@ export const DeveloperComponent: FC = () => {
           <br />
           {t(
             'oauth_app_note_line2',
-            'After a user completes the OAuth2 flow, you receive a pos_ prefixed token that works everywhere an API Key does — API, MCP, and CLI.'
+            'After a user completes the OAuth2 flow, you receive a pos_ prefixed token that works everywhere an API Key does - API, MCP, and CLI.'
           )}
         </div>
         <div className="bg-white/[0.03] backdrop-blur-[8px] rounded-[16px] border border-white/10 overflow-hidden">
@@ -337,7 +337,7 @@ export const DeveloperComponent: FC = () => {
           <br />
           {t(
             'oauth_app_note_line2',
-            'After a user completes the OAuth2 flow, you receive a pos_ prefixed token that works everywhere an API Key does — API, MCP, and CLI.'
+            'After a user completes the OAuth2 flow, you receive a pos_ prefixed token that works everywhere an API Key does - API, MCP, and CLI.'
           )}
         </div>
         <div className="bg-white/[0.03] backdrop-blur-[8px] rounded-[16px] border border-white/10 overflow-hidden">
@@ -446,7 +446,7 @@ export const DeveloperComponent: FC = () => {
         <br />
         {t(
           'oauth_app_note_line2',
-          'After a user completes the OAuth2 flow, you receive a pos_ prefixed token that works everywhere an API Key does — API, MCP, and CLI.'
+          'After a user completes the OAuth2 flow, you receive a pos_ prefixed token that works everywhere an API Key does - API, MCP, and CLI.'
         )}
       </div>
       {/* App details / edit */}

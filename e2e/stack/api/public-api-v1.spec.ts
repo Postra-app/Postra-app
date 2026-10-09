@@ -128,7 +128,7 @@ test('G7: social/:integration keeps platforms outside the plan out, like the app
   }
 });
 
-test('G7: posts/:id/missing — an own post is answered, a foreign one exactly like an unknown one', async () => {
+test('G7: posts/:id/missing - an own post is answered, a foreign one exactly like an unknown one', async () => {
   const own = await a.get(`posts/${postOfA}/missing`);
   expect(own.status()).toBe(200);
   expect(await own.json()).toEqual([]);

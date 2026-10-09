@@ -695,7 +695,7 @@ const SubmitBar: FC<{ loading: boolean; consent: boolean }> = ({
               {dayjs(
                 checkout.checkout.recurring?.trial?.trialEnd * 1000
               ).format('MMMM D, YYYY')}{' '}
-              —{' '}
+              -{' '}
             </span>
             <span className="text-textColor font-[600]">
               {t(

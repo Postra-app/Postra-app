@@ -100,7 +100,7 @@ describe('GET /integrations/social-connect/:integration/handoff', () => {
     });
   });
 
-  it('does not consume the state — the POST still needs it', async () => {
+  it('does not consume the state - the POST still needs it', async () => {
     store.set('redirect:st-4', 'postra://integrations');
     await build().getConnectHandoff('st-4');
     expect(store.get('redirect:st-4')).toBe('postra://integrations');

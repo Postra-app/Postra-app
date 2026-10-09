@@ -40,7 +40,7 @@ export function Forgot() {
             response.status === 429
               ? t(
                   'forgot_too_many_attempts',
-                  'Too many attempts — please wait a few minutes and try again.'
+                  'Too many attempts - please wait a few minutes and try again.'
                 )
               : (await readResponseError(response)) ||
                 t(

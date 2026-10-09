@@ -1066,7 +1066,7 @@ export class InstagramProvider
     // partial panel, not wipe the whole channel's analytics).
     if (!data || !data2) {
       this._logger.warn(
-        `[analytics:instagram] partial/empty for ${id} — reach/follower error: ${
+        `[analytics:instagram] partial/empty for ${id} - reach/follower error: ${
           (all as any)?.error?.message
         } | engagement error: ${(all2 as any)?.error?.message}`
       );

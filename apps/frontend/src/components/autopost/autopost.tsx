@@ -487,7 +487,7 @@ export const AddOrEditWebhook: FC<{
                   className="w-full min-h-24 max-h-60 p-2 overflow-x-hidden scrollbar scrollbar-thumb-[#38bdf8] bg-white/[0.03] outline-none mb-[16px] border-white/10 border rounded-[16px] text-[14px]"
                   placeholder={t(
                     'autopost_extra_context_placeholder',
-                    'e.g. fitness brand — add one actionable gym tip; end with a question'
+                    'e.g. fitness brand - add one actionable gym tip; end with a question'
                   )}
                   {...form.register('customInstructions')}
                 />

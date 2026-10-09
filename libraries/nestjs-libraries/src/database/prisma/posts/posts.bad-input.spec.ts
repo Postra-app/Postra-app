@@ -32,7 +32,7 @@ function service(post: any) {
   return { s, repository };
 }
 
-describe('PostsService.validatePosts — body shape', () => {
+describe('PostsService.validatePosts - body shape', () => {
   it.each(['abc', 42, { a: 1 }])('rejects posts=%p with 400', async (bad) => {
     const { s } = service(null);
     await expect(s.validatePosts('org', bad as any)).rejects.toBeInstanceOf(
@@ -46,7 +46,7 @@ describe('PostsService.validatePosts — body shape', () => {
   });
 });
 
-describe('PostsService.changeDate — bad input', () => {
+describe('PostsService.changeDate - bad input', () => {
   it('404s a post that is not in this org, and touches nothing', async () => {
     const { s, repository } = service(null);
     await expect(

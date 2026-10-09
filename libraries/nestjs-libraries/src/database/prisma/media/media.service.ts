@@ -641,7 +641,7 @@ export class MediaService {
         return finished;
       }
       throw new HttpException(
-        'This video is already being made — it will appear in your media library when it is ready.',
+        'This video is already being made - it will appear in your media library when it is ready.',
         409
       );
     }

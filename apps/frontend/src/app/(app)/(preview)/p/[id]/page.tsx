@@ -78,7 +78,7 @@ export default async function Auth(props: {
         <div className="text-[14px] text-white/60">
           {t(
             'server_unavailable_try_again',
-            'The server is temporarily unavailable — please try again in a moment.'
+            'The server is temporarily unavailable - please try again in a moment.'
           )}
         </div>
       </div>

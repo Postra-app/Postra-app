@@ -22,7 +22,7 @@ describe('languageRule', () => {
     );
   });
 
-  it('never mentions a fallback — the caller resolves that, not the model', () => {
+  it('never mentions a fallback - the caller resolves that, not the model', () => {
     expect(languageRule()).not.toContain('fallback');
   });
 

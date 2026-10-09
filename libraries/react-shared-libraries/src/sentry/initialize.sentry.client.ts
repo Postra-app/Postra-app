@@ -50,7 +50,7 @@ export const initializeSentryClient = (
         submitButtonLabel: 'Send report',
         messagePlaceholder:
           "What went wrong? What did you expect to happen?",
-        successMessageText: 'Thank you — we read every report.',
+        successMessageText: 'Thank you - we read every report.',
         onSubmitSuccess: (data: any, eventId: string) =>
           onProblemReport?.(
             {

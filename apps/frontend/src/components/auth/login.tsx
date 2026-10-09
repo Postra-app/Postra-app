@@ -82,7 +82,7 @@ export function Login() {
           form.setError('email', {
             message: t(
               'too_many_login_attempts',
-              'Too many attempts — please wait a few minutes and try again.'
+              'Too many attempts - please wait a few minutes and try again.'
             ),
           });
         }
@@ -93,7 +93,7 @@ export function Login() {
       form.setError('email', {
         message: t(
           'connection_error_try_again',
-          'Connection error — check your internet and try again.'
+          'Connection error - check your internet and try again.'
         ),
       });
       setLoading(false);

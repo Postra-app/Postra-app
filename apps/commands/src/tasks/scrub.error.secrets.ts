@@ -26,7 +26,7 @@ export class ScrubErrorSecrets {
     console.log(
       `[scrub-error-secrets] ${
         apply ? 'APPLY' : 'DRY-RUN'
-      } — ${scanned} row(s) scanned, ${dirty.length} with a credential field`
+      } - ${scanned} row(s) scanned, ${dirty.length} with a credential field`
     );
     console.log(
       `  leaking: ${withPlaintext.length} row(s), ${plaintextFields} plaintext field(s)`
@@ -54,7 +54,7 @@ export class ScrubErrorSecrets {
 
     if (!apply) {
       console.log(
-        '[scrub-error-secrets] DRY-RUN only — nothing written. Re-run with --apply to persist.'
+        '[scrub-error-secrets] DRY-RUN only - nothing written. Re-run with --apply to persist.'
       );
     }
 

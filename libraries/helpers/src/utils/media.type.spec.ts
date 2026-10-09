@@ -41,7 +41,7 @@ describe('isVideoMedia', () => {
   });
 });
 
-describe('mediaTypeFromPath — query strings (CodeQL #69 rewrite)', () => {
+describe('mediaTypeFromPath - query strings (CodeQL #69 rewrite)', () => {
   it('still reads the extension before a query string', () => {
     expect(mediaTypeFromPath('https://cdn.example/clip.mov?X-Amz-Signature=abc')).toBe('video');
     expect(mediaTypeFromPath('https://cdn.example/photo.png?v=clip.mp4')).toBe('image');

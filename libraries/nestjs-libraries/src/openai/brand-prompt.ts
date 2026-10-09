@@ -51,7 +51,7 @@ const paletteLine = (kit?: BrandPromptKit | null): string => {
 
 const logoLine = (kit?: BrandPromptKit | null): string =>
   kit?.logoPath
-    ? 'Do not draw a logo, wordmark or brand name into the image — the brand logo is added to the design separately.'
+    ? 'Do not draw a logo, wordmark or brand name into the image - the brand logo is added to the design separately.'
     : '';
 
 /** Compose exactly the brand guidance a surface needs, in one place. */
@@ -82,7 +82,7 @@ export function buildBrandImagePrompt(kit?: BrandPromptKit | null): string {
 export function buildBrandDesignPrompt(kit?: BrandPromptKit | null): string {
   if (!kit?.colors) return '';
   const c = kit.colors;
-  return `BRAND CONSTRAINTS — respect strictly:
+  return `BRAND CONSTRAINTS - respect strictly:
 - Background color: ${c.secondary || 'designer choice'}
 - Accent color: ${c.primary || 'designer choice'}
 - Text color: ${c.text || '#ffffff'}

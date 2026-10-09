@@ -57,7 +57,7 @@ const LanguagePreferenceComponent = () => {
           <div className="text-[12px] text-newTextColor/55">
             {t(
               'interface_language_description',
-              'New visitors get their device language automatically — change it here any time.'
+              'New visitors get their device language automatically - change it here any time.'
             )}
           </div>
         </div>

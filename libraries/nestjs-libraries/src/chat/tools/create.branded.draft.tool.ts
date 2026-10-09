@@ -14,7 +14,7 @@ export class CreateBrandedDraftTool implements AgentToolInterface {
     return createTool({
       id: 'createBrandedDraft',
       description: `Create a complete, ready-to-post branded post in ONE step: writes the caption in the brand voice AND designs a matching on-brand graphic (headline / subtext / call-to-action over an AI-generated background), rendered to an image saved in the media library.
-      Use this whenever the user wants a finished branded post or graphic about a topic — instead of separately writing text and generating an image. Returns the caption plus the design's media id and path, so you can open the composer prefilled with both the copy and the attached graphic.`,
+      Use this whenever the user wants a finished branded post or graphic about a topic - instead of separately writing text and generating an image. Returns the caption plus the design's media id and path, so you can open the composer prefilled with both the copy and the attached graphic.`,
       mcp: {
         annotations: {
           title: 'Create Branded Draft',
@@ -27,7 +27,7 @@ export class CreateBrandedDraftTool implements AgentToolInterface {
       inputSchema: z.object({
         topic: z
           .string()
-          .describe('What the post is about — the subject, offer or announcement.'),
+          .describe('What the post is about - the subject, offer or announcement.'),
         platform: z
           .string()
           .describe(
@@ -36,7 +36,7 @@ export class CreateBrandedDraftTool implements AgentToolInterface {
         language: z
           .string()
           .describe(
-            'Language for ALL text in the post — the caption AND the on-image headline/subtext/CTA, so they match. Infer it from the language the user is writing in, e.g. "English" or "Polish".'
+            'Language for ALL text in the post - the caption AND the on-image headline/subtext/CTA, so they match. Infer it from the language the user is writing in, e.g. "English" or "Polish".'
           ),
       }),
       outputSchema: z.object({

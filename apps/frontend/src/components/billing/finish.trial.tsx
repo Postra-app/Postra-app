@@ -193,7 +193,7 @@ export const FinishTrial: FC<{ close: () => void }> = (props) => {
                     <div>
                       {t(
                         'trial_already_ended',
-                        'Your trial has already ended — your plan is active.'
+                        'Your trial has already ended - your plan is active.'
                       )}
                     </div>
                     <div className="flex gap-[10px] mt-[20px]">

@@ -566,7 +566,7 @@ export const MediaBox: FC<{
                     : standalone
                     ? t(
                         'no_media_three_ways',
-                        'Upload a file, drag & drop one, or create a branded graphic in Studio — templates and free stock photos are included.'
+                        'Upload a file, drag & drop one, or create a branded graphic in Studio - templates and free stock photos are included.'
                       )
                     : `${t(
                         'select_or_upload_pictures_max_1gb',
@@ -880,7 +880,7 @@ export const MultiMediaComponent: FC<{
             >
               {t(
                 'studio_empty_hint',
-                'No visual yet? Create one in Studio — or pick a free stock photo'
+                'No visual yet? Create one in Studio - or pick a free stock photo'
               )}{' '}
               →
             </div>
@@ -975,7 +975,7 @@ export const MultiMediaComponent: FC<{
                           });
                         }}
                         className="absolute -end-[4px] -bottom-[4px] z-[20] w-[16px] h-[16px] rounded-full bg-newAccent text-[#06222e] text-[9px] flex items-center justify-center hover:bg-forth"
-                        title={t('design_media_edit_hint', 'Edit design — open in Studio')}
+                        title={t('design_media_edit_hint', 'Edit design - open in Studio')}
                       >
                         ✏
                       </button>
@@ -1012,7 +1012,7 @@ export const MultiMediaComponent: FC<{
                   className="cursor-pointer h-[30px] rounded-[6px] justify-center items-center flex bg-newColColor px-[8px] hover:bg-forth transition-colors phone:hidden"
                   title={t(
                     'studio_hint',
-                    'Create graphics and video clips — straight into your post'
+                    'Create graphics and video clips - straight into your post'
                   )}
                 >
                   <div className="flex gap-[5px] items-center">

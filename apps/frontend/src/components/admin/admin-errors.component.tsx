@@ -136,7 +136,7 @@ const ErrorDetailsModal: FC<{ row: ErrorRow }> = ({ row }) => {
             {row.organization?.users
               ?.map((u) => u.user?.email)
               .filter(Boolean)
-              .join(', ') || '—'}
+              .join(', ') || '-'}
           </div>
         </div>
         <div className="col-span-2">
@@ -410,7 +410,7 @@ export const AdminErrorsComponent: FC = () => {
               row.organization?.users
                 ?.map((u) => u.user?.email)
                 .filter(Boolean)
-                .join(', ') || '—';
+                .join(', ') || '-';
             const preview =
               (row.message || '').length > 280
                 ? row.message.slice(0, 280) + '…'

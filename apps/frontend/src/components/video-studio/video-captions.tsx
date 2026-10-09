@@ -167,7 +167,7 @@ export const VideoCaptions: FC<VideoCaptionsProps> = ({ mediaId, source, onCapti
             signal,
           });
           if (!res.ok) {
-            toaster.show(t('video_burn_failed', 'Burning captions failed. Try a different clip — our team has been notified.'), 'warning');
+            toaster.show(t('video_burn_failed', 'Burning captions failed. Try a different clip - our team has been notified.'), 'warning');
             return null;
           }
           return res.json();
@@ -191,7 +191,7 @@ export const VideoCaptions: FC<VideoCaptionsProps> = ({ mediaId, source, onCapti
               'clip_codec_unsupported',
               "This clip's video format can't be decoded by your browser (often HEVC/H.265 from a phone). Re-export it as a standard MP4 (H.264) and try again."
             )
-          : t('video_burn_failed', 'Burning captions failed. Try a different clip — our team has been notified.'),
+          : t('video_burn_failed', 'Burning captions failed. Try a different clip - our team has been notified.'),
         'warning'
       );
     }
@@ -367,11 +367,11 @@ export const VideoCaptions: FC<VideoCaptionsProps> = ({ mediaId, source, onCapti
         {source
           ? t(
               'video_captions_hint_browser',
-              'Captions are burned in right in your browser, styled with your Brand Kit colour and font — the original audio stays untouched.'
+              'Captions are burned in right in your browser, styled with your Brand Kit colour and font - the original audio stays untouched.'
             )
           : t(
               'video_captions_hint',
-              'Burning in returns a new MP4 with the captions styled to your Brand Kit — the original audio stays untouched.'
+              'Burning in returns a new MP4 with the captions styled to your Brand Kit - the original audio stays untouched.'
             )}
       </div>
     </div>

@@ -319,7 +319,7 @@ export class IntegrationsController {
         pricing[tier]?.allowedProviders || pricing.FREE.allowedProviders;
       if (!allowed.includes(integration)) {
         throw new HttpException(
-          `The ${integration} channel isn't included in your plan — upgrade to connect it.`,
+          `The ${integration} channel isn't included in your plan - upgrade to connect it.`,
           402
         );
       }
@@ -594,7 +594,7 @@ export class IntegrationsController {
         !allowed.includes(integration.providerIdentifier)
       ) {
         throw new HttpException(
-          `The ${integration.providerIdentifier} channel isn't included in your plan — upgrade to enable it.`,
+          `The ${integration.providerIdentifier} channel isn't included in your plan - upgrade to enable it.`,
           402
         );
       }

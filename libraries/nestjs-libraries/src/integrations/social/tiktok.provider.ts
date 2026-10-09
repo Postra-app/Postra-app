@@ -832,7 +832,7 @@ export class TiktokProvider extends SocialAbstract implements SocialProvider {
         // user.info.stats + video.list scopes were cut for App Review (#35),
         // so empty metrics are expected.
         this._logger.warn(
-          `[analytics:tiktok] no metrics for ${id} — user/info error: ${
+          `[analytics:tiktok] no metrics for ${id} - user/info error: ${
             userStatsData?.error?.code ?? 'none'
           }`
         );

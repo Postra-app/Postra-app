@@ -86,7 +86,7 @@ export const ResultPanel: FC<ResultPanelProps> = ({
               ).replace('{n}', String(stored.length))
             : t(
                 'video_saved_to_library',
-                'Saved to media library — you can use it in any post.'
+                'Saved to media library - you can use it in any post.'
               ),
           'success'
         );

@@ -69,7 +69,7 @@ export const AiRefinePanel: FC<Props> = ({ canvas }) => {
         toaster.show(
           t(
             'refine_empty_canvas',
-            'Add something to the canvas first — a template or AI Generate.'
+            'Add something to the canvas first - a template or AI Generate.'
           ),
           'warning'
         );
@@ -98,7 +98,7 @@ export const AiRefinePanel: FC<Props> = ({ canvas }) => {
             res,
             t(
               'refine_failed',
-              'AI could not refine the design — try a different instruction.'
+              'AI could not refine the design - try a different instruction.'
             )
           );
           return;
@@ -123,7 +123,7 @@ export const AiRefinePanel: FC<Props> = ({ canvas }) => {
         toaster.show(
           t(
             'refine_failed',
-            'AI could not refine the design — try a different instruction.'
+            'AI could not refine the design - try a different instruction.'
           ),
           'warning'
         );
@@ -161,7 +161,7 @@ export const AiRefinePanel: FC<Props> = ({ canvas }) => {
         <p className="text-[11px] text-textColor/65 leading-snug mt-1">
           {t(
             'refine_scope_hint',
-            'It edits the design — text, colours, layout. It does not retouch photos (e.g. it can’t add a person to an image).'
+            'It edits the design - text, colours, layout. It does not retouch photos (e.g. it can’t add a person to an image).'
           )}
         </p>
       </div>
@@ -228,7 +228,7 @@ export const AiRefinePanel: FC<Props> = ({ canvas }) => {
       <p className="text-[11px] text-textColor/65 leading-snug">
         {t(
           'refine_undo_hint',
-          'Each iteration is saved in history — undo with Ctrl+Z.'
+          'Each iteration is saved in history - undo with Ctrl+Z.'
         )}
       </p>
     </div>

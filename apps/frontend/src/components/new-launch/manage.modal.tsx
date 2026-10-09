@@ -849,7 +849,7 @@ export const ManageModal: FC<AddEditModalProps> = (props) => {
         toaster.show(
           t(
             'post_save_unexpected_error',
-            'Something went wrong while saving. Your content is still here — please try again.'
+            'Something went wrong while saving. Your content is still here - please try again.'
           ),
           'warning'
         );

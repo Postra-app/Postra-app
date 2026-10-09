@@ -107,7 +107,7 @@ const AppMetricsSection: FC = () => {
       <div className="text-[13px] text-newTextColor/70">
         {t(
           'admin_metrics_unavailable',
-          'Grafana is not responding — try again in a moment'
+          'Grafana is not responding - try again in a moment'
         )}{' '}
         · AI calls (24h): {data.aiCalls24h}
       </div>
@@ -165,7 +165,7 @@ export const AdminDashboardsComponent: FC = () => {
           {t('admin_dashboards', 'Dashboards')}
         </h2>
         <p className="text-[12.5px] text-newTextColor/55 mt-[3px]">
-          {t('admin_dashboards_sub', 'Monitoring & observability — one place for every dashboard')}
+          {t('admin_dashboards_sub', 'Monitoring & observability - one place for every dashboard')}
         </p>
       </div>
 
@@ -192,12 +192,12 @@ export const AdminDashboardsComponent: FC = () => {
       {/* App metrics — live Tier 1 numbers from Grafana Cloud */}
       <Section
         title={t('admin_dashboards_metrics', 'App metrics')}
-        hint={t('admin_dashboards_metrics_hint_live', '— live from Grafana Cloud (Tier 1)')}
+        hint={t('admin_dashboards_metrics_hint_live', '- live from Grafana Cloud (Tier 1)')}
       />
       <AppMetricsSection />
 
       {/* Live uptime — embedded status page */}
-      <Section title={t('admin_dashboards_uptime', 'Live uptime')} hint={t('admin_dashboards_uptime_hint', '— built-in status.postra.pl')} />
+      <Section title={t('admin_dashboards_uptime', 'Live uptime')} hint={t('admin_dashboards_uptime_hint', '- built-in status.postra.pl')} />
       <div className="bg-white/[0.03] border border-white/10 rounded-[16px] overflow-hidden backdrop-blur-[8px]">
         <iframe
           src="https://status.postra.pl"
@@ -208,7 +208,7 @@ export const AdminDashboardsComponent: FC = () => {
       </div>
 
       {/* Full Grafana */}
-      <Section title={t('admin_dashboards_grafana', 'Grafana')} hint={t('admin_dashboards_grafana_hint', '— full dashboards (Publishing, App RED, Host)')} />
+      <Section title={t('admin_dashboards_grafana', 'Grafana')} hint={t('admin_dashboards_grafana_hint', '- full dashboards (Publishing, App RED, Host)')} />
       <a
         href={`${GRAFANA_URL}/dashboards`}
         target="_blank"

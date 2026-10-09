@@ -9,7 +9,7 @@ export class BackfillMediaType {
   @Command({
     command: 'backfill-media-type',
     describe:
-      'Set Media.type to "video" on the rows that hold a video. The column defaulted to "image" for every row ever written, videos included, because saveFile never set it — so the library and the video picker had to guess from the filename and could not filter in the database. Only writes type. Dry-run unless --apply.',
+      'Set Media.type to "video" on the rows that hold a video. The column defaulted to "image" for every row ever written, videos included, because saveFile never set it - so the library and the video picker had to guess from the filename and could not filter in the database. Only writes type. Dry-run unless --apply.',
   })
   async run() {
     const apply = process.argv.includes('--apply');
@@ -20,7 +20,7 @@ export class BackfillMediaType {
     console.log(
       `[backfill-media-type] ${
         apply ? 'APPLY' : 'DRY-RUN'
-      } — ${scanned} row(s) not marked as video, ${videos.length} of them are`
+      } - ${scanned} row(s) not marked as video, ${videos.length} of them are`
     );
 
     for (const row of videos) {
@@ -29,7 +29,7 @@ export class BackfillMediaType {
 
     if (!apply) {
       console.log(
-        '[backfill-media-type] DRY-RUN only — nothing written. Re-run with --apply to persist.'
+        '[backfill-media-type] DRY-RUN only - nothing written. Re-run with --apply to persist.'
       );
     }
 

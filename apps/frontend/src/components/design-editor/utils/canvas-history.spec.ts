@@ -105,7 +105,7 @@ describe('withHistoryPaused', () => {
     expect(value).toBe('kept photo');
   });
 
-  it('still commits — and un-pauses — when the work throws', async () => {
+  it('still commits - and un-pauses - when the work throws', async () => {
     // A half-applied template has to stay reachable with Ctrl+Z rather than
     // being stranded outside the history with events switched off.
     const { canvas, history } = makeCanvas();

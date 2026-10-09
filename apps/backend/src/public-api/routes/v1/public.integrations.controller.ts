@@ -385,7 +385,7 @@ export class PublicIntegrationsController {
         pricing[tier]?.allowedProviders || pricing.FREE.allowedProviders;
       if (!allowed.includes(integration)) {
         throw new HttpException(
-          `The ${integration} channel isn't included in your plan — upgrade to connect it.`,
+          `The ${integration} channel isn't included in your plan - upgrade to connect it.`,
           402
         );
       }

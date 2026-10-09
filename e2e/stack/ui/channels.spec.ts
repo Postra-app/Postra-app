@@ -24,13 +24,13 @@ test('Meta checklist: "Not yet" closes it, and a second try reaches Meta', async
   await expect(page.getByText('Before you connect Facebook')).toBeVisible();
 
   const help = context.waitForEvent('page');
-  await page.getByRole('button', { name: 'Not yet — show me how' }).click();
+  await page.getByRole('button', { name: 'Not yet - show me how' }).click();
   await (await help).close();
   await expect(page.getByText('Before you connect Facebook')).toBeHidden();
 
   // The picker is still there; try again and continue.
   await page.getByText('Facebook Page', { exact: true }).click();
-  await page.getByRole('button', { name: 'Done — continue' }).click();
+  await page.getByRole('button', { name: 'Done - continue' }).click();
   await expect.poll(() => reachedMeta, { timeout: 15_000 }).toContain('facebook.com');
 });
 

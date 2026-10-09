@@ -6,7 +6,7 @@ import type { Metadata } from 'next';
 // normal rendering, so it must return a full HTML document and carry its own
 // styles — we keep them inline and minimal rather than pulling in global.scss.
 export const metadata: Metadata = {
-  title: 'Page not found — Postra',
+  title: 'Page not found - Postra',
   description: 'The page you are looking for does not exist.',
 };
 

@@ -78,7 +78,7 @@ export const useAddProvider = (update?: () => void, invite?: boolean) => {
       toaster.show(
         t(
           'could_not_load_channels',
-          'Could not load the channel list — please try again.'
+          'Could not load the channel list - please try again.'
         ),
         'warning'
       );
@@ -806,12 +806,12 @@ export const AddProviderComponent: FC<{
           {channelsFull
             ? t(
                 'channels_used_full',
-                '{{used}} of {{limit}} channels used — upgrade to add more.',
+                '{{used}} of {{limit}} channels used - upgrade to add more.',
                 { used: props.channelsUsed, limit: channelLimit }
               )
             : t(
                 'channels_used_counter',
-                '{{used}} of {{limit}} channels used · {{plan}} — pick any of the {{platforms}} platforms below.',
+                '{{used}} of {{limit}} channels used · {{plan}} - pick any of the {{platforms}} platforms below.',
                 {
                   used: props.channelsUsed,
                   limit: channelLimit,

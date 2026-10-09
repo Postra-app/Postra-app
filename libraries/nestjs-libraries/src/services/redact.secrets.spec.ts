@@ -72,7 +72,7 @@ describe('redactSecrets', () => {
     expect(out.response.body.data.access_token).toBe(REDACTED);
   });
 
-  it('redacts an encrypted token too — it is never needed to diagnose', () => {
+  it('redacts an encrypted token too - it is never needed to diagnose', () => {
     const out = redactSecrets({ token: 'enc::deadbeef' });
     expect(out.token).toBe(REDACTED);
   });

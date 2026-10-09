@@ -9,7 +9,7 @@ export class GrandfatherSubscriptions {
   @Command({
     command: 'grandfather-subscriptions',
     describe:
-      'One-off, ALREADY RUN: grant every existing organization a lifetime Business subscription so nobody drops to FREE when Stripe billing is enabled. Not registered in command.module.ts — after launch this would comp the whole free tier, permanently. Dry-run unless --apply is passed.',
+      'One-off, ALREADY RUN: grant every existing organization a lifetime Business subscription so nobody drops to FREE when Stripe billing is enabled. Not registered in command.module.ts - after launch this would comp the whole free tier, permanently. Dry-run unless --apply is passed.',
   })
   async run() {
     const apply = process.argv.includes('--apply');
@@ -18,7 +18,7 @@ export class GrandfatherSubscriptions {
     );
 
     console.log(
-      `[grandfather] ${apply ? 'APPLY' : 'DRY-RUN'} — ${
+      `[grandfather] ${apply ? 'APPLY' : 'DRY-RUN'} - ${
         report.total
       } organizations total`
     );
@@ -37,7 +37,7 @@ export class GrandfatherSubscriptions {
 
     if (!apply) {
       console.log(
-        '[grandfather] DRY-RUN only — nothing written. Re-run with --apply to persist.'
+        '[grandfather] DRY-RUN only - nothing written. Re-run with --apply to persist.'
       );
     }
 

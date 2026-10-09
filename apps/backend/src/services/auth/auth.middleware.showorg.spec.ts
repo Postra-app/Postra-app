@@ -56,11 +56,11 @@ const run = async (header?: string, cookie?: string) => {
 };
 
 describe('which organization a request is served from', () => {
-  it('the header wins over a stale cookie — the mobile app case', async () => {
+  it('the header wins over a stale cookie - the mobile app case', async () => {
     expect(await run('org-b', 'org-a')).toBe('org-b');
   });
 
-  it('the cookie alone still selects it — the browser case', async () => {
+  it('the cookie alone still selects it - the browser case', async () => {
     expect(await run(undefined, 'org-b')).toBe('org-b');
   });
 

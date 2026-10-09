@@ -16,7 +16,7 @@ export class SyncChannelSlots {
     const report = await this._subscriptionService.syncChannelSlots(apply);
 
     console.log(
-      `[sync-channel-slots] ${apply ? 'APPLY' : 'DRY-RUN'} — ${
+      `[sync-channel-slots] ${apply ? 'APPLY' : 'DRY-RUN'} - ${
         report.total
       } active subscription(s)`
     );
@@ -35,7 +35,7 @@ export class SyncChannelSlots {
 
     if (!apply) {
       console.log(
-        '[sync-channel-slots] DRY-RUN only — nothing written. Re-run with --apply to persist.'
+        '[sync-channel-slots] DRY-RUN only - nothing written. Re-run with --apply to persist.'
       );
     }
 

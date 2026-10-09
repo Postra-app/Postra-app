@@ -135,7 +135,7 @@ export const VideoTextOverlay: FC<VideoTextOverlayProps> = ({ onReady }) => {
               'clip_codec_unsupported',
               "This clip's video format can't be decoded by your browser (often HEVC/H.265 from a phone). Re-export it as a standard MP4 (H.264) and try again."
             )
-          : t('clip_text_failed', 'Failed to burn the text into the video. Try a different clip — our team has been notified.'),
+          : t('clip_text_failed', 'Failed to burn the text into the video. Try a different clip - our team has been notified.'),
         'warning'
       );
     }
@@ -187,7 +187,7 @@ export const VideoTextOverlay: FC<VideoTextOverlayProps> = ({ onReady }) => {
         <StudioIcon name="textOnVideo" size={14} className="inline-block shrink-0" />{' '}
         {t(
           'clip_text_intro',
-          'Upload a clip (or grab B-roll from the library), type your text — we burn it into the video in your Brand Kit colour and font. Audio stays.'
+          'Upload a clip (or grab B-roll from the library), type your text - we burn it into the video in your Brand Kit colour and font. Audio stays.'
         )}
       </div>
 

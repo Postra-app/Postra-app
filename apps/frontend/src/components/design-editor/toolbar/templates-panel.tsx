@@ -296,7 +296,7 @@ export const TemplatesPanel: FC<TemplatesPanelProps> = ({ canvas }) => {
           toaster.show(
             t(
               'template_kept_photo',
-              'Template applied on your photo — undo with Ctrl+Z for a clean slate.'
+              'Template applied on your photo - undo with Ctrl+Z for a clean slate.'
             ),
             'success'
           );
@@ -335,7 +335,7 @@ export const TemplatesPanel: FC<TemplatesPanelProps> = ({ canvas }) => {
                 <button
                   onClick={() => applyMyTemplate(m.id)}
                   disabled={!!applyingId}
-                  title={t('my_template_apply_hint', 'Apply this template (replaces the canvas — undo with Ctrl+Z)')}
+                  title={t('my_template_apply_hint', 'Apply this template (replaces the canvas - undo with Ctrl+Z)')}
                   className="w-full rounded overflow-hidden border border-newBorder/60 hover:border-forth transition-colors disabled:opacity-50 bg-newColColor"
                 >
                   <img
@@ -438,7 +438,7 @@ export const TemplatesPanel: FC<TemplatesPanelProps> = ({ canvas }) => {
       <p className="text-[11px] text-textColor/65 leading-snug">
         {t(
           'template_hint',
-          'A template overwrites the current canvas (undo with Ctrl+Z). Colours come from your Brand Kit — and every element stays editable: select it to change its colour, text or size.'
+          'A template overwrites the current canvas (undo with Ctrl+Z). Colours come from your Brand Kit - and every element stays editable: select it to change its colour, text or size.'
         )}
       </p>
     </div>

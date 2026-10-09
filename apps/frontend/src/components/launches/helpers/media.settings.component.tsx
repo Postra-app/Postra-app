@@ -404,7 +404,7 @@ export const MediaComponentInner: FC<{
                   toaster.show(
                     t(
                       'alt_text_failed',
-                      'Could not describe the image — write the alt text yourself.'
+                      'Could not describe the image - write the alt text yourself.'
                     ),
                     'warning'
                   );

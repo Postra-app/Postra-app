@@ -160,7 +160,7 @@ export const BrandTextPreview: FC<BrandTextPreviewProps> = ({
   if (failed) {
     return (
       <div className="text-[11px] text-textColor/60">
-        {t('video_preview_unavailable', 'No preview for this file — the render still works.')}
+        {t('video_preview_unavailable', 'No preview for this file - the render still works.')}
       </div>
     );
   }

@@ -1,6 +1,6 @@
 # Stack tests
 
-The whole app on throwaway stores, driven by Playwright — over HTTP (`api/`)
+The whole app on throwaway stores, driven by Playwright - over HTTP (`api/`)
 and in Chromium (`ui/`). Runs on every pull request (`ci.yml` job `stack-e2e`).
 
 ```
@@ -19,11 +19,11 @@ What runs:
 |---|---|---|
 | Postgres 17, Redis 7, Temporal dev server | 55432, 56379, 57233 | `docker-compose.yml`; offset ports, Postgres in tmpfs |
 | backend | 53000 | `apps/backend/dist`, migrated by `scripts/db-migrate.mjs` like production |
-| orchestrator (Temporal worker) | — (metrics 9464) | without it nothing publishes |
+| orchestrator (Temporal worker) | - (metrics 9464) | without it nothing publishes |
 | fake Mastodon | 58080 | `fake-mastodon.mjs`; `MASTODON_URL` points the real provider here |
 | fake OpenAI | 58090 | `fake-openai.mjs`; `OPENAI_BASE_URL` points the official SDK here, so AI code runs unchanged and costs nothing |
 | frontend | 54200 | `next start`, UI layer only |
-| proxy | 54000 | `proxy.mjs`: one origin, `/api/*` → backend, the rest → frontend — what production's nginx does |
+| proxy | 54000 | `proxy.mjs`: one origin, `/api/*` → backend, the rest → frontend - what production's nginx does |
 
 `global-setup.ts` empties every table and Redis (the login throttle lives
 there and outlives a backend restart), seeds three organisations
@@ -45,7 +45,7 @@ Writing tests:
 
 - Assert the status code first, then the body. A 500 is always a bug.
 - Anything one organisation owns gets a case in `tenant-isolation.spec.ts`:
-  the other organisation must get 404 (not 403 — it must not learn the
+  the other organisation must get 404 (not 403 - it must not learn the
   resource exists) and must change nothing.
 - Name a test after the e2e/bugs.md entry it guards (`E2E-05-12: …`).
 - UI selectors by role and text, never by Tailwind classes.
@@ -55,9 +55,9 @@ Writing tests:
 
 ## Optional projects
 
-- `pnpm e2e:stack:restart` — kills and restarts the orchestrator mid-publish
+- `pnpm e2e:stack:restart` - kills and restarts the orchestrator mid-publish
   (post workflow v1.0.9); ~6 min.
-- `pnpm e2e:stack:billing` — billing paths against Stripe **test mode**:
+- `pnpm e2e:stack:billing` - billing paths against Stripe **test mode**:
   upgrade quote vs invoice, downgrade side effects, cancel / reactivate /
   expiry, portal. Needs the sandbox keys in the environment and webhooks
   forwarded, e.g.:

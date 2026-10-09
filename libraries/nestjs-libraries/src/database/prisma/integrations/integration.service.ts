@@ -177,7 +177,7 @@ export class IntegrationService {
           // conditionally (`...(picture ? { picture } : {})`), so an existing
           // avatar is preserved on refresh rather than wiped.
           console.warn(
-            `[integration] avatar download failed for provider "${provider}" — skipping picture:`,
+            `[integration] avatar download failed for provider "${provider}" - skipping picture:`,
             (err as Error)?.message
           );
           uploadedPicture = undefined;

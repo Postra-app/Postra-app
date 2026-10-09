@@ -29,7 +29,7 @@ export const InstagramContinue = withContinueProvider<
   titleDefault: 'Select Instagram Account:',
   note: {
     key: 'instagram_business_only_note',
-    text: 'Only Business or Creator accounts linked to a Facebook Page appear here — Meta does not allow apps to publish to personal Instagram accounts.',
+    text: 'Only Business or Creator accounts linked to a Facebook Page appear here - Meta does not allow apps to publish to personal Instagram accounts.',
   },
   emptyStateMessages: [
     {
@@ -42,7 +42,7 @@ export const InstagramContinue = withContinueProvider<
     },
     {
       key: 'instagram_empty_tick_all_pages',
-      text: 'Then connect Instagram again and tick every Page in the Facebook dialog — a Page you skip there stays invisible to us.',
+      text: 'Then connect Instagram again and tick every Page in the Facebook dialog - a Page you skip there stays invisible to us.',
     },
   ],
   getItemId: (item) => item.id,

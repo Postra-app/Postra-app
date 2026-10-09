@@ -25,23 +25,23 @@ const listed = async (api: APIRequestContext) =>
 
 test('a renamed channel shows its Postra name and keeps the platform name', async () => {
   const before = await listed(a);
-  const res = await a.put(`/integrations/${CHANNEL}/custom-name`, { data: { name: '  Client X — Bluesky  ' } });
+  const res = await a.put(`/integrations/${CHANNEL}/custom-name`, { data: { name: '  Client X - Bluesky  ' } });
   expect(res.status()).toBe(200);
   // Only the id: the row holds the channel's tokens.
   expect(await res.json()).toEqual({ id: CHANNEL });
 
   const after = await listed(a);
-  expect(after?.name).toBe('Client X — Bluesky');
+  expect(after?.name).toBe('Client X - Bluesky');
   expect(after?.originalName).toBe(before?.originalName);
 
   const pub = await a.get('/public/v1/integrations', { headers: { Authorization: USERS.a.apiKey } });
   expect(pub.status()).toBe(200);
-  expect((await pub.json()).find((c: { id: string }) => c.id === CHANNEL)?.name).toBe('Client X — Bluesky');
+  expect((await pub.json()).find((c: { id: string }) => c.id === CHANNEL)?.name).toBe('Client X - Bluesky');
 
   const prisma = database();
   const row = await prisma.integration.findUnique({ where: { id: CHANNEL }, select: { name: true, customName: true } });
   await prisma.$disconnect();
-  expect(row).toEqual({ name: before?.originalName, customName: 'Client X — Bluesky' });
+  expect(row).toEqual({ name: before?.originalName, customName: 'Client X - Bluesky' });
 
   expect((await a.put(`/integrations/${CHANNEL}/custom-name`, { data: { name: '' } })).status()).toBe(200);
   expect((await listed(a))?.name).toBe(before?.originalName);

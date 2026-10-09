@@ -8,7 +8,7 @@ export class RefreshTokens {
   @Command({
     command: 'refresh',
     describe:
-      'Refresh the tokens of every channel that is due one. Calls the providers, rewrites tokens, sets refreshNeeded and emails the owners of the channels that failed — so it is not read-only in any sense. Dry-run unless --apply.',
+      'Refresh the tokens of every channel that is due one. Calls the providers, rewrites tokens, sets refreshNeeded and emails the owners of the channels that failed - so it is not read-only in any sense. Dry-run unless --apply.',
   })
   async refresh() {
     // Every other mutating command here defaults to a dry-run and wants
@@ -22,7 +22,7 @@ export class RefreshTokens {
     console.log(
       `[refresh] ${
         apply ? 'APPLY' : 'DRY-RUN'
-      } — ${total} channel(s) due, ${refreshed.length} ${
+      } - ${total} channel(s) due, ${refreshed.length} ${
         apply ? 'refreshed' : 'would be refreshed'
       }, ${failed.length} failed`
     );
@@ -44,12 +44,12 @@ export class RefreshTokens {
       console.log(
         `  ${channel.scheduled ? 'SCHEDULED' : 'REACTIVE '} ${
           channel.provider
-        } expired ${hours(channel.expiredFor ?? 0)}h ago — ${channel.name}`
+        } expired ${hours(channel.expiredFor ?? 0)}h ago - ${channel.name}`
       );
     }
     if (!expired.length) {
       console.log(
-        '  nothing is overdue — the rest expire within the next 24h, which is normal for short-lived tokens'
+        '  nothing is overdue - the rest expire within the next 24h, which is normal for short-lived tokens'
       );
     }
 
@@ -61,7 +61,7 @@ export class RefreshTokens {
 
     if (!apply) {
       console.log(
-        '[refresh] DRY-RUN only — no provider was called and nothing was written. Re-run with --apply to refresh.'
+        '[refresh] DRY-RUN only - no provider was called and nothing was written. Re-run with --apply to refresh.'
       );
     }
 

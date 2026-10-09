@@ -79,7 +79,7 @@ describe('readablePostError', () => {
   });
 });
 
-describe('PostsService.getPost — what the editor receives', () => {
+describe('PostsService.getPost - what the editor receives', () => {
   it('sends the sentence, not the Temporal JSON, and no integration token', async () => {
     const service = Object.create(PostsService.prototype) as PostsService;
     jest.spyOn(service, 'getPostsRecursively').mockResolvedValue([

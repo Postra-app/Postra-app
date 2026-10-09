@@ -294,7 +294,7 @@ export const AdminAnnouncementsComponent = () => {
           <span className="text-[13px] text-red-400" role="alert">
             {t(
               'admin_announcement_delete_failed',
-              'Failed to delete announcement — it is still visible to users.'
+              'Failed to delete announcement - it is still visible to users.'
             )}
           </span>
         )}

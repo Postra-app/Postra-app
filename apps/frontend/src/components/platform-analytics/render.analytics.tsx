@@ -290,7 +290,7 @@ export const RenderAnalytics: FC<{
         >
           {t(
             'analytics_no_data_refresh',
-            'No analytics data yet — tap to refresh the channel'
+            'No analytics data yet - tap to refresh the channel'
           )}
         </button>
       )}

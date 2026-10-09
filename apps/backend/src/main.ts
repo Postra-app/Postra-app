@@ -85,7 +85,7 @@ async function start() {
     await startMcp(app);
   } catch (err) {
     new Logger('startMcp').error(
-      'AI copilot / MCP failed to initialise — starting the backend without it.',
+      'AI copilot / MCP failed to initialise - starting the backend without it.',
       err instanceof Error ? err.stack : String(err)
     );
   }

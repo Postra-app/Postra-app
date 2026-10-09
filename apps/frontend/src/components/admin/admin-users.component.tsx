@@ -530,7 +530,7 @@ export const AdminUsersComponent = () => {
           grant
             ? t(
                 'admin_grant_admin_confirm',
-                `Grant super-admin to ${u.email}? This unlocks the Admin panel and god-mode across every org — it takes effect on their next page load.`
+                `Grant super-admin to ${u.email}? This unlocks the Admin panel and god-mode across every org - it takes effect on their next page load.`
               )
             : t(
                 'admin_revoke_admin_confirm',

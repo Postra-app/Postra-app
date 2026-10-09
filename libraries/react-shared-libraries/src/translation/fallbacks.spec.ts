@@ -39,6 +39,7 @@ const mismatches: string[] = [];
 // the catalogue was not the list of what customers read and wording reviews
 // missed them.
 const missing: string[] = [];
+const fallbackTexts = new Set<string>();
 let calls = 0;
 for (const file of sources) {
   const text = readFileSync(file, 'utf8');
@@ -75,6 +76,20 @@ describe('English fallbacks', () => {
 
   it('all have their key in the English catalogue', () => {
     expect(missing).toEqual([]);
+  });
+
+  it('have no long dashes, in the code or in any language (K. 10-09)', () => {
+    const dir = join(__dirname, 'locales');
+    const withDash: string[] = [...fallbackTexts].filter((t) => /[—–]/.test(t));
+    for (const lang of readdirSync(dir)) {
+      const texts: Record<string, string> = JSON.parse(
+        readFileSync(join(dir, lang, 'translation.json'), 'utf8')
+      );
+      for (const [key, text] of Object.entries(texts)) {
+        if (/[—–]/.test(text)) withDash.push(`${lang}:${key}`);
+      }
+    }
+    expect(withDash).toEqual([]);
   });
 
   it('never call a window a "modal"', () => {

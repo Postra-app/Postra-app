@@ -294,7 +294,7 @@ export class StripeService {
             refund === null
               ? `A second subscription was started while you already had one, so we cancelled it. If you were charged twice, contact us and we will refund it.`
               : refund > 0
-              ? `A second subscription was started while you already had one, so we cancelled it and refunded its payment of ${formatAmount(refund)}. The refund reaches your card in 5–10 days.`
+              ? `A second subscription was started while you already had one, so we cancelled it and refunded its payment of ${formatAmount(refund)}. The refund reaches your card in 5-10 days.`
               : `A second subscription was started while you already had one, so we cancelled it. Nothing was charged for it.`,
             true,
             false,
@@ -484,7 +484,7 @@ export class StripeService {
     this._logger.warn(
       `[stripe] organization ${organization.id} points at customer ${
         organization.paymentId
-      }, which Stripe no longer has — creating a new one`
+      }, which Stripe no longer has - creating a new one`
     );
     return false;
   }
@@ -617,7 +617,7 @@ export class StripeService {
     } catch (err) {
       if (isMissingCustomerError(err)) {
         this._logger.warn(
-          `[stripe] organization ${organizationId} points at customer ${customer}, which Stripe no longer has — reading it as no subscriptions`
+          `[stripe] organization ${organizationId} points at customer ${customer}, which Stripe no longer has - reading it as no subscriptions`
         );
         return [];
       }

@@ -247,7 +247,7 @@ export function useUppyUploader(props: {
       }
       console.error('[Postra:upload] upload failed', result);
       if (!refusalShown) {
-        toast.show('Upload failed — please try again.', 'warning');
+        toast.show('Upload failed - please try again.', 'warning');
       }
       refusalShown = false;
       // clear() throws while an upload is registered and leaves the uploader
@@ -280,7 +280,7 @@ export function useUppyUploader(props: {
         toast.show(
           `Some files failed to upload${
             names.length ? ` (${names.slice(0, 3).join(', ')}${names.length > 3 ? '…' : ''})` : ''
-          } — please try again.`,
+          } - please try again.`,
           'warning'
         );
       }
@@ -358,7 +358,7 @@ export function useUppyUploader(props: {
       } catch (e) {
         console.error('[Postra:upload] post-upload processing failed', e);
         toast.show(
-          'Upload failed while saving the file — please try again.',
+          'Upload failed while saving the file - please try again.',
           'warning'
         );
       } finally {

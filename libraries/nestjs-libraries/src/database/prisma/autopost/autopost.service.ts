@@ -451,7 +451,7 @@ export class AutopostService {
     // hashtag counts). Passed as a template variable (not string-interpolated)
     // so any { } the user types stays literal and never breaks the f-string.
     const extraInstructions = state.body.customInstructions?.trim()
-      ? `Additional context from the user — weave it in where relevant, but ALWAYS keep the per-platform rules above (language, length limits, hashtag counts):\n        ${state.body.customInstructions.trim()}`
+      ? `Additional context from the user - weave it in where relevant, but ALWAYS keep the per-platform rules above (language, length limits, hashtag counts):\n        ${state.body.customInstructions.trim()}`
       : '';
 
     const structuredOutput = model.withStructuredOutput(generatePlatformContent);
@@ -470,7 +470,7 @@ export class AutopostService {
         - Facebook: casual friendly tone, 2-3 sentences, CTA to read the article
         - Generic: universal, 1-2 sentences, engaging
         - Use emoji where they fit
-        - Do NOT add a link to the article — the link is appended automatically
+        - Do NOT add a link to the article - the link is appended automatically
         {extraInstructions}
 
         Article:
@@ -535,7 +535,7 @@ export class AutopostService {
         - NO text, watermarks, logos, or UI elements in the image
         - NO obvious AI artifacts (extra fingers, distorted faces, floating objects)
         - Prefer: clean compositions, shallow depth of field, muted corporate color palette
-        - If topic is abstract (software, data, AI) — use metaphorical real-world objects (desk setup, office, city, nature)
+        - If topic is abstract (software, data, AI) - use metaphorical real-world objects (desk setup, office, city, nature)
         - Aspect ratio: 16:9 landscape
         {brand}
         

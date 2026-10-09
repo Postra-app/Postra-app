@@ -99,7 +99,7 @@ export const Webhooks: FC = () => {
                       <span className="text-[12px] text-amber-300">
                         {t(
                           'webhook_paused_over_limit',
-                          "Paused — over your plan's webhook limit"
+                          "Paused - over your plan's webhook limit"
                         )}
                       </span>
                     )}

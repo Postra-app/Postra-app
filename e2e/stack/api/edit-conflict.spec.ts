@@ -84,7 +84,7 @@ const openDraft = async (api: APIRequestContext, channel: string) => {
   return (await created.json())[0].postId as string;
 };
 
-test('E2E-05-39: saves opened from the same version at the same moment — one goes through, the rest are a 409', async () => {
+test('E2E-05-39: saves opened from the same version at the same moment - one goes through, the rest are a 409', async () => {
   const org = await throwawayOrg(prisma, { tier: 'PRO', totalChannels: 5, channels: 1 });
   try {
     const channel = org.channelIds[0];

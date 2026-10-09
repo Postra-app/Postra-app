@@ -38,12 +38,12 @@ export const metaChecklists = {
       },
       {
         key: 'instagram_precheck_step_tick',
-        text: 'Then come back here and sign in with the Facebook account that manages that Page — and tick every Page in Meta’s dialog. A Page you skip stays invisible to us.',
+        text: 'Then come back here and sign in with the Facebook account that manages that Page - and tick every Page in Meta’s dialog. A Page you skip stays invisible to us.',
       },
     ],
     note: {
       key: 'instagram_precheck_note',
-      text: 'A personal Instagram account is invisible to every scheduling tool, not just Postra. The linking happens inside Instagram and Facebook — Postra never connects, moves or removes your accounts.',
+      text: 'A personal Instagram account is invisible to every scheduling tool, not just Postra. The linking happens inside Instagram and Facebook - Postra never connects, moves or removes your accounts.',
     },
   },
   facebook: {
@@ -58,7 +58,7 @@ export const metaChecklists = {
     steps: [
       {
         key: 'facebook_precheck_step_page',
-        text: 'Have a Facebook Page for your business — creating one is free and takes about two minutes.',
+        text: 'Have a Facebook Page for your business - creating one is free and takes about two minutes.',
       },
       {
         key: 'facebook_precheck_step_control',
@@ -66,7 +66,7 @@ export const metaChecklists = {
       },
       {
         key: 'facebook_precheck_step_tick',
-        text: 'When you sign in, tick every Page in Meta’s dialog — a Page you skip there stays invisible to us.',
+        text: 'When you sign in, tick every Page in Meta’s dialog - a Page you skip there stays invisible to us.',
       },
     ],
     note: {
@@ -108,7 +108,7 @@ export const MetaConnectChecklist: FC<{
       </p>
       <div className="flex gap-[10px] mt-[8px]">
         <Button type="button" className="flex-1" onClick={onConfirm}>
-          {t('meta_precheck_continue', 'Done — continue')}
+          {t('meta_precheck_continue', 'Done - continue')}
         </Button>
         {!!onCancel && (
           <Button
@@ -116,7 +116,7 @@ export const MetaConnectChecklist: FC<{
             className="flex-1 !bg-transparent border border-tableBorder text-textColor"
             onClick={onCancel}
           >
-            {t('meta_precheck_open_help', 'Not yet — show me how')}
+            {t('meta_precheck_open_help', 'Not yet - show me how')}
           </Button>
         )}
       </div>

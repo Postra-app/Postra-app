@@ -557,7 +557,7 @@ export class YoutubeProvider extends SocialAbstract implements SocialProvider {
         console.error(
           '[analytics:youtube] no rows for',
           id,
-          '— new channel / YouTube has a 24-48h analytics processing delay; showing zeros.'
+          '- new channel / YouTube has a 24-48h analytics processing delay; showing zeros.'
         );
       }
       return build(rows);

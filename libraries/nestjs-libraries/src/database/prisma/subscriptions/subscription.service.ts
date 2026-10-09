@@ -637,7 +637,7 @@ export class SubscriptionService {
     const paymentId = await this._subscriptionRepository.getPaymentId(orgId);
     if (paymentId?.startsWith('cus_')) {
       throw new HttpException(
-        'This organization has a live Stripe customer — cancel it in Stripe instead.',
+        'This organization has a live Stripe customer - cancel it in Stripe instead.',
         400
       );
     }
@@ -689,7 +689,7 @@ export class SubscriptionService {
     const paymentId = await this._subscriptionRepository.getPaymentId(orgId);
     if (paymentId?.startsWith('cus_')) {
       throw new HttpException(
-        'This organization has a live Stripe customer — change the plan in Stripe instead.',
+        'This organization has a live Stripe customer - change the plan in Stripe instead.',
         400
       );
     }

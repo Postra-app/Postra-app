@@ -271,7 +271,7 @@ export const VideoSlideshow: FC<VideoSlideshowProps> = ({ onReady }) => {
         <StudioIcon name="images" size={14} className="inline-block shrink-0" />{' '}
         {t(
           'slideshow_intro',
-          'Got product photos but no footage? Drop in a few — we turn them into a vertical clip with subtle motion and text in your brand.'
+          'Got product photos but no footage? Drop in a few - we turn them into a vertical clip with subtle motion and text in your brand.'
         )}
       </div>
 

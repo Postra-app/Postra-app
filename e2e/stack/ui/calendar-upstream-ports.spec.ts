@@ -47,12 +47,12 @@ test('a channel renamed from its menu shows the new name, and resets', async ({ 
     page.getByText(name, { exact: true }).locator('xpath=ancestor::*[.//*[@aria-label="Channel options"]][1]').getByRole('button', { name: 'Channel options' });
   await menuOf(EXTRA.name).click();
   await page.getByText('Rename channel', { exact: true }).click();
-  await page.getByRole('textbox', { name: 'Name', exact: true }).fill('Client X — Bluesky');
+  await page.getByRole('textbox', { name: 'Name', exact: true }).fill('Client X - Bluesky');
   await page.getByRole('button', { name: 'Save', exact: true }).click();
-  await expect(page.getByText('Client X — Bluesky', { exact: true }).first()).toBeVisible();
+  await expect(page.getByText('Client X - Bluesky', { exact: true }).first()).toBeVisible();
   expect((await prisma.integration.findUnique({ where: { id: EXTRA.id } }))?.name).toBe(EXTRA.name);
 
-  await menuOf('Client X — Bluesky').click();
+  await menuOf('Client X - Bluesky').click();
   await page.getByText('Reset to original name', { exact: true }).click();
   await expect(page.getByText(EXTRA.name, { exact: true }).first()).toBeVisible();
   expect((await prisma.integration.findUnique({ where: { id: EXTRA.id } }))?.customName ?? null).toBeNull();

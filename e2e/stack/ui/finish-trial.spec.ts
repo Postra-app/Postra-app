@@ -44,7 +44,7 @@ test('after a paid trial it says the plan is active, not that the payment failed
   await routes(page, { finish: false, reason: 'no-trial' });
   await page.goto('/billing?finishTrial=true');
   await page.getByRole('button', { name: 'End trial and pay £29 now' }).click();
-  await expect(page.getByText('Your trial has already ended — your plan is active.')).toBeVisible();
+  await expect(page.getByText('Your trial has already ended - your plan is active.')).toBeVisible();
   await expect(page.getByText('We could not take the first payment yet')).toHaveCount(0);
 });
 

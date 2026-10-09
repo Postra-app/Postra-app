@@ -74,7 +74,7 @@ describe('isNetworkError', () => {
     expect(isNetworkError(new TypeError(message))).toBe(true);
   });
 
-  it('counts our own abort — customFetch only fires it after 120s', () => {
+  it('counts our own abort - customFetch only fires it after 120s', () => {
     expect(isNetworkError(new FetchTimeoutError('/posts'))).toBe(true);
   });
 
