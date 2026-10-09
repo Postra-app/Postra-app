@@ -1579,5 +1579,8 @@
   "plan_change_renewal_month": "Od {{date}}: £{{price}} miesięcznie.",
   "plan_change_renewal_year": "Od {{date}}: £{{price}} rocznie.",
   "plan_change_pay": "Zmień i zapłać {{amount}}",
-  "plan_change_confirm": "Zmień plan"
+  "plan_change_confirm": "Zmień plan",
+  "plan_change_scheduled": "Zmienić na {{plan}} od {{date}}? Do tego dnia zostajesz na {{current}}.",
+  "plan_change_scheduled_confirm": "Zmień od {{date}}",
+  "plan_pending_change": "Zmiana na {{plan}} od {{date}}"
 }

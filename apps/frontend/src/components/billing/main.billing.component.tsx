@@ -16,7 +16,7 @@ import {
   planLabel,
 } from '@gitroom/nestjs-libraries/database/prisma/subscriptions/pricing';
 import { FAQComponent } from '@gitroom/frontend/components/billing/faq.component';
-import { useSWRConfig } from 'swr';
+import useSWR, { useSWRConfig } from 'swr';
 import { useUser } from '@gitroom/frontend/components/layout/user.context';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useVariables } from '@gitroom/react/helpers/variable.context';
@@ -38,6 +38,9 @@ import { TrialLimitsNote } from '@gitroom/frontend/components/billing/trial.limi
 import { AiUsageThisMonth } from '@gitroom/frontend/components/billing/ai.usage.this.month';
 import { BillingHistory } from '@gitroom/frontend/components/billing/billing.history.component';
 import { planFeatures } from '@gitroom/frontend/components/billing/plan.features';
+
+// Lowest to highest, as stripe.service compares plans.
+const PLAN_ORDER = ['FREE', 'STANDARD', 'TEAM', 'PRO', 'ULTIMATE'];
 
 export const Prorate: FC<{
   period: 'MONTHLY' | 'YEARLY';
@@ -253,6 +256,15 @@ export const MainBillingComponent: FC<{
     period === 'MONTHLY' ? 'off' : 'on'
   );
 
+  // A lower plan waiting for the next billing period (E2E-07-44).
+  const loadPending = useCallback(
+    async () => (await fetch('/billing/pending-change')).json(),
+    [fetch]
+  );
+  const { data: pending, mutate: refreshPending } = useSWR<{
+    billing?: string;
+    on?: string;
+  }>(subscription?.id ? 'billing-pending-change' : null, loadPending);
   const confirmPlanChange = useCallback(
     async (billing: string, current: string) => {
       const period = monthlyOrYearly === 'on' ? 'YEARLY' : 'MONTHLY';
@@ -283,6 +295,28 @@ export const MainBillingComponent: FC<{
             )
           : '';
       const upgrade = (quote.price || 0) > 0;
+      // A lower plan on a paid plan waits for the renewal; in a trial,
+      // nothing is paid and it changes at once (stripe.service subscribe).
+      const scheduled =
+        !upgrade &&
+        !user?.isTrailing &&
+        !!quote.renewsOn &&
+        PLAN_ORDER.indexOf(billing) < PLAN_ORDER.indexOf(current);
+      const on = quote.renewsOn ? dayjs(quote.renewsOn).format('D MMMM') : '';
+      if (scheduled) {
+        return areYouSure({
+          title: t('plan_change_title', 'Change your plan'),
+          description: `${t(
+            'plan_change_scheduled',
+            'Change to {{plan}} on {{date}}? You keep {{current}} until then.',
+            { plan, date: on, current: planLabel(current) }
+          )} ${renewal}`.trim(),
+          approveLabel: t('plan_change_scheduled_confirm', 'Change on {{date}}', {
+            date: on,
+          }),
+          cancelLabel: t('cancel', 'Cancel'),
+        });
+      }
       return areYouSure({
         title: t('plan_change_title', 'Change your plan'),
         description: upgrade
@@ -302,7 +336,7 @@ export const MainBillingComponent: FC<{
         cancelLabel: t('cancel', 'Cancel'),
       });
     },
-    [monthlyOrYearly, t]
+    [monthlyOrYearly, t, user?.isTrailing]
   );
   const [initialChannels, setInitialChannels] = useState(
     sub?.totalChannels || 1
@@ -541,7 +575,13 @@ export const MainBillingComponent: FC<{
             );
             return;
           }
-          const { url, portal } = await subscribeResponse.json();
+          const { url, portal, scheduled } = await subscribeResponse.json();
+          if (scheduled) {
+            // Nothing changes until the renewal; the note under the current
+            // plan says when.
+            await refreshPending();
+            return;
+          }
           if (url) {
             await track(TrackEnum.InitiateCheckout, {
               value:
@@ -598,6 +638,8 @@ export const MainBillingComponent: FC<{
         } finally {
           reactivating.current = false;
           setLoading(false);
+          // An upgrade or cancelling drops a waiting downgrade.
+          refreshPending();
         }
       },
     [monthlyOrYearly, subscription, user, utm]
@@ -712,6 +754,17 @@ export const MainBillingComponent: FC<{
                       : t('purchase', 'Purchase plan')}
                   </Button>
                 )}
+                {currentPackage === name.toUpperCase() &&
+                  !subscription?.cancelAt &&
+                  !!pending?.billing &&
+                  !!pending?.on && (
+                    <div className="self-center text-newTextColor/70">
+                      {t('plan_pending_change', 'Changes to {{plan}} on {{date}}', {
+                        plan: planLabel(pending.billing),
+                        date: dayjs(pending.on).format('D MMMM'),
+                      })}
+                    </div>
+                  )}
                 {subscription &&
                   currentPackage !== name.toUpperCase() &&
                   name !== 'FREE' &&

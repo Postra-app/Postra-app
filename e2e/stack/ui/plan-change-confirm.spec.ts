@@ -31,3 +31,35 @@ test('changing plan asks first, with a fresh amount and the renewal', async ({ p
   await page.getByRole('button', { name: 'Upgrade and pay £49.68' }).click();
   await expect.poll(() => subscribe).toEqual(['POST']);
 });
+
+// E2E-07-44 (Kris Company, 2026-10-09): Business → Starter changed at once and
+// the unused Business went to the Stripe balance. A lower plan now starts at
+// the renewal, as the subscription terms say, and Billing shows when.
+test('a lower plan waits for the renewal, and Billing says when', async ({ page }) => {
+  const on = '2026-11-09T09:35:51.000Z';
+  const subscribe: string[] = [];
+  let scheduled = false;
+  await page.route('**/api/billing/prorate', (route) =>
+    route.fulfill({ json: { price: 0, renewsOn: on, renewalPrice: 19 } })
+  );
+  await page.route('**/api/billing/subscribe', (route) => {
+    subscribe.push(route.request().method());
+    scheduled = true;
+    return route.fulfill({ json: { id: 'x', scheduled: { billing: 'STANDARD', period: 'MONTHLY', on } } });
+  });
+  await page.route('**/api/billing/pending-change', (route) =>
+    route.fulfill({ json: scheduled ? { billing: 'STANDARD', period: 'MONTHLY', on } : {} })
+  );
+  await page.goto('/billing');
+  // Organisation A is on Pro with two people: Starter is lower, with one seat.
+  await page.getByRole('button', { name: /Purchase plan/ }).first().click();
+  await page.getByRole('button', { name: 'Yes, continue' }).click();
+  await expect(
+    page.getByText('Change to Starter on 9 November? You keep Pro until then. From 9 November: £19 a month.')
+  ).toBeVisible();
+  expect(subscribe).toEqual([]);
+  await page.getByRole('button', { name: 'Change on 9 November' }).click();
+  await expect.poll(() => subscribe).toEqual(['POST']);
+  await expect(page.getByText('Changes to Starter on 9 November')).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Current plan' })).toHaveCount(1);
+});

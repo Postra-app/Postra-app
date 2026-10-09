@@ -28,7 +28,9 @@ test('after a plan change Add Channel locks what the new plan does not have', as
   await page.getByRole('button', { name: /Purchase plan/ }).first().click();
   // Organisation A has two people; Starter has one seat.
   await page.getByRole('button', { name: 'Yes, continue' }).click();
-  await page.getByRole('button', { name: 'Change plan' }).click();
+  // A paid plan waits for the renewal; this route answers as a change made
+  // at once (a trial, or the renewal itself).
+  await page.getByRole('button', { name: /^Change on / }).click();
   await expect.poll(() => changed).toBe(true);
 
   await page.getByRole('link', { name: 'Calendar' }).first().click();

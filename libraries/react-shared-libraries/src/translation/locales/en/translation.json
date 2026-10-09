@@ -1816,5 +1816,8 @@
   "plan_change_renewal_month": "From {{date}}: £{{price}} a month.",
   "plan_change_renewal_year": "From {{date}}: £{{price}} a year.",
   "plan_change_pay": "Upgrade and pay {{amount}}",
-  "plan_change_confirm": "Change plan"
+  "plan_change_confirm": "Change plan",
+  "plan_change_scheduled": "Change to {{plan}} on {{date}}? You keep {{current}} until then.",
+  "plan_change_scheduled_confirm": "Change on {{date}}",
+  "plan_pending_change": "Changes to {{plan}} on {{date}}"
 }
