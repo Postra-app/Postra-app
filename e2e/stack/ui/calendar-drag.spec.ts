@@ -1,7 +1,7 @@
 import { expect, test } from '@playwright/test';
 import { listPosts, signedIn } from '../helpers';
 import { USERS } from '../seed';
-import { quietSlot, weekOf } from './ui-helpers';
+import { dragWithMouse, quietSlot, weekOf } from './ui-helpers';
 
 // E2E-05-49: a post dragged to another slot moves on screen before the
 // server answers. When the server refused (the post deleted in another tab,
@@ -65,7 +65,7 @@ test('E2E-05-49: a move the server refuses puts the post back', async ({
     const from = page.locator(`[data-slot="${fromSlot}"]`);
     const to = page.locator(`[data-slot="${toSlot}"]`);
 
-    await tile.dragTo(to);
+    await dragWithMouse(page, tile, to);
     await expect.poll(() => refused).toBe(1);
 
     // Back where the server has it, not where it was dropped.
@@ -155,7 +155,7 @@ test('E2E-05-49: the old week answering late does not replace the new week', asy
       }
       await route.continue();
     });
-    await tile.dragTo(to);
+    await dragWithMouse(page, tile, to);
     await page.getByRole('button', { name: 'Next week' }).click();
     await expect(page.getByText(there.content)).toBeVisible();
     // The late answer for the previous week has arrived by now.
@@ -209,7 +209,7 @@ test('a post moved in Month view keeps its time of day', async ({ page }) => {
       .filter({ hasText: content });
     await expect(tile).toBeVisible();
     const saved = page.waitForResponse((r) => r.url().includes(`/posts/${id}/date`) && r.request().method() === 'PUT');
-    await tile.dragTo(page.locator(`[data-slot="${ymd(target)}T23:59"]`));
+    await dragWithMouse(page, tile, page.locator(`[data-slot="${ymd(target)}T23:59"]`));
     expect((await saved).status()).toBeLessThan(300);
 
     const expected = new Date(target);
