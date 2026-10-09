@@ -26,3 +26,14 @@ test('Teams says how many seats are used', async ({ page }) => {
   // Organisation A (Pro, 2 seats) has its owner and one member.
   await expect(page.getByText('2 of 2 seats used')).toBeVisible();
 });
+
+test.describe('Business', () => {
+  test.use({ storageState: require('../helpers').stateFile('c') });
+
+  test('Webhooks say unlimited, as the plan does, not a technical 10000', async ({ page }) => {
+    await page.goto('/settings');
+    await page.getByRole('tab', { name: 'Webhooks' }).click();
+    await expect(page.getByText(/^Webhooks \(\d+ · unlimited\)$/)).toBeVisible();
+    await expect(page.getByText(/\/10000/)).toHaveCount(0);
+  });
+});
