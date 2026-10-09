@@ -120,6 +120,19 @@ describe('subscription events are written from Stripe’s current state', () => 
     expect(subscriptionService.createOrUpdateSubscription.mock.calls[0][0]).toBe(false);
   });
 
+  it('stores Stripe’s billing anchor, where the AI allowance month starts (E2E-07-40)', async () => {
+    // Trial ended early on 2026-10-09 09:35:51: invoices run from then, not
+    // from the day the subscription was created.
+    retrieveSubscription.mockResolvedValue(sub('active', 'PRO', { billing_cycle_anchor: 1791538551 }));
+    const { service, subscriptionService } = build();
+
+    await service.updateSubscription(event('customer.subscription.updated', sub('active')));
+
+    expect(subscriptionService.createOrUpdateSubscription.mock.calls[0][9]).toEqual(
+      new Date('2026-10-09T09:35:51.000Z')
+    );
+  });
+
   it('trialing is still a trial', async () => {
     retrieveSubscription.mockResolvedValue(sub('trialing'));
     const { service, subscriptionService } = build();
