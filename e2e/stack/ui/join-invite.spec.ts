@@ -96,7 +96,7 @@ test('an invitation opened before logging in asks to join after the login (E2E-0
     await page.goto(`/?org=${encodeURIComponent(invite)}`);
     await expect(page).toHaveURL(/\/auth/);
     await page.getByLabel('Email').fill(invited.email);
-    await page.getByLabel('Password').fill('Stack-tests-T-1');
+    await page.getByLabel('Password', { exact: true }).fill('Stack-tests-T-1');
     await page.getByRole('button', { name: /^(Sign in|Log in|Login)$/ }).click();
 
     await expect(page).toHaveURL(/\/join\?org=/);
