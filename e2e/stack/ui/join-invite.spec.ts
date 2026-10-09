@@ -75,3 +75,35 @@ test.describe('from an organisation without a plan', () => {
     }
   });
 });
+
+test('an invitation opened before logging in asks to join after the login (E2E-05-95)', async ({ page }) => {
+  // Without a session the link only leaves a cookie; a password login read
+  // nothing from it, so the person landed in their own calendar and the
+  // invitation was lost.
+  const prisma = database();
+  const agency = await throwawayOrg(prisma, { tier: 'ULTIMATE', totalChannels: 5, channels: 0 });
+  const person = await throwawayOrg(prisma, { tier: 'ULTIMATE', totalChannels: 5, channels: 0 });
+  try {
+    const invited = await prisma.user.findFirstOrThrow({
+      where: { organizations: { some: { organizationId: person.orgId } } },
+    });
+    const res = await agency.api.post('/settings/team', {
+      data: { email: invited.email, role: 'USER', sendEmail: false },
+    });
+    expect(res.status(), await res.text()).toBe(201);
+    const invite = new URL((await res.json()).url, 'https://x').searchParams.get('org')!;
+
+    await page.goto(`/?org=${encodeURIComponent(invite)}`);
+    await expect(page).toHaveURL(/\/auth/);
+    await page.getByLabel('Email').fill(invited.email);
+    await page.getByLabel('Password').fill('Stack-tests-T-1');
+    await page.getByRole('button', { name: /^(Sign in|Log in|Login)$/ }).click();
+
+    await expect(page).toHaveURL(/\/join\?org=/);
+    await expect(page.getByRole('heading', { name: /Join Stack throwaway/ })).toBeVisible();
+  } finally {
+    await agency.remove();
+    await person.remove();
+    await prisma.$disconnect();
+  }
+});
