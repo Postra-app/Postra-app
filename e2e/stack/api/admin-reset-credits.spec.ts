@@ -66,3 +66,22 @@ test('a super admin resets one kind of AI credits for this billing period', asyn
     await staff.remove();
   }
 });
+
+test('admin routes that move money are rate limited', async () => {
+  // A stolen or scripted super-admin session could fire refunds and
+  // cancellations without pause; everything else of /admin is read-only or
+  // reversible.
+  const someone = await throwawayOrg(prisma, { tier: 'STANDARD', totalChannels: 3, channels: 0 });
+  try {
+    for (const route of ['/admin/refund-charges', '/admin/cancel-subscription']) {
+      const statuses: number[] = [];
+      for (let i = 0; i < 21; i++) {
+        statuses.push((await someone.api.post(route, { data: {} })).status());
+      }
+      expect(statuses.slice(0, 20).every((s) => s === 403), `${route}: ${statuses}`).toBe(true);
+      expect(statuses[20], route).toBe(429);
+    }
+  } finally {
+    await someone.remove();
+  }
+});
