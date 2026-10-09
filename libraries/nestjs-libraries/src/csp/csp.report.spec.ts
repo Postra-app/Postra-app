@@ -34,7 +34,6 @@ describe('CSP reports', () => {
           type: 'csp-violation',
           url: 'https://app.postra.pl/media',
           body: {
-            documentURL: 'https://app.postra.pl/media',
             effectiveDirective: 'img-src',
             blockedURL: 'https://cdn.example/a.png',
             disposition: 'report',
