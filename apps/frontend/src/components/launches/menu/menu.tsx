@@ -482,7 +482,7 @@ export const Menu: FC<{
   }, [id, t]);
   const updateCredentials = useCallback(() => {
     modal.openModal({
-      title: t('custom_url', 'Custom URL'),
+      title: t('update_credentials', 'Update Credentials'),
       withCloseButton: false,
       classNames: {
         modal: 'md',
