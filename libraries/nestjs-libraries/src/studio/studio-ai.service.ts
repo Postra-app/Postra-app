@@ -6,6 +6,7 @@ import { parseChat } from '@gitroom/nestjs-libraries/openai/parse-chat';
 import { recordAiUsage } from '@gitroom/nestjs-libraries/services/ai-usage.record';
 import { buildBrandVoicePrompt } from '@gitroom/nestjs-libraries/openai/brand-prompt';
 import { languageRule } from '@gitroom/nestjs-libraries/openai/language-rule';
+import { withoutLongDashes } from '@gitroom/helpers/utils/long.dashes';
 
 import {
   StudioBrandRef,
@@ -469,7 +470,8 @@ ${
     ).choices[0].message.parsed;
 
     if (!parsed) throw new Error('AI returned no edited text');
-    return { text: parsed.text };
+    // The prompt asks for none; the model still slips one in now and then.
+    return { text: withoutLongDashes(parsed.text) };
   }
 
   // Embeddings are cheap per call but template search runs on every keystroke

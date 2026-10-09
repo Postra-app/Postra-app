@@ -39,6 +39,9 @@ export function tooShortToDetectLanguage(text?: string | null): boolean {
   return words.length < 3 || letters < 12;
 }
 
+export const PUNCTUATION_RULE =
+  'PUNCTUATION: Never use em dashes (—) or en dashes (–). Use a comma, a full stop or a plain hyphen (-) instead.';
+
 export function languageRule(options: LanguageRuleOptions = {}): string {
   const {
     scope = 'the result',
@@ -57,6 +60,9 @@ export function languageRule(options: LanguageRuleOptions = {}): string {
       ? `LANGUAGE: write ${scope} in the target language named in ${targetNamedIn}. When no target is given, ${match}.`
       : `LANGUAGE: when writing ${scope}, ${match}.`,
     'Never mix languages in one piece of output.',
+    // K. 10-09: the posts customers publish carry no long dashes; every
+    // text surface goes through this rule (ai-surfaces.wiring.spec.ts).
+    PUNCTUATION_RULE,
     ignoreBrandLanguage &&
       'The language of the brand constraints never decides the output language.',
   ];

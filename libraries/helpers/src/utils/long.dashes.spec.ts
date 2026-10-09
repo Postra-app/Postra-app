@@ -16,3 +16,13 @@ describe('withoutLongDashes', () => {
     expect(withoutLongDashes(input)).toBe(output);
   });
 });
+
+describe('deepWithoutLongDashes', () => {
+  it('cleans every string in an AI answer, and leaves the rest', () => {
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const { deepWithoutLongDashes } = require('./long.dashes');
+    expect(
+      deepWithoutLongDashes({ caption: 'One — two', slides: [{ headline: 'A–B' }, 3], ok: true, none: null })
+    ).toEqual({ caption: 'One - two', slides: [{ headline: 'A - B' }, 3], ok: true, none: null });
+  });
+});

@@ -35,7 +35,7 @@ describe('languageRule', () => {
 
   it('names what it governs, so it can be dropped into any prompt', () => {
     expect(languageRule({ scope: 'the caption', follow: 'the topic' })).toBe(
-      'LANGUAGE: when writing the caption, match the language of the topic exactly: detect it from the text itself and answer in that language, English included. Never mix languages in one piece of output.'
+      'LANGUAGE: when writing the caption, match the language of the topic exactly: detect it from the text itself and answer in that language, English included. Never mix languages in one piece of output. PUNCTUATION: Never use em dashes (—) or en dashes (–). Use a comma, a full stop or a plain hyphen (-) instead.'
     );
   });
 });
