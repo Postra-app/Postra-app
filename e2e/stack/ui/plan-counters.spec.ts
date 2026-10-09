@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { signedIn } from '../helpers';
+import { signedIn, stateFile } from '../helpers';
 
 // K. 10-09 on Kris Company: nine platform tiles in Add Channel read as nine
 // channels on Pro. The window says how many channels are used of the plan's
@@ -28,7 +28,7 @@ test('Teams says how many seats are used', async ({ page }) => {
 });
 
 test.describe('Business', () => {
-  test.use({ storageState: require('../helpers').stateFile('c') });
+  test.use({ storageState: stateFile('c-owner') });
 
   test('Webhooks say unlimited, as the plan does, not a technical 10000', async ({ page }) => {
     await page.goto('/settings');
