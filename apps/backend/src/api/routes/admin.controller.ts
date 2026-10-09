@@ -1,3 +1,4 @@
+import { Throttle } from '@nestjs/throttler';
 import {
   Body,
   Controller,
@@ -1109,6 +1110,9 @@ export class AdminController {
    * used to refund somebody else's payment. Money moves here, so the result
    * says which ones went through and which did not, and the trail records it.
    */
+  // Moves money: a scripted or stolen super-admin session cannot fire it
+  // without pause (20 per 5 minutes per organisation).
+  @Throttle({ default: { ttl: 300000, limit: 20 } })
   @Post('/refund-charges')
   async refundCharges(
     @GetUserFromRequest() user: User,
@@ -1154,6 +1158,9 @@ export class AdminController {
    * grant and never touches Stripe. This one is for a paying customer who
    * wants out now.
    */
+  // Moves money: a scripted or stolen super-admin session cannot fire it
+  // without pause (20 per 5 minutes per organisation).
+  @Throttle({ default: { ttl: 300000, limit: 20 } })
   @Post('/cancel-subscription')
   async cancelSubscriptionForOrg(
     @GetUserFromRequest() user: User,
