@@ -37,6 +37,14 @@ export interface IAuthenticator {
     // find it (Discord: the channel).
     releaseURL?: string
   ): Promise<AnalyticsData[]>;
+  // The final post id and link to store when the saved releaseId is still a
+  // temporary one (TikTok publish ids); undefined when there is nothing to
+  // resolve (yet).
+  resolveReleaseId?(
+    accessToken: string,
+    releaseId: string,
+    integration: Integration
+  ): Promise<{ postId: string; releaseURL: string } | undefined>;
   changeNickname?(
     id: string,
     accessToken: string,

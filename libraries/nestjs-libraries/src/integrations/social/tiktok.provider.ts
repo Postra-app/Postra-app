@@ -75,6 +75,23 @@ export class TiktokProvider extends SocialAbstract implements SocialProvider {
     ) {
       return 'You need one media';
     }
+
+    // TikTok fails the whole photo post when a single image is oversized, and
+    // the status only says `picture_size_check_failed` without naming it
+    // (upstream 96e46cfe).
+    if (firstItems?.every((p) => (p?.path?.indexOf?.('mp4') ?? -1) === -1)) {
+      const dimensions = await Promise.all(
+        firstItems?.map((p) => this.getImageDimensions(p?.path)) ?? []
+      );
+      const tooBig = dimensions.findIndex(
+        (p) => Math.min(p?.width ?? 0, p?.height ?? 0) > 1080
+      );
+      if (tooBig > -1) {
+        return `Image ${tooBig + 1} is ${dimensions[tooBig]?.width}x${
+          dimensions[tooBig]?.height
+        }, TikTok allows a maximum of 1080px on the shorter side`;
+      }
+    }
     return true;
   }
 
@@ -262,7 +279,8 @@ export class TiktokProvider extends SocialAbstract implements SocialProvider {
     if (body.indexOf('picture_size_check_failed') > -1) {
       return {
         type: 'bad-body' as const,
-        value: 'Video must be at least 720p, Picture must no exceed 1080p',
+        value:
+          'Media size not supported by TikTok: images up to 1080px on the shorter side, videos at least 360px on both sides',
       };
     }
 
@@ -462,7 +480,7 @@ export class TiktokProvider extends SocialAbstract implements SocialProvider {
     // Capped under the 10-min activity budget (H1): an unbounded poll used to
     // blow the activity timeout mid-wait and the retry re-published the video.
     for (let attempt = 0; attempt < 48; attempt++) {
-      const post = await (
+      const raw = await (
         await this.fetch(
           'https://open.tiktokapis.com/v2/post/publish/status/fetch/',
           {
@@ -479,9 +497,10 @@ export class TiktokProvider extends SocialAbstract implements SocialProvider {
           0,
           true
         )
-      ).json();
+      ).text();
+      const { post, publicPostId } = this.parsePublishStatus(raw);
 
-      const { status, publicaly_available_post_id } = post.data;
+      const { status } = post.data;
 
       if (status === 'SEND_TO_USER_INBOX') {
         return {
@@ -491,11 +510,12 @@ export class TiktokProvider extends SocialAbstract implements SocialProvider {
       }
 
       if (status === 'PUBLISH_COMPLETE') {
+        // The public id only shows up once moderation approves the post -
+        // until then the publish id and the profile (resolveReleaseId fixes
+        // both later).
         return {
-          url: tiktokPostUrl(id, publishId, publicaly_available_post_id?.[0]),
-          id: !publicaly_available_post_id
-            ? publishId
-            : publicaly_available_post_id?.[0],
+          url: tiktokPostUrl(id, publishId, publicPostId),
+          id: publicPostId || publishId,
         };
       }
 
@@ -513,6 +533,15 @@ export class TiktokProvider extends SocialAbstract implements SocialProvider {
     }
 
     throw new ProcessingTimeout('tiktok');
+  }
+
+  // TikTok answers publicaly_available_post_id as an int64, which JSON.parse
+  // rounds past 2^53 - take the digits from the raw body (upstream 634c6da1).
+  private parsePublishStatus(raw: string) {
+    const [, publicPostId] =
+      raw.match(/"publicaly_available_post_id"\s*:\s*\[\s*"?(\d+)/) || [];
+
+    return { post: JSON.parse(raw), publicPostId };
   }
 
   private postingMethod(
@@ -849,16 +878,20 @@ export class TiktokProvider extends SocialAbstract implements SocialProvider {
     }
   }
 
-  async postAnalytics(
-    integrationId: string,
+  // Posts published before moderation finished keep their publish id
+  // (v_pub_url~... / v_pub_file~... / p_pub_url~...) as releaseId - resolve it
+  // to the public post id and link (upstream bcbc1195, da7f7a18, 4637a519).
+  async resolveReleaseId(
     accessToken: string,
-    postId: string,
-    fromDate: number
-  ): Promise<AnalyticsData[]> {
-    const today = dayjs().format('YYYY-MM-DD');
+    releaseId: string,
+    integration: Integration
+  ) {
+    if (releaseId.indexOf('_pub_') === -1) {
+      return undefined;
+    }
 
-    if (postId.indexOf('v_pub_url') > -1) {
-      const post = await (
+    const { publicPostId } = this.parsePublishStatus(
+      await (
         await fetch(
           'https://open.tiktokapis.com/v2/post/publish/status/fetch/',
           {
@@ -868,18 +901,30 @@ export class TiktokProvider extends SocialAbstract implements SocialProvider {
               Authorization: `Bearer ${accessToken}`,
             },
             body: JSON.stringify({
-              publish_id: postId,
+              publish_id: releaseId,
             }),
           }
         )
-      ).json();
+      ).text()
+    );
 
-      if (!post?.data?.publicaly_available_post_id?.[0]) {
-        return [];
-      }
-
-      postId = post.data.publicaly_available_post_id[0];
+    if (!publicPostId) {
+      return undefined;
     }
+
+    return {
+      postId: publicPostId,
+      releaseURL: tiktokPostUrl(integration.profile!, releaseId, publicPostId),
+    };
+  }
+
+  async postAnalytics(
+    integrationId: string,
+    accessToken: string,
+    postId: string,
+    fromDate: number
+  ): Promise<AnalyticsData[]> {
+    const today = dayjs().format('YYYY-MM-DD');
 
     try {
       // Query video details using the video ID

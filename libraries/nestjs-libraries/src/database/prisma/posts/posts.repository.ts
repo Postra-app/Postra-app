@@ -630,6 +630,26 @@ export class PostsRepository {
     return count ? { id, releaseId } : null;
   }
 
+  // The final id and link of a post that was saved with a temporary one
+  // (TikTok publish id) — see PostsService.checkPostAnalytics.
+  updateResolvedRelease(
+    id: string,
+    orgId: string,
+    releaseId: string,
+    releaseURL: string
+  ) {
+    return this._post.model.post.updateMany({
+      where: {
+        id,
+        organizationId: orgId,
+      },
+      data: {
+        releaseId,
+        releaseURL,
+      },
+    });
+  }
+
   async changeState(
     id: string,
     state: State,
