@@ -39,9 +39,13 @@ export const ApprovedAppsComponent: FC = () => {
         )
       ) {
         try {
-          await fetch(`/user/approved-apps/${app.id}`, {
+          const res = await fetch(`/user/approved-apps/${app.id}`, {
             method: 'DELETE',
           });
+          // A refused revoke said "Access revoked" too.
+          if (!res.ok) {
+            throw new Error(String(res.status));
+          }
           toaster.show(
             t('access_revoked', 'Access revoked'),
             'success'

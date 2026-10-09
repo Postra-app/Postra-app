@@ -113,7 +113,9 @@ test.describe('client preview', () => {
       await expect(anonymous.getByText(content)).toBeVisible();
       await anonymous.waitForTimeout(3000);
       await expect(anonymous.getByText('Something went wrong loading data')).toHaveCount(0);
-      expect(refused).toEqual([]);
+      // /user/self may answer 401: that is how the page learns the viewer is
+      // not signed in (and offers to log in to comment).
+      expect(refused.filter((url) => !url.endsWith('/api/user/self'))).toEqual([]);
     } finally {
       await client.close();
       await api.delete(`/posts/${post.g}`);

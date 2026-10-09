@@ -64,8 +64,9 @@ export const Autopost: FC = () => {
         await deleteDialog(
           t(
             'are_you_sure_you_want_to_delete',
-            `Are you sure you want to delete ${data.name}?`,
-            { name: data.name }
+            `Are you sure you want to delete ${data.title}?`,
+            // A feed has a title, not a name: the dialog read "undefined".
+            { name: data.title }
           )
         )
       ) {

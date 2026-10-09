@@ -63,6 +63,14 @@ export const SignatureModal: FC<{
   close: () => void;
   appendSignature: (sign: string) => void;
 }> = (props) => {
-  const { appendSignature } = props;
-  return <SignaturesComponent appendSignature={appendSignature} />;
+  const { appendSignature, close } = props;
+  // The window stayed open over the editor after "Use Signature".
+  return (
+    <SignaturesComponent
+      appendSignature={(sign: string) => {
+        appendSignature(sign);
+        close();
+      }}
+    />
+  );
 };

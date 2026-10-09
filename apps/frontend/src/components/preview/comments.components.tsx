@@ -106,8 +106,7 @@ export const RenderComponents: FC<{
             <div className="flex-1 space-y-1">
               <div className="flex items-center space-x-2">
                 <h3 className="text-sm font-semibold">
-                  {t('user', 'User')}
-                  {mapUsers[comment.userId]}
+                  {t('user', 'User')} {mapUsers[comment.userId]}
                 </h3>
               </div>
               <p className="text-sm text-gray-300">{comment.content}</p>
