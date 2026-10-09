@@ -49,7 +49,9 @@ for (const file of sources) {
     if (lineText.startsWith('//') || lineText.startsWith('*')) continue;
     if (quote === '`' && fallback.includes('${')) continue;
     calls++;
-    if (!(key in en)) {
+    // The admin panel is English only and keeps its keys out of every
+    // locale file on purpose (E2E-09-12, admin-a11y.wiring.spec.ts).
+    if (!(key in en) && !key.startsWith('admin_')) {
       missing.push(`${file.slice(root.length + 1)}:${line} ${key}`);
     }
     if (key in en && norm(en[key]) !== norm(fallback)) {
