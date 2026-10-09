@@ -27,6 +27,8 @@ import {
   MetaConnectChecklist,
 } from '@gitroom/frontend/components/launches/meta.connect.checklist';
 import {
+  channelLimitFor,
+  channelsInUse,
   pricing,
   planLabel,
 } from '@gitroom/nestjs-libraries/database/prisma/subscriptions/pricing';
@@ -41,7 +43,16 @@ export const useAddProvider = (update?: () => void, invite?: boolean) => {
     // Nothing awaits this handler, so an unhandled rejection here is invisible:
     // the button just stops working. Every failure has to end in a message.
     try {
-      const data = await (await fetch('/integrations')).json();
+      const [data, list] = await Promise.all([
+        (await fetch('/integrations')).json(),
+        // How many channels take a slot now, for the counter (K. 10-09).
+        fetch('/integrations/list')
+          .then((r) => r.json())
+          .catch(() => null),
+      ]);
+      const used = Array.isArray(list?.integrations)
+        ? channelsInUse(list.integrations)
+        : undefined;
       modal.openModal({
         title: invite
           ? t('invite_client_title', 'Invite a client to connect a channel')
@@ -51,7 +62,12 @@ export const useAddProvider = (update?: () => void, invite?: boolean) => {
           modal: 'launches-modal-surface text-textColor',
         },
         children: (
-          <AddProviderComponent invite={!!invite} update={update} {...data} />
+          <AddProviderComponent
+            invite={!!invite}
+            update={update}
+            channelsUsed={used}
+            {...data}
+          />
         ),
       });
     } catch (e) {
@@ -424,6 +440,8 @@ export const AddProviderComponent: FC<{
   update?: () => void;
   onboarding?: boolean;
   isMobile?: boolean;
+  // Channels taking a slot now; undefined when the list could not be read.
+  channelsUsed?: number;
 }> = (props) => {
   const { update, social, article, onboarding, isMobile } = props;
   const { isGeneral, extensionId } = useVariables();
@@ -761,9 +779,49 @@ export const AddProviderComponent: FC<{
     [social]
   );
 
+  // Nine platform tiles read as nine channels on Pro (K. 10-09): say how
+  // many of the plan's channels are used, and on how many platforms.
+  const channelLimit = channelLimitFor({
+    isTrailing: user?.isTrailing,
+    subscription: { totalChannels: user?.totalChannels || 0 },
+  });
+  const platformCount = allowedProviders
+    ? social.filter(
+        (item) =>
+          item.enabled !== false && allowedProviders.includes(item.identifier)
+      ).length
+    : 0;
+  const showCounter =
+    !props.invite &&
+    !!allowedProviders &&
+    props.channelsUsed !== undefined &&
+    channelLimit > 0;
+  const channelsFull =
+    showCounter && (props.channelsUsed as number) >= channelLimit;
+
   return (
     <div className="w-full flex flex-col gap-[20px] rounded-[4px] relative">
-      <div className="flex flex-col">
+      {showCounter && (
+        <div className="text-[14px] text-newTextColor/80 -mt-[8px]">
+          {channelsFull
+            ? t(
+                'channels_used_full',
+                '{{used}} of {{limit}} channels used — upgrade to add more.',
+                { used: props.channelsUsed, limit: channelLimit }
+              )
+            : t(
+                'channels_used_counter',
+                '{{used}} of {{limit}} channels used · {{plan}} — pick any of the {{platforms}} platforms below.',
+                {
+                  used: props.channelsUsed,
+                  limit: channelLimit,
+                  plan: planLabel(user?.tier?.current),
+                  platforms: platformCount,
+                }
+              )}
+        </div>
+      )}
+      <div className={clsx('flex flex-col', channelsFull && 'opacity-50')}>
         <div
           className={clsx(
             isMobile && 'gap-[20px] flex flex-col',

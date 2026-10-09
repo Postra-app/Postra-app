@@ -1566,5 +1566,8 @@
   "keep_my_trial": "Zostań przy okresie próbnym",
   "trial_already_ended": "Okres próbny już się zakończył — plan jest aktywny.",
   "yearly_lower": "rocznie",
-  "monthly_lower": "miesięcznie"
+  "monthly_lower": "miesięcznie",
+  "channels_used_full": "Wykorzystano {{used}} z {{limit}} kanałów — zmień plan, aby dodać więcej.",
+  "channels_used_counter": "Wykorzystano {{used}} z {{limit}} kanałów · {{plan}} — wybierz dowolną z {{platforms}} platform poniżej.",
+  "team_seats_used": "Zajęte miejsca: {{used}} z {{seats}}"
 }

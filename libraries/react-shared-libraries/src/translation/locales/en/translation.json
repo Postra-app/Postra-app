@@ -1803,5 +1803,8 @@
   "keep_my_trial": "Keep my trial",
   "trial_already_ended": "Your trial has already ended — your plan is active.",
   "yearly_lower": "yearly",
-  "monthly_lower": "monthly"
+  "monthly_lower": "monthly",
+  "channels_used_full": "{{used}} of {{limit}} channels used — upgrade to add more.",
+  "channels_used_counter": "{{used}} of {{limit}} channels used · {{plan}} — pick any of the {{platforms}} platforms below.",
+  "team_seats_used": "{{used}} of {{seats}} seats used"
 }
