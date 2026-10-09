@@ -4,8 +4,15 @@ import { expect, test } from '@playwright/test';
 // ended the trial and charged the card at once — no price, no question — and
 // a reload after the payment said "We could not take the first payment yet".
 // The stack has no Stripe: the billing routes are answered here.
-const routes = async (page: import('@playwright/test').Page, answer: object) => {
+const routes = async (
+  page: import('@playwright/test').Page,
+  answer: object,
+  preview: object = { amount: 2900, currency: 'gbp', tier: 'PRO', period: 'MONTHLY' }
+) => {
   const calls: string[] = [];
+  // What Stripe would charge for this subscription right now (Codex: the
+  // price list is wrong for an older price or a discount).
+  await page.route('**/api/billing/finish-trial/preview', (route) => route.fulfill({ json: preview }));
   await page.route('**/api/billing/prorate', (route) => route.fulfill({ json: { price: 0 } }));
   await page.route('**/api/user/subscription', (route) =>
     route.fulfill({ json: { subscription: { subscriptionTier: 'PRO', period: 'MONTHLY', totalChannels: 6, isLifetime: false } } })
@@ -39,4 +46,11 @@ test('after a paid trial it says the plan is active, not that the payment failed
   await page.getByRole('button', { name: 'End trial and pay £29 now' }).click();
   await expect(page.getByText('Your trial has already ended — your plan is active.')).toBeVisible();
   await expect(page.getByText('We could not take the first payment yet')).toHaveCount(0);
+});
+
+test('the price is what Stripe will charge for this subscription, not today’s list price', async ({ page }) => {
+  await routes(page, { finish: true }, { amount: 1200, currency: 'gbp', tier: 'STANDARD', period: 'MONTHLY' });
+  await page.goto('/billing?finishTrial=true');
+  await expect(page.getByText('End your trial now and pay £12 for Starter (monthly)?')).toBeVisible({ timeout: 20_000 });
+  await expect(page.getByRole('button', { name: 'End trial and pay £12 now' })).toBeVisible();
 });

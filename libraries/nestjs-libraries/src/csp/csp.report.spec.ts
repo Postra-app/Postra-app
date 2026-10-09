@@ -63,4 +63,17 @@ describe('CSP reports', () => {
     expect(lines).toHaveLength(3);
     expect(lines[0]).toBe('[csp] img-src blocked=https://a.example/x.png page=/');
   });
+
+  it('ignores a line number that is not a number (Codex: 500)', () => {
+    expect(() =>
+      cspViolations({
+        'csp-report': {
+          'effective-directive': 'script-src-elem',
+          'source-file': 'https://app.postra.pl/a.js',
+          'line-number': { toString: null },
+        },
+      })
+    ).not.toThrow();
+  });
 });
+

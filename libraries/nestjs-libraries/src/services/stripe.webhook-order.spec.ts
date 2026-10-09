@@ -6,6 +6,7 @@ const listInvoices = jest.fn();
 const listInvoicePayments = jest.fn();
 const createRefund = jest.fn();
 const listRefunds = jest.fn();
+const createPreview = jest.fn();
 
 jest.mock('stripe', () => {
   const actual = jest.requireActual('stripe');
@@ -16,7 +17,7 @@ jest.mock('stripe', () => {
       update: updateSubscription,
       cancel: cancelSubscription,
     },
-    invoices: { list: listInvoices },
+    invoices: { list: listInvoices, createPreview },
     invoicePayments: { list: listInvoicePayments },
     refunds: { create: createRefund, list: listRefunds },
   }));
@@ -346,3 +347,30 @@ describe('a second live subscription for the same customer', () => {
     expect(subscriptionService.createOrUpdateSubscription).toHaveBeenCalled();
   });
 });
+
+describe('the price shown before ending a trial', () => {
+  it('is Stripe’s preview of the invoice for this subscription', async () => {
+    listSubscriptions.mockResolvedValue({ data: [sub('trialing', 'STANDARD')] });
+    createPreview.mockResolvedValue({ amount_due: 1200, currency: 'gbp' });
+    const { service } = build();
+
+    await expect(service.finishTrialPreview('cus_1')).resolves.toEqual({
+      amount: 1200,
+      currency: 'gbp',
+      tier: 'STANDARD',
+      period: 'MONTHLY',
+    });
+    expect(createPreview).toHaveBeenCalledWith({
+      customer: 'cus_1',
+      subscription: 'sub_1',
+      subscription_details: { trial_end: 'now' },
+    });
+  });
+
+  it('is nothing when there is no trial', async () => {
+    listSubscriptions.mockResolvedValue({ data: [sub('active')] });
+    const { service } = build();
+    await expect(service.finishTrialPreview('cus_1')).resolves.toBeNull();
+  });
+});
+

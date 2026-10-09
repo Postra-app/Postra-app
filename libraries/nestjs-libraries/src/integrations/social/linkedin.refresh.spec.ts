@@ -44,4 +44,22 @@ describe('LinkedIn token refresh during an outage', () => {
     expect(err).toBeInstanceOf(Error);
     expect(isTransientRefreshError(err)).toBe(false);
   });
+
+  it('a 403 on /v2/me (OIDC scopes only) does not fail a good refresh (Codex)', async () => {
+    global.fetch = jest.fn(async (url: string) => {
+      if (url.includes('accessToken')) {
+        return new Response('{"access_token":"new","refresh_token":"r2","expires_in":5184000}', { status: 200, headers: { 'Content-Type': 'application/json' } });
+      }
+      if (url.includes('/v2/me')) {
+        return new Response('{"status":403,"serviceErrorCode":100,"message":"Not enough permissions to access: me.GET.NO_VERSION"}', { status: 403, headers: { 'Content-Type': 'application/json' } });
+      }
+      return new Response('{"sub":"abc","name":"Kris","picture":""}', { status: 200, headers: { 'Content-Type': 'application/json' } });
+    }) as any;
+    await expect(new LinkedinProvider().refreshToken('r')).resolves.toMatchObject({
+      id: 'abc',
+      accessToken: 'new',
+      username: undefined,
+    });
+  });
 });
+
