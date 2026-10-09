@@ -73,7 +73,14 @@ export const Webhooks: FC = () => {
   return (
     <div className="flex flex-col">
       <h3 className="text-[22px] font-[650] tracking-[-0.2px] text-newTextColor">
-        {t('webhooks', 'Webhooks')} ({data?.length || 0}/{user?.tier?.webhooks})
+        {t('webhooks', 'Webhooks')} (
+        {(user?.tier?.webhooks || 0) >= 10000
+          ? // Business: 10000 is the technical cap; the plan says unlimited.
+            t('webhooks_count_unlimited', '{{count}} · unlimited', {
+              count: data?.length || 0,
+            })
+          : `${data?.length || 0}/${user?.tier?.webhooks}`}
+        )
       </h3>
       <div className="text-[12.5px] text-newTextColor/55 mt-[3px]">
         {t(

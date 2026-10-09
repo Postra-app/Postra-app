@@ -1808,5 +1808,6 @@
   "channels_used_counter": "{{used}} of {{limit}} channels used · {{plan}} - pick any of the {{platforms}} platforms below.",
   "team_seats_used": "{{used}} of {{seats}} seats used",
   "help_read_more_guide": "Read more in the guide",
-  "help_user_guide": "User guide"
+  "help_user_guide": "User guide",
+  "webhooks_count_unlimited": "{{count}} · unlimited"
 }
