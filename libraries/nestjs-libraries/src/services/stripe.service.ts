@@ -327,7 +327,13 @@ export class StripeService {
       pricing[billing].channel!,
       billing,
       period,
-      current.cancel_at
+      current.cancel_at,
+      undefined,
+      undefined,
+      // Invoices run from here; so does the AI allowance month (E2E-07-40).
+      current.billing_cycle_anchor
+        ? new Date(current.billing_cycle_anchor * 1000)
+        : undefined
     );
   }
 

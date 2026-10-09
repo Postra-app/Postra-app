@@ -82,6 +82,7 @@ export class OrganizationRepository {
             // The credit cycle starts here; without it the public API and
             // MCP counted from the time of the request (API-7).
             createdAt: true,
+            periodAnchor: true,
             deletedAt: true,
           },
         },

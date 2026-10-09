@@ -11,6 +11,9 @@ import { IntegrationService } from '@gitroom/nestjs-libraries/database/prisma/in
 import { OrganizationService } from '@gitroom/nestjs-libraries/database/prisma/organizations/organization.service';
 import { Organization } from '@prisma/client';
 import dayjs from 'dayjs';
+import utc from 'dayjs/plugin/utc';
+
+dayjs.extend(utc);
 import { makeId } from '@gitroom/nestjs-libraries/services/make.is';
 import { AuditService } from '@gitroom/nestjs-libraries/database/prisma/audit/audit.service';
 import { AiUsageService } from '@gitroom/nestjs-libraries/database/prisma/ai-usage/ai-usage.service';
@@ -18,9 +21,16 @@ import { bustAuthContextCacheForUsers } from '@gitroom/nestjs-libraries/redis/au
 
 // The start of the current monthly period, counted from the subscription's
 // day of the month — the window AI credits are counted in.
-const currentPeriodStart = (subscriptionCreatedAt: Date) => {
-  let date = dayjs(subscriptionCreatedAt);
-  while (date.isBefore(dayjs())) {
+// From Stripe's billing anchor when Stripe bills the plan, so the month runs
+// with the invoices; from the subscription's creation otherwise (E2E-07-40).
+const currentPeriodStart = (subscription: {
+  createdAt: Date;
+  periodAnchor?: Date | null;
+}) => {
+  // In UTC, as Stripe counts months: in the server's zone (Europe/London) a
+  // month across a clock change moved the boundary by an hour.
+  let date = dayjs.utc(subscription.periodAnchor || subscription.createdAt);
+  while (date.isBefore(dayjs.utc())) {
     date = date.add(1, 'month');
   }
   return date.subtract(1, 'month');
@@ -90,7 +100,7 @@ export class SubscriptionService {
       return { limit: 0, cycleStart: new Date(0) };
     }
     // @ts-ignore
-    const cycleStart = currentPeriodStart(organization.subscription.createdAt);
+    const cycleStart = currentPeriodStart(organization.subscription);
     const field =
       checkType === 'ai_images' ? 'image_generation_count' : 'generate_videos';
     const limit = trialAiAllowance(
@@ -341,7 +351,9 @@ export class SubscriptionService {
     period: 'MONTHLY' | 'YEARLY',
     cancelAt: number | null,
     code?: string,
-    org?: string
+    org?: string,
+    // Stripe's billing_cycle_anchor (webhooks only).
+    periodAnchor?: Date
   ) {
     if (!code) {
       // Addressed by org (an admin comp) rather than by Stripe customer:
@@ -382,7 +394,8 @@ export class SubscriptionService {
         period,
         cancelAt,
         code,
-        org ? { id: org } : undefined
+        org ? { id: org } : undefined,
+        periodAnchor
       );
     await this.bustMembersAuthCache(org, customerId);
     return result;
@@ -555,7 +568,7 @@ export class SubscriptionService {
     }
     const { count } = await this._subscriptionRepository.deleteCreditsFrom(
       organizationId,
-      currentPeriodStart(subscription.createdAt),
+      currentPeriodStart(subscription),
       type
     );
     return { deleted: count };
@@ -571,7 +584,7 @@ export class SubscriptionService {
 
     const checkFromMonth = currentPeriodStart(
       // @ts-ignore
-      organization.subscription.createdAt
+      organization.subscription
     );
     const field =
       checkType === 'ai_images'
