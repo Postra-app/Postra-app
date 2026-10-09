@@ -135,8 +135,36 @@ export const AddEditModalInner: FC<AddEditModalProps> = (props) => {
     return null;
   }
 
+  // The set's channels first, so its per-channel texts have a channel to go
+  // to.
+  if (
+    !existingData.integration &&
+    selectedIntegrations.length === 0 &&
+    props?.set?.posts?.some((post: any) =>
+      integrations.some((i) => i.id === post?.integration?.id)
+    )
+  ) {
+    return null;
+  }
+
   return <AddEditModalInnerInner {...props} />;
 };
+
+// A set's saved values as the values of the editor. A set is saved in the
+// post payload's shape, where attachments are `image`; reading `media`
+// dropped them on reopen (E2E-05-48).
+const setValues = (values: any[]) =>
+  (values || []).map((p: any) => ({
+    id: makeId(10),
+    content: /<p[\s>]/i.test(p.content)
+      ? p.content
+      : p.content
+          .split('\n')
+          .map((line: string) => `<p>${line}</p>`)
+          .join(''),
+    media: p.image ?? p.media ?? [],
+    delay: p.delay ?? 0,
+  }));
 
 // An existing post as the values of the editor.
 const postValues = (posts: any[]) =>
@@ -238,29 +266,36 @@ export const AddEditModalInnerInner: FC<AddEditModalProps> = (props) => {
                     .join(''),
             id: makeId(10),
             media: p.image || [],
+            delay: 0,
           }))
         : props.set?.posts?.length
-        ? props.set.posts[0].value.map((p: any) => ({
-            id: makeId(10),
-            content:
-              /<p[\s>]/i.test(p.content)
-                ? p.content
-                : p.content
-                    .split('\n')
-                    .map((line: string) => `<p>${line}</p>`)
-                    .join(''),
-            // A set is saved in the post payload's shape, where attachments
-            // are `image`; reading `media` dropped them on reopen (E2E-05-48).
-            media: p.image ?? p.media ?? [],
-          }))
+        ? setValues(props.set.posts[0].value)
         : [
             {
               content: '',
               id: makeId(10),
               media: [],
+              delay: 0,
             },
           ]
     );
+
+    // A set keeps a text per channel; the first one is the global text, and
+    // a channel whose text differs gets its own (E2E-05-92).
+    for (const post of props.set?.posts?.slice(1) || []) {
+      if (
+        post?.integration?.id &&
+        JSON.stringify(post.value) !==
+          JSON.stringify(props.set.posts[0].value) &&
+        useLaunchStore
+          .getState()
+          .selectedIntegrations.some(
+            (p) => p.integration.id === post.integration.id
+          )
+      ) {
+        addInternalValue(0, post.integration.id, setValues(post.value));
+      }
+    }
 
     return () => {
       reset();
