@@ -18,6 +18,88 @@ import { useToaster } from '@gitroom/react/toaster/toaster';
 import { useDebouncedSearch } from '@gitroom/frontend/components/admin/use-debounced-search';
 
 /**
+ * Give an org this billing period's AI images or videos back (a generation
+ * that failed on our side, a support gesture). Older periods stay.
+ */
+const ResetCredits: FC<{
+  org: UserOrgItem;
+  showOrgName: boolean;
+}> = ({ org, showOrgName }) => {
+  const fetch = useFetch();
+  const toaster = useToaster();
+  const t = useT();
+
+  const reset: React.ChangeEventHandler<HTMLSelectElement> = useCallback(
+    async (e) => {
+      const type = e.target.value;
+      if (!type) {
+        return;
+      }
+      e.target.value = '';
+      const kind =
+        type === 'ai_images'
+          ? t('admin_ai_images', 'AI images')
+          : t('admin_ai_videos', 'AI videos');
+
+      if (
+        !(await deleteDialog(
+          t(
+            'admin_reset_credits_confirm',
+            `Give ${org.organization.name} this billing period's ${kind} back?`
+          ),
+          t('admin_reset_credits', 'Reset')
+        ))
+      ) {
+        return;
+      }
+
+      const res = await fetch('/admin/reset-credits', {
+        method: 'POST',
+        body: JSON.stringify({ organizationId: org.organization.id, type }),
+      });
+      if (!res.ok) {
+        toaster.show(
+          await withReason(
+            res,
+            t('admin_reset_credits_failed', 'Could not reset the credits')
+          ),
+          'warning'
+        );
+        return;
+      }
+      const { deleted } = await res.json();
+      toaster.show(
+        `${t('admin_reset_credits_done', 'Credits reset')}: ${deleted}`,
+        'success'
+      );
+    },
+    [fetch, toaster, t, org]
+  );
+
+  return (
+    <Select
+      onChange={reset}
+      hideErrors={true}
+      disableForm={true}
+      name={`credits-${org.id}`}
+      label=""
+      aria-label={t('admin_reset_ai_credits', 'Reset AI credits')}
+      value=""
+    >
+      <option value="">
+        {showOrgName
+          ? `${t('admin_reset_ai_credits', 'Reset AI credits')} · ${
+              org.organization.name
+            }`
+          : t('admin_reset_ai_credits', 'Reset AI credits')}
+      </option>
+      <option value="ai_images">{t('admin_ai_images', 'AI images')}</option>
+      <option value="ai_videos">{t('admin_ai_videos', 'AI videos')}</option>
+    </Select>
+  );
+};
+
+/**
  * Put an org on a paid tier without a payment.
  *
  * This used to render only while impersonating, inside a panel that is hidden
@@ -692,6 +774,18 @@ export const AdminUsersComponent = () => {
                                 'Revoke subscription'
                               )}
                         </button>
+                      ))}
+                    {u.organizations
+                      .filter(
+                        (o) =>
+                          o.role === 'SUPERADMIN' && !!o.organization.subscription
+                      )
+                      .map((o) => (
+                        <ResetCredits
+                          key={`credits-${o.id}`}
+                          org={o}
+                          showOrgName={u.organizations.length > 1}
+                        />
                       ))}
                     {u.organizations
                       .filter((o) => o.role === 'SUPERADMIN')

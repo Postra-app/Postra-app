@@ -16,6 +16,16 @@ import { AuditService } from '@gitroom/nestjs-libraries/database/prisma/audit/au
 import { AiUsageService } from '@gitroom/nestjs-libraries/database/prisma/ai-usage/ai-usage.service';
 import { bustAuthContextCacheForUsers } from '@gitroom/nestjs-libraries/redis/auth-context.cache';
 
+// The start of the current monthly period, counted from the subscription's
+// day of the month — the window AI credits are counted in.
+const currentPeriodStart = (subscriptionCreatedAt: Date) => {
+  let date = dayjs(subscriptionCreatedAt);
+  while (date.isBefore(dayjs())) {
+    date = date.add(1, 'month');
+  }
+  return date.subtract(1, 'month');
+};
+
 @Injectable()
 export class SubscriptionService {
   constructor(
@@ -80,11 +90,7 @@ export class SubscriptionService {
       return { limit: 0, cycleStart: new Date(0) };
     }
     // @ts-ignore
-    let date = dayjs(organization.subscription.createdAt);
-    while (date.isBefore(dayjs())) {
-      date = date.add(1, 'month');
-    }
-    const cycleStart = date.subtract(1, 'month');
+    const cycleStart = currentPeriodStart(organization.subscription.createdAt);
     const field =
       checkType === 'ai_images' ? 'image_generation_count' : 'generate_videos';
     const limit = trialAiAllowance(
@@ -537,6 +543,24 @@ export class SubscriptionService {
     return this._subscriptionRepository.getSubscription(organizationId);
   }
 
+  // Gives an organization this billing period's AI images or videos back
+  // (support, from /admin). Older periods stay, so usage history is kept;
+  // the assistant is counted from AiUsage and is not reset here.
+  async resetCredits(organizationId: string, type: 'ai_images' | 'ai_videos') {
+    const subscription = await this._subscriptionRepository.getSubscription(
+      organizationId
+    );
+    if (!subscription) {
+      return null;
+    }
+    const { count } = await this._subscriptionRepository.deleteCreditsFrom(
+      organizationId,
+      currentPeriodStart(subscription.createdAt),
+      type
+    );
+    return { deleted: count };
+  }
+
   async checkCredits(organization: Organization, checkType = 'ai_images') {
     // @ts-ignore
     const type = organization?.subscription?.subscriptionTier || 'FREE';
@@ -545,13 +569,10 @@ export class SubscriptionService {
       return { credits: 0 };
     }
 
-    // @ts-ignore
-    let date = dayjs(organization.subscription.createdAt);
-    while (date.isBefore(dayjs())) {
-      date = date.add(1, 'month');
-    }
-
-    const checkFromMonth = date.subtract(1, 'month');
+    const checkFromMonth = currentPeriodStart(
+      // @ts-ignore
+      organization.subscription.createdAt
+    );
     const field =
       checkType === 'ai_images'
         ? 'image_generation_count'

@@ -364,6 +364,18 @@ export class SubscriptionRepository {
     });
   }
 
+  deleteCreditsFrom(organizationId: string, from: dayjs.Dayjs, type: string) {
+    return this._credits.model.credits.deleteMany({
+      where: {
+        organizationId,
+        type,
+        createdAt: {
+          gte: from.toDate(),
+        },
+      },
+    });
+  }
+
   async getCreditsFrom(
     organizationId: string,
     from: dayjs.Dayjs,

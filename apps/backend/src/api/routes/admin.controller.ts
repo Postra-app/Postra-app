@@ -332,6 +332,42 @@ export class AdminController {
   }
 
   /**
+   * Give an organization this billing period's AI images or videos back —
+   * a generation that failed on our side, a support gesture. The idea is
+   * upstream's (4c5d42a92, a super-admin route on the public API); here it is
+   * an admin action on the session like the others, with the organization
+   * named outright.
+   */
+  @Post('/reset-credits')
+  async resetCredits(
+    @GetUserFromRequest() user: User,
+    @Body('organizationId') organizationId: string,
+    @Body('type') type: string
+  ) {
+    this.assertSuperAdmin(user);
+    if (type !== 'ai_images' && type !== 'ai_videos') {
+      throw new HttpException('type must be ai_images or ai_videos', 400);
+    }
+    await this.requireOrganization(organizationId);
+
+    const result = await this._subscriptionService.resetCredits(
+      organizationId,
+      type
+    );
+    if (!result) {
+      throw new HttpException('The organization has no plan', 400);
+    }
+
+    this._auditService.record({
+      action: 'admin.reset-credits',
+      userId: user.id,
+      metadata: { organizationId, type, deleted: result.deleted },
+    });
+
+    return { organizationId, type, deleted: result.deleted };
+  }
+
+  /**
    * Take a comp or a lifetime grant back.
    *
    * Until now, comping an account was a one-way street: the only route out was
