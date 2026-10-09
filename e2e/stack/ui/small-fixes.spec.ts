@@ -67,7 +67,7 @@ test.describe('organisation A', () => {
         : route.continue()
     );
     await page.route('**/user/approved-apps/grant-1', (route) =>
-      route.fulfill({ status: 500, json: { message: 'boom' } })
+      route.fulfill({ status: 404, json: { message: 'Not found' } })
     );
     await page.goto('/settings');
     await page.getByRole('tab', { name: /Approved apps/i }).click();
@@ -78,32 +78,46 @@ test.describe('organisation A', () => {
   });
 });
 
-test('the client preview names comment authors "User 1", with a space', async ({ browser }) => {
-  const api = await signedIn('a');
-  const content = `[stack ui] preview comments ${Date.now()}`;
-  const created = await api.post('/posts', {
-    data: {
-      type: 'draft',
-      shortLink: false,
-      date: new Date(Date.now() + 5 * 86_400_000).toISOString(),
-      tags: [],
-      posts: [{ type: 'draft', integration: { id: USERS.a.channel.id }, value: [{ content, image: [] }], settings: { __type: 'bluesky' } }],
-    },
+test.describe('client preview', () => {
+  test.use({ storageState: stateFile('a') });
+
+  test('comment authors read "User 1", and an anonymous client sees no load error', async ({ page, browser }) => {
+    const api = await signedIn('a');
+    const content = `[stack ui] preview comments ${Date.now()}`;
+    const created = await api.post('/posts', {
+      data: {
+        type: 'draft',
+        shortLink: false,
+        date: new Date(Date.now() + 5 * 86_400_000).toISOString(),
+        tags: [],
+        posts: [{ type: 'draft', integration: { id: USERS.a.channel.id }, value: [{ content, image: [] }], settings: { __type: 'bluesky' } }],
+      },
+    });
+    expect(created.status(), await created.text()).toBe(201);
+    const posts = await (await api.get(`/posts?startDate=${new Date(Date.now() - 86_400_000).toISOString()}&endDate=${new Date(Date.now() + 30 * 86_400_000).toISOString()}`)).json();
+    const post = posts.p.find((p: { c: string }) => p.c.includes(content));
+    const comment = await api.post(`/posts/${post.i}/comments`, { data: { comment: 'Looks good' } });
+    expect(comment.ok(), await comment.text()).toBe(true);
+    const client = await browser.newContext({ storageState: { cookies: [], origins: [] } });
+    try {
+      await page.goto(`/p/${post.i}`);
+      await expect(page.getByText('Looks good')).toBeVisible();
+      await expect(page.getByRole('heading', { name: 'User 1', exact: true })).toBeVisible();
+
+      // The page asked for /user/self and the assistant without a session:
+      // two 401s and "Something went wrong loading data" for every client.
+      const anonymous = await client.newPage();
+      const refused: string[] = [];
+      anonymous.on('response', (r) => r.status() === 401 && refused.push(r.url()));
+      await anonymous.goto(`/p/${post.i}`);
+      await expect(anonymous.getByText(content)).toBeVisible();
+      await anonymous.waitForTimeout(3000);
+      await expect(anonymous.getByText('Something went wrong loading data')).toHaveCount(0);
+      expect(refused).toEqual([]);
+    } finally {
+      await client.close();
+      await api.delete(`/posts/${post.g}`);
+      await api.dispose();
+    }
   });
-  expect(created.status(), await created.text()).toBe(201);
-  const posts = await (await api.get(`/posts?startDate=${new Date(Date.now() - 86_400_000).toISOString()}&endDate=${new Date(Date.now() + 30 * 86_400_000).toISOString()}`)).json();
-  const post = posts.p.find((p: { c: string }) => p.c.includes(content));
-  const comment = await api.post(`/posts/${post.i}/comments`, { data: { comment: 'Looks good' } });
-  expect(comment.ok(), await comment.text()).toBe(true);
-  const client = await browser.newContext({ storageState: { cookies: [], origins: [] } });
-  try {
-    const page = await client.newPage();
-    await page.goto(`/p/${post.i}`);
-    await expect(page.getByText('Looks good')).toBeVisible();
-    await expect(page.getByRole('heading', { name: 'User 1', exact: true })).toBeVisible();
-  } finally {
-    await client.close();
-    await api.delete(`/posts/${post.g}`);
-    await api.dispose();
-  }
 });
