@@ -61,3 +61,12 @@ describe('tooShortToDetectLanguage', () => {
     expect(tooShortToDetectLanguage('50% 2x 3 !!! 🎉 🏋️')).toBe(true);
   });
 });
+
+describe('punctuation in every AI text (K. 10-09)', () => {
+  it('asks for no long dashes, whatever the language', () => {
+    for (const rule of [languageRule(), languageRule({ targetNamedIn: 'the settings block' })]) {
+      expect(rule).toMatch(/Never use em dashes .* or en dashes/);
+    }
+  });
+});
+
