@@ -59,3 +59,38 @@ describe('a failed token refresh', () => {
     expect(notifications).toEqual(['Could not refresh your youtube channel (publishing)']);
   });
 });
+
+describe('a YouTube refresh refused by a Workspace session policy', () => {
+  // Google's answer when a Workspace admin forces re-authentication
+  // (invalid_rapt): the generic notice sent customers to reconnect, again
+  // and again, without saying why (upstream 49aa92ac).
+  const raptError = Object.assign(new Error('invalid_grant'), {
+    response: { data: { error: 'invalid_grant', error_description: 'reauth related error (invalid_rapt)', error_subtype: 'invalid_rapt' } },
+  });
+
+  it('tells the customer what their admin has to change', async () => {
+    const { YoutubeProvider } = await import('./social/youtube.provider');
+    const notifications: string[] = [];
+    const service = Object.create(IntegrationService.prototype) as IntegrationService;
+    Object.assign(service, {
+      _auditService: { record: jest.fn() },
+      _integrationRepository: { disconnectChannel: jest.fn(), refreshNeeded: jest.fn() },
+      _notificationService: {
+        inAppNotification: jest.fn(async (_org: string, subject: string) => notifications.push(subject)),
+      },
+    });
+    const provider = new YoutubeProvider();
+    jest.spyOn(provider, 'refreshToken').mockRejectedValue(raptError);
+    const refresh = new RefreshIntegrationService({ getSocialIntegration: () => provider } as any, service, {} as any);
+
+    await (refresh as any).refreshProcess(
+      { id: 'i1', organizationId: 'org-1', providerIdentifier: 'youtube', refreshToken: 'r', internalId: 'x', rootInternalId: 'x' },
+      provider,
+      ''
+    );
+
+    expect(notifications[0]).toContain('Google Workspace');
+    expect(notifications[0]).toContain('trusted app');
+    expect(notifications).toHaveLength(1);
+  });
+});
