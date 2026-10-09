@@ -49,6 +49,18 @@ const TIER_ORDER = ['FREE', 'STANDARD', 'TEAM', 'PRO', 'ULTIMATE'];
 const scheduleOf = (s: Stripe.Subscription) =>
   typeof s.schedule === 'string' ? s.schedule : s.schedule?.id ?? null;
 
+// A lower plan on a paid (not trialing) subscription starts with the next
+// billing period, as the subscription terms say (E2E-07-44). One rule for the
+// quote and for the change itself.
+const waitsForRenewal = (
+  live: Stripe.Subscription | undefined,
+  currentTier: string | undefined,
+  billing: string
+) =>
+  live?.status === 'active' &&
+  !!currentTier &&
+  TIER_ORDER.indexOf(billing) < TIER_ORDER.indexOf(currentTier);
+
 @Injectable()
 export class StripeService {
   private readonly _logger = new Logger(StripeService.name);
@@ -590,13 +602,32 @@ export class StripeService {
 
       // The confirmation before changing plan says what renews when, at
       // what price (E2E-07-43).
-      const periodEnd =
-        currentUserSubscription?.data?.[0]?.items?.data?.[0]
-          ?.current_period_end;
+      const live = currentUserSubscription?.data?.[0];
+      const periodEnd = live?.items?.data?.[0]?.current_period_end;
+      const scheduled = waitsForRenewal(
+        live,
+        (await this._subscriptionService.getSubscription(organizationId))
+          ?.subscriptionTier,
+        body.billing
+      );
+      // A lower plan starts at the current period's end, nothing today.
+      // Otherwise the invoice's line for the new price says when it renews:
+      // from monthly to yearly Stripe starts a new cycle today (Codex).
+      const newCycleEnd = Math.max(
+        0,
+        ...(price?.lines?.data ?? [])
+          .filter((l) => l.pricing?.price_details?.price === findPrice?.id)
+          .map((l) => l.period?.end ?? 0)
+      );
+      const renewsAt = scheduled ? periodEnd : newCycleEnd || periodEnd;
       return {
-        price: price?.amount_remaining ? price?.amount_remaining / 100 : 0,
-        renewsOn: periodEnd ? new Date(periodEnd * 1000).toISOString() : null,
+        price:
+          !scheduled && price?.amount_remaining
+            ? price.amount_remaining / 100
+            : 0,
+        renewsOn: renewsAt ? new Date(renewsAt * 1000).toISOString() : null,
         renewalPrice: (findPrice?.unit_amount ?? 0) / 100,
+        scheduled,
       };
     } catch (err) {
       this._logger.error(
@@ -1332,9 +1363,7 @@ export class StripeService {
     // Changing at once put the unused part on the Stripe balance, where it
     // was lost on cancelling (E2E-07-44). A trial has nothing paid: at once.
     if (
-      live?.status === 'active' &&
-      TIER_ORDER.indexOf(body.billing) <
-        TIER_ORDER.indexOf(getCurrentSubscriptions.subscriptionTier)
+      waitsForRenewal(live, getCurrentSubscriptions.subscriptionTier, body.billing)
     ) {
       return this.scheduleDowngrade(live, findPrice!, metadata, body);
     }

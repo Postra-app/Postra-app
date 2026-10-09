@@ -84,6 +84,26 @@ test('#4 upgrade Starter → Pro: the amount /billing/prorate quotes is the invo
   expect(subs.data, 'still one subscription').toHaveLength(1);
 });
 
+// Codex on the 10-09 branch: the quote's renewal date and "today" must be
+// what the change does. Monthly to yearly starts a new cycle today; monthly
+// Pro to yearly Starter is a lower plan and waits for the renewal.
+test('the quote says when a change renews and whether it waits', async () => {
+  const org = await payingOrg('PRO');
+  const down = await (await org.api.post('/billing/prorate', { data: { billing: 'STANDARD', period: 'YEARLY', utm: '' } })).json();
+  const periodEnd = (await stripe.subscriptions.retrieve(org.sub)).items.data[0].current_period_end;
+  expect(down).toMatchObject({ scheduled: true, price: 0, renewsOn: new Date(periodEnd * 1000).toISOString() });
+
+  const up = await (await org.api.post('/billing/prorate', { data: { billing: 'ULTIMATE', period: 'YEARLY', utm: '' } })).json();
+  expect(up.scheduled).toBe(false);
+  expect(up.price).toBeGreaterThan(0);
+  const changed = await org.api.post('/billing/subscribe', { data: { billing: 'ULTIMATE', period: 'YEARLY', utm: '' } });
+  expect(changed.status(), await changed.text()).toBe(201);
+  const after = await stripe.subscriptions.retrieve(org.sub);
+  expect(after.items.data[0].price.recurring?.interval).toBe('year');
+  expect(up.renewsOn, 'the renewal the quote named').toBe(new Date(after.items.data[0].current_period_end * 1000).toISOString());
+  expect(new Date(up.renewsOn).getTime() - Date.now(), 'about a year away').toBeGreaterThan(300 * DAY * 1000);
+});
+
 test('#5 #11 downgrade Business → Starter: what switches off, and a member keeps their other organisation', async () => {
   const org = await payingOrg('ULTIMATE');
   const providers = ['facebook', 'instagram', 'linkedin', 'youtube', 'threads', 'tiktok', 'x', 'discord', 'mastodon', 'bluesky', 'telegram', 'linkedin-page'];

@@ -38,7 +38,7 @@ const build = (tier: string | null, used: number) => {
     {} as any,
     subscriptionService as any
   ) as any;
-  return { tool, postsService };
+  return { tool, postsService, subscriptionService };
 };
 const posts = (n: number) => Array.from({ length: n }, () => ({}));
 
@@ -96,5 +96,19 @@ describe('agent post cap passed to createPost', () => {
     delete process.env.STRIPE_PUBLISHABLE_KEY;
     const { tool } = build('STANDARD', 0);
     await expect(tool.postCap('org-1', new Date().toISOString())).resolves.toBeUndefined();
+  });
+
+  // Codex on the 10-09 branch: the dashboard and the public API count the
+  // month from Stripe's billing anchor (E2E-07-40); the agent still counted
+  // from the subscription's creation, a week off after a trial.
+  it("counts the month from Stripe's billing anchor, like the dashboard", async () => {
+    process.env.STRIPE_PUBLISHABLE_KEY = 'pk_test';
+    const { tool, subscriptionService } = build('STANDARD', 0);
+    const createdAt = new Date('2026-10-03T14:08:54Z');
+    const periodAnchor = new Date('2026-10-09T09:35:51Z');
+    subscriptionService.getSubscription.mockResolvedValue({ subscriptionTier: 'STANDARD', createdAt, periodAnchor });
+    expect((await tool.postCap('org-1', new Date(0).toISOString())).anchor).toEqual(periodAnchor);
+    subscriptionService.getSubscription.mockResolvedValue({ subscriptionTier: 'STANDARD', createdAt, periodAnchor: null });
+    expect((await tool.postCap('org-1', new Date(0).toISOString())).anchor).toEqual(createdAt);
   });
 });

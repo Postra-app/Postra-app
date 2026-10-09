@@ -40,7 +40,7 @@ test('a lower plan waits for the renewal, and Billing says when', async ({ page 
   const subscribe: string[] = [];
   let scheduled = false;
   await page.route('**/api/billing/prorate', (route) =>
-    route.fulfill({ json: { price: 0, renewsOn: on, renewalPrice: 19 } })
+    route.fulfill({ json: { price: 0, renewsOn: on, renewalPrice: 19, scheduled: true } })
   );
   await page.route('**/api/billing/subscribe', (route) => {
     subscribe.push(route.request().method());
@@ -62,4 +62,22 @@ test('a lower plan waits for the renewal, and Billing says when', async ({ page 
   await expect.poll(() => subscribe).toEqual(['POST']);
   await expect(page.getByText('Changes to Starter on 9 November')).toBeVisible();
   await expect(page.getByRole('button', { name: 'Current plan' })).toHaveCount(1);
+});
+
+// Codex on the 10-09 branch: when the quote failed, the window offered the
+// change as free ("Nothing to pay today") and went on to charge. No quote, no
+// window and no change.
+test('without a quote from Stripe nothing is offered or changed', async ({ page }) => {
+  const subscribe: string[] = [];
+  await page.goto('/billing');
+  await expect(page.getByRole('button', { name: /Purchase plan/ }).last()).toBeVisible();
+  await page.route('**/api/billing/prorate', (route) => route.fulfill({ status: 500, json: {} }));
+  await page.route('**/api/billing/subscribe', (route) => {
+    subscribe.push(route.request().method());
+    return route.fulfill({ json: {} });
+  });
+  await page.getByRole('button', { name: /Purchase plan/ }).last().click();
+  await expect(page.getByText('Something went wrong, please try again.').first()).toBeVisible();
+  await expect(page.getByText('Change your plan')).toHaveCount(0);
+  expect(subscribe).toEqual([]);
 });

@@ -70,6 +70,7 @@ const build = () => {
   const subscriptionService = {
     createOrUpdateSubscription: jest.fn().mockResolvedValue({}),
     deleteSubscription: jest.fn().mockResolvedValue(undefined),
+    getSubscription: jest.fn().mockResolvedValue(null),
   };
   // allowTrial false: the £1 card probe is skipped, which is not under test.
   const organizationService = {
@@ -392,13 +393,68 @@ describe('the quote shown before changing plan (E2E-07-43)', () => {
       data: [sub('active', 'PRO', { items: { data: [{ id: 'si_1', current_period_end: 1794216951 }] } })],
     });
     createPreview.mockResolvedValue({ amount_remaining: 4968 });
-    const { service } = build();
+    const { service, subscriptionService } = build();
+    subscriptionService.getSubscription.mockResolvedValue({ subscriptionTier: 'PRO' });
     (service as any)._organizationService.getOrgById = jest.fn().mockResolvedValue({ id: 'org-1', paymentId: 'cus_1' });
 
     await expect(service.prorate('org-1', { billing: 'ULTIMATE', period: 'MONTHLY' } as any)).resolves.toEqual({
       price: 49.68,
       renewsOn: '2026-11-09T09:35:51.000Z',
       renewalPrice: 79,
+      scheduled: false,
+    });
+  });
+
+  // Codex on the 10-09 branch: from monthly to yearly Stripe starts a new
+  // cycle today, so the renewal is a year away, not the old month's end.
+  it('a change to yearly renews a year from the new cycle, as the invoice says', async () => {
+    listProducts.mockResolvedValue({ data: [{ id: 'prod_b', name: 'ULTIMATE', metadata: { tier: 'ULTIMATE' } }] });
+    listPrices.mockResolvedValue({
+      data: [{ id: 'price_by', currency: 'gbp', nickname: 'ULTIMATE YEARLY', unit_amount: 79000, recurring: { interval: 'year' } }],
+    });
+    retrieveCustomer.mockResolvedValue({ id: 'cus_1' });
+    listSubscriptions.mockResolvedValue({
+      data: [sub('active', 'PRO', { items: { data: [{ id: 'si_1', current_period_end: 1794216951 }] } })],
+    });
+    createPreview.mockResolvedValue({
+      amount_remaining: 76119,
+      lines: {
+        data: [
+          { amount: -2881, period: { end: 1794216951 }, pricing: { price_details: { price: 'price_pro' } } },
+          { amount: 79000, period: { end: 1823160951 }, pricing: { price_details: { price: 'price_by' } } },
+        ],
+      },
+    });
+    const { service, subscriptionService } = build();
+    subscriptionService.getSubscription.mockResolvedValue({ subscriptionTier: 'PRO' });
+    (service as any)._organizationService.getOrgById = jest.fn().mockResolvedValue({ id: 'org-1', paymentId: 'cus_1' });
+
+    const quote = await service.prorate('org-1', { billing: 'ULTIMATE', period: 'YEARLY' } as any);
+    expect(quote.renewsOn).toBe(new Date(1823160951 * 1000).toISOString());
+    expect(quote.scheduled).toBe(false);
+  });
+
+  // Codex: monthly Pro to yearly Starter previews a charge, but it is a
+  // lower plan, which waits for the renewal (E2E-07-44). The quote says so.
+  it('a lower plan is scheduled for the renewal, whatever the preview charges', async () => {
+    listProducts.mockResolvedValue({ data: [{ id: 'prod_s', name: 'STANDARD', metadata: { tier: 'STANDARD' } }] });
+    listPrices.mockResolvedValue({
+      data: [{ id: 'price_sy', currency: 'gbp', nickname: 'STANDARD YEARLY', unit_amount: 19000, recurring: { interval: 'year' } }],
+    });
+    retrieveCustomer.mockResolvedValue({ id: 'cus_1' });
+    listSubscriptions.mockResolvedValue({
+      data: [sub('active', 'PRO', { items: { data: [{ id: 'si_1', current_period_end: 1794216951 }] } })],
+    });
+    createPreview.mockResolvedValue({ amount_remaining: 16119, lines: { data: [] } });
+    const { service, subscriptionService } = build();
+    subscriptionService.getSubscription.mockResolvedValue({ subscriptionTier: 'PRO' });
+    (service as any)._organizationService.getOrgById = jest.fn().mockResolvedValue({ id: 'org-1', paymentId: 'cus_1' });
+
+    await expect(service.prorate('org-1', { billing: 'STANDARD', period: 'YEARLY' } as any)).resolves.toEqual({
+      price: 0,
+      renewsOn: '2026-11-09T09:35:51.000Z',
+      renewalPrice: 190,
+      scheduled: true,
     });
   });
 });

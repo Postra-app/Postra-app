@@ -39,9 +39,6 @@ import { AiUsageThisMonth } from '@gitroom/frontend/components/billing/ai.usage.
 import { BillingHistory } from '@gitroom/frontend/components/billing/billing.history.component';
 import { planFeatures } from '@gitroom/frontend/components/billing/plan.features';
 
-// Lowest to highest, as stripe.service compares plans.
-const PLAN_ORDER = ['FREE', 'STANDARD', 'TEAM', 'PRO', 'ULTIMATE'];
-
 export const Prorate: FC<{
   period: 'MONTHLY' | 'YEARLY';
   pack: 'STANDARD' | 'PRO';
@@ -268,16 +265,29 @@ export const MainBillingComponent: FC<{
   const confirmPlanChange = useCallback(
     async (billing: string, current: string) => {
       const period = monthlyOrYearly === 'on' ? 'YEARLY' : 'MONTHLY';
-      let quote: { price?: number; renewsOn?: string | null; renewalPrice?: number } = {};
+      let quote: {
+        price?: number;
+        renewsOn?: string | null;
+        renewalPrice?: number;
+        scheduled?: boolean;
+      } = {};
       try {
-        quote = await (
-          await fetch('/billing/prorate', {
-            method: 'POST',
-            body: JSON.stringify({ period, billing }),
-          })
-        ).json();
+        const response = await fetch('/billing/prorate', {
+          method: 'POST',
+          body: JSON.stringify({ period, billing }),
+        });
+        quote = response.ok ? await response.json() : {};
       } catch {
         quote = {};
+      }
+      // Without Stripe's quote the window would offer a free change that may
+      // charge the card: stop, and say so (Codex on the 10-09 branch).
+      if (typeof quote.price !== 'number' || !quote.renewsOn) {
+        toast.show(
+          t('billing_action_failed', 'Something went wrong, please try again.'),
+          'warning'
+        );
+        return false;
       }
       const today = `£${Math.max(quote.price || 0, 0).toFixed(2)}`;
       const plan = planLabel(billing);
@@ -295,15 +305,10 @@ export const MainBillingComponent: FC<{
             )
           : '';
       const upgrade = (quote.price || 0) > 0;
-      // A lower plan on a paid plan waits for the renewal; in a trial,
-      // nothing is paid and it changes at once (stripe.service subscribe).
-      const scheduled =
-        !upgrade &&
-        !user?.isTrailing &&
-        !!quote.renewsOn &&
-        PLAN_ORDER.indexOf(billing) < PLAN_ORDER.indexOf(current);
-      const on = quote.renewsOn ? dayjs(quote.renewsOn).format('D MMMM') : '';
-      if (scheduled) {
+      // A lower plan on a paid plan waits for the renewal; the server says
+      // which, by the same rule as the change itself.
+      const on = dayjs(quote.renewsOn).format('D MMMM');
+      if (quote.scheduled) {
         return areYouSure({
           title: t('plan_change_title', 'Change your plan'),
           description: `${t(
@@ -336,7 +341,7 @@ export const MainBillingComponent: FC<{
         cancelLabel: t('cancel', 'Cancel'),
       });
     },
-    [monthlyOrYearly, t, user?.isTrailing]
+    [monthlyOrYearly, t, toast]
   );
   const [initialChannels, setInitialChannels] = useState(
     sub?.totalChannels || 1
