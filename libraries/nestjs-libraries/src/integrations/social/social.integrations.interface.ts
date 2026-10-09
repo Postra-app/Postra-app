@@ -40,6 +40,9 @@ export interface IAuthenticator {
   // The final post id and link to store when the saved releaseId is still a
   // temporary one (TikTok publish ids); undefined when there is nothing to
   // resolve (yet).
+  // Why a token refresh failed, in words for the customer's notice
+  // ("Could not refresh your <provider> channel <this>"); undefined = generic.
+  refreshErrorMessage?(err: any): string | undefined;
   resolveReleaseId?(
     accessToken: string,
     releaseId: string,

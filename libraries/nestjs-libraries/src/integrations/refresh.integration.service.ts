@@ -155,7 +155,7 @@ export class RefreshIntegrationService {
       await this._integrationService.disconnectChannel(
         integration.organizationId,
         integration,
-        cause
+        socialProvider.refreshErrorMessage?.(refreshError) || cause
       );
 
       return false;

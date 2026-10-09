@@ -262,6 +262,20 @@ export class YoutubeProvider extends SocialAbstract implements SocialProvider {
     return undefined;
   }
 
+  // Google refuses a refresh with invalid_rapt when a Workspace admin's
+  // session policy demands a fresh sign-in; reconnecting alone keeps failing
+  // (upstream 49aa92ac).
+  refreshErrorMessage(err: any): string | undefined {
+    const data = err?.response?.data || {};
+    const text = `${data.error_subtype || ''} ${data.error_description || ''} ${
+      err?.message || ''
+    }`;
+    if (text.includes('invalid_rapt')) {
+      return `because your organisation's Google Workspace session policy cancelled its access. Ask your Google Workspace admin to mark Postra as a trusted app and turn on "Exempt trusted apps" (https://support.google.com/a/answer/9368756), then reconnect the channel`;
+    }
+    return undefined;
+  }
+
   async refreshToken(refresh_token: string): Promise<AuthTokenDetails> {
     const { client, oauth2 } = clientAndYoutube();
     client.setCredentials({ refresh_token });
