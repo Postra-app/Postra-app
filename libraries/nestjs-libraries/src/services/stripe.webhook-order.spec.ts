@@ -7,6 +7,10 @@ const listInvoicePayments = jest.fn();
 const createRefund = jest.fn();
 const listRefunds = jest.fn();
 const createPreview = jest.fn();
+const listProducts = jest.fn();
+const listPrices = jest.fn();
+const retrieveCustomer = jest.fn();
+const updateCustomer = jest.fn();
 
 jest.mock('stripe', () => {
   const actual = jest.requireActual('stripe');
@@ -18,6 +22,9 @@ jest.mock('stripe', () => {
       cancel: cancelSubscription,
     },
     invoices: { list: listInvoices, createPreview },
+    products: { list: listProducts },
+    prices: { list: listPrices },
+    customers: { retrieve: retrieveCustomer, update: updateCustomer },
     invoicePayments: { list: listInvoicePayments },
     refunds: { create: createRefund, list: listRefunds },
   }));
@@ -371,6 +378,28 @@ describe('the price shown before ending a trial', () => {
     listSubscriptions.mockResolvedValue({ data: [sub('active')] });
     const { service } = build();
     await expect(service.finishTrialPreview('cus_1')).resolves.toBeNull();
+  });
+});
+
+describe('the quote shown before changing plan (E2E-07-43)', () => {
+  it('has today’s amount, the renewal date and the new price', async () => {
+    listProducts.mockResolvedValue({ data: [{ id: 'prod_b', name: 'ULTIMATE', metadata: { tier: 'ULTIMATE' } }] });
+    listPrices.mockResolvedValue({
+      data: [{ id: 'price_b', currency: 'gbp', nickname: 'ULTIMATE MONTHLY', unit_amount: 7900, recurring: { interval: 'month' } }],
+    });
+    retrieveCustomer.mockResolvedValue({ id: 'cus_1' });
+    listSubscriptions.mockResolvedValue({
+      data: [sub('active', 'PRO', { items: { data: [{ id: 'si_1', current_period_end: 1794210951 }] } })],
+    });
+    createPreview.mockResolvedValue({ amount_remaining: 4968 });
+    const { service } = build();
+    (service as any)._organizationService.getOrgById = jest.fn().mockResolvedValue({ id: 'org-1', paymentId: 'cus_1' });
+
+    await expect(service.prorate('org-1', { billing: 'ULTIMATE', period: 'MONTHLY' } as any)).resolves.toEqual({
+      price: 49.68,
+      renewsOn: '2026-11-09T09:35:51.000Z',
+      renewalPrice: 79,
+    });
   });
 });
 
