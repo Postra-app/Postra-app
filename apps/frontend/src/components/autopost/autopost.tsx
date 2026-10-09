@@ -463,7 +463,7 @@ export const AddOrEditWebhook: FC<{
                     'Write your post...'
                   )}
                   autosuggestionsConfig={{
-                    textareaPurpose: `Assist me in writing social media post`,
+                    textareaPurpose: `Assist me in writing a social media post. Never use em dashes (—) or en dashes (–); use a comma, a full stop or a plain hyphen (-).`,
                     chatApiConfigs: {},
                   }}
                 />

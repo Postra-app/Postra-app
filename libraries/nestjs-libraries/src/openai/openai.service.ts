@@ -16,9 +16,11 @@ import {
   buildBrandDesignPrompt,
 } from '@gitroom/nestjs-libraries/openai/brand-prompt';
 import {
+  PUNCTUATION_RULE,
   languageRule,
   tooShortToDetectLanguage,
 } from '@gitroom/nestjs-libraries/openai/language-rule';
+import { deepWithoutLongDashes } from '@gitroom/helpers/utils/long.dashes';
 import { withImageSlot } from '@gitroom/nestjs-libraries/openai/image-concurrency';
 import {
   ImageOrientation,
@@ -296,7 +298,7 @@ export class OpenaiService {
             {
               role: 'assistant',
               content:
-                'Generate a Twitter post from the content without emojis in the following JSON format: { "post": string } put it in an array with one element',
+                `Generate a Twitter post from the content without emojis in the following JSON format: { "post": string } put it in an array with one element. ${PUNCTUATION_RULE}`,
             },
             {
               role: 'user',
@@ -312,7 +314,7 @@ export class OpenaiService {
             {
               role: 'assistant',
               content:
-                'Generate a thread for social media in the following JSON format: Array<{ "post": string }> without emojis',
+                `Generate a thread for social media in the following JSON format: Array<{ "post": string }> without emojis. ${PUNCTUATION_RULE}`,
             },
             {
               role: 'user',
@@ -332,14 +334,14 @@ export class OpenaiService {
         const start = content?.indexOf('[')!;
         const end = content?.lastIndexOf(']')!;
         try {
-          return JSON.parse(
+          return deepWithoutLongDashes(JSON.parse(
             '[' +
               content
                 ?.slice(start + 1, end)
                 .replace(/\n/g, ' ')
                 .replace(/ {2,}/g, ' ') +
               ']'
-          );
+          ));
         } catch (e) {
           return [];
         }

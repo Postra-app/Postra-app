@@ -27,6 +27,7 @@ import { OpenaiService } from '@gitroom/nestjs-libraries/openai/openai.service';
 import { SubscriptionService } from '@gitroom/nestjs-libraries/database/prisma/subscriptions/subscription.service';
 import { BrandKitService } from '@gitroom/nestjs-libraries/database/prisma/brand-kit/brand-kit.service';
 import { buildBrandContext } from '@gitroom/nestjs-libraries/openai/brand-prompt';
+import { deepWithoutLongDashes } from '@gitroom/helpers/utils/long.dashes';
 import { languageRule } from '@gitroom/nestjs-libraries/openai/language-rule';
 import { UploadFactory } from '@gitroom/nestjs-libraries/upload/upload.factory';
 import { makeId } from '@gitroom/nestjs-libraries/services/make.is';
@@ -485,10 +486,12 @@ export class AutopostService {
         language: languageRule({ scope: 'the posts', follow: 'the article' }),
       });
 
+    // No long dashes in posts customers publish (K. 10-09).
+    const clean = deepWithoutLongDashes(platformContent);
     return {
       ...state,
-      description: platformContent.generic,
-      platformContent,
+      description: clean.generic,
+      platformContent: clean,
     };
   }
 

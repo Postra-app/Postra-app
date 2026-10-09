@@ -1,4 +1,5 @@
 import OpenAI from 'openai';
+import { deepWithoutLongDashes } from '@gitroom/helpers/utils/long.dashes';
 import {
   AiUsageEvent,
   recordAiUsage,
@@ -48,7 +49,9 @@ export async function parseChat(
       let parsed: any = null;
       if (content) {
         try {
-          parsed = JSON.parse(content);
+          // No long dashes in what customers read (K. 10-09): the prompts
+          // ask for none, this makes sure.
+          parsed = deepWithoutLongDashes(JSON.parse(content));
         } catch {
           parsed = null;
         }

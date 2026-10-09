@@ -64,7 +64,7 @@ export const TextArea: FC<{
           });
         }}
         autosuggestionsConfig={{
-          textareaPurpose: `Assist me in writing social media posts.`,
+          textareaPurpose: `Assist me in writing social media posts. Never use em dashes (—) or en dashes (–); use a comma, a full stop or a plain hyphen (-).`,
           chatApiConfigs: {},
         }}
       />
