@@ -66,7 +66,11 @@ export const LayoutComponent = ({ children }: { children: ReactNode }) => {
     return await (await fetch(path)).json();
   }, []);
   const { data: user, mutate } = useSWR('/user/self', load, {
-    revalidateOnFocus: false,
+    // Back in a tab left open while the plan changed in another one, the page
+    // asks again, so Add Channel and the limits follow the new plan (Kris
+    // Company, 2026-10-09: Starter on the server, every platform open here).
+    // At most every 30 s (SwrProvider); unchanged data does not re-render.
+    revalidateOnFocus: true,
     revalidateOnReconnect: false,
     revalidateIfStale: false,
     refreshWhenOffline: false,

@@ -121,7 +121,7 @@ describe('pricing matrix', () => {
     expect(pricing.PRO.allowedProviders).toContain('linkedin-page');
   });
 
-  it('keeps FREE inert — trials run on paid tiers, not on FREE', () => {
+  it('keeps FREE inert - trials run on paid tiers, not on FREE', () => {
     expect(pricing.FREE.posts_per_month).toBe(0);
     expect(pricing.FREE.ai).toBe(false);
   });

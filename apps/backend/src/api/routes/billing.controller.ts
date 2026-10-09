@@ -18,6 +18,7 @@ import { BillingSubscribeDto } from '@gitroom/nestjs-libraries/dtos/billing/bill
 import { BillingAddSubscriptionDto } from '@gitroom/nestjs-libraries/dtos/billing/billing.add.subscription.dto';
 import { ApiTags } from '@nestjs/swagger';
 import { GetUserFromRequest } from '@gitroom/nestjs-libraries/user/user.from.request';
+import { AuditService } from '@gitroom/nestjs-libraries/database/prisma/audit/audit.service';
 import { NotificationService } from '@gitroom/nestjs-libraries/database/prisma/notifications/notification.service';
 import { Request } from 'express';
 import { AuthService } from '@gitroom/helpers/auth/auth.service';
@@ -43,7 +44,8 @@ export class BillingController {
   constructor(
     private _subscriptionService: SubscriptionService,
     private _stripeService: StripeService,
-    private _notificationService: NotificationService
+    private _notificationService: NotificationService,
+    private _auditService: AuditService
   ) {}
 
   @Get('/check/:id')
@@ -80,15 +82,45 @@ export class BillingController {
     await this._stripeService.applyDiscount(org.paymentId);
   }
 
+  @Get('/finish-trial/preview')
+  @CheckPolicies(BILLING_ADMIN)
+  @Throttle({ default: { ttl: 300_000, limit: 30 } })
+  async finishTrialPreview(@GetOrgFromRequest() org: Organization) {
+    if (!org.paymentId) {
+      return null;
+    }
+    try {
+      return await this._stripeService.finishTrialPreview(org.paymentId);
+    } catch (err) {
+      Logger.error(
+        `finish-trial preview failed for org ${org.id}: ${(err as Error)?.message}`,
+        'Billing'
+      );
+      return null;
+    }
+  }
+
   @Post('/finish-trial')
   @CheckPolicies(BILLING_ADMIN)
   @Throttle({ default: { ttl: 300_000, limit: 10 } })
-  async finishTrial(@GetOrgFromRequest() org: Organization) {
+  async finishTrial(
+    @GetOrgFromRequest() org: Organization,
+    @GetUserFromRequest() user: User
+  ) {
     if (!org.paymentId) {
       return { finish: false, reason: 'no-trial' };
     }
     try {
-      return await this._stripeService.finishTrial(org.paymentId);
+      const result = await this._stripeService.finishTrial(org.paymentId);
+      // It charges the card: who ended the trial and when could not be told
+      // afterwards (E2E-07-41).
+      this._auditService.record({
+        action: 'billing.finish-trial',
+        organizationId: org.id,
+        userId: user?.id,
+        metadata: { finish: result.finish, reason: result.reason },
+      });
+      return result;
     } catch (err) {
       Logger.error(
         `finish-trial failed for org ${org.id}: ${(err as Error)?.message}`,
@@ -165,6 +197,12 @@ export class BillingController {
     return {
       portal: url,
     };
+  }
+
+  // A lower plan waiting for the next billing period (E2E-07-44).
+  @Get('/pending-change')
+  pendingChange(@GetOrgFromRequest() org: Organization) {
+    return this._stripeService.pendingChange(org.id);
   }
 
   @Get('/')

@@ -890,7 +890,7 @@ const PostDesignEditor: FC<PostDesignEditorProps> = ({
       toaster.show(
         t(
           'saved_to_library',
-          'Saved to media library — you can use it in any post.'
+          'Saved to media library - you can use it in any post.'
         ),
         'success'
       );
@@ -908,7 +908,7 @@ const PostDesignEditor: FC<PostDesignEditorProps> = ({
     if (!fabricRef.current || savingTemplate) return;
     if (!fabricRef.current.getObjects().length) {
       toaster.show(
-        t('template_save_empty', 'The canvas is empty — design something first.'),
+        t('template_save_empty', 'The canvas is empty - design something first.'),
         'warning'
       );
       return;
@@ -923,7 +923,7 @@ const PostDesignEditor: FC<PostDesignEditorProps> = ({
       toaster.show(
         t(
           'template_saved',
-          'Saved as your template — find it in the Templates panel.'
+          'Saved as your template - find it in the Templates panel.'
         ),
         'success'
       );
@@ -1180,7 +1180,7 @@ const PostDesignEditor: FC<PostDesignEditorProps> = ({
                     label: savingToLibrary
                       ? t('saving', 'Saving…')
                       : t('save_to_library_btn', 'Save to library'),
-                    hint: t('save_to_library_hint', 'Save to media library — use it in any post'),
+                    hint: t('save_to_library_hint', 'Save to media library - use it in any post'),
                     disabled: savingToLibrary,
                     onSelect: handleSaveToLibrary,
                   },

@@ -61,7 +61,7 @@ export const CheckPaymentInner: FC<{
       }
       setShowLoader(false);
       toaster.show(
-        'We could not confirm the payment yet. It may still be processing — refresh this page in a minute.',
+        'We could not confirm the payment yet. It may still be processing - refresh this page in a minute.',
         'warning'
       );
       return;

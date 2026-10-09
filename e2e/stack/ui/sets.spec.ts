@@ -1,5 +1,7 @@
 import { expect, Page, test } from '@playwright/test';
-import { stateFile } from '../helpers';
+import { signedIn, stateFile } from '../helpers';
+import { USERS } from '../seed';
+import { quietSlot } from './ui-helpers';
 
 // "Add a set" opened the post editor with the channel list it had at that
 // moment. Clicked before /integrations/list answered (or with no channel at
@@ -43,4 +45,43 @@ test('with no channel, "Add a set" says so instead of a blank editor', async ({ 
 
   await expect(page.getByText('Connect a channel first')).toBeVisible();
   await expect(page.getByRole('dialog', { name: 'Post editor' })).toHaveCount(0);
+});
+
+test('a set keeps each channel’s own text (E2E-05-92)', async ({ page }) => {
+  // The editor opened every channel of a set with the first channel's text.
+  const api = await signedIn('a');
+  const tag = `[stack ui] set ${Date.now()}`;
+  const content = {
+    type: 'draft',
+    shortLink: false,
+    date: quietSlot(5).toISOString(),
+    tags: [],
+    posts: [
+      { integration: { id: USERS.a.channel.id }, value: [{ content: `<p>${tag} bluesky</p>`, image: [] }], settings: { __type: 'bluesky' } },
+      { integration: { id: USERS.a.mastodon.id }, value: [{ content: `<p>${tag} mastodon</p>`, image: [] }], settings: { __type: 'mastodon' } },
+    ],
+  };
+  const saved = await api.post('/sets', { data: { name: tag, content: JSON.stringify(content) } });
+  expect(saved.ok(), await saved.text()).toBe(true);
+  try {
+    await openSetsTab(page);
+    await page.getByText(tag, { exact: true }).locator('xpath=following-sibling::div[1]').getByRole('button', { name: 'Edit' }).click();
+    const editor = page.getByRole('dialog', { name: 'Post editor' });
+    const mastodon = editor.getByRole('button', { name: USERS.a.mastodon.name, exact: true });
+    await mastodon.focus();
+    await page.keyboard.press('Enter');
+    await expect(mastodon).toHaveAttribute('aria-pressed', 'true');
+    await expect(editor.getByRole('textbox').first()).toContainText(`${tag} mastodon`);
+
+    const bluesky = editor.getByRole('button', { name: USERS.a.channel.name, exact: true });
+    await bluesky.focus();
+    await page.keyboard.press('Enter');
+    await expect(editor.getByRole('textbox').first()).toContainText(`${tag} bluesky`);
+  } finally {
+    const sets: { id: string; name: string }[] = await (await api.get('/sets')).json();
+    for (const set of sets.filter((s) => s.name === tag)) {
+      await api.delete(`/sets/${set.id}`);
+    }
+    await api.dispose();
+  }
 });

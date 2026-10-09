@@ -8,7 +8,7 @@ export class EncryptTokens {
   @Command({
     command: 'encrypt-tokens',
     describe:
-      'One-off: encrypt at rest any integration tokens still stored as plaintext. Idempotent — a value already carrying the enc:: marker is returned unchanged. Dry-run unless --apply.',
+      'One-off: encrypt at rest any integration tokens still stored as plaintext. Idempotent - a value already carrying the enc:: marker is returned unchanged. Dry-run unless --apply.',
   })
   async encrypt() {
     const apply = process.argv.includes('--apply');
@@ -17,14 +17,14 @@ export class EncryptTokens {
     );
 
     console.log(
-      `[encrypt-tokens] ${apply ? 'APPLY' : 'DRY-RUN'} — ${result.updated}/${
+      `[encrypt-tokens] ${apply ? 'APPLY' : 'DRY-RUN'} - ${result.updated}/${
         result.total
       } integrations ${apply ? 'encrypted' : 'would be encrypted'}.`
     );
 
     if (!apply) {
       console.log(
-        '[encrypt-tokens] DRY-RUN only — nothing written. Re-run with --apply to persist.'
+        '[encrypt-tokens] DRY-RUN only - nothing written. Re-run with --apply to persist.'
       );
     }
 

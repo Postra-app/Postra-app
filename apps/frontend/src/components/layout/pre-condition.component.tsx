@@ -9,18 +9,19 @@ export const PreConditionComponentModal: FC = () => {
   return (
     <div className="flex flex-col gap-[16px]">
       <div className="whitespace-pre-line">
-        This social channel was previously connected to another Postra account.
+        This social channel was previously connected to another Postra
+        account, so it cannot be added during a free trial.{'\n'}
         {'\n'}
-        To continue, fast-forward your trial with an immediate payment.{'\n'}
-        {'\n'}
-        ** Note: the account will not be eligible for a refund,
-        and the charge is final.
+        To add it, end your trial now. You will see the price and confirm the
+        payment on the next screen.
       </div>
       <div className="flex gap-[2px] justify-center">
+        {/* Goes to the confirmation; nothing is charged by this button
+            (E2E-07-41). */}
         <Button
           onClick={() => (window.location.href = '/billing?finishTrial=true')}
         >
-          Fast-forward — charge me now
+          End my trial
         </Button>
         <Button onClick={modal.closeCurrent} secondary={true}>Cancel</Button>
       </div>

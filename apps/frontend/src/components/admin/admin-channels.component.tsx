@@ -209,7 +209,7 @@ export const AdminChannelsComponent = () => {
           <div className="text-[11.5px] text-newTextColor/60 mt-[6px]">
             {t(
               'admin_channels_reconnect_hint',
-              'The customer has to connect these again — nothing on our side will fix them.'
+              'The customer has to connect these again - nothing on our side will fix them.'
             )}
           </div>
         </div>
@@ -491,7 +491,7 @@ export const AdminChannelsComponent = () => {
                             {item.grantedScopes === null
                               ? t(
                                   'admin_channels_scopes_unknown',
-                                  'never recorded — this channel predates the column, so a reconnect would fill it in'
+                                  'never recorded - this channel predates the column, so a reconnect would fill it in'
                                 )
                               : item.grantedScopes.length
                               ? item.grantedScopes.join(', ')
@@ -503,7 +503,7 @@ export const AdminChannelsComponent = () => {
                           {!!item.lastError && (
                             <div className="break-all">
                               {t('admin_channels_last_failure', 'Last failure')}:{' '}
-                              {new Date(item.lastError.at).toLocaleString()} —{' '}
+                              {new Date(item.lastError.at).toLocaleString()} -{' '}
                               {item.lastError.message}
                             </div>
                           )}

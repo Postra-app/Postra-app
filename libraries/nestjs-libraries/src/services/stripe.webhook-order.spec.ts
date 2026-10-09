@@ -6,6 +6,11 @@ const listInvoices = jest.fn();
 const listInvoicePayments = jest.fn();
 const createRefund = jest.fn();
 const listRefunds = jest.fn();
+const createPreview = jest.fn();
+const listProducts = jest.fn();
+const listPrices = jest.fn();
+const retrieveCustomer = jest.fn();
+const updateCustomer = jest.fn();
 
 jest.mock('stripe', () => {
   const actual = jest.requireActual('stripe');
@@ -16,7 +21,10 @@ jest.mock('stripe', () => {
       update: updateSubscription,
       cancel: cancelSubscription,
     },
-    invoices: { list: listInvoices },
+    invoices: { list: listInvoices, createPreview },
+    products: { list: listProducts },
+    prices: { list: listPrices },
+    customers: { retrieve: retrieveCustomer, update: updateCustomer },
     invoicePayments: { list: listInvoicePayments },
     refunds: { create: createRefund, list: listRefunds },
   }));
@@ -62,6 +70,7 @@ const build = () => {
   const subscriptionService = {
     createOrUpdateSubscription: jest.fn().mockResolvedValue({}),
     deleteSubscription: jest.fn().mockResolvedValue(undefined),
+    getSubscription: jest.fn().mockResolvedValue(null),
   };
   // allowTrial false: the £1 card probe is skipped, which is not under test.
   const organizationService = {
@@ -118,6 +127,19 @@ describe('subscription events are written from Stripe’s current state', () => 
     await service.updateSubscription(event('customer.subscription.updated', sub('past_due')));
 
     expect(subscriptionService.createOrUpdateSubscription.mock.calls[0][0]).toBe(false);
+  });
+
+  it('stores Stripe’s billing anchor, where the AI allowance month starts (E2E-07-40)', async () => {
+    // Trial ended early on 2026-10-09 09:35:51: invoices run from then, not
+    // from the day the subscription was created.
+    retrieveSubscription.mockResolvedValue(sub('active', 'PRO', { billing_cycle_anchor: 1791538551 }));
+    const { service, subscriptionService } = build();
+
+    await service.updateSubscription(event('customer.subscription.updated', sub('active')));
+
+    expect(subscriptionService.createOrUpdateSubscription.mock.calls[0][9]).toEqual(
+      new Date('2026-10-09T09:35:51.000Z')
+    );
   });
 
   it('trialing is still a trial', async () => {
@@ -333,3 +355,107 @@ describe('a second live subscription for the same customer', () => {
     expect(subscriptionService.createOrUpdateSubscription).toHaveBeenCalled();
   });
 });
+
+describe('the price shown before ending a trial', () => {
+  it('is Stripe’s preview of the invoice for this subscription', async () => {
+    listSubscriptions.mockResolvedValue({ data: [sub('trialing', 'STANDARD')] });
+    createPreview.mockResolvedValue({ amount_due: 1200, currency: 'gbp' });
+    const { service } = build();
+
+    await expect(service.finishTrialPreview('cus_1')).resolves.toEqual({
+      amount: 1200,
+      currency: 'gbp',
+      tier: 'STANDARD',
+      period: 'MONTHLY',
+    });
+    expect(createPreview).toHaveBeenCalledWith({
+      customer: 'cus_1',
+      subscription: 'sub_1',
+      subscription_details: { trial_end: 'now' },
+    });
+  });
+
+  it('is nothing when there is no trial', async () => {
+    listSubscriptions.mockResolvedValue({ data: [sub('active')] });
+    const { service } = build();
+    await expect(service.finishTrialPreview('cus_1')).resolves.toBeNull();
+  });
+});
+
+describe('the quote shown before changing plan (E2E-07-43)', () => {
+  it('has today’s amount, the renewal date and the new price', async () => {
+    listProducts.mockResolvedValue({ data: [{ id: 'prod_b', name: 'ULTIMATE', metadata: { tier: 'ULTIMATE' } }] });
+    listPrices.mockResolvedValue({
+      data: [{ id: 'price_b', currency: 'gbp', nickname: 'ULTIMATE MONTHLY', unit_amount: 7900, recurring: { interval: 'month' } }],
+    });
+    retrieveCustomer.mockResolvedValue({ id: 'cus_1' });
+    listSubscriptions.mockResolvedValue({
+      data: [sub('active', 'PRO', { items: { data: [{ id: 'si_1', current_period_end: 1794216951 }] } })],
+    });
+    createPreview.mockResolvedValue({ amount_remaining: 4968 });
+    const { service, subscriptionService } = build();
+    subscriptionService.getSubscription.mockResolvedValue({ subscriptionTier: 'PRO' });
+    (service as any)._organizationService.getOrgById = jest.fn().mockResolvedValue({ id: 'org-1', paymentId: 'cus_1' });
+
+    await expect(service.prorate('org-1', { billing: 'ULTIMATE', period: 'MONTHLY' } as any)).resolves.toEqual({
+      price: 49.68,
+      renewsOn: '2026-11-09T09:35:51.000Z',
+      renewalPrice: 79,
+      scheduled: false,
+    });
+  });
+
+  // Codex on the 10-09 branch: from monthly to yearly Stripe starts a new
+  // cycle today, so the renewal is a year away, not the old month's end.
+  it('a change to yearly renews a year from the new cycle, as the invoice says', async () => {
+    listProducts.mockResolvedValue({ data: [{ id: 'prod_b', name: 'ULTIMATE', metadata: { tier: 'ULTIMATE' } }] });
+    listPrices.mockResolvedValue({
+      data: [{ id: 'price_by', currency: 'gbp', nickname: 'ULTIMATE YEARLY', unit_amount: 79000, recurring: { interval: 'year' } }],
+    });
+    retrieveCustomer.mockResolvedValue({ id: 'cus_1' });
+    listSubscriptions.mockResolvedValue({
+      data: [sub('active', 'PRO', { items: { data: [{ id: 'si_1', current_period_end: 1794216951 }] } })],
+    });
+    createPreview.mockResolvedValue({
+      amount_remaining: 76119,
+      lines: {
+        data: [
+          { amount: -2881, period: { end: 1794216951 }, pricing: { price_details: { price: 'price_pro' } } },
+          { amount: 79000, period: { end: 1823160951 }, pricing: { price_details: { price: 'price_by' } } },
+        ],
+      },
+    });
+    const { service, subscriptionService } = build();
+    subscriptionService.getSubscription.mockResolvedValue({ subscriptionTier: 'PRO' });
+    (service as any)._organizationService.getOrgById = jest.fn().mockResolvedValue({ id: 'org-1', paymentId: 'cus_1' });
+
+    const quote = await service.prorate('org-1', { billing: 'ULTIMATE', period: 'YEARLY' } as any);
+    expect(quote.renewsOn).toBe(new Date(1823160951 * 1000).toISOString());
+    expect(quote.scheduled).toBe(false);
+  });
+
+  // Codex: monthly Pro to yearly Starter previews a charge, but it is a
+  // lower plan, which waits for the renewal (E2E-07-44). The quote says so.
+  it('a lower plan is scheduled for the renewal, whatever the preview charges', async () => {
+    listProducts.mockResolvedValue({ data: [{ id: 'prod_s', name: 'STANDARD', metadata: { tier: 'STANDARD' } }] });
+    listPrices.mockResolvedValue({
+      data: [{ id: 'price_sy', currency: 'gbp', nickname: 'STANDARD YEARLY', unit_amount: 19000, recurring: { interval: 'year' } }],
+    });
+    retrieveCustomer.mockResolvedValue({ id: 'cus_1' });
+    listSubscriptions.mockResolvedValue({
+      data: [sub('active', 'PRO', { items: { data: [{ id: 'si_1', current_period_end: 1794216951 }] } })],
+    });
+    createPreview.mockResolvedValue({ amount_remaining: 16119, lines: { data: [] } });
+    const { service, subscriptionService } = build();
+    subscriptionService.getSubscription.mockResolvedValue({ subscriptionTier: 'PRO' });
+    (service as any)._organizationService.getOrgById = jest.fn().mockResolvedValue({ id: 'org-1', paymentId: 'cus_1' });
+
+    await expect(service.prorate('org-1', { billing: 'STANDARD', period: 'YEARLY' } as any)).resolves.toEqual({
+      price: 0,
+      renewsOn: '2026-11-09T09:35:51.000Z',
+      renewalPrice: 190,
+      scheduled: true,
+    });
+  });
+});
+

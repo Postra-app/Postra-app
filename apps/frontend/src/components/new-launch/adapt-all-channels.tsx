@@ -157,7 +157,7 @@ export const AdaptAllChannels: FC = () => {
     }
     if (!adapted) {
       toaster.show(
-        t('ai_adapt_all_failed', 'Could not adapt the post — try again later.'),
+        t('ai_adapt_all_failed', 'Could not adapt the post - try again later.'),
         'warning'
       );
       return;

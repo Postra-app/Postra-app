@@ -9,7 +9,7 @@ export class GrantLifetime {
   @Command({
     command: 'grant-lifetime',
     describe:
-      'Grant a lifetime Business subscription to the org(s) owned by an email (comped tester/influencer accounts — skips the paywall + trial guards). Dry-run unless --apply. Usage: grant-lifetime --email=user@example.com [--apply]',
+      'Grant a lifetime Business subscription to the org(s) owned by an email (comped tester/influencer accounts - skips the paywall + trial guards). Dry-run unless --apply. Usage: grant-lifetime --email=user@example.com [--apply]',
   })
   async run() {
     const emailArg = process.argv.find((a) => a.startsWith('--email='));
@@ -28,7 +28,7 @@ export class GrantLifetime {
     );
 
     console.log(
-      `[grant-lifetime] ${apply ? 'APPLY' : 'DRY-RUN'} — email "${
+      `[grant-lifetime] ${apply ? 'APPLY' : 'DRY-RUN'} - email "${
         report.email
       }", ${report.total} owned org(s)`
     );
@@ -47,13 +47,13 @@ export class GrantLifetime {
 
     if (report.total === 0) {
       console.log(
-        '[grant-lifetime] no org owned by that email — the user must be the org owner (SUPERADMIN). Check the address.'
+        '[grant-lifetime] no org owned by that email - the user must be the org owner (SUPERADMIN). Check the address.'
       );
     }
 
     if (!apply) {
       console.log(
-        '[grant-lifetime] DRY-RUN only — nothing written. Re-run with --apply to persist.'
+        '[grant-lifetime] DRY-RUN only - nothing written. Re-run with --apply to persist.'
       );
     }
 

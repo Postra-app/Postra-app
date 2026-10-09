@@ -532,7 +532,7 @@ export class UsersController {
       await this._notificationService.sendEmail(
         user.email,
         'Your Postra account has been deleted',
-        'Your Postra account and its data — connected channels, scheduled posts and media — have been permanently deleted, and any active subscription was cancelled. Billing records required by law are retained in line with our privacy policy. Thanks for trying Postra.'
+        'Your Postra account and its data - connected channels, scheduled posts and media - have been permanently deleted, and any active subscription was cancelled. Billing records required by law are retained in line with our privacy policy. Thanks for trying Postra.'
       );
     } catch (e) {
       /* the account is gone either way */

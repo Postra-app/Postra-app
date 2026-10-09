@@ -83,7 +83,7 @@ export const BrandKitPanel: FC = () => {
           toaster.show(
             t(
               'brand_kit_save_rejected',
-              "That value wasn't saved — colours need to be a full hex code like #38bdf8."
+              "That value wasn't saved - colours need to be a full hex code like #38bdf8."
             ),
             'warning'
           );
@@ -154,7 +154,7 @@ export const BrandKitPanel: FC = () => {
       const palette = pickBrandColors(quantize(ctx.getImageData(0, 0, size, size).data));
       if (!palette) {
         toaster.show(
-          t('brand_colors_none', 'That logo has no colour to read — pick the colours by hand.'),
+          t('brand_colors_none', 'That logo has no colour to read - pick the colours by hand.'),
           'warning'
         );
         return;
@@ -205,7 +205,7 @@ export const BrandKitPanel: FC = () => {
         <p>
           {t(
             'brand_kit_intro_body',
-            'Set once — every AI Generate design, template and video text comes out in these colours and font. The logo goes bottom-right on AI designs; plain AI images have no logo. Tone shapes the wording AI writes.'
+            'Set once - every AI Generate design, template and video text comes out in these colours and font. The logo goes bottom-right on AI designs; plain AI images have no logo. Tone shapes the wording AI writes.'
           )}
         </p>
       </div>

@@ -70,7 +70,7 @@ export const AgentChat: FC = () => {
           <div className="text-[13.5px] text-newTextColor/70">
             {t(
               'agent_fair_use_description',
-              "You have asked the AI assistant {{questions}} questions this month — the fair-use limit, the same on every plan. It resets with your next billing month.",
+              "You have asked the AI assistant {{questions}} questions this month - the fair-use limit, the same on every plan. It resets with your next billing month.",
               { questions: AGENT_FAIR_USE_MESSAGES.toLocaleString('en-GB') }
             )}
           </div>
@@ -131,7 +131,7 @@ export const AgentChat: FC = () => {
               title: t('your_assistant', 'Your Assistant'),
               initial: t(
                 'agent_welcome_message',
-                `Hi! I'm your Postra agent 🙌🏻 Tell me what you want to publish — I'll schedule posts across multiple channels and generate images and videos.`
+                `Hi! I'm your Postra agent 🙌🏻 Tell me what you want to publish - I'll schedule posts across multiple channels and generate images and videos.`
               ),
             }}
             UserMessage={Message}
@@ -350,7 +350,7 @@ const ConfirmActionCard: FC<{
       )}
       {state === 'declined' && (
         <div className="text-[12.5px] text-newTextColor/70">
-          {t('agent_confirm_declined', 'Declined — nothing was changed.')}
+          {t('agent_confirm_declined', 'Declined - nothing was changed.')}
         </div>
       )}
       {state === 'error' && (

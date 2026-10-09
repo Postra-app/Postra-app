@@ -44,7 +44,7 @@ const callWith = async (state: any) => {
   return findMany.mock.calls[0][0];
 };
 
-describe('getPostsList — failed posts have to be reachable', () => {
+describe('getPostsList - failed posts have to be reachable', () => {
   it('state=error asks for ERROR only', async () => {
     const args = await callWith('error');
     expect(args.where.state).toBe(State.ERROR);
@@ -100,7 +100,7 @@ describe('getPostsList — failed posts have to be reachable', () => {
  * `listState = 'all'`, so it is the web's DEFAULT list tab, and the label was
  * lying to everyone who opened it.
  */
-describe('getPostsList — "all" has to mean all', () => {
+describe('getPostsList - "all" has to mean all', () => {
   it('lists every state', async () => {
     const args = await callWith('all');
     expect(args.where.state.in).toEqual(
@@ -132,7 +132,7 @@ describe('getPostsList — "all" has to mean all', () => {
   });
 });
 
-describe('getPostsList — drafts and repeating posts (E2E-05-21)', () => {
+describe('getPostsList - drafts and repeating posts (E2E-05-21)', () => {
   it('state=draft keeps drafts dated in the past', async () => {
     const args = await callWith('draft');
     expect(args.where.state).toBe(State.DRAFT);

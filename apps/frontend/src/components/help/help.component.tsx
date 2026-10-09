@@ -24,16 +24,34 @@ const ComingSoon = () => (
   </div>
 );
 
-const Section: FC<{ id: string; title: string; children: ReactNode }> = ({
-  id,
-  title,
-  children,
-}) => (
-  <div id={id} className="flex flex-col gap-[16px]">
-    <h2 className="text-[20px] font-[600]">{title}</h2>
-    {children}
-  </div>
-);
+// The full step-by-step user guide on postra.co.uk. Help keeps the short
+// answers next to the work; each section links to its page there (K. 10-09).
+export const GUIDE_URL = 'https://postra.co.uk/docs/guide/';
+
+const Section: FC<{
+  id: string;
+  title: string;
+  guide?: string;
+  children: ReactNode;
+}> = ({ id, title, guide, children }) => {
+  const t = useT();
+  return (
+    <div id={id} className="flex flex-col gap-[16px]">
+      <h2 className="text-[20px] font-[600]">{title}</h2>
+      {children}
+      {guide && (
+        <a
+          href={`${GUIDE_URL}${guide}/`}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-[14px] text-[#38bdf8] hover:underline self-start"
+        >
+          {t('help_read_more_guide', 'Read more in the guide')}
+        </a>
+      )}
+    </div>
+  );
+};
 
 export const HelpComponent = () => {
   const t = useT();
@@ -52,8 +70,8 @@ export const HelpComponent = () => {
     { id: 'getting-started', label: t('help_getting_started', 'Getting started') },
     { id: 'channels', label: t('help_connecting_channels', 'Connecting channels') },
     { id: 'tabs', label: t('help_app_tabs', 'App tabs') },
-    { id: 'studio', label: t('help_studio_graphics', 'Studio — Graphics') },
-    { id: 'studio-video', label: t('help_studio_video', 'Studio — Video') },
+    { id: 'studio', label: t('help_studio_graphics', 'Studio - Graphics') },
+    { id: 'studio-video', label: t('help_studio_video', 'Studio - Video') },
     { id: 'settings', label: t('help_settings_explained', 'Settings explained') },
     { id: 'faq', label: t('help_faq', 'FAQ') },
     { id: 'contact', label: t('help_contact', 'Contact') },
@@ -87,6 +105,14 @@ export const HelpComponent = () => {
     <>
       <div className="bg-white/[0.03] p-[20px] flex flex-col gap-[12px] w-[260px] phone:w-full">
         <h2 className="text-[20px] font-[500]">{t('help', 'Help')}</h2>
+        <a
+          href={GUIDE_URL}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="h-[36px] px-[12px] rounded-[8px] bg-[#38bdf8] text-[#06222e] text-[14px] font-[600] flex items-center justify-center hover:opacity-90"
+        >
+          {t('help_user_guide', 'User guide')}
+        </a>
         <input
           value={filter}
           onChange={(e) => setFilter(e.target.value)}
@@ -96,7 +122,7 @@ export const HelpComponent = () => {
         <div className="flex flex-col gap-[4px]">
           {visibleToc.length === 0 && (
             <div className="text-[13px] text-newTextColor/50 px-[8px] py-[6px]">
-              {t('help_filter_none', 'Nothing matches — scroll the page or ask us.')}
+              {t('help_filter_none', 'Nothing matches - scroll the page or ask us.')}
             </div>
           )}
           {visibleToc.map((item) => (
@@ -132,17 +158,19 @@ export const HelpComponent = () => {
       <div className="bg-white/[0.03] flex-1 flex flex-col p-[20px] gap-[40px]">
         <Section
           id="getting-started"
+          guide="first-post"
           title={t('help_getting_started', 'Getting started')}
         >
           <ol className="flex flex-col gap-[8px] text-[14px] list-decimal ps-[20px]">
             <li>Add a channel from the Calendar page ("Add Channel").</li>
             <li>Create a post yourself, or let the Agent draft one for you.</li>
-            <li>Schedule it — it appears on the calendar and publishes automatically.</li>
+            <li>Schedule it - it appears on the calendar and publishes automatically.</li>
           </ol>
         </Section>
 
         <Section
           id="channels"
+          guide="channels"
           title={t('help_connecting_channels', 'Connecting channels')}
         >
           <div className="flex flex-col gap-[12px]">
@@ -198,7 +226,7 @@ export const HelpComponent = () => {
           </div>
         </Section>
 
-        <Section id="tabs" title={t('help_app_tabs', 'App tabs')}>
+        <Section id="tabs" title={t('help_app_tabs', 'App tabs')} guide="app-map">
           <div className="grid grid-cols-2 phone:grid-cols-1 gap-[12px]">
             {APP_TABS.map((tab) => (
               <div
@@ -221,12 +249,13 @@ export const HelpComponent = () => {
 
         <Section
           id="studio"
-          title={t('help_studio_graphics', 'Studio — Graphics')}
+          guide="media-and-ai"
+          title={t('help_studio_graphics', 'Studio - Graphics')}
         >
           <div className="text-[13px] text-newTextColor/70">
             {t(
               'help_studio_intro',
-              'Studio designs branded graphics for your posts. Start from a ready-made template or a free stock photo — both included on every plan — or let AI draft one for you; either way every element stays editable. Tool by tool:'
+              'Studio designs branded graphics for your posts. Start from a ready-made template or a free stock photo - both included on every plan - or let AI draft one for you; either way every element stays editable. Tool by tool:'
             )}
           </div>
           <div className="flex flex-col gap-[12px]">
@@ -246,12 +275,13 @@ export const HelpComponent = () => {
 
         <Section
           id="studio-video"
-          title={t('help_studio_video', 'Studio — Video')}
+          guide="media-and-ai"
+          title={t('help_studio_video', 'Studio - Video')}
         >
           <div className="text-[13px] text-newTextColor/70">
             {t(
               'help_studio_video_intro',
-              'Short-form video editing that runs entirely in your browser — trim, reframe, caption and assemble clips without leaving Postra. Tool by tool:'
+              'Short-form video editing that runs entirely in your browser - trim, reframe, caption and assemble clips without leaving Postra. Tool by tool:'
             )}
           </div>
           <div className="flex flex-col gap-[12px]">
@@ -271,6 +301,7 @@ export const HelpComponent = () => {
 
         <Section
           id="settings"
+          guide="settings"
           title={t('help_settings_explained', 'Settings explained')}
         >
           <div className="text-[13px] text-newTextColor/70">
@@ -302,7 +333,7 @@ export const HelpComponent = () => {
           </div>
         </Section>
 
-        <Section id="faq" title={t('help_faq', 'FAQ')}>
+        <Section id="faq" title={t('help_faq', 'FAQ')} guide="troubleshooting">
           <div className="flex flex-col gap-[12px]">
             {FAQ_ITEMS.map((item) => (
               <div
@@ -332,7 +363,7 @@ export const HelpComponent = () => {
               >
                 hello@postra.co.uk
               </a>{' '}
-              — we usually reply within one business day.
+              - we usually reply within one business day.
             </div>
             <div>
               Service status:{' '}

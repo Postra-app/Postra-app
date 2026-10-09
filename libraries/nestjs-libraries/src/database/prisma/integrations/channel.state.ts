@@ -151,7 +151,7 @@ export const CHANNEL_STATE_COPY: Record<ChannelState, StateCopy> = {
   },
   disabled: {
     label: 'Disabled',
-    hint: 'Switched off — over the plan channel limit, or disabled by hand.',
+    hint: 'Switched off - over the plan channel limit, or disabled by hand.',
   },
   expired: {
     label: 'Token expired',

@@ -6,14 +6,14 @@ import { ReactNode, useCallback } from 'react';
 import { useFetch } from '@gitroom/helpers/utils/custom.fetch';
 import { Toaster } from '@gitroom/react/toaster/toaster';
 import { MantineWrapper } from '@gitroom/react/helpers/mantine.wrapper';
-import { useVariables } from '@gitroom/react/helpers/variable.context';
-import { CopilotKit } from '@copilotkit/react-core';
 import { ToolTip } from '@gitroom/frontend/components/layout/top.tip';
 export const PreviewWrapper = ({ children }: { children: ReactNode }) => {
   const fetch = useFetch();
-  const { backendUrl } = useVariables();
+  // The client opening a shared link has no session: no user, not an error
+  // (a 401 made every client see "Something went wrong loading data").
   const load = useCallback(async (path: string) => {
-    return await (await fetch(path)).json();
+    const res = await fetch(path);
+    return res.ok ? res.json() : null;
   }, []);
   const { data: user } = useSWR('/user/self', load, {
     revalidateOnFocus: false,
@@ -24,17 +24,13 @@ export const PreviewWrapper = ({ children }: { children: ReactNode }) => {
   });
   return (
     <ContextWrapper user={user}>
-      <CopilotKit
-        credentials="include"
-        runtimeUrl={backendUrl + '/copilot/chat'}
-        showDevConsole={false}
-      >
-        <MantineWrapper>
-          <Toaster />
-          <ToolTip />
-          {children}
-        </MantineWrapper>
-      </CopilotKit>
+      {/* No assistant here: nothing on the page uses it, and it called
+          /copilot/chat without a session (401) for every client. */}
+      <MantineWrapper>
+        <Toaster />
+        <ToolTip />
+        {children}
+      </MantineWrapper>
     </ContextWrapper>
   );
 };

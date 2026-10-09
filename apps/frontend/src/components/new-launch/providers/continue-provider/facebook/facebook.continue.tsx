@@ -20,7 +20,7 @@ export const FacebookContinue = withContinueProvider<FacebookItem, string>({
   titleDefault: 'Select Page:',
   note: {
     key: 'facebook_pages_only_note',
-    text: 'Only Facebook Pages appear here — Meta does not allow apps to publish to personal profiles, so seeing just your Page is normal.',
+    text: 'Only Facebook Pages appear here - Meta does not allow apps to publish to personal profiles, so seeing just your Page is normal.',
   },
   emptyStateMessages: [
     {
@@ -29,11 +29,11 @@ export const FacebookContinue = withContinueProvider<FacebookItem, string>({
     },
     {
       key: 'facebook_empty_pages_only',
-      text: 'Postra publishes to Pages, never to personal profiles — Meta removed API publishing to personal timelines in 2018. If you do not have a Page yet, create one (it is free and takes about two minutes) or ask its owner for full control of theirs.',
+      text: 'Postra publishes to Pages, never to personal profiles - Meta removed API publishing to personal timelines in 2018. If you do not have a Page yet, create one (it is free and takes about two minutes) or ask its owner for full control of theirs.',
     },
     {
       key: 'facebook_empty_tick_all_pages',
-      text: 'If you do have a Page, connect Facebook again and tick every Page in the Facebook dialog — a Page you skip there stays invisible to us.',
+      text: 'If you do have a Page, connect Facebook again and tick every Page in the Facebook dialog - a Page you skip there stays invisible to us.',
     },
   ],
   getItemId: (item) => item.id,

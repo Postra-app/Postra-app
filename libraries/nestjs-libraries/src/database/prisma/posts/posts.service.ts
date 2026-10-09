@@ -40,6 +40,10 @@ import {
 import { GetPostsDto } from '@gitroom/nestjs-libraries/dtos/posts/get.posts.dto';
 import { GetPostsListDto } from '@gitroom/nestjs-libraries/dtos/posts/get.posts.list.dto';
 import { groupBy, shuffle, uniqBy } from 'lodash';
+import {
+  PostingTime,
+  postingTimeOn,
+} from '@gitroom/helpers/utils/posting.times';
 import { v4 as uuidv4 } from 'uuid';
 import { CreateGeneratedPostsDto } from '@gitroom/nestjs-libraries/dtos/generator/create.generated.posts.dto';
 import { IntegrationService } from '@gitroom/nestjs-libraries/database/prisma/integrations/integration.service';
@@ -294,12 +298,30 @@ export class PostsService {
     // }
 
     try {
+      let releaseId = post.releaseId;
+      let releaseURL = post.releaseURL || undefined;
+      const resolved = await integrationProvider.resolveReleaseId?.(
+        getIntegration.token,
+        releaseId,
+        getIntegration
+      );
+      if (resolved && resolved.postId !== releaseId) {
+        await this._postRepository.updateResolvedRelease(
+          post.id,
+          orgId,
+          resolved.postId,
+          resolved.releaseURL
+        );
+        releaseId = resolved.postId;
+        releaseURL = resolved.releaseURL;
+      }
+
       const loadAnalytics = await integrationProvider.postAnalytics(
         getIntegration.internalId,
         getIntegration.token,
-        post.releaseId,
+        releaseId,
         date,
-        post.releaseURL || undefined
+        releaseURL
       );
       await ioRedis.set(
         `integration:${orgId}:${post.id}:${date}`,
@@ -1647,8 +1669,9 @@ export class PostsService {
     if (!times.length) {
       throw new NotFoundException('No posting times for this channel');
     }
-    return this.findFreeDateTimeFrom(orgId, times, dayjs.utc().startOf('day'));
+    return this.findFreeDateTimeFrom(orgId, times);
   }
+
 
   async createPopularPosts(post: {
     category: string;
@@ -1659,24 +1682,44 @@ export class PostsService {
     return this._postRepository.createPopularPosts(post);
   }
 
+  // Walks the calendar a week at a time. Each slot's moment comes from its
+  // own zone, so a week's candidates are built from the calendar days around
+  // it (a zone far ahead or behind UTC puts a day's slot on the neighbouring
+  // UTC day) and only those inside the week are taken (E2E-05-85, E2E-10-59).
   private async findFreeDateTimeFrom(
     orgId: string,
-    times: number[],
-    start: dayjs.Dayjs
+    times: PostingTime[]
   ): Promise<string> {
+    const now = dayjs.utc();
+    const today = now.startOf('day');
     // A year ahead is far past any real calendar; stop there rather than spin.
-    for (let day = 0; day < 366; day++) {
-      const date = start.add(day, 'day');
-      const free = await this._postRepository.getPostsCountsByDates(
-        orgId,
-        times,
-        date
+    for (let week = 0; week < 53; week++) {
+      const from = today.add(week * 7, 'day');
+      const to = from.add(7, 'day');
+      const candidates = uniqBy(
+        [...Array(9).keys()].flatMap((d) =>
+          times.map((slot) =>
+            postingTimeOn(slot, from.add(d - 1, 'day').format('YYYY-MM-DD'))
+          )
+        ),
+        (date) => date.valueOf()
+      )
+        .filter((date) => date.isAfter(now) && date.isBefore(to))
+        .sort((x, y) => x.valueOf() - y.valueOf());
+      if (!candidates.length) {
+        continue;
+      }
+      const taken = new Set(
+        (
+          await this._postRepository.findTakenDates(
+            orgId,
+            candidates.map((date) => date.toDate())
+          )
+        ).map((date) => date.getTime())
       );
-      if (free.length) {
-        return date
-          .clone()
-          .add(Math.min(...free), 'minutes')
-          .format('YYYY-MM-DDTHH:mm:00');
+      const free = candidates.find((date) => !taken.has(date.valueOf()));
+      if (free) {
+        return free.format('YYYY-MM-DDTHH:mm:00');
       }
     }
     throw new NotFoundException('No free slot in the next year');

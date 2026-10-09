@@ -266,7 +266,8 @@ export class SubscriptionRepository {
     period: 'MONTHLY' | 'YEARLY',
     cancelAt: number | null,
     code?: string,
-    org?: { id: string }
+    org?: { id: string },
+    periodAnchor?: Date
   ) {
     const findOrg =
       org || (await this.getOrganizationByCustomerId(customerId))!;
@@ -300,6 +301,7 @@ export class SubscriptionRepository {
         identifier,
         isLifetime: !!code,
         cancelAt: cancelAt ? new Date(cancelAt * 1000) : null,
+        ...(periodAnchor ? { periodAnchor } : {}),
         deletedAt: null,
       },
       create: {
@@ -310,6 +312,7 @@ export class SubscriptionRepository {
         period,
         cancelAt: cancelAt ? new Date(cancelAt * 1000) : null,
         identifier,
+        ...(periodAnchor ? { periodAnchor } : {}),
         deletedAt: null,
       },
       })
@@ -360,6 +363,18 @@ export class SubscriptionRepository {
       where: {
         organizationId,
         deletedAt: null,
+      },
+    });
+  }
+
+  deleteCreditsFrom(organizationId: string, from: dayjs.Dayjs, type: string) {
+    return this._credits.model.credits.deleteMany({
+      where: {
+        organizationId,
+        type,
+        createdAt: {
+          gte: from.toDate(),
+        },
       },
     });
   }

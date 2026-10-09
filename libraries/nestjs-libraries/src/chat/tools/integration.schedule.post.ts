@@ -316,7 +316,10 @@ If the tools return errors, you would need to rerun it with the right parameters
     }
     const subscription = await this._subscriptionService.getSubscription(orgId);
     return {
-      anchor: subscription?.createdAt || orgCreatedAt,
+      // The month runs with Stripe's invoices, as on the dashboard and in
+      // the public API (E2E-07-40); a plan Stripe does not bill counts from
+      // its creation.
+      anchor: subscription?.periodAnchor || subscription?.createdAt || orgCreatedAt,
       limit: pricing[subscription?.subscriptionTier || 'FREE'].posts_per_month,
     };
   }

@@ -43,7 +43,7 @@ describe('buildBrandContext', () => {
     ).toBe('');
   });
 
-  it('keeps a partial kit usable — colours without a tone still steer visuals', () => {
+  it('keeps a partial kit usable - colours without a tone still steer visuals', () => {
     const partial = buildBrandContext(
       { colors: { primary: '#38bdf8' } },
       { palette: true }

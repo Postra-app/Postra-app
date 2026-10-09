@@ -44,7 +44,7 @@ describe('htmlToText', () => {
   });
 });
 
-describe('htmlToText — nested markup', () => {
+describe('htmlToText - nested markup', () => {
   it('removes a comment hidden inside another comment', () => {
     const out = htmlToText('<p>Hello<!--<!-- hidden -->--> there</p>');
     expect(out).not.toContain('-->');

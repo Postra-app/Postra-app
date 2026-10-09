@@ -446,7 +446,7 @@ export const DayView = () => {
                 name: p?.name,
                 id: p?.id,
                 image: p?.picture,
-                time: postingMinutesInZone(t?.time, startDate, tz),
+                time: postingMinutesInZone(t, startDate, tz),
               }))
             ),
           ],

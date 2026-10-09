@@ -25,8 +25,9 @@ export const PLATFORM_NAMES: Record<string, string> = {
 };
 
 // Platforms a plan includes but the picker still shows as "Soon" (kept out of
-// enabledProviders in integration.manager.ts). The list names them, marked, so
-// it never sells something a customer cannot connect yet.
+// enabledProviders in integration.manager.ts). The plan cards leave them out,
+// like the landing ("6 channels on 9 platforms"): only what a customer can
+// connect today (K. 10-09). They appear once they are enabled.
 export const SOON_PLATFORMS = new Set(['linkedin-page']);
 
 const UNLIMITED = 10000;
@@ -53,10 +54,8 @@ export const planFeatures = (tier: string): PlanFeature[] => {
     text: 'On {{platforms}}',
     vars: {
       platforms: plan.allowedProviders
-        .map((p) => {
-          const name = PLATFORM_NAMES[p] || p;
-          return SOON_PLATFORMS.has(p) ? `${name} (soon)` : name;
-        })
+        .filter((p) => !SOON_PLATFORMS.has(p))
+        .map((p) => PLATFORM_NAMES[p] || p)
         .join(', '),
     },
   });

@@ -90,7 +90,7 @@ export const CarouselStrip: FC<CarouselStripProps> = ({ fabricRef }) => {
     return (
       <div className="border-t border-newBorder px-4 py-2 flex items-center justify-between bg-newBgColor">
         <div className="text-xs text-textColor opacity-70">
-          {t('carousel_hint', 'Create a multi-slide post (Instagram / LinkedIn carousel — up to 10 slides)')}
+          {t('carousel_hint', 'Create a multi-slide post (Instagram / LinkedIn carousel - up to 10 slides)')}
         </div>
         <button
           onClick={() => {
@@ -98,7 +98,7 @@ export const CarouselStrip: FC<CarouselStripProps> = ({ fabricRef }) => {
             enterCarouselMode(json);
           }}
           className="px-3 py-1 text-xs rounded bg-newColColor text-textColor hover:bg-white/[0.08] transition-colors"
-          title={t('carousel_enter_hint', 'Enable carousel mode — the current canvas becomes Slide 1')}
+          title={t('carousel_enter_hint', 'Enable carousel mode - the current canvas becomes Slide 1')}
         >
           <StudioIcon name="carousel" size={14} />
           {t('carousel_enter', 'Carousel mode')}
@@ -126,7 +126,7 @@ export const CarouselStrip: FC<CarouselStripProps> = ({ fabricRef }) => {
       <div className="px-4 py-2 flex items-center justify-between">
         <div className="text-xs text-textColor">
           <StudioIcon name="carousel" size={14} />
-          {t('carousel_label', 'Carousel')} —{' '}
+          {t('carousel_label', 'Carousel')} -{' '}
           <span className="opacity-70">
             {t('carousel_slide_count', 'Slide {current} of {total}')
               .replace('{current}', String(currentSlideIndex + 1))

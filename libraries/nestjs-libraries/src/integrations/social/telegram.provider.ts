@@ -239,7 +239,7 @@ export class TelegramProvider extends SocialAbstract implements SocialProvider {
       throw new Error(
         `Telegram accepts ${media.type}s up to ${Math.round(
           uploadLimit / 1024 / 1024
-        )} MB — this file is ${Math.ceil(
+        )} MB - this file is ${Math.ceil(
           size / 1024 / 1024
         )} MB. Please use a smaller file.`
       );

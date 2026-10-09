@@ -3,6 +3,8 @@ import {
   Body,
   Controller,
   Get,
+  HttpCode,
+  Logger,
   Param,
   Post,
   Query,
@@ -12,6 +14,10 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
+import {
+  CspReportLog,
+  cspViolations,
+} from '@gitroom/nestjs-libraries/csp/csp.report';
 import { PostsService } from '@gitroom/nestjs-libraries/database/prisma/posts/posts.service';
 import { TrackService } from '@gitroom/nestjs-libraries/track/track.service';
 import { RealIP } from 'nestjs-real-ip';
@@ -46,6 +52,32 @@ export class PublicController {
     private _postsService: PostsService,
     private _subscriptionService: SubscriptionService
   ) {}
+
+  // Info, not warn: warn and error go to Sentry, and a report-only policy
+  // can report on every page view.
+  private readonly _cspLog = new CspReportLog((line) =>
+    new Logger('CSP').log(line)
+  );
+
+  // Where browsers report what the app's Content-Security-Policy blocked —
+  // report-only for now (var/docker/nginx.conf), so this log says what an
+  // enforced policy would break. No session, any body; always 204.
+  @Post('/csp-report')
+  @HttpCode(204)
+  @Throttle({ default: { ttl: 60_000, limit: 60 } })
+  cspReport(@Req() req: Request) {
+    let body: unknown = req.body;
+    if (typeof body === 'string') {
+      try {
+        body = JSON.parse(body);
+      } catch {
+        return;
+      }
+    }
+    for (const violation of cspViolations(body)) {
+      this._cspLog.add(violation);
+    }
+  }
   @Post('/agent')
   @Throttle({ default: { ttl: 300_000, limit: 30 } })
   async createAgent(@Body() body: { text: string; apiKey: string }) {

@@ -455,7 +455,7 @@ const PublicApiContent = () => {
         <br />
         {t(
           'api_auth_note_line4',
-          'and you will receive a pos_ prefixed token that works with the API, the SDK and MCP — just like an API Key.'
+          'and you will receive a pos_ prefixed token that works with the API, the SDK and MCP - just like an API Key.'
         )}
       </div>
       <div className="bg-white/[0.03] backdrop-blur-[8px] rounded-[16px] border border-white/10 overflow-hidden">

@@ -93,7 +93,7 @@ export class MastraService {
       const columns = rows?.[0]?.columns ?? 0;
       if (columns >= SPANS_COLUMN_RESET_AT) {
         this._logger.warn(
-          `${SPANS_TABLE} has ${columns}/${SPANS_COLUMN_HARD_LIMIT} columns — dropping this unused telemetry table before Mastra init to avoid a startup crash-loop.`
+          `${SPANS_TABLE} has ${columns}/${SPANS_COLUMN_HARD_LIMIT} columns - dropping this unused telemetry table before Mastra init to avoid a startup crash-loop.`
         );
         await this._prisma.$executeRawUnsafe(
           `DROP TABLE IF EXISTS ${SPANS_TABLE} CASCADE`

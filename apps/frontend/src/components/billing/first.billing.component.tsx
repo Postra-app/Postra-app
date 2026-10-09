@@ -222,7 +222,7 @@ export const FirstBillingComponent = () => {
             <div>
               {t(
                 'billing_stripe_link_note',
-                'Payments are processed by Stripe. Cards saved with Stripe Link are stored in your Link account (link.com), not in Postra — manage or remove them there.'
+                'Payments are processed by Stripe. Cards saved with Stripe Link are stored in your Link account (link.com), not in Postra - manage or remove them there.'
               )}
             </div>
             <div>

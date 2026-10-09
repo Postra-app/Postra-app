@@ -43,7 +43,7 @@ export function RouteError({
         </div>
         <div className="text-white/60 text-[14px]">
           An unexpected error occurred on this screen. The rest of the app keeps
-          working — please try again.
+          working - please try again.
         </div>
         <div className="flex gap-[10px] justify-center mt-[6px]">
           <button

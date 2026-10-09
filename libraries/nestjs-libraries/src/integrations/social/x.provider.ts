@@ -272,16 +272,23 @@ export class XProvider extends SocialAbstract implements SocialProvider {
       accessSecret: accessSecretSplit,
     });
 
-    if (
-      (await client.v2.tweetLikedBy(id)).meta.result_count >=
-      +fields.likesAmount
-    ) {
+    if ((await this.likeCount(client, id)) >= +fields.likesAmount) {
       await timer(2000);
       await client.v2.retweet(integration.internalId, id);
       return true;
     }
 
     return false;
+  }
+
+  // The post's full like count. liking_users pages users 100 at a time, and
+  // its result_count is the users on that page, so a threshold over 100
+  // never fired (E2E-05-91).
+  private async likeCount(client: TwitterApi, id: string) {
+    const tweet = await client.v2.singleTweet(id, {
+      'tweet.fields': ['public_metrics'],
+    });
+    return tweet?.data?.public_metrics?.like_count ?? 0;
   }
 
   @PostPlug({
@@ -356,10 +363,7 @@ export class XProvider extends SocialAbstract implements SocialProvider {
       accessSecret: accessSecretSplit,
     });
 
-    if (
-      (await client.v2.tweetLikedBy(id)).meta.result_count >=
-      +fields.likesAmount
-    ) {
+    if ((await this.likeCount(client, id)) >= +fields.likesAmount) {
       await timer(2000);
 
       const plugText = stripHtmlValidation('normal', fields.post, true);

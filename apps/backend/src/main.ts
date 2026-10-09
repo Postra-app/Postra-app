@@ -18,7 +18,7 @@ bootStep('sentry initialised');
 import compression from 'compression';
 
 import { loadSwagger } from '@gitroom/helpers/swagger/load.swagger';
-import { json } from 'express';
+import { json, text } from 'express';
 import { Runtime } from '@temporalio/worker';
 bootStep('temporal worker imported');
 Runtime.install({ shutdownSignals: [] });
@@ -85,7 +85,7 @@ async function start() {
     await startMcp(app);
   } catch (err) {
     new Logger('startMcp').error(
-      'AI copilot / MCP failed to initialise — starting the backend without it.',
+      'AI copilot / MCP failed to initialise - starting the backend without it.',
       err instanceof Error ? err.stack : String(err)
     );
   }
@@ -99,6 +99,17 @@ async function start() {
       // consumes must therefore be decorated — use @Allow() for opaque
       // passthrough objects (video params, integration function data).
       whitelist: true,
+    })
+  );
+
+  // CSP violation reports arrive as application/csp-report or
+  // application/reports+json, which the JSON parser skips; read them as text
+  // (small) and let the route parse them, so a broken report is not a 400.
+  app.use(
+    '/public/csp-report',
+    text({
+      type: ['application/csp-report', 'application/reports+json'],
+      limit: '64kb',
     })
   );
 

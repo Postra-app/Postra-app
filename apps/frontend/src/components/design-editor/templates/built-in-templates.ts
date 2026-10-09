@@ -175,7 +175,7 @@ const quoteClassic: DesignTemplate = {
       originX: 'center',
     });
 
-    addTextbox(canvas, '— Robert Collier', {
+    addTextbox(canvas, '- Robert Collier', {
       left: cx,
       top: p.height * 0.82,
       width: p.width * 0.7,
@@ -590,7 +590,7 @@ const quoteMinimal: DesignTemplate = {
       originX: 'center',
     });
 
-    addTextbox(canvas, '— Dieter Rams', {
+    addTextbox(canvas, '- Dieter Rams', {
       left: cx,
       top: p.height * 0.76,
       width: p.width * 0.7,
@@ -730,7 +730,7 @@ const statsComparison: DesignTemplate = {
       fontFamily: brand.fontFamily,
     });
 
-    addTextbox(canvas, tx('Case study klienta — sprawdź w komentarzu', 'Client case study — see the comments'), {
+    addTextbox(canvas, tx('Case study klienta - sprawdź w komentarzu', 'Client case study - see the comments'), {
       left: p.width / 2,
       top: p.height * 0.82,
       width: p.width * 0.85,
@@ -746,8 +746,8 @@ const statsComparison: DesignTemplate = {
 const tipDidYouKnow: DesignTemplate = {
   key: 'tip-didyouknow',
   category: 'tip',
-  label: 'Tip — Did You Know',
-  labelPl: 'Tip — Czy wiesz',
+  label: 'Tip - Did You Know',
+  labelPl: 'Tip - Czy wiesz',
   description: 'A single fact or tip',
   descriptionPl: 'Pojedynczy fakt / wskazówka',
   apply: (canvas, p, brand, lang) => {
@@ -928,8 +928,8 @@ const reelCoverHook: DesignTemplate = {
   category: 'reel-cover',
   label: 'Cover: How-to Hook',
   labelPl: 'Cover: Hak (How-to)',
-  description: 'Big headline with a seconds count — best for tutorials',
-  descriptionPl: 'Duży nagłówek z liczbą sekund — najlepszy do tutoriali',
+  description: 'Big headline with a seconds count - best for tutorials',
+  descriptionPl: 'Duży nagłówek z liczbą sekund - najlepszy do tutoriali',
   apply: (canvas, p, brand, lang) => {
     const tx = pick(lang);
     clearCanvas(canvas, brand.background);
@@ -993,8 +993,8 @@ const reelCoverReveal: DesignTemplate = {
   category: 'reel-cover',
   label: "Cover: You Won't Believe",
   labelPl: 'Cover: Zaskoczyło mnie',
-  description: 'Bold text with emoji — high-CTR pattern',
-  descriptionPl: 'Bold tekst z emoji — high-CTR pattern',
+  description: 'Bold text with emoji - high-CTR pattern',
+  descriptionPl: 'Bold tekst z emoji - high-CTR pattern',
   apply: (canvas, p, brand, lang) => {
     const tx = pick(lang);
     clearCanvas(canvas, brand.background);
@@ -1052,8 +1052,8 @@ const reelCoverList: DesignTemplate = {
   category: 'reel-cover',
   label: 'Cover: List (5 Tips)',
   labelPl: 'Cover: Lista (5 tipów)',
-  description: 'Number + topic — easy to scan in the feed',
-  descriptionPl: 'Numer + temat — szybko czytelne w feedzie',
+  description: 'Number + topic - easy to scan in the feed',
+  descriptionPl: 'Numer + temat - szybko czytelne w feedzie',
   apply: (canvas, p, brand, lang) => {
     const tx = pick(lang);
     clearCanvas(canvas, brand.background);
@@ -1427,7 +1427,7 @@ const quoteReview: DesignTemplate = {
       originX: 'center',
     });
 
-    addTextbox(canvas, tx('— Anna K.', '— Sarah M.'), {
+    addTextbox(canvas, tx('- Anna K.', '- Sarah M.'), {
       left: cx,
       top: p.height * 0.74,
       width: p.width * 0.7,
@@ -1586,8 +1586,8 @@ const announcementHours: DesignTemplate = {
     });
 
     const rows: [string, string][] = [
-      [tx('Pn–Pt', 'Mon–Fri'), '9:00–17:00'],
-      [tx('Sob', 'Sat'), '10:00–14:00'],
+      [tx('Pn - Pt', 'Mon - Fri'), '9:00-17:00'],
+      [tx('Sob', 'Sat'), '10:00-14:00'],
       [tx('Nd', 'Sun'), tx('zamknięte', 'closed')],
     ];
 
@@ -1688,7 +1688,7 @@ const announcementClosure: DesignTemplate = {
       originX: 'center',
     });
 
-    addTextbox(canvas, tx('24–26 grudnia', '24–26 December'), {
+    addTextbox(canvas, tx('24-26 grudnia', '24-26 December'), {
       left: cx,
       top: p.height * 0.582,
       width: p.width * 0.55,
@@ -1758,7 +1758,7 @@ const statsMilestone: DesignTemplate = {
       fontFamily: brand.fontFamily,
     });
 
-    addTextbox(canvas, tx('obserwujących — dziękujemy!', 'followers — thank you!'), {
+    addTextbox(canvas, tx('obserwujących - dziękujemy!', 'followers - thank you!'), {
       left: cx,
       top: p.height * 0.56,
       width: p.width * 0.85,
@@ -2593,7 +2593,7 @@ const tipProTip: DesignTemplate = {
       fontFamily: brand.fontFamily,
     });
 
-    addTextbox(canvas, tx('Odpowiadaj na komentarze\nw pierwszej godzinie —\nalgorytm to wynagradza.', 'Reply to comments\nwithin the first hour —\nthe algorithm rewards it.'), {
+    addTextbox(canvas, tx('Odpowiadaj na komentarze\nw pierwszej godzinie -\nalgorytm to wynagradza.', 'Reply to comments\nwithin the first hour -\nthe algorithm rewards it.'), {
       left: cx,
       top: p.height * 0.38,
       width: p.width * 0.85,

@@ -50,7 +50,7 @@ describe('mobile session (E2E-10-17)', () => {
     expect(payload.exp - payload.iat).toBe(MOBILE_TOKEN_TTL_SECONDS);
   });
 
-  it('leaves the browser token alone — it carries no session id', () => {
+  it('leaves the browser token alone - it carries no session id', () => {
     const payload = AuthChecker.verifyJWT(WEB_JWT()) as any;
     expect(payload.sid).toBeUndefined();
     expect(payload.exp - payload.iat).toBe(30 * 24 * 60 * 60);
@@ -66,7 +66,7 @@ describe('mobile session (E2E-10-17)', () => {
     expect(b.sid).toBe(a.sid);
   });
 
-  it('signing out revokes the session — and every token refresh handed out', async () => {
+  it('signing out revokes the session - and every token refresh handed out', async () => {
     const service = makeService();
     const first = service.mobileJwt(WEB_JWT());
     const refreshed = service.refreshMobileJwt(first);
@@ -77,7 +77,7 @@ describe('mobile session (E2E-10-17)', () => {
     await expect(isMobileSessionRevoked(sid)).resolves.toBe(true);
   });
 
-  it('signing out on the web revokes nothing — there is no session id to revoke', async () => {
+  it('signing out on the web revokes nothing - there is no session id to revoke', async () => {
     const service = makeService();
     await expect(service.endMobileSession(WEB_JWT())).resolves.toBeUndefined();
     expect(store.size).toBe(0);

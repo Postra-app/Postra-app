@@ -52,11 +52,11 @@ export const SwrProvider = ({ children }: { children: ReactNode }) => {
           isNetworkError(error)
             ? t(
                 'connection_error',
-                "Can't reach the server — check your connection and try again."
+                "Can't reach the server - check your connection and try again."
               )
             : t(
                 'data_load_error',
-                'Something went wrong loading data — please refresh the page.'
+                'Something went wrong loading data - please refresh the page.'
               ),
           'warning'
         );

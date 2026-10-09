@@ -7,10 +7,12 @@ import { useRouter } from 'next/navigation';
 import { Button } from '@gitroom/frontend/components/ui/button';
 import { useT } from '@gitroom/react/translation/get.transation.service.client';
 import { useFetch } from '@gitroom/helpers/utils/custom.fetch';
-import dayjs from 'dayjs';
 import { continueProviderList } from '@gitroom/frontend/components/new-launch/providers/continue-provider/list';
 import { IntegrationContext } from '@gitroom/frontend/components/launches/helpers/use.integration';
-import { newDayjs } from '@gitroom/frontend/components/layout/set.timezone';
+import {
+  getTimezone,
+  newDayjs,
+} from '@gitroom/frontend/components/layout/set.timezone';
 import { useVariables } from '@gitroom/react/helpers/variable.context';
 
 interface TwoStepState {
@@ -210,7 +212,9 @@ export const ContinueIntegration: FC<{
         return;
       }
 
-      const timezone = String(dayjs.tz().utcOffset());
+      // The IANA zone, so the new channel's posting times keep their local
+      // time when the clocks change (E2E-05-85).
+      const timezone = getTimezone();
 
       // Try public endpoint first (handles both public and fallback scenarios)
       let data = await fetch(`/integrations/social-connect/${provider}`, {

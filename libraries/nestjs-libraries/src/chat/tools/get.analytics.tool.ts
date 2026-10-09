@@ -13,7 +13,7 @@ export class GetAnalyticsTool implements AgentToolInterface {
   run() {
     return createTool({
       id: 'getAnalytics',
-      description: `Get analytics for one social channel (followers, engagement, reach, etc. — depends on the platform). Pass the channel/integration "id" from integrationList and how many days back to look. Only works for connected social channels.`,
+      description: `Get analytics for one social channel (followers, engagement, reach, etc. - depends on the platform). Pass the channel/integration "id" from integrationList and how many days back to look. Only works for connected social channels.`,
       inputSchema: z.object({
         integrationId: z
           .string()

@@ -115,7 +115,7 @@ export const AnnouncementBanner: FC = () => {
         toaster.show(
           t(
             'announcement_delete_failed',
-            'Failed to delete announcement — it is still visible to users.'
+            'Failed to delete announcement - it is still visible to users.'
           ),
           'warning'
         );

@@ -91,7 +91,7 @@ export const ConnectionStatus = () => {
       {offline
         ? t(
             'connection_offline',
-            "You're offline — we'll reconnect automatically."
+            "You're offline - we'll reconnect automatically."
           )
         : t('connection_restored', 'Back online.')}
     </div>

@@ -46,6 +46,13 @@ const authCookieOptions = () => ({
   expires: new Date(Date.now() + AUTH_COOKIE_MAX_AGE_MS),
 });
 
+// The invitation an `/auth?org=…` link left behind (frontend proxy.ts), with
+// the attributes it was set with: host-only in plain-http development.
+const orgCookieClearOptions = () =>
+  process.env.NOT_SECURED
+    ? { path: '/' }
+    : { path: '/', domain: getCookieUrlFromDomain(process.env.FRONTEND_URL!) };
+
 // Ties a sign-in with Google/GitHub/… to the browser that started it; see
 // AuthService.oauthLink.
 const OAUTH_STATE_COOKIE = 'postra_oauth';
@@ -131,6 +138,8 @@ export class AuthController {
         if (process.env.NOT_SECURED) {
           response.header('showorg', addedOrg.organizationId);
         }
+        // Used: the app would otherwise ask on /join to accept it again.
+        response.clearCookie('org', orgCookieClearOptions());
       }
 
       Sentry.metrics.count('new_user', 1);
@@ -203,6 +212,8 @@ export class AuthController {
         if (process.env.NOT_SECURED) {
           response.header('showorg', addedOrg.organizationId);
         }
+        // Used: the app would otherwise ask on /join to accept it again.
+        response.clearCookie('org', orgCookieClearOptions());
       }
 
       response.header('reload', 'true');

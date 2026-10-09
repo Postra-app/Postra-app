@@ -136,7 +136,7 @@ export const AdminStatsComponent: FC = () => {
         {/* The range that was asked for. Rendering data.to instead showed the
             server's 23:59:59 UTC read back in local time, i.e. tomorrow. */}
         <div className="text-[13px] opacity-70">
-          {formatDay(range.from)} — {formatDay(range.to)}
+          {formatDay(range.from)} - {formatDay(range.to)}
         </div>
       </div>
 

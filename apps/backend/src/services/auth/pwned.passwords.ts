@@ -1,7 +1,7 @@
 import { createHash } from 'crypto';
 
 export const PWNED_PASSWORD_MESSAGE =
-  'This password has appeared in a known data breach — please choose a different one.';
+  'This password has appeared in a known data breach - please choose a different one.';
 
 // HIBP k-anonymity range check (NIST 800-63B breached-password screening).
 // Only the first 5 chars of the SHA-1 ever leave the server. Fail-open: if

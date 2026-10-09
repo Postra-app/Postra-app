@@ -16,11 +16,14 @@ import {
   planLabel,
 } from '@gitroom/nestjs-libraries/database/prisma/subscriptions/pricing';
 import { FAQComponent } from '@gitroom/frontend/components/billing/faq.component';
-import { useSWRConfig } from 'swr';
+import useSWR, { useSWRConfig } from 'swr';
 import { useUser } from '@gitroom/frontend/components/layout/user.context';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useVariables } from '@gitroom/react/helpers/variable.context';
-import { useModals } from '@gitroom/frontend/components/layout/new-modal';
+import {
+  areYouSure,
+  useModals,
+} from '@gitroom/frontend/components/layout/new-modal';
 import { Textarea } from '@gitroom/react/form/textarea';
 import { useFireEvents } from '@gitroom/helpers/utils/use.fire.events';
 import { useUtmUrl } from '@gitroom/helpers/utils/utm.saver';
@@ -249,6 +252,97 @@ export const MainBillingComponent: FC<{
   const [monthlyOrYearly, setMonthlyOrYearly] = useState<'on' | 'off'>(
     period === 'MONTHLY' ? 'off' : 'on'
   );
+
+  // A lower plan waiting for the next billing period (E2E-07-44).
+  const loadPending = useCallback(
+    async () => (await fetch('/billing/pending-change')).json(),
+    [fetch]
+  );
+  const { data: pending, mutate: refreshPending } = useSWR<{
+    billing?: string;
+    on?: string;
+  }>(subscription?.id ? 'billing-pending-change' : null, loadPending);
+  const confirmPlanChange = useCallback(
+    async (billing: string, current: string) => {
+      const period = monthlyOrYearly === 'on' ? 'YEARLY' : 'MONTHLY';
+      let quote: {
+        price?: number;
+        renewsOn?: string | null;
+        renewalPrice?: number;
+        scheduled?: boolean;
+      } = {};
+      try {
+        const response = await fetch('/billing/prorate', {
+          method: 'POST',
+          body: JSON.stringify({ period, billing }),
+        });
+        quote = response.ok ? await response.json() : {};
+      } catch {
+        quote = {};
+      }
+      // Without Stripe's quote the window would offer a free change that may
+      // charge the card: stop, and say so (Codex on the 10-09 branch).
+      if (typeof quote.price !== 'number' || !quote.renewsOn) {
+        toast.show(
+          t('billing_action_failed', 'Something went wrong, please try again.'),
+          'warning'
+        );
+        return false;
+      }
+      const today = `£${Math.max(quote.price || 0, 0).toFixed(2)}`;
+      const plan = planLabel(billing);
+      const renewal =
+        quote.renewsOn && quote.renewalPrice
+          ? t(
+              period === 'YEARLY' ? 'plan_change_renewal_year' : 'plan_change_renewal_month',
+              period === 'YEARLY'
+                ? 'From {{date}}: £{{price}} a year.'
+                : 'From {{date}}: £{{price}} a month.',
+              {
+                date: dayjs(quote.renewsOn).format('D MMMM'),
+                price: quote.renewalPrice,
+              }
+            )
+          : '';
+      const upgrade = (quote.price || 0) > 0;
+      // A lower plan on a paid plan waits for the renewal; the server says
+      // which, by the same rule as the change itself.
+      const on = dayjs(quote.renewsOn).format('D MMMM');
+      if (quote.scheduled) {
+        return areYouSure({
+          title: t('plan_change_title', 'Change your plan'),
+          description: `${t(
+            'plan_change_scheduled',
+            'Change to {{plan}} on {{date}}? You keep {{current}} until then.',
+            { plan, date: on, current: planLabel(current) }
+          )} ${renewal}`.trim(),
+          approveLabel: t('plan_change_scheduled_confirm', 'Change on {{date}}', {
+            date: on,
+          }),
+          cancelLabel: t('cancel', 'Cancel'),
+        });
+      }
+      return areYouSure({
+        title: t('plan_change_title', 'Change your plan'),
+        description: upgrade
+          ? `${t(
+              'plan_change_upgrade',
+              'Upgrade to {{plan}} now? Today: {{amount}} for the rest of this billing month (what is left of {{current}} is taken off).',
+              { plan, amount: today, current: planLabel(current) }
+            )} ${renewal}`.trim()
+          : `${t(
+              'plan_change_down',
+              'Change to {{plan}} now? Nothing to pay today.',
+              { plan }
+            )} ${renewal}`.trim(),
+        approveLabel: upgrade
+          ? t('plan_change_pay', 'Upgrade and pay {{amount}}', { amount: today })
+          : t('plan_change_confirm', 'Change plan'),
+        cancelLabel: t('cancel', 'Cancel'),
+      });
+    },
+    [monthlyOrYearly, t, toast]
+  );
   const [initialChannels, setInitialChannels] = useState(
     sub?.totalChannels || 1
   );
@@ -452,6 +546,16 @@ export const MainBillingComponent: FC<{
           ) {
             return;
           }
+          // A paying account's change charges the card at once: ask first,
+          // with a fresh quote — the "Pay today" next to the button is from
+          // when the page loaded (E2E-07-43: £50.00 shown, £49.68 charged).
+          if (
+            subscription?.subscriptionTier &&
+            !subscription?.isLifetime &&
+            !(await confirmPlanChange(billing, subscription.subscriptionTier))
+          ) {
+            return;
+          }
           setLoading(true);
           const subscribeResponse = await fetch('/billing/subscribe', {
             method: 'POST',
@@ -476,7 +580,13 @@ export const MainBillingComponent: FC<{
             );
             return;
           }
-          const { url, portal } = await subscribeResponse.json();
+          const { url, portal, scheduled } = await subscribeResponse.json();
+          if (scheduled) {
+            // Nothing changes until the renewal; the note under the current
+            // plan says when.
+            await refreshPending();
+            return;
+          }
           if (url) {
             await track(TrackEnum.InitiateCheckout, {
               value:
@@ -533,6 +643,8 @@ export const MainBillingComponent: FC<{
         } finally {
           reactivating.current = false;
           setLoading(false);
+          // An upgrade or cancelling drops a waiting downgrade.
+          refreshPending();
         }
       },
     [monthlyOrYearly, subscription, user, utm]
@@ -647,6 +759,17 @@ export const MainBillingComponent: FC<{
                       : t('purchase', 'Purchase plan')}
                   </Button>
                 )}
+                {currentPackage === name.toUpperCase() &&
+                  !subscription?.cancelAt &&
+                  !!pending?.billing &&
+                  !!pending?.on && (
+                    <div className="self-center text-newTextColor/70">
+                      {t('plan_pending_change', 'Changes to {{plan}} on {{date}}', {
+                        plan: planLabel(pending.billing),
+                        date: dayjs(pending.on).format('D MMMM'),
+                      })}
+                    </div>
+                  )}
                 {subscription &&
                   currentPackage !== name.toUpperCase() &&
                   name !== 'FREE' &&

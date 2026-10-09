@@ -35,6 +35,11 @@ const norm = (s: string) =>
     .trim();
 
 const mismatches: string[] = [];
+// E2E-05-94 (9): hundreds of texts lived only as fallbacks in the code, so
+// the catalogue was not the list of what customers read and wording reviews
+// missed them.
+const missing: string[] = [];
+const fallbackTexts = new Set<string>();
 let calls = 0;
 for (const file of sources) {
   const text = readFileSync(file, 'utf8');
@@ -45,6 +50,11 @@ for (const file of sources) {
     if (lineText.startsWith('//') || lineText.startsWith('*')) continue;
     if (quote === '`' && fallback.includes('${')) continue;
     calls++;
+    // The admin panel is English only and keeps its keys out of every
+    // locale file on purpose (E2E-09-12, admin-a11y.wiring.spec.ts).
+    if (!(key in en) && !key.startsWith('admin_')) {
+      missing.push(`${file.slice(root.length + 1)}:${line} ${key}`);
+    }
     if (key in en && norm(en[key]) !== norm(fallback)) {
       mismatches.push(
         `${file.slice(root.length + 1)}:${line} ${key}: code "${norm(
@@ -62,5 +72,29 @@ describe('English fallbacks', () => {
 
   it('match the English catalogue', () => {
     expect(mismatches).toEqual([]);
+  });
+
+  it('all have their key in the English catalogue', () => {
+    expect(missing).toEqual([]);
+  });
+
+  it('have no long dashes, in the code or in any language (K. 10-09)', () => {
+    const dir = join(__dirname, 'locales');
+    const withDash: string[] = [...fallbackTexts].filter((t) => /[—–]/.test(t));
+    for (const lang of readdirSync(dir)) {
+      const texts: Record<string, string> = JSON.parse(
+        readFileSync(join(dir, lang, 'translation.json'), 'utf8')
+      );
+      for (const [key, text] of Object.entries(texts)) {
+        if (/[—–]/.test(text)) withDash.push(`${lang}:${key}`);
+      }
+    }
+    expect(withDash).toEqual([]);
+  });
+
+  it('never call a window a "modal"', () => {
+    expect(
+      Object.entries(en).filter(([, text]) => /\bmodal\b/i.test(text))
+    ).toEqual([]);
   });
 });

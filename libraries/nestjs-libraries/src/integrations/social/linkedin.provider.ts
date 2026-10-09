@@ -32,6 +32,22 @@ import { Rules } from '@gitroom/nestjs-libraries/chat/rules.description.decorato
 // Video parts, the same 2 MB the upload used before.
 const LINKEDIN_PART = 1024 * 1024 * 2;
 
+// The body of a LinkedIn answer, or an error carrying its status. An outage
+// comes back as an HTML page; parsing it as JSON threw a SyntaxError that
+// counted as a refused grant and disconnected the channel (E2E-04-26). With
+// the status, a 429/5xx is a passing outage (isTransientRefreshError) and a
+// 400/401 a refused grant.
+export const linkedinJson = async (res: Response) => {
+  if (!res.ok) {
+    const err = new Error(`LinkedIn answered ${res.status}`) as Error & {
+      status: number;
+    };
+    err.status = res.status;
+    throw err;
+  }
+  return res.json();
+};
+
 @Rules(
   'LinkedIn can have maximum one attachment when selecting video, when choosing a carousel on LinkedIn minimum amount of attachment must be two, and only pictures, if uploading a video, LinkedIn can have only one attachment'
 )
@@ -107,7 +123,7 @@ export class LinkedinProvider extends SocialAbstract implements SocialProvider {
       access_token: accessToken,
       refresh_token: refreshToken,
       expires_in,
-    } = await (
+    } = await linkedinJson(
       await fetch('https://www.linkedin.com/oauth/v2/accessToken', {
         method: 'POST',
         headers: {
@@ -120,27 +136,30 @@ export class LinkedinProvider extends SocialAbstract implements SocialProvider {
           client_secret: process.env.LINKEDIN_CLIENT_SECRET!,
         }),
       })
-    ).json();
+    );
 
-    const { vanityName } = await (
-      await fetch('https://api.linkedin.com/v2/me', {
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-        },
-      })
-    ).json();
+    // Optional: with the OIDC scopes alone /v2/me answers 403, and the
+    // vanity name is a nicety — a good refresh must not fail over it (Codex).
+    const meResponse = await fetch('https://api.linkedin.com/v2/me', {
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+      },
+    });
+    const { vanityName } = meResponse.ok
+      ? await meResponse.json().catch(() => ({}))
+      : ({} as { vanityName?: string });
 
     const {
       name,
       sub: id,
       picture,
-    } = await (
+    } = await linkedinJson(
       await fetch('https://api.linkedin.com/v2/userinfo', {
         headers: {
           Authorization: `Bearer ${accessToken}`,
         },
       })
-    ).json();
+    );
 
     return {
       id,

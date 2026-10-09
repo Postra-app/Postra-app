@@ -151,7 +151,7 @@ export class FacebookProvider extends SocialAbstract implements SocialProvider {
       return {
         type: 'bad-body' as const,
         value:
-          'Facebook requires identity verification before publishing to this Page. Open the Facebook app on your phone, complete the verification, and posts will resume automatically — no reconnection needed.',
+          'Facebook requires identity verification before publishing to this Page. Open the Facebook app on your phone, complete the verification, and posts will resume automatically - no reconnection needed.',
       };
     }
 
@@ -887,7 +887,7 @@ export class FacebookProvider extends SocialAbstract implements SocialProvider {
       console.error(
         '[analytics:facebook] batch insights rejected for',
         id,
-        '— a metric was likely deprecated by Meta; retrying each metric individually.'
+        '- a metric was likely deprecated by Meta; retrying each metric individually.'
       );
       const perMetric = await Promise.all(
         allMetrics.map((m) => fetchInsights([m]))
@@ -898,7 +898,7 @@ export class FacebookProvider extends SocialAbstract implements SocialProvider {
       console.error(
         '[analytics:facebook] no insights for',
         id,
-        '— token may lack read_insights/pages_read_engagement, or every metric is unavailable for this Page.'
+        '- token may lack read_insights/pages_read_engagement, or every metric is unavailable for this Page.'
       );
     }
 

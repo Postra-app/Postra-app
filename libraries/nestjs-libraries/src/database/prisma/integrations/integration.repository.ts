@@ -5,6 +5,11 @@ import { Integration } from '@prisma/client';
 import { makeId } from '@gitroom/nestjs-libraries/services/make.is';
 import { AuthService } from '@gitroom/helpers/auth/auth.service';
 import { IntegrationTimeDto } from '@gitroom/nestjs-libraries/dtos/integrations/integration.time.dto';
+import {
+  isTimeZone,
+  minutesOfDay,
+  PostingTime,
+} from '@gitroom/helpers/utils/posting.times';
 import { UploadFactory } from '@gitroom/nestjs-libraries/upload/upload.factory';
 import { PlugDto } from '@gitroom/nestjs-libraries/dtos/plugs/plug.dto';
 
@@ -18,6 +23,31 @@ const SAFE_INTEGRATION_FIELDS = {
   providerIdentifier: true,
   customerId: true,
 } as const;
+
+// 09:20, 14:10 and 19:00 in the customer's zone for a new channel. The web
+// app sends the IANA zone; the mobile app sends its UTC offset, which is
+// taken as London when it matches London's offset today (UK-first) and as
+// fixed UTC minutes otherwise. 0 is a real offset (the UK in winter); no
+// usable zone keeps the schema defaults.
+export const defaultPostingTimes = (
+  timezone?: number | string
+): PostingTime[] | undefined => {
+  const local = [560, 850, 1140];
+  if (typeof timezone === 'string' && isTimeZone(timezone)) {
+    return local.map((time) => ({ time, tz: timezone }));
+  }
+  const offset =
+    typeof timezone === 'string' && timezone.trim() !== ''
+      ? Number(timezone)
+      : timezone;
+  if (typeof offset !== 'number' || !Number.isFinite(offset)) {
+    return undefined;
+  }
+  if (offset === dayjs().tz('Europe/London').utcOffset()) {
+    return local.map((time) => ({ time, tz: 'Europe/London' }));
+  }
+  return local.map((time) => ({ time: minutesOfDay(time - offset) }));
+};
 
 @Injectable()
 export class IntegrationRepository {
@@ -147,15 +177,15 @@ export class IntegrationRepository {
     });
   }
 
-  // Minutes after midnight UTC, kept within one day: the composer stores
-  // local-time slots minus the UTC offset, so 00:30 in London in summer
-  // arrived as -30. updateMany: update threw on an unknown or foreign id (500).
-  // Null when nothing of this org matched.
+  // Minutes kept within one day: after local midnight in `tz`, or after UTC
+  // midnight without it (older clients stored local time minus the UTC
+  // offset, so 00:30 in London in summer arrived as -30). updateMany: update
+  // threw on an unknown or foreign id (500). Null when nothing of this org
+  // matched.
   async setTimes(org: string, id: string, times: IntegrationTimeDto) {
-    const DAY = 24 * 60;
-    const postingTimes = times.time.map(({ time }) => ({
-      time: ((Math.round(time) % DAY) + DAY) % DAY,
-    }));
+    const postingTimes = times.time.map(({ time, tz }) =>
+      tz ? { time: minutesOfDay(time), tz } : { time: minutesOfDay(time) }
+    );
     const { count } = await this._integration.model.integration.updateMany({
       where: { id, organizationId: org, deletedAt: null },
       data: { postingTimes: JSON.stringify(postingTimes) },
@@ -304,23 +334,16 @@ export class IntegrationRepository {
     username?: string,
     isBetweenSteps = false,
     refresh?: string,
-    timezone?: number,
+    timezone?: number | string,
     customInstanceDetails?: string,
     grantedScopes?: string[]
   ) {
     token = AuthService.encryptIntegrationToken(token);
     refreshToken = AuthService.encryptIntegrationToken(refreshToken);
 
-    // 0 is a real offset (the UK in winter); only a missing one keeps the
-    // schema defaults.
-    const postTimes = Number.isFinite(timezone)
-      ? {
-          postingTimes: JSON.stringify([
-            { time: 560 - timezone! },
-            { time: 850 - timezone! },
-            { time: 1140 - timezone! },
-          ]),
-        }
+    const defaultTimes = defaultPostingTimes(timezone);
+    const postTimes = defaultTimes
+      ? { postingTimes: JSON.stringify(defaultTimes) }
       : {};
     const upsert = await this._integration.model.integration.upsert({
       where: {
@@ -375,7 +398,9 @@ export class IntegrationRepository {
         profile: username,
         providerIdentifier: provider,
         token,
-        refreshToken,
+        // A reconnect without a new refresh token (Google sends one only on
+        // first consent) must not wipe the stored one (upstream 49aa92ac).
+        ...(refreshToken ? { refreshToken } : {}),
         ...(expiresIn
           ? { tokenExpiration: new Date(Date.now() + expiresIn * 1000) }
           : {}),

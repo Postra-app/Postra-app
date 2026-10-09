@@ -282,10 +282,20 @@ export const TeamsComponent = () => {
             </div>
           )))}
         </div>
-        <div>
+        <div className="flex items-center gap-[12px] flex-wrap">
           <Button onClick={addMember}>
             {t('add_another_member', 'Add another member')}
           </Button>
+          {/* How many of the plan's seats are taken (K. 10-09), like the
+              webhook and Auto Post counters. Billing off: no limit to show. */}
+          {!!user?.tier?.team_members && !isLoading && (
+            <span className="text-[13px] text-newTextColor/70">
+              {t('team_seats_used', '{{used}} of {{seats}} seats used', {
+                used: (data || []).filter((m: any) => !m.disabled).length,
+                seats: user.tier.team_members,
+              })}
+            </span>
+          )}
         </div>
       </Card>
     </div>

@@ -41,7 +41,7 @@ export const useAiError = () => {
         toaster.show(
           t(
             'ai_rate_limited',
-            'Too many requests — wait a few seconds and try again.'
+            'Too many requests - wait a few seconds and try again.'
           ),
           'warning'
         );

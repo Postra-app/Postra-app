@@ -446,7 +446,7 @@ export const decisionModalEmitter = new EventEmitter();
 
 export const areYouSure = ({
   title = 'Are you sure?',
-  description = 'Are you sure you want to close this modal?' as any,
+  description = 'Are you sure you want to close this window?' as any,
   approveLabel = 'Yes',
   cancelLabel = 'No',
   destructive = false,
@@ -476,7 +476,7 @@ export const useDecisionModal = () => {
   const open = useCallback(
     ({
       title = 'Are you sure?',
-      description = 'Are you sure you want to close this modal?' as any,
+      description = 'Are you sure you want to close this window?' as any,
       onlyApprove = false,
       approveLabel = 'Yes',
       cancelLabel = 'No',

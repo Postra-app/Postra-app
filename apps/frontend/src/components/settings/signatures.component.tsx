@@ -253,7 +253,7 @@ const AddOrRemoveSignature: FC<{
               }}
               placeholder={t('write_your_signature', 'Write your signature...')}
               autosuggestionsConfig={{
-                textareaPurpose: `Assist me in writing social media signature`,
+                textareaPurpose: `Assist me in writing a social media signature. Never use em dashes (—) or en dashes (–); use a comma, a full stop or a plain hyphen (-).`,
                 chatApiConfigs: {},
               }}
             />

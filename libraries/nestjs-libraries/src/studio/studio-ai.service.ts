@@ -6,6 +6,7 @@ import { parseChat } from '@gitroom/nestjs-libraries/openai/parse-chat';
 import { recordAiUsage } from '@gitroom/nestjs-libraries/services/ai-usage.record';
 import { buildBrandVoicePrompt } from '@gitroom/nestjs-libraries/openai/brand-prompt';
 import { languageRule } from '@gitroom/nestjs-libraries/openai/language-rule';
+import { withoutLongDashes } from '@gitroom/helpers/utils/long.dashes';
 
 import {
   StudioBrandRef,
@@ -199,9 +200,9 @@ Rules:
 - Preserve user intent. If they ask "shorter headline", only update the text layer's text.
 - Keep all coordinates inside canvas bounds (0..width / 0..height).
 - Use the brand colors in the spec when changing fills or text colors.
-- Image layers are photos: you CANNOT recolor, retouch or edit their pixels. Setting fill/color on an image layer does nothing — never do it, and never claim you changed a photo.
-- To make the picture warmer/cooler/tinted/darker: ADD a full-canvas rect (x:0, y:0, originX:left, originY:top, width/height = canvas size) with the tint color as fill and opacity 0.15-0.35 — added layers render on top, so it tints the photo. Say in the explanation that you added a colour tint overlay.
-- If the request truly needs photo editing (add/remove objects or people, change the scene), emit no ops and point at the in-app paths instead of external tools: (1) the Images tool's stock search — name the exact term to search (e.g. "scarecrow") so they can drop it onto the design as its own layer; (2) regenerating in AI Generate with the change added to the prompt. Never send the user to outside photo editors.
+- Image layers are photos: you CANNOT recolor, retouch or edit their pixels. Setting fill/color on an image layer does nothing - never do it, and never claim you changed a photo.
+- To make the picture warmer/cooler/tinted/darker: ADD a full-canvas rect (x:0, y:0, originX:left, originY:top, width/height = canvas size) with the tint color as fill and opacity 0.15-0.35 - added layers render on top, so it tints the photo. Say in the explanation that you added a colour tint overlay.
+- If the request truly needs photo editing (add/remove objects or people, change the scene), emit no ops and point at the in-app paths instead of external tools: (1) the Images tool's stock search - name the exact term to search (e.g. "scarecrow") so they can drop it onto the design as its own layer; (2) regenerating in AI Generate with the change added to the prompt. Never send the user to outside photo editors.
 - ${languageRule({ scope: 'the explanation', follow: 'the instruction' })}`;
 
     const userText = [
@@ -282,7 +283,7 @@ Return concise feedback (2 short sentences, actionable). Tags = up to 4 short la
       `Brand tone declared: ${tone}.`,
       samples.length
         ? `Recent posts (newest first):\n${samples.map((s, i) => `${i + 1}. ${s}`).join('\n')}`
-        : 'No recent posts available — rely on declared tone.',
+        : 'No recent posts available - rely on declared tone.',
       ``,
       `Draft caption:\n${input.caption}`,
     ].join('\n');
@@ -331,7 +332,7 @@ Return concise feedback (2 short sentences, actionable). Tags = up to 4 short la
 Rules:
 - One sentence, at most 125 characters.
 - Describe what is actually visible: subject, action, setting. Nothing you cannot see.
-- No "image of", "picture of", "photo showing" — screen readers already say that.
+- No "image of", "picture of", "photo showing" - screen readers already say that.
 - Read any prominent text in the image out loud as part of the sentence.
 - Plain, neutral language. No marketing, no hashtags, no emoji.`;
 
@@ -373,7 +374,7 @@ Rules:
       tiktok: '4-6 tags, including one or two trend-style tags',
       youtube: '4-6 tags',
       pinterest: '4-8 descriptive tags',
-      mastodon: '3-5 tags — they are how discovery works there',
+      mastodon: '3-5 tags - they are how discovery works there',
       bluesky: '2-3 tags',
     };
     const guidance =
@@ -455,7 +456,7 @@ ${
   input.action === 'translate'
     ? 'Write the result in the target language named above, whatever language the input is in.'
     : languageRule({ scope: 'the caption', follow: 'the input' })
-} Preserve important facts, @mentions, #hashtags and links. Return ONLY the rewritten caption as plain text — no surrounding quotes, no explanation, no markdown or HTML.`;
+} Preserve important facts, @mentions, #hashtags and links. Return ONLY the rewritten caption as plain text - no surrounding quotes, no explanation, no markdown or HTML.`;
 
     const parsed = (
       await parseChat(openai, {
@@ -469,7 +470,8 @@ ${
     ).choices[0].message.parsed;
 
     if (!parsed) throw new Error('AI returned no edited text');
-    return { text: parsed.text };
+    // The prompt asks for none; the model still slips one in now and then.
+    return { text: withoutLongDashes(parsed.text) };
   }
 
   // Embeddings are cheap per call but template search runs on every keystroke

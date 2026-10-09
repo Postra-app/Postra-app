@@ -74,7 +74,7 @@ export const ACCOUNTS: [UserKey, { email: string; password: string }][] = [
 
 const refuse = (url: string) => {
   throw new Error(
-    `refusing to wipe ${url.replace(/:[^:@]*@/, ':***@')} — the stack tests only ever reset the stores from e2e/stack/docker-compose.yml`
+    `refusing to wipe ${url.replace(/:[^:@]*@/, ':***@')} - the stack tests only ever reset the stores from e2e/stack/docker-compose.yml`
   );
 };
 

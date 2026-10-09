@@ -879,7 +879,7 @@ export const EditorToolbar: FC<ToolbarProps> = ({ canvas }) => {
             <p className="text-[11px] text-textColor/65 leading-snug">
               {t(
                 'text_font_hint',
-                'Choose a font for new text. To change existing text — select it and pick a font.'
+                'Choose a font for new text. To change existing text - select it and pick a font.'
               )}
             </p>
           </div>
@@ -1003,7 +1003,7 @@ export const EditorToolbar: FC<ToolbarProps> = ({ canvas }) => {
               onClick={() => replaceRef.current?.click()}
               title={t(
                 'image_replace_hint',
-                'Swap the picture without touching the layout — the new one fills the same frame'
+                'Swap the picture without touching the layout - the new one fills the same frame'
               )}
               className="flex items-center gap-2 text-xs px-3 py-2 rounded bg-newColColor hover:bg-white/[0.08] text-textColor transition-colors"
             >
@@ -1059,7 +1059,7 @@ export const EditorToolbar: FC<ToolbarProps> = ({ canvas }) => {
               <p className="text-[11px] text-textColor/65 leading-snug">
                 {t(
                   'fill_hint',
-                  'Nothing selected — these colours set the canvas background. Select an object to recolour it.'
+                  'Nothing selected - these colours set the canvas background. Select an object to recolour it.'
                 )}
               </p>
             )}

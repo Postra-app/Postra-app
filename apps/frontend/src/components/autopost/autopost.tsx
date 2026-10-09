@@ -64,8 +64,9 @@ export const Autopost: FC = () => {
         await deleteDialog(
           t(
             'are_you_sure_you_want_to_delete',
-            `Are you sure you want to delete ${data.name}?`,
-            { name: data.name }
+            `Are you sure you want to delete ${data.title}?`,
+            // A feed has a title, not a name: the dialog read "undefined".
+            { name: data.title }
           )
         )
       ) {
@@ -462,7 +463,7 @@ export const AddOrEditWebhook: FC<{
                     'Write your post...'
                   )}
                   autosuggestionsConfig={{
-                    textareaPurpose: `Assist me in writing social media post`,
+                    textareaPurpose: `Assist me in writing a social media post. Never use em dashes (—) or en dashes (–); use a comma, a full stop or a plain hyphen (-).`,
                     chatApiConfigs: {},
                   }}
                 />
@@ -486,7 +487,7 @@ export const AddOrEditWebhook: FC<{
                   className="w-full min-h-24 max-h-60 p-2 overflow-x-hidden scrollbar scrollbar-thumb-[#38bdf8] bg-white/[0.03] outline-none mb-[16px] border-white/10 border rounded-[16px] text-[14px]"
                   placeholder={t(
                     'autopost_extra_context_placeholder',
-                    'e.g. fitness brand — add one actionable gym tip; end with a question'
+                    'e.g. fitness brand - add one actionable gym tip; end with a question'
                   )}
                   {...form.register('customInstructions')}
                 />

@@ -148,7 +148,7 @@ export const AiAssistRibbon: FC<Props> = ({ content, platform, onReplace }) => {
         if (!res.ok) {
           await showAiError(
             res,
-            t('ai_edit_failed', 'Could not rewrite the text — try again later.')
+            t('ai_edit_failed', 'Could not rewrite the text - try again later.')
           );
           return;
         }
@@ -177,7 +177,7 @@ export const AiAssistRibbon: FC<Props> = ({ content, platform, onReplace }) => {
           toaster.show(
             t(
               'ai_edit_failed',
-              'Could not rewrite the text — try again later.'
+              'Could not rewrite the text - try again later.'
             ),
             'warning'
           );
@@ -216,7 +216,7 @@ export const AiAssistRibbon: FC<Props> = ({ content, platform, onReplace }) => {
           res,
           t(
             'ai_hashtags_failed',
-            'Could not suggest hashtags — try again later.'
+            'Could not suggest hashtags - try again later.'
           )
         );
         return;
@@ -229,7 +229,7 @@ export const AiAssistRibbon: FC<Props> = ({ content, platform, onReplace }) => {
       toaster.show(
         t(
           'ai_hashtags_failed',
-          'Could not suggest hashtags — try again later.'
+          'Could not suggest hashtags - try again later.'
         ),
         'warning'
       );

@@ -1,6 +1,10 @@
 import dayjs from 'dayjs';
 import utc from 'dayjs/plugin/utc';
 import timezone from 'dayjs/plugin/timezone';
+import {
+  PostingTime,
+  postingMinutesIn,
+} from '@gitroom/helpers/utils/posting.times';
 
 dayjs.extend(utc);
 dayjs.extend(timezone);
@@ -15,16 +19,13 @@ export const minutesInZone = (utcDate: string | Date, tz: string) => {
   return local.hour() * 60 + local.minute();
 };
 
-// A channel's posting times are stored as minutes after UTC midnight.
+// A channel's posting time on `day`, in minutes after local midnight in `tz`
+// (stored either in its own zone or as minutes after UTC midnight).
 export const postingMinutesInZone = (
-  utcMinutes: number,
+  slot: PostingTime,
   day: string,
   tz: string
-) =>
-  minutesInZone(
-    dayjs.utc(day).startOf('day').add(utcMinutes, 'minute').toDate(),
-    tz
-  );
+) => postingMinutesIn(slot, day, tz);
 
 // The row's moment on `day` (YYYY-MM-DD) in `tz`, built from the wall-clock
 // time so a daylight-saving change that day does not shift later rows.

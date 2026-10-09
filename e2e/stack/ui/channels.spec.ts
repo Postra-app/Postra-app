@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { signedIn } from '../helpers';
+import { signedIn, stateFile } from '../helpers';
 import { USERS } from '../seed';
 
 // Adding a channel. Meta platforms first show a checklist; "Not yet — show me
@@ -24,13 +24,13 @@ test('Meta checklist: "Not yet" closes it, and a second try reaches Meta', async
   await expect(page.getByText('Before you connect Facebook')).toBeVisible();
 
   const help = context.waitForEvent('page');
-  await page.getByRole('button', { name: 'Not yet — show me how' }).click();
+  await page.getByRole('button', { name: 'Not yet - show me how' }).click();
   await (await help).close();
   await expect(page.getByText('Before you connect Facebook')).toBeHidden();
 
   // The picker is still there; try again and continue.
   await page.getByText('Facebook Page', { exact: true }).click();
-  await page.getByRole('button', { name: 'Done — continue' }).click();
+  await page.getByRole('button', { name: 'Done - continue' }).click();
   await expect.poll(() => reachedMeta, { timeout: 15_000 }).toContain('facebook.com');
 });
 
@@ -122,4 +122,58 @@ test('the bot dialog says what it changes and is a single card', async ({ page }
   await expect(page.getByText('Change Bot Nickname', { exact: true }).last()).toBeVisible();
   await expect(page.getByText('Change Bot Picture', { exact: true })).toHaveCount(0);
   await expect(page.locator('.animate-modalIn')).toHaveCount(0);
+});
+
+test.describe('posting times in London', () => {
+  test.use({ timezoneId: 'Europe/London' });
+
+  test('a slot added at 09:00 is stored as 09:00 London, not as UTC minutes (E2E-05-85)', async ({
+    page,
+  }) => {
+    // Stored as 480 (minutes after UTC midnight) in summer time, it showed
+    // and was suggested at 08:00 after the clocks went back.
+    const api = await signedIn('a');
+    const list = async () =>
+      (await (await api.get('/integrations/list')).json()).integrations as {
+        id: string;
+        time: { time: number; tz?: string }[];
+      }[];
+    const before = await list();
+    try {
+      await page.goto('/launches');
+      await page.getByRole('button', { name: 'Channel options' }).first().click();
+      await page.getByText('Edit Time Slots', { exact: true }).click();
+      await page.getByRole('combobox').nth(0).selectOption('09');
+      await page.getByRole('button', { name: 'Add', exact: true }).click();
+      await expect(page.getByRole('button', { name: 'Remove 09:00' })).toBeVisible();
+      await page.getByRole('button', { name: 'Save Changes' }).click();
+      await expect(page.getByText('Time Table Slots')).toBeHidden();
+
+      await expect
+        .poll(async () =>
+          (await list()).flatMap((i) => i.time).filter((s) => s.tz)
+        )
+        .toContainEqual({ time: 540, tz: 'Europe/London' });
+    } finally {
+      for (const channel of before) {
+        await api.post(`/integrations/${channel.id}/time`, {
+          data: { time: channel.time },
+        });
+      }
+      await api.dispose();
+    }
+  });
+});
+
+test.describe('Bluesky channel of organisation B', () => {
+  test.use({ storageState: stateFile('b') });
+
+  test('"Update Credentials" opens a window with that title (E2E-05-82)', async ({ page }) => {
+    // The window was titled "Custom URL".
+    await page.goto('/launches');
+    await page.getByRole('button', { name: 'Channel options' }).first().click();
+    await page.getByText('Update Credentials', { exact: true }).click();
+    await expect(page.getByRole('dialog').getByText('Update Credentials', { exact: true })).toBeVisible();
+    await expect(page.getByRole('dialog').getByText('Custom URL', { exact: true })).toHaveCount(0);
+  });
 });

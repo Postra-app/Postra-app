@@ -108,11 +108,14 @@ function LayoutContextInner(params: { children: ReactNode }) {
         return false;
       }
       if (response.status === 406) {
+        // The next screen shows the price and asks before charging
+        // (E2E-07-41).
         if (
           await deleteDialog(
-            'You are currently on a trial. To use this feature, you need to end it.',
-            'End the trial and charge now',
-            'Trial'
+            'You are on a free trial. To use this feature, end your trial - you will see the price and confirm the payment on the next screen.',
+            'End my trial',
+            'Free trial',
+            'Keep my trial'
           )
         ) {
           window.open('/billing?finishTrial=true', '_blank');
@@ -168,7 +171,7 @@ function LayoutContextInner(params: { children: ReactNode }) {
           toaster.show(
             t(
               'too_many_requests',
-              'Too many requests — please wait a moment and try again.'
+              'Too many requests - please wait a moment and try again.'
             ),
             'warning'
           );
@@ -201,7 +204,7 @@ function LayoutContextInner(params: { children: ReactNode }) {
               ? named
               : t(
                   'server_unavailable_try_again',
-                  'The server is temporarily unavailable — please try again in a moment.'
+                  'The server is temporarily unavailable - please try again in a moment.'
                 ),
             'warning'
           );

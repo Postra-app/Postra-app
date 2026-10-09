@@ -22,7 +22,7 @@ describe('languageRule', () => {
     );
   });
 
-  it('never mentions a fallback — the caller resolves that, not the model', () => {
+  it('never mentions a fallback - the caller resolves that, not the model', () => {
     expect(languageRule()).not.toContain('fallback');
   });
 
@@ -35,7 +35,7 @@ describe('languageRule', () => {
 
   it('names what it governs, so it can be dropped into any prompt', () => {
     expect(languageRule({ scope: 'the caption', follow: 'the topic' })).toBe(
-      'LANGUAGE: when writing the caption, match the language of the topic exactly: detect it from the text itself and answer in that language, English included. Never mix languages in one piece of output.'
+      'LANGUAGE: when writing the caption, match the language of the topic exactly: detect it from the text itself and answer in that language, English included. Never mix languages in one piece of output. PUNCTUATION: Never use em dashes (—) or en dashes (–). Use a comma, a full stop or a plain hyphen (-) instead.'
     );
   });
 });
@@ -61,3 +61,12 @@ describe('tooShortToDetectLanguage', () => {
     expect(tooShortToDetectLanguage('50% 2x 3 !!! 🎉 🏋️')).toBe(true);
   });
 });
+
+describe('punctuation in every AI text (K. 10-09)', () => {
+  it('asks for no long dashes, whatever the language', () => {
+    for (const rule of [languageRule(), languageRule({ targetNamedIn: 'the settings block' })]) {
+      expect(rule).toMatch(/Never use em dashes .* or en dashes/);
+    }
+  });
+});
+

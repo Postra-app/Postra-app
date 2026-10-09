@@ -38,11 +38,11 @@ export const ImpersonationBanner: FC<{ email?: string }> = ({ email }) => {
     >
       <span>
         {t('admin_impersonating_as', 'Impersonating')}
-        {email ? ` ${email}` : ''} — {t('admin_impersonating_note', 'actions are real')}
+        {email ? ` ${email}` : ''} - {t('admin_impersonating_note', 'actions are real')}
       </span>
       {failed && (
         <span role="alert">
-          {t('admin_stop_impersonating_failed', 'Could not stop — try again.')}
+          {t('admin_stop_impersonating_failed', 'Could not stop - try again.')}
         </span>
       )}
       <button

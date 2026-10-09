@@ -198,7 +198,7 @@ export const ManageModal: FC<AddEditModalProps> = (props) => {
       await deleteDialog(
         t(
           'are_you_sure_you_want_to_close_this_modal_all_data_will_be_lost',
-          'Are you sure you want to close this modal? (all data will be lost)'
+          'Are you sure you want to close this window? Unsaved changes will be lost.'
         ),
         t('yes_close_it', 'Yes, close it!')
       )
@@ -849,7 +849,7 @@ export const ManageModal: FC<AddEditModalProps> = (props) => {
         toaster.show(
           t(
             'post_save_unexpected_error',
-            'Something went wrong while saving. Your content is still here — please try again.'
+            'Something went wrong while saving. Your content is still here - please try again.'
           ),
           'warning'
         );

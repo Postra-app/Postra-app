@@ -82,6 +82,7 @@ export class OrganizationRepository {
             // The credit cycle starts here; without it the public API and
             // MCP counted from the time of the request (API-7).
             createdAt: true,
+            periodAnchor: true,
             deletedAt: true,
           },
         },
@@ -128,6 +129,10 @@ export class OrganizationRepository {
                 subscriptionTier: true,
                 totalChannels: true,
                 isLifetime: true,
+                // The AI credit month (E2E-07-40); without them an
+                // impersonated session counted from the time of the request.
+                createdAt: true,
+                periodAnchor: true,
                 deletedAt: true,
               },
             },
@@ -229,6 +234,8 @@ export class OrganizationRepository {
             totalChannels: true,
             isLifetime: true,
             createdAt: true,
+            // The AI credit month follows Stripe's billing anchor (E2E-07-40).
+            periodAnchor: true,
             deletedAt: true,
           },
         },

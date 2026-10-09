@@ -4,7 +4,7 @@ import { proxy } from './proxy';
 const signedOut = (path: string) =>
   proxy(new NextRequest(new URL(path, 'https://app.postra.pl')));
 
-describe('proxy — signed-out redirects', () => {
+describe('proxy - signed-out redirects', () => {
   it('keeps the OAuth consent request so login returns to it', async () => {
     const path =
       '/oauth/authorize?client_id=abc&response_type=code&redirect_uri=https%3A%2F%2Fexample.com%2Fcb&state=s1';

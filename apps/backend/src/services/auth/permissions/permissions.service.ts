@@ -57,10 +57,11 @@ export class PermissionsService {
       return undefined;
     }
     const { options } = await this.getPackageOptions(orgId);
+    const subscription = await this._subscriptionService.getSubscription(orgId);
     return {
-      anchor:
-        (await this._subscriptionService.getSubscription(orgId))?.createdAt ||
-        createdAt,
+      // The month runs with Stripe's invoices (E2E-07-40); a plan Stripe
+      // does not bill counts from its creation.
+      anchor: subscription?.periodAnchor || subscription?.createdAt || createdAt,
       limit: options.posts_per_month,
     };
   }
@@ -176,9 +177,10 @@ export class PermissionsService {
       }
 
       if (section === Sections.POSTS_PER_MONTH) {
+        const current = await this._subscriptionService.getSubscription(orgId);
+        // From Stripe's billing anchor, like the AI allowance (E2E-07-40).
         const createdAt =
-          (await this._subscriptionService.getSubscription(orgId))?.createdAt ||
-          created_at;
+          current?.periodAnchor || current?.createdAt || created_at;
         if (
           !(await this._postsService.postCapReached(
             orgId,

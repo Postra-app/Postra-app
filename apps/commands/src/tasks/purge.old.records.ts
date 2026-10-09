@@ -43,7 +43,7 @@ export class PurgeOldRecords {
 
     const mode = apply ? 'APPLY' : 'DRY-RUN';
     console.log(
-      `[purge-old-records] ${mode} — retention: errors ${windows.errorsDays}d, audit ${windows.auditDays}d, ai-usage ${windows.aiUsageDays}d, media grace ${windows.mediaGraceDays}d`
+      `[purge-old-records] ${mode} - retention: errors ${windows.errorsDays}d, audit ${windows.auditDays}d, ai-usage ${windows.aiUsageDays}d, media grace ${windows.mediaGraceDays}d`
     );
 
     const purge = await this._maintenance.purgeOldRecords(apply, windows);
@@ -68,7 +68,7 @@ export class PurgeOldRecords {
 
     if (!apply) {
       console.log(
-        '[purge-old-records] DRY-RUN only — nothing deleted. Re-run with -- --apply to persist.'
+        '[purge-old-records] DRY-RUN only - nothing deleted. Re-run with -- --apply to persist.'
       );
     }
 

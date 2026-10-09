@@ -27,7 +27,9 @@ describe('planFeatures', () => {
   it('shows what Pro adds: platforms and Blog to posts', () => {
     const pro = texts('PRO');
     expect(pro).toContain(
-      'On Facebook, Instagram, TikTok, LinkedIn, YouTube, Threads, LinkedIn Pages (soon), Bluesky, Mastodon, Telegram'
+      // Only platforms a customer can connect today, like the landing's
+      // "6 channels on 9 platforms" (K. 10-09: no "(soon)").
+      'On Facebook, Instagram, TikTok, LinkedIn, YouTube, Threads, Bluesky, Mastodon, Telegram'
     );
     expect(pro).toContain('Blog to posts from 3 RSS feeds');
     expect(pro).toContain('Unlimited posts');
@@ -42,7 +44,8 @@ describe('planFeatures', () => {
       expect(line).toBe(
         'On ' +
           pricing[tier].allowedProviders
-            .map((p) => PLATFORM_NAMES[p] + (SOON_PLATFORMS.has(p) ? ' (soon)' : ''))
+            .filter((p) => !SOON_PLATFORMS.has(p))
+            .map((p) => PLATFORM_NAMES[p])
             .join(', ')
       );
     }

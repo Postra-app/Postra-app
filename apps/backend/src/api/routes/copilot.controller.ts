@@ -208,7 +208,7 @@ export class CopilotController {
     );
     if (!action) {
       throw new HttpException(
-        'This confirmation is no longer valid — it was already used or it expired. Ask the assistant again.',
+        'This confirmation is no longer valid - it was already used or it expired. Ask the assistant again.',
         410
       );
     }

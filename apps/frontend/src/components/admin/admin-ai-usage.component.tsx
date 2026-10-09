@@ -165,7 +165,7 @@ export const AdminAiUsageComponent = () => {
         <h2 className="text-[22px] font-[600]">{t('admin_ai_usage_title', 'AI Usage')}</h2>
         {data && (
           <p className="text-[13px] opacity-60 mt-[4px]">
-            {new Date(data.from).toLocaleDateString()} —{' '}
+            {new Date(data.from).toLocaleDateString()} -{' '}
             {new Date(data.to).toLocaleDateString()}
           </p>
         )}
@@ -242,7 +242,7 @@ export const AdminAiUsageComponent = () => {
             <div className="text-[11px] opacity-50">
               {t(
                 'admin_ai_usage_per_day_hint',
-                'Local time — click a day for its hourly breakdown'
+                'Local time - click a day for its hourly breakdown'
               )}
             </div>
           </div>
@@ -315,7 +315,7 @@ export const AdminAiUsageComponent = () => {
                   return (
                     <li
                       key={hour}
-                      title={`${label} — ${count.toLocaleString()}`}
+                      title={`${label} - ${count.toLocaleString()}`}
                       aria-label={`${label}: ${count.toLocaleString()} credits`}
                       className="flex-1 bg-sky-400/80 min-h-[1px] rounded-t-[2px]"
                       style={{ height: `${(count / hourMax) * 100}%` }}
@@ -342,7 +342,7 @@ export const AdminAiUsageComponent = () => {
         <div className="px-[16px] py-[12px] border-b border-white/10 text-[14px] font-[500]">
           {t(
             'admin_ai_text_usage',
-            'Model usage (observational metering — not billed)'
+            'Model usage (observational metering - not billed)'
           )}
         </div>
         <div className="grid grid-cols-[1fr_120px_90px_110px_110px] gap-[12px] px-[16px] py-[8px] text-[11px] uppercase opacity-50 border-b border-white/10">

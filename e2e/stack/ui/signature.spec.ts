@@ -74,3 +74,25 @@ test('"Create Post" clicked before the sets have loaded still asks for a set', a
     await api.dispose();
   }
 });
+
+// E2E-05-94 (5): "Use Signature" added the signature and left the Add
+// Signature window open over the editor.
+test('"Use Signature" adds it and closes the Add Signature window', async ({ page }) => {
+  const api = await signedIn('b');
+  const text = `Small fixes signature ${Date.now()}`;
+  const created = await api.post('/signatures', { data: { content: `<p>${text}</p>`, autoAdd: false } });
+  expect(created.status()).toBe(201);
+  const { id } = await created.json();
+  try {
+    await page.goto('/launches');
+    await page.getByRole('button', { name: 'Create Post' }).click();
+    const editor = page.getByRole('dialog', { name: 'Post editor' });
+    await editor.locator('[data-tooltip-content="Add Signature"]').first().click();
+    await page.getByRole('button', { name: 'Use Signature' }).first().click();
+    await expect(editor.locator('.ProseMirror').first()).toContainText(text);
+    await expect(page.getByRole('button', { name: 'Use Signature' })).toHaveCount(0);
+  } finally {
+    await api.delete(`/signatures/${id}`);
+    await api.dispose();
+  }
+});

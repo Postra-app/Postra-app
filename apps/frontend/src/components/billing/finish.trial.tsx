@@ -6,35 +6,57 @@ import { timer } from '@gitroom/helpers/utils/timer';
 import { useSWRConfig } from 'swr';
 import { Button } from '@gitroom/frontend/components/ui/button';
 import { useT } from '@gitroom/react/translation/get.transation.service.client';
+import { planLabel } from '@gitroom/nestjs-libraries/database/prisma/subscriptions/pricing';
 
+type Step = 'confirm' | 'working' | 'done' | 'already' | 'problem';
+
+// Ending the trial charges the card. It used to happen the moment this page
+// opened with ?finishTrial=true — no price, no question, and again on every
+// reload (E2E-07-41, Kris Company 2026-10-09). Now the customer sees what
+// they will pay and confirms; the parameter leaves the address bar at once.
 export const FinishTrial: FC<{ close: () => void }> = (props) => {
-  const [finished, setFinished] = useState(false);
-  const [problem, setProblem] = useState<{ url?: string } | null>(null);
+  const [step, setStep] = useState<Step>('confirm');
+  const [problem, setProblem] = useState<{ url?: string }>({});
+  const [plan, setPlan] = useState<{
+    amount: number;
+    currency: string;
+    tier: string | null;
+    period: string | null;
+  } | null>(null);
   const fetch = useFetch();
   const t = useT();
   const { mutate } = useSWRConfig();
 
-  const finishSubscription = useCallback(async () => {
-    // A failed request left the dialog spinning for good (E2E-07-18).
-    let result: { finish?: boolean; url?: string } | undefined;
-    try {
-      result = await (
-        await fetch('/billing/finish-trial', {
-          method: 'POST',
-        })
-      ).json();
-    } catch {
-      setProblem({});
-      return;
+  useEffect(() => {
+    const url = new URL(window.location.href);
+    if (url.searchParams.has('finishTrial')) {
+      url.searchParams.delete('finishTrial');
+      window.history.replaceState(null, '', url.pathname + url.search);
     }
-    // finish:false means Stripe did not take the payment (usually 3-D Secure),
-    // so the plan will not flip and polling would spin forever.
-    if (!result?.finish) {
-      setProblem({ url: result?.url });
-      return;
-    }
-    checkFinished();
+    (async () => {
+      try {
+        // What Stripe will charge for this subscription now, not today's
+        // price list (an older price or a discount differ — Codex).
+        const preview = await (
+          await fetch('/billing/finish-trial/preview')
+        ).json();
+        if (preview && Number.isFinite(preview.amount)) {
+          setPlan(preview);
+        }
+      } catch {
+        // The question still works without the price line.
+      }
+    })();
   }, []);
+
+  const yearly = plan?.period === 'YEARLY';
+  const amount = plan
+    ? `${plan.currency === 'gbp' ? '£' : `${plan.currency.toUpperCase()} `}${
+        plan.amount % 100 === 0
+          ? plan.amount / 100
+          : (plan.amount / 100).toFixed(2)
+      }`
+    : '';
 
   const checkFinished = useCallback(async (attempt = 0) => {
     let finished = false;
@@ -45,21 +67,48 @@ export const FinishTrial: FC<{ close: () => void }> = (props) => {
       finished = false;
     }
     if (finished) {
-      setFinished(true);
+      setStep('done');
       // The open app still held the trial's limits (E2E-07-18).
       mutate('/user/self');
       return;
     }
     if (attempt >= 30) {
-      setProblem({});
+      setStep('problem');
       return;
     }
     await timer(2000);
     return checkFinished(attempt + 1);
   }, []);
 
-  useEffect(() => {
-    finishSubscription();
+  const finishSubscription = useCallback(async () => {
+    setStep('working');
+    // A failed request left the dialog spinning for good (E2E-07-18).
+    let result: { finish?: boolean; url?: string; reason?: string } | undefined;
+    try {
+      result = await (
+        await fetch('/billing/finish-trial', {
+          method: 'POST',
+        })
+      ).json();
+    } catch {
+      setStep('problem');
+      return;
+    }
+    // Paid already: a second visit used to read as a failed payment
+    // (E2E-07-42).
+    if (result?.reason === 'no-trial') {
+      setStep('already');
+      mutate('/user/self');
+      return;
+    }
+    // finish:false otherwise means Stripe did not take the payment (usually
+    // 3-D Secure), so the plan will not flip and polling would spin forever.
+    if (!result?.finish) {
+      setProblem({ url: result?.url });
+      setStep('problem');
+      return;
+    }
+    checkFinished();
   }, []);
 
   return (
@@ -96,10 +145,65 @@ export const FinishTrial: FC<{ close: () => void }> = (props) => {
           <div className="relative h-[400px]">
             <div className="absolute left-0 top-0 w-full h-full overflow-hidden overflow-y-auto">
               <div className="mt-[10px] flex w-full justify-center items-center gap-[10px]">
-                {!finished && !problem && (
+                {step === 'confirm' && (
+                  <div className="flex flex-col">
+                    <div>
+                      {amount
+                        ? t(
+                            'finish_trial_confirm',
+                            'End your trial now and pay {{amount}} for {{plan}} ({{period}})?',
+                            {
+                              amount,
+                              plan: planLabel(plan?.tier),
+                              period: yearly
+                                ? t('yearly_lower', 'yearly')
+                                : t('monthly_lower', 'monthly'),
+                            }
+                          )
+                        : t(
+                            'finish_trial_confirm_plain',
+                            'End your trial now and pay for your plan?'
+                          )}
+                    </div>
+                    <div className="text-[14px] opacity-80 mt-[8px]">
+                      {t(
+                        'finish_trial_confirm_note',
+                        'Your card is charged straight away and your plan renews from today.'
+                      )}
+                    </div>
+                    <div className="flex gap-[10px] mt-[20px]">
+                      <Button className="flex-1" onClick={finishSubscription}>
+                        {amount
+                          ? t('finish_trial_pay', 'End trial and pay {{amount}} now', {
+                              amount,
+                            })
+                          : t('finish_trial_pay_plain', 'End trial and pay now')}
+                      </Button>
+                      <Button className="flex-1" onClick={() => props.close()}>
+                        {t('keep_my_trial', 'Keep my trial')}
+                      </Button>
+                    </div>
+                  </div>
+                )}
+                {step === 'working' && (
                   <LoadingComponent height={150} width={150} />
                 )}
-                {problem && (
+                {step === 'already' && (
+                  <div className="flex flex-col">
+                    <div>
+                      {t(
+                        'trial_already_ended',
+                        'Your trial has already ended - your plan is active.'
+                      )}
+                    </div>
+                    <div className="flex gap-[10px] mt-[20px]">
+                      <Button className="flex-1" onClick={() => props.close()}>
+                        {t('close_dialog', 'Close')}
+                      </Button>
+                    </div>
+                  </div>
+                )}
+                {step === 'problem' && (
                   <div className="flex flex-col">
                     <div>
                       {t(
@@ -124,7 +228,7 @@ export const FinishTrial: FC<{ close: () => void }> = (props) => {
                     </div>
                   </div>
                 )}
-                {finished && (
+                {step === 'done' && (
                   <div className="flex flex-col">
                     <div>
                       {t(

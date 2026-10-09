@@ -1,3 +1,4 @@
+import { Throttle } from '@nestjs/throttler';
 import {
   Body,
   Controller,
@@ -329,6 +330,42 @@ export class AdminController {
     );
 
     return { organizationId, subscription };
+  }
+
+  /**
+   * Give an organization this billing period's AI images or videos back —
+   * a generation that failed on our side, a support gesture. The idea is
+   * upstream's (4c5d42a92, a super-admin route on the public API); here it is
+   * an admin action on the session like the others, with the organization
+   * named outright.
+   */
+  @Post('/reset-credits')
+  async resetCredits(
+    @GetUserFromRequest() user: User,
+    @Body('organizationId') organizationId: string,
+    @Body('type') type: string
+  ) {
+    this.assertSuperAdmin(user);
+    if (type !== 'ai_images' && type !== 'ai_videos') {
+      throw new HttpException('type must be ai_images or ai_videos', 400);
+    }
+    await this.requireOrganization(organizationId);
+
+    const result = await this._subscriptionService.resetCredits(
+      organizationId,
+      type
+    );
+    if (!result) {
+      throw new HttpException('The organization has no plan', 400);
+    }
+
+    this._auditService.record({
+      action: 'admin.reset-credits',
+      userId: user.id,
+      metadata: { organizationId, type, deleted: result.deleted },
+    });
+
+    return { organizationId, type, deleted: result.deleted };
   }
 
   /**
@@ -1073,6 +1110,9 @@ export class AdminController {
    * used to refund somebody else's payment. Money moves here, so the result
    * says which ones went through and which did not, and the trail records it.
    */
+  // Moves money: a scripted or stolen super-admin session cannot fire it
+  // without pause (20 per 5 minutes per organisation).
+  @Throttle({ default: { ttl: 300000, limit: 20 } })
   @Post('/refund-charges')
   async refundCharges(
     @GetUserFromRequest() user: User,
@@ -1118,6 +1158,9 @@ export class AdminController {
    * grant and never touches Stripe. This one is for a paying customer who
    * wants out now.
    */
+  // Moves money: a scripted or stolen super-admin session cannot fire it
+  // without pause (20 per 5 minutes per organisation).
+  @Throttle({ default: { ttl: 300000, limit: 20 } })
   @Post('/cancel-subscription')
   async cancelSubscriptionForOrg(
     @GetUserFromRequest() user: User,

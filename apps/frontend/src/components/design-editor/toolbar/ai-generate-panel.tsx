@@ -128,7 +128,7 @@ export const AiGeneratePanel: FC<Props> = ({ canvas }) => {
         toaster.show(
           t(
             'ai_background_reused',
-            'Reused a background from an identical prompt — no image credit used.'
+            'Reused a background from an identical prompt - no image credit used.'
           ),
           'success'
         );
@@ -229,7 +229,7 @@ export const AiGeneratePanel: FC<Props> = ({ canvas }) => {
             <p className="text-[11px] text-textColor/65 leading-snug">
               {t(
                 'holiday_templates_hint',
-                'Opens Templates filtered for the occasion — free on every plan.'
+                'Opens Templates filtered for the occasion - free on every plan.'
               )}
             </p>
           </div>
@@ -248,7 +248,7 @@ export const AiGeneratePanel: FC<Props> = ({ canvas }) => {
           <p className="text-[11px] leading-snug text-textColor/80">
             {t(
               'brand_kit_nudge',
-              'Set up your Brand Kit once — AI writes in your tone, designs come out in your colours and font, and your logo goes on every generated design.'
+              'Set up your Brand Kit once - AI writes in your tone, designs come out in your colours and font, and your logo goes on every generated design.'
             )}
           </p>
           <button

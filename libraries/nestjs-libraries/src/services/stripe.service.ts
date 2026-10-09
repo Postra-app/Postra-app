@@ -44,6 +44,23 @@ export const isLiveSubscription = (s: { status: string }) =>
 // Lowest to highest, for comparing plans.
 const TIER_ORDER = ['FREE', 'STANDARD', 'TEAM', 'PRO', 'ULTIMATE'];
 
+// The schedule a subscription is attached to: a downgrade waiting for the
+// next billing period (E2E-07-44).
+const scheduleOf = (s: Stripe.Subscription) =>
+  typeof s.schedule === 'string' ? s.schedule : s.schedule?.id ?? null;
+
+// A lower plan on a paid (not trialing) subscription starts with the next
+// billing period, as the subscription terms say (E2E-07-44). One rule for the
+// quote and for the change itself.
+const waitsForRenewal = (
+  live: Stripe.Subscription | undefined,
+  currentTier: string | undefined,
+  billing: string
+) =>
+  live?.status === 'active' &&
+  !!currentTier &&
+  TIER_ORDER.indexOf(billing) < TIER_ORDER.indexOf(currentTier);
+
 @Injectable()
 export class StripeService {
   private readonly _logger = new Logger(StripeService.name);
@@ -294,7 +311,7 @@ export class StripeService {
             refund === null
               ? `A second subscription was started while you already had one, so we cancelled it. If you were charged twice, contact us and we will refund it.`
               : refund > 0
-              ? `A second subscription was started while you already had one, so we cancelled it and refunded its payment of ${formatAmount(refund)}. The refund reaches your card in 5–10 days.`
+              ? `A second subscription was started while you already had one, so we cancelled it and refunded its payment of ${formatAmount(refund)}. The refund reaches your card in 5-10 days.`
               : `A second subscription was started while you already had one, so we cancelled it. Nothing was charged for it.`,
             true,
             false,
@@ -327,7 +344,13 @@ export class StripeService {
       pricing[billing].channel!,
       billing,
       period,
-      current.cancel_at
+      current.cancel_at,
+      undefined,
+      undefined,
+      // Invoices run from here; so does the AI allowance month (E2E-07-40).
+      current.billing_cycle_anchor
+        ? new Date(current.billing_cycle_anchor * 1000)
+        : undefined
     );
   }
 
@@ -478,7 +501,7 @@ export class StripeService {
     this._logger.warn(
       `[stripe] organization ${organization.id} points at customer ${
         organization.paymentId
-      }, which Stripe no longer has — creating a new one`
+      }, which Stripe no longer has - creating a new one`
     );
     return false;
   }
@@ -577,8 +600,34 @@ export class StripeService {
         },
       });
 
+      // The confirmation before changing plan says what renews when, at
+      // what price (E2E-07-43).
+      const live = currentUserSubscription?.data?.[0];
+      const periodEnd = live?.items?.data?.[0]?.current_period_end;
+      const scheduled = waitsForRenewal(
+        live,
+        (await this._subscriptionService.getSubscription(organizationId))
+          ?.subscriptionTier,
+        body.billing
+      );
+      // A lower plan starts at the current period's end, nothing today.
+      // Otherwise the invoice's line for the new price says when it renews:
+      // from monthly to yearly Stripe starts a new cycle today (Codex).
+      const newCycleEnd = Math.max(
+        0,
+        ...(price?.lines?.data ?? [])
+          .filter((l) => l.pricing?.price_details?.price === findPrice?.id)
+          .map((l) => l.period?.end ?? 0)
+      );
+      const renewsAt = scheduled ? periodEnd : newCycleEnd || periodEnd;
       return {
-        price: price?.amount_remaining ? price?.amount_remaining / 100 : 0,
+        price:
+          !scheduled && price?.amount_remaining
+            ? price.amount_remaining / 100
+            : 0,
+        renewsOn: renewsAt ? new Date(renewsAt * 1000).toISOString() : null,
+        renewalPrice: (findPrice?.unit_amount ?? 0) / 100,
+        scheduled,
       };
     } catch (err) {
       this._logger.error(
@@ -611,7 +660,7 @@ export class StripeService {
     } catch (err) {
       if (isMissingCustomerError(err)) {
         this._logger.warn(
-          `[stripe] organization ${organizationId} points at customer ${customer}, which Stripe no longer has — reading it as no subscriptions`
+          `[stripe] organization ${organizationId} points at customer ${customer}, which Stripe no longer has - reading it as no subscriptions`
         );
         return [];
       }
@@ -631,6 +680,93 @@ export class StripeService {
     }
 
     return { data: await this.listSubscriptions(customer, organizationId) };
+  }
+
+  private async scheduleDowngrade(
+    sub: Stripe.Subscription,
+    price: Stripe.Price,
+    metadata: Record<string, string>,
+    body: BillingSubscribeDto
+  ) {
+    const item = sub.items.data[0];
+    // Cancelled, then bought lower: it renews after all, on the lower plan.
+    // (A schedule owns cancelling once attached, so this goes first.)
+    if (sub.cancel_at_period_end) {
+      await stripe.subscriptions.update(sub.id, { cancel_at_period_end: false });
+    }
+    const scheduleId =
+      scheduleOf(sub) ??
+      (await stripe.subscriptionSchedules.create({ from_subscription: sub.id }))
+        .id;
+    const schedule = await stripe.subscriptionSchedules.retrieve(scheduleId);
+    await stripe.subscriptionSchedules.update(scheduleId, {
+      end_behavior: 'release',
+      phases: [
+        {
+          items: [{ price: item.price.id, quantity: item.quantity ?? 1 }],
+          start_date:
+            schedule.current_phase?.start_date ?? schedule.phases[0].start_date,
+          end_date: item.current_period_end,
+          metadata: sub.metadata,
+          proration_behavior: 'none',
+        },
+        {
+          items: [{ price: price.id, quantity: 1 }],
+          duration: {
+            interval: price.recurring?.interval === 'year' ? 'year' : 'month',
+            interval_count: 1,
+          },
+          // The webhook reads the plan from here when the phase starts.
+          metadata,
+          proration_behavior: 'none',
+        },
+      ],
+    });
+
+    return {
+      id: metadata.id,
+      scheduled: {
+        billing: body.billing,
+        period: body.period,
+        on: new Date(item.current_period_end * 1000).toISOString(),
+      },
+    };
+  }
+
+  // Lets go of a waiting downgrade; the subscription carries on as it is.
+  private async releaseSchedule(sub?: Stripe.Subscription) {
+    const scheduleId = sub && scheduleOf(sub);
+    if (scheduleId) {
+      await stripe.subscriptionSchedules.release(scheduleId);
+    }
+  }
+
+  // The lower plan waiting for the renewal, for the Billing page.
+  async pendingChange(organizationId: string) {
+    const sub = (await this.getCustomerSubscriptions(organizationId)).data.find(
+      (s) => isLiveSubscription(s) && scheduleOf(s)
+    );
+    if (!sub) {
+      return {};
+    }
+    const schedule = await stripe.subscriptionSchedules.retrieve(
+      scheduleOf(sub)!
+    );
+    // After the phase running now, by Stripe's clock (a test clock runs
+    // ahead of ours). Once the lower plan runs, nothing is pending.
+    const from =
+      schedule.current_phase?.end_date ?? Math.floor(Date.now() / 1000);
+    const next = schedule.phases.find(
+      (p) => p.start_date >= from && p.metadata?.billing
+    );
+    if (!next) {
+      return {};
+    }
+    return {
+      billing: next.metadata!.billing,
+      period: next.metadata!.period,
+      on: new Date(next.start_date * 1000).toISOString(),
+    };
   }
 
   async setToCancel(organizationId: string) {
@@ -681,6 +817,12 @@ export class StripeService {
       sub.status === 'past_due' ||
       latestInvoice?.status === 'open' ||
       latestInvoice?.status === 'uncollectible';
+
+    // Cancelling replaces a downgrade waiting for the renewal; a schedule
+    // would not let the subscription cancel at the period end anyway.
+    for (const s of all) {
+      await this.releaseSchedule(s);
+    }
 
     if (hasFailedPayment) {
       // Payment already failed — cancel immediately and delete subscription
@@ -898,6 +1040,28 @@ export class StripeService {
     });
 
     return { url };
+  }
+
+  // What ending the trial now would charge, from Stripe's invoice preview:
+  // the price list is wrong for an older price or a discount (Codex).
+  async finishTrialPreview(paymentId: string) {
+    const trialing = (
+      await stripe.subscriptions.list({ customer: paymentId, limit: 100 })
+    ).data.find((f) => f.status === 'trialing');
+    if (!trialing) {
+      return null;
+    }
+    const preview = await stripe.invoices.createPreview({
+      customer: paymentId,
+      subscription: trialing.id,
+      subscription_details: { trial_end: 'now' },
+    });
+    return {
+      amount: preview.amount_due,
+      currency: preview.currency,
+      tier: trialing.metadata?.billing || null,
+      period: trialing.metadata?.period || null,
+    };
   }
 
   async finishTrial(
@@ -1185,20 +1349,35 @@ export class StripeService {
       ).data.filter((f) => f.status === 'active' || f.status === 'trialing'),
     };
 
+    const live = currentUserSubscription.data[0];
+    const metadata = {
+      service: 'gitroom',
+      ...body,
+      userId,
+      id,
+      ud: uniqueId,
+    };
+
+    // A lower plan starts with the next billing period, as the subscription
+    // terms say: the plan paid for stays until then and nothing is credited.
+    // Changing at once put the unused part on the Stripe balance, where it
+    // was lost on cancelling (E2E-07-44). A trial has nothing paid: at once.
+    if (
+      waitsForRenewal(live, getCurrentSubscriptions.subscriptionTier, body.billing)
+    ) {
+      return this.scheduleDowngrade(live, findPrice!, metadata, body);
+    }
+
     try {
-      await stripe.subscriptions.update(currentUserSubscription.data[0].id, {
+      // Anything else replaces a downgrade waiting for the renewal.
+      await this.releaseSchedule(live);
+      await stripe.subscriptions.update(live.id, {
         cancel_at_period_end: false,
-        metadata: {
-          service: 'gitroom',
-          ...body,
-          userId,
-          id,
-          ud: uniqueId,
-        },
+        metadata,
         proration_behavior: 'always_invoice',
         items: [
           {
-            id: currentUserSubscription.data[0].items.data[0].id,
+            id: live.items.data[0].id,
             price: findPrice!.id,
             quantity: 1,
           },
@@ -1342,6 +1521,7 @@ export class StripeService {
     }
 
     for (const subscription of subscriptions) {
+      await this.releaseSchedule(subscription);
       await stripe.subscriptions.cancel(subscription.id);
     }
     await this._subscriptionService.deleteSubscription(customer);
@@ -1369,6 +1549,7 @@ export class StripeService {
     );
 
     for (const subscription of subscriptions) {
+      await this.releaseSchedule(subscription);
       await stripe.subscriptions.cancel(subscription.id);
     }
   }

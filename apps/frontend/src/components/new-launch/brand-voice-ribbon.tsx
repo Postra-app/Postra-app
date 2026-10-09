@@ -63,7 +63,7 @@ export const BrandVoiceRibbon: FC<Props> = ({ content }) => {
       if (!res.ok) {
         await showAiError(
           res,
-          t('voice_failed', 'Could not check the tone — try again later.')
+          t('voice_failed', 'Could not check the tone - try again later.')
         );
         return;
       }
@@ -73,7 +73,7 @@ export const BrandVoiceRibbon: FC<Props> = ({ content }) => {
     } catch (err) {
       if ((err as { name?: string })?.name !== 'AbortError') {
         toaster.show(
-          t('voice_failed', 'Could not check the tone — try again later.'),
+          t('voice_failed', 'Could not check the tone - try again later.'),
           'warning'
         );
       }

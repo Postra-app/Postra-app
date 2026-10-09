@@ -70,7 +70,7 @@ export const StudioComponent = () => {
         <p className="text-xs text-textColor/60 max-w-[280px]">
           {t(
             'studio_desktop_only_body',
-            'The editor needs room for the canvas, the tools and the format bar. Open Postra on a laptop or desktop to use it — everything else works fine here.'
+            'The editor needs room for the canvas, the tools and the format bar. Open Postra on a laptop or desktop to use it - everything else works fine here.'
           )}
         </p>
       </div>

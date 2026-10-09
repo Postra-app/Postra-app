@@ -133,7 +133,7 @@ export const WelcomeModal: FC = () => {
             <div className="text-xs text-textColor/60 group-hover:text-white/70 mt-1">
               {t(
                 'welcome_desc_stock',
-                'Thousands of photos you can post commercially — no credit needed'
+                'Thousands of photos you can post commercially - no credit needed'
               )}
             </div>
           </button>
@@ -150,11 +150,11 @@ export const WelcomeModal: FC = () => {
               {aiAllowed
                 ? t(
                     'welcome_desc_ai',
-                    'Describe your idea — AI will create a design with background and text'
+                    'Describe your idea - AI will create a design with background and text'
                   )
                 : t(
                     'welcome_desc_ai_locked',
-                    'Describe your idea and AI designs it — on the Starter plan and above'
+                    'Describe your idea and AI designs it - on the Starter plan and above'
                   )}
             </div>
           </button>
@@ -176,7 +176,7 @@ export const WelcomeModal: FC = () => {
         <p className="text-[11px] text-textColor/65 text-center mt-4 leading-snug">
           {t(
             'welcome_brand_tip',
-            'Tip: set your Brand Kit once — templates, AI designs and video captions all pick up your colours and font.'
+            'Tip: set your Brand Kit once - templates, AI designs and video captions all pick up your colours and font.'
           )}
         </p>
 

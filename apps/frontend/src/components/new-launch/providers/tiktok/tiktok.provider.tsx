@@ -219,7 +219,7 @@ const TikTokSettings: FC<{
             {t('tiktok_posting_to', 'Posting to')}
           </div>
           <div className="text-[14px] font-[500]">
-            {creatorInfo?.nickname || integration?.name || '—'}
+            {creatorInfo?.nickname || integration?.name || '-'}
           </div>
         </div>
       </div>
@@ -287,12 +287,12 @@ const TikTokSettings: FC<{
           {formatSeconds(videoDuration)}
           {typeof maxDurationSeconds === 'number' &&
             (durationExceeded
-              ? ' — ' +
+              ? ' - ' +
                 t(
                   'tiktok_video_over_limit',
                   'longer than your TikTok limit ({{max}}). Shorten the video or use "Upload without posting".'
                 ).replace('{{max}}', formatSeconds(maxDurationSeconds))
-              : ' — ' +
+              : ' - ' +
                 t(
                   'tiktok_video_within_limit',
                   'within your TikTok limit ({{max}}).'

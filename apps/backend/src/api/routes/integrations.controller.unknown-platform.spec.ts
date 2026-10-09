@@ -20,7 +20,7 @@ import { join } from 'path';
  */
 const source = readFileSync(join(__dirname, 'integrations.controller.ts'), 'utf8');
 
-describe('GET /integrations/social/:integration — unknown platform', () => {
+describe('GET /integrations/social/:integration - unknown platform', () => {
   it('⛔ answers 4xx, not a bare Error that becomes a 500', () => {
     expect(source).toContain('Unknown platform');
     expect(source).not.toContain("throw new Error('Integration not allowed')");

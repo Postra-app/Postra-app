@@ -230,7 +230,7 @@ export const StockImagesPanel: FC<Props> = ({ canvas, defaultQuery }) => {
         <p className="text-[11px] text-textColor/65 leading-snug">
           {t(
             'image_stock_source',
-            'Free photos from Pixabay — commercial use, no credit needed.'
+            'Free photos from Pixabay - commercial use, no credit needed.'
           )}{' '}
           <a
             href="https://pixabay.com/service/license-summary/"
@@ -251,7 +251,7 @@ export const StockImagesPanel: FC<Props> = ({ canvas, defaultQuery }) => {
           >
             {t('image_stock_unsplash_source', 'Photos from Unsplash')} ↗
           </a>{' '}
-          {t('image_stock_pexels_licence', '— free to use, commercial use OK.')}
+          {t('image_stock_pexels_licence', '- free to use, commercial use OK.')}
         </p>
       ) : (
         <p className="text-[11px] text-textColor/65 leading-snug">
@@ -263,7 +263,7 @@ export const StockImagesPanel: FC<Props> = ({ canvas, defaultQuery }) => {
           >
             {t('image_stock_pexels_source', 'Photos provided by Pexels')} ↗
           </a>{' '}
-          {t('image_stock_pexels_licence', '— free to use, commercial use OK.')}
+          {t('image_stock_pexels_licence', '- free to use, commercial use OK.')}
         </p>
       )}
       <div className="flex gap-1.5">
@@ -290,7 +290,7 @@ export const StockImagesPanel: FC<Props> = ({ canvas, defaultQuery }) => {
               <button
                 onClick={() => importImage(hit)}
                 disabled={importingId !== null}
-                title={`${hit.alt} — ${hit.user} (${SOURCE_NAME[source]})`}
+                title={`${hit.alt} - ${hit.user} (${SOURCE_NAME[source]})`}
                 className="relative aspect-square rounded overflow-hidden border border-newBorder/50 hover:border-forth transition-colors disabled:opacity-60"
               >
                 {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -349,7 +349,7 @@ export const StockImagesPanel: FC<Props> = ({ canvas, defaultQuery }) => {
           title={t('stock_none_title', 'No photos for that search')}
           description={t(
             'stock_none_hint',
-            'Try a plainer word — "coffee" finds more than "coffee shop interior".'
+            'Try a plainer word - "coffee" finds more than "coffee shop interior".'
           )}
         />
       )}
@@ -357,7 +357,7 @@ export const StockImagesPanel: FC<Props> = ({ canvas, defaultQuery }) => {
       <p className="text-[11px] text-textColor/65 leading-snug">
         {t(
           'image_stock_hint',
-          'Click a photo to add it to the canvas — it is also saved to your media library.'
+          'Click a photo to add it to the canvas - it is also saved to your media library.'
         )}
       </p>
     </div>
