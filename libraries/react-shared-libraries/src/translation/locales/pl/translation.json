@@ -1557,5 +1557,14 @@
   "billing_status_void": "Anulowana",
   "billing_view_invoice": "Zobacz fakturę",
   "remote_server_oauth_hint": "Dodaj ten adres jako własny konektor w ChatGPT albo Claude. Poproszą o zalogowanie do Postry i zatwierdzenie asystenta. Klucz API nie jest potrzebny.",
-  "plug_not_saved": "Nie udało się zapisać wtyczki. Spróbuj ponownie."
+  "plug_not_saved": "Nie udało się zapisać wtyczki. Spróbuj ponownie.",
+  "finish_trial_confirm": "Zakończyć okres próbny teraz i zapłacić {{amount}} za plan {{plan}} ({{period}})?",
+  "finish_trial_confirm_plain": "Zakończyć okres próbny teraz i zapłacić za plan?",
+  "finish_trial_confirm_note": "Karta zostanie obciążona od razu, a plan odnawia się od dziś.",
+  "finish_trial_pay": "Zakończ okres próbny i zapłać {{amount}}",
+  "finish_trial_pay_plain": "Zakończ okres próbny i zapłać",
+  "keep_my_trial": "Zostań przy okresie próbnym",
+  "trial_already_ended": "Okres próbny już się zakończył — plan jest aktywny.",
+  "yearly_lower": "rocznie",
+  "monthly_lower": "miesięcznie"
 }

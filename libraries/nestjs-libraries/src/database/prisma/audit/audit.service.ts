@@ -11,6 +11,7 @@ export type AuditAction =
   | 'admin.impersonate.stop'
   | 'admin.grant-lifetime'
   | 'admin.reset-credits'
+  | 'billing.finish-trial'
   | 'admin.grant-admin'
   | 'admin.suspend-user'
   | 'admin.unsuspend-user'

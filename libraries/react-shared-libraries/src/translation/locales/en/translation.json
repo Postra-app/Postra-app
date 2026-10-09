@@ -2050,5 +2050,14 @@
   "brand_kit_save_rejected": "That value wasn't saved — colours need to be a full hex code like #38bdf8.",
   "comments_not_published_on": "Comments won't be published on:",
   "tiktok_settings_failed": "Couldn't load your TikTok settings - reconnect the channel and try again",
-  "webhook_paused_over_limit": "Paused — over your plan's webhook limit"
+  "webhook_paused_over_limit": "Paused — over your plan's webhook limit",
+  "finish_trial_confirm": "End your trial now and pay {{amount}} for {{plan}} ({{period}})?",
+  "finish_trial_confirm_plain": "End your trial now and pay for your plan?",
+  "finish_trial_confirm_note": "Your card is charged straight away and your plan renews from today.",
+  "finish_trial_pay": "End trial and pay {{amount}} now",
+  "finish_trial_pay_plain": "End trial and pay now",
+  "keep_my_trial": "Keep my trial",
+  "trial_already_ended": "Your trial has already ended — your plan is active.",
+  "yearly_lower": "yearly",
+  "monthly_lower": "monthly"
 }
