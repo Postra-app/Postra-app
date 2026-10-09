@@ -413,6 +413,13 @@ export class NoAuthIntegrationsController {
           });
         }
 
+        // The customer sees "Authentication failed"; the reason was lost
+        // (upstream 2e2d8ed0). The message only, not the request.
+        console.error(
+          `[connect] ${integration} authentication failed: ${
+            (err as Error)?.message || err
+          }`
+        );
         return res({
           error: 'Authentication failed',
           accessToken: '',
