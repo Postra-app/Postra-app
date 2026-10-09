@@ -1569,5 +1569,7 @@
   "monthly_lower": "miesięcznie",
   "channels_used_full": "Wykorzystano {{used}} z {{limit}} kanałów - zmień plan, aby dodać więcej.",
   "channels_used_counter": "Wykorzystano {{used}} z {{limit}} kanałów · {{plan}} - wybierz dowolną z {{platforms}} platform poniżej.",
-  "team_seats_used": "Zajęte miejsca: {{used}} z {{seats}}"
+  "team_seats_used": "Zajęte miejsca: {{used}} z {{seats}}",
+  "help_read_more_guide": "Więcej w przewodniku",
+  "help_user_guide": "Przewodnik"
 }
