@@ -10,6 +10,7 @@ import { useLaunchStore } from '@gitroom/frontend/components/new-launch/store';
 import { useVariables } from '@gitroom/react/helpers/variable.context';
 import { useT } from '@gitroom/react/translation/get.transation.service.client';
 import { useToaster } from '@gitroom/react/toaster/toaster';
+import { useUser } from '@gitroom/frontend/components/layout/user.context';
 const postUrlEmitter = new EventEmitter();
 
 export const MediaSettingsLayout = () => {
@@ -324,6 +325,7 @@ export const MediaComponentInner: FC<{
   const [isEditingThumbnail, setIsEditingThumbnail] = useState(false);
   const [altText, setAltText] = useState<string>(media?.alt || '');
   const [altBusy, setAltBusy] = useState(false);
+  const user = useUser();
   const t = useT();
   const toaster = useToaster();
   const [loading, setLoading] = useState(false);
@@ -383,7 +385,9 @@ export const MediaComponentInner: FC<{
           </label>
           {/* The field has always been here with nothing to fill it, so most
               posts go out without any. One call, one sentence, editable. */}
-          {!hasExtension(media?.path, 'mp4') && media?.id && (
+          {/* AI in the plan only: without it the button ended in a refusal
+              (E2E-05-94). */}
+          {!!user?.tier?.ai && !hasExtension(media?.path, 'mp4') && media?.id && (
             <button
               type="button"
               disabled={altBusy}

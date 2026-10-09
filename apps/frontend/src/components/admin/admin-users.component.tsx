@@ -177,10 +177,10 @@ const CompSubscription: FC<{
     >
       <option value="">
         {showOrgName
-          ? `${t('admin_comp_subscription', 'Comp a plan')} · ${
+          ? `${t('admin_comp_plan', 'Comp a plan')} · ${
               org.organization.name
             }`
-          : t('admin_comp_subscription', 'Comp a plan')}
+          : t('admin_comp_plan', 'Comp a plan')}
       </option>
       {COMPABLE_TIERS.map((key) => (
         <option key={key} value={key}>

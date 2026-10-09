@@ -132,7 +132,7 @@ export const CommentsComponents: FC<{
       <Button onClick={goToComments}>
         {t(
           'login_register_to_add_comments',
-          'Login / Register to add comments'
+          'Log in to add comments'
         )}
       </Button>
     );

@@ -416,7 +416,7 @@ export const MediaBox: FC<{
         !(await deleteDialog(
           t(
             'are_you_sure_you_want_to_delete_the_image',
-            'Are you sure you want to delete the image?'
+            'Are you sure you want to delete this file?'
           )
         ))
       ) {
@@ -430,7 +430,7 @@ export const MediaBox: FC<{
           toaster.show(
             `${t(
               'media_delete_failed',
-              'Could not delete the image'
+              'Could not delete the file'
             )}: ${await readResponseError(response)}`,
             'warning'
           );
@@ -440,7 +440,7 @@ export const MediaBox: FC<{
       } catch (e) {
         console.error('[Postra:media] delete failed', e);
         toaster.show(
-          t('media_delete_failed', 'Could not delete the image'),
+          t('media_delete_failed', 'Could not delete the file'),
           'warning'
         );
       }
