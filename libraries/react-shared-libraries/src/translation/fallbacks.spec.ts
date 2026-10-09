@@ -35,6 +35,10 @@ const norm = (s: string) =>
     .trim();
 
 const mismatches: string[] = [];
+// E2E-05-94 (9): hundreds of texts lived only as fallbacks in the code, so
+// the catalogue was not the list of what customers read and wording reviews
+// missed them.
+const missing: string[] = [];
 let calls = 0;
 for (const file of sources) {
   const text = readFileSync(file, 'utf8');
@@ -45,6 +49,9 @@ for (const file of sources) {
     if (lineText.startsWith('//') || lineText.startsWith('*')) continue;
     if (quote === '`' && fallback.includes('${')) continue;
     calls++;
+    if (!(key in en)) {
+      missing.push(`${file.slice(root.length + 1)}:${line} ${key}`);
+    }
     if (key in en && norm(en[key]) !== norm(fallback)) {
       mismatches.push(
         `${file.slice(root.length + 1)}:${line} ${key}: code "${norm(
@@ -62,5 +69,15 @@ describe('English fallbacks', () => {
 
   it('match the English catalogue', () => {
     expect(mismatches).toEqual([]);
+  });
+
+  it('all have their key in the English catalogue', () => {
+    expect(missing).toEqual([]);
+  });
+
+  it('never call a window a "modal"', () => {
+    expect(
+      Object.entries(en).filter(([, text]) => /\bmodal\b/i.test(text))
+    ).toEqual([]);
   });
 });
