@@ -37,6 +37,45 @@ test('posting times are kept within one day', async () => {
   await a.dispose();
 });
 
+test('posting times keep their time zone and find-slot honours it (E2E-05-85)', async () => {
+  // A 09:00 slot saved in London has to stay 09:00 London after the clocks
+  // change; it used to be stored as minutes after UTC midnight.
+  const a = await signedIn('a');
+  const id = channelOf('a');
+  const list = async () =>
+    (await (await a.get('/integrations/list')).json()).integrations.find(
+      (i: { id: string }) => i.id === id
+    ).time;
+  const original = await list();
+  try {
+    const nine = { time: 540, tz: 'Europe/London' };
+    const res = await a.post(`/integrations/${id}/time`, { data: { time: [nine] } });
+    expect(res.status()).toBe(201);
+    expect(await list()).toEqual([nine]);
+
+    const slot = await a.get(`/posts/find-slot/${id}`);
+    expect(slot.status()).toBe(200);
+    const { date } = await slot.json();
+    const london = new Intl.DateTimeFormat('en-GB', {
+      timeZone: 'Europe/London',
+      hour: '2-digit',
+      minute: '2-digit',
+    }).format(new Date(`${date}Z`));
+    expect(london).toBe('09:00');
+
+    expect(
+      (
+        await a.post(`/integrations/${id}/time`, {
+          data: { time: [{ time: 540, tz: 'Mars/Olympus' }] },
+        })
+      ).status()
+    ).toBe(400);
+  } finally {
+    await a.post(`/integrations/${id}/time`, { data: { time: original } });
+    await a.dispose();
+  }
+});
+
 test('customers: a channel cannot join another organisation’s customer', async () => {
   const a = await signedIn('a');
   const b = await signedIn('b');

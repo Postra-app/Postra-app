@@ -17,9 +17,15 @@ describe('day view rows in the user time zone', () => {
 
   it('posting times stored in UTC minutes are shown at local time', () => {
     // 07:00 UTC = 09:00 in Warsaw (summer time)
-    expect(postingMinutesInZone(7 * 60, '2026-10-06', tz)).toBe(9 * 60);
+    expect(postingMinutesInZone({ time: 7 * 60 }, '2026-10-06', tz)).toBe(9 * 60);
     // and 08:00 in winter
-    expect(postingMinutesInZone(7 * 60, '2026-11-06', tz)).toBe(8 * 60);
+    expect(postingMinutesInZone({ time: 7 * 60 }, '2026-11-06', tz)).toBe(8 * 60);
+  });
+
+  it('a posting time with a zone keeps its wall-clock time after the clocks change (E2E-05-85)', () => {
+    const nine = { time: 9 * 60, tz };
+    expect(postingMinutesInZone(nine, '2026-10-06', tz)).toBe(9 * 60);
+    expect(postingMinutesInZone(nine, '2026-11-06', tz)).toBe(9 * 60);
   });
 
   it('rows after a clock change keep their wall-clock time', () => {
