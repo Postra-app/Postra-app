@@ -360,27 +360,50 @@ export const EditorWrapper: FC<{
       )}
     >
       {/* Comments written on the global tab are dropped at publish time by any
-          channel whose platform permission is missing. Name those channels here
-          — the publish workflow reports it too, but by then the post is out. */}
+          channel that can't take them. Name those channels here, split by
+          why: the publish workflow reports it too, but by then the post is out. */}
       {current === 'global' &&
         items.length > 1 &&
-        commentsUnsupported.length > 0 && (
-          <div className="mb-[12px] flex flex-col gap-[4px] rounded-[12px] border border-[#a78bfa]/40 bg-[#a78bfa]/10 px-[16px] py-[12px]">
-            <div className="text-[14px] font-[600]">
-              {t(
-                'comments_not_published_on',
-                "Comments won't be published on:"
-              )}{' '}
-              {commentsUnsupported.join(', ')}
-            </div>
-            <div className="text-[13px] text-customColor18">
-              {t(
+        (
+          [
+            [
+              'no_api',
+              t(
+                'comments_no_api_explanation',
+                "These platforms don't let apps post comments. The post itself will go out as scheduled."
+              ),
+            ],
+            [
+              'not_granted',
+              t(
                 'comments_not_published_explanation',
                 'These platforms have not granted the permission needed to post comments. The post itself will go out as scheduled.'
-              )}
+              ),
+            ],
+          ] as const
+        ).map(([reason, explanation]) => {
+          const names = commentsUnsupported
+            .filter((c) => c.reason === reason)
+            .map((c) => c.name);
+
+          return names.length > 0 ? (
+            <div
+              key={reason}
+              className="mb-[12px] flex flex-col gap-[4px] rounded-[12px] border border-[#a78bfa]/40 bg-[#a78bfa]/10 px-[16px] py-[12px]"
+            >
+              <div className="text-[14px] font-[600]">
+                {t(
+                  'comments_not_published_on',
+                  "Comments won't be published on:"
+                )}{' '}
+                {names.join(', ')}
+              </div>
+              <div className="text-[13px] text-customColor18">
+                {explanation}
+              </div>
             </div>
-          </div>
-        )}
+          ) : null;
+        })}
       {isCreateSet && current !== 'global' && (
         <>
           <div className="text-center absolute w-full h-full left-0 top-0 items-center justify-center flex z-[101] flex-col gap-[16px]">

@@ -7,6 +7,13 @@ import { createRef, RefObject } from 'react';
 import { PostComment } from '@gitroom/frontend/components/new-launch/providers/post-comment.enum';
 import { newDayjs } from '@gitroom/frontend/components/layout/set.timezone';
 
+// `no_api`: the platform has no way for apps to post a comment (TikTok).
+// `not_granted`: it has one, but this channel's token lacks the permission.
+export interface CommentsUnsupported {
+  name: string;
+  reason: 'no_api' | 'not_granted';
+}
+
 interface Values {
   id: string;
   content: string;
@@ -41,9 +48,9 @@ interface StoreState {
   tab: 0 | 1;
   current: string;
   comments: boolean | 'no-media';
-  // Names of the selected channels that cannot publish comments, so the
-  // composer can say which ones instead of silently dropping them at publish.
-  commentsUnsupported: string[];
+  // Selected channels that cannot publish comments, and why, so the composer
+  // can say which ones instead of silently dropping them at publish.
+  commentsUnsupported: CommentsUnsupported[];
   locked: boolean;
   hide: boolean;
   setLocked: (locked: boolean) => void;
@@ -140,7 +147,7 @@ interface StoreState {
   setChars: (id: string, chars: number) => void;
   chars: Record<string, number>;
   setComments: (comments: boolean | 'no-media') => void;
-  setCommentsUnsupported: (commentsUnsupported: string[]) => void;
+  setCommentsUnsupported: (commentsUnsupported: CommentsUnsupported[]) => void;
 }
 
 const initialState = {
@@ -148,7 +155,7 @@ const initialState = {
   loaded: true,
   dummy: false,
   comments: true,
-  commentsUnsupported: [] as string[],
+  commentsUnsupported: [] as CommentsUnsupported[],
   activateExitButton: true,
   date: newDayjs(),
   channelDates: {} as Record<string, dayjs.Dayjs>,
@@ -680,7 +687,7 @@ export const useLaunchStore = create<StoreState>()((set) => ({
     set((state) => ({
       comments,
     })),
-  setCommentsUnsupported: (commentsUnsupported: string[]) =>
+  setCommentsUnsupported: (commentsUnsupported: CommentsUnsupported[]) =>
     set((state) => ({
       commentsUnsupported,
     })),

@@ -1,5 +1,6 @@
 import {
   canPostComments,
+  commentSupport,
   grantedScopesOf,
 } from './comment.capability';
 
@@ -67,5 +68,38 @@ describe('canPostComments', () => {
       // and dropping the comment at publish is the failure we are fixing.
       expect(canPostComments(facebookLike, integration(null))).toBe(false);
     });
+  });
+});
+
+// The reason decides what the user is told when a comment can't go out: a
+// platform with no comment API at all (TikTok) is not a missing permission.
+describe('commentSupport', () => {
+  it('no_api when the provider cannot post comments at all', () => {
+    expect(commentSupport(provider({ comment: undefined }), integration())).toBe(
+      'no_api'
+    );
+    expect(commentSupport(null, integration())).toBe('no_api');
+  });
+
+  it('not_granted when comments are switched off or the scope is missing', () => {
+    expect(
+      commentSupport(provider({ commentsDisabled: true }), integration('["x"]'))
+    ).toBe('not_granted');
+    expect(
+      commentSupport(
+        provider({ commentScope: 'pages_manage_engagement' }),
+        integration('["pages_manage_posts"]')
+      )
+    ).toBe('not_granted');
+  });
+
+  it('yes when the provider can comment and has what it needs', () => {
+    expect(commentSupport(provider(), integration())).toBe('yes');
+    expect(
+      commentSupport(
+        provider({ commentScope: 'pages_manage_engagement' }),
+        integration('["pages_manage_engagement"]')
+      )
+    ).toBe('yes');
   });
 });

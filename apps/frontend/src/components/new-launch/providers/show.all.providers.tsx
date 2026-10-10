@@ -24,7 +24,10 @@ import WarpcastProvider from '@gitroom/frontend/components/new-launch/providers/
 import TelegramProvider from '@gitroom/frontend/components/new-launch/providers/telegram/telegram.provider';
 import NostrProvider from '@gitroom/frontend/components/new-launch/providers/nostr/nostr.provider';
 import VkProvider from '@gitroom/frontend/components/new-launch/providers/vk/vk.provider';
-import { useLaunchStore } from '@gitroom/frontend/components/new-launch/store';
+import {
+  CommentsUnsupported,
+  useLaunchStore,
+} from '@gitroom/frontend/components/new-launch/store';
 import { useShallow } from 'zustand/react/shallow';
 import React, {
   FC,
@@ -206,25 +209,26 @@ export const ShowAllProviders = forwardRef((props, ref) => {
 
   const t = useT();
 
-  // Channels in this post that can't publish comments — either the provider
+  // Channels in this post that can't publish comments, and why: the provider
   // has no first comment at all (comments: false), or this particular token
   // wasn't granted the platform scope it needs (canComment from the backend).
   const unsupported = useMemo(
     () =>
-      selectedIntegrations
-        .filter((p) => {
-          if (p.integration.canComment === false) {
-            return true;
-          }
+      selectedIntegrations.flatMap((p): CommentsUnsupported[] => {
+        const found = Providers.find(
+          (provider) => provider.identifier === p.integration.identifier
+        );
 
-          const found = Providers.find(
-            (provider) =>
-              provider.identifier === p.integration.identifier
-          );
+        if (!!found && !providerSupportsComments(found.component)) {
+          return [{ name: p.integration.name, reason: 'no_api' }];
+        }
 
-          return !!found && !providerSupportsComments(found.component);
-        })
-        .map((p) => p.integration.name),
+        if (p.integration.canComment === false) {
+          return [{ name: p.integration.name, reason: 'not_granted' }];
+        }
+
+        return [];
+      }),
     [selectedIntegrations]
   );
 
