@@ -31,7 +31,12 @@ const build = (
   const tx = {
     organization: { delete: jest.fn().mockResolvedValue({}) },
     user: { delete: jest.fn().mockResolvedValue({}) },
-    userOrganization: { count: jest.fn().mockResolvedValue(1) },
+    userOrganization: {
+      count: jest.fn().mockResolvedValue(1),
+      findMany: jest.fn().mockResolvedValue([]),
+      findFirst: jest.fn().mockResolvedValue(null),
+      update: jest.fn().mockResolvedValue({}),
+    },
     $queryRaw: jest.fn().mockResolvedValue([]),
   };
   const prisma = {
@@ -237,5 +242,34 @@ describe('deleting an account while someone joins the organisation', () => {
     expect(tx.organization.delete).not.toHaveBeenCalled();
     expect(tx.user.delete).toHaveBeenCalledWith({ where: { id: 'user-1' } });
     expect(removeFile).not.toHaveBeenCalled();
+  });
+});
+
+// E2E-05-93: an organisation that stays gets a new owner when the only one
+// leaves; the highest role, then the longest-standing active member.
+describe('the owner leaving an organisation that stays', () => {
+  it('hands it to the next member in line', async () => {
+    const { service, tx } = build([]);
+    tx.userOrganization.count.mockImplementation(async ({ where }: any) => (where.role ? 0 : 2));
+    tx.userOrganization.findMany.mockResolvedValue([{ organizationId: 'org-1' }]);
+    tx.userOrganization.findFirst.mockResolvedValue({ id: 'uo-heir' });
+
+    await service.deleteAccount('user-1');
+
+    expect(tx.organization.delete).not.toHaveBeenCalled();
+    expect(tx.userOrganization.findFirst).toHaveBeenCalledWith(
+      expect.objectContaining({ orderBy: [{ role: 'asc' }, { createdAt: 'asc' }] })
+    );
+    expect(tx.userOrganization.update).toHaveBeenCalledWith({ where: { id: 'uo-heir' }, data: { role: 'SUPERADMIN' } });
+  });
+
+  it('leaves the roles alone when another owner stays', async () => {
+    const { service, tx } = build([]);
+    tx.userOrganization.count.mockImplementation(async ({ where }: any) => (where.role ? 1 : 2));
+    tx.userOrganization.findMany.mockResolvedValue([{ organizationId: 'org-1' }]);
+
+    await service.deleteAccount('user-1');
+
+    expect(tx.userOrganization.update).not.toHaveBeenCalled();
   });
 });

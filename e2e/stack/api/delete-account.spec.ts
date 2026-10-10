@@ -106,3 +106,50 @@ test('deleting the account keeps a Facebook grant another organisation still use
     await prisma.$disconnect();
   }
 });
+
+// E2E-05-93 (K. 2026-10-10: hand the organisation on): the owner deleting
+// their account left a team nobody could manage — no owner for members or
+// billing. The longest-standing admin (or, without one, member) takes over.
+// Upstream d6f881a89: members who are switched off do not count — an
+// organisation left with only them goes with the account.
+test('the owner leaving hands the organisation to the oldest admin', async () => {
+  const prisma = database();
+  const owner = await throwawayOrg(prisma, { tier: 'PRO', totalChannels: 5, channels: 0 });
+  const userMember = await throwawayOrg(prisma, { tier: 'PRO', totalChannels: 5, channels: 0 });
+  const adminMember = await throwawayOrg(prisma, { tier: 'PRO', totalChannels: 5, channels: 0 });
+  const userOf = async (orgId: string) =>
+    (await prisma.userOrganization.findFirstOrThrow({ where: { organizationId: orgId } })).userId;
+  const asUser = await userOf(userMember.orgId);
+  const asAdmin = await userOf(adminMember.orgId);
+  await prisma.userOrganization.create({ data: { userId: asUser, organizationId: owner.orgId, role: 'USER', createdAt: new Date(Date.now() - 86_400_000) } });
+  await prisma.userOrganization.create({ data: { userId: asAdmin, organizationId: owner.orgId, role: 'ADMIN' } });
+  try {
+    expect((await owner.api.post('/user/delete')).status()).toBe(200);
+    expect(await prisma.organization.count({ where: { id: owner.orgId } })).toBe(1);
+    const roles = await prisma.userOrganization.findMany({ where: { organizationId: owner.orgId }, select: { userId: true, role: true } });
+    expect(roles.find((r) => r.userId === asAdmin)?.role).toBe('SUPERADMIN');
+    expect(roles.find((r) => r.userId === asUser)?.role).toBe('USER');
+  } finally {
+    await owner.remove();
+    await userMember.remove();
+    await adminMember.remove();
+    await prisma.$disconnect();
+  }
+});
+
+test('an organisation left with only switched-off members goes with the account', async () => {
+  const prisma = database();
+  const owner = await throwawayOrg(prisma, { tier: 'PRO', totalChannels: 5, channels: 1 });
+  const off = await throwawayOrg(prisma, { tier: 'PRO', totalChannels: 5, channels: 0 });
+  const offUser = (await prisma.userOrganization.findFirstOrThrow({ where: { organizationId: off.orgId } })).userId;
+  await prisma.userOrganization.create({ data: { userId: offUser, organizationId: owner.orgId, role: 'USER', disabled: true } });
+  try {
+    expect((await owner.api.post('/user/delete')).status()).toBe(200);
+    expect(await prisma.organization.count({ where: { id: owner.orgId } })).toBe(0);
+    expect(await prisma.user.count({ where: { id: offUser } })).toBe(1);
+  } finally {
+    await owner.remove();
+    await off.remove();
+    await prisma.$disconnect();
+  }
+});

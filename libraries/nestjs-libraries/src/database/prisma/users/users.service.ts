@@ -82,7 +82,7 @@ export class UsersService {
     const soleOrgIds: string[] = [];
     for (const { organizationId } of memberships) {
       const members = await this._prisma.userOrganization.count({
-        where: { organizationId },
+        where: activeMembers(organizationId, userId),
       });
       if (members <= 1) {
         soleOrgIds.push(organizationId);
@@ -137,11 +137,42 @@ export class UsersService {
         // for each other.
         await tx.$queryRaw`SELECT "id" FROM "Organization" WHERE "id" = ${id} FOR UPDATE`;
         const members = await tx.userOrganization.count({
-          where: { organizationId: id },
+          where: activeMembers(id, userId),
         });
         if (members > 1) continue;
         await tx.organization.delete({ where: { id } });
         deletedOrgIds.add(id);
+      }
+
+      // E2E-05-93: an organisation that stays needs an owner. The owner
+      // leaving made nobody able to manage members or billing; the highest
+      // role, then the longest-standing active member, takes over.
+      const staying = await tx.userOrganization.findMany({
+        where: { userId, role: 'SUPERADMIN' },
+        select: { organizationId: true },
+      });
+      for (const { organizationId } of staying) {
+        if (deletedOrgIds.has(organizationId)) continue;
+        const otherOwners = await tx.userOrganization.count({
+          where: {
+            organizationId,
+            role: 'SUPERADMIN',
+            disabled: false,
+            userId: { not: userId },
+          },
+        });
+        if (otherOwners) continue;
+        const heir = await tx.userOrganization.findFirst({
+          where: { organizationId, disabled: false, userId: { not: userId } },
+          orderBy: [{ role: 'asc' }, { createdAt: 'asc' }],
+          select: { id: true },
+        });
+        if (heir) {
+          await tx.userOrganization.update({
+            where: { id: heir.id },
+            data: { role: 'SUPERADMIN' },
+          });
+        }
       }
 
       await tx.user.delete({ where: { id: userId } });
@@ -414,3 +445,11 @@ const storedFilesBase = () => {
 
 const escapeRegExp = (text: string) =>
   text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+// Members who count for keeping an organisation: the person leaving, and
+// everyone else who is not switched off (upstream d6f881a89). One left with
+// only switched-off members goes with the account.
+const activeMembers = (organizationId: string, userId: string) => ({
+  organizationId,
+  OR: [{ userId }, { disabled: false }],
+});
