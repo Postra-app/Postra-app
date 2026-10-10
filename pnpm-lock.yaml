@@ -425,9 +425,6 @@ importers:
       facebook-nodejs-business-sdk:
         specifier: ^21.0.5
         version: 21.0.5
-      fast-xml-parser:
-        specifier: ^4.5.7
-        version: 4.5.7
       file-type:
         specifier: ^16.5.4
         version: 16.5.4
@@ -484,7 +481,7 @@ importers:
         version: 2.1.35
       mobx-react-lite:
         specifier: 4.1.1
-        version: 4.1.1(mobx@6.15.0)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
+        version: 4.1.1(mobx@7.0.6)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
       multer:
         specifier: ^2.4.0
         version: 2.4.0
@@ -662,9 +659,6 @@ importers:
       utf-8-validate:
         specifier: ^5.0.10
         version: 5.0.10
-      uuid:
-        specifier: ^10.0.0
-        version: 10.0.0
       webextension-polyfill:
         specifier: ^0.12.0
         version: 0.12.0
@@ -930,10 +924,10 @@ importers:
         version: 1.61.3
       mobx-react-lite:
         specifier: 4.1.1
-        version: 4.1.1(mobx@7.0.6)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
+        version: 4.1.1(mobx@6.15.0)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
       polotno:
         specifier: 3.0.0-beta.25
-        version: 3.0.0-beta.25(@types/react@19.3.0)(@types/sortablejs@1.15.9)(konva@10.7.1(canvas@3.2.3))(react-dom@19.3.0(react@19.3.0))(react@19.3.0)(typescript@5.5.4)
+        version: 3.0.0-beta.25(@types/react@19.3.0)(@types/sortablejs@1.15.9)(konva@10.7.1(canvas@3.2.3))(react-dom@19.3.0(react@19.3.0))(react@19.3.0)(typescript@5.9.3)
       wavesurfer.js:
         specifier: ^7
         version: 7.12.12
@@ -26516,6 +26510,7 @@ snapshots:
   fast-xml-parser@4.5.7:
     dependencies:
       strnum: 1.1.2
+    optional: true
 
   fastq@1.20.1:
     dependencies:
@@ -29610,6 +29605,13 @@ snapshots:
     transitivePeerDependencies:
       - typescript
 
+  mobx-state-tree@7.0.2(mobx@6.15.0)(typescript@5.9.3):
+    dependencies:
+      mobx: 6.15.0
+      ts-essentials: 9.4.2(typescript@5.9.3)
+    transitivePeerDependencies:
+      - typescript
+
   mobx@6.15.0: {}
 
   mobx@7.0.6: {}
@@ -30520,7 +30522,7 @@ snapshots:
       - react-native
       - typescript
 
-  polotno@3.0.0-beta.25(@types/react@19.3.0)(@types/sortablejs@1.15.9)(konva@10.7.1(canvas@3.2.3))(react-dom@19.3.0(react@19.3.0))(react@19.3.0)(typescript@5.5.4):
+  polotno@3.0.0-beta.25(@types/react@19.3.0)(@types/sortablejs@1.15.9)(konva@10.7.1(canvas@3.2.3))(react-dom@19.3.0(react@19.3.0))(react@19.3.0)(typescript@5.9.3):
     dependencies:
       '@blueprintjs/core': 6.10.0(@types/react@19.3.0)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
       '@blueprintjs/icons': 6.14.1(@types/react@19.3.0)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
@@ -30532,14 +30534,14 @@ snapshots:
       mensch: 0.3.4
       mobx: 6.15.0
       mobx-react-lite: 4.1.1(mobx@6.15.0)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
-      mobx-state-tree: 7.0.2(mobx@6.15.0)(typescript@5.5.4)
+      mobx-state-tree: 7.0.2(mobx@6.15.0)(typescript@5.9.3)
       nanoid: 3.3.19
       quill: 2.0.3
       rasterizehtml: 1.4.1
       react: 19.3.0
       react-dom: 19.3.0(react@19.3.0)
       react-konva: 19.3.0(@types/react@19.3.0)(konva@10.7.1(canvas@3.2.3))(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
-      react-konva-utils: 2.1.0(konva@10.7.1(canvas@3.2.3))(react-dom@19.3.0(react@19.3.0))(react-konva@19.3.0(@types/react@19.3.0)(konva@10.7.1(canvas@2.11.2))(react-dom@19.3.0(react@19.3.0))(react@19.3.0))(react@19.3.0)
+      react-konva-utils: 2.1.0(konva@10.7.1(canvas@3.2.3))(react-dom@19.3.0(react@19.3.0))(react-konva@19.3.0(@types/react@19.3.0)(konva@10.7.1(canvas@3.2.3))(react-dom@19.3.0(react@19.3.0))(react@19.3.0))(react@19.3.0)
       react-sortablejs: 6.1.4(@types/sortablejs@1.15.9)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)(sortablejs@1.15.7)
       react-window: 1.8.11(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
       sortablejs: 1.15.7
@@ -31023,12 +31025,12 @@ snapshots:
       react-konva: 19.3.0(@types/react@19.3.0)(konva@10.7.1(canvas@2.11.2))(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
       use-image: 1.1.4(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
 
-  react-konva-utils@2.1.0(konva@10.7.1(canvas@3.2.3))(react-dom@19.3.0(react@19.3.0))(react-konva@19.3.0(@types/react@19.3.0)(konva@10.7.1(canvas@2.11.2))(react-dom@19.3.0(react@19.3.0))(react@19.3.0))(react@19.3.0):
+  react-konva-utils@2.1.0(konva@10.7.1(canvas@3.2.3))(react-dom@19.3.0(react@19.3.0))(react-konva@19.3.0(@types/react@19.3.0)(konva@10.7.1(canvas@3.2.3))(react-dom@19.3.0(react@19.3.0))(react@19.3.0))(react@19.3.0):
     dependencies:
       konva: 10.7.1(canvas@3.2.3)
       react: 19.3.0
       react-dom: 19.3.0(react@19.3.0)
-      react-konva: 19.3.0(@types/react@19.3.0)(konva@10.7.1(canvas@2.11.2))(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
+      react-konva: 19.3.0(@types/react@19.3.0)(konva@10.7.1(canvas@3.2.3))(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
       use-image: 1.1.4(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
 
   react-konva@19.3.0(@types/react@19.3.0)(konva@10.7.1(canvas@2.11.2))(react-dom@19.3.0(react@19.3.0))(react@19.3.0):
@@ -32157,7 +32159,8 @@ snapshots:
 
   striptags@3.2.0: {}
 
-  strnum@1.1.2: {}
+  strnum@1.1.2:
+    optional: true
 
   strtok3@10.3.5:
     dependencies:
@@ -32586,6 +32589,10 @@ snapshots:
   ts-essentials@9.4.2(typescript@5.5.4):
     optionalDependencies:
       typescript: 5.5.4
+
+  ts-essentials@9.4.2(typescript@5.9.3):
+    optionalDependencies:
+      typescript: 5.9.3
 
   ts-interface-checker@0.1.13: {}
 
