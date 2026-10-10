@@ -9,6 +9,7 @@ export type AuditAction =
   | 'auth.password.reset'
   | 'admin.impersonate'
   | 'admin.impersonate.stop'
+  | 'admin.impersonated.request'
   | 'admin.grant-lifetime'
   | 'admin.reset-credits'
   | 'billing.finish-trial'

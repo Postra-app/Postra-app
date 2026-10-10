@@ -211,3 +211,33 @@ describe('an ordinary session', () => {
     expect(seen[0].impersonatedUserId).toBeUndefined();
   });
 });
+
+// K25 (10-10): only the actions on the audit list were recorded, so an admin
+// impersonating a customer could delete a post or a webhook and the trail
+// showed just the start and the stop of the impersonation.
+describe('changes made while impersonating', () => {
+  const run = async (method: string, path: string) => {
+    const { organizationService } = build(impersonatedTarget);
+    const record = jest.fn();
+    const middleware = new AuthMiddleware(
+      organizationService as any,
+      { getUserById: jest.fn().mockResolvedValue({ ...admin }), touchLastOnline: jest.fn() } as any,
+      { record } as any
+    );
+    const req: any = { ...request(path), method };
+    await middleware.use(req, response() as any, jest.fn());
+    return record;
+  };
+
+  it('are recorded with the method and path', async () => {
+    const record = await run('DELETE', '/posts/group-1');
+    expect(record).toHaveBeenCalledWith({
+      action: 'admin.impersonated.request',
+      metadata: { method: 'DELETE', path: '/posts/group-1' },
+    });
+  });
+
+  it('reads are not', async () => {
+    expect(await run('GET', '/posts')).not.toHaveBeenCalled();
+  });
+});
