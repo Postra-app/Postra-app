@@ -105,6 +105,10 @@ export class MediaService {
     return this._mediaRepository.getMediaById(id);
   }
 
+  deletedFromLibrary(org: string, ids: string[], paths: string[]) {
+    return this._mediaRepository.deletedFromLibrary(org, ids, paths);
+  }
+
   getMediaByIdOrg(org: string, id: string) {
     return this._mediaRepository.getMediaByIdOrg(org, id);
   }

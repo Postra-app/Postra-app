@@ -1096,6 +1096,28 @@ export class PostsRepository {
     });
   }
 
+  /** The pictures these posts already have, as ids and paths. */
+  async imagesOf(org: string, ids: string[]) {
+    const rows = ids.length
+      ? await this._post.model.post.findMany({
+          where: { id: { in: ids }, organizationId: org },
+          select: { image: true },
+        })
+      : [];
+    const images = rows.flatMap((row) => {
+      try {
+        const list = JSON.parse(row.image || '[]');
+        return Array.isArray(list) ? list : [];
+      } catch {
+        return [];
+      }
+    }) as { id?: string; path?: string }[];
+    return {
+      ids: new Set(images.map((i) => i?.id).filter(Boolean) as string[]),
+      paths: new Set(images.map((i) => i?.path).filter(Boolean) as string[]),
+    };
+  }
+
   getPostById(id: string, org?: string) {
     return this._post.model.post.findUnique({
       where: {
