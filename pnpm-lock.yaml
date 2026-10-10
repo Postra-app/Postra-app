@@ -477,8 +477,8 @@ importers:
         specifier: ^3.0.0
         version: 3.0.0
       mime-types:
-        specifier: ^2.1.35
-        version: 2.1.35
+        specifier: 3.0.2
+        version: 3.0.2
       mobx-react-lite:
         specifier: 4.1.1
         version: 4.1.1(mobx@7.0.6)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
