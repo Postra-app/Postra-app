@@ -197,6 +197,31 @@ describe('deleting an account removes every file the organisation stored', () =>
   });
 });
 
+// E2E-09-66: the platform grants behind the deleted channels are revoked,
+// read before the rows go and revoked only for organisations really deleted.
+describe('deleting an account revokes platform grants', () => {
+  it('collects before the delete and revokes after, for deleted organisations only', async () => {
+    const { prisma, tx } = build([]);
+    const grants = { collect: jest.fn().mockResolvedValue([{ providerIdentifier: 'facebook' }]), revokeUnused: jest.fn() };
+    const service = new UsersService({} as any, {} as any, prisma as any, grants as any);
+
+    await service.deleteAccount('user-1');
+
+    expect(grants.collect).toHaveBeenCalledWith(['org-1']);
+    expect(grants.collect.mock.invocationCallOrder[0]).toBeLessThan(prisma.$transaction.mock.invocationCallOrder[0]);
+    expect(grants.revokeUnused).toHaveBeenCalledWith([{ providerIdentifier: 'facebook' }]);
+    expect(tx.user.delete.mock.invocationCallOrder[0]).toBeLessThan(grants.revokeUnused.mock.invocationCallOrder[0]);
+  });
+
+  it('revokes nothing for an organisation that gained a member meanwhile', async () => {
+    const { prisma, tx } = build([]);
+    tx.userOrganization.count.mockResolvedValue(2);
+    const grants = { collect: jest.fn().mockResolvedValue([{ providerIdentifier: 'facebook' }]), revokeUnused: jest.fn() };
+    await new UsersService({} as any, {} as any, prisma as any, grants as any).deleteAccount('user-1');
+    expect(grants.revokeUnused).toHaveBeenCalledWith([]);
+  });
+});
+
 // AUTH-1: the members were counted before the transaction. Someone accepting
 // an invitation in between lost their membership, posts and channels with the
 // org.

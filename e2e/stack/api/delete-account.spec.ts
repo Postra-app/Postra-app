@@ -1,4 +1,6 @@
 import { expect, test } from '@playwright/test';
+import { readFileSync } from 'fs';
+import { join } from 'path';
 import { anonymous, database, throwawayOrg } from '../helpers';
 
 // Settings → Global → Delete account (GDPR erasure, Meta data deletion): the
@@ -62,6 +64,45 @@ test('an organisation shared with another member survives, without the deleted u
   } finally {
     await keeper.remove();
     await leaver.remove();
+    await prisma.$disconnect();
+  }
+});
+
+// E2E-09-66: a platform grant is the person's whole login. While another
+// organisation still uses the same Facebook login, deleting this account
+// must keep the grant (and must not call Facebook at all).
+test('deleting the account keeps a Facebook grant another organisation still uses', async () => {
+  const prisma = database();
+  const leaver = await throwawayOrg(prisma, { tier: 'PRO', totalChannels: 5, channels: 0 });
+  const keeper = await throwawayOrg(prisma, { tier: 'PRO', totalChannels: 5, channels: 0 });
+  const login = `fb-user-${Date.now()}`;
+  for (const [org, page] of [[leaver.orgId, 'a'], [keeper.orgId, 'b']]) {
+    await prisma.integration.create({
+      data: {
+        internalId: `${login}-page-${page}`,
+        rootInternalId: login,
+        organizationId: org,
+        name: `Page ${page}`,
+        providerIdentifier: 'facebook',
+        type: 'social',
+        token: 'page-token',
+        refreshToken: 'user-token',
+      },
+    });
+  }
+  const log = join(__dirname, '..', '.logs', 'backend.log');
+  const before = readFileSync(log, 'utf8').length;
+  try {
+    expect((await leaver.api.post('/user/delete')).status()).toBe(200);
+    await expect
+      .poll(() => readFileSync(log, 'utf8').slice(before), { timeout: 10_000 })
+      .toContain('[revoke] meta: kept, the account is still connected elsewhere');
+    expect(
+      await prisma.integration.count({ where: { rootInternalId: login, deletedAt: null } })
+    ).toBe(1);
+  } finally {
+    await leaver.remove();
+    await keeper.remove();
     await prisma.$disconnect();
   }
 });

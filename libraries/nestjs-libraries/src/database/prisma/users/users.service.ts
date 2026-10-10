@@ -6,14 +6,19 @@ import { EmailNotificationsDto } from '@gitroom/nestjs-libraries/dtos/users/emai
 import { OrganizationRepository } from '@gitroom/nestjs-libraries/database/prisma/organizations/organization.repository';
 import { PrismaService } from '@gitroom/nestjs-libraries/database/prisma/prisma.service';
 import { UploadFactory } from '@gitroom/nestjs-libraries/upload/upload.factory';
-import { Logger } from '@nestjs/common';
+import { Logger, Optional } from '@nestjs/common';
+import {
+  ProviderGrant,
+  ProviderGrantsService,
+} from '@gitroom/nestjs-libraries/integrations/provider-grants.service';
 
 @Injectable()
 export class UsersService {
   constructor(
     private _usersRepository: UsersRepository,
     private _organizationRepository: OrganizationRepository,
-    private _prisma: PrismaService
+    private _prisma: PrismaService,
+    @Optional() private _grants?: ProviderGrantsService
   ) {}
 
   touchLastOnline(id: string) {
@@ -114,8 +119,12 @@ export class UsersService {
         })
       : [];
     const otherFiles = new Map<string, string[]>();
+    // The platform grants behind their channels (E2E-09-66), with the tokens
+    // that can still revoke them.
+    const grants = new Map<string, ProviderGrant[]>();
     for (const id of soleOrgIds) {
       otherFiles.set(id, await this.collectOtherStoredFiles(id));
+      grants.set(id, (await this._grants?.collect([id])) ?? []);
     }
 
     const deletedOrgIds = new Set<string>();
@@ -141,6 +150,9 @@ export class UsersService {
     await this.removeStoredFiles(
       media.filter((m) => deletedOrgIds.has(m.organizationId)),
       [...deletedOrgIds].flatMap((id) => otherFiles.get(id) ?? [])
+    );
+    await this._grants?.revokeUnused(
+      [...deletedOrgIds].flatMap((id) => grants.get(id) ?? [])
     );
 
     return { deleted: true };
@@ -282,10 +294,12 @@ export class UsersService {
       select: { path: true, thumbnail: true },
     });
     const otherFiles = await this.collectOtherStoredFiles(organizationId);
+    const grants = (await this._grants?.collect([organizationId])) ?? [];
 
     await this._prisma.organization.delete({ where: { id: organizationId } });
 
     await this.removeStoredFiles(media, otherFiles);
+    await this._grants?.revokeUnused(grants);
 
     return { mediaRemoved: media.length };
   }
