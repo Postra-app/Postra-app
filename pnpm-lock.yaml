@@ -305,18 +305,12 @@ importers:
       '@types/parse5':
         specifier: v6.0.3
         version: 6.0.3
-      '@types/react-dropzone':
-        specifier: ^4.2.2
-        version: 4.2.2
       '@types/remove-markdown':
         specifier: ^0.3.4
         version: 0.3.4
       '@types/sha256':
         specifier: ^0.2.2
         version: 0.2.2
-      '@types/striptags':
-        specifier: ^0.0.5
-        version: 0.0.5
       '@types/yup':
         specifier: ^0.32.0
         version: 0.32.0
@@ -7613,9 +7607,6 @@ packages:
     peerDependencies:
       '@types/react': 19.3.0
 
-  '@types/react-dropzone@4.2.2':
-    resolution: {integrity: sha512-okO6HY+w7V0uHoy6JpLY6BwY/s/oObtXZmUQdX0ycjPeLhK8Af/xf79CFkLA1fM6oVp16n1d962ejdkEXk375Q==}
-
   '@types/react-reconciler@0.28.9':
     resolution: {integrity: sha512-HHM3nxyUZ3zAylX8ZEyrDNd2XZOnQ0D5XfunJF5FLQnZbHHYq4UWvW1QfelQNXv1ICNkwYhfxjwfnqivYB6bFg==}
     peerDependencies:
@@ -7672,9 +7663,6 @@ packages:
 
   '@types/stack-utils@2.0.3':
     resolution: {integrity: sha512-9aEbYZ3TbYMznPdcdr3SmIrLXwC/AKZXQeCf9Pgao5CKb8CyHuEX5jzWPTkvregvhRJHcpRO6BFoGW9ycaOkYw==}
-
-  '@types/striptags@0.0.5':
-    resolution: {integrity: sha512-mBUyVLvQJcRlqbCsO6ma/YblmFGSo8Jo8T0+ZzBate9Y8gTtLHemeiebzAFSBfF97EsycYQnXHCDkNeduiKPyA==}
 
   '@types/tough-cookie@4.0.5':
     resolution: {integrity: sha512-/Ad8+nIOV7Rl++6f1BdKxFSMgmoqEoYbHRpPcx3JEfv8VRsQe9Z4mCXeJBzxs7mbHY/XOZZuXlRNfhpVPbs6ZA==}
@@ -23270,10 +23258,6 @@ snapshots:
     dependencies:
       '@types/react': 19.3.0
 
-  '@types/react-dropzone@4.2.2':
-    dependencies:
-      '@types/react': 19.3.0
-
   '@types/react-reconciler@0.28.9(@types/react@19.3.0)':
     dependencies:
       '@types/react': 19.3.0
@@ -23331,8 +23315,6 @@ snapshots:
   '@types/sortablejs@1.15.9': {}
 
   '@types/stack-utils@2.0.3': {}
-
-  '@types/striptags@0.0.5': {}
 
   '@types/tough-cookie@4.0.5': {}
 
