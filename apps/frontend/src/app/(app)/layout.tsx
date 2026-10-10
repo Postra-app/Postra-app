@@ -93,7 +93,10 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
           cloudflareUrl={process.env.CLOUDFLARE_BUCKET_URL || ''}
           mainUrl={process.env.MAIN_URL || ''}
           mcpUrl={process.env.MCP_URL}
-          dub={!!process.env.STRIPE_PUBLISHABLE_KEY}
+          // Dub's partner analytics loads a script from dubcdn.com on every
+          // page, so like every upstream tracker it stays off until it is
+          // switched on with a Dub account and consent behind it.
+          dub={process.env.DUB_ANALYTICS === 'true'}
           facebookPixel={process.env.NEXT_PUBLIC_FACEBOOK_PIXEL!}
           telegramBotName={process.env.TELEGRAM_BOT_NAME!}
           isSecured={!process.env.NOT_SECURED}
