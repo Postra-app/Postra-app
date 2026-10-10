@@ -1,4 +1,6 @@
 import { APIRequestContext, expect, test } from '@playwright/test';
+import { readFileSync } from 'fs';
+import { join } from 'path';
 import { database, throwawayOrg } from '../helpers';
 
 // An AI image end to end, on the fake OpenAI (its /v1/images answers like
@@ -56,6 +58,10 @@ test('a prompt the safety filter refuses: 422 with the reason, and the credit is
     expect(
       await prisma.aiUsage.count({ where: { organizationId: pro.orgId, unit: 'images' } })
     ).toBe(0);
+    // 2026-10-10 on prod: the refusal left no trace in the backend log, so
+    // nobody could say why the first try failed and the second did not.
+    const log = readFileSync(join(__dirname, '..', '.logs', 'backend.log'), 'utf8');
+    expect(log).toContain('[ai-image] refused by the safety filter (moderation_blocked)');
   } finally {
     await pro.remove();
   }
@@ -87,5 +93,21 @@ test('an organisation without a plan gets 402 from every AI route, and OpenAI he
     expect((await seen.json()).count).toBe(0);
   } finally {
     await free.remove();
+  }
+});
+
+// 2026-10-10 on prod: the same prompt was refused once and drawn the next
+// time. gpt-image's default moderation ("auto") turns away ordinary marketing
+// prompts at random; "low" is OpenAI's documented, policy-compliant setting
+// for fewer false refusals.
+test('images are asked for with low moderation', async () => {
+  const pro = await throwawayOrg(prisma, { tier: 'PRO', totalChannels: 6, channels: 0 });
+  try {
+    const res = await pro.api.post('/media/generate-image', { data: { prompt: `a cup of coffee ${Date.now()}` } });
+    expect(res.status()).toBe(201);
+    const seen = (await (await fetch('http://localhost:58090/__requests')).json()) as { path: string; moderation?: string }[];
+    expect(seen.filter((r) => r.path === '/v1/images/generations').at(-1)?.moderation).toBe('low');
+  } finally {
+    await pro.remove();
   }
 });
