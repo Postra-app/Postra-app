@@ -65,8 +65,8 @@ export const SettingsPopup: FC<{
     form.setValue('picture', personal.picture);
   }, []);
   const openMedia = useCallback(() => {
-    showMediaBox((values) => {
-      form.setValue('picture', values);
+    showMediaBox(([media]) => {
+      form.setValue('picture', media);
     });
   }, []);
   const remove = useCallback(() => {

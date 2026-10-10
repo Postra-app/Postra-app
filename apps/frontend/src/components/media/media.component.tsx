@@ -205,8 +205,10 @@ export const ShowMediaBoxModal: FC = () => {
     </div>
   );
 };
+// The library hands back the list of chosen files (MediaBox.addMedia), not one
+// file: callers read the first.
 export const showMediaBox = (
-  callback: (params: { id: string; path: string }) => void
+  callback: (params: { id: string; path: string }[]) => void
 ) => {
   showModalEmitter.emit('show-modal', callback);
 };
@@ -235,7 +237,7 @@ export const MediaBox: FC<{
   standalone?: boolean;
   type?: 'image' | 'video';
   closeModal: () => void;
-}> = ({ type, standalone, setMedia }) => {
+}> = ({ type, standalone, setMedia, closeModal }) => {
   const router = useRouter();
   const [page, setPage] = useState(0);
   const [search, setSearch] = useState('');
@@ -309,8 +311,12 @@ export const MediaBox: FC<{
       return;
     }
     setMedia(selected);
-    modals.closeCurrent();
-  }, [selected]);
+    // closeModal, not modals.closeCurrent(): the library opened by
+    // showMediaBox (profile picture, bot picture) is not in the modal stack
+    // and stayed open after a choice (Codex review 10-10). For the modal
+    // callers it is the same close.
+    closeModal();
+  }, [selected, closeModal]);
 
   const addToUpload = useCallback(
     async (e: ChangeEvent<HTMLInputElement>) => {
@@ -695,7 +701,7 @@ export const MediaBox: FC<{
         {!standalone && (
           <div className="flex justify-end mt-[32px] gap-[8px]">
             <button
-              onClick={() => modals.closeCurrent()}
+              onClick={() => closeModal()}
               className="cursor-pointer h-[52px] px-[20px] items-center justify-center border border-newTextColor/10 flex rounded-[10px]"
             >
               {t('cancel', 'Cancel')}

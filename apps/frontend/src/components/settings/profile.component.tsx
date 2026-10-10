@@ -36,7 +36,10 @@ const ProfileComponent = () => {
   }, [data]);
 
   const choosePicture = useCallback(() => {
-    showMediaBox((media) => setPicture({ id: media.id, path: media.path }));
+    // The library hands back a list (Codex review 10-10).
+    showMediaBox(([media]) => {
+      if (media?.id) setPicture({ id: media.id, path: media.path });
+    });
   }, []);
 
   const save = useCallback(async () => {
@@ -91,7 +94,15 @@ const ProfileComponent = () => {
         <label className="text-[12px] text-newTextColor/55" htmlFor="profile-name">
           {t('label_full_name', 'Full Name')}
         </label>
-        <input id="profile-name" type="text" value={name} onChange={(e) => setName(e.target.value)} className={input} />
+        <input
+          id="profile-name"
+          type="text"
+          value={name}
+          // Typed text was overwritten when the saved profile arrived late.
+          disabled={!data}
+          onChange={(e) => setName(e.target.value)}
+          className={input}
+        />
       </div>
       <div className="flex flex-col gap-[6px] max-w-[560px]">
         <label className="text-[12px] text-newTextColor/55" htmlFor="profile-bio">
@@ -101,12 +112,13 @@ const ProfileComponent = () => {
           id="profile-bio"
           rows={3}
           value={bio}
+          disabled={!data}
           onChange={(e) => setBio(e.target.value)}
           className={input.replace('h-[38px]', 'py-[8px]')}
         />
       </div>
       <div>
-        <Button type="button" loading={saving} disabled={name.trim().length < 3} onClick={save}>
+        <Button type="button" loading={saving} disabled={!data || name.trim().length < 3} onClick={save}>
           {t('save', 'Save')}
         </Button>
       </div>
