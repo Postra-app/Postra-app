@@ -204,6 +204,7 @@ createServer(async (req, res) => {
       id,
       status: fields.status ?? '',
       inReplyTo: fields.in_reply_to_id ?? null,
+      visibility: fields.visibility ?? null,
       authorization: req.headers.authorization ?? null,
     });
     const hold = holdNextMs;

@@ -93,7 +93,7 @@ export const CHANNEL_GUIDES: ChannelGuide[] = [
       "Account on a different instance and can't connect? Email us and we'll help.",
     ],
     composer: [
-      'No extra settings tab.',
+      'Settings: who can see the post - Public (default), Unlisted or Followers only. Replies follow the same choice.',
       'Character limit: 500. For longer content click "Add post" to build a thread - each follow-up post can have its own Delay (1 min - 2 h or a custom gap).',
     ],
   },
