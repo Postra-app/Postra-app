@@ -480,8 +480,8 @@ importers:
         specifier: ^2.4.0
         version: 2.4.0
       music-metadata:
-        specifier: ^11.16.0
-        version: 11.16.0
+        specifier: ^11.16.1
+        version: 11.16.1
       nestjs-command:
         specifier: ^3.1.5
         version: 3.1.5(@nestjs/common@11.2.7(class-transformer@0.5.1)(class-validator@0.15.1)(reflect-metadata@0.2.2)(rxjs@7.8.2))(@nestjs/core@11.2.7)(yargs@17.7.3)
@@ -504,8 +504,8 @@ importers:
         specifier: ^0.67.0
         version: 0.67.0(request@2.88.2)
       nodemailer:
-        specifier: ^10.0.15
-        version: 10.0.15
+        specifier: ^10.0.16
+        version: 10.0.16
       nostr-tools:
         specifier: ^2.25.2
         version: 2.25.2(typescript@5.5.4)
@@ -12600,8 +12600,8 @@ packages:
   multipipe@4.0.0:
     resolution: {integrity: sha512-jzcEAzFXoWwWwUbvHCNPwBlTz3WCWe/jPcXSmTfbo/VjRwRTfvLZ/bdvtiTdqCe8d4otCSsPCbhGYcX+eggpKQ==}
 
-  music-metadata@11.16.0:
-    resolution: {integrity: sha512-D5zZHjQUbfR+JhHjnwdbgeB4qj7zVJtisCB1I0GAI5sjSPGqPLoY14WMIzMeR8iA+4nSFswVLpO4crksZUybBg==}
+  music-metadata@11.16.1:
+    resolution: {integrity: sha512-uR/mHK6eyfl8h3jVCobF5b38Mfg1IDJMiBxIVbmm5F+G1OXEFcUpQHveO84tJBAqvY93GCRY2R4kDyx7s06Rug==}
     engines: {node: '>=18'}
 
   mustache@4.2.0:
@@ -12825,8 +12825,8 @@ packages:
     resolution: {integrity: sha512-gO7o/dPcdFSUuFuPiAYBxV7bcN+vQL3pfaHN8P4z8fPtFstN05xVmhMFOth57DANGDKBpzW3rMRo7debOlUI1w==}
     engines: {node: '>=0.12'}
 
-  nodemailer@10.0.15:
-    resolution: {integrity: sha512-EUqp5PhtcsYXs9Fq/lS7s/8zlTrnBqmzZWzFFROrNikMiz+om/YRKMwqN907t+0A1KKyT8jd39CBUbFZmaZmcA==}
+  nodemailer@10.0.16:
+    resolution: {integrity: sha512-VL9xKErxN+el77o8eBOuYKUPMyEx7F9hfnDCuiUKJRp9v3wnWMOudYgP/SWbwSHy8rUL4cylobuXtki1LpQS7A==}
     engines: {node: '>=20.0.0'}
 
   nodemon@3.1.14:
@@ -29584,7 +29584,7 @@ snapshots:
       duplexer2: 0.1.4
       object-assign: 4.1.1
 
-  music-metadata@11.16.0:
+  music-metadata@11.16.1:
     dependencies:
       '@borewit/text-codec': 0.2.2
       '@tokenizer/token': 0.3.0
@@ -29796,7 +29796,7 @@ snapshots:
       - request
       - supports-color
 
-  nodemailer@10.0.15: {}
+  nodemailer@10.0.16: {}
 
   nodemon@3.1.14:
     dependencies:
