@@ -7,6 +7,7 @@ import {
   sleep,
   defineSignal,
   setHandler,
+  patched,
 } from '@temporalio/workflow';
 import dayjs from 'dayjs';
 import { Integration } from '@prisma/client';
@@ -528,13 +529,23 @@ export async function postWorkflowV109({
     'delay'
   );
 
+  // Every delay counts from here (just after the publish). Sleeping each one
+  // in full added them up: a plug checking every 6 h ran at 6, 18 and 36 h
+  // instead of 6, 12 and 18 (APP-11). Behind a patch so workflows already
+  // asleep in this loop replay as they were recorded.
+  const fromPublish = patched('plug-delays-from-publish');
+  const listStart = Date.now();
+
   // process all the plugs in order, we are using while because in some cases we need to remove items from the list
   while (list.length > 0) {
     // get the next to process
     const todo = list.shift();
 
     // wait for the delay
-    await sleep(Math.max(0, Number(todo.delay ?? 0)));
+    const delay = Number(todo.delay ?? 0);
+    await sleep(
+      Math.max(0, fromPublish ? delay - (Date.now() - listStart) : delay)
+    );
 
     // process internal plug
     if (todo.type === 'internal-plug') {

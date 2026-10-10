@@ -20,6 +20,7 @@ jest.mock('@temporalio/workflow', () => {
       return Promise.resolve();
     },
     startChild: jest.fn(),
+    patched: () => true,
   };
 });
 
@@ -223,5 +224,42 @@ describe('postWorkflowV109 — after the platform has the post', () => {
     expect(activities.inAppNotification).toHaveBeenCalled();
     expect(activities.postComment).toHaveBeenCalledTimes(1);
     expect(activities.changeState).not.toHaveBeenCalledWith('p1', 'ERROR', expect.anything(), expect.anything());
+  });
+});
+
+describe('postWorkflowV109 — plug checks', () => {
+  // APP-11 (Codex audit 10-05): every delay is counted from the publish, but
+  // each sleep was the full delay again, so a plug checking every 6 h ran at
+  // 6, 18 and 36 h instead of 6, 12 and 18 h, and a repeating post with a
+  // plug slipped by up to a day and a half each cycle.
+  it('checks a plug at its times after the post, not at their sum', async () => {
+    const now = new Date('2026-10-05T12:00:00.000Z').getTime();
+    jest.useFakeTimers({ now, doNotFake: ['nextTick', 'setImmediate', 'queueMicrotask'] });
+    const temporal = jest.requireMock('@temporalio/workflow');
+    const realSleep = temporal.sleep;
+    const at: number[] = [];
+    temporal.sleep = (d: unknown) => {
+      if (typeof d === 'number') jest.setSystemTime(Date.now() + d);
+      at.push(Date.now());
+      return Promise.resolve();
+    };
+    try {
+      const hour = 3_600_000;
+      activities.getPost.mockResolvedValue({ ...post, publishDate: new Date(now).toISOString() });
+      activities.getPostsList.mockResolvedValue([post]);
+      activities.postSocial = jest.fn().mockResolvedValue(published);
+      activities.globalPlugs.mockResolvedValue([
+        { type: 'global', delay: 6 * hour, totalRuns: 3, plugId: 'pl1', integration: 'i1' },
+      ]);
+      activities.processPlug = jest.fn().mockResolvedValue(false);
+
+      await run();
+
+      const afterPost = at.slice(-3).map((t) => Math.round((t - now) / hour));
+      expect(afterPost).toEqual([6, 12, 18]);
+    } finally {
+      temporal.sleep = realSleep;
+      jest.useRealTimers();
+    }
   });
 });
