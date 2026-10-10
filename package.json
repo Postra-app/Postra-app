@@ -169,7 +169,7 @@
     "evp_bytestokey": "^1.0.3",
     "fabric": "^7.4.0",
     "facebook-nodejs-business-sdk": "^21.0.5",
-    "file-type": "^16.5.4",
+    "file-type": "22.1.1",
     "google-auth-library": "^9.15.1",
     "googleapis": "^137.1.0",
     "hot-reload-extension-vite": "^1.1.2",

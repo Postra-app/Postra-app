@@ -49,8 +49,7 @@ import { readResponseCapped } from '@gitroom/nestjs-libraries/media/fetch.media.
 // undici's own fetch — Node's global fetch can't drive the undici-package
 // dispatcher below (throws "invalid onRequestStart method"); see design-render.
 import { fetch } from 'undici';
-// eslint-disable-next-line @typescript-eslint/no-require-imports
-const { fromBuffer } = require('file-type');
+import { fromBuffer } from '@gitroom/nestjs-libraries/upload/file.type';
 
 const PUBLIC_API_ALLOWED_MIME = new Set<string>([
   'image/jpeg',

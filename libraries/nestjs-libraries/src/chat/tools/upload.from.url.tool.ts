@@ -11,8 +11,7 @@ import { Readable } from 'stream';
 // Use undici's fetch (not Node's global fetch): the `dispatcher` option only
 // interoperates with an Agent from the same undici instance.
 import { fetch } from 'undici';
-// eslint-disable-next-line @typescript-eslint/no-require-imports
-const { fromBuffer } = require('file-type');
+import { fromBuffer } from '@gitroom/nestjs-libraries/upload/file.type';
 
 // Where a file this tool cannot fetch goes instead (upstream 0992c460).
 const PRIVATE_FILES =
