@@ -1520,6 +1520,7 @@
   "ai_video": "AI Video",
   "ai_image": "AI Image",
   "ai_videos_left": "{n} video credits left",
+  "video_generation_saved": "Video created and saved to your media library.",
   "video_generation_still_running": "Your video is taking longer than usual. It will appear in your media library when it is ready.",
   "billing_plan_videos": "{{count}} AI videos a month",
   "billing_this_month": "This month",

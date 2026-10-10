@@ -7,6 +7,8 @@ import { openComposer, watchForErrors } from './ui-helpers';
 // The clip itself comes from the fake kie.ai (stack.env KIEAI_API_URL).
 
 test.use({ viewport: { width: 1280, height: 800 } });
+// Both video tests spend credits of the same organisation and read the count.
+test.describe.configure({ mode: 'serial' });
 
 test('AI Image and AI Video are labelled buttons on a laptop-width screen', async ({ page }) => {
   const problems = watchForErrors(page);
@@ -62,4 +64,39 @@ test('Billing shows the AI images and videos left this month', async ({ page }) 
   await expect(usage).toContainText(`${await left('ai_images')} of 200 AI images left`);
   await expect(usage).toContainText(`${await left('ai_videos')} of 30 AI videos left`);
   expect(problems).toEqual([]);
+});
+
+// 2026-10-10 (K. on prod): a clip took about 2 min 45 s. The browser gave up
+// after 2 min (the shared fetch timeout) and said "Could not generate the
+// video, please try again" while the clip was made, paid for and saved to the
+// library - trying again would have paid twice.
+test('a clip that takes longer than two minutes still arrives, without an error', async ({ page }) => {
+  test.setTimeout(90_000);
+  await page.clock.install();
+  await openComposer(page, 'bluesky', 'A post that wants a slow video');
+
+  let release: () => void = () => {};
+  const held = new Promise<void>((r) => (release = r));
+  let seen = false;
+  await page.route('**/api/media/generate-video', async (route) => {
+    seen = true;
+    await held;
+    const response = await route.fetch();
+    await route.fulfill({ response });
+  });
+
+  await page.getByRole('button', { name: 'AI Video', exact: true }).click();
+  await page.getByLabel('Prompt').fill(`A slow paper boat ${Date.now()}`);
+  await page.getByRole('button', { name: 'Generate', exact: true }).click();
+  await expect.poll(() => seen).toBe(true);
+
+  await page.clock.fastForward('02:10');
+  await page.waitForTimeout(500);
+  release();
+
+  await expect(page.locator('.sortable-container video, .sortable-container [src$=".mp4"]').first()).toBeAttached({
+    timeout: 30_000,
+  });
+  await expect(page.getByText('Could not generate the video', { exact: false })).toHaveCount(0);
+  await expect(page.getByText('Video created and saved to your media library.')).toBeVisible();
 });

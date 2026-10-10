@@ -15,6 +15,9 @@ import { useModals } from '@gitroom/frontend/components/layout/new-modal';
 import { createPortal } from 'react-dom';
 import { useAiError } from '@gitroom/frontend/components/ai/use-ai-error';
 
+// The server polls the video model for up to ten minutes.
+const VIDEO_WAIT_MS = 11 * 60 * 1000;
+
 export const Modal: FC<{
   close: () => void;
   type: any;
@@ -80,6 +83,12 @@ export const Modal: FC<{
           output: position,
           customParams,
         }),
+        // A clip takes one to three minutes and the shared fetch gives up
+        // after two: on 2026-10-10 the browser said "Could not generate the
+        // video" for a clip that was made, paid for and saved. Wait as long
+        // as the server does; past the load balancer's 3 minutes it answers
+        // 504, handled below.
+        signal: AbortSignal.timeout(VIDEO_WAIT_MS),
       });
 
       if (image.status === 504 || image.status === 502) {
@@ -106,8 +115,25 @@ export const Modal: FC<{
       }
       onChange(await image.json());
       mutate();
+      toaster.show(
+        t(
+          'video_generation_saved',
+          'Video created and saved to your media library.'
+        ),
+        'success'
+      );
     } catch (e) {
       console.error('[Postra:ai-video] generate failed', e);
+      if ((e as Error)?.name === 'TimeoutError') {
+        toaster.show(
+          t(
+            'video_generation_still_running',
+            'Your video is taking longer than usual. It will appear in your media library when it is ready.'
+          ),
+          'warning'
+        );
+        return;
+      }
       toaster.show(
         t(
           'video_generation_failed',
