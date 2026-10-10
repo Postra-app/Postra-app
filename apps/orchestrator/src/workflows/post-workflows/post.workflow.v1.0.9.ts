@@ -91,6 +91,7 @@ const {
   clearReleases,
   sendWebhooks,
   isCommentable,
+  commentSupport,
 } = proxyActivities<PostActivity>({
   startToCloseTimeout: '10 minute',
   retry: {
@@ -413,7 +414,7 @@ export async function postWorkflowV109({
             post.integration?.providerIdentifier
           }${
             reason ? `: ${String(reason).slice(0, 300)}` : ''
-          }. Check the channel before trying again — it may have gone out.`,
+          }. Check the channel before trying again, it may have gone out.`,
           true,
           false,
           'fail'
@@ -437,12 +438,25 @@ export async function postWorkflowV109({
   // invisible everywhere (no notification, no /admin/errors entry, nothing).
   if (skippedComments.length) {
     const channel = capitalize(post.integration.providerIdentifier);
+    const many = skippedComments.length > 1;
+
+    // A platform with no comment API at all (TikTok) is not a missing
+    // permission, and saying so sent users looking for a setting that doesn't
+    // exist. Patched: workflows already past this point replay without the
+    // extra activity.
+    const noApi =
+      patched('comment-skip-reason') &&
+      (await commentSupport(post.integration)) === 'no_api';
+
+    const reason = noApi
+      ? `${channel} doesn't let apps post comments`
+      : `${channel} has not granted this channel the permission needed to post comments`;
 
     for (const comment of skippedComments) {
       await changeState(
         comment.id,
         'ERROR',
-        `Comment not published: ${channel} has not granted this channel the permission needed to post comments.`,
+        `Comment not published: ${reason}.`,
         [comment]
       );
     }
@@ -451,9 +465,9 @@ export async function postWorkflowV109({
       post.organizationId,
       `Your ${channel} post went out without its comments`,
       `Your post was published on ${channel}, but ${
-        skippedComments.length === 1 ? 'the comment' : 'the comments'
-      } attached to it could not be — ${channel} has not granted this channel the permission needed to post comments. The text is still saved on the post, so you can add ${
-        skippedComments.length === 1 ? 'it' : 'them'
+        many ? 'the comments' : 'the comment'
+      } attached to it could not be: ${reason}. The text is still saved on the post, so you can add ${
+        many ? 'them' : 'it'
       } on ${channel} yourself.`,
       true,
       false,

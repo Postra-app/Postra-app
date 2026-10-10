@@ -26,7 +26,10 @@ import {
   AuthTokenDetails,
   PostResponse,
 } from '@gitroom/nestjs-libraries/integrations/social/social.integrations.interface';
-import { canPostComments } from '@gitroom/nestjs-libraries/integrations/social/comment.capability';
+import {
+  canPostComments,
+  commentSupport,
+} from '@gitroom/nestjs-libraries/integrations/social/comment.capability';
 import { RefreshIntegrationService } from '@gitroom/nestjs-libraries/integrations/refresh.integration.service';
 import { timer } from '@gitroom/helpers/utils/timer';
 import { IntegrationService } from '@gitroom/nestjs-libraries/database/prisma/integrations/integration.service';
@@ -244,6 +247,18 @@ export class PostActivity {
     );
 
     return canPostComments(getIntegration, integration);
+  }
+
+  // Why a channel can't take comments: no comment API on the platform at all,
+  // or a permission it hasn't granted. The user is told different things.
+  @ActivityMethod()
+  async commentSupport(integration: Integration) {
+    return commentSupport(
+      this._integrationManager.getSocialIntegration(
+        integration.providerIdentifier
+      ),
+      integration
+    );
   }
 
   @ActivityMethod()

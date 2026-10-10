@@ -263,3 +263,47 @@ describe('postWorkflowV109 — plug checks', () => {
     }
   });
 });
+
+describe('postWorkflowV109 — comments the channel cannot take', () => {
+  // 2026-10-10: a first comment on a TikTok post was reported as "TikTok has
+  // not granted this channel the permission needed to post comments", which
+  // sent the user looking for a permission. TikTok's API has no comments.
+  const tiktok = { ...integration, providerIdentifier: 'tiktok' };
+  const tiktokPost = { ...post, integration: tiktok };
+  const tiktokComment = { ...tiktokPost, id: 'c1', delay: 0 };
+
+  beforeEach(() => {
+    activities.getPost.mockResolvedValue(tiktokPost);
+    activities.getPostsList.mockResolvedValue([tiktokPost, tiktokComment]);
+    activities.postSocial = jest.fn().mockResolvedValue(published);
+  });
+
+  const commentError = () =>
+    activities.changeState.mock.calls.find((c) => c[0] === 'c1')?.[2];
+  const notificationBody = () =>
+    activities.inAppNotification.mock.calls.find((c) =>
+      String(c[1]).includes('without its comments')
+    )?.[2];
+
+  it('says the platform has no comment API, not that a permission is missing', async () => {
+    activities.commentSupport.mockResolvedValue('no_api');
+
+    await run();
+
+    expect(commentError()).toBe("Comment not published: Tiktok doesn't let apps post comments.");
+    expect(notificationBody()).toContain("Tiktok doesn't let apps post comments");
+    expect(notificationBody()).not.toContain('permission');
+    expect(notificationBody()).not.toMatch(/[—–]/);
+  });
+
+  it('keeps the permission wording when the platform has the API but not the grant', async () => {
+    activities.commentSupport.mockResolvedValue('not_granted');
+
+    await run();
+
+    expect(commentError()).toBe(
+      'Comment not published: Tiktok has not granted this channel the permission needed to post comments.'
+    );
+    expect(notificationBody()).not.toMatch(/[—–]/);
+  });
+});

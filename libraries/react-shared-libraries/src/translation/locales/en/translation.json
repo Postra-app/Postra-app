@@ -1829,5 +1829,7 @@
   "plan_change_confirm": "Change plan",
   "plan_change_scheduled": "Change to {{plan}} on {{date}}? You keep {{current}} until then.",
   "plan_change_scheduled_confirm": "Change on {{date}}",
-  "plan_pending_change": "Changes to {{plan}} on {{date}}"
+  "plan_pending_change": "Changes to {{plan}} on {{date}}",
+  "comments_no_api_explanation": "These platforms don't let apps post comments. The post itself will go out as scheduled.",
+  "preview_admin_only": "Preview, admin only"
 }

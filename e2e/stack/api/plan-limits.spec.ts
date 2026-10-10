@@ -176,3 +176,65 @@ test('a "Coming soon" platform takes no new channels; one already there can be r
     await prisma.$disconnect();
   }
 });
+
+// Preview platforms (previewProviders in integration.manager.ts): "Coming
+// soon" for customers, but a super admin can connect one into their own
+// organisation, to test it on production and to record the platform's
+// review video. The pass is bound to the platform it was minted for.
+test('a preview platform is "Coming soon" for customers and open to a super admin', async () => {
+  const prisma = database();
+  const customer = await throwawayOrg(prisma, { tier: 'STANDARD', totalChannels: 5, channels: 0 });
+  const admin = await throwawayOrg(prisma, { tier: 'STANDARD', totalChannels: 5, channels: 0 });
+  // Before admin's first request: the auth middleware caches the user.
+  const adminUser = (await prisma.userOrganization.findFirstOrThrow({ where: { organizationId: admin.orgId } })).userId;
+  await prisma.user.update({ where: { id: adminUser }, data: { isSuperAdmin: true } });
+  try {
+    for (const platform of ['pinterest', 'wordpress']) {
+      // Refused: 402 because Starter lacks it, before "Coming soon" (403).
+      const res = await customer.api.get(connect(platform));
+      expect([402, 403], `${platform}: ${await res.text()}`).toContain(res.status());
+    }
+
+    // Instagram without a Facebook Page is hidden from customers: listed for
+    // the picker only with adminOnly, which shows it to a super admin alone.
+    const catalogue = await (await customer.api.get('/integrations')).json();
+    expect(
+      catalogue.social.find((p: any) => p.identifier === 'instagram-standalone')
+    ).toMatchObject({ enabled: false, preview: true, adminOnly: true });
+    expect((await admin.api.get(connect('instagram-standalone'))).status()).toBe(200);
+
+    // Starter has neither platform: the preview pass skips the plan gate too.
+    for (const platform of ['pinterest', 'wordpress']) {
+      const res = await admin.api.get(connect(platform));
+      expect(res.status(), `${platform}: ${await res.text()}`).toBe(200);
+    }
+    // Not through an invite link, which connects someone else's account.
+    expect((await admin.api.get(`${connect('pinterest')}?invite=true`)).status()).toBe(402);
+    // Not for a platform outside the preview list.
+    expect((await admin.api.get(connect('linkedin-page'))).status()).toBe(402);
+
+    // A pass minted for Pinterest does not open WordPress at the callback.
+    const minted = await admin.api.get(connect('pinterest'));
+    const state = new URL((await minted.json()).url).searchParams.get('state');
+    const other = await admin.api.post('/integrations/social-connect/wordpress', {
+      data: { state, code: 'x', timezone: '0' },
+    });
+    expect(other.status(), await other.text()).toBe(403);
+
+    // The pass for WordPress gets past "Coming soon" and the plan; the made-up
+    // blog then fails the sign-in, which is the next check, not a 402/403.
+    const wp = await admin.api.get(connect('wordpress'));
+    const wpState = (await wp.json()).url;
+    const code = Buffer.from(
+      JSON.stringify({ domain: 'https://example.invalid', username: 'u', password: 'p' })
+    ).toString('base64');
+    const finish = await admin.api.post('/integrations/social-connect/wordpress', {
+      data: { state: wpState, code, timezone: '0' },
+    });
+    expect([402, 403], await finish.text()).not.toContain(finish.status());
+  } finally {
+    await customer.remove();
+    await admin.remove();
+    await prisma.$disconnect();
+  }
+});
