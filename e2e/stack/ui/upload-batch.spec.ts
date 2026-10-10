@@ -128,3 +128,32 @@ test('E2E-06-36: a slow upload can be cancelled, and the next one still works', 
   }
   expect(problems.filter((p) => !expectedNoise(p))).toEqual([]);
 });
+
+// K12 (10-10): the client let images up to 30 MB through, the server takes
+// 10 MB. JPEG, PNG and WebP are shrunk to 1000 px first, so 30 MB is fine for
+// them, but a GIF is sent as it is: a 12 MB GIF went all the way to the server
+// and came back as a 400.
+test('a GIF over 10 MB is refused before it is sent', async ({ page }) => {
+  test.setTimeout(60_000);
+  const sent: string[] = [];
+  await page.route('**/media/upload-server', (route) => {
+    sent.push(nameOf(route).slice(0, 40));
+    return route.continue();
+  });
+
+  await openComposer(page, 'bluesky', `[stack ui] big gif ${Date.now()}`);
+  const dataTransfer = await page.evaluateHandle(() => {
+    const bytes = new Uint8Array(12 * 1024 * 1024);
+    bytes.set([0x47, 0x49, 0x46, 0x38, 0x39, 0x61]); // GIF89a
+    const dt = new DataTransfer();
+    dt.items.add(new File([bytes], `big-${Date.now()}.gif`, { type: 'image/gif' }));
+    return dt;
+  });
+  const editor = page.locator('.ProseMirror').first();
+  await editor.dispatchEvent('dragenter', { dataTransfer });
+  await editor.dispatchEvent('drop', { dataTransfer });
+
+  await expect(page.getByText('GIFs can be up to 10 MB', { exact: false })).toBeVisible();
+  await page.waitForTimeout(1500);
+  expect(sent).toEqual([]);
+});
