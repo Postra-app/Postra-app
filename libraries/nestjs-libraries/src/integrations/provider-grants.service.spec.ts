@@ -95,4 +95,21 @@ describe('revoking platform grants after an account is deleted', () => {
     ]);
     expect(await service.collect([])).toEqual([]);
   });
+
+  // Codex review 10-10: LinkedIn Pages is its own OAuth app
+  // (LINKEDIN_PAGE_CLIENT_ID); its token was sent with the profile app's
+  // credentials and the revoke was refused.
+  it('revokes a LinkedIn Page grant with the Pages app, and a profile grant with the profile app', async () => {
+    process.env.LINKEDIN_CLIENT_ID = 'profile-app';
+    process.env.LINKEDIN_PAGE_CLIENT_ID = 'pages-app';
+    await build().service.revokeUnused([
+      grant({ providerIdentifier: 'linkedin', internalId: 'member-1', rootInternalId: null, token: 'profile-token' }),
+      grant({ providerIdentifier: 'linkedin-page', internalId: 'org-9', rootInternalId: 'member-1', token: 'page-token' }),
+    ]);
+    const bodies = fetchMock.mock.calls.map(([, init]) => String(init.body));
+    expect(bodies).toHaveLength(2);
+    expect(bodies.find((b) => b.includes('token=profile-token'))).toContain('client_id=profile-app');
+    expect(bodies.find((b) => b.includes('token=page-token'))).toContain('client_id=pages-app');
+  });
 });
+

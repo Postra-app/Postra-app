@@ -58,12 +58,23 @@ const FAMILIES: Record<string, { providers: string[]; revoke: Revoke }> = {
         { method: 'DELETE', signal: AbortSignal.timeout(TIMEOUT_MS) }
       ),
   },
+  // Two LinkedIn apps: profiles and Pages each have their own client and
+  // their own grant (Codex review 10-10).
   linkedin: {
-    providers: ['linkedin', 'linkedin-page'],
+    providers: ['linkedin'],
     revoke: ({ token }) =>
       post('https://www.linkedin.com/oauth/v2/revoke', {
         client_id: process.env.LINKEDIN_CLIENT_ID || '',
         client_secret: process.env.LINKEDIN_CLIENT_SECRET || '',
+        token,
+      }),
+  },
+  'linkedin-page': {
+    providers: ['linkedin-page'],
+    revoke: ({ token }) =>
+      post('https://www.linkedin.com/oauth/v2/revoke', {
+        client_id: process.env.LINKEDIN_PAGE_CLIENT_ID || '',
+        client_secret: process.env.LINKEDIN_PAGE_CLIENT_SECRET || '',
         token,
       }),
   },
