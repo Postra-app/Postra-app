@@ -419,10 +419,16 @@ export class YoutubeProvider extends SocialAbstract implements SocialProvider {
     requiredId: string,
     accessToken: string
   ): Promise<Omit<AuthTokenDetails, 'refreshToken' | 'expiresIn'>> {
-    const pages = await this.pages(accessToken);
-    const findPage = pages.find((p) => p.id === requiredId);
+    // Not through pages(): it swallows Google's error, so a revoked scope or
+    // a Workspace block read as a missing channel (upstream #1884).
+    const { client, youtube } = clientAndYoutube();
+    client.setCredentials({ access_token: accessToken });
+    const { data } = await youtube(client).channels.list({
+      part: ['id'],
+      mine: true,
+    });
 
-    if (!findPage) {
+    if (!(data.items || []).some((p) => p.id === requiredId)) {
       throw new Error('Channel not found');
     }
 

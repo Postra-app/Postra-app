@@ -9,7 +9,7 @@ import { USERS } from '../seed';
 const FAKE = 'http://localhost:58080';
 const CHANNEL = USERS.a.mastodon.id;
 
-type Received = { id: string; status: string; authorization: string | null };
+type Received = { id: string; status: string; authorization: string | null; visibility?: string | null };
 type StoredPost = {
   id: string;
   state: string;
@@ -328,4 +328,36 @@ test('a refused reply leaves the post published and flags only the reply', async
   expect((await received()).some((r) => r.status === main)).toBe(true);
   const notices = JSON.stringify(await (await api.get('/notifications/list')).json());
   expect(notices).toContain('one of the comments attached to it could not be posted');
+});
+
+// K32 (K. 2026-10-10): every Mastodon post went out public. The composer now
+// asks who can see it (public, unlisted, followers only); public stays the
+// default.
+test('a Mastodon post goes out with the chosen visibility', async () => {
+  const content = `[stack] unlisted ${Date.now()}`;
+  const res = await api.post('/posts', {
+    data: {
+      type: 'now',
+      shortLink: false,
+      date: new Date().toISOString(),
+      tags: [],
+      posts: [
+        {
+          integration: { id: CHANNEL },
+          value: [{ content, image: [] }],
+          settings: { __type: 'mastodon', visibility: 'unlisted' },
+        },
+      ],
+    },
+  });
+  expect(res.status(), await res.text()).toBe(201);
+  await expect
+    .poll(async () => (await received()).find((r) => r.status === content)?.visibility, { timeout: 90_000 })
+    .toBe('unlisted');
+
+  const plain = `[stack] default visibility ${Date.now()}`;
+  await publish(plain, 'now', new Date());
+  await expect
+    .poll(async () => (await received()).find((r) => r.status === plain)?.visibility, { timeout: 90_000 })
+    .toBe('public');
 });

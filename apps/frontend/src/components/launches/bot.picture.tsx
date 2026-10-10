@@ -44,8 +44,10 @@ export const BotPicture: FC<{
     [nick, picture, props.mutate]
   );
   const openMedia = useCallback(() => {
-    showMediaBox((values) => {
-      setPicture(values.path);
+    // The library hands back a list; reading .path off it left the picture
+    // empty (Codex review 10-10).
+    showMediaBox(([media]) => {
+      if (media?.path) setPicture(media.path);
     });
   }, []);
   return (

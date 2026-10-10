@@ -55,3 +55,35 @@ test('admin routes without a session are 401', async () => {
   }
   await api.dispose();
 });
+
+// K25 (10-10): a change made by an admin in a customer's name is on the audit
+// trail with the real admin, the customer, the method and the path.
+test('a change made while impersonating is audited with the real admin', async () => {
+  const { database, throwawayOrg } = await import('../helpers');
+  const prisma = database();
+  const admin = await throwawayOrg(prisma, { tier: 'PRO', totalChannels: 5, channels: 0 });
+  const target = await throwawayOrg(prisma, { tier: 'PRO', totalChannels: 5, channels: 0 });
+  try {
+    const adminUser = (await prisma.userOrganization.findFirstOrThrow({ where: { organizationId: admin.orgId } })).userId;
+    const membership = await prisma.userOrganization.findFirstOrThrow({ where: { organizationId: target.orgId } });
+    await prisma.user.update({ where: { id: adminUser }, data: { isSuperAdmin: true } });
+
+    const res = await admin.api.delete(`/posts/${UNKNOWN}`, { headers: { impersonate: membership.id } });
+    expect(res.status()).toBeLessThan(500);
+
+    await expect
+      .poll(() =>
+        prisma.auditLog.findFirst({
+          where: { action: 'admin.impersonated.request', userId: adminUser },
+          orderBy: { createdAt: 'desc' },
+        })
+      )
+      .toMatchObject({
+        metadata: { method: 'DELETE', path: `/posts/${UNKNOWN}`, impersonatedUserId: membership.userId },
+      });
+  } finally {
+    await admin.remove();
+    await target.remove();
+    await prisma.$disconnect();
+  }
+});

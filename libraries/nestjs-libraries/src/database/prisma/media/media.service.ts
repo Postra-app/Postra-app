@@ -70,8 +70,7 @@ const DESIGN_PLATFORM_BY_SOCIAL: Record<string, PostDesignPlatform> = {
 const TEMPLATE_EMBED_CACHE_TTL = 60 * 60 * 24 * 30; // 30 days
 const RECENT_POSTS_FOR_VOICE = 5;
 
-// eslint-disable-next-line @typescript-eslint/no-require-imports
-const { fromBuffer: fileTypeFromBuffer } = require('file-type');
+import { fromBuffer as fileTypeFromBuffer } from '@gitroom/nestjs-libraries/upload/file.type';
 
 // See generateVideo: how long a clip being made blocks the same request
 // (longer than the ~10 minute poll), and how long a finished one is reused.
@@ -104,6 +103,10 @@ export class MediaService {
 
   getMediaById(id: string) {
     return this._mediaRepository.getMediaById(id);
+  }
+
+  deletedFromLibrary(org: string, ids: string[], paths: string[]) {
+    return this._mediaRepository.deletedFromLibrary(org, ids, paths);
   }
 
   getMediaByIdOrg(org: string, id: string) {

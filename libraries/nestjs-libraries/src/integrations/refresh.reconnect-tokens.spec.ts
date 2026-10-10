@@ -38,7 +38,7 @@ describe('a failed token refresh', () => {
       _auditService: { record: jest.fn() },
       _integrationRepository: { disconnectChannel: jest.fn(), refreshNeeded: jest.fn() },
       _notificationService: {
-        inAppNotification: jest.fn(async (_org: string, subject: string) => notifications.push(subject)),
+        inAppNotification: jest.fn(async (_org: string, _subject: string, message: string) => notifications.push(message)),
       },
     });
     const refresh = new RefreshIntegrationService(
@@ -56,7 +56,8 @@ describe('a failed token refresh', () => {
       )
     ).resolves.toBe(false);
 
-    expect(notifications).toEqual(['Could not refresh your youtube channel (publishing)']);
+    expect(notifications).toHaveLength(1);
+    expect(notifications[0]).toContain('Could not refresh your youtube channel (publishing)');
   });
 });
 
@@ -76,7 +77,7 @@ describe('a YouTube refresh refused by a Workspace session policy', () => {
       _auditService: { record: jest.fn() },
       _integrationRepository: { disconnectChannel: jest.fn(), refreshNeeded: jest.fn() },
       _notificationService: {
-        inAppNotification: jest.fn(async (_org: string, subject: string) => notifications.push(subject)),
+        inAppNotification: jest.fn(async (_org: string, _subject: string, message: string) => notifications.push(message)),
       },
     });
     const provider = new YoutubeProvider();
@@ -92,5 +93,21 @@ describe('a YouTube refresh refused by a Workspace session policy', () => {
     expect(notifications[0]).toContain('Google Workspace');
     expect(notifications[0]).toContain('trusted app');
     expect(notifications).toHaveLength(1);
+  });
+});
+
+// Upstream #1884: the reason sat in the notification's title too, so a long
+// one (the Workspace advice above) became the e-mail subject.
+describe('the refresh notice', () => {
+  it('keeps the reason in the message, not the subject', async () => {
+    const inAppNotification = jest.fn();
+    const service = Object.create(IntegrationService.prototype) as IntegrationService;
+    Object.assign(service, { _notificationService: { inAppNotification } });
+
+    await service.informAboutRefreshError('org-1', { providerIdentifier: 'youtube' } as any, 'because of a policy');
+
+    const [, subject, message] = inAppNotification.mock.calls[0];
+    expect(subject).toBe('Could not refresh your youtube channel');
+    expect(message).toContain('because of a policy');
   });
 });

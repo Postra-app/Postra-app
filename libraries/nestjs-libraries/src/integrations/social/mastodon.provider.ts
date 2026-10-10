@@ -15,6 +15,7 @@ import { hasExtension } from '@gitroom/helpers/utils/has.extension';
 import dayjs from 'dayjs';
 import { Integration } from '@prisma/client';
 import { number, string } from 'yup';
+import { MASTODON_VISIBILITY } from '@gitroom/nestjs-libraries/dtos/posts/providers-settings/mastodon.dto';
 
 export class MastodonProvider extends SocialAbstract implements SocialProvider {
   override maxConcurrentJob = 5; // Mastodon instances typically have generous limits
@@ -195,7 +196,7 @@ export class MastodonProvider extends SocialAbstract implements SocialProvider {
 
     const form = new FormData();
     form.append('status', firstPost.message);
-    form.append('visibility', 'public');
+    form.append('visibility', visibilityOf(firstPost.settings));
     if (uploadFiles.length) {
       for (const file of uploadFiles) {
         form.append('media_ids[]', file);
@@ -241,7 +242,8 @@ export class MastodonProvider extends SocialAbstract implements SocialProvider {
 
     const form = new FormData();
     form.append('status', commentPost.message);
-    form.append('visibility', 'public');
+    // A reply is seen by the same people as the post it answers.
+    form.append('visibility', visibilityOf(commentPost.settings));
     form.append('in_reply_to_id', replyToId);
     if (uploadFiles.length) {
       for (const file of uploadFiles) {
@@ -340,3 +342,9 @@ export class MastodonProvider extends SocialAbstract implements SocialProvider {
     );
   }
 }
+
+// Who can see it (K32): the composer's choice, public when there is none.
+const visibilityOf = (settings: any) =>
+  (MASTODON_VISIBILITY as readonly string[]).includes(settings?.visibility)
+    ? settings.visibility
+    : 'public';

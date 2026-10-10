@@ -44,7 +44,7 @@ import {
   PostingTime,
   postingTimeOn,
 } from '@gitroom/helpers/utils/posting.times';
-import { v4 as uuidv4 } from 'uuid';
+import { randomUUID as uuidv4 } from 'crypto';
 import { CreateGeneratedPostsDto } from '@gitroom/nestjs-libraries/dtos/generator/create.generated.posts.dto';
 import { IntegrationService } from '@gitroom/nestjs-libraries/database/prisma/integrations/integration.service';
 import { makeId } from '@gitroom/nestjs-libraries/services/make.is';
@@ -1254,6 +1254,39 @@ export class PostsService {
     );
   }
 
+  /**
+   * E2E-06-33: the nightly sweep removes the files of media deleted from the
+   * library, so a post saved with one in the moment between the sweep's last
+   * look and the removal lost its picture. A deleted picture cannot be added
+   * to a post; one the post already had stays, so old posts remain editable.
+   */
+  private async refuseDeletedPictures(
+    orgId: string,
+    body: CreatePostDto,
+    editedIds: string[]
+  ) {
+    const images = (body.posts || []).flatMap((post) =>
+      (post.value || []).flatMap((value) => (value.image || []) as { id?: string; path?: string }[])
+    );
+    if (!images.length) {
+      return;
+    }
+    const had = await this._postRepository.imagesOf(orgId, editedIds);
+    const added = images.filter(
+      (i) => !(i?.id && had.ids.has(i.id)) && !(i?.path && had.paths.has(i.path))
+    );
+    const deleted = await this._mediaService.deletedFromLibrary(
+      orgId,
+      added.map((i) => i?.id).filter(Boolean) as string[],
+      added.map((i) => i?.path).filter(Boolean) as string[]
+    );
+    if (deleted.length) {
+      throw new BadRequestException(
+        'A picture in this post was deleted from your media library. Add it again or pick another one.'
+      );
+    }
+  }
+
   async createPost(
     orgId: string,
     body: CreatePostDto,
@@ -1276,6 +1309,8 @@ export class PostsService {
     const editedIds = (body.posts || []).flatMap((post) =>
       (post.value || []).map((value) => value.id).filter(Boolean)
     ) as string[];
+    await this.refuseDeletedPictures(orgId, body, editedIds);
+
     // Each channel against the version it was read at.
     const versions = (body.posts || [])
       .map((post) => ({

@@ -428,7 +428,9 @@ export class IntegrationService {
   ) {
     await this._notificationService.inAppNotification(
       orgId,
-      `Could not refresh your ${integration.providerIdentifier} channel ${err}`,
+      // The reason only in the message: a long one (the Google Workspace
+      // advice) made the e-mail subject a paragraph (upstream #1884).
+      `Could not refresh your ${integration.providerIdentifier} channel`,
       `Could not refresh your ${integration.providerIdentifier} channel ${err}. Please go back to the system and connect it again ${process.env.FRONTEND_URL}/launches`,
       true,
       false,

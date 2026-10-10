@@ -260,8 +260,12 @@ export const AddOrEditWebhook: FC<{
   const options = getOptions(t);
   const optionsChoose = getOptionsChoose(t);
   const postImmediately = getPostImmediately(t);
+  // A new feed starts with no channels chosen: "All integrations" as the
+  // default meant one unguarded Save posted every new article, written by
+  // AI, to every channel, a personal profile included (2026-10-10). A saved
+  // feed keeps what it has; an empty list is "all" there.
   const [allIntegrations, setAllIntegrations] = useState(
-    (JSON.parse(data?.integrations || '[]')?.length || 0) > 0
+    !data?.id || (JSON.parse(data?.integrations || '[]')?.length || 0) > 0
       ? options[1]
       : options[0]
   );

@@ -1,5 +1,8 @@
 'use client';
 
+// UserDetailDto's nested picture uses class-transformer, which needs the
+// metadata polyfill in the browser (as the other screens that validate DTOs).
+import 'reflect-metadata';
 import { useModals } from '@gitroom/frontend/components/layout/new-modal';
 import React, {
   FC,
@@ -65,8 +68,8 @@ export const SettingsPopup: FC<{
     form.setValue('picture', personal.picture);
   }, []);
   const openMedia = useCallback(() => {
-    showMediaBox((values) => {
-      form.setValue('picture', values);
+    showMediaBox(([media]) => {
+      form.setValue('picture', media);
     });
   }, []);
   const remove = useCallback(() => {

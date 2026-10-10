@@ -198,6 +198,11 @@ export class OpenaiService {
             // 'medium' is ~4x cheaper than the default ('high'/'auto')
             // with quality good enough for social graphics — keeps unit cost sane.
             quality: 'medium',
+            // The default ("auto") turned away an ordinary marketing prompt
+            // and drew it on the next try (2026-10-10). "low" is OpenAI's
+            // documented setting for fewer false refusals; its usage policies
+            // still apply.
+            moderation: 'low',
           })
         )
       ).data?.[0];
@@ -215,6 +220,11 @@ export class OpenaiService {
         e?.type === 'image_generation_user_error' ||
         (e?.status === 400 && /safety|moderation|content policy/i.test(e?.message || ''));
       if (blocked) {
+        // The reason only, never the prompt: a refusal left no trace, so
+        // nobody could tell why one try failed and the next did not.
+        Logger.warn(
+          `[ai-image] refused by the safety filter (${e?.code || e?.type || e?.status})`
+        );
         throw new HttpException(
           'That prompt was refused by the image safety filter. Rephrase it - describing a real person, a brand or anything explicit is the usual cause.',
           422

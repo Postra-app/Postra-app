@@ -1,4 +1,5 @@
-import { HttpException, Injectable, NestMiddleware } from '@nestjs/common';
+import { HttpException, Injectable, NestMiddleware, Optional } from '@nestjs/common';
+import { AuditService } from '@gitroom/nestjs-libraries/database/prisma/audit/audit.service';
 import { Request, Response, NextFunction } from 'express';
 import { AuthService } from '@gitroom/helpers/auth/auth.service';
 import { User } from '@prisma/client';
@@ -64,7 +65,8 @@ export const requestFingerprint = (req: Request) => ({
 export class AuthMiddleware implements NestMiddleware {
   constructor(
     private _organizationService: OrganizationService,
-    private _userService: UsersService
+    private _userService: UsersService,
+    @Optional() private _audit?: AuditService
   ) {}
   async use(req: Request, res: Response, next: NextFunction) {
     let actor: AuditActor = {};
@@ -214,7 +216,18 @@ export class AuthMiddleware implements NestMiddleware {
               impersonatedUserId: user.id,
               ...requestFingerprint(req),
             },
-            next
+            () => {
+              // Every change made in the customer's name is on the trail,
+              // not only the actions on the audit list: deleting a post or a
+              // webhook left just the start and the stop (K25, 10-10).
+              if (!['GET', 'HEAD', 'OPTIONS'].includes(req.method || 'GET')) {
+                this._audit?.record({
+                  action: 'admin.impersonated.request',
+                  metadata: { method: req.method, path },
+                });
+              }
+              next();
+            }
           );
           return;
         }

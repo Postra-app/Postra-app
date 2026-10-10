@@ -19,7 +19,7 @@ import isoWeek from 'dayjs/plugin/isoWeek';
 import weekOfYear from 'dayjs/plugin/weekOfYear';
 import isSameOrAfter from 'dayjs/plugin/isSameOrAfter';
 import utc from 'dayjs/plugin/utc';
-import { v4 as uuidv4 } from 'uuid';
+import { randomUUID as uuidv4 } from 'crypto';
 import { CreateTagDto } from '@gitroom/nestjs-libraries/dtos/posts/create.tag.dto';
 import {
   redactSecrets,
@@ -1094,6 +1094,28 @@ export class PostsRepository {
         lastMessageId: messageId,
       },
     });
+  }
+
+  /** The pictures these posts already have, as ids and paths. */
+  async imagesOf(org: string, ids: string[]) {
+    const rows = ids.length
+      ? await this._post.model.post.findMany({
+          where: { id: { in: ids }, organizationId: org },
+          select: { image: true },
+        })
+      : [];
+    const images = rows.flatMap((row) => {
+      try {
+        const list = JSON.parse(row.image || '[]');
+        return Array.isArray(list) ? list : [];
+      } catch {
+        return [];
+      }
+    }) as { id?: string; path?: string }[];
+    return {
+      ids: new Set(images.map((i) => i?.id).filter(Boolean) as string[]),
+      paths: new Set(images.map((i) => i?.path).filter(Boolean) as string[]),
+    };
   }
 
   getPostById(id: string, org?: string) {

@@ -1,5 +1,5 @@
 import { APIRequestContext, expect, test } from '@playwright/test';
-import { signedIn } from '../helpers';
+import { channelOf, signedIn } from '../helpers';
 
 // The media library: upload, list, read, describe, delete — and organisation
 // B can touch none of A's files.
@@ -106,4 +106,39 @@ test('save-media refuses a name that is a path', async () => {
     expect((await api.post('/media/save-media', { data: { name } })).status(), name).toBe(400);
   }
   await api.dispose();
+});
+
+// E2E-06-33 (K. 2026-10-10: refuse it): the nightly sweep removes the files of
+// media deleted from the library. A post saved with such a file in the moment
+// between the sweep's last look and the removal lost its picture. A picture
+// deleted from the library cannot be added to a post; one the post already
+// had stays editable.
+test('a picture deleted from the library cannot be added to a post, but an existing one keeps it', async () => {
+  const kept = await upload(a, `stack-kept-${Date.now()}.png`);
+  const draft = (image: Media[], id?: string) => ({
+    type: 'draft',
+    shortLink: false,
+    date: new Date(Date.now() + 2 * 86_400_000).toISOString(),
+    tags: [],
+    posts: [
+      {
+        integration: { id: channelOf('a') },
+        value: [{ ...(id ? { id } : {}), content: `[stack] deleted media ${Date.now()}`, image: image.map(({ id, path }) => ({ id, path })) }],
+        settings: { __type: 'bluesky' },
+      },
+    ],
+  });
+
+  // A post that already has the picture, then the picture leaves the library.
+  const saved = await a.post('/posts', { data: draft([kept]) });
+  expect(saved.status(), await saved.text()).toBe(201);
+  const [{ postId }] = await saved.json();
+  expect((await a.delete(`/media/${kept.id}`)).status()).toBe(200);
+
+  const fresh = await a.post('/posts', { data: draft([kept]) });
+  expect(fresh.status()).toBe(400);
+  expect((await fresh.json()).message).toContain('deleted from your media library');
+
+  const edited = await a.post('/posts', { data: draft([kept], postId) });
+  expect(edited.status(), await edited.text()).toBe(201);
 });

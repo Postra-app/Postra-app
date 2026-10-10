@@ -15,8 +15,7 @@ import { Request, Response } from 'express';
 import crypto from 'crypto';
 import path from 'path';
 import { makeId } from '@gitroom/nestjs-libraries/services/make.is';
-// eslint-disable-next-line @typescript-eslint/no-require-imports
-const { fromBuffer } = require('file-type');
+import { fromBuffer } from '@gitroom/nestjs-libraries/upload/file.type';
 
 const logger = new Logger('R2Uploader');
 

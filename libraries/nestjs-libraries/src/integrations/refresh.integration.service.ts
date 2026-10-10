@@ -168,11 +168,20 @@ export class RefreshIntegrationService {
       return refresh;
     }
 
-    const reConnect = await socialProvider.reConnect(
-      integration.rootInternalId,
-      integration.internalId,
-      refresh.accessToken
-    );
+    let reConnect;
+    try {
+      reConnect = await socialProvider.reConnect(
+        integration.rootInternalId,
+        integration.internalId,
+        refresh.accessToken
+      );
+    } catch (err: any) {
+      // The message only, never the request (upstream #1884).
+      console.error(
+        `[refresh] ${integration.providerIdentifier} ${integration.id} reconnect failed after a successful refresh: ${err?.message || err}`
+      );
+      throw err;
+    }
 
     return {
       ...refresh,

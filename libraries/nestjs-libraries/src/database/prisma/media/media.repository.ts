@@ -79,6 +79,26 @@ export class MediaRepository {
     return { scanned: candidates.length, videos };
   }
 
+  /**
+   * Which of these pictures are in the library only as deleted ones: a
+   * deleted row and no live row for the same file (E2E-06-33). By id or by
+   * path, since a post's image list may hold either.
+   */
+  async deletedFromLibrary(org: string, ids: string[], paths: string[]) {
+    if (!ids.length && !paths.length) {
+      return [];
+    }
+    const rows = await this._media.model.media.findMany({
+      where: {
+        organizationId: org,
+        OR: [{ id: { in: ids } }, { path: { in: paths } }],
+      },
+      select: { id: true, path: true, deletedAt: true },
+    });
+    const live = new Set(rows.filter((r) => !r.deletedAt).map((r) => r.path));
+    return rows.filter((r) => r.deletedAt && !live.has(r.path));
+  }
+
   getMediaById(id: string) {
     return this._media.model.media.findUnique({
       where: {

@@ -207,7 +207,7 @@ createServer((req, res) => {
     }
 
     if (req.method === 'POST' && req.url === '/v1/images/generations') {
-      requests.push({ path: req.url, model: body.model, size: body.size });
+      requests.push({ path: req.url, model: body.model, size: body.size, moderation: body.moderation });
       if (String(body.prompt || '').includes('stack-refuse')) {
         return json(res, 400, {
           error: {

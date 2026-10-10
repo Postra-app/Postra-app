@@ -12,13 +12,13 @@ export const stamp = `${new Date().toISOString().slice(0, 16)}Z ${
 // One line per weekday; the stamp at the end keeps every night's post unique
 // so the test can find it.
 export const PROMO = [
-  'Plan a whole month of posts in one afternoon. Write once, publish to every channel — postra.co.uk',
-  'Your calendar, your channels, one place. Schedule posts everywhere with Postra — postra.co.uk',
-  'Stop copy-pasting the same post into five apps. Postra publishes it everywhere for you — postra.co.uk',
-  'AI that writes in your brand voice, a calendar your whole team shares. Meet Postra — postra.co.uk',
-  'From idea to published post on every channel in minutes. Try Postra — postra.co.uk',
-  'Agencies: every client, every channel, one calendar. Postra — postra.co.uk',
-  'Write it once, Postra adapts it for each platform and posts it on time — postra.co.uk',
+  'Plan a whole month of posts in one afternoon. Write once, publish to every channel - postra.co.uk',
+  'Your calendar, your channels, one place. Schedule posts everywhere with Postra - postra.co.uk',
+  'Stop copy-pasting the same post into five apps. Postra publishes it everywhere for you - postra.co.uk',
+  'AI that writes in your brand voice, a calendar your whole team shares. Meet Postra - postra.co.uk',
+  'From idea to published post on every channel in minutes. Try Postra - postra.co.uk',
+  'Agencies: every client, every channel, one calendar. Postra - postra.co.uk',
+  'Write it once, Postra adapts it for each platform and posts it on time - postra.co.uk',
 ];
 export const promo = (n = 0) => `${PROMO[(new Date().getUTCDay() + n) % PROMO.length]} · ${stamp}`;
 

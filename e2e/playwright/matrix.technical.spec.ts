@@ -132,7 +132,7 @@ test('Telegram: short video', async ({ request }) => {
 test('Telegram: three images as one album, bold and italic', async ({ request }) => {
   test.setTimeout(300_000);
   const tag = ad(2, 'tg-album');
-  const content = `<p><strong>Postra</strong> — <em>one calendar for every channel.</em> ${tag}</p>`;
+  const content = `<p><strong>Postra</strong> - <em>one calendar for every channel.</em> ${tag}</p>`;
   await check(request, await only(request, 'telegram'), [{ content, image: media.images.slice(0, 3) }], tag);
 });
 

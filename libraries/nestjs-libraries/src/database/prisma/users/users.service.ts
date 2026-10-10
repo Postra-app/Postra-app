@@ -6,14 +6,19 @@ import { EmailNotificationsDto } from '@gitroom/nestjs-libraries/dtos/users/emai
 import { OrganizationRepository } from '@gitroom/nestjs-libraries/database/prisma/organizations/organization.repository';
 import { PrismaService } from '@gitroom/nestjs-libraries/database/prisma/prisma.service';
 import { UploadFactory } from '@gitroom/nestjs-libraries/upload/upload.factory';
-import { Logger } from '@nestjs/common';
+import { Logger, Optional } from '@nestjs/common';
+import {
+  ProviderGrant,
+  ProviderGrantsService,
+} from '@gitroom/nestjs-libraries/integrations/provider-grants.service';
 
 @Injectable()
 export class UsersService {
   constructor(
     private _usersRepository: UsersRepository,
     private _organizationRepository: OrganizationRepository,
-    private _prisma: PrismaService
+    private _prisma: PrismaService,
+    @Optional() private _grants?: ProviderGrantsService
   ) {}
 
   touchLastOnline(id: string) {
@@ -77,7 +82,7 @@ export class UsersService {
     const soleOrgIds: string[] = [];
     for (const { organizationId } of memberships) {
       const members = await this._prisma.userOrganization.count({
-        where: { organizationId },
+        where: activeMembers(organizationId, userId),
       });
       if (members <= 1) {
         soleOrgIds.push(organizationId);
@@ -113,6 +118,14 @@ export class UsersService {
           select: { path: true, thumbnail: true, organizationId: true },
         })
       : [];
+    const otherFiles = new Map<string, string[]>();
+    // The platform grants behind their channels (E2E-09-66), with the tokens
+    // that can still revoke them.
+    const grants = new Map<string, ProviderGrant[]>();
+    for (const id of soleOrgIds) {
+      otherFiles.set(id, await this.collectOtherStoredFiles(id));
+      grants.set(id, (await this._grants?.collect([id])) ?? []);
+    }
 
     const deletedOrgIds = new Set<string>();
     await this._prisma.$transaction(async (tx) => {
@@ -124,18 +137,53 @@ export class UsersService {
         // for each other.
         await tx.$queryRaw`SELECT "id" FROM "Organization" WHERE "id" = ${id} FOR UPDATE`;
         const members = await tx.userOrganization.count({
-          where: { organizationId: id },
+          where: activeMembers(id, userId),
         });
         if (members > 1) continue;
         await tx.organization.delete({ where: { id } });
         deletedOrgIds.add(id);
       }
 
+      // E2E-05-93: an organisation that stays needs an owner. The owner
+      // leaving made nobody able to manage members or billing; the highest
+      // role, then the longest-standing active member, takes over.
+      const staying = await tx.userOrganization.findMany({
+        where: { userId, role: 'SUPERADMIN' },
+        select: { organizationId: true },
+      });
+      for (const { organizationId } of staying) {
+        if (deletedOrgIds.has(organizationId)) continue;
+        const otherOwners = await tx.userOrganization.count({
+          where: {
+            organizationId,
+            role: 'SUPERADMIN',
+            disabled: false,
+            userId: { not: userId },
+          },
+        });
+        if (otherOwners) continue;
+        const heir = await tx.userOrganization.findFirst({
+          where: { organizationId, disabled: false, userId: { not: userId } },
+          orderBy: [{ role: 'asc' }, { createdAt: 'asc' }],
+          select: { id: true },
+        });
+        if (heir) {
+          await tx.userOrganization.update({
+            where: { id: heir.id },
+            data: { role: 'SUPERADMIN' },
+          });
+        }
+      }
+
       await tx.user.delete({ where: { id: userId } });
     });
 
     await this.removeStoredFiles(
-      media.filter((m) => deletedOrgIds.has(m.organizationId))
+      media.filter((m) => deletedOrgIds.has(m.organizationId)),
+      [...deletedOrgIds].flatMap((id) => otherFiles.get(id) ?? [])
+    );
+    await this._grants?.revokeUnused(
+      [...deletedOrgIds].flatMap((id) => grants.get(id) ?? [])
     );
 
     return { deleted: true };
@@ -276,10 +324,13 @@ export class UsersService {
       where: { organizationId },
       select: { path: true, thumbnail: true },
     });
+    const otherFiles = await this.collectOtherStoredFiles(organizationId);
+    const grants = (await this._grants?.collect([organizationId])) ?? [];
 
     await this._prisma.organization.delete({ where: { id: organizationId } });
 
-    await this.removeStoredFiles(media);
+    await this.removeStoredFiles(media, otherFiles);
+    await this._grants?.revokeUnused(grants);
 
     return { mediaRemoved: media.length };
   }
@@ -292,14 +343,71 @@ export class UsersService {
    * bucket no longer has is not an error — the same object can be referenced by
    * a row and its thumbnail.
    */
-  private async removeStoredFiles(
-    media: { path: string; thumbnail: string | null }[]
-  ) {
-    const paths = [
+  /**
+   * The organisation's files that have no media row: channel avatars (the
+   * profile picture is copied into our bucket when a channel connects), the
+   * brand kit logo, and post pictures that never went through the library
+   * (Auto Post, the agent). Only files in our own storage: an avatar or a
+   * post picture can just as well be Facebook's or an RSS feed's URL, and
+   * removeFile would read its path as a key in our bucket.
+   */
+  private async collectOtherStoredFiles(organizationId: string) {
+    const base = storedFilesBase();
+    if (!base) {
+      return [];
+    }
+
+    const where = { organizationId };
+    const [integrations, brandKits, posts] = await Promise.all([
+      this._prisma.integration.findMany({ where, select: { picture: true } }),
+      this._prisma.brandKit.findMany({ where, select: { logoPath: true } }),
+      this._prisma.post.findMany({
+        where: { ...where, image: { not: null } },
+        select: { image: true },
+      }),
+    ]);
+
+    const ours = new RegExp(`${escapeRegExp(base)}/[^"'\\s?#]+`, 'g');
+    return [
       ...new Set(
-        media.flatMap((m) => [m.path, m.thumbnail]).filter(Boolean) as string[]
+        [
+          ...integrations.map((i) => i.picture),
+          ...brandKits.map((b) => b.logoPath),
+          ...posts.map((p) => p.image),
+        ].flatMap((text) => (text ? text.match(ours) ?? [] : []))
       ),
     ];
+  }
+
+  /** Whether any row left after the delete still points at this file. */
+  private async isStillUsed(path: string) {
+    const counts = await Promise.all([
+      this._prisma.media.count({
+        where: { OR: [{ path }, { thumbnail: path }] },
+      }),
+      this._prisma.integration.count({ where: { picture: path } }),
+      this._prisma.brandKit.count({ where: { logoPath: path } }),
+      this._prisma.post.count({ where: { image: { contains: path } } }),
+    ]);
+    return counts.some(Boolean);
+  }
+
+  private async removeStoredFiles(
+    media: { path: string; thumbnail: string | null }[],
+    otherFiles: string[] = []
+  ) {
+    const fromMedia = new Set(
+      media.flatMap((m) => [m.path, m.thumbnail]).filter(Boolean) as string[]
+    );
+    // Media rows belong to one organisation; the rest is matched by URL, so
+    // a file somebody else still shows is left alone.
+    const others: string[] = [];
+    for (const path of otherFiles) {
+      if (!fromMedia.has(path) && !(await this.isStillUsed(path))) {
+        others.push(path);
+      }
+    }
+    const paths = [...fromMedia, ...others];
 
     if (!paths.length) {
       return;
@@ -322,3 +430,26 @@ export class UsersService {
     }
   }
 }
+
+// The public address our storage serves uploads from, which every stored
+// file's URL starts with. Local storage keeps media rows only.
+const storedFilesBase = () => {
+  const base =
+    process.env.STORAGE_PROVIDER === 's3'
+      ? process.env.NEXT_PUBLIC_UPLOAD_STATIC_DIRECTORY
+      : process.env.STORAGE_PROVIDER === 'cloudflare'
+      ? process.env.CLOUDFLARE_BUCKET_URL
+      : undefined;
+  return base?.replace(/\/+$/, '') || undefined;
+};
+
+const escapeRegExp = (text: string) =>
+  text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+// Members who count for keeping an organisation: the person leaving, and
+// everyone else who is not switched off (upstream d6f881a89). One left with
+// only switched-off members goes with the account.
+const activeMembers = (organizationId: string, userId: string) => ({
+  organizationId,
+  OR: [{ userId }, { disabled: false }],
+});

@@ -713,7 +713,12 @@ export class PostActivity {
 
       return refresh;
     } catch (err) {
-      await this._refreshIntegrationService.setBetweenSteps(integration);
+      // The token refreshed but the channel could not be reached again;
+      // the reason goes to the customer (upstream #1884).
+      await this._refreshIntegrationService.setBetweenSteps(
+        integration,
+        (err as Error)?.message || ''
+      );
       return false;
     }
   }
@@ -742,7 +747,10 @@ export class PostActivity {
 
       return refresh;
     } catch (err) {
-      await this._refreshIntegrationService.setBetweenSteps(integration, cause);
+      await this._refreshIntegrationService.setBetweenSteps(
+        integration,
+        cause || (err as Error)?.message || ''
+      );
       return false;
     }
   }
