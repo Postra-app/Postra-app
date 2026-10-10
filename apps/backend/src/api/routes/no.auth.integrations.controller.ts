@@ -323,9 +323,23 @@ export class NoAuthIntegrationsController {
       await ioRedis.del(`refresh:${body.state}`);
     }
 
+    // A super admin's preview pass, minted with the auth URL for this very
+    // platform (getIntegrationUrl), while the platform is still in preview.
+    const previewFor = await ioRedis.get(`preview:${body.state}`);
+    if (previewFor) {
+      await ioRedis.del(`preview:${body.state}`);
+    }
+    const preview =
+      previewFor === integration &&
+      this._integrationManager.isPreview(integration);
+
     // A platform still "Coming soon" takes no new channels (E2E-08-50), also
     // with a state minted for another platform or before it was turned off.
-    if (!refresh && !this._integrationManager.isOffered(integration)) {
+    if (
+      !refresh &&
+      !preview &&
+      !this._integrationManager.isOffered(integration)
+    ) {
       throw new HttpException(
         `The ${integration} channel isn't available yet.`,
         403
@@ -519,7 +533,8 @@ export class NoAuthIntegrationsController {
           const tier = subscription?.subscriptionTier || 'FREE';
           const allowed =
             pricing[tier]?.allowedProviders || pricing.FREE.allowedProviders;
-          if (!allowed.includes(integration)) {
+          // A preview platform is in no plan yet; the channel limit still holds.
+          if (!preview && !allowed.includes(integration)) {
             throw new HttpException(
               'This platform is not available on your plan',
               402

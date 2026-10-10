@@ -96,6 +96,20 @@ const enabledProviders = new Set([
   'discord',
 ]);
 
+// Platforms on their way in: still waiting for the platform's review, or for
+// our own proof on a real account. Customers see them as "Coming soon" (or
+// not at all, when also in hiddenProviders); a super admin can connect them
+// on production to test them and to record the review video. Move one to
+// enabledProviders once it is approved and proven.
+const previewProviders = new Set([
+  'pinterest',
+  'wordpress',
+  // Instagram without a Facebook Page: needs its own Meta App Review for the
+  // instagram_business_* scopes. Hidden from customers, who already have the
+  // Instagram tile; the review video is recorded as a super admin.
+  'instagram-standalone',
+]);
+
 const hiddenProviders = new Set([
   'instagram-standalone',
   // Upstream crypto channels Postra doesn't offer — keep the providers
@@ -110,13 +124,20 @@ export class IntegrationManager {
     return {
       social: await Promise.all(
         socialIntegrationList
-          .filter((p) => !hiddenProviders.has(p.identifier))
+          .filter(
+            (p) =>
+              !hiddenProviders.has(p.identifier) ||
+              previewProviders.has(p.identifier)
+          )
           .map(async (p) => ({
             name: p.name,
             identifier: p.identifier,
             toolTip: p.toolTip,
             editor: p.editor,
             enabled: enabledProviders.has(p.identifier),
+            ...(previewProviders.has(p.identifier) ? { preview: true } : {}),
+            // Listed only for a super admin's preview: no tile for customers.
+            ...(hiddenProviders.has(p.identifier) ? { adminOnly: true } : {}),
             isExternal: !!p.externalUrl,
             isWeb3: !!p.isWeb3,
             isChromeExtension: !!p.isChromeExtension,
@@ -203,6 +224,13 @@ export class IntegrationManager {
   // organisation already has stays allowed.
   isOffered(identifier: string) {
     return enabledProviders.has(identifier);
+  }
+
+  // A "Coming soon" platform a super admin may connect anyway (previewProviders).
+  isPreview(identifier: string) {
+    return (
+      previewProviders.has(identifier) && !enabledProviders.has(identifier)
+    );
   }
 
   getAllowedSocialsIntegrations() {

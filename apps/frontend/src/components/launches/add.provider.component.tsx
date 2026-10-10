@@ -418,6 +418,11 @@ export const AddProviderComponent: FC<{
     name: string;
     toolTip?: string;
     enabled?: boolean;
+    // "Coming soon" for customers, connectable by a super admin (see
+    // previewProviders in integration.manager.ts).
+    preview?: boolean;
+    // A hidden platform listed only so a super admin can preview it.
+    adminOnly?: boolean;
     isExternal: boolean;
     isWeb3: boolean;
     isChromeExtension?: boolean;
@@ -771,12 +776,14 @@ export const AddProviderComponent: FC<{
 
   const sortedSocial = useMemo(
     () =>
-      [...social].sort((a, b) => {
-        const ae = a.enabled !== false ? 1 : 0;
-        const be = b.enabled !== false ? 1 : 0;
-        return be - ae;
-      }),
-    [social]
+      social
+        .filter((item) => !item.adminOnly || !!user?.isSuperAdmin)
+        .sort((a, b) => {
+          const ae = a.enabled !== false ? 1 : 0;
+          const be = b.enabled !== false ? 1 : 0;
+          return be - ae;
+        }),
+    [social, user?.isSuperAdmin]
   );
 
   // Nine platform tiles read as nine channels on Pro (K. 10-09): say how
@@ -844,9 +851,15 @@ export const AddProviderComponent: FC<{
               );
             })
             .map((item) => {
-              const isEnabled = item.enabled !== false;
+              const previewOnly =
+                item.enabled === false &&
+                !!item.preview &&
+                !props.invite &&
+                !!user?.isSuperAdmin;
+              const isEnabled = item.enabled !== false || previewOnly;
               const lockedByTier =
                 isEnabled &&
+                !previewOnly &&
                 !!allowedProviders &&
                 !allowedProviders.includes(item.identifier);
               return (
@@ -916,6 +929,11 @@ export const AddProviderComponent: FC<{
                     {!isEnabled && !isMobile && (
                       <div className="text-[10px] text-textColor/20 mt-[2px]">
                         {t('coming_soon_short', 'Soon')}
+                      </div>
+                    )}
+                    {previewOnly && !isMobile && (
+                      <div className="text-[10px] text-[#38bdf8] mt-[2px] font-[600]">
+                        {t('preview_admin_only', 'Preview, admin only')}
                       </div>
                     )}
                     {lockedByTier && !isMobile && (

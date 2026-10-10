@@ -279,7 +279,8 @@ export class IntegrationsController {
     @Query('redirectUrl') redirectUrl: string,
     @Query('onboarding') onboarding: string,
     @Query('invite') invite: string,
-    @GetOrgFromRequest() org: Organization
+    @GetOrgFromRequest() org: Organization,
+    @GetUserFromRequest() user: User
   ) {
     if (
       !this._integrationManager
@@ -307,12 +308,22 @@ export class IntegrationsController {
       throw new HttpException('The channel to reconnect was not found', 404);
     }
 
+    // A platform still in preview: only a super admin, connecting it into
+    // their own organisation (not through an invite link for someone else),
+    // gets past "Coming soon" and the plan gate below. Impersonation swaps
+    // the request user for the customer, so it can't open this either.
+    const preview =
+      !refresh &&
+      invite !== 'true' &&
+      !!user?.isSuperAdmin &&
+      this._integrationManager.isPreview(integration);
+
     // Per-tier platform gating. Only when billing is on (billing off ⇒ every
     // platform); skipped on reconnect (`refresh`) so an existing channel can
     // always be re-authenticated even if it now sits above the org's tier.
     // The tier's allowedProviders list is the single source of truth
     // (edit it in pricing.ts to move a platform between plans).
-    if (process.env.STRIPE_PUBLISHABLE_KEY && !refresh) {
+    if (process.env.STRIPE_PUBLISHABLE_KEY && !refresh && !preview) {
       // @ts-ignore subscription is attached to the org by the auth middleware
       const tier = org?.subscription?.subscriptionTier || 'FREE';
       const allowed =
@@ -327,7 +338,11 @@ export class IntegrationsController {
 
     // A platform still "Coming soon" takes no new channels (E2E-08-50);
     // after the plan gate, so a plan without it still answers 402.
-    if (!refresh && !this._integrationManager.isOffered(integration)) {
+    if (
+      !refresh &&
+      !preview &&
+      !this._integrationManager.isOffered(integration)
+    ) {
       throw new HttpException(
         `The ${integration} channel isn't available yet.`,
         403
@@ -372,6 +387,10 @@ export class IntegrationsController {
 
       if (redirectUrl) {
         await ioRedis.set(`redirect:${state}`, redirectUrl, 'EX', 3600);
+      }
+
+      if (preview) {
+        await ioRedis.set(`preview:${state}`, integration, 'EX', 3600);
       }
 
       await ioRedis.set(`organization:${state}`, org.id, 'EX', 3600);

@@ -89,7 +89,7 @@ describe('GET /integrations/social/:integration?refresh=', () => {
       integrationService(channels) as any,
       {} as any,
       {} as any
-    ).getIntegrationUrl('discord', refresh as any, '', '', '', '', FREE_ORG);
+    ).getIntegrationUrl('discord', refresh as any, '', '', '', '', FREE_ORG, { isSuperAdmin: false } as any);
 
   it('a platform outside the plan is refused, as before', async () => {
     await expect(url([])).rejects.toMatchObject({ status: 402 });
