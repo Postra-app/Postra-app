@@ -1,5 +1,8 @@
 'use client';
 
+// UserDetailDto's nested picture uses class-transformer, which needs the
+// metadata polyfill in the browser (as the other screens that validate DTOs).
+import 'reflect-metadata';
 import { useModals } from '@gitroom/frontend/components/layout/new-modal';
 import React, {
   FC,

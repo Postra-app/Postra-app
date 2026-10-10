@@ -53,6 +53,7 @@ test('a picture chosen from the library shows and is saved', async ({ page }) =>
       .toBe(media.id);
   } finally {
     const personal = await (await page.request.get('/api/user/personal')).json();
-    await page.request.post('/api/user/personal', { data: { fullname: personal.name || 'Stack User', bio: personal.bio || '' } });
+    // picture: null takes the picture off again; other specs share this user.
+    await page.request.post('/api/user/personal', { data: { fullname: personal.name || 'Stack User', bio: personal.bio || '', picture: null } });
   }
 });
