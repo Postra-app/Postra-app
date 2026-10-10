@@ -157,3 +157,35 @@ test('a GIF over 10 MB is refused before it is sent', async ({ page }) => {
   await page.waitForTimeout(1500);
   expect(sent).toEqual([]);
 });
+
+// E2E-06-07 / D6 (K. 2026-10-10: 2048 px): every photo was shrunk to 1000 px
+// before upload, below what Instagram asks for (1080) and soft on any screen.
+test('a large photo is kept at 2048 px, not shrunk to 1000', async ({ page }) => {
+  test.setTimeout(60_000);
+  await openComposer(page, 'bluesky', `[stack ui] big photo ${Date.now()}`);
+  const dataTransfer = await page.evaluateHandle(async () => {
+    const canvas = document.createElement('canvas');
+    canvas.width = 3000;
+    canvas.height = 1500;
+    const ctx = canvas.getContext('2d')!;
+    ctx.fillStyle = '#38bdf8';
+    ctx.fillRect(0, 0, 3000, 1500);
+    const blob: Blob = await new Promise((r) => canvas.toBlob((b) => r(b!), 'image/jpeg', 0.9));
+    const dt = new DataTransfer();
+    dt.items.add(new File([blob], `wide-${Date.now()}.jpg`, { type: 'image/jpeg' }));
+    return dt;
+  });
+  const editor = page.locator('.ProseMirror').first();
+  await editor.dispatchEvent('dragenter', { dataTransfer });
+  await editor.dispatchEvent('drop', { dataTransfer });
+
+  const img = attached(page).first();
+  await expect(img).toBeAttached({ timeout: 30_000 });
+  const width = await img.evaluate(async (el: HTMLImageElement) => {
+    const probe = new Image();
+    probe.src = el.currentSrc || el.src;
+    await probe.decode();
+    return probe.naturalWidth;
+  });
+  expect(width).toBe(2048);
+});

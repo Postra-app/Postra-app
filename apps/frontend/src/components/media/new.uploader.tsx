@@ -12,7 +12,10 @@ import { useToaster } from '@gitroom/react/toaster/toaster';
 import { useLaunchStore } from '@gitroom/frontend/components/new-launch/store';
 import { uniqBy } from 'lodash';
 
-// Shrunk to 1000 px in the browser before upload (see the size check).
+// Shrunk to at most 2048 px in the browser before upload (see the size
+// check). 1000 px was below Instagram's 1080 and soft everywhere; 2048 is
+// K.'s choice of 2026-10-10 (D6, E2E-06-07).
+const MAX_IMAGE_EDGE = 2048;
 const COMPRESSED_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
 
 export class CompressionWrapper<M = any, B = any> extends Compressor<any, any> {
@@ -186,7 +189,7 @@ export function useUppyUploader(props: {
             const isImage = file.type?.startsWith('image/');
             const isVideo = file.type?.startsWith('video/');
 
-            // JPEG, PNG and WebP are shrunk to 1000 px below before upload,
+            // JPEG, PNG and WebP are shrunk to 2048 px below before upload,
             // so 30 MB is fine for them. Anything sent as it is (a GIF, or
             // every image when compression is off) meets the server's 10 MB
             // limit, and above it came back as a 400 after the whole upload
@@ -242,8 +245,8 @@ export function useUppyUploader(props: {
     if (!disableImageCompression) {
       uppy2.use(CompressionWrapper, {
         convertTypes: COMPRESSED_TYPES,
-        maxWidth: 1000,
-        maxHeight: 1000,
+        maxWidth: MAX_IMAGE_EDGE,
+        maxHeight: MAX_IMAGE_EDGE,
         quality: 1,
       });
     }
