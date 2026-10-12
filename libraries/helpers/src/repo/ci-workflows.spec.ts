@@ -82,6 +82,14 @@ describe('CI workflows', () => {
     }
   );
 
+  // Nothing scheduled publishes real posts. The nightly canary posted ads on
+  // Telegram, Discord, Mastodon and Bluesky every day, and Mastodon suspended
+  // the account for spam on 2026-10-12. Publishing runs are manual only.
+  it.each(workflows)('$name publishes nothing on a schedule', ({ text }) => {
+    if (!/^\s*schedule:/m.test(text)) return;
+    expect(text).not.toMatch(/--project[= ]publish-/);
+  });
+
   it('builds the production image on the Node in volta.node', () => {
     const pkg = JSON.parse(readFileSync(join(root, 'package.json'), 'utf8'));
     const docker = readFileSync(join(root, 'Dockerfile.dev'), 'utf8');
