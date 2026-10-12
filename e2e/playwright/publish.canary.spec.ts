@@ -11,9 +11,10 @@ import {
   waitPublished,
 } from './publish.helpers';
 
-// Real publishing, every night, on the five technical channels — Telegram ×2,
-// Discord, Mastodon, Bluesky (Krzysztof's decision, 2026-10-01; the posts
-// stay). Nothing here is faked: the post goes through production's API,
+// Real publishing on the five technical channels — Telegram ×2, Discord,
+// Mastodon, Bluesky. Manual only (--project publish-canary): it ran every
+// night from 2026-10-01 until Mastodon suspended the account for spam on
+// 2026-10-12. Nothing here is faked: the post goes through production's API,
 // Temporal and the providers to the real platforms, and where a platform has
 // a public read API the test reads the post back from the platform itself.
 // Postra's public profiles (Facebook, Instagram, LinkedIn, YouTube, X,

@@ -35,6 +35,7 @@ Report real defects only: `file:line`, a concrete failure (input → wrong resul
 
 ### Tests
 - A fix comes with a test that fails on the old code (jest next to the code, or `e2e/stack` for behaviour across the API, the database and Temporal).
+- Nothing that runs on a schedule (workflow `schedule:`, cron, Temporal timer) may publish real posts on real platforms. The nightly canary posted ads on Mastodon every day and the account was suspended for spam on 2026-10-12. Real publishing in tests is manual and rare.
 
 ### Security
 - No secrets, tokens or customer personal data in code, tests or fixtures.

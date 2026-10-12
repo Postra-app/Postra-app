@@ -61,7 +61,8 @@ export default defineConfig({
       dependencies: ['setup'],
       use: { storageState: STATE_FILE },
     },
-    // Real publishing on the technical channels: the nightly canary only.
+    // Real publishing on the technical channels: manual only. It ran every
+    // night until Mastodon suspended the account for spam (2026-10-12).
     {
       name: 'publish-canary',
       testMatch: /publish\.canary\.spec\.ts/,
