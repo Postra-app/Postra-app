@@ -418,10 +418,10 @@ export const AddProviderComponent: FC<{
     name: string;
     toolTip?: string;
     enabled?: boolean;
-    // "Coming soon" for customers, connectable by a super admin (see
-    // previewProviders in integration.manager.ts).
+    // "Coming soon" for customers, connectable by a super admin or a preview
+    // organisation (see previewProviders in integration.manager.ts).
     preview?: boolean;
-    // A hidden platform listed only so a super admin can preview it.
+    // A hidden platform listed only for the preview (user.previewChannels).
     adminOnly?: boolean;
     isExternal: boolean;
     isWeb3: boolean;
@@ -777,13 +777,13 @@ export const AddProviderComponent: FC<{
   const sortedSocial = useMemo(
     () =>
       social
-        .filter((item) => !item.adminOnly || !!user?.isSuperAdmin)
+        .filter((item) => !item.adminOnly || !!user?.previewChannels)
         .sort((a, b) => {
           const ae = a.enabled !== false ? 1 : 0;
           const be = b.enabled !== false ? 1 : 0;
           return be - ae;
         }),
-    [social, user?.isSuperAdmin]
+    [social, user?.previewChannels]
   );
 
   // Nine platform tiles read as nine channels on Pro (K. 10-09): say how
@@ -855,7 +855,7 @@ export const AddProviderComponent: FC<{
                 item.enabled === false &&
                 !!item.preview &&
                 !props.invite &&
-                !!user?.isSuperAdmin;
+                !!user?.previewChannels;
               const isEnabled = item.enabled !== false || previewOnly;
               const lockedByTier =
                 isEnabled &&
@@ -931,7 +931,9 @@ export const AddProviderComponent: FC<{
                         {t('coming_soon_short', 'Soon')}
                       </div>
                     )}
-                    {previewOnly && !isMobile && (
+                    {/* A preview organisation (a platform reviewer) sees the
+                        tile as a customer will, without the admin note. */}
+                    {previewOnly && !!user?.isSuperAdmin && !isMobile && (
                       <div className="text-[10px] text-[#38bdf8] mt-[2px] font-[600]">
                         {t('preview_admin_only', 'Preview, admin only')}
                       </div>

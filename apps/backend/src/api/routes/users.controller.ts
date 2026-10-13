@@ -46,6 +46,7 @@ import {
 import { bustAuthContextCache } from '@gitroom/backend/services/auth/auth.middleware';
 import { StripeService } from '@gitroom/nestjs-libraries/services/stripe.service';
 import { NotificationService } from '@gitroom/nestjs-libraries/database/prisma/notifications/notification.service';
+import { isPreviewOrganization } from '@gitroom/nestjs-libraries/integrations/integration.manager';
 
 @ApiTags('User')
 @Controller('/user')
@@ -129,6 +130,10 @@ export class UsersController {
       // @ts-ignore
       isLifetime: !!organization?.subscription?.isLifetime,
       admin: !!user.isSuperAdmin,
+      // Preview platforms in the channel picker: a super admin's, or a
+      // preview organisation's (a platform reviewer's login).
+      previewChannels:
+        !!user.isSuperAdmin || isPreviewOrganization(organization.id),
       impersonate,
       isTrailing: !process.env.STRIPE_PUBLISHABLE_KEY ? false : organization?.isTrailing,
       allowTrial: organization?.allowTrial,

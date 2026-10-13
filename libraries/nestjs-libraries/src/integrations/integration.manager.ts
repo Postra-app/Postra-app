@@ -110,6 +110,18 @@ const previewProviders = new Set([
   'instagram-standalone',
 ]);
 
+// Organisations that get the preview platforms the way a super admin does,
+// by id in PREVIEW_ORGANIZATIONS (comma-separated; SSM /postra/dev/). It is
+// for the login a platform's reviewer signs in with: Meta tests Instagram
+// without a Facebook Page on the review@ account, which must not be a super
+// admin.
+export const isPreviewOrganization = (orgId?: string) =>
+  !!orgId &&
+  (process.env.PREVIEW_ORGANIZATIONS || '')
+    .split(',')
+    .map((id) => id.trim())
+    .includes(orgId);
+
 const hiddenProviders = new Set([
   'instagram-standalone',
   // Upstream crypto channels Postra doesn't offer — keep the providers
@@ -226,7 +238,8 @@ export class IntegrationManager {
     return enabledProviders.has(identifier);
   }
 
-  // A "Coming soon" platform a super admin may connect anyway (previewProviders).
+  // A "Coming soon" platform a super admin (or a preview organisation) may
+  // connect anyway (previewProviders).
   isPreview(identifier: string) {
     return (
       previewProviders.has(identifier) && !enabledProviders.has(identifier)

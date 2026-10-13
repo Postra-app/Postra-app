@@ -87,6 +87,8 @@ export const throwawayOrg = async (
     // the plan includes.
     provider?: string;
     isTrailing?: boolean;
+    // A fixed id, for an organisation named in stack.env (PREVIEW_ORGANIZATIONS).
+    id?: string;
   }
 ) => {
   const tag = `${process.pid}-${Date.now()}-${++throwawayCount}`;
@@ -94,6 +96,7 @@ export const throwawayOrg = async (
   const password = 'Stack-tests-T-1';
   const org = await prisma.organization.create({
     data: {
+      ...(options.id ? { id: options.id } : {}),
       name: `Stack throwaway ${tag}`,
       apiKey: `stack-api-key-${tag}`,
       isTrailing: !!options.isTrailing,
