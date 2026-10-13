@@ -19,6 +19,9 @@ export const UserContext = createContext<
       allowTrial: boolean;
       isTrailing: boolean;
       streakSince: string | null;
+      // Preview platforms in the channel picker (super admin or preview
+      // organisation, users.controller /self).
+      previewChannels?: boolean;
     })
 >(undefined);
 export const ContextWrapper: FC<{

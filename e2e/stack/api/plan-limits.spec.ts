@@ -238,3 +238,39 @@ test('a preview platform is "Coming soon" for customers and open to a super admi
     await prisma.$disconnect();
   }
 });
+
+// IG standalone App Review (10-13): Meta's reviewer signs in as review@, which
+// must not be a super admin. Its organisation, named in PREVIEW_ORGANIZATIONS,
+// gets the preview platforms the way a super admin does; others do not.
+test('a preview organisation connects a preview platform without being a super admin', async () => {
+  const prisma = database();
+  const reviewer = await throwawayOrg(prisma, {
+    tier: 'STANDARD',
+    totalChannels: 5,
+    channels: 0,
+    id: 'stack-preview-org',
+  });
+  const customer = await throwawayOrg(prisma, { tier: 'STANDARD', totalChannels: 5, channels: 0 });
+  try {
+    const self = await (await reviewer.api.get('/user/self')).json();
+    expect(self).toMatchObject({ previewChannels: true, isSuperAdmin: false });
+    expect((await (await customer.api.get('/user/self')).json()).previewChannels).toBe(false);
+
+    for (const platform of ['instagram-standalone', 'pinterest', 'wordpress']) {
+      const res = await reviewer.api.get(connect(platform));
+      expect(res.status(), `${platform}: ${await res.text()}`).toBe(200);
+    }
+    const refused = await customer.api.get(connect('instagram-standalone'));
+    expect([402, 403], await refused.text()).toContain(refused.status());
+
+    // Still only the preview list, and not through an invite link.
+    expect((await reviewer.api.get(connect('linkedin-page'))).status()).toBe(402);
+    expect(
+      (await reviewer.api.get(`${connect('instagram-standalone')}?invite=true`)).status()
+    ).not.toBe(200);
+  } finally {
+    await reviewer.remove();
+    await customer.remove();
+    await prisma.$disconnect();
+  }
+});

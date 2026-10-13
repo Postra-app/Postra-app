@@ -15,7 +15,10 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { ioRedis } from '@gitroom/nestjs-libraries/redis/redis.service';
-import { IntegrationManager } from '@gitroom/nestjs-libraries/integrations/integration.manager';
+import {
+  IntegrationManager,
+  isPreviewOrganization,
+} from '@gitroom/nestjs-libraries/integrations/integration.manager';
 import { IntegrationService } from '@gitroom/nestjs-libraries/database/prisma/integrations/integration.service';
 import { GetOrgFromRequest } from '@gitroom/nestjs-libraries/user/org.from.request';
 import { Organization, User } from '@prisma/client';
@@ -311,11 +314,12 @@ export class IntegrationsController {
     // A platform still in preview: only a super admin, connecting it into
     // their own organisation (not through an invite link for someone else),
     // gets past "Coming soon" and the plan gate below. Impersonation swaps
-    // the request user for the customer, so it can't open this either.
+    // the request user for the customer, so it can't open this either. A
+    // preview organisation (a platform reviewer's login) gets the same.
     const preview =
       !refresh &&
       invite !== 'true' &&
-      !!user?.isSuperAdmin &&
+      (!!user?.isSuperAdmin || isPreviewOrganization(org.id)) &&
       this._integrationManager.isPreview(integration);
 
     // Per-tier platform gating. Only when billing is on (billing off ⇒ every
