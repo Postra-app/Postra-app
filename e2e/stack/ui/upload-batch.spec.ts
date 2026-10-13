@@ -189,3 +189,54 @@ test('a large photo is kept at 2048 px, not shrunk to 1000', async ({ page }) =>
   });
   expect(width).toBe(2048);
 });
+
+// E2E-06-44 (IG standalone recording, 10-10): "Post now" clicked while a new
+// file was still uploading sent the post without it, and Instagram answered
+// "Should have at least one media" with the picture on screen. Nothing may
+// leave the composer until the upload is in the post.
+test('E2E-06-44: the post waits for a file still uploading', async ({ page }) => {
+  test.setTimeout(60_000);
+  let release: () => void = () => undefined;
+  const held = new Promise<void>((resolve) => (release = resolve));
+  await page.route('**/media/upload-server', async (route) => {
+    if (nameOf(route).includes('held-')) {
+      await held;
+    }
+    return route.continue();
+  });
+  const sent: any[] = [];
+  await page.route('**/posts/valid', async (route) => {
+    sent.push(route.request().postDataJSON());
+    // Stops here: the test reads what would have been validated and sent.
+    return route.fulfill({ status: 503, contentType: 'application/json', body: '{"message":"held by test"}' });
+  });
+
+  try {
+    await openComposer(page, 'bluesky', `[stack ui] upload lock ${Date.now()}`);
+    await drop(page, [`held-${Date.now()}.png`]);
+
+    const addToCalendar = page.getByRole('button', { name: 'Add to calendar' });
+    await addToCalendar.hover();
+    // "Post now" is a menu shown on hover: found hidden too.
+    const postNow = page.getByRole('button', { name: 'Post now', exact: true, includeHidden: true });
+    await expect(page.getByRole('button', { name: 'Cancel upload' })).toBeVisible();
+    await expect(addToCalendar).toBeDisabled();
+    await expect(postNow).toBeDisabled();
+    await expect(page.getByRole('button', { name: 'Save as Draft' })).toBeDisabled();
+    // A click on the disabled button sends nothing.
+    await postNow.dispatchEvent('click');
+    await page.waitForTimeout(500);
+    expect(sent).toEqual([]);
+  } finally {
+    release();
+  }
+
+  await expect(attached(page)).toHaveCount(1, { timeout: 15_000 });
+  const addToCalendar = page.getByRole('button', { name: 'Add to calendar' });
+  await addToCalendar.hover();
+  const postNow = page.getByRole('button', { name: 'Post now', exact: true });
+  await expect(postNow).toBeEnabled();
+  await postNow.click();
+  await expect.poll(() => sent.length).toBe(1);
+  expect(sent[0].posts[0].value[0].image).toHaveLength(1);
+});
