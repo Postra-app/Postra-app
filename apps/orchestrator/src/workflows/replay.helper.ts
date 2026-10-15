@@ -1,4 +1,5 @@
 import fs from 'fs';
+import { createRequire } from 'module';
 import os from 'os';
 import path from 'path';
 import ts from 'typescript';
@@ -27,12 +28,11 @@ export async function replayHistory(workflowFile: string, historyFile: string) {
       paths: [path.dirname(require.resolve('@temporalio/worker'))],
     })
   );
-  const { fromJson } = require(require.resolve('protobufjs/ext/protojson', {
-    paths: [protoDir],
-  }));
+  const fromProto = createRequire(path.join(protoDir, 'package.json'));
+  const { fromJson } = fromProto('protobufjs/ext/protojson');
   const json = JSON.parse(fs.readFileSync(historyFile, 'utf8'));
   const history = fromJson(
-    require(protoDir).temporal.api.history.v1.History,
+    fromProto('./').temporal.api.history.v1.History,
     json,
     { ignoreUnknownFields: true }
   );
