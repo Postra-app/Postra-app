@@ -50,7 +50,7 @@ jobs:
       - name: Smoke (Chromium + WebKit), AI and landing
         id: canary
         env:
-          E2E_BASE_URL: https://app.postra.pl
+          E2E_BASE_URL: https://app.postra.co.uk
           E2E_EMAIL: ${{ secrets.E2E_EMAIL }}
           E2E_PASSWORD: ${{ secrets.E2E_PASSWORD }}
           E2E_ORG: ${{ secrets.E2E_ORG }}

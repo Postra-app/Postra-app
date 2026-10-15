@@ -336,8 +336,8 @@ jobs:
         run: |
           ok=0
           for attempt in $(seq 1 60); do
-            API=$(curl -s -o /dev/null -w "%{http_code}" https://app.postra.pl/api/monitor/queue/main || true)
-            WEB=$(curl -s -o /dev/null -w "%{http_code}" https://app.postra.pl/auth/login || true)
+            API=$(curl -s -o /dev/null -w "%{http_code}" https://app.postra.co.uk/api/monitor/queue/main || true)
+            WEB=$(curl -s -o /dev/null -w "%{http_code}" https://app.postra.co.uk/auth/login || true)
             if [ "$API" = "200" ] && [ "$WEB" = "200" ]; then
               ok=$((ok + 1))
               if [ "$ok" -ge 5 ]; then
@@ -361,7 +361,7 @@ jobs:
       - name: Smoke test (Playwright)
         id: smoke
         env:
-          E2E_BASE_URL: https://app.postra.pl
+          E2E_BASE_URL: https://app.postra.co.uk
           E2E_EMAIL: ${{ secrets.E2E_EMAIL }}
           E2E_PASSWORD: ${{ secrets.E2E_PASSWORD }}
           E2E_ORG: ${{ secrets.E2E_ORG }}

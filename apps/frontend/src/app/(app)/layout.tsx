@@ -44,7 +44,7 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
     (await headers()).get(headerName) ||
     fallbackLng;
   // Plausible (no cookies, no personal data): on only where the site's own
-  // script id is set, e.g. pa-xxxx for app.postra.pl. It used to follow the
+  // script id is set, e.g. pa-xxxx for app.postra.co.uk. It used to follow the
   // Stripe key and report to the postra.pl site (E2E-02-13).
   const plausibleScript = process.env.PLAUSIBLE_SCRIPT_ID;
   return (

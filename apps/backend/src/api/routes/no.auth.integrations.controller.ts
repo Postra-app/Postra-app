@@ -162,7 +162,7 @@ export class NoAuthIntegrationsController {
    * app, and where to hand it back.
    *
    * ⛔ Why this exists. The provider always redirects the *browser*
-   * to `app.postra.pl/integrations/social/:provider`, and that page then calls
+   * to `app.postra.co.uk/integrations/social/:provider`, and that page then calls
    * `POST /social-connect/:provider`. On a phone the browser has no Postra
    * session — the app signs in with a token in secure storage, not a cookie —
    * so the callback hit the session gate below and answered

@@ -18,9 +18,9 @@ export type CreatePostInput = Omit<CreatePostDto, 'posts'> & {
 };
 export type GetPostsInput = Optional<GetPostsDto, 'customer'>;
 
-// The public API lives under /api on app.postra.pl; without it every call
+// The public API lives under /api on app.postra.co.uk; without it every call
 // landed on the web app and came back as a redirect to the login page.
-export const DEFAULT_BASE_URL = 'https://app.postra.pl/api';
+export const DEFAULT_BASE_URL = 'https://app.postra.co.uk/api';
 
 const MIME_TYPES: Record<string, string> = {
   png: 'image/png',

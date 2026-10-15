@@ -21,7 +21,7 @@ const channels = await postra.integrations();
 ```
 
 The second argument is the API base URL. It defaults to
-`https://app.postra.pl/api`; pass your own only for a self-hosted instance.
+`https://app.postra.co.uk/api`; pass your own only for a self-hosted instance.
 
 | Method | Endpoint | Does |
 |---|---|---|

@@ -35,7 +35,7 @@
 Postra is a social media management platform with AI built in — made for small businesses, creators and agencies that don't have all day for social media. Plan content on a drag-and-drop calendar, generate posts, graphics and video in the built-in **Studio**, publish everywhere at once and track the results.
 
 - 🌐 Website: **[postra.co.uk](https://postra.co.uk)** (UK) · **[postra.pl](https://postra.pl)** (Poland)
-- 🚀 App: **[app.postra.pl](https://app.postra.pl)** — 7-day trial; a card is needed to start and is charged only when the trial ends
+- 🚀 App: **[app.postra.co.uk](https://app.postra.co.uk)** — 7-day trial; a card is needed to start and is charged only when the trial ends
 
 ## Features
 
