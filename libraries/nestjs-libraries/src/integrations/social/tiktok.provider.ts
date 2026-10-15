@@ -35,6 +35,18 @@ export const tiktokPostUrl = (
         publishId.indexOf('p_pub_') === 0 ? 'photo' : 'video'
       }/${publicPostId}`;
 
+// The live TikTok app has one registered redirect URI, and changing it is a
+// revision TikTok reviews again. TIKTOK_URL keeps it on that host after the app
+// moved (app.postra.pl, which answers with a 301 to app.postra.co.uk, path and
+// query kept); without it the redirect follows FRONTEND_URL. Authorize and the
+// token exchange must send the same address.
+export const tiktokRedirectUri = () => {
+  const base = process?.env?.TIKTOK_URL || process?.env?.FRONTEND_URL;
+  return `${
+    base?.indexOf('https') === -1 ? 'https://redirectmeto.com/' : ''
+  }${base}/integrations/social/tiktok`;
+};
+
 @Rules(
   'TikTok can have one video or one picture or multiple pictures, it cannot be without an attachment'
 )
@@ -347,13 +359,7 @@ export class TiktokProvider extends SocialAbstract implements SocialProvider {
       url:
         'https://www.tiktok.com/v2/auth/authorize/' +
         `?client_key=${process.env.TIKTOK_CLIENT_ID}` +
-        `&redirect_uri=${encodeURIComponent(
-          `${
-            process?.env?.FRONTEND_URL?.indexOf('https') === -1
-              ? 'https://redirectmeto.com/'
-              : ''
-          }${process?.env?.FRONTEND_URL}/integrations/social/tiktok`
-        )}` +
+        `&redirect_uri=${encodeURIComponent(tiktokRedirectUri())}` +
         `&state=${state}` +
         `&response_type=code` +
         `&scope=${encodeURIComponent(this.scopes.join(','))}`,
@@ -373,11 +379,7 @@ export class TiktokProvider extends SocialAbstract implements SocialProvider {
       code: params.code,
       grant_type: 'authorization_code',
       code_verifier: params.codeVerifier,
-      redirect_uri: `${
-        process?.env?.FRONTEND_URL?.indexOf('https') === -1
-          ? 'https://redirectmeto.com/'
-          : ''
-      }${process?.env?.FRONTEND_URL}/integrations/social/tiktok`,
+      redirect_uri: tiktokRedirectUri(),
     };
 
     const { access_token, refresh_token, scope } = await (
