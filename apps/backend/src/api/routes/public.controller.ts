@@ -53,15 +53,16 @@ export class PublicController {
     private _subscriptionService: SubscriptionService
   ) {}
 
-  // Info, not warn: warn and error go to Sentry, and a report-only policy
-  // can report on every page view.
+  // Info, not warn: warn and error go to Sentry, and a policy can report on
+  // every page view.
   private readonly _cspLog = new CspReportLog((line) =>
     new Logger('CSP').log(line)
   );
 
-  // Where browsers report what the app's Content-Security-Policy blocked —
-  // report-only for now (var/docker/nginx.conf), so this log says what an
-  // enforced policy would break. No session, any body; always 204.
+  // Where browsers report what the app's Content-Security-Policy blocked
+  // (enforced since 2026-10-15, var/docker/nginx.conf): a line here is
+  // something a visitor's browser refused to load. No session, any body;
+  // always 204.
   @Post('/csp-report')
   @HttpCode(204)
   @Throttle({ default: { ttl: 60_000, limit: 60 } })

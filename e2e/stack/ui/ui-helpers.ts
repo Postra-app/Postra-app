@@ -1,4 +1,4 @@
-import { Locator, Page } from '@playwright/test';
+import { expect, Locator, Page } from '@playwright/test';
 
 // Console errors and 5xx from our API fail the test: a page can render and
 // still be broken underneath.
@@ -51,15 +51,39 @@ export const weekOf = (date: Date) => {
 // sometimes sees no dragover on the cell, so nothing is dropped - the Month
 // cell's centre holds the "+" button, which made it fail there every time
 // during the day (E2E-01-36).
+// A point of the element that is really on top at that spot: the calendar's
+// weekday header is sticky, and a cell scrolled under it has a box Playwright
+// calls visible while every press there lands on the header.
+const visiblePoint = (target: Locator) =>
+  target.evaluate((el) => {
+    const r = el.getBoundingClientRect();
+    const x = r.left + r.width / 2;
+    for (const y of [r.top + 30, r.top + r.height / 2, r.bottom - 20]) {
+      const hit = document.elementFromPoint(x, y);
+      if (hit && el.contains(hit)) return { x, y };
+    }
+    return null;
+  });
+
 export const dragWithMouse = async (page: Page, from: Locator, to: Locator) => {
   // A tile at the bottom of a crowded day is cut off by the calendar's scroll
   // box: its centre is "visible" to Playwright but the press lands on nothing.
   await from.scrollIntoViewIfNeeded();
+  // A busy day makes its week row tall; scrolling the tile into view can then
+  // push the target cell of the row above under the sticky header (Month
+  // view, a Monday post moved to Sunday: E2E-01-36, 2026-10-15). Drop on a
+  // point of the cell that is really there, and scroll it into view if no
+  // such point exists.
+  let drop = await visiblePoint(to);
+  if (!drop) {
+    await to.scrollIntoViewIfNeeded();
+    drop = await visiblePoint(to);
+  }
   const a = (await from.boundingBox())!;
-  const b = (await to.boundingBox())!;
-  await page.mouse.move(a.x + a.width / 2, a.y + a.height / 2);
+  const start = (await visiblePoint(from)) ?? { x: a.x + a.width / 2, y: a.y + a.height / 2 };
+  expect(drop, 'drop target has no visible point').not.toBeNull();
+  await page.mouse.move(start.x, start.y);
   await page.mouse.down();
-  // The top of a tall month cell, not its centre, which can be off screen.
-  await page.mouse.move(b.x + b.width / 2, b.y + Math.min(b.height / 2, 30), { steps: 15 });
+  await page.mouse.move(drop!.x, drop!.y, { steps: 15 });
   await page.mouse.up();
 };
