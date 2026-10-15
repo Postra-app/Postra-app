@@ -1,8 +1,8 @@
 import { cspViolations, CspReportLog } from './csp.report';
 
-// The app's Content-Security-Policy starts report-only: browsers POST what
-// the policy would have blocked, and we log it once per kind, without query
-// strings (a URL can carry a token), before the policy is enforced.
+// Browsers POST what the app's Content-Security-Policy blocked (it ran
+// report-only until 2026-10-15), and we log it once per kind, without query
+// strings (a URL can carry a token).
 describe('CSP reports', () => {
   it('reads a report-uri report (application/csp-report)', () => {
     expect(

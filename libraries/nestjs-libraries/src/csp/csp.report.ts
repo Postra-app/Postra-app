@@ -1,5 +1,5 @@
-// What the browser says the Content-Security-Policy blocked (or would have,
-// while it is report-only). Two formats reach us: `report-uri` posts one
+// What the browser says the Content-Security-Policy blocked (enforced since
+// 2026-10-15; before that report-only, what it would have blocked). Two formats reach us: `report-uri` posts one
 // `{"csp-report": {...}}` as application/csp-report, the Reporting API posts
 // a list of `{type: "csp-violation", body: {...}}` as application/reports+json.
 export type CspViolation = {
