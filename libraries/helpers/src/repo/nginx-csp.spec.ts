@@ -27,6 +27,13 @@ describe('var/docker/nginx.conf Content-Security-Policy', () => {
     expect(appPolicy?.value).toContain('report-uri /api/public/csp-report');
   });
 
+  // Admin → Dashboards embeds the status page; the click-through on 10-15
+  // missed that screen and Codex caught it (report: frame-src
+  // blocked=https://status.postra.pl/).
+  it('lets the admin dashboards frame the status page', () => {
+    expect(appPolicy?.value).toMatch(/frame-src [^;]*https:\/\/status\.postra\.pl/);
+  });
+
   it('keeps the parts that must never loosen', () => {
     for (const part of [
       "object-src 'none'",
