@@ -4,7 +4,7 @@ import { expect, test } from '@playwright/test';
 // dead buttons on it, found by hand weeks later; this finds them the night
 // they break. Read-only: no sign-in, nothing submitted.
 
-const APP = 'https://app.postra.pl';
+const APP = 'https://app.postra.co.uk';
 
 test('every link to the app leads to a working sign-in or sign-up page', async ({
   page,

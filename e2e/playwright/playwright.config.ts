@@ -16,7 +16,7 @@ export default defineConfig({
   retries: 0,
   reporter: process.env.CI ? [['github'], ['list']] : 'list',
   use: {
-    baseURL: process.env.E2E_BASE_URL || 'https://app.postra.pl',
+    baseURL: process.env.E2E_BASE_URL || 'https://app.postra.co.uk',
     // A trace records request headers, session cookie included, and CI
     // artifacts of this public repo are downloadable — no traces there.
     trace: process.env.CI ? 'off' : 'retain-on-failure',

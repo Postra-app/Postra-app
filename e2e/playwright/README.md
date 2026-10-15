@@ -19,7 +19,7 @@ E2E_EMAIL=… E2E_PASSWORD=… E2E_ORG="Org name" pnpm e2e:smoke
 | `E2E_EMAIL`, `E2E_PASSWORD` | yes | test account (LOCAL provider) |
 | `E2E_ORG` | when the account is in several organisations | organisation to test in; it needs at least one channel |
 | `E2E_CHANNEL` | no, default `bluesky` | provider identifier of the channel to pick in the composer |
-| `E2E_BASE_URL` | no, default `https://app.postra.pl` | where to run |
+| `E2E_BASE_URL` | no, default `https://app.postra.co.uk` | where to run |
 
 First run on a machine: `pnpm exec playwright install chromium`.
 

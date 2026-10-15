@@ -22,7 +22,7 @@ describe('@postra/node', () => {
 
   it('talks to the public API under /api by default', async () => {
     await new Postra('key').integrations();
-    expect(calls[0].url).toBe('https://app.postra.pl/api/public/v1/integrations');
+    expect(calls[0].url).toBe('https://app.postra.co.uk/api/public/v1/integrations');
     expect(calls[0].init.headers.Authorization).toBe('key');
   });
 
@@ -59,7 +59,7 @@ describe('@postra/node', () => {
   it('parses the delete response like every other call', async () => {
     next = () => respond(200, '{"error":false}');
     await expect(new Postra('key').deletePost('a/b')).resolves.toEqual({ error: false });
-    expect(calls[0].url).toBe('https://app.postra.pl/api/public/v1/posts/a%2Fb');
+    expect(calls[0].url).toBe('https://app.postra.co.uk/api/public/v1/posts/a%2Fb');
     expect(calls[0].init.method).toBe('DELETE');
   });
   it('lists the media library with page and search in the query', async () => {
