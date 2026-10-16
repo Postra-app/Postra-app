@@ -72,3 +72,15 @@ describe('Pinterest', () => {
     expect(fetchMediaStream).toHaveBeenCalledWith('https://cdn-dev.postra.pl/clip.mp4');
   });
 });
+
+// Pinterest code 2787 ("Something went wrong on our end") is transient on
+// their side; the post failed at once instead of being retried (upstream
+// 18a312b6b).
+describe('PinterestProvider.handleErrors: transient 2787', () => {
+  it('retries', () => {
+    const res = new PinterestProvider().handleErrors(
+      JSON.stringify({ code: 2787, message: 'Something went wrong on our end. Sorry about that.' })
+    );
+    expect(res?.type).toBe('retry');
+  });
+});

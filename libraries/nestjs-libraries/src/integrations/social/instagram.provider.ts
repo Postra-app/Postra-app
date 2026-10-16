@@ -194,13 +194,15 @@ export class InstagramProvider
     if (body.indexOf('2207053') > -1) {
       return {
         type: 'bad-body' as const,
-        value: 'Unknown upload error, please try again',
+        value:
+          "Instagram failed to upload the video. If it exceeds Instagram's limits (300MB, 1920px width, 25Mbps bitrate), export a smaller version and try again",
       };
     }
 
+    // Transient on Instagram's side (upstream b95e1e2cb).
     if (body.indexOf('2207052') > -1) {
       return {
-        type: 'bad-body' as const,
+        type: 'retry' as const,
         value: 'Media fetch failed, please try again',
       };
     }
@@ -388,6 +390,14 @@ export class InstagramProvider
       };
     }
 
+    if (body.indexOf('1772107') > -1) {
+      return {
+        type: 'bad-body' as const,
+        value:
+          'Instagram did not add the comment, the post itself was published. Please try again with different comment text',
+      };
+    }
+
     if (body.indexOf('2207082') > -1) {
       return {
         type: 'retry' as const,
@@ -425,6 +435,14 @@ export class InstagramProvider
       };
     }
 
+    if (body.indexOf('2207018') > -1) {
+      return {
+        type: 'bad-body' as const,
+        value:
+          'One of the collaborators could not be tagged, please check the username is correct, the account is public, and that it allows collaborator invites',
+      };
+    }
+
     if (body.indexOf('param collaborators is not allowed') > -1) {
       return {
         type: 'bad-body' as const,
@@ -452,7 +470,11 @@ export class InstagramProvider
       this.identifier,
       json,
       '{}',
-      handled?.value || reason || 'Instagram could not process the media'
+      // Meta sometimes repeats the status code as the reason ("ERROR"),
+      // which tells the user nothing (upstream 38918c2f9).
+      handled?.value ||
+        (reason !== statusCode && reason) ||
+        'Instagram could not process the media'
     );
   }
 
