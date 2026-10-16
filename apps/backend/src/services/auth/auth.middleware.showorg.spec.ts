@@ -4,7 +4,7 @@ process.env.NOT_SECURED = '';
 
 import { AuthMiddleware } from '@gitroom/backend/services/auth/auth.middleware';
 import { AuthService } from '@gitroom/helpers/auth/auth.service';
-import { ioRedis } from '@gitroom/nestjs-libraries/redis/redis.service';
+import { bustAuthContextCache } from '@gitroom/nestjs-libraries/redis/auth-context.cache';
 
 // E2E-10-82: a user in two organizations switched in the mobile app and kept
 // seeing the previous one's channels and posts. The app picks the organization
@@ -33,7 +33,8 @@ let orgs: any[] = [];
 beforeEach(async () => {
   orgs = [org('org-a'), org('org-b')];
   // The middleware caches the user's organizations; each case sets its own.
-  await ioRedis.flushall();
+  // del, not flushall: CI runs without Redis on MockRedis (Codex, 10-16).
+  await bustAuthContextCache(user.id);
 });
 
 const build = () =>
