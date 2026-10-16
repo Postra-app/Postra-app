@@ -1,4 +1,7 @@
-import { schedulingRule } from '@gitroom/nestjs-libraries/chat/agent-instructions';
+import {
+  confirmationCardRule,
+  schedulingRule,
+} from '@gitroom/nestjs-libraries/chat/agent-instructions';
 
 // E2E-08-53: through MCP (ask_postra) there is no second turn, so "ask the
 // user to confirm" meant nothing could ever be scheduled that way.
@@ -21,5 +24,21 @@ describe('the scheduling rule of the assistant', () => {
     expect(rule).toContain('cannot move or delete a post through MCP');
     expect(rule).toContain('Postra calendar');
     expect(rule).not.toContain('approve it in Postra');
+  });
+});
+
+// Nightly canary 2026-10-15/16: after Decline, asking again got "the card is
+// already open" because the rule said not to call the tool while a card was
+// open, and the model cannot see a click.
+describe('the confirmation card rule of the assistant', () => {
+  it('asks for a new card every time the user asks again', () => {
+    const rule = confirmationCardRule(true);
+    expect(rule).toContain('call the tool again and show a new card');
+    expect(rule).toContain('never answer that a card is already open');
+    expect(rule).not.toMatch(/do not call the tool again/i);
+  });
+
+  it('through MCP, leaves moving and deleting to the scheduling rule', () => {
+    expect(confirmationCardRule(false)).toBe('');
   });
 });
