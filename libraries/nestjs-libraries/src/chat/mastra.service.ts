@@ -12,7 +12,9 @@ import { PrismaService } from '@gitroom/nestjs-libraries/database/prisma/prisma.
 // crash-looping the whole backend (outages 2026-05-31 and 2026-07-04). The
 // spans are telemetry we don't consume, so before Mastra initialises we drop
 // the table if it is nearing the limit and let Mastra recreate it fresh.
-const SPANS_TABLE = 'mastra_ai_spans';
+// mastra_scorers churns the same way (measured 2026-10-16: 245 physical
+// columns, 38 live, 0 rows) and is unused too.
+const BLOATING_TABLES = ['mastra_ai_spans', 'mastra_scorers'];
 const RESOURCES_TABLE = 'mastra_resources';
 const SPANS_COLUMN_HARD_LIMIT = 1600; // Postgres hard cap per table
 const SPANS_COLUMN_RESET_AT = 1000; // reset with generous headroom below the cap
@@ -76,34 +78,36 @@ export class MastraService {
     }
   }
 
-  // Drop the unused telemetry spans table before Mastra initialises it if it has
+  // Drop an unused telemetry table before Mastra initialises it if it has
   // bloated toward Postgres's 1600-column limit. Best-effort: any failure here
   // must never block Mastra from starting.
   private async resetObservabilityTableIfBloated() {
-    try {
-      // pg_attribute counts dropped columns too — that is exactly what accrues
-      // toward the 1600 limit, so this is the number that actually matters.
-      const rows = await this._prisma.$queryRawUnsafe<Array<{ columns: number }>>(
-        `SELECT count(*)::int AS columns
-           FROM pg_attribute
-          WHERE attrelid = to_regclass($1) AND attnum > 0`,
-        SPANS_TABLE
-      );
-
-      const columns = rows?.[0]?.columns ?? 0;
-      if (columns >= SPANS_COLUMN_RESET_AT) {
-        this._logger.warn(
-          `${SPANS_TABLE} has ${columns}/${SPANS_COLUMN_HARD_LIMIT} columns - dropping this unused telemetry table before Mastra init to avoid a startup crash-loop.`
+    for (const table of BLOATING_TABLES) {
+      try {
+        // pg_attribute counts dropped columns too — that is exactly what
+        // accrues toward the 1600 limit, so this is the number that matters.
+        const rows = await this._prisma.$queryRawUnsafe<Array<{ columns: number }>>(
+          `SELECT count(*)::int AS columns
+             FROM pg_attribute
+            WHERE attrelid = to_regclass($1) AND attnum > 0`,
+          table
         );
-        await this._prisma.$executeRawUnsafe(
-          `DROP TABLE IF EXISTS ${SPANS_TABLE} CASCADE`
+
+        const columns = rows?.[0]?.columns ?? 0;
+        if (columns >= SPANS_COLUMN_RESET_AT) {
+          this._logger.warn(
+            `${table} has ${columns}/${SPANS_COLUMN_HARD_LIMIT} columns - dropping this unused telemetry table before Mastra init to avoid a startup crash-loop.`
+          );
+          await this._prisma.$executeRawUnsafe(
+            `DROP TABLE IF EXISTS ${table} CASCADE`
+          );
+        }
+      } catch (err) {
+        this._logger.error(
+          `Could not check/reset ${table}; continuing with Mastra init.`,
+          err instanceof Error ? err.stack : String(err)
         );
       }
-    } catch (err) {
-      this._logger.error(
-        `Could not check/reset ${SPANS_TABLE}; continuing with Mastra init.`,
-        err instanceof Error ? err.stack : String(err)
-      );
     }
   }
 }
