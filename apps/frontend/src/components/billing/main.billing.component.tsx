@@ -449,7 +449,7 @@ export const MainBillingComponent: FC<{
             (pricing[subscription?.subscriptionTier!]?.team_members ?? 0)
           ) {
             messages.push(
-              `Some team members may be removed to fit your new plan`
+              `Some team members will be disabled until you upgrade again`
             );
           }
           if (billing === 'FREE') {
@@ -459,7 +459,8 @@ export const MainBillingComponent: FC<{
                 `Are you sure you want to cancel your subscription?
               ${messages.join(', ')}`,
                 'Yes, cancel',
-                'Cancel Subscription'
+                'Cancel Subscription',
+                'No, keep it'
               ))
             ) {
               const discountResponse = await fetch('/billing/check-discount');

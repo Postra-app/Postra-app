@@ -1003,8 +1003,10 @@ export class LinkedinProvider extends SocialAbstract implements SocialProvider {
   }
 
   override async mention(token: string, data: { query: string }) {
+    // this.fetch turns an expired token into RefreshToken, so the caller
+    // refreshes it; the global fetch left a TypeError (upstream 0b22d994b).
     const { elements } = await (
-      await fetch(
+      await this.fetch(
         `https://api.linkedin.com/v2/organizations?q=vanityName&vanityName=${encodeURIComponent(
           data.query
         )}&projection=(elements*(id,localizedName,logoV2(original~:playableStreams)))`,

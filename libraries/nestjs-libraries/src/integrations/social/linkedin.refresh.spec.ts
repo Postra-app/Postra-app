@@ -8,6 +8,7 @@ jest.mock('@gitroom/nestjs-libraries/database/prisma/integrations/integration.se
 import { LinkedinProvider } from './linkedin.provider';
 import { LinkedinPageProvider } from './linkedin.page.provider';
 import { isTransientRefreshError } from '../refresh.integration.service';
+import { RefreshToken } from '../social.abstract';
 
 // E2E-04-26 (rest): LinkedIn answers an outage with an HTML page. The token
 // refresh parsed it as JSON, the SyntaxError counted as a refused grant, and
@@ -63,3 +64,25 @@ describe('LinkedIn token refresh during an outage', () => {
   });
 });
 
+
+// Upstream 0b22d994b: the @mention lookup used the global fetch, so an expired
+// token came back as a TypeError ("elements" undefined) instead of
+// RefreshToken, the refresh never ran and the mention list stayed empty.
+describe('LinkedIn mention lookup with an expired token', () => {
+  const realFetch = global.fetch;
+  afterEach(() => {
+    global.fetch = realFetch;
+  });
+
+  it('asks for a token refresh', async () => {
+    global.fetch = jest.fn(
+      async () =>
+        new Response(
+          '{"serviceErrorCode":65601,"message":"The token used in the request has expired","status":401}',
+          { status: 401, headers: { 'Content-Type': 'application/json' } }
+        )
+    ) as any;
+    const err = await new LinkedinProvider().mention('t', { query: 'postra' }).catch((e) => e);
+    expect(err).toBeInstanceOf(RefreshToken);
+  });
+});

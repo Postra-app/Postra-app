@@ -202,7 +202,9 @@ export async function proxy(request: NextRequest) {
       const redirect = NextResponse.redirect(new URL(`/`, nextUrl.href));
       redirect.cookies.set('org', org, {
         ...orgCookieOptions,
-        expires: new Date(Date.now() + 15 * 60 * 1000),
+        // As long as the invitation link itself (1 hour,
+        // organization.service.ts), so a slower sign-up keeps it.
+        expires: new Date(Date.now() + 60 * 60 * 1000),
       });
       return redirect;
     }
