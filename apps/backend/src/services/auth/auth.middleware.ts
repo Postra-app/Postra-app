@@ -249,6 +249,9 @@ export class AuthMiddleware implements NestMiddleware {
       const setOrg =
         organization.find((org) => org.id === orgHeader) ||
         organization.find((org) => org.id === orgCookie) ||
+        // No choice yet: prefer a paid organization over an empty one of
+        // the member's own (upstream 5f6008bba).
+        organization.find((org: any) => org.subscription) ||
         organization[0];
 
       if (!organization) {

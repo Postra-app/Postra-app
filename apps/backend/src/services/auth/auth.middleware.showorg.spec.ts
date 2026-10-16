@@ -4,6 +4,7 @@ process.env.NOT_SECURED = '';
 
 import { AuthMiddleware } from '@gitroom/backend/services/auth/auth.middleware';
 import { AuthService } from '@gitroom/helpers/auth/auth.service';
+import { ioRedis } from '@gitroom/nestjs-libraries/redis/redis.service';
 
 // E2E-10-82: a user in two organizations switched in the mobile app and kept
 // seeing the previous one's channels and posts. The app picks the organization
@@ -28,10 +29,17 @@ const org = (id: string) => ({
   users: [{ userId: 'user-1', disabled: false, role: 'SUPERADMIN' }],
 });
 
+let orgs: any[] = [];
+beforeEach(async () => {
+  orgs = [org('org-a'), org('org-b')];
+  // The middleware caches the user's organizations; each case sets its own.
+  await ioRedis.flushall();
+});
+
 const build = () =>
   new AuthMiddleware(
     {
-      getOrgsByUserId: jest.fn().mockResolvedValue([org('org-a'), org('org-b')]),
+      getOrgsByUserId: jest.fn().mockImplementation(async () => orgs),
       updateApiKey: jest.fn(),
     } as any,
     {
@@ -74,5 +82,13 @@ describe('which organization a request is served from', () => {
 
   it('with nothing valid it falls back to the first organization', async () => {
     expect(await run('org-elsewhere', 'org-nowhere')).toBe('org-a');
+  });
+
+  // Upstream 5f6008bba: without a header or cookie (first request after
+  // sign-in), an invited member landed in their own empty organization when
+  // it happened to be first, instead of the paid one they were invited to.
+  it('with nothing valid it prefers an organization with a subscription', async () => {
+    orgs = [org('org-a'), { ...org('org-b'), subscription: { subscriptionTier: 'PRO' } }];
+    expect(await run()).toBe('org-b');
   });
 });
