@@ -56,6 +56,11 @@ test('a clip generated from the composer is attached to the post', async ({ page
 });
 
 test('Billing shows the AI images and videos left this month', async ({ page }) => {
+  // The plan cards ask Stripe for an upgrade quote a moment after the page
+  // renders; the stack's Stripe key is fake, so that quote is a 502 that
+  // landed in `problems` whenever the page was slower than the debounce (CI,
+  // 2026-10-17 twice). The quote is not what this test is about.
+  await page.route('**/api/billing/prorate', (route) => route.fulfill({ json: { price: 10 } }));
   const problems = watchForErrors(page);
   const left = async (type: string) =>
     (await (await page.request.get(`/api/copilot/credits?type=${type}`)).json()).credits as number;
