@@ -5,7 +5,7 @@ import {
 import { Ability, AbilityBuilder, AbilityClass } from '@casl/ability';
 import { Injectable } from '@nestjs/common';
 import {
-  pricing,
+  planLimits,
   TRIAL_CHANNEL_CAP,
   channelsInUse,
 } from '@gitroom/nestjs-libraries/database/prisma/subscriptions/pricing';
@@ -29,7 +29,9 @@ export class PermissionsService {
     private _autopostService: AutopostService,
     private _organizationService: OrganizationService
   ) {}
-  async getPackageOptions(orgId: string) {
+  // `isTrailing` as the request knows it; looked up when the caller has
+  // only the organisation id, so a trial is never held to the full plan.
+  async getPackageOptions(orgId: string, isTrailing?: boolean) {
     const subscription =
       await this._subscriptionService.getSubscriptionByOrganizationId(orgId);
 
@@ -40,7 +42,10 @@ export class PermissionsService {
       // getPackageOptions for the rare direct callers
       (!process.env.STRIPE_PUBLISHABLE_KEY ? 'ULTIMATE' : 'FREE');
 
-    const { channel, ...all } = pricing[tier];
+    const trialing =
+      isTrailing ??
+      !!(await this._organizationService.getOrgById(orgId))?.isTrailing;
+    const { channel, ...all } = planLimits(tier, trialing);
     return {
       subscription,
       options: {
@@ -52,11 +57,15 @@ export class PermissionsService {
 
   // The monthly post allowance the guard checks, for the check repeated
   // where a post is written; none while billing is off.
-  async postCap(orgId: string, createdAt: Date): Promise<PostCap | undefined> {
+  async postCap(
+    orgId: string,
+    createdAt: Date,
+    isTrailing?: boolean
+  ): Promise<PostCap | undefined> {
     if (!process.env.STRIPE_PUBLISHABLE_KEY) {
       return undefined;
     }
-    const { options } = await this.getPackageOptions(orgId);
+    const { options } = await this.getPackageOptions(orgId, isTrailing);
     const subscription = await this._subscriptionService.getSubscription(orgId);
     return {
       // The month runs with Stripe's invoices (E2E-07-40); a plan Stripe
@@ -107,7 +116,10 @@ export class PermissionsService {
       });
     }
 
-    const { subscription, options } = await this.getPackageOptions(orgId);
+    const { subscription, options } = await this.getPackageOptions(
+      orgId,
+      isTrailing
+    );
     for (const [action, section] of requestedPermission) {
       // check for the amount of channels
       if (section === Sections.CHANNEL) {

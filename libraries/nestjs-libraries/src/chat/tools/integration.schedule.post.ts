@@ -5,9 +5,7 @@ import { Injectable } from '@nestjs/common';
 import { IntegrationService } from '@gitroom/nestjs-libraries/database/prisma/integrations/integration.service';
 import { PostsService } from '@gitroom/nestjs-libraries/database/prisma/posts/posts.service';
 import { SubscriptionService } from '@gitroom/nestjs-libraries/database/prisma/subscriptions/subscription.service';
-import {
-  pricing,
-} from '@gitroom/nestjs-libraries/database/prisma/subscriptions/pricing';
+import { planLimits } from '@gitroom/nestjs-libraries/database/prisma/subscriptions/pricing';
 import { makeId } from '@gitroom/nestjs-libraries/services/make.is';
 import { AllProvidersSettings } from '@gitroom/nestjs-libraries/dtos/posts/providers-settings/all.providers.settings';
 import { Integration } from '@prisma/client';
@@ -320,7 +318,11 @@ If the tools return errors, you would need to rerun it with the right parameters
       // the public API (E2E-07-40); a plan Stripe does not bill counts from
       // its creation.
       anchor: subscription?.periodAnchor || subscription?.createdAt || orgCreatedAt,
-      limit: pricing[subscription?.subscriptionTier || 'FREE'].posts_per_month,
+      // A trial posts as many as TRIAL_LIMITS allows, as in the app.
+      limit: planLimits(
+        subscription?.subscriptionTier,
+        await this._subscriptionService.isTrailing(orgId)
+      ).posts_per_month,
     };
   }
 }

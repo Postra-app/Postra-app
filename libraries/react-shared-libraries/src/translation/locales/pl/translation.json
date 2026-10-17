@@ -1511,7 +1511,7 @@
   "autopost_upsell_cta": "Zobacz plany",
   "autopost_feeds_used": "Wykorzystane kanały RSS: {{used}} z {{limit}}",
   "autopost_deleted": "Kanał Auto Post usunięty",
-  "billing_trial_limits": "W 7-dniowym okresie próbnym podłączysz do {{channels}} kanałów i korzystasz z puli AI planu Starter ({{images}} obrazów AI, {{videos}} wideo AI); pełny plan odblokuje się przy pierwszej płatności albo od razu, jeśli zakończysz okres próbny wcześniej.",
+  "billing_trial_limits": "W 7-dniowym okresie próbnym podłączysz do {{channels}} kanałów, zaplanujesz do {{posts}} postów, dodasz {{webhooks}} webhook i {{feeds}} kanał Auto Post oraz korzystasz z puli AI planu Starter ({{images}} obrazów AI, {{videos}} wideo AI). Okres próbny jest dla jednej osoby; zapraszanie zespołu odblokuje się razem z planem. Pełny plan odblokuje się przy pierwszej płatności albo od razu, jeśli zakończysz okres próbny wcześniej.",
   "billing_end_trial_now": "Zakończ okres próbny teraz",
   "channels_still_disabled": "Część kanałów jest nadal wyłączona",
   "channels_still_disabled_description": "Twój plan nie obejmuje wszystkich podłączonych kanałów, więc część pozostaje wyłączona. Włącz wybrane w menu kanału, do limitu planu, albo zmień plan na wyższy, żeby używać wszystkich.",

@@ -254,6 +254,43 @@ export class StripeService {
     }
   }
 
+  // The card a subscription starts its organisation's one trial with; null
+  // when this is not that trial or the card has no fingerprint.
+  private async newTrialCard(subscription: Stripe.Subscription) {
+    if (subscription.status !== 'trialing') {
+      return null;
+    }
+    const customer = subscription.customer as string;
+    const org = await this._organizationService.getOrgByCustomerId(customer);
+    if (!org?.allowTrial) {
+      return null;
+    }
+    const { data } = await stripe.paymentMethods.list({ customer });
+    const latest = data.reduce<Stripe.PaymentMethod | undefined>(
+      (prev, current) => (!prev || prev.created < current.created ? current : prev),
+      undefined
+    );
+    const fingerprint = latest?.card?.fingerprint;
+    // Interpolated into a Stripe search query below.
+    if (!fingerprint || !/^[A-Za-z0-9]+$/.test(fingerprint)) {
+      return null;
+    }
+    return { orgId: org.id, customer, fingerprint };
+  }
+
+  // Another customer whose trial ran on this card. Stripe's search index
+  // lags by up to a minute, so two trials started within it both pass.
+  private async trialCardUsedBefore(card: {
+    customer: string;
+    fingerprint: string;
+  }) {
+    const { data } = await stripe.customers.search({
+      query: `metadata['trial_card']:'${card.fingerprint}'`,
+      limit: 10,
+    });
+    return data.some((c) => c.id !== card.customer);
+  }
+
   private async syncSubscription(
     event:
       | Stripe.CustomerSubscriptionCreatedEvent
@@ -330,9 +367,38 @@ export class StripeService {
       data: { ...event.data, object: current },
     } as typeof event;
 
+    // One free trial per card (K. 2026-10-16): a new organisation used to
+    // mean a new trial. A card that already had one cancels this trial before
+    // anything is charged, and the next checkout comes without a trial.
+    const trialCard = await this.newTrialCard(current);
+    if (trialCard && (await this.trialCardUsedBefore(trialCard))) {
+      await stripe.subscriptions.cancel(current.id);
+      await this._organizationService.endTrialOffer(trialCard.orgId);
+      await this._notificationService.inAppNotification(
+        trialCard.orgId,
+        'Free trial already used',
+        'This card has already been used for a Postra trial. Choose a plan to subscribe without a trial.',
+        true,
+        false,
+        'info'
+      );
+      this._logger.warn(
+        `Cancelled trial ${current.id} for ${current.customer}: card already had a trial`
+      );
+      return { ok: true, skipped: 'trial card used before' };
+    }
+
     // A thrown error answers 500, and Stripe retries the event.
     if (!(await this.checkValidCard(fresh))) {
       return { ok: false };
+    }
+
+    // Marked once the card has passed the check, so a declined card does not
+    // lose its trial for good.
+    if (trialCard) {
+      await stripe.customers.update(trialCard.customer, {
+        metadata: { trial_card: trialCard.fingerprint },
+      });
     }
 
     // past_due is a paid plan in Stripe's retry window, not a trial: keep the

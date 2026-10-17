@@ -1,4 +1,4 @@
-import { pricing } from '@gitroom/nestjs-libraries/database/prisma/subscriptions/pricing';
+import { planLimits } from '@gitroom/nestjs-libraries/database/prisma/subscriptions/pricing';
 import { Throttle } from '@nestjs/throttler';
 import { ioRedis } from '@gitroom/nestjs-libraries/redis/redis.service';
 import {
@@ -127,7 +127,7 @@ export class AutopostController {
     try {
       // @ts-ignore subscription is attached to the org by the auth middleware
       const tier = org?.subscription?.subscriptionTier || 'FREE';
-      const limit = pricing[tier]?.autoPostLimit ?? 0;
+      const limit = planLimits(tier, org.isTrailing).autoPostLimit;
       const running = (await this._autopostsService.getAutoposts(org.id)).filter(
         (f) => f.active && f.id !== id
       ).length;

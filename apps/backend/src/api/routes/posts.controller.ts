@@ -241,7 +241,11 @@ export class PostsController {
       org.id,
       body,
       client === 'mobile' ? 'MOBILE' : 'WEB',
-      await this._permissionsService.postCap(org.id, org.createdAt)
+      await this._permissionsService.postCap(
+        org.id,
+        org.createdAt,
+        org.isTrailing
+      )
     );
   }
 
@@ -299,7 +303,11 @@ export class PostsController {
       date,
       action,
       republish === true,
-      await this._permissionsService.postCap(org.id, org.createdAt)
+      await this._permissionsService.postCap(
+        org.id,
+        org.createdAt,
+        org.isTrailing
+      )
     );
   }
 

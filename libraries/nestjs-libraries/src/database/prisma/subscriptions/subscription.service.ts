@@ -46,6 +46,12 @@ export class SubscriptionService {
     private readonly _aiUsageService: AiUsageService
   ) {}
 
+  // Whether the organisation is in its trial, for flows that hold only its id
+  // (TRIAL_LIMITS in pricing.ts apply).
+  async isTrailing(orgId: string) {
+    return !!(await this._organizationService.getOrgById(orgId))?.isTrailing;
+  }
+
   getSubscriptionByOrganizationId(organizationId: string) {
     return this._subscriptionRepository.getSubscriptionByOrganizationId(
       organizationId

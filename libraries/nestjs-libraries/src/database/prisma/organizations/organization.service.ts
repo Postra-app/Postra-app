@@ -90,6 +90,11 @@ export class OrganizationService {
     return this._organizationRepository.updateApiKey(orgId);
   }
 
+  // The next checkout comes without a free trial.
+  endTrialOffer(orgId: string) {
+    return this._organizationRepository.endTrialOffer(orgId);
+  }
+
   getMailRecipients(orgId: string) {
     return this._organizationRepository.getAllUsersOrgs(orgId);
   }
