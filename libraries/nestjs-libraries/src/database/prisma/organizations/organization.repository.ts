@@ -3,7 +3,10 @@ import {
   PrismaRepository,
   PrismaTransaction,
 } from '@gitroom/nestjs-libraries/database/prisma/prisma.service';
-import { pricing } from '@gitroom/nestjs-libraries/database/prisma/subscriptions/pricing';
+import {
+  planLimits,
+  pricing,
+} from '@gitroom/nestjs-libraries/database/prisma/subscriptions/pricing';
 import { Role, ShortLinkPreference } from '@prisma/client';
 import { Injectable } from '@nestjs/common';
 import { ioRedis } from '@gitroom/nestjs-libraries/redis/redis.service';
@@ -198,6 +201,13 @@ export class OrganizationRepository {
     });
   }
 
+  endTrialOffer(orgId: string) {
+    return this._organization.model.organization.update({
+      where: { id: orgId },
+      data: { allowTrial: false },
+    });
+  }
+
   updateApiKey(orgId: string) {
     return this._organization.model.organization.update({
       where: {
@@ -325,6 +335,7 @@ export class OrganizationRepository {
         },
         select: {
           subscription: true,
+          isTrailing: true,
         },
       });
 
@@ -334,7 +345,10 @@ export class OrganizationRepository {
     const tier: keyof typeof pricing =
       checkForSubscription?.subscription?.subscriptionTier ||
       (process.env.STRIPE_PUBLISHABLE_KEY ? 'FREE' : 'ULTIMATE');
-    const seats = pricing[tier].team_members;
+    const seats = planLimits(
+      tier,
+      !!process.env.STRIPE_PUBLISHABLE_KEY && checkForSubscription?.isTrailing
+    ).team_members;
 
     // The spent mark above lives in one field of the user who used the
     // invite, so their next invite overwrote it and the first link worked

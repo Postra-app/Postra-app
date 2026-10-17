@@ -49,3 +49,20 @@ it('lists exactly the platforms a channel can be connected to', () => {
     expect(text).not.toContain(missing);
   }
 });
+
+// K. 2026-10-16: the trial note names every trial limit (pricing.ts
+// TRIAL_LIMITS); it used to name only channels and AI, so a Business trial met
+// a 402 at the 31st post or the second webhook without having been told.
+it('names every trial limit in the trial note, in English and Polish', () => {
+  const pl = JSON.parse(
+    read('libraries/react-shared-libraries/src/translation/locales/pl/translation.json')
+  );
+  const note = read('apps/frontend/src/components/billing/trial.limits.note.tsx');
+  for (const text of [en.billing_trial_limits, pl.billing_trial_limits]) {
+    for (const value of ['channels', 'posts', 'webhooks', 'feeds', 'images', 'videos']) {
+      expect(text).toContain(`{{${value}}}`);
+      expect(note).toMatch(new RegExp(`\\b${value}: `));
+    }
+    expect(text).not.toMatch(/[–—]/);
+  }
+});

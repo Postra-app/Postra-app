@@ -27,6 +27,8 @@ const build = (alreadyPosted: boolean | string[]) => {
   };
   const service = Object.create(AutopostService.prototype) as AutopostService;
   (service as any)._postsService = posts;
+  // Billing off in this spec: no monthly allowance to check.
+  (service as any)._subscriptionService = { postCap: async () => undefined };
   return { service, posts };
 };
 

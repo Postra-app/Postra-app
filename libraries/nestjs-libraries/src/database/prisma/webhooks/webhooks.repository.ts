@@ -6,7 +6,7 @@ import { BadRequestException, Injectable } from '@nestjs/common';
 import { WebhooksDto } from '@gitroom/nestjs-libraries/dtos/webhooks/webhooks.dto';
 import { newWebhookSecret } from '@gitroom/nestjs-libraries/dtos/webhooks/webhook.signature';
 import { AuthService } from '@gitroom/helpers/auth/auth.service';
-import { pricing } from '@gitroom/nestjs-libraries/database/prisma/subscriptions/pricing';
+import { planLimits } from '@gitroom/nestjs-libraries/database/prisma/subscriptions/pricing';
 
 @Injectable()
 export class WebhooksRepository {
@@ -63,9 +63,16 @@ export class WebhooksRepository {
     }
     const subscription = await this._subscription.model.subscription.findFirst({
       where: { organizationId: orgId, deletedAt: null },
-      select: { subscriptionTier: true },
+      select: {
+        subscriptionTier: true,
+        organization: { select: { isTrailing: true } },
+      },
     });
-    return pricing[subscription?.subscriptionTier || 'FREE']?.webhooks ?? 0;
+    // A trial delivers to as many as it may add (TRIAL_LIMITS).
+    return planLimits(
+      subscription?.subscriptionTier,
+      subscription?.organization?.isTrailing
+    ).webhooks;
   }
 
   // The webhook's signing secret, decrypted; made now for a webhook created

@@ -9,6 +9,8 @@ import {
   trialAiAllowance,
   AGENT_FAIR_USE_MESSAGES,
   TRIAL_VIDEO_CLIPS,
+  TRIAL_LIMITS,
+  planLimits,
 } from './pricing';
 
 // Pins the paid-plan matrix so an upstream sync (Postiz ships different
@@ -334,4 +336,49 @@ it('postsCycleWindow takes a date out of range as now, and returns', () => {
     expect(+start).toBeLessThanOrEqual(Date.now());
     expect(Date.now()).toBeLessThan(+end);
   }
+});
+
+// K. 2026-10-16: a 7-day trial on any plan posts at most 30 a month, is one
+// person, one webhook and one Auto Post feed, whatever the plan pays for.
+describe('planLimits', () => {
+  it('keeps the trial at 30 posts, 1 person, 1 webhook and 1 feed (K. 2026-10-16)', () => {
+    expect(TRIAL_LIMITS).toEqual({
+      posts_per_month: 30,
+      team_members: 1,
+      webhooks: 1,
+      autoPostLimit: 1,
+    });
+  });
+
+  it('cuts every paid plan to the trial limits while trialing', () => {
+    for (const tier of ['STANDARD', 'PRO', 'ULTIMATE']) {
+      const trial = planLimits(tier, true);
+      expect(trial.posts_per_month).toBe(30);
+      expect(trial.team_members).toBe(1);
+      expect(trial.webhooks).toBe(1);
+      expect(trial.autoPostLimit).toBe(1);
+      // Everything else is the plan's own: platforms, API, AI on/off.
+      expect(trial.allowedProviders).toEqual(pricing[tier].allowedProviders);
+      expect(trial.public_api).toBe(pricing[tier].public_api);
+      expect(trial.current).toBe(tier);
+    }
+  });
+
+  it('never raises a plan above its own limits', () => {
+    expect(planLimits('FREE', true)).toMatchObject({
+      posts_per_month: 0,
+      webhooks: 0,
+      autoPostLimit: 0,
+    });
+  });
+
+  it('gives a paying plan its full limits', () => {
+    expect(planLimits('ULTIMATE', false)).toBe(pricing.ULTIMATE);
+    expect(planLimits('PRO', undefined)).toBe(pricing.PRO);
+  });
+
+  it('falls back to FREE for no tier or an unknown one', () => {
+    expect(planLimits(undefined)).toBe(pricing.FREE);
+    expect(planLimits('NOPE', true).posts_per_month).toBe(0);
+  });
 });

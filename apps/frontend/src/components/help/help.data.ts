@@ -516,7 +516,7 @@ export const FAQ_ITEMS: FaqItem[] = [
   {
     question: 'How does the trial work?',
     answer:
-      "Paid plans start with a 7-day free trial, capped at 3 channels, with Starter's AI image allowance and one AI video. Cancel any time in Billing before the trial ends and you won't be charged.",
+      "Paid plans start with a 7-day free trial. During the trial you can connect up to 3 channels, schedule up to 30 posts, add 1 webhook and 1 Auto Post feed, and use Starter's AI allowance with one AI video. The trial is for one person; team invites open with your plan. Cancel any time in Billing before the trial ends and you won't be charged.",
   },
   {
     question: 'How do AI videos work?',

@@ -297,7 +297,11 @@ export class PublicIntegrationsController {
       org.id,
       body,
       creationMethod,
-      await this._permissionsService.postCap(org.id, org.createdAt)
+      await this._permissionsService.postCap(
+        org.id,
+        org.createdAt,
+        org.isTrailing
+      )
     );
   }
 
@@ -551,7 +555,11 @@ export class PublicIntegrationsController {
       id,
       body.status,
       body.republish === true,
-      await this._permissionsService.postCap(org.id, org.createdAt)
+      await this._permissionsService.postCap(
+        org.id,
+        org.createdAt,
+        org.isTrailing
+      )
     );
   }
 

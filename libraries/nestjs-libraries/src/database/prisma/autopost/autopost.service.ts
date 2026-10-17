@@ -666,6 +666,9 @@ export class AutopostService {
       ? (await this._postsService.findFreeDateTime(orgId)) + 'Z'
       : new Date().toISOString();
 
+    // The monthly allowance is checked again where the post is written, so
+    // two runs at once cannot both take the last post of the month.
+    const cap = await this._subscriptionService.postCap(orgId, new Date());
     await this._postsService.createPost(orgId, {
       date,
       order: makeId(10),
@@ -712,7 +715,7 @@ export class AutopostService {
           },
         ],
       })),
-    }, 'AUTOPOST');
+    }, 'AUTOPOST', cap);
   }
 
   async updateUrl(state: WorkflowChannelsState) {
@@ -772,6 +775,26 @@ export class AutopostService {
       (i) => !AutopostService.VIDEO_ONLY_PROVIDERS.has(i.providerIdentifier)
     );
     if (integrationsToSend.length === 0) {
+      return;
+    }
+
+    // Auto Post counts against the plan's posts a month like any other post
+    // (Codex 10-17: it wrote past the cap, a trial's 30 included). Asked
+    // before the AI writes anything; the article waits for the next run, when
+    // the month or the plan may have room again.
+    const cap = await this._subscriptionService.postCap(
+      getPost.organizationId,
+      new Date()
+    );
+    if (
+      cap &&
+      (await this._postsService.postCapReached(
+        getPost.organizationId,
+        cap.anchor,
+        cap.limit,
+        integrationsToSend.map(() => ({}))
+      ))
+    ) {
       return;
     }
 

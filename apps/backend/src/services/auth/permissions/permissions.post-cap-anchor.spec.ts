@@ -26,7 +26,7 @@ describe('the monthly post allowance', () => {
       {} as any,
       {} as any,
       {} as any,
-      {} as any
+      { getOrgById: jest.fn().mockResolvedValue({ isTrailing: false }) } as any
     );
     return { service, postCapReached };
   };

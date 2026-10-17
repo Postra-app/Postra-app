@@ -3,6 +3,7 @@ import {
   COMPABLE_TIERS,
   channelLimitFor,
   isCompableTier,
+  postAllowance,
   pricing,
   trialAiAllowance,
 } from '@gitroom/nestjs-libraries/database/prisma/subscriptions/pricing';
@@ -10,6 +11,7 @@ import { SubscriptionRepository } from '@gitroom/nestjs-libraries/database/prism
 import { IntegrationService } from '@gitroom/nestjs-libraries/database/prisma/integrations/integration.service';
 import { OrganizationService } from '@gitroom/nestjs-libraries/database/prisma/organizations/organization.service';
 import { Organization } from '@prisma/client';
+import { PostCap } from '@gitroom/nestjs-libraries/database/prisma/posts/post.cap';
 import dayjs from 'dayjs';
 import utc from 'dayjs/plugin/utc';
 
@@ -45,6 +47,12 @@ export class SubscriptionService {
     private readonly _auditService: AuditService,
     private readonly _aiUsageService: AiUsageService
   ) {}
+
+  // Whether the organisation is in its trial, for flows that hold only its id
+  // (TRIAL_LIMITS in pricing.ts apply).
+  async isTrailing(orgId: string) {
+    return !!(await this._organizationService.getOrgById(orgId))?.isTrailing;
+  }
 
   getSubscriptionByOrganizationId(organizationId: string) {
     return this._subscriptionRepository.getSubscriptionByOrganizationId(
@@ -554,6 +562,22 @@ export class SubscriptionService {
 
   async getSubscription(organizationId: string) {
     return this._subscriptionRepository.getSubscription(organizationId);
+  }
+
+  // The monthly post allowance for flows that hold only the organisation id
+  // (the agent, Auto Post); none while billing is off.
+  async postCap(
+    orgId: string,
+    orgCreatedAt: Date | string
+  ): Promise<PostCap | undefined> {
+    if (!process.env.STRIPE_PUBLISHABLE_KEY) {
+      return undefined;
+    }
+    return postAllowance(
+      await this.getSubscription(orgId),
+      orgCreatedAt,
+      await this.isTrailing(orgId)
+    );
   }
 
   // Gives an organization this billing period's AI images or videos back

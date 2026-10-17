@@ -13,13 +13,14 @@ jest.mock(
 );
 
 import { IntegrationSchedulePostTool } from './integration.schedule.post';
+import { postAllowance } from '@gitroom/nestjs-libraries/database/prisma/subscriptions/pricing';
 
 // The dashboard enforces posts_per_month through CheckPolicies; the agent
 // tool created posts without asking, so a Starter org could pass 400. The
 // counting itself (per billing month, E2E-07-34) is PostsService.postCapReached,
 // tested on the stack (post-cap-window.spec.ts); here: the tool asks it with
 // the plan's limit and every post of the batch.
-const build = (tier: string | null, used: number) => {
+const build = (tier: string | null, used: number, trialing = false) => {
   const postsService = {
     postCapReached: jest.fn(
       async (_org: string, _anchor: unknown, limit: number, posts: unknown[]) =>
@@ -32,6 +33,16 @@ const build = (tier: string | null, used: number) => {
       .mockResolvedValue(
         tier ? { subscriptionTier: tier, createdAt: new Date() } : null
       ),
+    isTrailing: jest.fn().mockResolvedValue(trialing),
+    // SubscriptionService.postCap, over the mocks above.
+    postCap: async (orgId: string, orgCreatedAt: string) =>
+      process.env.STRIPE_PUBLISHABLE_KEY
+        ? postAllowance(
+            await subscriptionService.getSubscription(orgId),
+            orgCreatedAt,
+            await subscriptionService.isTrailing(orgId)
+          )
+        : undefined,
   };
   const tool = new IntegrationSchedulePostTool(
     postsService as any,
@@ -51,6 +62,13 @@ describe('agent post cap', () => {
     const { tool, postsService } = build('STANDARD', 400);
     await expect(tool.postLimitReached('org-1', new Date().toISOString(), posts(1))).resolves.toBe(true);
     expect(postsService.postCapReached.mock.calls[0][2]).toBe(400);
+  });
+
+  // K. 2026-10-16: a trial posts at most 30 a month, whatever the plan.
+  it('stops a Business trial at 30 posts, like the app', async () => {
+    const { tool, postsService } = build('ULTIMATE', 30, true);
+    await expect(tool.postLimitReached('org-1', new Date().toISOString(), posts(1))).resolves.toBe(true);
+    expect(postsService.postCapReached.mock.calls[0][2]).toBe(30);
   });
 
   // AI-8: one batch of ten at 399 of 400 went through in full.

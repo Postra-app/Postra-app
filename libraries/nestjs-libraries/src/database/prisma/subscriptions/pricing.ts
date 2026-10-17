@@ -242,6 +242,56 @@ export const trialAiAllowance = (
   return Math.min(allowance, cap);
 };
 
+// What a 7-day trial may use whatever plan it runs on (K. 2026-10-16): the
+// plan's own limits apply only from the first payment, so a Business trial is
+// not 10 000 webhooks, 10 feeds and unlimited posts for free. Channels and AI
+// have their own trial caps above.
+export const TRIAL_LIMITS = {
+  posts_per_month: 30,
+  team_members: 1,
+  webhooks: 1,
+  autoPostLimit: 1,
+} as const;
+
+// A plan's limits as the organisation may use them now: the plan itself, or
+// the plan cut to TRIAL_LIMITS while trialing. Every check of posts, seats,
+// webhooks and feeds reads this, so the API, the agent and the UI agree.
+export const planLimits = (
+  tier: string | null | undefined,
+  isTrailing?: boolean | null
+): PricingInnerInterface => {
+  const plan = pricing[tier || 'FREE'] || pricing.FREE;
+  if (!isTrailing) {
+    return plan;
+  }
+  return {
+    ...plan,
+    posts_per_month: Math.min(plan.posts_per_month, TRIAL_LIMITS.posts_per_month),
+    team_members: Math.min(plan.team_members, TRIAL_LIMITS.team_members),
+    webhooks: Math.min(plan.webhooks, TRIAL_LIMITS.webhooks),
+    autoPostLimit: Math.min(plan.autoPostLimit, TRIAL_LIMITS.autoPostLimit),
+  };
+};
+
+// The monthly post allowance of an organisation: its month runs with Stripe's
+// invoices, as on the dashboard and in the public API (E2E-07-40), and a plan
+// Stripe does not bill counts from its creation.
+export const postAllowance = (
+  subscription:
+    | {
+        subscriptionTier?: string | null;
+        periodAnchor?: Date | null;
+        createdAt?: Date | null;
+      }
+    | null
+    | undefined,
+  orgCreatedAt: Date | string,
+  isTrailing?: boolean | null
+) => ({
+  anchor: subscription?.periodAnchor || subscription?.createdAt || orgCreatedAt,
+  limit: planLimits(subscription?.subscriptionTier, isTrailing).posts_per_month,
+});
+
 /**
  * Channels that take a slot: every channel that is not disabled — including
  * one waiting to be reconnected, which comes back without asking for a slot.
