@@ -25,66 +25,17 @@ const mcpClients = [
 
 type McpClient = (typeof mcpClients)[number];
 
+// CLI clients send the key in a header. Remote servers (ChatGPT, Claude)
+// sign in by OAuth at /mcp-oauth, so no config here carries the key in a URL.
 const getMcpConfig = (
   client: McpClient,
-  method: 'header' | 'path',
   mcpBase: string,
   apiKey: string
 ): { config: string; hint: string } => {
-  const urlWithKey = `${mcpBase}/mcp/${apiKey}`;
   const urlBase = `${mcpBase}/mcp`;
   const bearer = `Bearer ${apiKey}`;
 
   const json = (obj: object) => JSON.stringify(obj, null, 2);
-
-  if (method === 'path') {
-    switch (client) {
-      case 'Claude Code':
-        return {
-          config: `claude mcp add postra --transport http "${urlWithKey}"`,
-          hint: 'Run this command in your terminal.',
-        };
-      case 'Cursor':
-        return {
-          config: json({ mcpServers: { postra: { url: urlWithKey } } }),
-          hint: 'Add to .cursor/mcp.json in your project root.',
-        };
-      case 'VS Code / Copilot':
-        return {
-          config: json({
-            servers: { postra: { type: 'http', url: urlWithKey } },
-          }),
-          hint: 'Add to .vscode/mcp.json in your project root.',
-        };
-      case 'Windsurf':
-        return {
-          config: json({
-            mcpServers: { postra: { serverUrl: urlWithKey } },
-          }),
-          hint: 'Add to ~/.codeium/windsurf/mcp_config.json',
-        };
-      case 'Amp':
-        return {
-          config: `amp mcp add postra ${urlWithKey}`,
-          hint: 'Run this command in your terminal.',
-        };
-      case 'Codex':
-        return {
-          config: `# ~/.codex/config.toml\n\n[mcp_servers.postra]\nurl = "${urlWithKey}"`,
-          hint: 'Add to ~/.codex/config.toml',
-        };
-      case 'Gemini CLI':
-        return {
-          config: json({ mcpServers: { postra: { url: urlWithKey } } }),
-          hint: 'Add to ~/.gemini/settings.json',
-        };
-      case 'Warp':
-        return {
-          config: json({ postra: { url: urlWithKey } }),
-          hint: 'Settings > MCP Servers > + Add, then paste this config.',
-        };
-    }
-  }
 
   switch (client) {
     case 'Claude Code':
@@ -173,7 +124,6 @@ const McpSection = ({
 
   const { config, hint } = getMcpConfig(
     activeClient,
-    method,
     mcpBase,
     user.publicApi
   );
