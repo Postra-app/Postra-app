@@ -17,24 +17,31 @@
 # few exact names. So the type groups exclude every pattern of the named
 # groups (repo/dependabot.spec.ts checks the lists stay in step).
 #
-# "held" collects minors we cannot take yet, each with its reason in the
-# launch plan (TypeScript 5.9, CopilotKit 1.77, @atproto/api 0.23, polotno).
-# Its PR stays red until the work is done, and it keeps the other groups green and mergeable meanwhile.
+# Packages we cannot take yet (TypeScript 5.9, CopilotKit 1.79, @atproto/api,
+# polotno) are ignored here, each with its reason in the launch plan. They
+# used to sit in a "held" group whose red PR came back every week (#371,
+# #386); the weekly freshness issue lists them instead (#334).
+#
+# Monthly, not weekly (K. 2026-10-17: too many bump PRs for no gain). Security
+# updates are not version updates: they still come as soon as GitHub has them.
 version: 2
 updates:
   - package-ecosystem: "npm"
     directory: "/"
     schedule:
-      interval: "weekly"
+      interval: "monthly"
     open-pull-requests-limit: 10
     ignore:
       - dependency-name: "*"
         update-types: ["version-update:semver-major"]
+      - dependency-name: "typescript"
+      - dependency-name: "@copilotkit/react-core"
+      - dependency-name: "@copilotkit/react-textarea"
+      - dependency-name: "@copilotkit/react-ui"
+      - dependency-name: "@copilotkit/runtime"
+      - dependency-name: "@atproto/api"
+      - dependency-name: "polotno"
     groups:
-      held:
-        applies-to: version-updates
-        update-types: ["minor", "patch"]
-        patterns: ["typescript", "@copilotkit/react-core", "@copilotkit/react-textarea", "@copilotkit/react-ui", "@copilotkit/runtime", "@atproto/api", "polotno"]
       ai:
         applies-to: version-updates
         update-types: ["minor", "patch"]
@@ -51,36 +58,51 @@ updates:
         applies-to: version-updates
         dependency-type: "production"
         update-types: ["minor", "patch"]
-        exclude-patterns: ["typescript", "@copilotkit/react-core", "@copilotkit/react-textarea", "@copilotkit/react-ui", "@copilotkit/runtime", "@atproto/api", "polotno", "@ag-ui/*", "@langchain/*", "@mastra/*", "mastra", "openai", "@ai-sdk/*", "@temporalio/*", "nestjs-temporal-core", "react", "react-dom", "next", "@types/react", "@types/react-dom", "eslint-config-next", "swr", "react-*"]
+        exclude-patterns: ["@ag-ui/*", "@langchain/*", "@mastra/*", "mastra", "openai", "@ai-sdk/*", "@temporalio/*", "nestjs-temporal-core", "react", "react-dom", "next", "@types/react", "@types/react-dom", "eslint-config-next", "swr", "react-*"]
       development:
         applies-to: version-updates
         dependency-type: "development"
         update-types: ["minor", "patch"]
-        exclude-patterns: ["typescript", "@copilotkit/react-core", "@copilotkit/react-textarea", "@copilotkit/react-ui", "@copilotkit/runtime", "@atproto/api", "polotno", "@ag-ui/*", "@langchain/*", "@mastra/*", "mastra", "openai", "@ai-sdk/*", "@temporalio/*", "nestjs-temporal-core", "react", "react-dom", "next", "@types/react", "@types/react-dom", "eslint-config-next", "swr", "react-*"]
+        exclude-patterns: ["@ag-ui/*", "@langchain/*", "@mastra/*", "mastra", "openai", "@ai-sdk/*", "@temporalio/*", "nestjs-temporal-core", "react", "react-dom", "next", "@types/react", "@types/react-dom", "eslint-config-next", "swr", "react-*"]
   # The Node image of Dockerfile.dev. Its version has to equal volta.node in
-  # package.json (ci-workflows.spec.ts), so a PR from here is red until
-  # volta.node moves with it: the reminder, and the place to do both.
+  # package.json (ci-workflows.spec.ts). Node majors move by hand when they
+  # reach LTS (Node 26: 2026-10-28), together with volta.node.
   - package-ecosystem: "docker"
     directory: "/"
     schedule:
-      interval: "weekly"
-  # Images in the local compose files (docker-compose.dev.yaml and the
-  # self-host docker-compose.yaml): exact tags, and this says when a newer
-  # one exists, so no local image sits on :latest or goes stale unseen.
-  # Global tools of the image (pnpm, pm2). A pnpm PR from here is red until
-  # packageManager in package.json moves with it (ci-workflows.spec.ts).
+      interval: "monthly"
+    ignore:
+      - dependency-name: "node"
+        update-types: ["version-update:semver-major"]
+  # Global tools of the image. pnpm moves through its own program (a newer
+  # pnpm re-resolves peers in the lockfile) and must equal packageManager
+  # (ci-workflows.spec.ts); the freshness issue says when it is behind.
   - package-ecosystem: "npm"
     directory: "/var/docker/tools"
     schedule:
-      interval: "weekly"
+      interval: "monthly"
+    ignore:
+      - dependency-name: "pnpm"
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
+  # Images in the local compose files, in one PR. Temporal follows the
+  # production box (infra issue #196) and docker-compose.yaml is upstream's
+  # self-host file, so only minors and patches of the tools come here.
   - package-ecosystem: "docker-compose"
     directory: "/"
     schedule:
-      interval: "weekly"
+      interval: "monthly"
+    ignore:
+      - dependency-name: "temporalio/*"
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
+    groups:
+      compose:
+        patterns: ["*"]
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:
-      interval: "weekly"
+      interval: "monthly"
     groups:
       actions:
         patterns: ["*"]

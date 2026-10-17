@@ -72,9 +72,25 @@ describe('Dependabot groups', () => {
     expect(doubled).toEqual([]);
   });
 
-  it('holds back only packages the repo depends on', () => {
-    const held = byPattern.find((g) => g.name === 'held');
-    expect(held?.patterns.filter((p) => !deps.includes(p))).toEqual([]);
+  // Packages we cannot take yet are ignored outright; a "held" group opened a
+  // red PR every week instead (#371, #386). The freshness issue lists them.
+  it('holds back only packages the repo depends on, with no PR of their own', () => {
+    const held = [...npm.matchAll(/^\s*- dependency-name: "([^"*]+)"\s*$(?!\n\s+update-types)/gm)].map(
+      (m) => m[1]
+    );
+    expect(held.length).toBeGreaterThan(0);
+    expect(held.filter((name) => !deps.includes(name))).toEqual([]);
+    expect(groups.map((g) => g.name)).not.toContain('held');
+    const guard = readFileSync(join(root, 'scripts', 'dependency-freshness.mjs'), 'utf8');
+    expect(guard).toContain('dependabot.yml');
+  });
+
+  // K. 2026-10-17: weekly runs gave too many bump PRs for no gain. Security
+  // updates are not version updates and still come at once.
+  it('runs version updates monthly', () => {
+    const intervals = [...config.matchAll(/^\s*interval:\s*"(\w+)"/gm)].map((m) => m[1]);
+    expect(intervals.length).toBeGreaterThan(0);
+    expect(intervals.filter((i) => i !== 'monthly')).toEqual([]);
   });
 
   // Majors one by one ran Dependabot past its 55-minute limit (E2E-01-28).
