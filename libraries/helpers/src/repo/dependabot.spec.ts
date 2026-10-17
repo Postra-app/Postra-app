@@ -75,14 +75,26 @@ describe('Dependabot groups', () => {
   // Packages we cannot take yet are ignored outright; a "held" group opened a
   // red PR every week instead (#371, #386). The freshness issue lists them.
   it('holds back only packages the repo depends on, with no PR of their own', () => {
-    const held = [...npm.matchAll(/^\s*- dependency-name: "([^"*]+)"\s*$(?!\n\s+update-types)/gm)].map(
-      (m) => m[1]
-    );
+    const held = [
+      ...npm.matchAll(/^\s*- dependency-name: "([^"*]+)"\s*\n\s*update-types: \[([^\]]*)\]/gm),
+    ]
+      .filter((m) => m[2].includes('semver-minor'))
+      .map((m) => m[1]);
     expect(held.length).toBeGreaterThan(0);
     expect(held.filter((name) => !deps.includes(name))).toEqual([]);
     expect(groups.map((g) => g.name)).not.toContain('held');
     const guard = readFileSync(join(root, 'scripts', 'dependency-freshness.mjs'), 'utf8');
     expect(guard).toContain('dependabot.yml');
+  });
+
+  // An ignore without update-types also stops security updates (Codex,
+  // 2026-10-17); naming the version-update types keeps them coming.
+  it('never ignores security updates', () => {
+    const entries = config.split(/^\s*- dependency-name:/m).slice(1);
+    expect(entries.length).toBeGreaterThan(0);
+    for (const entry of entries) {
+      expect(entry.split('\n')[1] || '').toMatch(/^\s*update-types: \["version-update:/);
+    }
   });
 
   // K. 2026-10-17: weekly runs gave too many bump PRs for no gain. Security

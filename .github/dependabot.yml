@@ -20,7 +20,8 @@
 # Packages we cannot take yet (TypeScript 5.9, CopilotKit 1.79, @atproto/api,
 # polotno) are ignored here, each with its reason in the launch plan. They
 # used to sit in a "held" group whose red PR came back every week (#371,
-# #386); the weekly freshness issue lists them instead (#334).
+# #386); the weekly freshness issue lists them instead (#334). Every ignore
+# names version-update types only, so security updates still come for them.
 #
 # Monthly, not weekly (K. 2026-10-17: too many bump PRs for no gain). Security
 # updates are not version updates: they still come as soon as GitHub has them.
@@ -35,12 +36,19 @@ updates:
       - dependency-name: "*"
         update-types: ["version-update:semver-major"]
       - dependency-name: "typescript"
+        update-types: ["version-update:semver-major", "version-update:semver-minor", "version-update:semver-patch"]
       - dependency-name: "@copilotkit/react-core"
+        update-types: ["version-update:semver-major", "version-update:semver-minor", "version-update:semver-patch"]
       - dependency-name: "@copilotkit/react-textarea"
+        update-types: ["version-update:semver-major", "version-update:semver-minor", "version-update:semver-patch"]
       - dependency-name: "@copilotkit/react-ui"
+        update-types: ["version-update:semver-major", "version-update:semver-minor", "version-update:semver-patch"]
       - dependency-name: "@copilotkit/runtime"
+        update-types: ["version-update:semver-major", "version-update:semver-minor", "version-update:semver-patch"]
       - dependency-name: "@atproto/api"
+        update-types: ["version-update:semver-major", "version-update:semver-minor", "version-update:semver-patch"]
       - dependency-name: "polotno"
+        update-types: ["version-update:semver-major", "version-update:semver-minor", "version-update:semver-patch"]
     groups:
       ai:
         applies-to: version-updates
@@ -83,6 +91,7 @@ updates:
       interval: "monthly"
     ignore:
       - dependency-name: "pnpm"
+        update-types: ["version-update:semver-major", "version-update:semver-minor", "version-update:semver-patch"]
       - dependency-name: "*"
         update-types: ["version-update:semver-major"]
   # Images in the local compose files, in one PR. Temporal follows the
@@ -94,6 +103,7 @@ updates:
       interval: "monthly"
     ignore:
       - dependency-name: "temporalio/*"
+        update-types: ["version-update:semver-major", "version-update:semver-minor", "version-update:semver-patch"]
       - dependency-name: "*"
         update-types: ["version-update:semver-major"]
     groups:

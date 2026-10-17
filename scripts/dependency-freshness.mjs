@@ -30,7 +30,7 @@ const deprecated = Object.entries(outdated)
 // no longer come as PRs (K. 2026-10-17), so this issue is where they show.
 const config = readFileSync(new URL('../.github/dependabot.yml', import.meta.url), 'utf8');
 const npmEntry = config.split(/^\s*- package-ecosystem:/m)[1] || '';
-const ignored = [...npmEntry.matchAll(/^\s*- dependency-name: "([^"*]+)"\s*$(?!\n\s+update-types)/gm)].map((m) => m[1]);
+const ignored = [...npmEntry.matchAll(/^\s*- dependency-name: "([^"*]+)"\s*\n\s*update-types: \[[^\]]*semver-minor[^\]]*\]/gm)].map((m) => m[1]);
 const held = Object.entries(outdated)
   .filter(([name, v]) => ignored.includes(name) && v.current !== v.latest && major(v.latest) <= major(v.current))
   .map(([name, v]) => ({ name, ...v }))
@@ -42,7 +42,10 @@ const pkg = JSON.parse(readFileSync(new URL('../package.json', import.meta.url),
 const pnpmOurs = String(pkg.packageManager || '').replace(/^pnpm@/, '');
 let pnpmLatest;
 try {
-  pnpmLatest = (await (await fetch('https://registry.npmjs.org/pnpm/latest')).json()).version;
+  const res = await fetch('https://registry.npmjs.org/pnpm/latest');
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  pnpmLatest = (await res.json()).version;
+  if (!/^\d+\.\d+\.\d+$/.test(String(pnpmLatest))) throw new Error(`no version in the answer: ${pnpmLatest}`);
 } catch (err) {
   console.error('Cannot read the latest pnpm: ' + err);
   process.exit(1);
