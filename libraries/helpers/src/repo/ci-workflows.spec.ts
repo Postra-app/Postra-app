@@ -90,6 +90,13 @@ describe('CI workflows', () => {
     expect(text).not.toMatch(/--project[= ]publish-/);
   });
 
+  // The app lives on app.postra.co.uk since 2026-10-15. The deploy health
+  // check and rollback still asked app-dev.postra.pl, which only answered
+  // because the old name points at the same load balancer.
+  it.each(scripts)('$name checks the app on app.postra.co.uk', ({ text }) => {
+    expect(text).not.toMatch(/app(-dev)?\.postra\.pl/);
+  });
+
   it('builds the production image on the Node in volta.node', () => {
     const pkg = JSON.parse(readFileSync(join(root, 'package.json'), 'utf8'));
     const docker = readFileSync(join(root, 'Dockerfile.dev'), 'utf8');
