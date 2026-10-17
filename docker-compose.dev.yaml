@@ -43,7 +43,7 @@ services:
 
   # ── Tools (profile: tools) ────────────────────────────────────
   postra-pg-admin:
-    image: dpage/pgadmin4:latest
+    image: dpage/pgadmin4:9.18.0
     container_name: postra-pg-admin
     restart: always
     profiles: [tools]
@@ -56,7 +56,7 @@ services:
       - postra-network
 
   postra-redisinsight:
-    image: redis/redisinsight:latest
+    image: redis/redisinsight:3.8.0
     container_name: postra-redisinsight
     restart: always
     profiles: [tools]

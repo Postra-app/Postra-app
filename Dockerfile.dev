@@ -55,14 +55,18 @@ RUN addgroup --system www \
  && chown -R www:www /www /var/lib/nginx /var/log/nginx /var/cache/nginx /uploads
 
 
-RUN npm --no-update-notifier --no-fund --global install pnpm@10.6.1 pm2
+# pnpm and pm2 at the exact versions in var/docker/tools/package.json, which
+# Dependabot watches; pnpm there equals packageManager (ci-workflows.spec.ts).
+# pm2 had no version here, so every build took whatever was newest.
+COPY var/docker/tools/package.json /tmp/tools/package.json
+RUN npm --no-update-notifier --no-fund --global install $(node -p "Object.entries(require('/tmp/tools/package.json').dependencies).map(([n, v]) => n + '@' + v).join(' ')")
 
 WORKDIR /app
 
 COPY . /app
 COPY var/docker/nginx.conf /etc/nginx/nginx.conf
 
-RUN pnpm install
+RUN pnpm install --frozen-lockfile
 
 # Install the Geist brand font into fontconfig so the server-side design
 # renderer (sharp/librsvg, DESIGN_TEXT_FONT = 'Geist, sans-serif') draws post
