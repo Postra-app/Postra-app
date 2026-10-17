@@ -8,7 +8,7 @@
 services:
   # ── Core (always started) ──────────────────────────────────────
   postra-postgres:
-    image: postgres:17-alpine
+    image: postgres:18-alpine
     container_name: postra-postgres
     restart: always
     environment:
@@ -72,7 +72,7 @@ services:
   # ── Temporal (profile: temporal) ──────────────────────────────
   temporal-postgresql:
     container_name: temporal-postgresql
-    image: postgres:16
+    image: postgres:18
     profiles: [temporal]
     environment:
       POSTGRES_PASSWORD: temporal

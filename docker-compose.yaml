@@ -126,7 +126,7 @@ services:
         condition: service_healthy
 
   postra-postgres:
-    image: postgres:17-alpine
+    image: postgres:18-alpine
     container_name: postra-postgres
     restart: always
     environment:
@@ -189,7 +189,7 @@ services:
 
   temporal-postgresql:
     container_name: temporal-postgresql
-    image: postgres:16
+    image: postgres:18
     environment:
       POSTGRES_PASSWORD: temporal
       POSTGRES_USER: temporal
