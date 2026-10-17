@@ -5,12 +5,10 @@ import { Injectable } from '@nestjs/common';
 import { IntegrationService } from '@gitroom/nestjs-libraries/database/prisma/integrations/integration.service';
 import { PostsService } from '@gitroom/nestjs-libraries/database/prisma/posts/posts.service';
 import { SubscriptionService } from '@gitroom/nestjs-libraries/database/prisma/subscriptions/subscription.service';
-import { planLimits } from '@gitroom/nestjs-libraries/database/prisma/subscriptions/pricing';
 import { makeId } from '@gitroom/nestjs-libraries/services/make.is';
 import { AllProvidersSettings } from '@gitroom/nestjs-libraries/dtos/posts/providers-settings/all.providers.settings';
 import { Integration } from '@prisma/client';
 import { checkAuth } from '@gitroom/nestjs-libraries/chat/auth.context';
-import { PostCap } from '@gitroom/nestjs-libraries/database/prisma/posts/post.cap';
 import { SubscriptionException } from '@gitroom/nestjs-libraries/services/auth/permission.exception.class';
 
 const POSTS_USED_UP =
@@ -305,24 +303,7 @@ If the tools return errors, you would need to rerun it with the right parameters
     );
   }
 
-  private async postCap(
-    orgId: string,
-    orgCreatedAt: string
-  ): Promise<PostCap | undefined> {
-    if (!process.env.STRIPE_PUBLISHABLE_KEY) {
-      return undefined;
-    }
-    const subscription = await this._subscriptionService.getSubscription(orgId);
-    return {
-      // The month runs with Stripe's invoices, as on the dashboard and in
-      // the public API (E2E-07-40); a plan Stripe does not bill counts from
-      // its creation.
-      anchor: subscription?.periodAnchor || subscription?.createdAt || orgCreatedAt,
-      // A trial posts as many as TRIAL_LIMITS allows, as in the app.
-      limit: planLimits(
-        subscription?.subscriptionTier,
-        await this._subscriptionService.isTrailing(orgId)
-      ).posts_per_month,
-    };
+  private postCap(orgId: string, orgCreatedAt: string) {
+    return this._subscriptionService.postCap(orgId, orgCreatedAt);
   }
 }

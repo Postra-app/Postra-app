@@ -13,6 +13,7 @@ jest.mock(
 );
 
 import { IntegrationSchedulePostTool } from './integration.schedule.post';
+import { postAllowance } from '@gitroom/nestjs-libraries/database/prisma/subscriptions/pricing';
 
 // The dashboard enforces posts_per_month through CheckPolicies; the agent
 // tool created posts without asking, so a Starter org could pass 400. The
@@ -33,6 +34,15 @@ const build = (tier: string | null, used: number, trialing = false) => {
         tier ? { subscriptionTier: tier, createdAt: new Date() } : null
       ),
     isTrailing: jest.fn().mockResolvedValue(trialing),
+    // SubscriptionService.postCap, over the mocks above.
+    postCap: async (orgId: string, orgCreatedAt: string) =>
+      process.env.STRIPE_PUBLISHABLE_KEY
+        ? postAllowance(
+            await subscriptionService.getSubscription(orgId),
+            orgCreatedAt,
+            await subscriptionService.isTrailing(orgId)
+          )
+        : undefined,
   };
   const tool = new IntegrationSchedulePostTool(
     postsService as any,

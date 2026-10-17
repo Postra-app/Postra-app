@@ -1,6 +1,7 @@
 const retrieveSubscription = jest.fn();
 const listSubscriptions = jest.fn();
 const cancelSubscription = jest.fn().mockResolvedValue({});
+const updateSubscription = jest.fn().mockResolvedValue({});
 const listMethods = jest.fn();
 const searchCustomers = jest.fn();
 const updateCustomer = jest.fn().mockResolvedValue({});
@@ -10,7 +11,7 @@ const cancelIntent = jest.fn().mockResolvedValue({});
 jest.mock('stripe', () => {
   const actual = jest.requireActual('stripe');
   const mock: any = jest.fn().mockImplementation(() => ({
-    subscriptions: { retrieve: retrieveSubscription, list: listSubscriptions, cancel: cancelSubscription },
+    subscriptions: { retrieve: retrieveSubscription, list: listSubscriptions, cancel: cancelSubscription, update: updateSubscription },
     paymentMethods: { list: listMethods, detach: jest.fn() },
     paymentIntents: { create: createIntent, cancel: cancelIntent },
     customers: { search: searchCustomers, update: updateCustomer },
@@ -54,11 +55,17 @@ const build = (allowTrial = true) => {
   return { service, subscriptionService, organizationService, notificationService };
 };
 
+let fingerprint = '';
+let n = 0;
+const card = (fp: string) => ({ data: [{ id: 'pm_1', created: 10, card: { fingerprint: fp } }] });
+
 beforeEach(() => {
   jest.clearAllMocks();
+  // Each test its own card: the Redis reservation outlives a test.
+  fingerprint = `Fp${Date.now()}x${++n}`;
   retrieveSubscription.mockResolvedValue(trialing);
   listSubscriptions.mockResolvedValue({ data: [] });
-  listMethods.mockResolvedValue({ data: [{ id: 'pm_1', created: 10, card: { fingerprint: 'Fp1234abcd' } }] });
+  listMethods.mockResolvedValue(card(fingerprint));
   // The £1 card check passes.
   createIntent.mockResolvedValue({ id: 'pi_1', status: 'requires_capture' });
 });
@@ -69,7 +76,10 @@ it('cancels a trial on a card that already had one, before any charge', async ()
 
   const result = await service.createSubscription(event);
 
-  expect(searchCustomers).toHaveBeenCalledWith(expect.objectContaining({ query: "metadata['trial_card']:'Fp1234abcd'" }));
+  expect(searchCustomers).toHaveBeenCalledWith(expect.objectContaining({ query: `metadata['trial_card']:'${fingerprint}'` }));
+  // Marked before the cancel, so a retry can finish a rejection cut short.
+  expect(updateSubscription).toHaveBeenCalledWith('sub_2', { metadata: { trial_rejected: 'card' } });
+  expect(updateSubscription.mock.invocationCallOrder[0]).toBeLessThan(cancelSubscription.mock.invocationCallOrder[0]);
   expect(cancelSubscription).toHaveBeenCalledWith('sub_2');
   expect(createIntent).not.toHaveBeenCalled();
   expect(subscriptionService.createOrUpdateSubscription).not.toHaveBeenCalled();
@@ -88,7 +98,7 @@ it('starts the first trial on a card and marks the card on the customer', async 
 
   expect(cancelSubscription).not.toHaveBeenCalled();
   expect(subscriptionService.createOrUpdateSubscription).toHaveBeenCalled();
-  expect(updateCustomer).toHaveBeenCalledWith('cus_2', { metadata: { trial_card: 'Fp1234abcd' } });
+  expect(updateCustomer).toHaveBeenCalledWith('cus_2', { metadata: { trial_card: fingerprint } });
 });
 
 it('does not count the customer’s own mark (later events of the same trial)', async () => {
@@ -119,4 +129,54 @@ it('leaves paid subscriptions and organisations past their trial alone', async (
 
   expect(searchCustomers).not.toHaveBeenCalled();
   expect(cancelSubscription).not.toHaveBeenCalled();
+});
+
+// Codex 10-17: Stripe's search index lags (~20 s on the sandbox), so two
+// trials started at once on one card both found nothing.
+it('two trials at once on one card: the second is cancelled although search finds nothing yet', async () => {
+  searchCustomers.mockResolvedValue({ data: [] });
+  await build().service.createSubscription(event);
+  expect(cancelSubscription).not.toHaveBeenCalled();
+
+  const other = { ...trialing, id: 'sub_3', customer: 'cus_3' };
+  retrieveSubscription.mockResolvedValue(other);
+  await build().service.createSubscription({ ...event, data: { object: other } });
+  expect(cancelSubscription).toHaveBeenCalledWith('sub_3');
+});
+
+it('a declined card gives its reservation back', async () => {
+  searchCustomers.mockResolvedValue({ data: [] });
+  createIntent.mockResolvedValue({ id: 'pi_1', status: 'requires_payment_method' });
+  await build().service.createSubscription(event);
+
+  createIntent.mockResolvedValue({ id: 'pi_2', status: 'requires_capture' });
+  const other = { ...trialing, id: 'sub_3', customer: 'cus_3' };
+  retrieveSubscription.mockResolvedValue(other);
+  const { service, subscriptionService } = build();
+  await service.createSubscription({ ...event, data: { object: other } });
+  expect(subscriptionService.createOrUpdateSubscription).toHaveBeenCalled();
+});
+
+// Codex 10-17: cancelled in Stripe, then a failure before the offer was taken
+// away; the retry stopped at "cancelled" and the next checkout offered a trial.
+it('a retry finishes a rejection cut short after the cancel', async () => {
+  retrieveSubscription.mockResolvedValue({ ...trialing, status: 'canceled', metadata: { ...trialing.metadata, trial_rejected: 'card' } });
+  const { service, organizationService, notificationService, subscriptionService } = build(true);
+
+  await service.updateSubscription(event);
+
+  expect(cancelSubscription).not.toHaveBeenCalled();
+  expect(notificationService.inAppNotification).toHaveBeenCalled();
+  expect(organizationService.endTrialOffer).toHaveBeenCalledWith('org-2');
+  expect(subscriptionService.createOrUpdateSubscription).not.toHaveBeenCalled();
+});
+
+it('and does nothing more once the rejection is complete', async () => {
+  retrieveSubscription.mockResolvedValue({ ...trialing, status: 'canceled', metadata: { ...trialing.metadata, trial_rejected: 'card' } });
+  const { service, organizationService, notificationService } = build(false);
+
+  await service.updateSubscription(event);
+
+  expect(notificationService.inAppNotification).not.toHaveBeenCalled();
+  expect(organizationService.endTrialOffer).not.toHaveBeenCalled();
 });

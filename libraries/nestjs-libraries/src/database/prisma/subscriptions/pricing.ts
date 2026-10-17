@@ -273,6 +273,25 @@ export const planLimits = (
   };
 };
 
+// The monthly post allowance of an organisation: its month runs with Stripe's
+// invoices, as on the dashboard and in the public API (E2E-07-40), and a plan
+// Stripe does not bill counts from its creation.
+export const postAllowance = (
+  subscription:
+    | {
+        subscriptionTier?: string | null;
+        periodAnchor?: Date | null;
+        createdAt?: Date | null;
+      }
+    | null
+    | undefined,
+  orgCreatedAt: Date | string,
+  isTrailing?: boolean | null
+) => ({
+  anchor: subscription?.periodAnchor || subscription?.createdAt || orgCreatedAt,
+  limit: planLimits(subscription?.subscriptionTier, isTrailing).posts_per_month,
+});
+
 /**
  * Channels that take a slot: every channel that is not disabled — including
  * one waiting to be reconnected, which comes back without asking for a slot.
