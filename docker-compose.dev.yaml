@@ -129,7 +129,7 @@ services:
 
   temporal-ui:
     container_name: temporal-ui
-    image: temporalio/ui:2.34.0
+    image: temporalio/ui:2.56.0
     profiles: [temporal]
     environment:
       - TEMPORAL_ADDRESS=temporal:7233
