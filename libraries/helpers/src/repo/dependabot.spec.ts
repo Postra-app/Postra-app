@@ -91,4 +91,19 @@ describe('Dependabot groups', () => {
     expect(guard).toMatch(/schedule:/);
     expect(guard).toContain('node scripts/dependency-freshness.mjs');
   });
+
+  // pgAdmin and RedisInsight ran on :latest in the dev compose, with nothing
+  // saying when they moved. Exact tags, and Dependabot watches the compose
+  // images like the Dockerfile's.
+  it('pins every dev compose image and watches the compose files', () => {
+    const compose = readFileSync(join(root, 'docker-compose.dev.yaml'), 'utf8');
+    const images = [...compose.matchAll(/^\s*image:\s*(\S+)/gm)].map(
+      (m) => m[1]
+    );
+    expect(images.length).toBeGreaterThan(0);
+    expect(images.filter((image) => /:latest$|^[^:]+$/.test(image))).toEqual(
+      []
+    );
+    expect(config).toMatch(/- package-ecosystem: "docker-compose"/);
+  });
 });

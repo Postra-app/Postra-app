@@ -64,6 +64,13 @@ updates:
     directory: "/"
     schedule:
       interval: "weekly"
+  # Images in the local compose files (docker-compose.dev.yaml and the
+  # self-host docker-compose.yaml): exact tags, and this says when a newer
+  # one exists, so no local image sits on :latest or goes stale unseen.
+  - package-ecosystem: "docker-compose"
+    directory: "/"
+    schedule:
+      interval: "weekly"
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:
