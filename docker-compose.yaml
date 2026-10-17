@@ -171,7 +171,7 @@ services:
   # -----------------------
   temporal-elasticsearch:
     container_name: temporal-elasticsearch
-    image: elasticsearch:7.17.27
+    image: elasticsearch:7.17.28
     environment:
       - cluster.routing.allocation.disk.threshold_enabled=true
       - cluster.routing.allocation.disk.watermark.low=512mb
