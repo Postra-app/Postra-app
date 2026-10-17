@@ -1504,14 +1504,20 @@ export class StripeService {
     // get subscription from payment
     const subscriptionId =
       event.data.object.parent?.subscription_details?.subscription;
-    if (!subscriptionId) {
+    // The £0 invoice that starts a trial is not a purchase.
+    if (!subscriptionId || event.data.object.amount_paid <= 0) {
       return { ok: true };
     }
     const subscription = await stripe.subscriptions.retrieve(
       typeof subscriptionId === 'string' ? subscriptionId : subscriptionId.id
     );
 
-    const { userId, ud } = subscription.metadata;
+    // The account is shared with other businesses: their invoices have no
+    // userId, and getUserById(undefined) would match an arbitrary user.
+    const { userId, ud, service } = subscription.metadata || {};
+    if (service !== 'gitroom' || !userId) {
+      return { ok: true };
+    }
     const user = await this._userService.getUserById(userId);
     if (user && user.ip && user.agent) {
       this._trackService.track(ud, user.ip, user.agent, TrackEnum.Purchase, {
