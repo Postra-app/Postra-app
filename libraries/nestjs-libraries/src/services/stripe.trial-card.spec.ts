@@ -123,14 +123,34 @@ it('does not mark a card that failed the £1 check', async () => {
   expect(updateCustomer).not.toHaveBeenCalled();
 });
 
-it('leaves paid subscriptions and organisations past their trial alone', async () => {
-  const { service } = build(false);
-  await service.createSubscription(event);
+it('leaves paid subscriptions and trials already checked alone', async () => {
+  retrieveSubscription.mockResolvedValue({ ...trialing, metadata: { ...trialing.metadata, trial_checked: '1' } });
+  await build().service.createSubscription(event);
   retrieveSubscription.mockResolvedValue({ ...trialing, status: 'active' });
   await build().service.createSubscription(event);
 
   expect(searchCustomers).not.toHaveBeenCalled();
   expect(cancelSubscription).not.toHaveBeenCalled();
+});
+
+it('a checked trial is marked on its subscription, so later events skip the check', async () => {
+  searchCustomers.mockResolvedValue({ data: [] });
+  await build().service.createSubscription(event);
+  expect(updateSubscription).toHaveBeenCalledWith('sub_2', { metadata: { trial_checked: '1' } });
+});
+
+// Codex 10-18: a checkout opened while the offer stood keeps its trial after
+// the offer ends (another organisation's trial, then the email check at the
+// next checkout). The offer used to skip the webhook check, so that trial ran.
+it('checks a trial although the organisation\u2019s offer has ended since its checkout opened', async () => {
+  searchCustomers.mockResolvedValue({ data: [{ id: 'cus_1' }] });
+  const { service, subscriptionService } = build(false);
+
+  const result = await service.createSubscription(event);
+
+  expect(cancelSubscription).toHaveBeenCalledWith('sub_2');
+  expect(subscriptionService.createOrUpdateSubscription).not.toHaveBeenCalled();
+  expect(result).toEqual({ ok: true, skipped: 'trial card used before' });
 });
 
 // Codex 10-17: Stripe's search index lags (~20 s on the sandbox), so two

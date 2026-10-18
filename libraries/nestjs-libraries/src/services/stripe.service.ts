@@ -260,15 +260,17 @@ export class StripeService {
   // missing; null when this is not that trial. A wallet such as Link has no
   // card fingerprint, which is why trial checkouts take cards only (18 X: two
   // trials on one card, both through Link, passed the card check unseen).
+  // Every trial is checked once, whatever the organisation's offer says now:
+  // a checkout opened while the offer stood still carries the trial after the
+  // offer ends (Codex 10-18), so the offer cannot be what skips the check.
   private async newTrial(subscription: Stripe.Subscription) {
-    if (subscription.status !== 'trialing') {
+    if (
+      subscription.status !== 'trialing' ||
+      subscription.metadata?.trial_checked === '1'
+    ) {
       return null;
     }
     const customer = subscription.customer as string;
-    const org = await this._organizationService.getOrgByCustomerId(customer);
-    if (!org?.allowTrial) {
-      return null;
-    }
     const { data } = await stripe.paymentMethods.list({ customer });
     const latest = data.reduce<Stripe.PaymentMethod | undefined>(
       (prev, current) => (!prev || prev.created < current.created ? current : prev),
@@ -278,7 +280,7 @@ export class StripeService {
     const userId = subscription.metadata?.userId;
     const user = userId ? await this._userService.getUserById(userId) : null;
     return {
-      orgId: org.id,
+      subscription: subscription.id,
       customer,
       // Both are interpolated into a Stripe search query below.
       card: card && /^[A-Za-z0-9]+$/.test(card) ? card : null,
@@ -482,12 +484,17 @@ export class StripeService {
 
     // Marked once the card has passed the check, so a declined card does not
     // lose its trial for good.
-    if (trial && (trial.card || trial.email)) {
-      await stripe.customers.update(trial.customer, {
-        metadata: {
-          ...(trial.card ? { trial_card: trial.card } : {}),
-          ...(trial.email ? { trial_email: trial.email } : {}),
-        },
+    if (trial) {
+      if (trial.card || trial.email) {
+        await stripe.customers.update(trial.customer, {
+          metadata: {
+            ...(trial.card ? { trial_card: trial.card } : {}),
+            ...(trial.email ? { trial_email: trial.email } : {}),
+          },
+        });
+      }
+      await stripe.subscriptions.update(trial.subscription, {
+        metadata: { trial_checked: '1' },
       });
     }
 
