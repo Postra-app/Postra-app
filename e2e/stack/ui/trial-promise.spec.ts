@@ -24,12 +24,13 @@ for (const trial of [true, false]) {
         route.fulfill({ json: { client_secret: 'cs_test_secret_x', trial } })
       );
       await page.goto('/billing');
-      await expect(page.getByText('Create a month of content')).toBeVisible({ timeout: 20_000 });
+      // The paywall renders its intro twice (wide and narrow layouts).
+      await expect(page.getByText('Create a month of content').first()).toBeVisible({ timeout: 20_000 });
       const promise = page.getByText('Pay NOTHING for the first 7-days');
       if (trial) {
-        await expect(promise).toBeVisible();
+        await expect(promise.filter({ visible: true })).toHaveCount(1);
       } else {
-        await expect(page.getByText('The payment form could not be loaded')).toBeVisible({ timeout: 20_000 });
+        await expect(page.getByText('The payment form could not be loaded').first()).toBeVisible({ timeout: 20_000 });
         await expect(promise).toHaveCount(0);
       }
     } finally {
