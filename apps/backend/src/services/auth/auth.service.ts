@@ -18,10 +18,6 @@ import {
   authEmails,
   EmailLang,
 } from '@gitroom/backend/services/auth/auth.emails';
-import {
-  isPwnedPassword,
-  PWNED_PASSWORD_MESSAGE,
-} from '@gitroom/backend/services/auth/pwned.passwords';
 import { randomBytes, randomUUID } from 'crypto';
 import {
   MOBILE_TOKEN_EXPIRES_IN,
@@ -91,10 +87,6 @@ export class AuthService {
         const existingNormalized = await this._userService.getUserByNormalizedEmail(normalized);
         if (existingNormalized) {
           throw new Error('Email already exists');
-        }
-
-        if (body.password && (await isPwnedPassword(body.password))) {
-          throw new Error(PWNED_PASSWORD_MESSAGE);
         }
       }
       const user = await this._userService.getUserByEmail(body.email);
@@ -344,10 +336,6 @@ export class AuthService {
       current.tokenVersion !== user.tokenVersion
     ) {
       return false;
-    }
-
-    if (await isPwnedPassword(body.password)) {
-      throw new Error(PWNED_PASSWORD_MESSAGE);
     }
 
     const updated = await this._userService.updatePassword(

@@ -32,7 +32,7 @@ type Inputs = {
 };
 
 // Lightweight, dependency-free strength heuristic (length + character classes).
-// This is a UX hint only — the real password policy (min 8 + HIBP breach check)
+// This is a UX hint only — the real password policy (min 8 characters)
 // is enforced server-side on /auth/register.
 function passwordScore(password: string): number {
   if (!password) return 0;
@@ -208,9 +208,9 @@ export function RegisterAfter({
         } else {
           const message = await response.text();
           // Route the server error to the field it's actually about, so a
-          // password-policy failure (e.g. breached password) doesn't highlight
+          // password-policy failure (e.g. too short) doesn't highlight
           // the email field.
-          form.setError(/password|breach/i.test(message) ? 'password' : 'email', {
+          form.setError(/password/i.test(message) ? 'password' : 'email', {
             message,
           });
         }

@@ -59,3 +59,28 @@ describe('password reset mail', () => {
   });
 });
 
+
+// K. 2026-10-18: "this is not a banking app". A password found in a public
+// breach list used to be refused at sign-up and reset, which put people off;
+// the minimum length (8, in the DTOs) is the rule now.
+describe('password policy', () => {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const { AuthService } = require('./auth.service');
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const AuthChecker = require('@gitroom/helpers/auth/auth.service').AuthService;
+  it('a reset takes a password that appears in breach lists, without asking HIBP', async () => {
+    process.env.JWT_SECRET = process.env.JWT_SECRET || 'test-secret';
+    const fetchSpy = jest.spyOn(global, 'fetch').mockResolvedValue(new Response('', { status: 200 }));
+    const service = Object.create(AuthService.prototype);
+    const updatePassword = jest.fn().mockResolvedValue(true);
+    Object.assign(service, {
+      _userService: { getUserById: async () => ({ id: 'u1', tokenVersion: 1 }), updatePassword },
+    });
+    const token = AuthChecker.signJWT({ id: 'u1', tokenVersion: 1, expires: new Date(Date.now() + 600_000).toISOString() });
+
+    await expect(service.forgotReturn({ token, password: 'password123', repeatPassword: 'password123' })).resolves.toBe(true);
+    expect(updatePassword).toHaveBeenCalledWith('u1', 'password123', 1);
+    expect(fetchSpy.mock.calls.some(([url]) => String(url).includes('pwnedpasswords'))).toBe(false);
+    fetchSpy.mockRestore();
+  });
+});

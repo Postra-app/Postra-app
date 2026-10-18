@@ -39,7 +39,7 @@ export function ForgotReturn({ token }: { token: string }) {
     const json = await response.json().catch(() => ({} as any));
     setLoading(false);
     if (!response.ok || !json.reset) {
-      // A 400 carries the reason (e.g. breached password) — show it instead
+      // A 400 carries the reason (e.g. too short) — show it instead
       // of misreporting every failure as an expired link.
       form.setError('password', {
         type: 'manual',
