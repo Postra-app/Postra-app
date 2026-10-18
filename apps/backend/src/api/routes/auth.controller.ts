@@ -84,7 +84,9 @@ export class AuthController {
   }
 
   @Post('/register')
-  @Throttle({ default: { ttl: 86400000, limit: 3 } })
+  // 4 sign-ups per IP per day: 3 cut off a household or office trying again
+  // after a typo (E2E-02-43).
+  @Throttle({ default: { ttl: 86400000, limit: 4 } })
   async register(
     @Req() req: Request,
     @Body() body: CreateOrgUserDto,

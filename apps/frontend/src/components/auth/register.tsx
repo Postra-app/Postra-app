@@ -2,6 +2,7 @@
 
 import { FormProvider, SubmitHandler, useForm } from 'react-hook-form';
 import { useFetch } from '@gitroom/helpers/utils/custom.fetch';
+import { isFetchHandledError } from '@gitroom/helpers/utils/fetch.errors';
 import Link from 'next/link';
 import { Button } from '@gitroom/frontend/components/ui/button';
 import { Input } from '@gitroom/react/form/input';
@@ -216,11 +217,27 @@ export function RegisterAfter({
         }
       })
       .catch((e) => {
+        setLoading(false);
+        // A status handled globally rejects instead of resolving (as in
+        // login.tsx). The sign-up limit is per IP per day, so say so on the
+        // form; a 5xx already produced its own toast (E2E-02-43).
+        if (isFetchHandledError(e)) {
+          if (e.status === 429) {
+            form.setError('email', {
+              message: t(
+                'too_many_signups',
+                'Too many sign-ups from this network today. Please try again tomorrow or email hello@postra.co.uk.'
+              ),
+            });
+          }
+          return;
+        }
+        console.error('[Postra:auth] register request failed', e);
         form.setError('email', {
-          message:
-            'Unexpected error: ' +
-            e.toString() +
-            '. Please check your browser console.',
+          message: t(
+            'connection_error_try_again',
+            'Connection error - check your internet and try again.'
+          ),
         });
       });
   };

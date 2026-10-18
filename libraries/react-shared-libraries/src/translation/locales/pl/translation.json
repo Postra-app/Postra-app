@@ -1316,6 +1316,7 @@
   "post_save_unexpected_error": "Coś poszło nie tak przy zapisie. Twoja treść nie zniknęła - spróbuj ponownie.",
   "post_delete_failed": "Nie udało się usunąć posta",
   "too_many_login_attempts": "Zbyt wiele prób - odczekaj kilka minut i spróbuj ponownie.",
+  "too_many_signups": "Zbyt wiele rejestracji z tej sieci dzisiaj. Spróbuj jutro albo napisz na hello@postra.co.uk.",
   "login_failed_try_again": "Coś poszło nie tak, spróbuj ponownie.",
   "connection_error_try_again": "Błąd połączenia - sprawdź internet i spróbuj ponownie.",
   "too_many_requests": "Zbyt wiele żądań - odczekaj chwilę i spróbuj ponownie.",

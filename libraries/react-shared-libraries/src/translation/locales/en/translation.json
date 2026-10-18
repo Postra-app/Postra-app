@@ -1309,6 +1309,7 @@
   "post_save_unexpected_error": "Something went wrong while saving. Your content is still here - please try again.",
   "post_delete_failed": "Could not delete the post",
   "too_many_login_attempts": "Too many attempts - please wait a few minutes and try again.",
+  "too_many_signups": "Too many sign-ups from this network today. Please try again tomorrow or email hello@postra.co.uk.",
   "login_failed_try_again": "Something went wrong, please try again.",
   "connection_error_try_again": "Connection error - check your internet and try again.",
   "too_many_requests": "Too many requests - please wait a moment and try again.",
