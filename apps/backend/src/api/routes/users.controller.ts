@@ -118,7 +118,20 @@ export class UsersController {
         !!user.isSuperAdmin || isPreviewOrganization(organization.id),
       impersonate,
       isTrailing: !process.env.STRIPE_PUBLISHABLE_KEY ? false : organization?.isTrailing,
-      allowTrial: organization?.allowTrial,
+      // The billing pages promise a trial from this; an email that already
+      // had one gets none at checkout, so it is not promised either.
+      allowTrial:
+        organization?.allowTrial &&
+        // @ts-ignore the request's organisation is loaded with its subscription
+        !organization?.subscription &&
+        !!process.env.STRIPE_PUBLISHABLE_KEY
+          ? await this._stripeService.trialOffered(
+              organization.id,
+              organization.paymentId,
+              user.email,
+              true
+            )
+          : organization?.allowTrial,
       streakSince: organization?.streakSince || null,
       // @ts-ignore
       publicApi: organization?.users[0]?.role === 'SUPERADMIN' || organization?.users[0]?.role === 'ADMIN' ? organization?.apiKey : '',

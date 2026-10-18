@@ -1152,9 +1152,11 @@ export class StripeService {
       ],
     });
 
-    // Return auto-apply promo code for frontend to apply
+    // Return auto-apply promo code for frontend to apply. `trial` tells the
+    // page whether to promise free days: this checkout is what charges.
     return {
       client_secret,
+      trial: allowTrial,
       ...(autoApplyPromoCode ? { auto_apply_coupon: autoApplyPromoCode } : {}),
     };
   }
@@ -1445,6 +1447,41 @@ export class StripeService {
       userId,
       await this.offerTrial(organizationId, customer, userId, allowTrial)
     );
+  }
+
+  // Whether the trial the billing pages promise still stands for this person.
+  // They read the organisation's offer, and an email that already had a trial
+  // was promised seven free days and charged at checkout (18 X). Organisations
+  // without a plan only; cached briefly, and a used email ends the offer.
+  async trialOffered(
+    organizationId: string,
+    customer: string | null | undefined,
+    email: string | null | undefined,
+    allowTrial: boolean
+  ) {
+    const key = trialEmailKey(email);
+    if (!allowTrial || !key) {
+      return allowTrial;
+    }
+    const cacheKey = `trial-offer:${organizationId}:${key}`;
+    try {
+      const cached = await ioRedis.get(cacheKey);
+      if (cached) {
+        return cached === '1';
+      }
+      const used = await this.trialMarkedElsewhere('email', key, customer || '');
+      if (used) {
+        await this._organizationService.endTrialOffer(organizationId);
+      }
+      await ioRedis.set(cacheKey, used ? '0' : '1', 'EX', 600);
+      return !used;
+    } catch (err) {
+      // The checkout checks again; the page only loses the right wording.
+      this._logger.warn(
+        `Trial offer check failed for ${organizationId}: ${(err as Error)?.message}`
+      );
+      return allowTrial;
+    }
   }
 
   // One trial per email (K. 2026-10-18): an email whose trial ran on another

@@ -78,3 +78,37 @@ describe.each([
     expect(organizationService.endTrialOffer).toHaveBeenCalledWith('org-1');
   });
 });
+
+// 18 X (second test): the page still promised "Pay NOTHING for the first
+// 7 days" from the organisation's offer, and the checkout charged £19 at once.
+describe('what the billing pages promise', () => {
+  it('the embedded checkout says whether it has free days', async () => {
+    searchCustomers.mockResolvedValue({ data: [{ id: 'cus_old' }] });
+    expect((await build().service.embedded('track', 'org-1', 'user-1', body, true)).trial).toBe(false);
+    searchCustomers.mockResolvedValue({ data: [] });
+    expect((await build().service.embedded('track', 'org-1', 'user-1', body, true)).trial).toBe(true);
+  });
+
+  it('an email that already had a trial is not offered one, and the offer ends', async () => {
+    searchCustomers.mockResolvedValue({ data: [{ id: 'cus_old' }] });
+    const { service, organizationService } = build();
+    expect(await service.trialOffered(`org-a${Date.now()}`, 'cus_new', mail, true)).toBe(false);
+    expect(organizationService.endTrialOffer).toHaveBeenCalled();
+  });
+
+  it('a new email keeps the offer, and the answer is cached', async () => {
+    searchCustomers.mockResolvedValue({ data: [] });
+    const { service, organizationService } = build();
+    const org = `org-b${Date.now()}`;
+    expect(await service.trialOffered(org, 'cus_new', 'someone.new@example.com', true)).toBe(true);
+    expect(await service.trialOffered(org, 'cus_new', 'someone.new@example.com', true)).toBe(true);
+    expect(searchCustomers).toHaveBeenCalledTimes(1);
+    expect(organizationService.endTrialOffer).not.toHaveBeenCalled();
+  });
+
+  it('an organisation whose offer ended is not asked about', async () => {
+    const { service } = build();
+    expect(await service.trialOffered('org-c', 'cus_new', mail, false)).toBe(false);
+    expect(searchCustomers).not.toHaveBeenCalled();
+  });
+});
