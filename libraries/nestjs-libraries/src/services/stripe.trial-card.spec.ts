@@ -86,6 +86,11 @@ it('cancels a trial on a card that already had one, before any charge', async ()
   expect(createIntent).not.toHaveBeenCalled();
   expect(subscriptionService.createOrUpdateSubscription).not.toHaveBeenCalled();
   expect(organizationService.endTrialOffer).toHaveBeenCalledWith('org-2');
+  // The offer ends before the cancel: the page reloads its checkout when it
+  // sees the cancel, and must not get a trial checkout again (18 X).
+  expect(organizationService.endTrialOffer.mock.invocationCallOrder[0]).toBeLessThan(
+    cancelSubscription.mock.invocationCallOrder[0]
+  );
   expect(notificationService.inAppNotification.mock.calls[0][2]).toBe(
     'This card has already been used for a Postra trial. Choose a plan to subscribe without a trial.'
   );
@@ -255,6 +260,27 @@ describe('one trial per email', () => {
 
     expect(cancelSubscription).toHaveBeenCalledWith('sub_2');
     expect(result).toEqual({ ok: true, skipped: 'trial email used before' });
+  });
+
+  // K. 18 X: a card without a fingerprint cannot be marked, so a new email
+  // would start another trial on it. No fingerprint, no trial.
+  it('a trial without a card fingerprint is cancelled before any charge, even for a new email', async () => {
+    listMethods.mockResolvedValue({ data: [{ id: 'pm_link', created: 10, type: 'link' }] });
+    searchCustomers.mockResolvedValue({ data: [] });
+    const { service, subscriptionService, organizationService, notificationService } = build(true, `new-${n}@example.com`);
+
+    const result = await service.createSubscription({ ...event, data: { object: withUser } });
+
+    expect(updateSubscription).toHaveBeenCalledWith('sub_2', { metadata: { trial_rejected: 'no_card' } });
+    expect(cancelSubscription).toHaveBeenCalledWith('sub_2');
+    expect(createIntent).not.toHaveBeenCalled();
+    expect(updateCustomer).not.toHaveBeenCalled();
+    expect(subscriptionService.createOrUpdateSubscription).not.toHaveBeenCalled();
+    expect(organizationService.endTrialOffer).toHaveBeenCalledWith('org-2');
+    expect(notificationService.inAppNotification.mock.calls[0][2]).toBe(
+      'We could not confirm this card for a free trial, so nothing was charged. Choose a plan to subscribe without a trial.'
+    );
+    expect(result).toEqual({ ok: true, skipped: 'trial without a card fingerprint' });
   });
 
   it('a retry finishes an email rejection cut short', async () => {

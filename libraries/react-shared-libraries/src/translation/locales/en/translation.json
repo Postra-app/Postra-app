@@ -1309,6 +1309,12 @@
   "post_save_unexpected_error": "Something went wrong while saving. Your content is still here - please try again.",
   "post_delete_failed": "Could not delete the post",
   "too_many_login_attempts": "Too many attempts - please wait a few minutes and try again.",
+  "too_many_signups": "Too many sign-ups from this network today. Please try again tomorrow or email hello@postra.co.uk.",
+  "free_trial_already_used": "Free trial already used",
+  "free_trial_used_card": "This card has already been used for a Postra trial. Choose a plan to subscribe without a trial.",
+  "free_trial_used_email": "This email address has already been used for a Postra trial. Choose a plan to subscribe without a trial.",
+  "free_trial_unavailable": "Free trial not available",
+  "free_trial_no_card": "We could not confirm this card for a free trial, so nothing was charged. Choose a plan to subscribe without a trial.",
   "login_failed_try_again": "Something went wrong, please try again.",
   "connection_error_try_again": "Connection error - check your internet and try again.",
   "too_many_requests": "Too many requests - please wait a moment and try again.",
@@ -1830,6 +1836,7 @@
   "plan_change_scheduled": "Change to {{plan}} on {{date}}? You keep {{current}} until then.",
   "plan_change_scheduled_confirm": "Change on {{date}}",
   "plan_pending_change": "Changes to {{plan}} on {{date}}",
+  "plan_starts_on": "Starts on {{date}}",
   "comments_no_api_explanation": "These platforms don't let apps post comments. The post itself will go out as scheduled.",
   "preview_admin_only": "Preview, admin only"
 }

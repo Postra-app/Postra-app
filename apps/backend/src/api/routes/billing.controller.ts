@@ -59,7 +59,8 @@ export class BillingController {
     // The frontend re-fetches /user/self exactly once when this turns 2 — that
     // request must not be served the pre-payment FREE context from the 30s
     // auth cache (the webhook busts it too, but this poll can win that race).
-    if (status === 2) {
+    // A refused repeat trial (3, 4) ended the trial offer: same reason.
+    if (status >= 2) {
       await bustAuthContextCache(user.id);
     }
     return { status };

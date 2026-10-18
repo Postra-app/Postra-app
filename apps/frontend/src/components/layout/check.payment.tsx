@@ -54,7 +54,7 @@ export const CheckPaymentInner: FC<{
     } catch {
       status = undefined;
     }
-    if (status !== 1 && status !== 2) {
+    if (!status || status < 1 || status > 5) {
       if (attempt < 120) {
         await timer(1000);
         return checkSubscription(attempt + 1);
@@ -75,6 +75,48 @@ export const CheckPaymentInner: FC<{
           'We could not verify your payment method, please try again',
       });
       setShowLoader(false);
+    }
+    // The card (3) or email (4) already had a Postra trial, or the card had
+    // no fingerprint to mark (5): nothing was charged and the offer is gone,
+    // so reload the user and the page offers the plan without a trial
+    // instead of "Invalid payment".
+    if (status >= 3) {
+      setShowLoader(false);
+      props.mutate();
+      // The checkout on the plan page is cached per plan and was opened with
+      // the trial; load it again without.
+      revalidate(
+        (key) => typeof key === 'string' && key.startsWith('/billing-')
+      );
+      modal.open({
+        title:
+          status === 5
+            ? t('free_trial_unavailable', 'Free trial not available')
+            : t('free_trial_already_used', 'Free trial already used'),
+        onlyApprove: true,
+        approveLabel: t('ok', 'OK'),
+        description:
+          status === 3
+            ? t(
+                'free_trial_used_card',
+                'This card has already been used for a Postra trial. Choose a plan to subscribe without a trial.'
+              )
+            : status === 4
+            ? t(
+                'free_trial_used_email',
+                'This email address has already been used for a Postra trial. Choose a plan to subscribe without a trial.'
+              )
+            : t(
+                'free_trial_no_card',
+                'We could not confirm this card for a free trial, so nothing was charged. Choose a plan to subscribe without a trial.'
+              ),
+      });
+    }
+    // Answered: a reload must not run the check (and its message) again.
+    if (status !== 2) {
+      const url = new URL(window.location.href);
+      url.searchParams.delete('check');
+      window.history.replaceState(window.history.state, '', url.toString());
     }
     if (status === 2) {
       setShowLoader(false);

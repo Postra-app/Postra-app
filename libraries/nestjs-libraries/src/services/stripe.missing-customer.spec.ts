@@ -286,3 +286,29 @@ describe('a checkout for an organisation that already pays (BILL-1)', () => {
     ).rejects.toMatchObject({ status: 409 });
   });
 });
+
+// 18 X: a trial refused because the card had one already showed "Invalid
+// payment - we could not verify your payment method", though nothing failed.
+describe('GET /billing/check/:id after the checkout', () => {
+  const cancelled = (metadata: Record<string, string>) => ({
+    data: [{ metadata: { uniqueId: 'uniq-1', ...metadata }, canceled_at: 1 }],
+  });
+
+  it.each([
+    ['card', 3],
+    ['email', 4],
+    ['no_card', 5],
+  ])('names the refused trial (%s)', async (reason, status) => {
+    listSubscriptions.mockResolvedValueOnce(cancelled({ trial_rejected: reason }));
+    const { service } = build('cus_1');
+
+    await expect(service.checkSubscription('org-1', 'uniq-1')).resolves.toBe(status);
+  });
+
+  it('still reads any other cancelled checkout as a failed payment', async () => {
+    listSubscriptions.mockResolvedValueOnce(cancelled({}));
+    const { service } = build('cus_1');
+
+    await expect(service.checkSubscription('org-1', 'uniq-1')).resolves.toBe(1);
+  });
+});

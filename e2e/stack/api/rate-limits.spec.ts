@@ -91,3 +91,23 @@ test('a mutation named like the metadata query is still limited', async () => {
   expect(statuses.slice(0, 30)).not.toContain(429);
   expect(statuses[30]).toBe(429);
 });
+
+// E2E-02-43: sign-ups are limited per IP per day; 3 cut off a household trying
+// again after a typo, so the limit is 4 (decision 2026-10-18). An empty body
+// fails validation after the guard: each call counts without creating a user.
+test('sign-ups: the 5th from one address in a day is 429, another address is not', async () => {
+  const from = (ip: string) => request.newContext({ baseURL: BACKEND_URL, extraHTTPHeaders: { 'x-forwarded-for': ip } });
+  const net = `198.21.${Math.floor(Math.random() * 250)}`;
+  const one = await from(`${net}.1`);
+  const other = await from(`${net}.2`);
+  try {
+    for (let i = 1; i <= 4; i++) {
+      expect((await one.post('/auth/register', { data: {} })).status(), `sign-up ${i}`).not.toBe(429);
+    }
+    expect((await one.post('/auth/register', { data: {} })).status()).toBe(429);
+    expect((await other.post('/auth/register', { data: {} })).status()).not.toBe(429);
+  } finally {
+    await one.dispose();
+    await other.dispose();
+  }
+});

@@ -91,7 +91,7 @@ export class StripeController {
     // @ts-ignore
     const customer: unknown = event?.data?.object?.customer;
     const customerId = typeof customer === 'string' ? customer : null;
-    if (customerId && !(await this._eventStore.leaseCustomer(customerId, event.id))) {
+    if (customerId && !(await this._eventStore.waitForCustomer(customerId, event.id))) {
       await this._eventStore.release(event.id);
       throw new HttpException('Another event of this customer is being handled', 409);
     }

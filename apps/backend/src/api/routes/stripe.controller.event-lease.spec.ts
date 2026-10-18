@@ -152,16 +152,33 @@ describe('Stripe webhook: one run per event, and a crash is not "done"', () => {
       async () => undefined,
       forCustomer('evt_b', 'customer.subscription.updated')
     );
-    expect((await second.deliver()).status).toBe(409);
+    // 18 X: the second answered 409 at once and Stripe came back minutes
+    // later. It now waits for the first and runs after it, in one delivery.
+    const waiting = second.deliver();
+    await new Promise((r) => setTimeout(r, 300));
     expect(second.stripe.updateSubscription).not.toHaveBeenCalled();
 
     finish();
     expect((await pending).status).toBe(200);
-    const retry = setup(
-      async () => undefined,
-      forCustomer('evt_b', 'customer.subscription.updated')
-    );
-    expect((await retry.deliver()).status).toBe(200);
-    expect(retry.stripe.updateSubscription).toHaveBeenCalledTimes(1);
+    expect((await waiting).status).toBe(200);
+    expect(second.stripe.updateSubscription).toHaveBeenCalledTimes(1);
+  });
+
+  it('a customer busy for longer than the wait is still told to come back', async () => {
+    const forCustomer = (id: string) => ({
+      id,
+      type: 'customer.subscription.updated',
+      data: { object: { customer: 'cus_2', metadata: { service: 'gitroom' } } },
+    });
+    const first = setup(() => new Promise(() => undefined), forCustomer('evt_c'));
+    void first.deliver();
+    await new Promise((r) => setImmediate(r));
+
+    const second = setup(async () => undefined, forCustomer('evt_d'));
+    second.store.customerWaitMs = 300;
+    expect((await second.deliver()).status).toBe(409);
+    expect(second.stripe.updateSubscription).not.toHaveBeenCalled();
+    // Its own event lease is given back, so Stripe's retry can run it.
+    expect(keys.has('stripe-event:evt_d')).toBe(false);
   });
 });

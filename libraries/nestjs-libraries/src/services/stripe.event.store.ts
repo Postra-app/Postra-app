@@ -48,14 +48,34 @@ export class StripeEventStore {
   /**
    * Different events of one customer, one at a time. An update that read the
    * subscription, then lost the race to a deletion, wrote the old plan back
-   * after it (BILL-2). The second event is retried by Stripe and then reads
-   * the state the first one left.
+   * after it (BILL-2). The second event waits for the first (waitForCustomer)
+   * and then reads the state the first one left.
    */
   async leaseCustomer(customerId: string, eventId: string): Promise<boolean> {
     return (
       (await ioRedis.set(`stripe-customer:${customerId}`, eventId, 'EX', 5 * 60, 'NX')) ===
       'OK'
     );
+  }
+
+  /**
+   * How long a delivery waits for another event of its customer to finish.
+   * Checkout sends invoice.payment_succeeded and customer.subscription.created
+   * in the same second; the loser answered 409 at once and Stripe's retry came
+   * minutes later, so a paying customer watched a spinner until the page gave
+   * up (18 X). One event takes a second or two, well inside Stripe's timeout.
+   */
+  customerWaitMs = 10_000;
+
+  async waitForCustomer(customerId: string, eventId: string): Promise<boolean> {
+    const until = Date.now() + this.customerWaitMs;
+    while (!(await this.leaseCustomer(customerId, eventId))) {
+      if (Date.now() >= until) {
+        return false;
+      }
+      await new Promise((r) => setTimeout(r, 250));
+    }
+    return true;
   }
 
   async releaseCustomer(customerId: string, eventId: string): Promise<void> {

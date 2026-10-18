@@ -62,6 +62,13 @@ test('a lower plan waits for the renewal, and Billing says when', async ({ page 
   await expect.poll(() => subscribe).toEqual(['POST']);
   await expect(page.getByText('Changes to Starter on 9 November')).toBeVisible();
   await expect(page.getByRole('button', { name: 'Current plan' })).toHaveCount(1);
+  // 18 X: the Starter card still offered "Purchase plan (Pay Today £0.00)".
+  await expect(page.getByRole('button', { name: 'Starts on 9 November' })).toBeDisabled();
+  // The mocked quote is £0 for every plan: only Business still shows one.
+  await expect(page.getByText(/^\(Pay Today/)).toHaveCount(1);
+  // Codex: Starter yearly is not the scheduled change and can still be chosen.
+  await page.getByRole('switch', { name: 'Bill yearly' }).click();
+  await expect(page.getByRole('button', { name: 'Starts on 9 November' })).toHaveCount(0);
 });
 
 // Codex on the 10-09 branch: when the quote failed, the window offered the
