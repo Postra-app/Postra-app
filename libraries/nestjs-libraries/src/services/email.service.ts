@@ -61,11 +61,14 @@ export class EmailService {
   }
 
   // true once the mail was handed to the provider, false if it could not be.
+  // `footer` replaces the notification-settings line, which means nothing in
+  // a mail to someone who has no account yet (activation, password reset).
   async sendEmailSync(
     to: string,
     subject: string,
     html: string,
-    replyTo?: string
+    replyTo?: string,
+    footer?: string
   ): Promise<boolean> {
     if (to.indexOf('@') === -1) {
       return false;
@@ -124,7 +127,10 @@ export class EmailService {
                         margin: 0;
                     ">${process.env.EMAIL_FROM_NAME}</h2>
                     <div style="font-size: 12px">
-                      You can change your notification preferences in your <a href="${process.env.FRONTEND_URL}/settings">account settings</a>.
+                      ${
+                        footer ??
+                        `You can change your notification preferences in your <a href="${process.env.FRONTEND_URL}/settings">account settings</a>.`
+                      }
                      </div>
                 </div>
             </div>
