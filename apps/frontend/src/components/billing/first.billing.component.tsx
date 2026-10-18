@@ -114,6 +114,10 @@ export const FirstBillingComponent = () => {
     }
   );
 
+  // Free days are promised only when this checkout has them: an email that
+  // already had a trial is charged straight away (18 X).
+  const trialOffered = !!user?.allowTrial && data?.trial === true;
+
   const price = useMemo(
     () =>
       Object.entries(pricing).filter(
@@ -132,7 +136,7 @@ export const FirstBillingComponent = () => {
           </span>
         </div>
 
-        {!!user?.allowTrial && (
+        {trialOffered && (
           <div className="flex mt-[32px] mb-[10px] gap-[15px] tablet:mt-[32px] tablet:mb-[32px] text-[16px] font-[500] mobile:flex-col">
             <div className="flex gap-[8px]">
               <div>
@@ -161,7 +165,7 @@ export const FirstBillingComponent = () => {
             </div>
           </div>
         )}
-        {!!user?.allowTrial && (
+        {trialOffered && (
           <div className="mb-[10px]">
             <TrialLimitsNote />
           </div>
