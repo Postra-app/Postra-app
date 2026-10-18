@@ -339,36 +339,42 @@ export class StripeService {
   // by a retry.
   private async rejectRepeatTrial(
     subscription: Stripe.Subscription,
-    reason: 'card' | 'email'
+    reason: 'card' | 'email' | 'no_card'
   ) {
     if (subscription.metadata?.trial_rejected !== reason) {
       await stripe.subscriptions.update(subscription.id, {
         metadata: { trial_rejected: reason },
       });
     }
-    if (subscription.status !== 'canceled') {
-      await stripe.subscriptions.cancel(subscription.id);
-    }
     const org = await this._organizationService.getOrgByCustomerId(
       subscription.customer as string
     );
     // Told before the offer goes: a failure in between repeats the notice on
-    // the retry rather than losing it.
+    // the retry rather than losing it. The offer goes before the cancel: the
+    // page reloads its checkout once /billing/check sees the cancel, and a
+    // checkout loaded while the offer stood came with a trial again (18 X).
     if (org?.allowTrial) {
       await this._notificationService.inAppNotification(
         org.id,
         'Free trial already used',
         reason === 'card'
           ? 'This card has already been used for a Postra trial. Choose a plan to subscribe without a trial.'
-          : 'This email address has already been used for a Postra trial. Choose a plan to subscribe without a trial.',
+          : reason === 'email'
+          ? 'This email address has already been used for a Postra trial. Choose a plan to subscribe without a trial.'
+          : 'We could not confirm this card for a free trial, so nothing was charged. Choose a plan to subscribe without a trial.',
         true,
         false,
         'info'
       );
       await this._organizationService.endTrialOffer(org.id);
       this._logger.warn(
-        `Cancelled trial ${subscription.id} for ${subscription.customer}: ${reason} already had a trial`
+        `Cancelling trial ${subscription.id} for ${subscription.customer}: ${
+          reason === 'no_card' ? 'no card fingerprint' : `${reason} already had a trial`
+        }`
       );
+    }
+    if (subscription.status !== 'canceled') {
+      await stripe.subscriptions.cancel(subscription.id);
     }
   }
 
@@ -381,7 +387,7 @@ export class StripeService {
     // A retry after a rejection that failed part-way finishes it, also once
     // the subscription is cancelled (Codex).
     const rejected = current.metadata?.trial_rejected;
-    if (rejected === 'card' || rejected === 'email') {
+    if (rejected === 'card' || rejected === 'email' || rejected === 'no_card') {
       await this.rejectRepeatTrial(current, rejected);
       return { ok: true, skipped: `trial ${rejected} used before` };
     }
@@ -470,6 +476,13 @@ export class StripeService {
           await this.rejectRepeatTrial(current, mark);
           return { ok: true, skipped: `trial ${mark} used before` };
         }
+      }
+      // Without a fingerprint the card cannot be marked, and a new email would
+      // start another trial on it: no fingerprint, no trial (K. 18 X).
+      if (!trial.card) {
+        await this.releaseTrialMarks(trial);
+        await this.rejectRepeatTrial(current, 'no_card');
+        return { ok: true, skipped: 'trial without a card fingerprint' };
       }
     }
 
@@ -1365,12 +1378,21 @@ export class StripeService {
       return 0;
     }
 
-    if (
-      getCustomerSubscriptions.data.find(
-        (p) => p.metadata.uniqueId === subscriptionId
-      )?.canceled_at
-    ) {
-      return 1;
+    const subscription = getCustomerSubscriptions.data.find(
+      (p) => p.metadata.uniqueId === subscriptionId
+    );
+    if (subscription?.canceled_at) {
+      // A trial refused because the card (3) or the email (4) already had one
+      // is not a failed payment: the page says why and offers the plan
+      // without a trial (rejectRepeatTrial sets the reason before cancelling).
+      const rejected = subscription.metadata?.trial_rejected;
+      return rejected === 'card'
+        ? 3
+        : rejected === 'email'
+        ? 4
+        : rejected === 'no_card'
+        ? 5
+        : 1;
     }
 
     return 0;
