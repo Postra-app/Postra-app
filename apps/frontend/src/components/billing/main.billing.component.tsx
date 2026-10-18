@@ -262,6 +262,12 @@ export const MainBillingComponent: FC<{
     billing?: string;
     on?: string;
   }>(subscription?.id ? 'billing-pending-change' : null, loadPending);
+  // The plan already waiting for the renewal: offering to buy it again read
+  // as "Purchase plan (Pay Today £0.00)" (18 X).
+  const isPendingPlan = (name: string) =>
+    !subscription?.cancelAt &&
+    !!pending?.on &&
+    pending?.billing === name.toUpperCase();
   const confirmPlanChange = useCallback(
     async (billing: string, current: string) => {
       const period = monthlyOrYearly === 'on' ? 'YEARLY' : 'MONTHLY';
@@ -732,7 +738,8 @@ export const MainBillingComponent: FC<{
                     disabled={
                       (!!subscription?.cancelAt &&
                         name.toUpperCase() === 'FREE') ||
-                      currentPackage === name.toUpperCase()
+                      currentPackage === name.toUpperCase() ||
+                      isPendingPlan(name)
                     }
                     variant={
                       subscription && name.toUpperCase() === 'FREE'
@@ -745,6 +752,10 @@ export const MainBillingComponent: FC<{
                   >
                     {currentPackage === name.toUpperCase()
                       ? t('current_plan', 'Current plan')
+                      : isPendingPlan(name)
+                      ? t('plan_starts_on', 'Starts on {{date}}', {
+                          date: dayjs(pending!.on).format('D MMMM'),
+                        })
                       : name.toUpperCase() === 'FREE'
                       ? subscription?.cancelAt
                         ? `${t('downgrade_on', 'Plan change')} ${dayjs
@@ -773,6 +784,7 @@ export const MainBillingComponent: FC<{
                   )}
                 {subscription &&
                   currentPackage !== name.toUpperCase() &&
+                  !isPendingPlan(name) &&
                   name !== 'FREE' &&
                   !!name && (
                     <Prorate

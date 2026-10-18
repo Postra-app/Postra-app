@@ -1599,5 +1599,6 @@
   "plan_change_confirm": "Zmień plan",
   "plan_change_scheduled": "Zmienić na {{plan}} od {{date}}? Do tego dnia zostajesz na {{current}}.",
   "plan_change_scheduled_confirm": "Zmień od {{date}}",
-  "plan_pending_change": "Zmiana na {{plan}} od {{date}}"
+  "plan_pending_change": "Zmiana na {{plan}} od {{date}}",
+  "plan_starts_on": "Od {{date}}"
 }
