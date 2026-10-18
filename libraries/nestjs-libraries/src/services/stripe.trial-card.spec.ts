@@ -203,7 +203,7 @@ it('and does nothing more once the rejection is complete', async () => {
   expect(organizationService.endTrialOffer).not.toHaveBeenCalled();
 });
 
-// K. 2026-10-18: one trial per email as well. The szyszka518 test account got
+// K. 2026-10-18: one trial per email as well. A test account got
 // a second trial: its first one ran through Link, which has no card
 // fingerprint, and an account deleted from Postra leaves only its Stripe
 // customer behind.
@@ -211,7 +211,7 @@ describe('one trial per email', () => {
   const withUser = { ...trialing, metadata: { ...trialing.metadata, userId: 'user-2' } };
   let mail = '';
   beforeEach(() => {
-    mail = `szyszka${Date.now()}x${n}@yahoo.co.uk`;
+    mail = `tester${Date.now()}x${n}@example.com`;
     retrieveSubscription.mockResolvedValue(withUser);
   });
 
@@ -269,8 +269,8 @@ describe('one trial per email', () => {
 
 describe('trialEmailKey', () => {
   it('is the same for every spelling of one inbox', () => {
-    const key = trialEmailKey('szyszka518@yahoo.co.uk');
-    expect(trialEmailKey(' Szyszka518+2@Yahoo.co.uk ')).toBe(key);
+    const key = trialEmailKey('trial.tester@example.com');
+    expect(trialEmailKey(' Trial.Tester+2@Example.com ')).toBe(key);
     expect(trialEmailKey('j.doe@gmail.com')).toBe(trialEmailKey('jdoe+trial@googlemail.com'));
     expect(trialEmailKey('j.doe@yahoo.com')).not.toBe(trialEmailKey('jdoe@yahoo.com'));
     expect(key).toMatch(/^[a-f0-9]{64}$/);

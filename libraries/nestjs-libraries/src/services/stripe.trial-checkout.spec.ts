@@ -23,11 +23,11 @@ jest.mock('@gitroom/nestjs-libraries/track/track.service', () => ({ TrackService
 import { StripeService } from '@gitroom/nestjs-libraries/services/stripe.service';
 import { trialEmailKey } from '@gitroom/nestjs-libraries/services/trial-identity';
 
-// 18 X: the szyszka518 test account got a second trial. Its checkout offered
+// 18 X: a test account got a second trial. Its checkout offered
 // Link, which pays without a card fingerprint, so the one-trial-per-card check
 // never ran, and nothing remembered the email of the first trial.
 const body = { billing: 'STANDARD', period: 'MONTHLY' } as any;
-const mail = 'szyszka518@yahoo.co.uk';
+const mail = 'trial.tester@example.com';
 
 const build = () => {
   const organizationService = {

@@ -12,14 +12,14 @@ describe('/user/self allowTrial', () => {
     const trialOffered = jest.fn().mockResolvedValue(offered);
     const controller = Object.create(UsersController.prototype);
     Object.assign(controller, { _stripeService: { trialOffered } });
-    const res = await controller.getSelf({ id: 'u1', email: 'szyszka518@yahoo.co.uk' }, { id: 'org-1', paymentId: 'cus_1', users: [{ role: 'SUPERADMIN' }], ...org }, {});
+    const res = await controller.getSelf({ id: 'u1', email: 'trial.tester@example.com' }, { id: 'org-1', paymentId: 'cus_1', users: [{ role: 'SUPERADMIN' }], ...org }, {});
     return { allowTrial: res.allowTrial, trialOffered };
   };
 
   it('asks whether the offer still stands for an organisation without a plan', async () => {
     const { allowTrial, trialOffered } = await self({ allowTrial: true }, false);
     expect(allowTrial).toBe(false);
-    expect(trialOffered).toHaveBeenCalledWith('org-1', 'cus_1', 'szyszka518@yahoo.co.uk', true);
+    expect(trialOffered).toHaveBeenCalledWith('org-1', 'cus_1', 'trial.tester@example.com', true);
   });
 
   it('does not ask for a paying organisation or one whose offer ended', async () => {
