@@ -260,14 +260,17 @@ export const MainBillingComponent: FC<{
   );
   const { data: pending, mutate: refreshPending } = useSWR<{
     billing?: string;
+    period?: string;
     on?: string;
   }>(subscription?.id ? 'billing-pending-change' : null, loadPending);
   // The plan already waiting for the renewal: offering to buy it again read
   // as "Purchase plan (Pay Today £0.00)" (18 X).
+  // The same plan on the other period is still a change to make (Codex).
   const isPendingPlan = (name: string) =>
     !subscription?.cancelAt &&
     !!pending?.on &&
-    pending?.billing === name.toUpperCase();
+    pending?.billing === name.toUpperCase() &&
+    pending?.period === (monthlyOrYearly === 'on' ? 'YEARLY' : 'MONTHLY');
   const confirmPlanChange = useCallback(
     async (billing: string, current: string) => {
       const period = monthlyOrYearly === 'on' ? 'YEARLY' : 'MONTHLY';
