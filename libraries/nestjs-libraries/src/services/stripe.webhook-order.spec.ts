@@ -143,7 +143,9 @@ describe('subscription events are written from Stripe’s current state', () => 
   });
 
   it('trialing is still a trial', async () => {
-    retrieveSubscription.mockResolvedValue(sub('trialing'));
+    // Checked once already: the card and email check has its own spec.
+    const checked = { metadata: { billing: 'PRO', period: 'MONTHLY', uniqueId: 'u1', trial_checked: '1' } };
+    retrieveSubscription.mockResolvedValue(sub('trialing', 'PRO', checked));
     const { service, subscriptionService } = build();
 
     await service.createSubscription(event('customer.subscription.created', sub('trialing')));

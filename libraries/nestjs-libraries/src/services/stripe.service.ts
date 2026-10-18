@@ -17,6 +17,7 @@ import { NotificationService } from '@gitroom/nestjs-libraries/database/prisma/n
 import { UsersService } from '@gitroom/nestjs-libraries/database/prisma/users/users.service';
 import { TrackEnum } from '@gitroom/nestjs-libraries/user/track.enum';
 import { isMissingCustomerError } from '@gitroom/nestjs-libraries/services/stripe.errors';
+import { trialEmailKey } from '@gitroom/nestjs-libraries/services/trial-identity';
 
 // One Stripe account serves every B K Company business, so each Postra
 // invoice names the trading name itself (D20, decision K. 2026-10-03).
@@ -254,57 +255,95 @@ export class StripeService {
     }
   }
 
-  // The card a subscription starts its organisation's one trial with; null
-  // when this is not that trial or the card has no fingerprint.
-  private async newTrialCard(subscription: Stripe.Subscription) {
-    if (subscription.status !== 'trialing') {
+  // What a subscription starts its organisation's one trial with: the card's
+  // fingerprint and the email of the person who checked out, each null when
+  // missing; null when this is not that trial. A wallet such as Link has no
+  // card fingerprint, which is why trial checkouts take cards only (18 X: two
+  // trials on one card, both through Link, passed the card check unseen).
+  // Every trial is checked once, whatever the organisation's offer says now:
+  // a checkout opened while the offer stood still carries the trial after the
+  // offer ends (Codex 10-18), so the offer cannot be what skips the check.
+  private async newTrial(subscription: Stripe.Subscription) {
+    if (
+      subscription.status !== 'trialing' ||
+      subscription.metadata?.trial_checked === '1'
+    ) {
       return null;
     }
     const customer = subscription.customer as string;
-    const org = await this._organizationService.getOrgByCustomerId(customer);
-    if (!org?.allowTrial) {
-      return null;
-    }
     const { data } = await stripe.paymentMethods.list({ customer });
     const latest = data.reduce<Stripe.PaymentMethod | undefined>(
       (prev, current) => (!prev || prev.created < current.created ? current : prev),
       undefined
     );
-    const fingerprint = latest?.card?.fingerprint;
-    // Interpolated into a Stripe search query below.
-    if (!fingerprint || !/^[A-Za-z0-9]+$/.test(fingerprint)) {
-      return null;
-    }
-    return { orgId: org.id, customer, fingerprint };
+    const card = latest?.card?.fingerprint;
+    const userId = subscription.metadata?.userId;
+    const user = userId ? await this._userService.getUserById(userId) : null;
+    return {
+      subscription: subscription.id,
+      customer,
+      // Both are interpolated into a Stripe search query below.
+      card: card && /^[A-Za-z0-9]+$/.test(card) ? card : null,
+      email: trialEmailKey(user?.email),
+    };
   }
 
-  // Another customer whose trial ran on this card: the mark on a Stripe
-  // customer (lasting), or a reservation in Redis for the time Stripe's
+  // Another customer whose trial ran on this card or email: the mark on a
+  // Stripe customer (lasting), or a reservation in Redis for the time Stripe's
   // search index lags (~20 s on the sandbox, 10-17), so two trials started
-  // at once on one card cannot both pass (Codex).
-  private async trialCardUsedBefore(card: {
-    customer: string;
-    fingerprint: string;
-  }) {
-    const key = `trial-card:${card.fingerprint}`;
-    const reserved = await ioRedis.set(key, card.customer, 'EX', 86400, 'NX');
-    if (reserved !== 'OK' && (await ioRedis.get(key)) !== card.customer) {
+  // at once cannot both pass (Codex).
+  private async trialMarkUsedBefore(
+    mark: 'card' | 'email',
+    value: string,
+    customer: string
+  ) {
+    const key = `trial-${mark}:${value}`;
+    const reserved = await ioRedis.set(key, customer, 'EX', 86400, 'NX');
+    if (reserved !== 'OK' && (await ioRedis.get(key)) !== customer) {
       return true;
     }
-    const { data } = await stripe.customers.search({
-      query: `metadata['trial_card']:'${card.fingerprint}'`,
-      limit: 10,
-    });
-    return data.some((c) => c.id !== card.customer);
+    return this.trialMarkedElsewhere(mark, value, customer);
   }
 
-  // Cancels a trial whose card already had one, before anything is charged,
-  // tells the organisation why and takes the trial off its next checkout.
-  // Marked on the subscription first, so each step can be finished by a retry.
-  private async rejectRepeatTrial(subscription: Stripe.Subscription) {
-    if (subscription.metadata?.trial_rejected !== 'card') {
+  private async trialMarkedElsewhere(
+    mark: 'card' | 'email',
+    value: string,
+    customer: string
+  ) {
+    const { data } = await stripe.customers.search({
+      query: `metadata['trial_${mark}']:'${value}'`,
+      limit: 10,
+    });
+    return data.some((c) => c.id !== customer);
+  }
+
+  private async releaseTrialMarks(trial: {
+    customer: string;
+    card: string | null;
+    email: string | null;
+  }) {
+    for (const [mark, value] of [
+      ['card', trial.card],
+      ['email', trial.email],
+    ] as const) {
+      const key = `trial-${mark}:${value}`;
+      if (value && (await ioRedis.get(key)) === trial.customer) {
+        await ioRedis.del(key);
+      }
+    }
+  }
+
+  // Cancels a trial whose card or email already had one, before anything is
+  // charged, tells the organisation why and takes the trial off its next
+  // checkout. Marked on the subscription first, so each step can be finished
+  // by a retry.
+  private async rejectRepeatTrial(
+    subscription: Stripe.Subscription,
+    reason: 'card' | 'email'
+  ) {
+    if (subscription.metadata?.trial_rejected !== reason) {
       await stripe.subscriptions.update(subscription.id, {
-        metadata: { trial_rejected: 'card' },
+        metadata: { trial_rejected: reason },
       });
     }
     if (subscription.status !== 'canceled') {
@@ -319,14 +358,16 @@ export class StripeService {
       await this._notificationService.inAppNotification(
         org.id,
         'Free trial already used',
-        'This card has already been used for a Postra trial. Choose a plan to subscribe without a trial.',
+        reason === 'card'
+          ? 'This card has already been used for a Postra trial. Choose a plan to subscribe without a trial.'
+          : 'This email address has already been used for a Postra trial. Choose a plan to subscribe without a trial.',
         true,
         false,
         'info'
       );
       await this._organizationService.endTrialOffer(org.id);
       this._logger.warn(
-        `Cancelled trial ${subscription.id} for ${subscription.customer}: card already had a trial`
+        `Cancelled trial ${subscription.id} for ${subscription.customer}: ${reason} already had a trial`
       );
     }
   }
@@ -339,9 +380,10 @@ export class StripeService {
     const current = await stripe.subscriptions.retrieve(event.data.object.id);
     // A retry after a rejection that failed part-way finishes it, also once
     // the subscription is cancelled (Codex).
-    if (current.metadata?.trial_rejected === 'card') {
-      await this.rejectRepeatTrial(current);
-      return { ok: true, skipped: 'trial card used before' };
+    const rejected = current.metadata?.trial_rejected;
+    if (rejected === 'card' || rejected === 'email') {
+      await this.rejectRepeatTrial(current, rejected);
+      return { ok: true, skipped: `trial ${rejected} used before` };
     }
     if (current.status === 'canceled' || current.status === 'incomplete_expired') {
       // customer.subscription.deleted owns the downgrade.
@@ -413,32 +455,46 @@ export class StripeService {
       data: { ...event.data, object: current },
     } as typeof event;
 
-    // One free trial per card (K. 2026-10-16): a new organisation used to
-    // mean a new trial. A card that already had one cancels this trial before
-    // anything is charged, and the next checkout comes without a trial.
-    const trialCard = await this.newTrialCard(current);
-    if (trialCard && (await this.trialCardUsedBefore(trialCard))) {
-      await this.rejectRepeatTrial(current);
-      return { ok: true, skipped: 'trial card used before' };
+    // One free trial per card (K. 2026-10-16) and per email (K. 2026-10-18):
+    // a new organisation used to mean a new trial. A card or email that
+    // already had one cancels this trial before anything is charged, and the
+    // next checkout comes without a trial.
+    const trial = await this.newTrial(current);
+    if (trial) {
+      for (const mark of ['card', 'email'] as const) {
+        const value = trial[mark];
+        if (value && (await this.trialMarkUsedBefore(mark, value, trial.customer))) {
+          // Reservations this rejected trial took would block its own retry
+          // and nobody else's, so they go.
+          await this.releaseTrialMarks(trial);
+          await this.rejectRepeatTrial(current, mark);
+          return { ok: true, skipped: `trial ${mark} used before` };
+        }
+      }
     }
 
     // A thrown error answers 500, and Stripe retries the event.
     if (!(await this.checkValidCard(fresh))) {
-      // A declined card does not keep the card's trial reserved.
-      if (trialCard) {
-        const key = `trial-card:${trialCard.fingerprint}`;
-        if ((await ioRedis.get(key)) === trialCard.customer) {
-          await ioRedis.del(key);
-        }
+      // A declined card does not keep the trial reserved.
+      if (trial) {
+        await this.releaseTrialMarks(trial);
       }
       return { ok: false };
     }
 
     // Marked once the card has passed the check, so a declined card does not
     // lose its trial for good.
-    if (trialCard) {
-      await stripe.customers.update(trialCard.customer, {
-        metadata: { trial_card: trialCard.fingerprint },
+    if (trial) {
+      if (trial.card || trial.email) {
+        await stripe.customers.update(trial.customer, {
+          metadata: {
+            ...(trial.card ? { trial_card: trial.card } : {}),
+            ...(trial.email ? { trial_email: trial.email } : {}),
+          },
+        });
+      }
+      await stripe.subscriptions.update(trial.subscription, {
+        metadata: { trial_checked: '1' },
       });
     }
 
@@ -1066,6 +1122,9 @@ export class StripeService {
         process.env['FRONTEND_URL'] +
         `/launches?onboarding=true&check=${uniqueId}${isUtm}`,
       mode: 'subscription',
+      // A trial is kept to one per card by the card's fingerprint, which a
+      // wallet such as Link or Revolut Pay does not have.
+      ...(allowTrial ? { payment_method_types: ['card' as const] } : {}),
       subscription_data: {
         ...(allowTrial ? { trial_period_days: 7 } : {}),
         metadata: {
@@ -1127,6 +1186,9 @@ export class StripeService {
         process.env['FRONTEND_URL'] +
         `/launches?onboarding=true&check=${uniqueId}${isUtm}`,
       mode: 'subscription',
+      // A trial is kept to one per card by the card's fingerprint, which a
+      // wallet such as Link or Revolut Pay does not have.
+      ...(allowTrial ? { payment_method_types: ['card' as const] } : {}),
       subscription_data: {
         ...(allowTrial ? { trial_period_days: 7 } : {}),
         metadata: {
@@ -1381,8 +1443,30 @@ export class StripeService {
       body,
       findPrice!.id,
       userId,
-      allowTrial
+      await this.offerTrial(organizationId, customer, userId, allowTrial)
     );
+  }
+
+  // One trial per email (K. 2026-10-18): an email whose trial ran on another
+  // Stripe customer checks out without one, and the organisation's offer ends,
+  // so the billing page stops promising it. Stripe keeps the mark after the
+  // account is deleted from Postra.
+  private async offerTrial(
+    organizationId: string,
+    customer: string,
+    userId: string,
+    allowTrial: boolean
+  ) {
+    if (!allowTrial) {
+      return false;
+    }
+    const user = await this._userService.getUserById(userId);
+    const email = trialEmailKey(user?.email);
+    if (email && (await this.trialMarkedElsewhere('email', email, customer))) {
+      await this._organizationService.endTrialOffer(organizationId);
+      return false;
+    }
+    return true;
   }
 
   async subscribe(
@@ -1442,7 +1526,7 @@ export class StripeService {
         body,
         findPrice!.id,
         userId,
-        allowTrial
+        await this.offerTrial(organizationId, customer, userId, allowTrial)
       );
     }
 

@@ -28,6 +28,7 @@ jest.mock('@gitroom/nestjs-libraries/database/prisma/notifications/notification.
 jest.mock('@gitroom/nestjs-libraries/track/track.service', () => ({ TrackService: class {} }));
 
 import { StripeService } from '@gitroom/nestjs-libraries/services/stripe.service';
+import { trialEmailKey } from '@gitroom/nestjs-libraries/services/trial-identity';
 
 // K. 2026-10-16: one free trial per card. A new organisation meant a new
 // trial, so one card could run trials for ever. A card that already had a
@@ -44,14 +45,15 @@ const trialing = {
 };
 const event = { id: 'evt_1', type: 'customer.subscription.created', data: { object: trialing } } as any;
 
-const build = (allowTrial = true) => {
+const build = (allowTrial = true, email: string | null = null) => {
+  const userService = { getUserById: jest.fn().mockResolvedValue(email ? { id: 'user-2', email } : null) };
   const subscriptionService = { createOrUpdateSubscription: jest.fn().mockResolvedValue({}) };
   const organizationService = {
     getOrgByCustomerId: jest.fn().mockResolvedValue({ id: 'org-2', allowTrial }),
     endTrialOffer: jest.fn().mockResolvedValue({}),
   };
   const notificationService = { inAppNotification: jest.fn().mockResolvedValue(undefined) };
-  const service = new StripeService(subscriptionService as any, organizationService as any, {} as any, {} as any, notificationService as any);
+  const service = new StripeService(subscriptionService as any, organizationService as any, userService as any, {} as any, notificationService as any);
   return { service, subscriptionService, organizationService, notificationService };
 };
 
@@ -121,14 +123,34 @@ it('does not mark a card that failed the £1 check', async () => {
   expect(updateCustomer).not.toHaveBeenCalled();
 });
 
-it('leaves paid subscriptions and organisations past their trial alone', async () => {
-  const { service } = build(false);
-  await service.createSubscription(event);
+it('leaves paid subscriptions and trials already checked alone', async () => {
+  retrieveSubscription.mockResolvedValue({ ...trialing, metadata: { ...trialing.metadata, trial_checked: '1' } });
+  await build().service.createSubscription(event);
   retrieveSubscription.mockResolvedValue({ ...trialing, status: 'active' });
   await build().service.createSubscription(event);
 
   expect(searchCustomers).not.toHaveBeenCalled();
   expect(cancelSubscription).not.toHaveBeenCalled();
+});
+
+it('a checked trial is marked on its subscription, so later events skip the check', async () => {
+  searchCustomers.mockResolvedValue({ data: [] });
+  await build().service.createSubscription(event);
+  expect(updateSubscription).toHaveBeenCalledWith('sub_2', { metadata: { trial_checked: '1' } });
+});
+
+// Codex 10-18: a checkout opened while the offer stood keeps its trial after
+// the offer ends (another organisation's trial, then the email check at the
+// next checkout). The offer used to skip the webhook check, so that trial ran.
+it('checks a trial although the organisation\u2019s offer has ended since its checkout opened', async () => {
+  searchCustomers.mockResolvedValue({ data: [{ id: 'cus_1' }] });
+  const { service, subscriptionService } = build(false);
+
+  const result = await service.createSubscription(event);
+
+  expect(cancelSubscription).toHaveBeenCalledWith('sub_2');
+  expect(subscriptionService.createOrUpdateSubscription).not.toHaveBeenCalled();
+  expect(result).toEqual({ ok: true, skipped: 'trial card used before' });
 });
 
 // Codex 10-17: Stripe's search index lags (~20 s on the sandbox), so two
@@ -179,4 +201,80 @@ it('and does nothing more once the rejection is complete', async () => {
 
   expect(notificationService.inAppNotification).not.toHaveBeenCalled();
   expect(organizationService.endTrialOffer).not.toHaveBeenCalled();
+});
+
+// K. 2026-10-18: one trial per email as well. The szyszka518 test account got
+// a second trial: its first one ran through Link, which has no card
+// fingerprint, and an account deleted from Postra leaves only its Stripe
+// customer behind.
+describe('one trial per email', () => {
+  const withUser = { ...trialing, metadata: { ...trialing.metadata, userId: 'user-2' } };
+  let mail = '';
+  beforeEach(() => {
+    mail = `szyszka${Date.now()}x${n}@yahoo.co.uk`;
+    retrieveSubscription.mockResolvedValue(withUser);
+  });
+
+  it('cancels a trial whose email already had one, even on a new card', async () => {
+    const key = trialEmailKey(mail);
+    searchCustomers.mockImplementation(async ({ query }: { query: string }) =>
+      query.includes('trial_email') ? { data: [{ id: 'cus_old' }] } : { data: [] }
+    );
+    const { service, subscriptionService, organizationService, notificationService } = build(true, mail);
+
+    const result = await service.createSubscription({ ...event, data: { object: withUser } });
+
+    expect(searchCustomers).toHaveBeenCalledWith(expect.objectContaining({ query: `metadata['trial_email']:'${key}'` }));
+    expect(updateSubscription).toHaveBeenCalledWith('sub_2', { metadata: { trial_rejected: 'email' } });
+    expect(cancelSubscription).toHaveBeenCalledWith('sub_2');
+    expect(subscriptionService.createOrUpdateSubscription).not.toHaveBeenCalled();
+    expect(organizationService.endTrialOffer).toHaveBeenCalledWith('org-2');
+    expect(notificationService.inAppNotification.mock.calls[0][2]).toBe(
+      'This email address has already been used for a Postra trial. Choose a plan to subscribe without a trial.'
+    );
+    expect(result).toEqual({ ok: true, skipped: 'trial email used before' });
+  });
+
+  it('marks the card and the email of a first trial', async () => {
+    searchCustomers.mockResolvedValue({ data: [] });
+    const { service } = build(true, mail);
+
+    await service.createSubscription({ ...event, data: { object: withUser } });
+
+    expect(updateCustomer).toHaveBeenCalledWith('cus_2', {
+      metadata: { trial_card: fingerprint, trial_email: trialEmailKey(mail) },
+    });
+  });
+
+  it('a Link payment (no card fingerprint) is still caught by the email', async () => {
+    listMethods.mockResolvedValue({ data: [{ id: 'pm_link', created: 10, type: 'link' }] });
+    searchCustomers.mockResolvedValue({ data: [{ id: 'cus_old' }] });
+    const { service } = build(true, mail);
+
+    const result = await service.createSubscription({ ...event, data: { object: withUser } });
+
+    expect(cancelSubscription).toHaveBeenCalledWith('sub_2');
+    expect(result).toEqual({ ok: true, skipped: 'trial email used before' });
+  });
+
+  it('a retry finishes an email rejection cut short', async () => {
+    retrieveSubscription.mockResolvedValue({ ...withUser, status: 'canceled', metadata: { ...withUser.metadata, trial_rejected: 'email' } });
+    const { service, organizationService } = build(true, mail);
+
+    await service.updateSubscription(event);
+
+    expect(organizationService.endTrialOffer).toHaveBeenCalledWith('org-2');
+  });
+});
+
+describe('trialEmailKey', () => {
+  it('is the same for every spelling of one inbox', () => {
+    const key = trialEmailKey('szyszka518@yahoo.co.uk');
+    expect(trialEmailKey(' Szyszka518+2@Yahoo.co.uk ')).toBe(key);
+    expect(trialEmailKey('j.doe@gmail.com')).toBe(trialEmailKey('jdoe+trial@googlemail.com'));
+    expect(trialEmailKey('j.doe@yahoo.com')).not.toBe(trialEmailKey('jdoe@yahoo.com'));
+    expect(key).toMatch(/^[a-f0-9]{64}$/);
+    expect(trialEmailKey('')).toBeNull();
+    expect(trialEmailKey('nobody')).toBeNull();
+  });
 });

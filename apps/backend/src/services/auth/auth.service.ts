@@ -15,13 +15,10 @@ import disposableDomains from 'disposable-email-domains';
 import { ioRedis } from '@gitroom/nestjs-libraries/redis/redis.service';
 import { bustAuthContextCache } from '@gitroom/nestjs-libraries/redis/auth-context.cache';
 import {
+  authEmailFooter,
   authEmails,
   EmailLang,
 } from '@gitroom/backend/services/auth/auth.emails';
-import {
-  isPwnedPassword,
-  PWNED_PASSWORD_MESSAGE,
-} from '@gitroom/backend/services/auth/pwned.passwords';
 import { randomBytes, randomUUID } from 'crypto';
 import {
   MOBILE_TOKEN_EXPIRES_IN,
@@ -42,9 +39,10 @@ export const sendActivationMail = async (
   emails: Pick<EmailService, 'sendEmailSync'>,
   to: string,
   subject: string,
-  html: string
+  html: string,
+  footer?: string
 ) => {
-  await emails.sendEmailSync(to, subject, html);
+  await emails.sendEmailSync(to, subject, html, undefined, footer);
 };
 
 export const ACCOUNT_SUSPENDED =
@@ -92,10 +90,6 @@ export class AuthService {
         if (existingNormalized) {
           throw new Error('Email already exists');
         }
-
-        if (body.password && (await isPwnedPassword(body.password))) {
-          throw new Error(PWNED_PASSWORD_MESSAGE);
-        }
       }
       const user = await this._userService.getUserByEmail(body.email);
       if (body instanceof CreateOrgUserDto) {
@@ -133,7 +127,8 @@ export class AuthService {
             `${process.env.FRONTEND_URL}/auth/activate/${this.activationToken(
               create.users[0].user
             )}`
-          )
+          ),
+          authEmailFooter[lang]
         );
         return obj;
       }
@@ -316,7 +311,9 @@ export class AuthService {
       .sendEmailSync(
         user.email,
         reset.subject,
-        reset.html(`${process.env.FRONTEND_URL}/auth/forgot/${resetValues}`)
+        reset.html(`${process.env.FRONTEND_URL}/auth/forgot/${resetValues}`),
+        undefined,
+        authEmailFooter[lang]
       )
       .catch((err) =>
         new Logger('AuthService').error(`reset mail not sent: ${err?.message}`)
@@ -344,10 +341,6 @@ export class AuthService {
       current.tokenVersion !== user.tokenVersion
     ) {
       return false;
-    }
-
-    if (await isPwnedPassword(body.password)) {
-      throw new Error(PWNED_PASSWORD_MESSAGE);
     }
 
     const updated = await this._userService.updatePassword(
@@ -417,7 +410,8 @@ export class AuthService {
       this._emailService,
       user.email,
       activation.subject,
-      activation.html(`${process.env.FRONTEND_URL}/auth/activate/${jwt}`)
+      activation.html(`${process.env.FRONTEND_URL}/auth/activate/${jwt}`),
+      authEmailFooter[lang]
     );
 
     return true;
