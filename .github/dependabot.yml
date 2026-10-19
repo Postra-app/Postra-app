@@ -82,9 +82,10 @@ updates:
     ignore:
       - dependency-name: "node"
         update-types: ["version-update:semver-major"]
-  # Global tools of the image. pnpm moves through its own program (a newer
-  # pnpm re-resolves peers in the lockfile) and must equal packageManager
-  # (ci-workflows.spec.ts); the freshness issue says when it is behind.
+  # Global tools of the image. pnpm must equal packageManager
+  # (ci-workflows.spec.ts), which Dependabot does not move, so pnpm is bumped
+  # by hand in both places; the freshness issue says when it is behind. The
+  # peers a relock used to move are pinned since 19 X (lockfile-peers.spec).
   - package-ecosystem: "npm"
     directory: "/var/docker/tools"
     schedule:
