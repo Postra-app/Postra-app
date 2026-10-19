@@ -115,6 +115,19 @@ describe('CI workflows', () => {
     expect(docker).toMatch(/pnpm install --frozen-lockfile/);
   });
 
+  // pnpm 10.34 runs no build scripts in `pnpm dlx` unless allowed: Prisma
+  // then downloaded its engines in the middle of `migrate diff`, and one
+  // dropped connection failed the job (19 X).
+  it('lets dlx prisma install its engines', () => {
+    const dlx = workflows
+      .flatMap(({ text }) => text.split('\n'))
+      .filter((line) => /pnpm dlx\b.*\bprisma@/.test(line));
+    expect(dlx.length).toBeGreaterThan(0);
+    for (const line of dlx) {
+      expect(line).toContain('--allow-build=@prisma/engines');
+    }
+  });
+
   it('builds the production image on the Node in volta.node', () => {
     const pkg = JSON.parse(readFileSync(join(root, 'package.json'), 'utf8'));
     const docker = readFileSync(join(root, 'Dockerfile.dev'), 'utf8');

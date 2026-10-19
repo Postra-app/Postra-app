@@ -167,7 +167,9 @@ jobs:
       - name: Migrations reproduce schema.prisma
         run: |
           # No install in this job: dlx, at the version package.json pins.
-          pnpm dlx "prisma@$(jq -r '.devDependencies.prisma' package.json)" migrate diff \
+          # pnpm 10.34 skips build scripts in dlx too; without the engines'
+          # postinstall Prisma fetches them mid-command (ECONNRESET, 19 X).
+          pnpm dlx --allow-build=@prisma/engines "prisma@$(jq -r '.devDependencies.prisma' package.json)" migrate diff \
             --from-migrations ./libraries/nestjs-libraries/src/database/prisma/migrations \
             --to-schema-datamodel ./libraries/nestjs-libraries/src/database/prisma/schema.prisma \
             --shadow-database-url postgresql://postgres:postgres@localhost:5432/shadow \
