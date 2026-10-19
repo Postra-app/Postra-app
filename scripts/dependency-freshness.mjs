@@ -36,8 +36,8 @@ const held = Object.entries(outdated)
   .map(([name, v]) => ({ name, ...v }))
   .sort((a, b) => a.name.localeCompare(b.name));
 
-// pnpm itself (packageManager): Dependabot leaves it alone, it moves through
-// its own program because a newer pnpm re-resolves peers in the lockfile.
+// pnpm itself (packageManager): Dependabot does not move it, so this issue is
+// its guard; a new major moves settings out of .npmrc and needs its own PR.
 const pkg = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8'));
 const pnpmOurs = String(pkg.packageManager || '').replace(/^pnpm@/, '');
 let pnpmLatest;

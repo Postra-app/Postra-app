@@ -1,3 +1,11 @@
 packages:
   - apps/*
   - libraries/*
+
+# Versions both the root and apps/frontend declare: one number for both, so a
+# bump cannot split the design editor's dependency graph again (19 X).
+catalog:
+  mobx: 6.15.0
+  mobx-react-lite: 4.1.1
+  polotno: 3.0.0-beta.25
+  typescript: 5.5.4
