@@ -47,6 +47,18 @@ describe('pnpm-lock.yaml peers', () => {
     }
   );
 
+  // polotno pins mobx exactly, so the catalog follows it and Dependabot leaves
+  // mobx alone (#398 proposed 6.16.1: a second copy, 19 X).
+  it('keeps mobx at the version polotno pins, out of Dependabot', () => {
+    const snapshots = lock.slice(lock.indexOf('\nsnapshots:'));
+    const polotno = snapshots.match(/\n  polotno@[^\n]*:\n((?:    [^\n]*\n)+)/)?.[1] ?? '';
+    expect(polotno.match(/\n?\s+mobx: ([^\s(]+)/)?.[1]).toBe(catalog.mobx);
+    const dependabot = readFileSync(join(root, '.github', 'dependabot.yml'), 'utf8');
+    expect(dependabot).toMatch(
+      /- dependency-name: "mobx"\n\s*update-types: \[[^\]]*semver-minor[^\]]*semver-patch/
+    );
+  });
+
   it('gives mobx-react-lite the mobx polotno uses', () => {
     expect(versionsOf('mobx')).toEqual([catalog.mobx]);
     const peers = [...lock.matchAll(/mobx-react-lite@[^\s:]*?\(mobx@([^)]+)\)/g)];
