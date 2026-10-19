@@ -37,8 +37,12 @@
     "geist": "^1.7.2",
     "jszip": "^3.10.2",
     "mediabunny": "^1.61.4",
-    "mobx-react-lite": "4.1.1",
-    "polotno": "3.0.0-beta.25",
+    "mobx": "catalog:",
+    "mobx-react-lite": "catalog:",
+    "polotno": "catalog:",
     "wavesurfer.js": "^7"
+  },
+  "devDependencies": {
+    "typescript": "catalog:"
   }
 }
