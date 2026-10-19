@@ -61,6 +61,27 @@ test.describe('a fresh organisation', () => {
       await expect(
         page.getByRole('button', { name: 'Notifications', exact: true })
       ).toBeVisible();
+
+      // Plain text: a link is an anchor labelled without its scheme, and
+      // markup quoted from a post title is shown as written, never parsed.
+      await prisma.notifications.create({
+        data: {
+          organizationId: org.orgId,
+          content:
+            'Post "<b>Launch</b>" published: https://www.example.com/postra/status/42',
+        },
+      });
+      await page.reload();
+      await page.getByRole('button', { name: 'Notifications, 1 unread' }).click();
+      const link = popup.getByRole('link', {
+        name: 'example.com/postra/status/42',
+      });
+      await expect(link).toHaveAttribute(
+        'href',
+        'https://www.example.com/postra/status/42'
+      );
+      await expect(popup.getByText('Post "<b>Launch</b>" published:')).toBeVisible();
+      await expect(popup.locator('b')).toHaveCount(0);
     } finally {
       await org.remove();
       await prisma.$disconnect();

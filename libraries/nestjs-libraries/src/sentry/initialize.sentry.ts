@@ -3,6 +3,12 @@ import { nodeProfilingIntegration } from '@sentry/profiling-node';
 import { capitalize } from 'lodash';
 import { isClientAbort } from './client.abort';
 
+export const SENTRY_IGNORED_SPANS = [
+  /^prisma:(client:serialize|engine:(query|serialize|response_json_serialization|connection))$/,
+  { op: 'db', name: /^(BEGIN|COMMIT|DEALLOCATE ALL)$/ },
+  { op: 'middleware.express' },
+];
+
 export const initializeSentry = (appName: string, allowLogs = false) => {
   if (!process.env.NEXT_PUBLIC_SENTRY_DSN) {
     return null;
@@ -46,6 +52,10 @@ export const initializeSentry = (appName: string, allowLogs = false) => {
       // A client hanging up mid-upload is not a server error (see isClientAbort).
       beforeSend: (event) => (isClientAbort(event) ? null : event),
       tracesSampleRate,
+      // Noise that fills traces and the free quota without telling anything
+      // (upstream 2ffd05fc4): Prisma's internal steps, transaction
+      // bookkeeping and one span per Express middleware.
+      ignoreSpans: SENTRY_IGNORED_SPANS,
       enableLogs: true,
 
       // Profiling
