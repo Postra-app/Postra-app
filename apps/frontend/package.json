@@ -34,7 +34,7 @@
     "@imgly/background-removal": "^1.7.0",
     "@tabler/icons-react": "^3.49.0",
     "dompurify": "^3.4.17",
-    "geist": "^1.7.2",
+    "geist": "^1.8.1",
     "jszip": "^3.10.2",
     "mediabunny": "^1.61.4",
     "mobx": "catalog:",
