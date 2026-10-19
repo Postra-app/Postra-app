@@ -102,7 +102,7 @@ export const FirstBillingComponent = () => {
     });
   }, [modals, t]);
 
-  const { data, isLoading } = useSWR(
+  const { data, isLoading, error } = useSWR(
     `/billing-${tier}-${period}`,
     loadCheckout,
     {
@@ -117,6 +117,17 @@ export const FirstBillingComponent = () => {
   // Free days are promised only when this checkout has them: an email that
   // already had a trial is charged straight away (18 X).
   const trialOffered = !!user?.allowTrial && data?.trial === true;
+
+  // Without a client secret there is no checkout to show: Stripe threw on the
+  // error body (409 for an organisation already subscribed, 18 X Sentry) and a
+  // 5xx left the spinner turning for good.
+  const checkoutError = error
+    ? 'failed'
+    : data && !data.client_secret
+    ? data.statusCode === 409
+      ? 'subscribed'
+      : 'failed'
+    : null;
 
   const price = useMemo(
     () =>
@@ -211,6 +222,18 @@ export const FirstBillingComponent = () => {
                 'billing_stripe_load_failed',
                 'The payment form could not be loaded. Please disable ad blockers or privacy extensions for this page and reload.'
               )}
+            </div>
+          ) : checkoutError ? (
+            <div className="mt-[24px] p-[24px] rounded-[20px] border-[1.5px] border-newColColor text-[16px] font-[500]">
+              {checkoutError === 'subscribed'
+                ? t(
+                    'billing_already_subscribed',
+                    'Your subscription is already set up. Reload the page in a few seconds to see your plan.'
+                  )
+                : t(
+                    'billing_checkout_failed',
+                    'The payment form could not be loaded. Reload the page, or email hello@postra.co.uk if it keeps happening.'
+                  )}
             </div>
           ) : !isLoading && data && stripe ? (
             <EmbeddedBilling
