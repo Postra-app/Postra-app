@@ -37,14 +37,23 @@ test('a picture chosen from the library shows and is saved', async ({ page }) =>
   });
   expect(res.status(), await res.text()).toBe(201);
   const media: { id: string; path: string } = await res.json();
+  // Other specs upload to this user's library in parallel, so the newest tile
+  // is not always ours (1 timeout in a full run, 18 X). A later upload here
+  // makes that the rule: the test must pick its own file.
+  const later = await page.request.post('/api/media/upload-simple', {
+    multipart: { file: { name: `profile-later-${Date.now()}.png`, mimeType: 'image/png', buffer: PNG } },
+  });
+  expect(later.status(), await later.text()).toBe(201);
   try {
     await page.goto('/settings');
     await page.getByRole('button', { name: 'Choose picture', exact: true }).click();
-    // The library lists the newest first; ours was just uploaded.
-    // The app's top bar overlaps the first row of tiles in the test window.
-    await page.locator('div.w-full.aspect-square').first().dispatchEvent('click');
-    await page.getByRole('button', { name: 'Add selected media', exact: true }).click();
     const file = media.path.split('/').pop()!;
+    // The app's top bar overlaps the first row of tiles in the test window.
+    await page
+      .locator('div.w-full.aspect-square')
+      .filter({ has: page.locator(`img[src*="${file}"]`) })
+      .dispatchEvent('click');
+    await page.getByRole('button', { name: 'Add selected media', exact: true }).click();
     await expect(page.getByAltText('Profile Picture')).toHaveAttribute('src', new RegExp(file.replace('.', '\\.')));
     const card = page.getByText('Profile', { exact: true }).locator('xpath=ancestor::*[contains(@class,"p-[24px]")][1]');
     await card.getByRole('button', { name: 'Save', exact: true }).click();
