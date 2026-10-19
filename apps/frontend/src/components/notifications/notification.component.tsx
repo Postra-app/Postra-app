@@ -8,21 +8,8 @@ import dayjs from 'dayjs';
 import { useClickAway } from '@uidotdev/usehooks';
 import ReactLoading from '@gitroom/frontend/components/layout/loading';
 import { useT } from '@gitroom/react/translation/get.transation.service.client';
-import DOMPurify from 'dompurify';
 import { isUSCitizen } from '@gitroom/frontend/components/launches/helpers/isuscitizen.utils';
-function replaceLinks(text: string) {
-  const urlRegex =
-    /(\bhttps?:\/\/[-A-Z0-9+&@#/%?=~_|!:,.;]*[-A-Z0-9+&@#/%=~_|])/gi;
-  // Notification content can quote user-controlled text (post titles etc.) —
-  // sanitize after linkifying so markup smuggled into it never executes.
-  return DOMPurify.sanitize(
-    text.replace(
-      urlRegex,
-      '<a class="cursor-pointer underline font-bold" target="_blank" rel="noopener noreferrer" href="$1">$1</a>'
-    ),
-    { ADD_ATTR: ['target', 'rel'] }
-  );
-}
+import { notificationParts } from '@gitroom/frontend/components/notifications/notification.links';
 export const ShowNotification: FC<{
   notification: {
     createdAt: string;
@@ -47,12 +34,9 @@ export const ShowNotification: FC<{
         newNotification && 'font-bold bg-seventh animate-newMessages'
       )}
     >
-      <div
-        className="break-words"
-        dangerouslySetInnerHTML={{
-          __html: replaceLinks(notification.content),
-        }}
-      />
+      {/* Plain text: content can quote user text (post titles), so it is
+          never parsed as HTML. */}
+      <div className="break-words">{notificationParts(notification.content)}</div>
       <div
         className="text-[11px] mt-[4px] opacity-60 font-normal"
         title={isWithin24h ? fullDate : undefined}
@@ -69,7 +53,13 @@ export const NotificationOpenComponent = () => {
   }, []);
   const t = useT();
 
-  const { data, isLoading } = useSWR('notifications', loadNotifications);
+  // Every /notifications/list call marks the list as read, so it runs when
+  // the popup opens and not again on focus or reconnect (upstream f1a24b5fa).
+  const { data, isLoading } = useSWR('notifications', loadNotifications, {
+    revalidateOnFocus: false,
+    revalidateOnReconnect: false,
+    dedupingInterval: 0,
+  });
   return (
     <div
       id="notification-popup"

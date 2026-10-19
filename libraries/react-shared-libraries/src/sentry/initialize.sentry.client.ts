@@ -16,8 +16,14 @@ export const initializeSentryClient = (
   // Called once a "Report a problem" is filed in Sentry, so the app can also
   // email it to the team (Sentry sends no mail for it on our plan).
   onProblemReport?: (report: ProblemReport, eventId: string) => void
-) =>
-  initializeSentryBasic(environment, dsn, {
+) => {
+  // A remounted layout must not build a second replay integration: Sentry
+  // throws on it (upstream 2aac6f374).
+  if (Sentry.getClient()) {
+    return;
+  }
+
+  return initializeSentryBasic(environment, dsn, {
     integrations: [
       // Add default integrations back
       Sentry.browserTracingIntegration(),
@@ -62,7 +68,9 @@ export const initializeSentryClient = (
             eventId
           ),
       }),
-      Sentry.replayCanvasIntegration(),
+      // No replayCanvasIntegration: Sentry does not mask canvas recordings
+      // ("There is currently no PII scrubbing in canvas recordings"), and the
+      // design studio's canvas shows customers' images and text.
     ],
     // Error-only replays: the free tier includes ~50 replays/month, so recording
     // every session would exhaust the quota within a day.
@@ -71,3 +79,4 @@ export const initializeSentryClient = (
 
     profilesSampleRate: environment === 'development' ? 1.0 : 0.1,
   });
+};
