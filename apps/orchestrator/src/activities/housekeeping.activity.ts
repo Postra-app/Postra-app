@@ -7,6 +7,11 @@ import { EmailService } from '@gitroom/nestjs-libraries/services/email.service';
 import { PrismaService } from '@gitroom/nestjs-libraries/database/prisma/prisma.service';
 import { ioRedis } from '@gitroom/nestjs-libraries/redis/redis.service';
 import { marginAlertMail } from '@gitroom/nestjs-libraries/ai-cost/margin-alert.mail';
+import * as Sentry from '@sentry/nestjs';
+
+// Sentry's cron monitor of the daily run. Postra-infra modules/sentry owns
+// the monitor (slug, schedule, margins); the SDK only reports to it.
+export const HOUSEKEEPING_MONITOR = 'housekeeping';
 
 @Injectable()
 @Activity()
@@ -18,6 +23,26 @@ export class HousekeepingActivity {
     private _email: EmailService,
     private _prisma: PrismaService
   ) {}
+
+  // The daily run reports to Sentry's cron monitor: a day without an "ok", or
+  // an "error", opens an issue. When the run broke on 2026-10-09 (E2E-11-15,
+  // replay spec) nothing said so for a week.
+  @ActivityMethod()
+  async housekeepingStarted() {
+    return Sentry.captureCheckIn({
+      monitorSlug: HOUSEKEEPING_MONITOR,
+      status: 'in_progress',
+    });
+  }
+
+  @ActivityMethod()
+  async housekeepingFinished(checkInId: string, ok: boolean) {
+    Sentry.captureCheckIn({
+      checkInId,
+      monitorSlug: HOUSEKEEPING_MONITOR,
+      status: ok ? 'ok' : 'error',
+    });
+  }
 
   // What `purge-old-records --apply` does, with its default windows. It
   // existed as a command only and nothing ran it, so rows outlived their

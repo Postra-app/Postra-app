@@ -58,8 +58,10 @@ RUN addgroup --system www \
 # pnpm and pm2 at the exact versions in var/docker/tools/package.json, which
 # Dependabot watches; pnpm there equals packageManager (ci-workflows.spec.ts).
 # pm2 had no version here, so every build took whatever was newest.
+# pm2-logrotate is in the same manifest but is a pm2 module, installed below
+# as the user pm2 runs as, not a global package.
 COPY var/docker/tools/package.json /tmp/tools/package.json
-RUN npm --no-update-notifier --no-fund --global install $(node -p "Object.entries(require('/tmp/tools/package.json').dependencies).map(([n, v]) => n + '@' + v).join(' ')")
+RUN npm --no-update-notifier --no-fund --global install $(node -p "Object.entries(require('/tmp/tools/package.json').dependencies).filter(([n]) => n !== 'pm2-logrotate').map(([n, v]) => n + '@' + v).join(' ')")
 
 WORKDIR /app
 
@@ -93,5 +95,17 @@ RUN NODE_OPTIONS="--max-old-space-size=4096" pnpm run commands:build:development
 RUN chown -R www:www /app
 
 USER www
+
+# pm2 writes each process's stdout and stderr to /www/.pm2/logs and never
+# rotates them: the backend's log grew for as long as the container lived,
+# and a crash loop could fill the root volume (E2E-11-35). pm2-logrotate is
+# a pm2 module, kept in /www/.pm2 of the user pm2 runs as, so it is installed
+# here, after USER www; a fresh pm2 daemon starts it with the apps. 10 MB a
+# file, the last five kept compressed: at most ~100 MB of logs a process.
+RUN pm2 install "pm2-logrotate@$(node -p "require('/tmp/tools/package.json').dependencies['pm2-logrotate']")" \
+ && pm2 set pm2-logrotate:max_size 10M \
+ && pm2 set pm2-logrotate:retain 5 \
+ && pm2 set pm2-logrotate:compress true \
+ && pm2 kill
 
 CMD ["sh", "-c", "nginx && pnpm run pm2"]
