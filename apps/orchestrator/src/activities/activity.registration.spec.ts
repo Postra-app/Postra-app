@@ -29,5 +29,11 @@ it('the housekeeping workflow can reach the margin guard', () => {
   const { methods } = accessor.extractActivityMethods(
     new HousekeepingActivity({} as any, {} as any, {} as any, {} as any)
   );
-  expect([...methods.keys()].sort()).toEqual(['checkAiMargins', 'purgeOldRecords']);
+  // The two check-in methods report the day to Sentry's cron monitor.
+  expect([...methods.keys()].sort()).toEqual([
+    'checkAiMargins',
+    'housekeepingFinished',
+    'housekeepingStarted',
+    'purgeOldRecords',
+  ]);
 });

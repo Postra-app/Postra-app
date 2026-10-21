@@ -10,6 +10,14 @@ const { purgeOldRecords, checkAiMargins } = proxyActivities<HousekeepingActivity
   },
 });
 
+// Reporting to Sentry's cron monitor is quick and must not hold the run:
+// one retry, then the day goes on unreported.
+const { housekeepingStarted, housekeepingFinished } =
+  proxyActivities<HousekeepingActivity>({
+    startToCloseTimeout: '1 minute',
+    retry: { maximumAttempts: 2, initialInterval: '10 seconds' },
+  });
+
 // Started once by the backend when RUN_CRON is set (InfiniteWorkflowRegister),
 // like missingPostWorkflow. Once a day: retention for Errors, AuditLog and
 // AiUsage, stored files behind media deleted long enough ago that nothing
@@ -17,20 +25,42 @@ const { purgeOldRecords, checkAiMargins } = proxyActivities<HousekeepingActivity
 // A failed day is tried again the next day; one failing does not skip the
 // other.
 export async function housekeepingWorkflow() {
+  // A run is alive at every deploy and replays this code against its own
+  // history, so every new step goes behind a patch: the run started before
+  // the step shipped skips it, sleeps out its day and continues as new with
+  // it (E2E-11-15; housekeeping.workflow.replay.spec.ts).
+  let checkInId: string | undefined;
+  if (patched('housekeeping-check-in')) {
+    try {
+      checkInId = await housekeepingStarted();
+    } catch (err) {
+      // Reporting is not the work: the day runs unreported and the
+      // monitor's missed check-in says so (Codex).
+    }
+  }
+  let ok = true;
   try {
-    await purgeOldRecords();
+    // The media sweep swallows storage errors and counts them: a day on
+    // which files could not be removed is not an "ok" day (Codex).
+    const purged = await purgeOldRecords();
+    if ((purged?.failed ?? 0) > 0) ok = false;
   } catch (err) {
     // Next run tomorrow.
+    ok = false;
   }
-  // A run is alive at every deploy and replays this code against its own
-  // history, so a new step goes behind a patch: the run started before the
-  // margin guard shipped skips it, sleeps out its day and continues as new
-  // with it (E2E-11-15; housekeeping.workflow.replay.spec.ts).
   if (patched('housekeeping-margin-guard')) {
     try {
       await checkAiMargins();
     } catch (err) {
       // Next run tomorrow.
+      ok = false;
+    }
+  }
+  if (checkInId) {
+    try {
+      await housekeepingFinished(checkInId, ok);
+    } catch (err) {
+      // The monitor's missed check-in says it for us.
     }
   }
   await sleep('1 day');

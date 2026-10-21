@@ -18,13 +18,10 @@ const workflows = readdirSync(dir)
   .map((name) => ({ name, text: readFileSync(join(dir, name), 'utf8') }));
 const scripts = [
   ...workflows,
-  {
-    name: 'scripts/deploy-staging.sh',
-    text: readFileSync(
-      join(root, '.github', 'scripts', 'deploy-staging.sh'),
-      'utf8'
-    ),
-  },
+  ...['deploy-staging.sh', 'asg-refresh.sh'].map((name) => ({
+    name: `scripts/${name}`,
+    text: readFileSync(join(root, '.github', 'scripts', name), 'utf8'),
+  })),
 ];
 
 const labels = workflows.flatMap(({ name, text }) =>
@@ -113,6 +110,62 @@ describe('CI workflows', () => {
     expect(docker).toContain('var/docker/tools/package.json');
     expect(docker).not.toMatch(/install[^\n]*\b(pnpm|pm2)(@|\s|$)/);
     expect(docker).toMatch(/pnpm install --frozen-lockfile/);
+  });
+
+  // One workflow, two places to deploy to (Postra-infra runbook A5, W3): the
+  // box on the shared account over SSM, and the auto scaling group of the
+  // postra account by APP_IMAGE in SSM plus an instance refresh. Repository
+  // variables choose; without them the box deploy runs as before, with its
+  // parameters under /postra/dev.
+  it('deploys to the box or to the group, chosen by repository variables', () => {
+    const deploy = workflows.find((w) => w.name === 'deploy-dev.yml')!.text;
+    expect(deploy).toContain("SSM_PREFIX: ${{ vars.SSM_PREFIX || '/postra/dev' }}");
+    expect(deploy).not.toMatch(/get-parameters-by-path --path \/postra\/dev\//);
+    expect(deploy).toMatch(/--arg prefix "\$\{SSM_PREFIX\}"/);
+    expect(deploy).toMatch(/^  deploy:\n[\s\S]*?if: always\(\) && vars\.DEPLOY_TARGET != 'asg'/m);
+    expect(deploy).toMatch(/^  deploy-asg:\n[\s\S]*?if: always\(\) && vars\.DEPLOY_TARGET == 'asg'/m);
+    expect(deploy).toMatch(/put-parameter --name "\$\{SSM_PREFIX\}\/APP_IMAGE"/);
+    // The rollback target is the last image that passed the checks, written
+    // after the smoke, never the image a cancelled deploy left in APP_IMAGE.
+    const verified = deploy.indexOf('put-parameter --name "${SSM_PREFIX}/APP_IMAGE_VERIFIED"');
+    expect(verified).toBeGreaterThan(deploy.indexOf('Smoke test (Playwright)', deploy.indexOf('deploy-asg:')));
+    expect(verified).toBeLessThan(deploy.indexOf('Roll back to the previous image', deploy.indexOf('deploy-asg:')));
+    expect(deploy).toMatch(/get-parameter --name "\$\{SSM_PREFIX\}\/APP_IMAGE_VERIFIED"/);
+    expect(deploy).toContain('.github/scripts/asg-refresh.sh "${ASG_NAME}"');
+    // The same commit again skips the build: the tag is immutable.
+    expect(deploy).toMatch(/ecr describe-images --repository-name "\$\{ECR_REPOSITORY\}" --image-ids "imageTag=\$\{IMAGE_TAG_SHA\}"/);
+    expect(deploy.match(/if: steps\.existing\.outputs\.exists != 'true'/g)).toHaveLength(2);
+  });
+
+  // pm2 kept every process's output in /www/.pm2/logs for ever and nginx
+  // wrote access.log into the container, read by nobody and reset only by a
+  // deploy (E2E-11-35). pm2-logrotate comes from the same pinned manifest as
+  // pm2 (Dependabot watches it), is installed as the user pm2 runs as, and
+  // nginx logs to the container's output, which Docker rotates.
+  it('rotates the logs inside the image', () => {
+    const tools = JSON.parse(
+      readFileSync(join(root, 'var', 'docker', 'tools', 'package.json'), 'utf8')
+    ).dependencies;
+    const docker = readFileSync(join(root, 'Dockerfile.dev'), 'utf8');
+    const nginx = readFileSync(
+      join(root, 'var', 'docker', 'nginx.conf'),
+      'utf8'
+    );
+    expect(tools['pm2-logrotate']).toMatch(/^\d+\.\d+\.\d+$/);
+    expect(docker).toMatch(
+      /pm2 install "pm2-logrotate@\$\(node -p "require\('\/tmp\/tools\/package\.json'\)\.dependencies\['pm2-logrotate'\]"\)"/
+    );
+    expect(docker).toMatch(/pm2 set pm2-logrotate:max_size \d+M/);
+    expect(docker).toMatch(/pm2 set pm2-logrotate:retain \d+/);
+    expect(docker.indexOf('USER www')).toBeGreaterThan(0);
+    expect(docker.indexOf('USER www')).toBeLessThan(
+      docker.indexOf('pm2 install')
+    );
+    // The global install must leave the module to pm2.
+    expect(docker).toMatch(/filter\(\(\[n\]\) => n !== 'pm2-logrotate'\)/);
+    expect(nginx).toMatch(/^\s*access_log\s+\/dev\/stdout;/m);
+    expect(nginx).toMatch(/^\s*error_log\s+\/dev\/stderr/m);
+    expect(nginx).not.toMatch(/\/var\/log\/nginx\/access\.log/);
   });
 
   // pnpm 10.34 runs no build scripts in `pnpm dlx` unless allowed: Prisma

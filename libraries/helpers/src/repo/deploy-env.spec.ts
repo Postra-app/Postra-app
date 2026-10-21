@@ -45,7 +45,9 @@ const ssmCommands = (text: string): string[] => {
   const json = `${program[1].replace(/commands:/, '"commands":')}}`
     .replace(/\\\(\$region\)/g, 'eu-west-2')
     .replace(/\\\(\$registry\)/g, 'registry.example')
-    .replace(/\\\(\$image\)/g, 'image:tag');
+    .replace(/\\\(\$image\)/g, 'image:tag')
+    // SSM_PREFIX, a repository variable; the box deploy's default.
+    .replace(/\\\(\$prefix\)/g, '/postra/dev');
   return JSON.parse(json).commands;
 };
 

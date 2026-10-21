@@ -1,9 +1,10 @@
 {
   "name": "postra-image-tools",
   "private": true,
-  "description": "Global tools of the app image (Dockerfile.dev), exact versions Dependabot watches. pnpm must equal packageManager in the root package.json.",
+  "description": "Global tools of the app image (Dockerfile.dev) and the pm2 module it installs, exact versions Dependabot watches. pnpm must equal packageManager in the root package.json.",
   "dependencies": {
     "pm2": "7.0.4",
+    "pm2-logrotate": "2.7.0",
     "pnpm": "10.34.7"
   }
 }
