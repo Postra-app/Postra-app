@@ -1,5 +1,11 @@
 import { expect, test } from '@playwright/test';
+import dayjs from 'dayjs';
+import utc from 'dayjs/plugin/utc';
+import timezone from 'dayjs/plugin/timezone';
 import { listPosts, signedIn } from '../helpers';
+
+dayjs.extend(utc);
+dayjs.extend(timezone);
 import { USERS } from '../seed';
 import { dragWithMouse, quietSlot, weekOf } from './ui-helpers';
 
@@ -212,8 +218,15 @@ test('a post moved in Month view keeps its time of day', async ({ page }) => {
     await dragWithMouse(page, tile, page.locator(`[data-slot="${ymd(target)}T23:59"]`));
     expect((await saved).status()).toBeLessThan(300);
 
-    const expected = new Date(target);
-    expected.setHours(slot.getHours(), slot.getMinutes(), 0, 0);
+    // "Its time of day" is the wall-clock time in the browser's zone
+    // (Europe/London, playwright.config.ts), which the app keeps with
+    // dayjs().local(). The runner is UTC, so across the clock change the
+    // two differ by an hour: on 21 Oct 2026 the slot fell on 25 Oct (GMT)
+    // and the target on 24 Oct (BST), and setHours on the runner expected
+    // 04:20Z where 04:20 London time is 03:20Z.
+    const zone = 'Europe/London';
+    const wall = dayjs(slot).tz(zone);
+    const expected = dayjs.tz(`${ymd(target)} ${wall.format('HH:mm')}`, zone);
     expect((await (await api.get(`/posts/${id}`)).json()).posts[0].publishDate).toBe(expected.toISOString());
   } finally {
     await api.delete(`/posts/${group}`);
