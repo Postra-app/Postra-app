@@ -86,17 +86,32 @@ describe('housekeepingWorkflow', () => {
     expect(housekeepingFinished).toHaveBeenLastCalledWith('check-in-1', false);
   });
 
+  it('files the sweep could not remove make the day an error', async () => {
+    purgeOldRecords.mockResolvedValueOnce({ removed: 3, failed: 2 });
+    await housekeepingWorkflow();
+    expect(housekeepingFinished).toHaveBeenLastCalledWith('check-in-1', false);
+  });
+
   it('a failed report does not stop the day, and an old run does not report', async () => {
     housekeepingFinished.mockRejectedValueOnce(new Error('sentry down'));
     await housekeepingWorkflow();
     expect(sleep).toHaveBeenCalledWith('1 day');
     expect(continueAsNew).toHaveBeenCalledTimes(1);
 
+    // The opening check-in failing (worker restarts, timeouts) must not end
+    // the workflow before the work (Codex): the day runs, unreported.
+    housekeepingStarted.mockRejectedValueOnce(new Error('sentry down'));
+    await housekeepingWorkflow();
+    expect(purgeOldRecords).toHaveBeenCalledTimes(2);
+    expect(checkAiMargins).toHaveBeenCalledTimes(2);
+    expect(housekeepingFinished).toHaveBeenCalledTimes(1);
+    expect(continueAsNew).toHaveBeenCalledTimes(2);
+
     patches = { 'housekeeping-check-in': false };
     await housekeepingWorkflow();
-    expect(housekeepingStarted).toHaveBeenCalledTimes(1);
+    expect(housekeepingStarted).toHaveBeenCalledTimes(2);
     expect(housekeepingFinished).toHaveBeenCalledTimes(1);
-    expect(purgeOldRecords).toHaveBeenCalledTimes(2);
-    expect(continueAsNew).toHaveBeenCalledTimes(2);
+    expect(purgeOldRecords).toHaveBeenCalledTimes(3);
+    expect(continueAsNew).toHaveBeenCalledTimes(3);
   });
 });

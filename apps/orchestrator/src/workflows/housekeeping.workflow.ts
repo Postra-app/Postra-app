@@ -29,11 +29,21 @@ export async function housekeepingWorkflow() {
   // history, so every new step goes behind a patch: the run started before
   // the step shipped skips it, sleeps out its day and continues as new with
   // it (E2E-11-15; housekeeping.workflow.replay.spec.ts).
-  const reported = patched('housekeeping-check-in');
-  const checkInId = reported ? await housekeepingStarted() : undefined;
+  let checkInId: string | undefined;
+  if (patched('housekeeping-check-in')) {
+    try {
+      checkInId = await housekeepingStarted();
+    } catch (err) {
+      // Reporting is not the work: the day runs unreported and the
+      // monitor's missed check-in says so (Codex).
+    }
+  }
   let ok = true;
   try {
-    await purgeOldRecords();
+    // The media sweep swallows storage errors and counts them: a day on
+    // which files could not be removed is not an "ok" day (Codex).
+    const purged = await purgeOldRecords();
+    if ((purged?.failed ?? 0) > 0) ok = false;
   } catch (err) {
     // Next run tomorrow.
     ok = false;
@@ -46,9 +56,9 @@ export async function housekeepingWorkflow() {
       ok = false;
     }
   }
-  if (reported) {
+  if (checkInId) {
     try {
-      await housekeepingFinished(checkInId as string, ok);
+      await housekeepingFinished(checkInId, ok);
     } catch (err) {
       // The monitor's missed check-in says it for us.
     }

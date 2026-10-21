@@ -125,6 +125,12 @@ describe('CI workflows', () => {
     expect(deploy).toMatch(/^  deploy:\n[\s\S]*?if: always\(\) && vars\.DEPLOY_TARGET != 'asg'/m);
     expect(deploy).toMatch(/^  deploy-asg:\n[\s\S]*?if: always\(\) && vars\.DEPLOY_TARGET == 'asg'/m);
     expect(deploy).toMatch(/put-parameter --name "\$\{SSM_PREFIX\}\/APP_IMAGE"/);
+    // The rollback target is the last image that passed the checks, written
+    // after the smoke, never the image a cancelled deploy left in APP_IMAGE.
+    const verified = deploy.indexOf('put-parameter --name "${SSM_PREFIX}/APP_IMAGE_VERIFIED"');
+    expect(verified).toBeGreaterThan(deploy.indexOf('Smoke test (Playwright)', deploy.indexOf('deploy-asg:')));
+    expect(verified).toBeLessThan(deploy.indexOf('Roll back to the previous image', deploy.indexOf('deploy-asg:')));
+    expect(deploy).toMatch(/get-parameter --name "\$\{SSM_PREFIX\}\/APP_IMAGE_VERIFIED"/);
     expect(deploy).toContain('.github/scripts/asg-refresh.sh "${ASG_NAME}"');
     // The same commit again skips the build: the tag is immutable.
     expect(deploy).toMatch(/ecr describe-images --repository-name "\$\{ECR_REPOSITORY\}" --image-ids "imageTag=\$\{IMAGE_TAG_SHA\}"/);

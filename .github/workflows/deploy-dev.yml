@@ -554,13 +554,22 @@ jobs:
         run: |
           echo "image_sha=${ECR_REGISTRY}/${ECR_REPOSITORY}:${IMAGE_TAG_SHA}" >> "$GITHUB_OUTPUT"
 
+      # APP_IMAGE is what the group boots; APP_IMAGE_VERIFIED is the last
+      # image that passed the health check and the smoke, written at the end
+      # of this job. The rollback goes to the verified one, not to whatever
+      # APP_IMAGE held: a deploy cancelled by the next one (cancel-in-progress)
+      # leaves its unchecked image in APP_IMAGE (Codex).
       - name: Point the group at the new image
         id: param
         run: |
           test -n "${ASG_NAME}" || { echo "ASG_NAME is not set"; exit 1; }
-          PREVIOUS=$(aws ssm get-parameter --name "${SSM_PREFIX}/APP_IMAGE" --query Parameter.Value --output text)
-          echo "Previous image: ${PREVIOUS}"
-          echo "previous=${PREVIOUS}" >> "$GITHUB_OUTPUT"
+          VERIFIED=$(aws ssm get-parameter --name "${SSM_PREFIX}/APP_IMAGE_VERIFIED" --query Parameter.Value --output text 2>/dev/null || true)
+          if [ -z "$VERIFIED" ] || [ "$VERIFIED" = "None" ]; then
+            VERIFIED=$(aws ssm get-parameter --name "${SSM_PREFIX}/APP_IMAGE" --query Parameter.Value --output text)
+            echo "No verified image recorded yet - the rollback target is the current APP_IMAGE"
+          fi
+          echo "Rollback target: ${VERIFIED}"
+          echo "previous=${VERIFIED}" >> "$GITHUB_OUTPUT"
           aws ssm put-parameter --name "${SSM_PREFIX}/APP_IMAGE" --type String --value "${{ steps.image.outputs.image_sha }}" --overwrite >/dev/null
           echo "APP_IMAGE = ${{ steps.image.outputs.image_sha }}"
 
@@ -619,6 +628,11 @@ jobs:
           e2e/playwright/node_modules/.bin/playwright install --with-deps chromium
           e2e/playwright/node_modules/.bin/playwright test -c e2e/playwright --project smoke
 
+      - name: Record the image as verified
+        run: |
+          aws ssm put-parameter --name "${SSM_PREFIX}/APP_IMAGE_VERIFIED" --type String --value "${{ steps.image.outputs.image_sha }}" --overwrite >/dev/null
+          echo "APP_IMAGE_VERIFIED = ${{ steps.image.outputs.image_sha }}"
+
       - name: Upload smoke test screenshots
         if: failure() && steps.smoke.outcome == 'failure'
         uses: actions/upload-artifact@v7
@@ -629,8 +643,8 @@ jobs:
           include-hidden-files: true
 
       # Anything after the parameter was written: refresh failed or timed
-      # out, the app never turned healthy, or the smoke failed. The previous
-      # image name goes back and the group rolls once more. The job still
+      # out, the app never turned healthy, or the smoke failed. The last
+      # verified image goes back into APP_IMAGE and the group rolls once more. The job still
       # fails - the new version did not ship. Migrations the new image ran
       # stay applied (additive only, as with the box).
       - name: Roll back to the previous image
