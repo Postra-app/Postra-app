@@ -1840,5 +1840,7 @@
   "plan_pending_change": "Changes to {{plan}} on {{date}}",
   "plan_starts_on": "Starts on {{date}}",
   "comments_no_api_explanation": "These platforms don't let apps post comments. The post itself will go out as scheduled.",
-  "preview_admin_only": "Preview, admin only"
+  "preview_admin_only": "Preview, admin only",
+  "password_reset_failed": "Could not change the password. Please try again.",
+  "resend_too_many_attempts": "Too many attempts - please wait a few minutes and try again."
 }
