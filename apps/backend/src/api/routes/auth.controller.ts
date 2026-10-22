@@ -311,10 +311,14 @@ export class AuthController {
     @Body('datafast_visitor_id') datafast_visitor_id: string,
     @Res({ passthrough: false }) response: Response
   ) {
-    const activate = await this._authService.activate(
-      code,
-      datafast_visitor_id
-    );
+    let activate: string | false;
+    try {
+      activate = await this._authService.activate(code, datafast_visitor_id);
+    } catch (e: any) {
+      // The page shows "invalid or expired" for any non-2xx; `can: false`
+      // stays for a link that was already used.
+      return response.status(400).type('text/plain').send(e.message);
+    }
     if (!activate) {
       return response.status(200).json({ can: false });
     }

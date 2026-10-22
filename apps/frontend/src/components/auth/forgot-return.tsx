@@ -1,6 +1,7 @@
 'use client';
 import { useForm, SubmitHandler, FormProvider } from 'react-hook-form';
 import { useFetch } from '@gitroom/helpers/utils/custom.fetch';
+import { isFetchHandledError } from '@gitroom/helpers/utils/fetch.errors';
 import Link from 'next/link';
 import { Button } from '@gitroom/frontend/components/ui/button';
 import { Input } from '@gitroom/react/form/input';
@@ -30,29 +31,49 @@ export function ForgotReturn({ token }: { token: string }) {
   const fetchData = useFetch();
   const onSubmit: SubmitHandler<Inputs> = async (data) => {
     setLoading(true);
-    const response = await fetchData('/auth/forgot-return', {
-      method: 'POST',
-      body: JSON.stringify({
-        ...data,
-      }),
-    });
-    const json = await response.json().catch(() => ({} as any));
-    setLoading(false);
-    if (!response.ok || !json.reset) {
-      // A 400 carries the reason (e.g. too short) — show it instead
-      // of misreporting every failure as an expired link.
+    try {
+      const response = await fetchData('/auth/forgot-return', {
+        method: 'POST',
+        body: JSON.stringify({
+          ...data,
+        }),
+      });
+      const json = await response.json().catch(() => ({} as any));
+      if (!response.ok || !json.reset) {
+        // A 400 carries the reason (e.g. too short) — show it instead
+        // of misreporting every failure as an expired link.
+        form.setError('password', {
+          type: 'manual',
+          message:
+            json.message ||
+            t(
+              'password_reset_link_expired',
+              'Your password reset link has expired. Please try again.'
+            ),
+        });
+        return false;
+      }
+      setState(true);
+    } catch (e) {
+      // customFetch rejects on a globally handled status. Without this
+      // catch a 429 (the endpoint's own limit, 5 per 15 min) left the
+      // button spinning forever; name the limit instead of blaming the link.
       form.setError('password', {
         type: 'manual',
         message:
-          json.message ||
-          t(
-            'password_reset_link_expired',
-            'Your password reset link has expired. Please try again.'
-          ),
+          isFetchHandledError(e) && e.status === 429
+            ? t(
+                'forgot_too_many_attempts',
+                'Too many attempts - please wait a few minutes and try again.'
+              )
+            : t(
+                'password_reset_failed',
+                'Could not change the password. Please try again.'
+              ),
       });
-      return false;
+    } finally {
+      setLoading(false);
     }
-    setState(true);
   };
   return (
     <FormProvider {...form}>
@@ -75,6 +96,7 @@ export function ForgotReturn({ token }: { token: string }) {
                 label="New Password"
                 translationKey="label_new_password"
                 {...form.register('password')}
+                autoComplete="new-password"
                 type="password"
                 placeholder={t('label_password', 'Password')}
               />
@@ -82,18 +104,26 @@ export function ForgotReturn({ token }: { token: string }) {
                 label="Repeat Password"
                 translationKey="label_repeat_password"
                 {...form.register('repeatPassword')}
+                autoComplete="new-password"
                 type="password"
                 placeholder={t('label_repeat_password', 'Repeat Password')}
               />
             </div>
             <div className="text-center mt-6">
               <div className="w-full flex">
-                <Button type="submit" className="flex-1 rounded-[12px] !h-[52px]" loading={loading}>
+                <Button
+                  type="submit"
+                  className="flex-1 rounded-[12px] !h-[52px]"
+                  loading={loading}
+                >
                   {t('change_password', 'Change Password')}
                 </Button>
               </div>
               <p className="mt-4 text-sm text-textColor/66">
-                <Link href="/auth/login" className="underline underline-offset-4 cursor-pointer hover:text-[#38bdf8]">
+                <Link
+                  href="/auth/login"
+                  className="underline underline-offset-4 cursor-pointer hover:text-[#38bdf8]"
+                >
                   {t('go_back_to_login', 'Go back to login')}
                 </Link>
               </p>
@@ -108,7 +138,10 @@ export function ForgotReturn({ token }: { token: string }) {
               )}
             </div>
             <p className="mt-4 text-sm text-textColor/66">
-              <Link href="/auth/login" className="underline underline-offset-4 cursor-pointer hover:text-[#38bdf8]">
+              <Link
+                href="/auth/login"
+                className="underline underline-offset-4 cursor-pointer hover:text-[#38bdf8]"
+              >
                 {t('go_back_to_login', 'Go back to login')}
               </Link>
             </p>
