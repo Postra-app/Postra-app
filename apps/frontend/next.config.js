@@ -26,6 +26,9 @@ const nextConfig = {
     ];
   },
   reactStrictMode: false,
+  // No x-powered-by: Next.js adds it by default (docs: poweredByHeader) and
+  // the app host announced it on every response (E2E-11-44).
+  poweredByHeader: false,
   transpilePackages: ['crypto-hash'],
   // Browser source maps are off. Because this is set explicitly, @sentry/nextjs
   // does not turn them on for Turbopack builds (it only does when unset).
@@ -50,6 +53,15 @@ const nextConfig = {
   },
   async redirects() {
     return [
+      // RFC 9116 §3.1: security.txt applies only to the host it was fetched
+      // from, and a retrieval may result in a redirect. The landing holds the
+      // one copy; the app host answered 404 (E2E-11-45). /.well-known/ is
+      // already outside the auth gate in proxy.ts.
+      {
+        source: '/.well-known/security.txt',
+        destination: 'https://postra.co.uk/.well-known/security.txt',
+        permanent: true,
+      },
       {
         source: '/api/uploads/:path*',
         destination:
