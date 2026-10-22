@@ -66,3 +66,15 @@ describe('password reveal toggle', () => {
     expect(input).not.toContain('tabIndex={-1}');
   });
 });
+
+describe('sign-in screens stay out of search results', () => {
+  it('the auth layout sets robots noindex', () => {
+    const layout = readFileSync(
+      join(__dirname, '..', '..', 'app', '(app)', 'auth', 'layout.tsx'),
+      'utf8'
+    );
+    expect(layout).toMatch(
+      /robots:\s*\{\s*index:\s*false,\s*follow:\s*false\s*\}/
+    );
+  });
+});

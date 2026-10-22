@@ -1,5 +1,14 @@
 export const dynamic = 'force-dynamic';
 import { ReactNode } from 'react';
+import type { Metadata } from 'next';
+
+// Sign-in, sign-up, reset and activation screens are not search results:
+// Google indexed /auth as a duplicate of /auth/login ("Duplicate without
+// user-selected canonical", Search Console 22 X). robots.txt leaves /auth
+// crawlable so this noindex is seen and the pages are dropped.
+export const metadata: Metadata = {
+  robots: { index: false, follow: false },
+};
 import loadDynamic from 'next/dynamic';
 import { ProblemEffectComponent } from '@gitroom/frontend/components/auth/problem-effect.component';
 import { LogoTextComponent } from '@gitroom/frontend/components/ui/logo-text.component';
@@ -56,9 +65,9 @@ export default async function AuthLayout({
           </span>
         </div>
         <p className="relative mt-[18px] max-w-[560px] text-center text-[15px] leading-[1.7] text-slate-300/78">
-          Postra brings order to planning, creating and publishing your
-          content, so you move from chaos to a steady rhythm across every
-          channel that matters.
+          Postra brings order to planning, creating and publishing your content,
+          so you move from chaos to a steady rhythm across every channel that
+          matters.
         </p>
         <div className="relative mt-[26px] flex w-full max-w-[780px] flex-1 items-center justify-center px-[8px] pb-[8px] lg:mt-[34px] lg:px-[24px] lg:pb-[16px]">
           <div className="w-full max-w-[640px] rounded-[28px] border border-white/10 bg-[linear-gradient(180deg,rgba(30,41,59,0.52),rgba(15,23,42,0.82))] p-[28px] text-center shadow-[inset_0_1px_0_rgba(255,255,255,0.04)] backdrop-blur-xl">
