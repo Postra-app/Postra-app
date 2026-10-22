@@ -3,6 +3,7 @@
 import { useT } from '@gitroom/react/translation/get.transation.service.client';
 import { FormProvider, SubmitHandler, useForm } from 'react-hook-form';
 import { useFetch } from '@gitroom/helpers/utils/custom.fetch';
+import { isFetchHandledError } from '@gitroom/helpers/utils/fetch.errors';
 import { Button } from '@gitroom/frontend/components/ui/button';
 import { Input } from '@gitroom/react/form/input';
 import { useState, useEffect, useCallback } from 'react';
@@ -26,7 +27,7 @@ export function Activate() {
 
   useEffect(() => {
     if (cooldown <= 0) return;
-    
+
     const timer = setInterval(() => {
       setCooldown((prev) => prev - 1);
     }, 1000);
@@ -54,12 +55,21 @@ export function Activate() {
         setStatus('already_activated');
       } else {
         form.setError('email', {
-          message: result.message || t('failed_to_resend', 'Failed to resend activation email'),
+          message:
+            result.message ||
+            t('failed_to_resend', 'Failed to resend activation email'),
         });
       }
     } catch (e) {
+      // A 429 (5 resends per hour per IP) rejects before any branch above.
       form.setError('email', {
-        message: t('error_occurred', 'An error occurred. Please try again.'),
+        message:
+          isFetchHandledError(e) && e.status === 429
+            ? t(
+                'resend_too_many_attempts',
+                'Too many attempts - please wait a few minutes and try again.'
+              )
+            : t('error_occurred', 'An error occurred. Please try again.'),
       });
     } finally {
       setLoading(false);
@@ -123,12 +133,16 @@ export function Activate() {
           </div>
         ) : (
           <FormProvider {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)} className="flex flex-col gap-4">
+            <form
+              onSubmit={form.handleSubmit(onSubmit)}
+              className="flex flex-col gap-4"
+            >
               <Input
                 label={t('label_email', 'Email')}
                 translationKey="label_email"
                 {...form.register('email', { required: true })}
                 type="email"
+                autoComplete="email"
                 placeholder={t('email_address', 'Email Address')}
               />
               <Button
@@ -138,7 +152,10 @@ export function Activate() {
                 disabled={cooldown > 0}
               >
                 {cooldown > 0
-                  ? `${t('resend_available_in', 'You can resend in')} ${cooldown}s`
+                  ? `${t(
+                      'resend_available_in',
+                      'You can resend in'
+                    )} ${cooldown}s`
                   : t('resend_activation_email', 'Resend Activation Email')}
               </Button>
             </form>
@@ -147,7 +164,10 @@ export function Activate() {
         {status !== 'already_activated' && (
           <p className="mt-4 text-sm text-textColor/66">
             {t('already_activated', 'Already activated?')}&nbsp;
-            <Link href="/auth/login" className="underline underline-offset-4 cursor-pointer hover:text-[#38bdf8]">
+            <Link
+              href="/auth/login"
+              className="underline underline-offset-4 cursor-pointer hover:text-[#38bdf8]"
+            >
               {t('sign_in', 'Sign In')}
             </Link>
           </p>

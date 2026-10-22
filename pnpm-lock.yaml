@@ -801,6 +801,9 @@ importers:
       eslint-plugin-react-hooks:
         specifier: 4.6.2
         version: 4.6.2(eslint@9.39.5(jiti@1.21.7))
+      flag-icons:
+        specifier: 7.6.0
+        version: 7.6.0
       fs-extra:
         specifier: ^11.4.1
         version: 11.4.1
@@ -10461,6 +10464,9 @@ packages:
 
   fix-dts-default-cjs-exports@1.0.1:
     resolution: {integrity: sha512-pVIECanWFC61Hzl2+oOCtoJ3F17kglZC/6N94eRWycFgBH35hHx0Li604ZIzhseh97mf2p0cv7vVrOZGoqhlEg==}
+
+  flag-icons@7.6.0:
+    resolution: {integrity: sha512-hir/PsXwr0EESyizKrXJzmkzpLIMf+1vlNKLqAfvdh+bsU94a7LYWTiubkHKqptGoCPzOUGcm6c4PfC9/BaGSQ==}
 
   flat-cache@4.0.1:
     resolution: {integrity: sha512-f7ccFPK3SXFHpx15UIGyRJ/FJQctuKZ0zVuN3frBo4HnK3cay9VEW0R6yPYFHC0AgqhukPzKjq22t5DmAyqGyw==}
@@ -26984,6 +26990,8 @@ snapshots:
       magic-string: 0.30.21
       mlly: 1.8.1
       rollup: 4.64.0
+
+  flag-icons@7.6.0: {}
 
   flat-cache@4.0.1:
     dependencies:

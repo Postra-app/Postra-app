@@ -295,6 +295,7 @@ export function RegisterAfter({
                         onChange: () => form.clearErrors('email'),
                       })}
                       type="email"
+                      autoComplete="email"
                       placeholder={t('email_address', 'Email Address')}
                     />
                     <Input
@@ -303,7 +304,7 @@ export function RegisterAfter({
                       {...form.register('password', {
                         onChange: () => form.clearErrors('password'),
                       })}
-                      autoComplete="off"
+                      autoComplete="new-password"
                       type="password"
                       placeholder={t('label_password', 'Password')}
                     />
@@ -337,7 +338,7 @@ export function RegisterAfter({
                       {...form.register('confirmPassword', {
                         onChange: () => form.clearErrors('confirmPassword'),
                       })}
-                      autoComplete="off"
+                      autoComplete="new-password"
                       type="password"
                       placeholder={t(
                         'label_confirm_password',
@@ -350,12 +351,16 @@ export function RegisterAfter({
                   label="Company"
                   translationKey="label_company"
                   {...form.register('company')}
-                  autoComplete="off"
+                  autoComplete="organization"
                   type="text"
                   placeholder={t('label_company', 'Company')}
                 />
               </div>
-              <div className={clsx('rounded-[14px] border border-white/8 bg-white/[0.025] px-[14px] py-[12px] text-[12px] text-textColor/68')}>
+              <div
+                className={clsx(
+                  'rounded-[14px] border border-white/8 bg-white/[0.025] px-[14px] py-[12px] text-[12px] text-textColor/68'
+                )}
+              >
                 <div className="flex items-start gap-[10px]">
                   <Checkbox
                     name="termsAccepted"

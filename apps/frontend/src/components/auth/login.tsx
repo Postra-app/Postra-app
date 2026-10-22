@@ -119,7 +119,11 @@ export function Login() {
               {t('continue_with', 'Continue With')}
             </div>
           )}
-          <div className={`flex flex-col${disableRegistration ? ' mt-[28px]' : ''}`}>
+          <div
+            className={`flex flex-col${
+              disableRegistration ? ' mt-[28px]' : ''
+            }`}
+          >
             {!disableRegistration && (
               <>
                 {isGeneral && genericOauth ? (
@@ -150,13 +154,14 @@ export function Login() {
                   translationKey="label_email"
                   {...form.register('email')}
                   type="email"
+                  autoComplete="email"
                   placeholder={t('email_address', 'Email Address')}
                 />
                 <Input
                   label="Password"
                   translationKey="label_password"
                   {...form.register('password')}
-                  autoComplete="off"
+                  autoComplete="current-password"
                   type="password"
                   placeholder={t('label_password', 'Password')}
                 />

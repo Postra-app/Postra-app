@@ -86,12 +86,17 @@ export function Forgot() {
                   translationKey="label_email"
                   {...form.register('email')}
                   type="email"
+                  autoComplete="email"
                   placeholder={t('email_address', 'Email Address')}
                 />
               </div>
               <div className="text-center mt-6">
                 <div className="w-full flex">
-                  <Button type="submit" className="flex-1 !h-[52px] !rounded-[12px]" loading={loading}>
+                  <Button
+                    type="submit"
+                    className="flex-1 !h-[52px] !rounded-[12px]"
+                    loading={loading}
+                  >
                     {t(
                       'send_password_reset_email',
                       'Send Password Reset Email'
@@ -99,7 +104,10 @@ export function Forgot() {
                   </Button>
                 </div>
                 <p className="mt-4 text-sm text-textColor/66">
-                  <Link href="/auth/login" className="underline underline-offset-4 cursor-pointer hover:text-[#38bdf8]">
+                  <Link
+                    href="/auth/login"
+                    className="underline underline-offset-4 cursor-pointer hover:text-[#38bdf8]"
+                  >
                     {t('go_back_to_login', 'Go back to login')}
                   </Link>
                 </p>
@@ -114,7 +122,10 @@ export function Forgot() {
                 )}
               </div>
               <p className="mt-4 text-sm text-textColor/66">
-                <Link href="/auth/login" className="underline underline-offset-4 cursor-pointer hover:text-[#38bdf8]">
+                <Link
+                  href="/auth/login"
+                  className="underline underline-offset-4 cursor-pointer hover:text-[#38bdf8]"
+                >
                   {t('go_back_to_login', 'Go back to login')}
                 </Link>
               </p>

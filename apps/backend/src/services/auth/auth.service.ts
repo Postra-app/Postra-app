@@ -45,7 +45,10 @@ export const sendActivationMail = async (
   await emails.sendEmailSync(to, subject, html, undefined, footer);
 };
 
-export const ACCOUNT_SUSPENDED =
+export const ACTIVATION_LINK_INVALID =
+  'This activation link is invalid or has expired.';
+
+const ACCOUNT_SUSPENDED =
   'This account is suspended. Contact hello@postra.co.uk if you think this is a mistake.';
 
 @Injectable()
@@ -86,7 +89,8 @@ export class AuthService {
         }
 
         const normalized = normalizeEmail(body.email);
-        const existingNormalized = await this._userService.getUserByNormalizedEmail(normalized);
+        const existingNormalized =
+          await this._userService.getUserByNormalizedEmail(normalized);
         if (existingNormalized) {
           throw new Error('Email already exists');
         }
@@ -372,7 +376,9 @@ export class AuthService {
         email: string;
       };
     } catch (err) {
-      return false;
+      // Distinct from "already activated" (false): the page told everyone
+      // with a mangled or expired link that their account was active.
+      throw new Error(ACTIVATION_LINK_INVALID);
     }
     if (user.id && !user.activated) {
       const getUserAgain = await this._userService.getUserByEmail(user.email);
