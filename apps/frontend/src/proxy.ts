@@ -63,7 +63,12 @@ export async function proxy(request: NextRequest) {
     // The matcher below does not exclude these: its extension escape hatch is
     // `[\w-]+\.\w+`, which cannot match a path segment starting with a dot.
     nextUrl.pathname.startsWith('/.well-known/') ||
-    nextUrl.pathname.startsWith('/icons/')
+    nextUrl.pathname.startsWith('/icons/') ||
+    // Language-switcher flags (public/flags, E2E-11-48). The matcher's
+    // extension escape only covers a top-level `<name>.<ext>`, so this
+    // nested path reached the gate and a signed-out browser got 307 /auth
+    // for an SVG (measured after the deploy, 22 X).
+    nextUrl.pathname.startsWith('/flags/')
   ) {
     return topResponse;
   }
@@ -168,7 +173,10 @@ export async function proxy(request: NextRequest) {
         }
       }
     } catch (err) {
-      console.error('[Postra:proxy] /admin check failed, letting the client gate decide', err);
+      console.error(
+        '[Postra:proxy] /admin check failed, letting the client gate decide',
+        err
+      );
     }
   }
 
@@ -181,11 +189,7 @@ export async function proxy(request: NextRequest) {
   const isEmailTokenPage =
     nextUrl.pathname.startsWith('/auth/forgot') ||
     nextUrl.pathname.startsWith('/auth/activate');
-  if (
-    nextUrl.pathname.startsWith('/auth') &&
-    !isEmailTokenPage &&
-    authCookie
-  ) {
+  if (nextUrl.pathname.startsWith('/auth') && !isEmailTokenPage && authCookie) {
     return NextResponse.redirect(new URL(`/${url}`, nextUrl.href));
   }
   const orgCookieOptions = !process.env.NOT_SECURED
