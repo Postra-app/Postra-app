@@ -35,7 +35,7 @@ const nextConfig = {
   productionBrowserSourceMaps: false,
 
   // Only webpack builds call this. `next build` on Next 16 runs Turbopack
-  // (deploy log: "Next.js 16.3.6 (Turbopack)"), so production skips it.
+  // (deploy log: "Next.js 16.4.2 (Turbopack)"), so production skips it.
   // Either way the browser gets no .map files (a prod `.js.map` is 404):
   // maps uploaded to Sentry are deleted after upload
   // (`deleteSourcemapsAfterUpload` below), so readable file:line frames are

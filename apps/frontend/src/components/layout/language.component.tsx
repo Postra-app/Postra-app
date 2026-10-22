@@ -9,57 +9,17 @@ import {
 import i18next from 'i18next';
 import useCookie from 'react-use-cookie';
 import ReactCountryFlag from 'react-country-flag';
+import {
+  FLAGS_URL,
+  getCountryCodeForFlag,
+} from '@gitroom/frontend/components/layout/flag.code';
 import { List, Box, Group, Text } from '@mantine/core';
 import React, { useCallback } from 'react';
-import countries from 'i18n-iso-countries';
 
-// Register required locales
-import countriesEn from 'i18n-iso-countries/langs/en.json';
 import { useT } from '@gitroom/react/translation/get.transation.service.client';
 import { ModalWrapperComponent } from '../new-launch/modal.wrapper.component';
 
 import clsx from 'clsx';
-countries.registerLocale(countriesEn);
-
-const getCountryCodeForFlag = (languageCode: string) => {
-  // For multi-region languages, here are some common defaults
-  if (languageCode === 'en') return 'GB';
-  if (languageCode === 'es') return 'ES';
-  if (languageCode === 'ar') return 'SA';
-  if (languageCode === 'zh') return 'CN';
-  if (languageCode === 'he') return 'IL';
-  if (languageCode === 'ja') return 'JP';
-  if (languageCode === 'ko') return 'KR';
-  if (languageCode === 'vi') return 'VN';
-
-  // Check if language code itself is a valid country code
-  try {
-    const countryName = countries.getName(languageCode.toUpperCase(), 'en');
-    if (countryName) {
-      return languageCode.toUpperCase();
-    }
-  } catch (e) {
-    // Not a valid country code, continue to next approach
-  }
-
-  // Try to extract region code if language code has a region component (e.g., en-US)
-  const parts = languageCode.split('-');
-  if (parts.length > 1) {
-    const regionCode = parts[1].toUpperCase();
-    try {
-      const countryName = countries.getName(regionCode, 'en');
-      if (countryName) {
-        return regionCode;
-      }
-    } catch (e) {
-      // Not a valid country code, continue to next approach
-    }
-  }
-
-  // For most language codes that match their primary country
-  // Examples: fr->FR, it->IT, de->DE, etc.
-  return languageCode.toUpperCase();
-};
 
 export const ChangeLanguageComponent = () => {
   const currentLanguage = i18next.resolvedLanguage || fallbackLng;
@@ -107,6 +67,7 @@ export const ChangeLanguageComponent = () => {
           >
             <ReactCountryFlag
               countryCode={getCountryCodeForFlag(language)}
+              cdnUrl={FLAGS_URL}
               svg
               style={{
                 width: '1.5em',
@@ -143,6 +104,7 @@ export const LanguageComponent = () => {
     >
       <ReactCountryFlag
         countryCode={getCountryCodeForFlag(currentLanguage)}
+        cdnUrl={FLAGS_URL}
         svg
         style={{
           width: '22px',
