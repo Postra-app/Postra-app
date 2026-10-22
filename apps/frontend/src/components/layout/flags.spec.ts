@@ -41,3 +41,13 @@ describe('language switcher flags', () => {
     expect(own.length).toBe(flags.length);
   });
 });
+
+describe('flags are public', () => {
+  // The proxy matcher only skips top-level `<name>.<ext>` paths, so
+  // /flags/gb.svg reached the auth gate and answered 307 to /auth for a
+  // signed-out browser (production, 22 X after the first deploy).
+  it('proxy.ts lets /flags/ through without a session', () => {
+    const proxy = readFileSync(join(__dirname, '..', '..', 'proxy.ts'), 'utf8');
+    expect(proxy).toContain("nextUrl.pathname.startsWith('/flags/')");
+  });
+});
