@@ -145,3 +145,10 @@ export class TemplateSearchDto {
   @MaxLength(128)
   corpusHash?: string;
 }
+
+export class RetouchDto {
+  @IsString()
+  @IsDefined()
+  @IsIn(['light', 'medium', 'strong', 'bw'])
+  level: 'light' | 'medium' | 'strong' | 'bw';
+}

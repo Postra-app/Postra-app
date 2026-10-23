@@ -27,6 +27,12 @@ import {
   StudioSpec,
 } from '@gitroom/nestjs-libraries/studio/studio-spec';
 import { DesignRenderService } from '@gitroom/nestjs-libraries/studio/design-render.service';
+import { RetouchService } from '@gitroom/nestjs-libraries/studio/retouch.service';
+import {
+  RetouchLevel,
+  RetouchSpec,
+  RetouchSpecSchema,
+} from '@gitroom/nestjs-libraries/studio/retouch-spec';
 import { platformDesignSize } from '@gitroom/nestjs-libraries/studio/post-design-spec';
 import { templateCorpus } from '@gitroom/nestjs-libraries/studio/template-corpus';
 import {
@@ -90,7 +96,8 @@ export class MediaService {
     private _brandKitService: BrandKitService,
     private _studioAi: StudioAiService,
     private _postsRepository: PostsRepository,
-    private _designRender: DesignRenderService
+    private _designRender: DesignRenderService,
+    private _retouch: RetouchService
   ) {}
 
   async deleteMedia(org: string, id: string) {
@@ -745,6 +752,68 @@ export class MediaService {
   // They stay unmetered for now and keep their 30-per-5-minutes throttle;
   // token usage is still recorded to AiUsage (observational, not billing) so a
   // real `ai_text` bucket can be priced once there is post-launch traffic.
+  /**
+   * Photo retouch (Plan/photo-retouch.md): a new library file made from an
+   * untouched source. The model decides, sharp applies; when AI is down the
+   * heuristic decides, so the photo still comes back. Unmetered like Refine
+   * (throttled at the route, tokens recorded to AiUsage); never AI-generated
+   * in the TikTok/YouTube sense, the pixels are the customer's photo.
+   */
+  async retouch(org: Organization, id: string, level: RetouchLevel) {
+    const media = await this.getMediaByIdOrg(org.id, id);
+    if (!media?.path || media.deletedAt) {
+      throw new HttpException('Media not found', 404);
+    }
+    if (media.type === 'video') {
+      throw new HttpException('Only photos can be retouched', 422);
+    }
+    const source = await this._retouch.loadSource(media.path);
+    // Redo at another level reuses the decision made for the source: the same
+    // look, just allowed to go further (or less far).
+    const previous =
+      media.retouchSpec && media.retouchLevel
+        ? RetouchSpecSchema.safeParse(media.retouchSpec)
+        : null;
+    const preset: RetouchSpec | undefined =
+      previous && previous.success ? previous.data : undefined;
+    const result = await this._retouch.retouchBytes(
+      source,
+      level,
+      org.id,
+      preset,
+      media.originalName || media.name
+    );
+    const uploaded = await this.storage.uploadSimple(
+      `data:image/jpeg;base64,${result.buffer.toString('base64')}`
+    );
+    const fileName = uploaded.split('/').pop() || 'retouched.jpg';
+    const base = (media.originalName || media.name || 'photo')
+      .replace(/\.[a-z0-9]+$/i, '')
+      .replace(/ \(retouched.*\)$/i, '');
+    const saved = await this._mediaRepository.saveFile(
+      org.id,
+      fileName,
+      uploaded,
+      `${base} (retouched, ${level === 'bw' ? 'black and white' : level}).jpg`
+    );
+    await this._mediaRepository.attachRetouch(org.id, saved.id, {
+      spec: result.spec,
+      sourceId: media.retouchSourceId || media.id,
+      level,
+    });
+    return {
+      id: saved.id,
+      path: saved.path,
+      originalName: saved.originalName,
+      sourceId: media.retouchSourceId || media.id,
+      level,
+      summary: result.spec.summary,
+      fallback: result.fallback,
+      width: result.width,
+      height: result.height,
+    };
+  }
+
   async refineDesign(org: Organization, body: RefineDesignDto) {
     const spec = body.spec as StudioSpec;
 

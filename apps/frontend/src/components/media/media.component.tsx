@@ -646,6 +646,18 @@ export const MediaBox: FC<{
                         {t('edit_in_studio', 'Edit in Studio')}
                       </button>
                     )}
+                    {standalone && !isVideoMedia(media) && (
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          router.push(`/studio?mode=photo&mediaId=${media.id}`);
+                        }}
+                        className="absolute z-[100] bottom-[4px] right-[4px] hidden group-hover:flex items-center gap-[4px] px-[6px] py-[3px] rounded-[4px] bg-black/70 text-white text-[10px] hover:bg-black/90 transition-colors"
+                      >
+                        {t('retouch_in_studio', 'Retouch')}
+                      </button>
+                    )}
                     <div className="w-full h-full rounded-[6px] overflow-hidden relative">
                       <div className="absolute z-[20] left-[50%] top-[50%] -translate-x-[50%] -translate-y-[50%]">
                         <div
@@ -984,6 +996,44 @@ export const MultiMediaComponent: FC<{
                         title={t('design_media_edit_hint', 'Edit design - open in Studio')}
                       >
                         ✏
+                      </button>
+                    )}
+
+                    {!dummy && media?.path && !isVideoMedia(media) && (
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          modals.openModal({
+                            askClose: false,
+                            title: t('retouch_title', 'Photo retouch'),
+                            size: '80%',
+                            height: 'min(92vh, 900px)',
+                            children: (close) => (
+                              <StudioWorkspace
+                                initialMode="photo"
+                                initialPhotos={[{ id: media.id, path: media.path }]}
+                                setMedia={(replacements) => {
+                                  if (!replacements?.length) return;
+                                  const repl = replacements[0];
+                                  onChange({
+                                    target: {
+                                      name: 'upload',
+                                      value: currentMedia.map((p) =>
+                                        p.id === media.id ? { ...p, id: repl.id, path: repl.path } : p
+                                      ),
+                                    },
+                                  });
+                                }}
+                                closeModal={close}
+                              />
+                            ),
+                          });
+                        }}
+                        className="absolute -start-[4px] -bottom-[4px] z-[20] w-[16px] h-[16px] rounded-full bg-newAccent text-[#06222e] text-[9px] flex items-center justify-center hover:bg-forth"
+                        title={t('retouch_media_hint', 'Retouch photo - open in Studio')}
+                      >
+                        ✦
                       </button>
                     )}
 

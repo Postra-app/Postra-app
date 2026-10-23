@@ -24,7 +24,9 @@ export interface AiUsageEvent {
     // The composer's "split into a thread".
     | 'composer'
     // Scripts for the video generators (slides, avatar voice).
-    | 'video';
+    | 'video'
+    // Photo retouch: the vision model that decides the adjustments.
+    | 'retouch';
   model: string;
   // 'videos': finished AI video clips; 'messages': questions to the
   // assistant, its monthly fair use (inputAmount = how many).

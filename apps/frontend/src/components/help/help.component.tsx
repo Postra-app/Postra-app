@@ -10,6 +10,7 @@ import {
   SETTINGS_SECTIONS,
   STUDIO_GRAPHICS_TOOLS,
   STUDIO_VIDEO_TOOLS,
+  STUDIO_PHOTO_TOOLS,
 } from '@gitroom/frontend/components/help/help.data';
 
 const CONNECT_LABELS: Record<ChannelConnectType, string> = {
@@ -286,6 +287,32 @@ export const HelpComponent = () => {
           </div>
           <div className="flex flex-col gap-[12px]">
             {STUDIO_VIDEO_TOOLS.map((tool) => (
+              <div
+                key={tool.name}
+                className="flex flex-col gap-[8px] rounded-[12px] border border-white/10 bg-white/[0.02] p-[16px]"
+              >
+                <div className="text-[16px] font-[600]">{tool.name}</div>
+                <div className="text-[14px] text-newTextColor/70">
+                  {tool.description}
+                </div>
+              </div>
+            ))}
+          </div>
+        </Section>
+
+        <Section
+          id="studio-photos"
+          guide="media-and-ai"
+          title={t('help_studio_photos', 'Studio - Photos')}
+        >
+          <div className="text-[13px] text-newTextColor/70">
+            {t(
+              'help_studio_photos_intro',
+              'An automatic retouch for your own photos, like the light pass a photographer gives every frame: pick how far to go and Postra does the rest.'
+            )}
+          </div>
+          <div className="flex flex-col gap-[12px]">
+            {STUDIO_PHOTO_TOOLS.map((tool) => (
               <div
                 key={tool.name}
                 className="flex flex-col gap-[8px] rounded-[12px] border border-white/10 bg-white/[0.02] p-[16px]"

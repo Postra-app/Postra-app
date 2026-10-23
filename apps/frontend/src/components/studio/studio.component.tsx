@@ -18,6 +18,10 @@ export const StudioComponent = () => {
   const t = useT();
   const searchParams = useSearchParams();
   const mediaId = searchParams.get('mediaId') ?? undefined;
+  // /studio?mode=photo (the library's "Retouch") opens on the Photos tab.
+  const requested = searchParams.get('mode');
+  const initialMode =
+    requested === 'photo' ? 'photo' : requested === 'video' ? 'video' : 'graphic';
   const hostRef = useRef<HTMLDivElement>(null);
   const [height, setHeight] = useState<number>();
 
@@ -84,6 +88,7 @@ export const StudioComponent = () => {
           closeModal={noop}
           graphicMode="studio"
           loadMediaId={mediaId}
+          initialMode={initialMode}
         />
       </div>
     </>

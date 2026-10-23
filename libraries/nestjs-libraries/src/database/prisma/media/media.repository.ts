@@ -123,6 +123,22 @@ export class MediaRepository {
     });
   }
 
+  attachRetouch(
+    org: string,
+    id: string,
+    data: { spec: unknown; sourceId: string; level: string }
+  ) {
+    return this._media.model.media.update({
+      where: { id, organizationId: org },
+      data: {
+        retouchSpec: data.spec as Prisma.InputJsonValue,
+        retouchSourceId: data.sourceId,
+        retouchLevel: data.level,
+      },
+      select: { id: true },
+    });
+  }
+
   saveDesignSpec(org: string, id: string, spec: StudioSpec) {
     return this._media.model.media.update({
       where: { id, organizationId: org },

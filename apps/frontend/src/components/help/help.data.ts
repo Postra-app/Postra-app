@@ -304,7 +304,7 @@ export const APP_TABS: AppTabGuide[] = [
     id: 'studio',
     name: 'Studio',
     description:
-      'Design graphics and short videos for your posts - templates, free stock photos, your Brand Kit, AI image generation, and video tools including automatic captions. Desktop only.',
+      'Design graphics and short videos for your posts - templates, free stock photos, your Brand Kit, AI image generation, video tools including automatic captions, and Photos: an automatic retouch for your own photos. Desktop only.',
   },
   {
     id: 'autopost',
@@ -404,6 +404,31 @@ export const STUDIO_GRAPHICS_TOOLS: StudioToolGuide[] = [
     name: 'Saving & export',
     description:
       '"Save to library" stores the finished graphic in Media, ready for any post; "Save as template" adds it to your templates; "Download PNG" saves a lossless file; "All formats" renders a variant for every platform size at once; "Use in Post" attaches the design to a post. The format bar at the bottom switches between platform sizes and repositions your layout, and Carousel mode edits multi-slide posts. Studio also keeps a draft automatically - leave and come back, and your design is restored. You can get back into an image later from Media: hover a file and pick "Edit in Studio". Studio needs a desktop or laptop - the canvas and its panels do not fit a phone screen.',
+  },
+];
+
+// Studio → Photos (photo-retouch.tsx). Facts come from the retouch code —
+// keep in sync when levels or limits change.
+export const STUDIO_PHOTO_TOOLS: StudioToolGuide[] = [
+  {
+    name: 'What it does',
+    description:
+      'The pass a photographer gives every frame before delivery, done automatically: exposure, colour cast, contrast, shadows and sharpness are corrected a little, never redrawn. Postra looks at each photo and decides how much each control may move; the original is never touched and every result is a new file in your Media library. Because the pixels are still your photo, nothing is marked as AI-generated on TikTok or YouTube.',
+  },
+  {
+    name: 'Levels',
+    description:
+      'Light is the subtle pass most people will not notice but will like; Medium is a visible, natural polish; Strong is a confident edit for social media that still reads as the same real photo; Black & white converts with a touch of contrast. The level caps how far any correction may go, and a photo that already looks good comes back almost unchanged. There are no sliders on purpose - for manual control, open the photo in Graphics and use the image filters.',
+  },
+  {
+    name: 'A batch at a time',
+    description:
+      'Add up to 10 photos from your library (upload there first if they are new), pick a level and click Retouch all. Each photo shows what changed in one line; hold a result to see the original, change the level on a single photo or retouch it again. "Retouch" also sits on every photo in Media, and on an attachment in the post editor. JPEG, PNG and WebP photos only; the result is a JPEG at the same size.',
+  },
+  {
+    name: 'Cost and limits',
+    description:
+      'Included on every plan, uses no AI image credit. Up to 60 photos every five minutes. If AI is unavailable for a moment the basics are still corrected and the photo says so.',
   },
 ];
 

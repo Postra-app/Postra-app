@@ -47,6 +47,7 @@ import { ErrorsService } from '@gitroom/nestjs-libraries/database/prisma/errors/
 import { BrandKitRepository } from '@gitroom/nestjs-libraries/database/prisma/brand-kit/brand-kit.repository';
 import { BrandKitService } from '@gitroom/nestjs-libraries/database/prisma/brand-kit/brand-kit.service';
 import { StudioAiService } from '@gitroom/nestjs-libraries/studio/studio-ai.service';
+import { RetouchService } from '@gitroom/nestjs-libraries/studio/retouch.service';
 import { DesignRenderService } from '@gitroom/nestjs-libraries/studio/design-render.service';
 import { AdminStatsRepository } from '@gitroom/nestjs-libraries/database/prisma/admin-stats/admin-stats.repository';
 import { AdminStatsService } from '@gitroom/nestjs-libraries/database/prisma/admin-stats/admin-stats.service';
@@ -92,6 +93,7 @@ import { AiUsageService } from '@gitroom/nestjs-libraries/database/prisma/ai-usa
     ProviderGrantsService,
     OpenaiService,
     StudioAiService,
+    RetouchService,
     DesignRenderService,
     FalService,
     EmailService,

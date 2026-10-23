@@ -110,6 +110,7 @@ export type StudioIconName =
   | 'photosToVideo'
   | 'graphics'
   | 'video'
+  | 'photos'
   | 'layers'
   | 'forward'
   | 'backward'
@@ -188,6 +189,7 @@ const MAP: Record<StudioIconName, FC<{ size?: number; stroke?: number; className
   photosToVideo: IconSlideshow,
   graphics: IconPalette,
   video: IconVideo,
+  photos: IconCamera,
   layers: IconStack2,
   forward: IconChevronUp,
   backward: IconChevronDown,
