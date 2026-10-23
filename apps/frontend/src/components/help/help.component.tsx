@@ -10,7 +10,7 @@ import {
   SETTINGS_SECTIONS,
   STUDIO_GRAPHICS_TOOLS,
   STUDIO_VIDEO_TOOLS,
-  STUDIO_PHOTO_TOOLS,
+  studioPhotoGuide,
 } from '@gitroom/frontend/components/help/help.data';
 
 const CONNECT_LABELS: Record<ChannelConnectType, string> = {
@@ -56,6 +56,7 @@ const Section: FC<{
 
 export const HelpComponent = () => {
   const t = useT();
+  const photoGuide = studioPhotoGuide(t);
   const [filter, setFilter] = useState('');
 
   // The sections render on the client, after the browser has already tried
@@ -311,8 +312,19 @@ export const HelpComponent = () => {
               'An automatic retouch for your own photos, like the light pass a photographer gives every frame: pick how far to go and Postra does the rest.'
             )}
           </div>
+          <div className="text-[16px] font-[600]">
+            {t('help_photos_steps_title', 'How to use it, step by step')}
+          </div>
+          <ol className="flex flex-col gap-[8px] list-decimal ps-[20px] text-[14px] text-newTextColor/80">
+            {photoGuide.steps.map((step) => (
+              <li key={step}>{step}</li>
+            ))}
+          </ol>
+          <div className="text-[16px] font-[600]">
+            {t('help_photos_about_title', 'Good to know')}
+          </div>
           <div className="flex flex-col gap-[12px]">
-            {STUDIO_PHOTO_TOOLS.map((tool) => (
+            {photoGuide.about.map((tool) => (
               <div
                 key={tool.name}
                 className="flex flex-col gap-[8px] rounded-[12px] border border-white/10 bg-white/[0.02] p-[16px]"

@@ -1642,5 +1642,21 @@
   "retouch_in_studio": "Retusz",
   "retouch_media_hint": "Retusz zdjęcia - otwórz w Studio",
   "help_studio_photos": "Studio - Zdjęcia",
-  "help_studio_photos_intro": "Automatyczny retusz Twoich zdjęć, jak lekki szlif, który fotograf daje każdej klatce: wybierz, jak mocno, a Postra zrobi resztę."
+  "help_studio_photos_intro": "Automatyczny retusz Twoich zdjęć, jak lekki szlif, który fotograf daje każdej klatce: wybierz, jak mocno, a Postra zrobi resztę.",
+  "help_photos_step_open": "Otwórz Studio i wybierz zakładkę Zdjęcia. Możesz też zacząć z Mediów (najedź na zdjęcie i kliknij Retusz) albo z edytora posta (kliknij małą gwiazdkę na załączonym zdjęciu).",
+  "help_photos_step_add": "Kliknij Dodaj zdjęcia i wybierz do 10 zdjęć z biblioteki. Nowe zdjęcia najpierw trafiają do biblioteki - w oknie wyboru jest do tego przycisk Wgraj.",
+  "help_photos_step_level": "Wybierz, jak mocno: Lekki, Średni, Mocny albo Czarno-białe. Lekki to szlif, jaki fotograf daje każdej klatce; poziom tylko ogranicza, ile może się zmienić, a zdjęcie, które już wygląda dobrze, wraca prawie bez zmian.",
+  "help_photos_step_run": "Kliknij Retuszuj wszystkie. Każde zdjęcie zajmuje kilka sekund; linia pod nim mówi, co się zmieniło i dlaczego.",
+  "help_photos_step_check": "Sprawdź wynik: przytrzymaj zdjęcie, żeby zobaczyć oryginał. Żeby potraktować jedno zdjęcie inaczej, wybierz inny poziom z jego listy albo kliknij Retuszuj ponownie. Zdjęcie usuwasz z paczki przyciskiem x.",
+  "help_photos_step_use": "Każdy wynik jest już zapisany w Mediach jako nowy plik (oryginał zostaje bez zmian). W edytorze posta kliknij Użyj w poście, żeby załączyć wyniki; w Studio otwórz Media, żeby je znaleźć.",
+  "help_photos_about_what_title": "Co to robi",
+  "help_photos_about_what": "Szlif, jaki fotograf daje każdej klatce przed oddaniem zdjęć, tylko automatycznie: ekspozycja, dominanta barwna, kontrast, cienie i ostrość są lekko poprawiane, nigdy rysowane na nowo. Postra ogląda każde zdjęcie i decyduje, o ile może ruszyć każdą z tych kontrolek. Piksele nadal są Twoim zdjęciem, więc nic nie jest oznaczane jako wygenerowane przez AI na TikToku ani YouTube.",
+  "help_photos_about_levels_title": "Poziomy",
+  "help_photos_about_levels": "Lekki to subtelna poprawka, której większość osób nie zauważy, ale zdjęcie będzie się bardziej podobać; Średni to widoczne, naturalne wykończenie; Mocny to odważna edycja pod social media, nadal to samo prawdziwe zdjęcie; Czarno-białe to konwersja z odrobiną kontrastu. Suwaków celowo nie ma - do ręcznej kontroli otwórz zdjęcie w Grafice i użyj filtrów obrazu.",
+  "help_photos_about_redo_title": "Ponowny retusz",
+  "help_photos_about_redo": "Wyretuszowane zdjęcie można retuszować ponownie na innym poziomie: Postra zawsze zaczyna od nietkniętego oryginału, więc poprawki się nie kumulują, a czarno-białe zdjęcie odzyskuje kolory, gdy wybierzesz Mocny.",
+  "help_photos_about_limits_title": "Koszt i limity",
+  "help_photos_about_limits": "W każdym planie, bez zużywania kredytu na obrazy AI. Do 10 zdjęć w paczce i 60 zdjęć na pięć minut. Zdjęcia JPEG, PNG i WebP do 30 megapikseli; wynik to JPEG w tym samym rozmiarze. Jeśli AI jest przez chwilę niedostępne, podstawy i tak zostaną poprawione, a zdjęcie o tym powie.",
+  "help_photos_steps_title": "Jak z tego korzystać, krok po kroku",
+  "help_photos_about_title": "Warto wiedzieć"
 }

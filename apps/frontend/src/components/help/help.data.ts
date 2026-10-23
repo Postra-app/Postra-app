@@ -407,30 +407,70 @@ export const STUDIO_GRAPHICS_TOOLS: StudioToolGuide[] = [
   },
 ];
 
-// Studio → Photos (photo-retouch.tsx). Facts come from the retouch code —
-// keep in sync when levels or limits change.
-export const STUDIO_PHOTO_TOOLS: StudioToolGuide[] = [
-  {
-    name: 'What it does',
-    description:
-      'The pass a photographer gives every frame before delivery, done automatically: exposure, colour cast, contrast, shadows and sharpness are corrected a little, never redrawn. Postra looks at each photo and decides how much each control may move; the original is never touched and every result is a new file in your Media library. Because the pixels are still your photo, nothing is marked as AI-generated on TikTok or YouTube.',
-  },
-  {
-    name: 'Levels',
-    description:
-      'Light is the subtle pass most people will not notice but will like; Medium is a visible, natural polish; Strong is a confident edit for social media that still reads as the same real photo; Black & white converts with a touch of contrast. The level caps how far any correction may go, and a photo that already looks good comes back almost unchanged. There are no sliders on purpose - for manual control, open the photo in Graphics and use the image filters.',
-  },
-  {
-    name: 'A batch at a time',
-    description:
-      'Add up to 10 photos from your library (upload there first if they are new), pick a level and click Retouch all. Each photo shows what changed in one line; hold a result to see the original, change the level on a single photo or retouch it again. "Retouch" also sits on every photo in Media, and on an attachment in the post editor. JPEG, PNG and WebP photos only; the result is a JPEG at the same size.',
-  },
-  {
-    name: 'Cost and limits',
-    description:
-      'Included on every plan, uses no AI image credit. Up to 60 photos every five minutes. If AI is unavailable for a moment the basics are still corrected and the photo says so.',
-  },
-];
+// Studio → Photos (photo-retouch.tsx). Unlike the Graphics and Video guides
+// above, every sentence goes through t(): the feature shipped with its help
+// in English and Polish from day one (K., 2026-10-23). Facts come from the
+// retouch code — keep in sync when levels or limits change.
+type Translate = (key: string, fallback: string) => string;
+
+export const studioPhotoGuide = (t: Translate) => ({
+  steps: [
+    t(
+      'help_photos_step_open',
+      'Open Studio and pick the Photos tab. You can also start from Media (hover a photo and click Retouch) or from the post editor (click the small star on an attached photo).'
+    ),
+    t(
+      'help_photos_step_add',
+      'Click Add photos and pick up to 10 photos from your library. New photos go into the library first - the picker has an Upload button for that.'
+    ),
+    t(
+      'help_photos_step_level',
+      'Pick how far to go: Light, Medium, Strong or Black & white. Light is the pass a photographer gives every frame; the level only caps how much may change, a photo that already looks good comes back almost unchanged.'
+    ),
+    t(
+      'help_photos_step_run',
+      'Click Retouch all. Each photo takes a few seconds; the line under it tells you what changed and why.'
+    ),
+    t(
+      'help_photos_step_check',
+      'Check the result: press and hold a photo to see the original. To treat one photo differently, pick another level in its dropdown or click Retouch again. Remove a photo from the batch with the x button.'
+    ),
+    t(
+      'help_photos_step_use',
+      'Every result is already saved in Media as a new file (your original stays as it is). In the post editor click Use in post to attach the results; in Studio open Media to find them.'
+    ),
+  ],
+  about: [
+    {
+      name: t('help_photos_about_what_title', 'What it does'),
+      description: t(
+        'help_photos_about_what',
+        'The pass a photographer gives every frame before delivery, done automatically: exposure, colour cast, contrast, shadows and sharpness are corrected a little, never redrawn. Postra looks at each photo and decides how much each control may move. Because the pixels are still your photo, nothing is marked as AI-generated on TikTok or YouTube.'
+      ),
+    },
+    {
+      name: t('help_photos_about_levels_title', 'Levels'),
+      description: t(
+        'help_photos_about_levels',
+        'Light is the subtle pass most people will not notice but will like; Medium is a visible, natural polish; Strong is a confident edit for social media that still reads as the same real photo; Black & white converts with a touch of contrast. There are no sliders on purpose - for manual control, open the photo in Graphics and use the image filters.'
+      ),
+    },
+    {
+      name: t('help_photos_about_redo_title', 'Redoing a photo'),
+      description: t(
+        'help_photos_about_redo',
+        'A retouched photo can be retouched again at another level: Postra always starts from your untouched original, so corrections never pile up and a black and white photo gets its colours back when you pick Strong.'
+      ),
+    },
+    {
+      name: t('help_photos_about_limits_title', 'Cost and limits'),
+      description: t(
+        'help_photos_about_limits',
+        'Included on every plan and uses no AI image credit. Up to 10 photos per batch and 60 photos every five minutes. JPEG, PNG and WebP photos up to 30 megapixels; the result is a JPEG at the same size. If AI is unavailable for a moment the basics are still corrected and the photo says so.'
+      ),
+    },
+  ],
+});
 
 // Studio → Video, in goal-screen / tab order. Facts come from the
 // video-studio code — keep in sync when tools change.

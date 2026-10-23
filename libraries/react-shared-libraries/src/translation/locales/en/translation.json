@@ -1882,5 +1882,21 @@
   "retouch_in_studio": "Retouch",
   "retouch_media_hint": "Retouch photo - open in Studio",
   "help_studio_photos": "Studio - Photos",
-  "help_studio_photos_intro": "An automatic retouch for your own photos, like the light pass a photographer gives every frame: pick how far to go and Postra does the rest."
+  "help_studio_photos_intro": "An automatic retouch for your own photos, like the light pass a photographer gives every frame: pick how far to go and Postra does the rest.",
+  "help_photos_step_open": "Open Studio and pick the Photos tab. You can also start from Media (hover a photo and click Retouch) or from the post editor (click the small star on an attached photo).",
+  "help_photos_step_add": "Click Add photos and pick up to 10 photos from your library. New photos go into the library first - the picker has an Upload button for that.",
+  "help_photos_step_level": "Pick how far to go: Light, Medium, Strong or Black & white. Light is the pass a photographer gives every frame; the level only caps how much may change, a photo that already looks good comes back almost unchanged.",
+  "help_photos_step_run": "Click Retouch all. Each photo takes a few seconds; the line under it tells you what changed and why.",
+  "help_photos_step_check": "Check the result: press and hold a photo to see the original. To treat one photo differently, pick another level in its dropdown or click Retouch again. Remove a photo from the batch with the x button.",
+  "help_photos_step_use": "Every result is already saved in Media as a new file (your original stays as it is). In the post editor click Use in post to attach the results; in Studio open Media to find them.",
+  "help_photos_about_what_title": "What it does",
+  "help_photos_about_what": "The pass a photographer gives every frame before delivery, done automatically: exposure, colour cast, contrast, shadows and sharpness are corrected a little, never redrawn. Postra looks at each photo and decides how much each control may move. Because the pixels are still your photo, nothing is marked as AI-generated on TikTok or YouTube.",
+  "help_photos_about_levels_title": "Levels",
+  "help_photos_about_levels": "Light is the subtle pass most people will not notice but will like; Medium is a visible, natural polish; Strong is a confident edit for social media that still reads as the same real photo; Black & white converts with a touch of contrast. There are no sliders on purpose - for manual control, open the photo in Graphics and use the image filters.",
+  "help_photos_about_redo_title": "Redoing a photo",
+  "help_photos_about_redo": "A retouched photo can be retouched again at another level: Postra always starts from your untouched original, so corrections never pile up and a black and white photo gets its colours back when you pick Strong.",
+  "help_photos_about_limits_title": "Cost and limits",
+  "help_photos_about_limits": "Included on every plan and uses no AI image credit. Up to 10 photos per batch and 60 photos every five minutes. JPEG, PNG and WebP photos up to 30 megapixels; the result is a JPEG at the same size. If AI is unavailable for a moment the basics are still corrected and the photo says so.",
+  "help_photos_steps_title": "How to use it, step by step",
+  "help_photos_about_title": "Good to know"
 }
