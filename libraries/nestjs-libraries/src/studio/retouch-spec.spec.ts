@@ -40,7 +40,7 @@ describe('clampSpec', () => {
   it('strips long dashes and bounds the summary', () => {
     const s = clampSpec(wild, 'light');
     expect(s.summary).not.toMatch(/[–—]/);
-    expect(clampSpec({ ...wild, summary: 'x'.repeat(500) }, 'light').summary).toHaveLength(160);
+    expect(clampSpec({ ...wild, summary: 'x'.repeat(500) }, 'light').summary).toHaveLength(240);
   });
 
   it('treats NaN and missing values as "leave it"', () => {

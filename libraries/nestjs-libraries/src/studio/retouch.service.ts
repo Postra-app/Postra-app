@@ -280,6 +280,6 @@ Rules:
 - saturation: small. Vivid is not better.
 - sharpen: a little for soft phone photos, 0 for anything already crisp or noisy.
 - ${LEVEL_BRIEF[level]}
-- summary: one short sentence in plain English for the owner of the photo: what you changed and why. No marketing words, no long dashes.`;
+- summary: one sentence of at most 25 words in plain English for the owner of the photo: what you changed and why. No marketing words, no long dashes.`;
   }
 }

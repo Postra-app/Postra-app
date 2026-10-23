@@ -47,7 +47,7 @@ export const LEVEL_REACH: Record<RetouchLevel, number> = {
   bw: 0.65,
 };
 
-export const SUMMARY_MAX = 160;
+export const SUMMARY_MAX = 240;
 
 const clamp = (v: number, lo: number, hi: number) =>
   Math.min(hi, Math.max(lo, Number.isFinite(v) ? v : 0));
