@@ -270,6 +270,12 @@ model Media {
   // require the post to declare synthetic media, and our own renderers strip
   // the C2PA marker the model embeds, so their auto-detection cannot see it.
   aiGenerated        Boolean             @default(false)
+  // Photo retouch: the adjustments this file was made with, the library file
+  // it was made from (kept untouched) and the level picked. The spec is the
+  // model's decision, so "redo at another level" never asks the model again.
+  retouchSpec        Json?
+  retouchSourceId    String?
+  retouchLevel       String?
   organization       Organization        @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   agencies           SocialMediaAgency[]
   userPicture        User[]

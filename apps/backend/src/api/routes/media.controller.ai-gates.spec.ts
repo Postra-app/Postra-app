@@ -22,6 +22,8 @@ const AI_ROUTES = [
   "/suggest-hashtags",
   "/ai-edit",
   "/search-templates",
+  // Photo retouch: a vision model decides the adjustments.
+  "/:id/retouch",
 ];
 
 const source = readFileSync(

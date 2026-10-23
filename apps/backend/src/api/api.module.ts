@@ -19,6 +19,7 @@ import { BillingController } from '@gitroom/backend/api/routes/billing.controlle
 import { NotificationsController } from '@gitroom/backend/api/routes/notifications.controller';
 import { OpenaiService } from '@gitroom/nestjs-libraries/openai/openai.service';
 import { StudioAiService } from '@gitroom/nestjs-libraries/studio/studio-ai.service';
+import { RetouchService } from '@gitroom/nestjs-libraries/studio/retouch.service';
 import { CodesService } from '@gitroom/nestjs-libraries/services/codes.service';
 import { CopilotController } from '@gitroom/backend/api/routes/copilot.controller';
 import { PublicController } from '@gitroom/backend/api/routes/public.controller';
@@ -85,6 +86,7 @@ const authenticatedController = [
     StripeService,
     OpenaiService,
     StudioAiService,
+    RetouchService,
     AuthMiddleware,
     PoliciesGuard,
     PermissionsService,

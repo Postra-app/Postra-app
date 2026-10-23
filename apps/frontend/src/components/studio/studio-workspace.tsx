@@ -38,7 +38,15 @@ const VideoStudio = dynamic(
   { ssr: false, loading: () => <EditorSkeleton /> }
 );
 
-export type StudioMode = 'graphic' | 'video';
+const PhotoRetouch = dynamic(
+  () =>
+    import('@gitroom/frontend/components/studio/photo-retouch').then(
+      (m) => m.PhotoRetouch
+    ),
+  { ssr: false, loading: () => <EditorSkeleton /> }
+);
+
+export type StudioMode = 'graphic' | 'video' | 'photo';
 
 interface StudioWorkspaceProps {
   setMedia: (params: { id: string; path: string }[]) => void;
@@ -51,6 +59,8 @@ interface StudioWorkspaceProps {
   graphicMode?: 'composer' | 'studio';
   loadMediaId?: string;
   initialMode?: StudioMode;
+  /** Photos the Photos tab starts with (a composer attachment). */
+  initialPhotos?: { id: string; path: string }[];
 }
 
 /**
@@ -69,11 +79,15 @@ export const StudioWorkspace: FC<StudioWorkspaceProps> = ({
   graphicMode = 'composer',
   loadMediaId,
   initialMode = 'graphic',
+  initialPhotos,
 }) => {
   const t = useT();
   const [mode, setMode] = useState<StudioMode>(initialMode);
   // Video mounts lazily on first visit, then stays alive in the background.
   const [videoVisited, setVideoVisited] = useState(initialMode === 'video');
+  // Photos too: mounted on first visit, kept alive after (a batch in progress
+  // must survive a look at the other tabs).
+  const [photoVisited, setPhotoVisited] = useState(initialMode === 'photo');
   // Bumped when the user re-clicks the Video tab while already on it —
   // VideoStudio reacts by showing the goal screen again.
   const [goalsSignal, setGoalsSignal] = useState(0);
@@ -83,12 +97,14 @@ export const StudioWorkspace: FC<StudioWorkspaceProps> = ({
       setVideoVisited(true);
       if (mode === 'video') setGoalsSignal((s) => s + 1);
     }
+    if (next === 'photo') setPhotoVisited(true);
     setMode(next);
   };
 
   const tabs: { key: StudioMode; label: string; icon: StudioIconName }[] = [
     { key: 'graphic', label: t('studio_tab_graphic', 'Graphics'), icon: 'graphics' },
     { key: 'video', label: t('studio_tab_video', 'Video'), icon: 'video' },
+    { key: 'photo', label: t('studio_tab_photos', 'Photos'), icon: 'photos' },
   ];
 
   return (
@@ -132,7 +148,8 @@ export const StudioWorkspace: FC<StudioWorkspaceProps> = ({
         <div className={clsx('h-full', mode !== 'graphic' && 'hidden')}>
           <PostDesignEditor
             mode={graphicMode}
-            loadMediaId={loadMediaId}
+            // a ?mediaId= meant for the Photos tab must not also land on the canvas
+            loadMediaId={initialMode === 'photo' ? undefined : loadMediaId}
             setMedia={setMedia}
             closeModal={closeModal}
           />
@@ -144,6 +161,17 @@ export const StudioWorkspace: FC<StudioWorkspaceProps> = ({
               closeModal={closeModal}
               mode={graphicMode}
               showGoalsSignal={goalsSignal}
+            />
+          </div>
+        )}
+        {photoVisited && (
+          <div className={clsx('h-full', mode !== 'photo' && 'hidden')}>
+            <PhotoRetouch
+              setMedia={setMedia}
+              closeModal={closeModal}
+              mode={graphicMode}
+              initial={initialPhotos}
+              loadMediaId={initialMode === 'photo' ? loadMediaId : undefined}
             />
           </div>
         )}

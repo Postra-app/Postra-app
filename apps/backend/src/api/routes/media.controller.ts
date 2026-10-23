@@ -58,6 +58,7 @@ import {
   AiEditTextDto,
   SuggestHashtagsDto,
   RefineDesignDto,
+  RetouchDto,
   SaveCanvasJsonDto,
   SaveDesignSpecDto,
   TemplateSearchDto,
@@ -523,6 +524,21 @@ export class MediaController {
     @Body() body: RefineDesignDto
   ) {
     return this._mediaService.refineDesign(org, body);
+  }
+
+  // Photo retouch: one photo per request so a batch of ten shows progress
+  // and no request runs for twenty seconds. Unmetered like refine-design,
+  // throttled a little wider because a batch is ten calls.
+  @Post('/:id/retouch')
+  @CheckPolicies([AuthorizationActions.Create, Sections.AI])
+  @Throttle({ default: { ttl: 300000, limit: 60 } })
+  @UseGuards(AccountAgeGuard)
+  retouch(
+    @GetOrgFromRequest() org: Organization,
+    @Param('id') id: string,
+    @Body() body: RetouchDto
+  ) {
+    return this._mediaService.retouch(org, id, body.level);
   }
 
   @Post('/brand-voice-check')
