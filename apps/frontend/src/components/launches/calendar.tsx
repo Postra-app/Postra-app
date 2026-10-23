@@ -1306,7 +1306,8 @@ const CalendarItem: FC<{
         // and nothing else.
         <button
           type="button"
-          className="absolute -top-[6px] -start-[6px] z-20 w-[18px] h-[18px] rounded-full bg-red-500 flex items-center justify-center text-white text-[11px] font-bold cursor-pointer"
+          // 24 px: the smallest target WCAG 2.5.8 allows (axe target-size).
+          className="absolute -top-[8px] -start-[8px] z-20 w-[24px] h-[24px] rounded-full bg-red-500 flex items-center justify-center text-white text-[12px] font-bold cursor-pointer"
           aria-label={`${t('post_failed', 'Failed')}: ${
             post.error ||
             t('post_error_generic', 'An error occurred while publishing this post')

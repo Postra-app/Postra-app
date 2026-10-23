@@ -1,7 +1,7 @@
 import { expect, test } from '@playwright/test';
 import { listPosts, signedIn } from '../helpers';
 import { USERS } from '../seed';
-import { watchForErrors, weekOf } from './ui-helpers';
+import { expandShowMore, watchForErrors, weekOf } from './ui-helpers';
 
 // E2E-05-102: a post that goes out while the calendar is open used to keep
 // its "scheduled" tile for up to an hour (SWR refreshed hourly, never on
@@ -40,6 +40,7 @@ test('a post published in the background turns green without a reload', async ({
   const post = (await listPosts(api)).find((p) => p.content.includes(content))!;
   try {
     await page.goto(weekOf(at));
+    await expandShowMore(page);
     const tile = page
       .getByRole('button', { name: `Open post: ${USERS.a.mastodon.name}` })
       .filter({ hasText: content });

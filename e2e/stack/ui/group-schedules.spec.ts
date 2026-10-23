@@ -1,7 +1,7 @@
 import { APIRequestContext, expect, Page, test } from '@playwright/test';
 import { listPosts, signedIn } from '../helpers';
 import { USERS } from '../seed';
-import { openComposer, quietSlot, weekOf } from './ui-helpers';
+import { expandShowMore, openComposer, quietSlot, weekOf } from './ui-helpers';
 
 // Group schedules (upstream a194e3f4 + 003a77eb): a post saved for several
 // channels opens in the editor with all of them, each with its own text, and
@@ -29,6 +29,7 @@ const saveForTwo = async (api: APIRequestContext, slot: Date, tag: string) => {
 
 const openFromCalendar = async (page: Page, slot: Date, channel: string, text: string) => {
   await page.goto(weekOf(slot));
+  await expandShowMore(page);
   await page.getByRole('button', { name: `Open post: ${channel}` }).filter({ hasText: text }).click();
   return page.getByRole('dialog', { name: 'Post editor' });
 };

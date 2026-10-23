@@ -87,3 +87,16 @@ export const dragWithMouse = async (page: Page, from: Locator, to: Locator) => {
   await page.mouse.move(drop!.x, drop!.y, { steps: 15 });
   await page.mouse.up();
 };
+
+// A week cell shows three posts and folds the rest under "+ Show more". Tests
+// that run side by side put their posts in the same quiet hours, so a tile
+// may be folded away; open every fold before looking for one. Waits for the
+// calendar to have rendered at least one post first.
+export const expandShowMore = async (page: Page) => {
+  await expect(page.getByRole('button', { name: /^Open post:/ }).first()).toBeVisible();
+  const more = page.getByRole('button', { name: /Show more/ });
+  for (let left = await more.count(); left > 0; left--) {
+    await more.first().click();
+  }
+};
+
