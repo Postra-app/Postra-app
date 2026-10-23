@@ -24,6 +24,7 @@ import useCookie from 'react-use-cookie';
 import { newDayjs } from '@gitroom/frontend/components/layout/set.timezone';
 import { timer } from '@gitroom/helpers/utils/timer';
 import { expandPostsList, expandPosts } from '@gitroom/helpers/utils/posts.list.minify';
+import { calendarRefreshInterval } from './calendar.helpers';
 import { useIsMobile } from '@gitroom/frontend/components/ui/use.is.mobile';
 extend(isoWeek);
 extend(weekOfYear);
@@ -277,10 +278,15 @@ export const CalendarWeekProvider: FC<{
     filters.display !== 'list' ? `/posts-${params}` : null,
     loadData,
     {
-      refreshInterval: 3600000,
+      // Hourly, but every 15 s while a queued post is due, and again when
+      // the tab comes back into focus: a post published in the background
+      // used to keep its "scheduled" tile until a reload (E2E-05-102).
+      refreshInterval: (latest) =>
+        calendarRefreshInterval(latest?.posts, Date.now()),
       refreshWhenOffline: false,
       refreshWhenHidden: false,
-      revalidateOnFocus: false,
+      revalidateOnFocus: true,
+      focusThrottleInterval: 60000,
     }
   );
 
@@ -296,7 +302,8 @@ export const CalendarWeekProvider: FC<{
       refreshInterval: 3600000,
       refreshWhenOffline: false,
       refreshWhenHidden: false,
-      revalidateOnFocus: false,
+      revalidateOnFocus: true,
+      focusThrottleInterval: 60000,
     }
   );
 

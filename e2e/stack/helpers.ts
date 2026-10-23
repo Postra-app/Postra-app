@@ -58,9 +58,13 @@ export const listPosts = async (api: APIRequestContext) => {
 export const createDraft = async (
   api: APIRequestContext,
   user: 'a' | 'b',
-  content: string
+  content: string,
+  // two days ahead unless a test needs a particular slot
+  date?: Date
 ) => {
-  const res = await api.post('/posts', { data: draftBody(user, content) });
+  const res = await api.post('/posts', {
+    data: draftBody(user, content, date ? { date: date.toISOString() } : {}),
+  });
   expect(res.status(), `create draft: ${await res.text()}`).toBe(201);
   const post = (await listPosts(api)).find((p) => p.content.includes(content));
   expect(post, 'created draft is listed').toBeTruthy();
