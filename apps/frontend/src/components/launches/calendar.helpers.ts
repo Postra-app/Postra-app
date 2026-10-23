@@ -44,10 +44,16 @@ export const cellPostDate = (
       .second(0);
     return target.isBefore(now) ? nextFullHour(now) : target;
   }
+  // A day view slot has minutes (10:45); a future one is kept as it is
+  // (Codex). The current hour's cell, or a slot of this hour already gone,
+  // starts ten minutes from now; an earlier time goes to the next full hour.
+  if (cell.isAfter(now)) {
+    return cell;
+  }
   if (cell.isSame(now, 'hour')) {
     return now.add(10, 'minute');
   }
-  return cell.isBefore(now) ? nextFullHour(now) : cell;
+  return nextFullHour(now);
 };
 
 // How often the calendar asks the server again. A queued post whose time has
@@ -56,16 +62,20 @@ export const cellPostDate = (
 // without a reload (E2E-05-102). Otherwise once an hour, as before.
 export const PENDING_REFRESH_MS = 15_000;
 export const IDLE_REFRESH_MS = 3_600_000;
+// SWR reads this once per fetch, so a post due in three minutes must not get
+// an hour's timer: the interval is at most the time until the nearest queued
+// post enters the two-minute window (Codex).
+export const PENDING_WINDOW_MS = 2 * 60_000;
 export const calendarRefreshInterval = (
   posts: { state?: string; publishDate?: string | Date }[] | undefined,
   nowMs: number
 ) => {
-  const soon = nowMs + 2 * 60_000;
-  const pending = (posts || []).some(
-    (p) =>
-      p.state === 'QUEUE' &&
-      !!p.publishDate &&
-      dayjs.utc(p.publishDate).valueOf() <= soon
-  );
-  return pending ? PENDING_REFRESH_MS : IDLE_REFRESH_MS;
+  let next = IDLE_REFRESH_MS;
+  for (const p of posts || []) {
+    if (p.state !== 'QUEUE' || !p.publishDate) continue;
+    const untilWindow = dayjs.utc(p.publishDate).valueOf() - PENDING_WINDOW_MS - nowMs;
+    if (untilWindow <= 0) return PENDING_REFRESH_MS;
+    next = Math.min(next, Math.max(PENDING_REFRESH_MS, untilWindow));
+  }
+  return next;
 };

@@ -62,6 +62,15 @@ describe('cellPostDate (E2E-05-100)', () => {
     const cell = dayjs('2026-10-23T15:00:00');
     expect(cellPostDate(cell, false, [], now).isSame(cell)).toBe(true);
   });
+
+  it('a day view slot later in the current hour keeps its minutes (Codex)', () => {
+    const slot = dayjs('2026-10-23T10:45:00');
+    expect(cellPostDate(slot, false, [], now).format('HH:mm')).toBe('10:45');
+    // a slot of this hour already gone starts ten minutes from now
+    expect(cellPostDate(dayjs('2026-10-23T10:15:00'), false, [], now).format('HH:mm')).toBe('10:43');
+    // an earlier hour's slot goes to the next full hour
+    expect(cellPostDate(dayjs('2026-10-23T09:30:00'), false, [], now).format('HH:mm')).toBe('11:00');
+  });
 });
 
 describe('calendarRefreshInterval (E2E-05-102)', () => {
@@ -74,8 +83,12 @@ describe('calendarRefreshInterval (E2E-05-102)', () => {
   });
 
   it('stays hourly for posts far ahead, published, failed or drafts', () => {
-    const later = dayjs.utc(nowMs).add(1, 'hour').toISOString();
+    const later = dayjs.utc(nowMs).add(2, 'day').toISOString();
     const earlier = dayjs.utc(nowMs).subtract(1, 'hour').toISOString();
+    // a post in an hour gets a timer that ends two minutes before it
+    expect(
+      calendarRefreshInterval([{ state: 'QUEUE', publishDate: dayjs.utc(nowMs).add(1, 'hour').toISOString() }], nowMs)
+    ).toBe(58 * 60_000);
     expect(
       calendarRefreshInterval(
         [
@@ -88,5 +101,15 @@ describe('calendarRefreshInterval (E2E-05-102)', () => {
       )
     ).toBe(IDLE_REFRESH_MS);
     expect(calendarRefreshInterval(undefined, nowMs)).toBe(IDLE_REFRESH_MS);
+  });
+
+  it('a post due in three minutes gets a timer that ends when it enters the window (Codex)', () => {
+    const inThree = dayjs.utc(nowMs).add(3, 'minute').toISOString();
+    expect(calendarRefreshInterval([{ state: 'QUEUE', publishDate: inThree }], nowMs)).toBe(60_000);
+    // never shorter than the pending interval, never longer than an hour
+    const inTwoAndABit = dayjs.utc(nowMs).add(125, 'second').toISOString();
+    expect(calendarRefreshInterval([{ state: 'QUEUE', publishDate: inTwoAndABit }], nowMs)).toBe(PENDING_REFRESH_MS);
+    const inTwoDays = dayjs.utc(nowMs).add(2, 'day').toISOString();
+    expect(calendarRefreshInterval([{ state: 'QUEUE', publishDate: inTwoDays }], nowMs)).toBe(IDLE_REFRESH_MS);
   });
 });
