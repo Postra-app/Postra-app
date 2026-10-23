@@ -15,6 +15,7 @@ import {
   useNow,
 } from '@gitroom/frontend/components/launches/calendar.context';
 import dayjs from 'dayjs';
+import { cellPostDate, dropTarget } from './calendar.helpers';
 import localeEn from 'dayjs/locale/en';
 import localePl from 'dayjs/locale/pl';
 import localeHe from 'dayjs/locale/he';
@@ -890,19 +891,15 @@ export const CalendarColumn: FC<{
 
         // A Month cell stands for the whole day (its date is the day's end):
         // the post keeps its own time of day there instead of moving to 23:59.
-        // Today, with that time already gone, it goes to the next full hour.
-        let target = getDate;
-        if (randomHour && post) {
-          const own = dayjs.utc(post.publishDate).local();
-          target = getDate
-            .startOf('day')
-            .hour(own.hour())
-            .minute(own.minute())
-            .second(0);
-          if (target.isBefore(dayjs())) {
-            target = dayjs().add(1, 'hour').startOf('hour');
-          }
-        }
+        // A time already gone, the current hour's cell included, goes to the
+        // next full hour: a queued post dropped on a past time was published
+        // at once (E2E-05-99).
+        const target = dropTarget(
+          getDate,
+          post?.publishDate,
+          !!randomHour,
+          dayjs()
+        );
 
         const move = startMove(item.id);
         if (!item.interval) {
@@ -1002,14 +999,22 @@ export const CalendarColumn: FC<{
                 ],
               }
             : {})}
-          date={
-            randomHour
-              ? getDate.hour(Math.floor(Math.random() * 24))
-              : getDate.format('YYYY-MM-DDTHH:mm:ss') ===
-                newDayjs().startOf('hour').format('YYYY-MM-DDTHH:mm:ss')
-              ? newDayjs().add(10, 'minute')
-              : getDate
-          }
+          // A month cell used to open at a random hour of the day
+          // (E2E-05-100); now the channels' earliest posting time that day.
+          date={cellPostDate(
+            getDate,
+            !!randomHour,
+            integrations.flatMap((p) =>
+              (p.time || []).map((slot: any) =>
+                postingMinutesInZone(
+                  slot,
+                  getDate.format('YYYY-MM-DD'),
+                  getTimezone()
+                )
+              )
+            ),
+            newDayjs()
+          )}
           {...(set?.content ? { set: safeJsonParse<any>(set.content, undefined) } : {})}
           reopenModal={() => ({})}
         />
@@ -1090,25 +1095,41 @@ export const CalendarColumn: FC<{
               </div>
             </div>
           ))}
+          {/* Buttons, not divs: Tab never reached them (E2E-05-101). */}
           {!showAll && postList.length > 3 && (
-            <div
-              className="text-center hover:underline py-[5px] text-textColor"
+            <button
+              type="button"
+              className="text-center hover:underline py-[5px] text-textColor w-full"
               onClick={showAllFunc}
             >
               {t('show_more', '+ Show more')} ({postList.length - 3})
-            </div>
+            </button>
           )}
           {showAll && postList.length > 3 && (
-            <div
-              className="text-center hover:underline py-[5px] text-textColor"
+            <button
+              type="button"
+              className="text-center hover:underline py-[5px] text-textColor w-full"
               onClick={showLessFunc}
             >
               {t('show_less', '- Show less')}
-            </div>
+            </button>
           )}
         </div>
         {!isBeforeNow && (
           <div
+            // Reachable from the keyboard too (E2E-05-101); named by the
+            // slot, so a screen reader hears where the post would go.
+            role="button"
+            tabIndex={0}
+            aria-label={`${t('add_post_in_slot', 'Add post')}: ${getDate.format(
+              display === 'month' ? 'L' : 'L HH:mm'
+            )}`}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                (integrations.length ? addModal : addProvider)();
+              }
+            }}
             className="pb-[2.5px] px-[5px] flex-1 flex"
             onClick={integrations.length ? addModal : addProvider}
           >
@@ -1280,14 +1301,23 @@ const CalendarItem: FC<{
       }}
     >
       {state === 'ERROR' && (
-        <div
-          className="absolute -top-[6px] -start-[6px] z-20 w-[18px] h-[18px] rounded-full bg-red-500 flex items-center justify-center text-white text-[11px] font-bold cursor-pointer"
+        // A button with the error as its name: the reason was hover-only
+        // (E2E-05-101), so a keyboard or screen-reader user saw a red ring
+        // and nothing else.
+        <button
+          type="button"
+          // 24 px: the smallest target WCAG 2.5.8 allows (axe target-size).
+          className="absolute -top-[8px] -start-[8px] z-20 w-[24px] h-[24px] rounded-full bg-red-500 flex items-center justify-center text-white text-[12px] font-bold cursor-pointer"
+          aria-label={`${t('post_failed', 'Failed')}: ${
+            post.error ||
+            t('post_error_generic', 'An error occurred while publishing this post')
+          }`}
           data-tooltip-id="tooltip"
           data-tooltip-class-name="!max-w-[400px] break-words"
           data-tooltip-content={post.error || 'An error occurred while publishing this post'}
         >
           !
-        </div>
+        </button>
       )}
       {state === 'PUBLISHED' && (
         <div
@@ -1472,6 +1502,13 @@ const CalendarItem: FC<{
         <div className="w-full flex-1 flex flex-col min-h-[40px]">
           <div className="text-start">
             {state === 'DRAFT' ? t('draft', 'Draft') + ': ' : ''}
+            {/* the rings say it to the eye; this says it to the name */}
+            {state === 'ERROR' && (
+              <span className="sr-only">{t('post_failed', 'Failed')}: </span>
+            )}
+            {state === 'PUBLISHED' && (
+              <span className="sr-only">{t('post_published', 'Published')}: </span>
+            )}
           </div>
           <div className="w-full relative">
             <div className="absolute top-0 start-0 w-full text-ellipsis break-words line-clamp-1 text-start">

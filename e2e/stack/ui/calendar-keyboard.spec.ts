@@ -114,3 +114,40 @@ test('the period arrows, Today and the view switch work from the keyboard', asyn
   await page.keyboard.press('Enter');
   await expect(page.getByRole('button', { name: 'Next page' })).toBeVisible();
 });
+
+// E2E-05-101: "+ Show more" (a cell with more than three posts) and the
+// empty part of a cell that opens the composer were divs with click handlers:
+// no name, and Tab never reached them.
+test('"Show more" and "Add post" work from the keyboard', async ({ page }) => {
+  const api = await signedIn('b');
+  const stamp = Date.now();
+  const posts = [];
+  try {
+    for (let i = 0; i < 4; i++) {
+      posts.push(await createDraft(api, 'b', `Crowded slot ${stamp} ${i}`));
+    }
+    const day = new Date(Date.now() + 2 * 86_400_000);
+    const monday = new Date(day);
+    monday.setUTCDate(day.getUTCDate() - ((day.getUTCDay() + 6) % 7));
+    const sunday = new Date(monday.getTime() + 6 * 86_400_000);
+    await page.goto(
+      `/launches?display=week&startDate=${isoDay(monday)}&endDate=${isoDay(sunday)}`
+    );
+    const fourth = page.locator('[role=button]', { hasText: `Crowded slot ${stamp} 3` });
+    await expect(fourth).toHaveCount(0);
+    const more = page.getByRole('button', { name: /Show more/ });
+    await more.focus();
+    await page.keyboard.press('Enter');
+    await expect(fourth).toBeVisible();
+
+    const add = page.getByRole('button', { name: /^Add post:/ }).first();
+    await add.focus();
+    await page.keyboard.press('Enter');
+    await expect(page.locator('.ProseMirror').first()).toBeVisible();
+  } finally {
+    for (const post of posts) {
+      await api.delete(`/posts/${post.group}`);
+    }
+    await api.dispose();
+  }
+});
