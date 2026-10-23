@@ -129,6 +129,20 @@ test('an image a model made stays marked as AI-made after a retouch', async () =
   expect((await prisma.media.findUniqueOrThrow({ where: { id: made.id } })).aiGenerated).toBe(true);
 });
 
+test('a phone-sized photo comes back capped to 2048 px, in a few seconds', async () => {
+  const big = await sharp({ create: { width: 3000, height: 2250, channels: 3, background: '#406080' } })
+    .jpeg({ quality: 80 })
+    .toBuffer();
+  const source = await upload(org.api, 'phone.jpg', big);
+  const t0 = Date.now();
+  const res = await org.api.post(`/media/${source.id}/retouch`, { data: { level: 'strong' } });
+  expect(res.status(), await res.text()).toBe(201);
+  const body = await res.json();
+  expect([body.width, body.height]).toEqual([2048, 1536]);
+  // the fake model answers at once; what is left is sharp and the disk
+  expect(Date.now() - t0).toBeLessThan(8000);
+});
+
 test('a photo over the pixel limit is refused with a reason, not a 500', async () => {
   const huge = await sharp({ create: { width: 6000, height: 5200, channels: 3, background: '#88aacc' } })
     .jpeg({ quality: 60 })

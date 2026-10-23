@@ -98,8 +98,10 @@ export interface RetouchPipeline {
   contrast: number;
   // percentile stretch (sharp normalise); gentle and fixed
   normalise: { lower: number; upper: number };
-  // CLAHE max slope, 0 = off
-  claheSlope: number;
+  // shadows lift as a gamma on the whole image (sharp gamma, 1 = off). CLAHE
+  // did this locally and better, and took 25 s on a 12-megapixel phone photo
+  // on the production box (Plan/photo-retouch.md §13); gamma takes 0.1 s.
+  shadowsGamma: number;
   // sharp modulate saturation multiplier (1 = unchanged)
   saturation: number;
   // unsharp mask sigma, 0 = off
@@ -114,6 +116,8 @@ const TEMPERATURE_RANGE = 0.12;
 const TINT_RANGE = 0.08;
 const CONTRAST_RANGE = 0.3;
 const SATURATION_RANGE = 0.3;
+// gamma 1.6 at full reach: mid-tones up a third of a stop, blacks stay black
+const SHADOWS_RANGE = 0.6;
 
 export const pipelineFor = (
   spec: RetouchSpec,
@@ -132,7 +136,7 @@ export const pipelineFor = (
     ],
     contrast: round(1 + s.contrast * CONTRAST_RANGE),
     normalise: { lower: 0.2, upper: 99.8 },
-    claheSlope: s.shadows > 0.1 ? Math.round(1 + 2 * s.shadows) : 0,
+    shadowsGamma: s.shadows > 0.1 ? round(1 + SHADOWS_RANGE * s.shadows) : 1,
     saturation: level === 'bw' ? 1 : round(1 + s.saturation * SATURATION_RANGE),
     sharpenSigma: s.sharpen > 0.05 ? round(0.5 + s.sharpen) : 0,
     mono: level === 'bw',

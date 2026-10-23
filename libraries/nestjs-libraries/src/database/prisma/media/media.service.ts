@@ -1,4 +1,4 @@
-import { HttpException, Injectable } from '@nestjs/common';
+import { HttpException, Injectable, Logger } from '@nestjs/common';
 import { createHash } from 'crypto';
 import { MediaRepository } from '@gitroom/nestjs-libraries/database/prisma/media/media.repository';
 import { OpenaiService } from '@gitroom/nestjs-libraries/openai/openai.service';
@@ -777,13 +777,22 @@ export class MediaService {
       (await this.getMediaByIdOrg(org.id, media.retouchSourceId));
     const from = original && original.path && !original.deletedAt ? original : media;
     const sourceId = from.id;
+    // Phase times to the log (no names, no paths): the first production run
+    // took 57 s on a 12-megapixel photo and nothing said where.
+    const started = Date.now();
+    const marks: string[] = [];
+    const mark = (label: string, since: number) =>
+      marks.push(`${label}=${Date.now() - since}ms`);
+    let at = Date.now();
     const source = await this._retouch.loadSource(from.path);
+    mark('load', at);
     const previous =
       from.id !== media.id && media.retouchSpec && media.retouchLevel
         ? RetouchSpecSchema.safeParse(media.retouchSpec)
         : null;
     const preset: RetouchSpec | undefined =
       previous && previous.success ? previous.data : undefined;
+    at = Date.now();
     const result = await this._retouch.retouchBytes(
       source,
       level,
@@ -791,9 +800,12 @@ export class MediaService {
       preset,
       from.originalName || from.name
     );
+    mark(preset ? 'apply' : 'decide+apply', at);
+    at = Date.now();
     const uploaded = await this.storage.uploadSimple(
       `data:image/jpeg;base64,${result.buffer.toString('base64')}`
     );
+    mark('upload', at);
     const fileName = uploaded.split('/').pop() || 'retouched.jpg';
     const base = (from.originalName || from.name || 'photo')
       .replace(/\.[a-z0-9]+$/i, '')
@@ -812,6 +824,10 @@ export class MediaService {
       sourceId,
       level,
     });
+    Logger.log(
+      `retouch ${level} ${result.width}x${result.height} from ${source.length} bytes: ${marks.join(' ')} total=${Date.now() - started}ms${result.fallback ? ' fallback' : ''}`,
+      'Retouch'
+    );
     return {
       id: saved.id,
       path: saved.path,

@@ -59,6 +59,26 @@ describe('applyRetouch', () => {
     expect(Math.abs(g - b)).toBeLessThan(0.5);
   });
 
+  it('lifts the shadows: dark pixels come up more than bright ones', async () => {
+    const src = await source();
+    // against the no-op pipeline, so the auto-levels stretch is in both
+    const before = await sharp(await applyRetouch(src, pipelineFor(zero, 'strong'))).raw().toBuffer();
+    const after = await sharp(await applyRetouch(src, pipelineFor({ ...zero, shadows: 1 }, 'strong'))).raw().toBuffer();
+    // left edge of the gradient is dark, right edge is bright (green channel)
+    const w = 96;
+    const dark = after[(10 * w + 4) * 3 + 1] - before[(10 * w + 4) * 3 + 1];
+    const bright = after[(10 * w + 90) * 3 + 1] - before[(10 * w + 90) * 3 + 1];
+    expect(dark).toBeGreaterThan(bright);
+    expect(dark).toBeGreaterThan(10);
+  });
+
+  it('caps a phone-sized photo to 2048 px on the longest edge', async () => {
+    const big = await sharp({ create: { width: 3000, height: 2250, channels: 3, background: '#406080' } }).jpeg().toBuffer();
+    const out = await applyRetouch(big, pipelineFor(zero, 'light'));
+    const meta = await sharp(out).metadata();
+    expect([meta.width, meta.height]).toEqual([2048, 1536]);
+  });
+
   it('keeps the size and comes back as a JPEG', async () => {
     const src = await source();
     const out = await applyRetouch(src, pipelineFor(zero, 'light'));

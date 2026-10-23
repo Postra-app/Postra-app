@@ -26,6 +26,11 @@ import {
 // detail "low", so one decision is a few hundred input tokens.
 const MODEL_VISION = 'gpt-4.1-mini';
 const LIMIT_INPUT_PIXELS = 30_000_000;
+// The working and output size: the longest edge, same cap as the web uploader
+// (MAX_IMAGE_EDGE in new.uploader.tsx). Measured on the production t3.medium
+// (Plan/photo-retouch.md §13): the passes take 2.7 s per megapixel with
+// CLAHE and about 0.4 s per megapixel without it.
+const MAX_EDGE = 2048;
 // The uploader already caps images at 2048 px; this is the bytes cap for a
 // source fetched back from the CDN.
 const MAX_SOURCE_BYTES = 25 * 1024 * 1024;
@@ -96,9 +101,13 @@ export const applyRetouch = async (
   source: Buffer,
   pipeline: RetouchPipeline
 ): Promise<Buffer> => {
-  // 1. orientation, no alpha (the maths is per RGB channel), gentle auto-levels
+  // 1. orientation, the working size, no alpha (the maths is per RGB
+  //    channel), gentle auto-levels. The web uploader already caps photos at
+  //    2048 px; a 12-megapixel phone photo from the mobile app or the API is
+  //    capped here the same way, or every pass below takes four times longer.
   const opened = await sharp(source, { limitInputPixels: LIMIT_INPUT_PIXELS })
     .rotate()
+    .resize({ width: MAX_EDGE, height: MAX_EDGE, fit: 'inside', withoutEnlargement: true })
     .flatten({ background: '#ffffff' })
     .toColourspace('srgb')
     .normalise({ lower: pipeline.normalise.lower, upper: pipeline.normalise.upper })
@@ -116,32 +125,34 @@ export const applyRetouch = async (
     )
   );
 
-  // 3. local contrast in the shadows
-  if (pipeline.claheSlope > 0) {
-    const tile = Math.max(8, Math.min(128, raw.info.width, raw.info.height));
-    raw = await pass(raw, (img) =>
-      img.clahe({ width: tile, height: tile, maxSlope: pipeline.claheSlope })
-    );
+  // 3. shadows: a gamma lift, out = in ^ (1 / g). sharp's gamma(g) alone
+  //    darkens by 1/g and brightens by g again (it exists to linearise a
+  //    resize), so the lift is gamma(1, g): no darkening, brighten by g.
+  //    Its own pass, sharp would run it before the linear step otherwise.
+  if (pipeline.shadowsGamma > 1) {
+    raw = await pass(raw, (img) => img.gamma(1, pipeline.shadowsGamma));
   }
 
-  // 4. colour: mono (with a touch of contrast back, greyscale reads flat) or
-  //    saturation
+  // 4. mono gets a touch of contrast back (greyscale reads flat)
   if (pipeline.mono) {
     raw = await pass(raw, (img) => img.greyscale());
     raw = await pass(raw, (img) => img.linear(1.08, -8));
-  } else if (pipeline.saturation !== 1) {
-    raw = await pass(raw, (img) => img.modulate({ saturation: pipeline.saturation }));
   }
 
-  // 5. sharpen and encode
+  // 5. saturation, sharpen and encode in one pass (sharp sharpens before it
+  //    modulates; for these two the order does not matter). libjpeg, not
+  //    mozjpeg: a third of the time for a tenth more bytes.
   let out = sharp(raw.data, {
     raw: { width: raw.info.width, height: raw.info.height, channels: raw.info.channels },
     limitInputPixels: LIMIT_INPUT_PIXELS,
   });
+  if (!pipeline.mono && pipeline.saturation !== 1) {
+    out = out.modulate({ saturation: pipeline.saturation });
+  }
   if (pipeline.sharpenSigma > 0) {
     out = out.sharpen({ sigma: pipeline.sharpenSigma, m1: 0.5, m2: 2 });
   }
-  return out.jpeg({ quality: 90, mozjpeg: true }).toBuffer();
+  return out.jpeg({ quality: 90 }).toBuffer();
 };
 
 @Injectable()
