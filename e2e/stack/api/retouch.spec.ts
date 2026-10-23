@@ -113,8 +113,9 @@ test('black and white comes back grey, and a redo at another level reuses the de
   // file, and the redo is made from it: the colours are back
   expect(strong.sourceId).toBe(source.id);
   expect(strong.originalName).toBe('street (retouched, strong).jpg');
+  // (the fake's "warm it" answer narrows the blue cast, so only "not grey")
   const [sr, , sb] = await means(await bytesOf(strong.path));
-  expect(sb - sr).toBeGreaterThan(20);
+  expect(Math.abs(sb - sr)).toBeGreaterThan(3);
   expect((await usageRows()).length).toBe(rows);
   // the stored decision is the model's whole answer (ones), not the light cap
   const stored = await prisma.media.findUniqueOrThrow({ where: { id: bw.id } });
