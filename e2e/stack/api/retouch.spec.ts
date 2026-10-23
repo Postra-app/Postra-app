@@ -109,10 +109,33 @@ test('black and white comes back grey, and a redo at another level reuses the de
   const redo = await org.api.post(`/media/${bw.id}/retouch`, { data: { level: 'strong' } });
   expect(redo.status(), await redo.text()).toBe(201);
   const strong = await redo.json();
-  // the chain points at the untouched original, not at the black and white file
+  // the chain points at the untouched original, not at the black and white
+  // file, and the redo is made from it: the colours are back
   expect(strong.sourceId).toBe(source.id);
   expect(strong.originalName).toBe('street (retouched, strong).jpg');
+  const [sr, , sb] = await means(await bytesOf(strong.path));
+  expect(sb - sr).toBeGreaterThan(20);
   expect((await usageRows()).length).toBe(rows);
+  // the stored decision is the model's whole answer (ones), not the light cap
+  const stored = await prisma.media.findUniqueOrThrow({ where: { id: bw.id } });
+  expect((stored.retouchSpec as { exposure: number }).exposure).toBe(1);
+});
+
+test('an image a model made stays marked as AI-made after a retouch', async () => {
+  const source = await upload(org.api, 'generated.jpg', await photo());
+  await prisma.media.update({ where: { id: source.id }, data: { aiGenerated: true } });
+  const made = await (await org.api.post(`/media/${source.id}/retouch`, { data: { level: 'light' } })).json();
+  expect((await prisma.media.findUniqueOrThrow({ where: { id: made.id } })).aiGenerated).toBe(true);
+});
+
+test('a photo over the pixel limit is refused with a reason, not a 500', async () => {
+  const huge = await sharp({ create: { width: 6000, height: 5200, channels: 3, background: '#88aacc' } })
+    .jpeg({ quality: 60 })
+    .toBuffer();
+  const source = await upload(org.api, 'billboard.jpg', huge);
+  const res = await org.api.post(`/media/${source.id}/retouch`, { data: { level: 'light' } });
+  expect(res.status(), await res.text()).toBe(422);
+  expect((await res.json()).message).toMatch(/too large or could not be read/);
 });
 
 test('a GIF, a missing level and another organisation\'s photo are refused', async () => {

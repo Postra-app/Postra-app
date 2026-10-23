@@ -52,6 +52,26 @@ export const SUMMARY_MAX = 240;
 const clamp = (v: number, lo: number, hi: number) =>
   Math.min(hi, Math.max(lo, Number.isFinite(v) ? v : 0));
 
+/**
+ * The model's decision as stored: numbers kept inside the contract's own
+ * range (-1..1, shadows and sharpen 0..1) and the summary sanitised, but NOT
+ * capped to a level. The level caps at pipeline time, so a decision made for
+ * Light can be redone at Strong and go further (Codex, 2026-10-23).
+ */
+export const boundSpec = (spec: RetouchSpec): RetouchSpec => ({
+  exposure: clamp(spec.exposure, -1, 1),
+  contrast: clamp(spec.contrast, -1, 1),
+  temperature: clamp(spec.temperature, -1, 1),
+  tint: clamp(spec.tint, -1, 1),
+  shadows: clamp(spec.shadows, 0, 1),
+  saturation: clamp(spec.saturation, -1, 1),
+  sharpen: clamp(spec.sharpen, 0, 1),
+  summary: withoutLongDashes(String(spec.summary ?? ''))
+    .replace(/\s+/g, ' ')
+    .trim()
+    .slice(0, SUMMARY_MAX),
+});
+
 /** Cap every control to what the level allows; sanitise the summary. */
 export const clampSpec = (spec: RetouchSpec, level: RetouchLevel): RetouchSpec => {
   const reach = LEVEL_REACH[level];

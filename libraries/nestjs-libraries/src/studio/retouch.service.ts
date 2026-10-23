@@ -15,6 +15,7 @@ import {
   RetouchPipeline,
   RetouchSpec,
   RetouchSpecSchema,
+  boundSpec,
   clampSpec,
   describeSpec,
   heuristicSpec,
@@ -44,6 +45,19 @@ const LEVEL_BRIEF: Record<RetouchLevel, string> = {
   strong:
     'STRONG: a confident edit for social media. Fix exposure, open the shadows, add contrast and a little vibrance, but it must still read as the same real photo.',
   bw: 'BLACK AND WHITE: the photo will be converted to monochrome after your adjustments. Decide exposure, contrast, shadows and sharpening for a good black and white print; colour controls are ignored.',
+};
+
+// sharp refusing the input (over the pixel limit, truncated or corrupt
+// bytes) is the caller's photo, not our bug: a 422 with a reason, not a 500.
+const unreadable = (err: Error) => {
+  const message = String(err?.message || '');
+  if (/pixel limit|exceeds|Input buffer|Input file|corrupt|premature|unsupported|not a valid/i.test(message)) {
+    return new HttpException(
+      'This photo is too large or could not be read. Photos up to 30 megapixels in JPEG, PNG or WebP work.',
+      422
+    );
+  }
+  return err;
 };
 
 export interface RetouchResult {
@@ -183,7 +197,9 @@ export class RetouchService {
     fileName = ''
   ): Promise<{ spec: RetouchSpec; fallback: boolean; measure: RetouchMeasure }> {
     const base = sharp(source, { limitInputPixels: LIMIT_INPUT_PIXELS }).rotate();
-    const stats = await base.clone().stats();
+    const stats = await base.clone().stats().catch((err: Error) => {
+      throw unreadable(err);
+    });
     const means = stats.channels.slice(0, 3).map((c) => c.mean) as [
       number,
       number,
@@ -228,8 +244,10 @@ export class RetouchService {
       ).choices[0].message.parsed;
       const checked = RetouchSpecSchema.safeParse(parsed);
       if (!checked.success) throw new Error('model returned no spec');
-      const spec = clampSpec(checked.data, level);
-      if (!spec.summary) spec.summary = describeSpec(spec, level);
+      // stored uncapped: the level caps in pipelineFor, so a redo at a
+      // stronger level can use the whole decision
+      const spec = boundSpec(checked.data);
+      if (!spec.summary) spec.summary = describeSpec(clampSpec(spec, level), level);
       return { spec, fallback: false, measure };
     } catch (err) {
       this.logger.warn(
@@ -252,10 +270,12 @@ export class RetouchService {
       throw new HttpException('Only JPEG, PNG and WebP photos can be retouched', 422);
     }
     const decided = presetSpec
-      ? { spec: clampSpec(presetSpec, level), fallback: false }
+      ? { spec: boundSpec(presetSpec), fallback: false }
       : await this.decide(source, level, orgId, fileName);
     const pipeline = pipelineFor(decided.spec, level);
-    const buffer = await applyRetouch(source, pipeline);
+    const buffer = await applyRetouch(source, pipeline).catch((err: Error) => {
+      throw unreadable(err);
+    });
     const meta = await sharp(buffer).metadata();
     return {
       buffer,

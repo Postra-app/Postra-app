@@ -1,6 +1,7 @@
 import {
   LEVEL_REACH,
   RETOUCH_LEVELS,
+  boundSpec,
   clampSpec,
   describeSpec,
   heuristicSpec,
@@ -47,6 +48,21 @@ describe('clampSpec', () => {
     const s = clampSpec({ ...wild, exposure: Number.NaN, summary: undefined as never }, 'medium');
     expect(s.exposure).toBe(0);
     expect(s.summary).toBe('');
+  });
+});
+
+describe('boundSpec', () => {
+  it('keeps the whole decision, only bounded to the contract range', () => {
+    const b = boundSpec(wild);
+    expect(b.exposure).toBe(1);
+    expect(b.contrast).toBe(-1);
+    expect(b.shadows).toBe(1);
+    expect(b.summary).not.toMatch(/[\u2013\u2014]/);
+  });
+
+  it('a decision stored for light goes further when redone at strong', () => {
+    const stored = boundSpec({ ...wild, exposure: 1 });
+    expect(pipelineFor(stored, 'light').gain[0]).toBeLessThan(pipelineFor(stored, 'strong').gain[0]);
   });
 });
 

@@ -767,11 +767,19 @@ export class MediaService {
     if (media.type === 'video') {
       throw new HttpException('Only photos can be retouched', 422);
     }
-    const source = await this._retouch.loadSource(media.path);
-    // Redo at another level reuses the decision made for the source: the same
-    // look, just allowed to go further (or less far).
+    // A retouched file opened again is redone from its untouched source (a
+    // black and white result retouched at Strong gets its colours back,
+    // corrections and JPEG loss never pile up), reusing the decision made
+    // for that source. When the source is gone the file itself is the
+    // source and the model decides afresh.
+    const original =
+      media.retouchSourceId &&
+      (await this.getMediaByIdOrg(org.id, media.retouchSourceId));
+    const from = original && original.path && !original.deletedAt ? original : media;
+    const sourceId = from.id;
+    const source = await this._retouch.loadSource(from.path);
     const previous =
-      media.retouchSpec && media.retouchLevel
+      from.id !== media.id && media.retouchSpec && media.retouchLevel
         ? RetouchSpecSchema.safeParse(media.retouchSpec)
         : null;
     const preset: RetouchSpec | undefined =
@@ -781,31 +789,34 @@ export class MediaService {
       level,
       org.id,
       preset,
-      media.originalName || media.name
+      from.originalName || from.name
     );
     const uploaded = await this.storage.uploadSimple(
       `data:image/jpeg;base64,${result.buffer.toString('base64')}`
     );
     const fileName = uploaded.split('/').pop() || 'retouched.jpg';
-    const base = (media.originalName || media.name || 'photo')
+    const base = (from.originalName || from.name || 'photo')
       .replace(/\.[a-z0-9]+$/i, '')
       .replace(/ \(retouched.*\)$/i, '');
     const saved = await this._mediaRepository.saveFile(
       org.id,
       fileName,
       uploaded,
-      `${base} (retouched, ${level === 'bw' ? 'black and white' : level}).jpg`
+      `${base} (retouched, ${level === 'bw' ? 'black and white' : level}).jpg`,
+      // the pixels are still the source's: a photo stays a photo, an image a
+      // model made stays marked for TikTok and YouTube
+      from.aiGenerated
     );
     await this._mediaRepository.attachRetouch(org.id, saved.id, {
       spec: result.spec,
-      sourceId: media.retouchSourceId || media.id,
+      sourceId,
       level,
     });
     return {
       id: saved.id,
       path: saved.path,
       originalName: saved.originalName,
-      sourceId: media.retouchSourceId || media.id,
+      sourceId,
       level,
       summary: result.spec.summary,
       fallback: result.fallback,
