@@ -75,7 +75,7 @@ describe('pipelineFor', () => {
     const p = pipelineFor(zero, 'strong');
     expect(p.gain).toEqual([1, 1, 1]);
     expect(p.contrast).toBe(1);
-    expect(p.claheSlope).toBe(0);
+    expect(p.shadowsGamma).toBe(1);
     expect(p.saturation).toBe(1);
     expect(p.sharpenSigma).toBe(0);
     expect(p.mono).toBe(false);
@@ -102,11 +102,10 @@ describe('pipelineFor', () => {
     expect(p.saturation).toBe(1);
   });
 
-  it('shadows switch CLAHE on with an integer slope', () => {
-    expect(pipelineFor({ ...zero, shadows: 0.05 }, 'strong').claheSlope).toBe(0);
-    const p = pipelineFor({ ...zero, shadows: 1 }, 'strong');
-    expect(Number.isInteger(p.claheSlope)).toBe(true);
-    expect(p.claheSlope).toBe(3);
+  it('shadows lift is a gamma above 1, off below the threshold', () => {
+    expect(pipelineFor({ ...zero, shadows: 0.05 }, 'strong').shadowsGamma).toBe(1);
+    expect(pipelineFor({ ...zero, shadows: 1 }, 'strong').shadowsGamma).toBeCloseTo(1.6, 3);
+    expect(pipelineFor({ ...zero, shadows: 1 }, 'light').shadowsGamma).toBeCloseTo(1.21, 3);
   });
 });
 

@@ -1656,7 +1656,7 @@
   "help_photos_about_redo_title": "Ponowny retusz",
   "help_photos_about_redo": "Wyretuszowane zdjęcie można retuszować ponownie na innym poziomie: Postra zawsze zaczyna od nietkniętego oryginału, więc poprawki się nie kumulują, a czarno-białe zdjęcie odzyskuje kolory, gdy wybierzesz Mocny.",
   "help_photos_about_limits_title": "Koszt i limity",
-  "help_photos_about_limits": "W każdym planie, bez zużywania kredytu na obrazy AI. Do 10 zdjęć w paczce i 60 zdjęć na pięć minut. Zdjęcia JPEG, PNG i WebP do 30 megapikseli; wynik to JPEG w tym samym rozmiarze. Jeśli AI jest przez chwilę niedostępne, podstawy i tak zostaną poprawione, a zdjęcie o tym powie.",
+  "help_photos_about_limits": "W każdym planie, bez zużywania kredytu na obrazy AI. Do 10 zdjęć w paczce i 60 zdjęć na pięć minut. Zdjęcia JPEG, PNG i WebP do 30 megapikseli; wynik to JPEG do 2048 pikseli na dłuższym boku, czyli w takim rozmiarze, jaki mają zdjęcia wgrane z przeglądarki. Jeśli AI jest przez chwilę niedostępne, podstawy i tak zostaną poprawione, a zdjęcie o tym powie.",
   "help_photos_steps_title": "Jak z tego korzystać, krok po kroku",
   "help_photos_about_title": "Warto wiedzieć"
 }

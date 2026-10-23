@@ -466,7 +466,7 @@ export const studioPhotoGuide = (t: Translate) => ({
       name: t('help_photos_about_limits_title', 'Cost and limits'),
       description: t(
         'help_photos_about_limits',
-        'Included on every plan and uses no AI image credit. Up to 10 photos per batch and 60 photos every five minutes. JPEG, PNG and WebP photos up to 30 megapixels; the result is a JPEG at the same size. If AI is unavailable for a moment the basics are still corrected and the photo says so.'
+        'Included on every plan and uses no AI image credit. Up to 10 photos per batch and 60 photos every five minutes. JPEG, PNG and WebP photos up to 30 megapixels; the result is a JPEG up to 2048 pixels on the longest edge, the same size photos uploaded from the web have. If AI is unavailable for a moment the basics are still corrected and the photo says so.'
       ),
     },
   ],
