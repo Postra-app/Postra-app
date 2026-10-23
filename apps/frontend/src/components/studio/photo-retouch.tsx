@@ -332,7 +332,10 @@ export const PhotoRetouch: FC<Props> = ({
                         </span>
                       )}
                       {item.status === 'done' && (
-                        <span className="px-[6px] py-[2px] rounded bg-newAccent text-[#06222e] text-[10px] font-[600]">
+                        <span
+                          data-testid="retouch-level-badge"
+                          className="px-[6px] py-[2px] rounded bg-newAccent text-[#06222e] text-[10px] font-[600]"
+                        >
                           {compare === item.key
                             ? t('retouch_status_original', 'Original')
                             : labelOf(item.level)}

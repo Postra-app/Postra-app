@@ -43,14 +43,14 @@ test('the Photos tab retouches a library photo and the library gets the copy', a
   const item = page.getByTestId('retouch-item');
   await expect(item).toHaveAttribute('data-status', 'done', { timeout: 30_000 });
   // the one-line summary and the level badge
-  await expect(item.getByText('Black & white')).toBeVisible();
+  await expect(item.getByTestId('retouch-level-badge')).toHaveText('Black & white');
   await expect(page.getByText('Every retouched photo is already in your Media library.')).toBeVisible();
 
   // hold to compare shows the original
   const picture = item.locator('img');
   const retouched = await picture.getAttribute('src');
   await picture.dispatchEvent('pointerdown');
-  await expect(item.getByText('Original')).toBeVisible();
+  await expect(item.getByTestId('retouch-level-badge')).toHaveText('Original');
   expect(await picture.getAttribute('src')).not.toBe(retouched);
   await picture.dispatchEvent('pointerup');
 
