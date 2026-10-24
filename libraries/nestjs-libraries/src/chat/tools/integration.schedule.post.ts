@@ -32,6 +32,32 @@ const attachmentUrl = z
     message: validUrlExtension.defaultMessage({} as any),
   });
 
+// Attachments are either a plain URL string or { path, alt?, thumbnail?,
+// thumbnailTimestamp? }, the same per-media fields as the public API: alt
+// text (Bluesky, Mastodon, Slack), a cover image for a video (Reddit needs
+// one) or the cover frame in milliseconds (Instagram Reels, TikTok).
+const attachment = z.union([
+  attachmentUrl,
+  z.object({
+    path: attachmentUrl,
+    alt: z.string().optional(),
+    thumbnail: attachmentUrl.optional(),
+    thumbnailTimestamp: z.number().int().min(0).optional(),
+  }),
+]);
+
+export type AttachmentInput = z.infer<typeof attachment>;
+
+export const toMedia = (a: AttachmentInput) =>
+  typeof a === 'string'
+    ? { path: a }
+    : {
+        path: a.path,
+        alt: a.alt,
+        thumbnail: a.thumbnail,
+        thumbnailTimestamp: a.thumbnailTimestamp,
+      };
+
 @Injectable()
 export class IntegrationSchedulePostTool implements AgentToolInterface {
   constructor(
@@ -99,8 +125,10 @@ If the tools return errors, you would need to rerun it with the right parameters
                         "The content of the post, HTML, Each line must be wrapped in <p> here is the possible tags: h1, h2, h3, u, strong, li, ul, p (you can't have u and strong together)"
                       ),
                     attachments: z
-                      .array(attachmentUrl)
-                      .describe('The image of the post (URLS)'),
+                      .array(attachment)
+                      .describe(
+                        'The media of the post: either an uploaded media URL string, or { path, alt?, thumbnail?, thumbnailTimestamp? } where path is the uploaded media URL, alt is its alt text, thumbnail is the URL of an uploaded jpeg/png (from uploadFromUrlTool) used as the video cover, and thumbnailTimestamp is the video frame to use as the cover, in milliseconds'
+                      ),
                   })
                 )
                 .describe(
@@ -153,7 +181,11 @@ If the tools return errors, you would need to rerun it with the right parameters
         const counted = inputData.socialPost
           .filter((p: { type: string }) => p.type !== 'draft')
           .flatMap(
-            (p: { postsAndComments?: unknown[]; date?: string; type: string }) =>
+            (p: {
+              postsAndComments?: unknown[];
+              date?: string;
+              type: string;
+            }) =>
               Array.from(
                 { length: Math.max(1, p.postsAndComments?.length || 0) },
                 () => ({ date: p.type === 'now' ? undefined : p.date })
@@ -197,9 +229,7 @@ If the tools return errors, you would need to rerun it with the right parameters
                 settings,
                 value: platform.postsAndComments.map((p: any) => ({
                   content: p.content,
-                  image: (p.attachments || []).map((path: string) => ({
-                    path,
-                  })),
+                  image: (p.attachments || []).map(toMedia),
                 })),
               },
             ]
@@ -245,36 +275,46 @@ If the tools return errors, you would need to rerun it with the right parameters
           // lock: the check above alone let saves at once past the cap.
           let output: Awaited<ReturnType<PostsService['createPost']>>;
           try {
-            output = await this._postsService.createPost(organizationId, {
-              date: post.date,
-              type: post.type as 'draft' | 'schedule' | 'now',
-              shortLink: post.shortLink,
-              tags: [],
-              posts: [
-                {
-                  integration,
-                  group: makeId(10),
-                  settings: post.settings.reduce(
-                    (acc: AllProvidersSettings, s: { key: string; value: any }) => ({
-                      ...acc,
-                      [s.key]: s.value,
-                    }),
-                    {
-                      __type: integration.providerIdentifier,
-                    } as AllProvidersSettings
-                  ),
-                  value: post.postsAndComments.map((p: any) => ({
-                    content: p.content,
-                    id: makeId(10),
-                    delay: 0,
-                    image: p.attachments.map((p: any) => ({
+            output = await this._postsService.createPost(
+              organizationId,
+              {
+                date: post.date,
+                type: post.type as 'draft' | 'schedule' | 'now',
+                shortLink: post.shortLink,
+                tags: [],
+                posts: [
+                  {
+                    integration,
+                    group: makeId(10),
+                    settings: post.settings.reduce(
+                      (
+                        acc: AllProvidersSettings,
+                        s: { key: string; value: any }
+                      ) => ({
+                        ...acc,
+                        [s.key]: s.value,
+                      }),
+                      {
+                        __type: integration.providerIdentifier,
+                      } as AllProvidersSettings
+                    ),
+                    value: post.postsAndComments.map((p: any) => ({
+                      content: p.content,
                       id: makeId(10),
-                      path: p,
+                      delay: 0,
+                      image: (p.attachments || []).map(
+                        (a: AttachmentInput) => ({
+                          id: makeId(10),
+                          ...toMedia(a),
+                        })
+                      ),
                     })),
-                  })),
-                },
-              ],
-            }, 'MCP', cap);
+                  },
+                ],
+              },
+              'MCP',
+              cap
+            );
           } catch (err) {
             if (err instanceof SubscriptionException) {
               return { output: finalOutput, errors: POSTS_USED_UP };

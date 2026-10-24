@@ -1,5 +1,17 @@
-import { IsDefined, IsString, IsUrl, ValidateIf, Validate } from 'class-validator';
-import { ValidUrlExtension, ValidUrlPath } from '@gitroom/helpers/utils/valid.url.path';
+import {
+  IsDefined,
+  IsInt,
+  IsOptional,
+  IsString,
+  IsUrl,
+  Min,
+  ValidateIf,
+  Validate,
+} from 'class-validator';
+import {
+  ValidUrlExtension,
+  ValidUrlPath,
+} from '@gitroom/helpers/utils/valid.url.path';
 
 export class MediaDto {
   @IsString()
@@ -19,4 +31,11 @@ export class MediaDto {
   @ValidateIf((o) => o.thumbnail)
   @IsUrl()
   thumbnail?: string;
+
+  // The video frame to use as the cover, in milliseconds (Instagram Reels,
+  // TikTok). The global whitelist dropped it silently before 24 X 2026.
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  thumbnailTimestamp?: number;
 }
