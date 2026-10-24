@@ -82,11 +82,7 @@ export default class Postra {
   }
 
   post(posts: CreatePostInput) {
-    return this.request('/posts', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(posts),
-    });
+    return this.json('/posts', 'POST', posts);
   }
 
   postList(filters: GetPostsInput) {
@@ -110,13 +106,123 @@ export default class Postra {
     return this.request(`/media?${toQueryString(filters)}`);
   }
 
+  // Postra downloads the file from a public HTTPS address into the media
+  // library; the answer is the same media object as upload().
+  uploadFromUrl(url: string) {
+    return this.json('/upload-from-url', 'POST', { url });
+  }
+
   integrations() {
     return this.request('/integrations');
+  }
+
+  // { connected: true } when the key works.
+  isConnected() {
+    return this.request('/is-connected');
+  }
+
+  // What a channel accepts: rules, maxLength, the settings schema and tools.
+  integrationSettings(id: string) {
+    return this.request(`/integration-settings/${encodeURIComponent(id)}`);
+  }
+
+  // Runs one of the channel's tools (from integrationSettings().tools).
+  triggerIntegration(
+    id: string,
+    methodName: string,
+    data: Record<string, string> = {}
+  ) {
+    return this.json(`/integration-trigger/${encodeURIComponent(id)}`, 'POST', {
+      methodName,
+      data,
+    });
+  }
+
+  // The sign-in address that connects a new channel of that platform; open it
+  // in a browser where a member of the organisation is signed in to Postra.
+  connectChannel(platform: string, options: { refresh?: string } = {}) {
+    return this.request(
+      `/social/${encodeURIComponent(platform)}?${toQueryString(options)}`
+    );
+  }
+
+  // Removes the channel and every post on it.
+  deleteIntegration(id: string) {
+    return this.request(`/integrations/${encodeURIComponent(id)}`, {
+      method: 'DELETE',
+    });
   }
 
   deletePost(id: string) {
     return this.request(`/posts/${encodeURIComponent(id)}`, {
       method: 'DELETE',
+    });
+  }
+
+  // Deletes every post that shares the group value from postList().
+  deletePostGroup(group: string) {
+    return this.request(`/posts/group/${encodeURIComponent(group)}`, {
+      method: 'DELETE',
+    });
+  }
+
+  // 'draft' takes a post out of the queue, 'schedule' puts it back; a post
+  // that was already published needs republish: true to go out again.
+  setPostStatus(
+    id: string,
+    status: 'draft' | 'schedule',
+    options: { republish?: boolean } = {}
+  ) {
+    return this.json(`/posts/${encodeURIComponent(id)}/status`, 'PUT', {
+      status,
+      ...options,
+    });
+  }
+
+  // The channel's recent items on the platform, for a post the platform
+  // published without telling Postra its id.
+  postMissing(id: string) {
+    return this.request(`/posts/${encodeURIComponent(id)}/missing`);
+  }
+
+  // Links such a post to one of those items.
+  setReleaseId(id: string, releaseId: string) {
+    return this.json(`/posts/${encodeURIComponent(id)}/release-id`, 'PUT', {
+      releaseId,
+    });
+  }
+
+  // The next free posting time on the channel, in UTC; use it as date in post().
+  findSlot(integrationId: string) {
+    return this.request(`/find-slot/${encodeURIComponent(integrationId)}`);
+  }
+
+  // Channel analytics over the last `date` days (default 7).
+  analytics(integrationId: string, options: { date?: number } = {}) {
+    return this.request(
+      `/analytics/${encodeURIComponent(integrationId)}?${toQueryString(
+        options
+      )}`
+    );
+  }
+
+  // Analytics of one published post over the last `date` days (default 7).
+  postAnalytics(postId: string, options: { date?: number } = {}) {
+    return this.request(
+      `/analytics/post/${encodeURIComponent(postId)}?${toQueryString(options)}`
+    );
+  }
+
+  // The organisation's notifications, newest first, 100 per page from page 0.
+  notifications(options: { page?: number } = {}) {
+    return this.request(`/notifications?${toQueryString(options)}`);
+  }
+
+  private json(path: string, method: 'POST' | 'PUT', body: unknown) {
+    return this.request(path, {
+      method,
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
     });
   }
 }
