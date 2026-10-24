@@ -26,7 +26,9 @@ export interface StatsResponse {
 }
 
 const sortDesc = (list: PerSocial[]) =>
-  list.sort((a, b) => b.count - a.count || a.provider.localeCompare(b.provider));
+  list.sort(
+    (a, b) => b.count - a.count || a.provider.localeCompare(b.provider)
+  );
 
 @Injectable()
 export class AdminStatsRepository {
@@ -140,11 +142,12 @@ export class AdminStatsRepository {
   }
 
   async getStats(params: StatsParams): Promise<StatsResponse> {
-    const [errors, posts, connected] = await Promise.all([
-      this.errorStats(params),
-      this.postStats(params),
-      this.connectedStats(params),
-    ]);
+    // One group at a time: three groups of two queries at once took six of
+    // the pool's five connections, so an admin opening the statistics made
+    // customers wait on the pool (upstream 5b46e8c64).
+    const errors = await this.errorStats(params);
+    const posts = await this.postStats(params);
+    const connected = await this.connectedStats(params);
 
     return {
       from: params.from.toISOString(),

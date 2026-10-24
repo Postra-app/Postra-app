@@ -24,7 +24,10 @@ import { GetOrgFromRequest } from '@gitroom/nestjs-libraries/user/org.from.reque
 import { Organization, User } from '@prisma/client';
 import { IntegrationFunctionDto } from '@gitroom/nestjs-libraries/dtos/integrations/integration.function.dto';
 import { CheckPolicies } from '@gitroom/backend/services/auth/permissions/permissions.ability';
-import { channelLimitFor, pricing } from '@gitroom/nestjs-libraries/database/prisma/subscriptions/pricing';
+import {
+  channelLimitFor,
+  pricing,
+} from '@gitroom/nestjs-libraries/database/prisma/subscriptions/pricing';
 import { ApiTags } from '@nestjs/swagger';
 import { GetUserFromRequest } from '@gitroom/nestjs-libraries/user/user.from.request';
 import { PostsService } from '@gitroom/nestjs-libraries/database/prisma/posts/posts.service';
@@ -86,8 +89,11 @@ export const isCallableProviderFunction = (provider: object, name: unknown) => {
   if (typeof name !== 'string') return false;
   const tools: { methodName: string }[] =
     Reflect.getMetadata('custom:tool', Object.getPrototypeOf(provider)) || [];
-  const allowed = PICKER_FUNCTIONS.has(name) || tools.some((t) => t.methodName === name);
-  return allowed && typeof (provider as Record<string, unknown>)[name] === 'function';
+  const allowed =
+    PICKER_FUNCTIONS.has(name) || tools.some((t) => t.methodName === name);
+  return (
+    allowed && typeof (provider as Record<string, unknown>)[name] === 'function'
+  );
 };
 
 @ApiTags('Integrations')
@@ -460,7 +466,11 @@ export class IntegrationsController {
 
     let newList: any[] | { none: true } = [];
     try {
-      newList = (await this.functionIntegration(org, body)) || [];
+      // Whatever `name` the body carries, this cache holds mentions only
+      // (upstream 9383f5be4).
+      newList =
+        (await this.functionIntegration(org, { ...body, name: 'mention' })) ||
+        [];
     } catch (err) {
       Logger.error('Integration function failed', err);
     }
@@ -612,10 +622,7 @@ export class IntegrationsController {
       const tier = org?.subscription?.subscriptionTier || 'FREE';
       const allowed =
         pricing[tier]?.allowedProviders || pricing.FREE.allowedProviders;
-      if (
-        integration &&
-        !allowed.includes(integration.providerIdentifier)
-      ) {
+      if (integration && !allowed.includes(integration.providerIdentifier)) {
         throw new HttpException(
           `The ${integration.providerIdentifier} channel isn't included in your plan - upgrade to enable it.`,
           402
