@@ -110,6 +110,15 @@ jobs:
       - name: Install Chromium
         run: pnpm exec playwright install --with-deps chromium
 
+      # Every port the stack listens on sits in Linux's ephemeral range
+      # (32768-60999), so a stray outbound connection of the runner can take
+      # one first: 24 X the backend died with EADDRINUSE on 53000 and the
+      # job waited 120 s for nothing. Reserved ports are never handed out as
+      # ephemeral; the list is checked against the stack config by
+      # libraries/helpers/src/repo/ci-workflows.spec.ts.
+      - name: Reserve the stack's ports
+        run: sudo sysctl -w net.ipv4.ip_local_reserved_ports=9464,53000,54000,54200,55432,56379,57233,58080,58090
+
       - name: Stack tests (API + UI)
         run: pnpm e2e:stack:ui
 
