@@ -26,7 +26,7 @@ export class ConfigurationTask {
       console.log('Configuration check complete, no issues found.');
     }
 
-    console.log('Press Ctrl+C to exit.');
+    // No "press Ctrl+C": main.ts exits the process once the command returns.
     return true;
   }
 }
