@@ -70,6 +70,7 @@ export const FinishTrial: FC<{ close: () => void }> = (props) => {
       setStep('done');
       // The open app still held the trial's limits (E2E-07-18).
       mutate('/user/self');
+      mutate('/billing/invoices');
       return;
     }
     if (attempt >= 30) {
@@ -117,9 +118,7 @@ export const FinishTrial: FC<{ close: () => void }> = (props) => {
         <div className="flex gap-[10px] flex-col w-[500px] h-auto bg-[rgba(15,23,42,0.92)] border-white/10 border-2 rounded-[16px] pb-[20px] px-[20px] relative">
           <div className="flex">
             <div className="flex-1">
-              <TopTitle
-                title={t('finishing_trial', 'Finishing your trial')}
-              />
+              <TopTitle title={t('finishing_trial', 'Finishing your trial')} />
             </div>
             <button
               onClick={props.close}
@@ -174,10 +173,17 @@ export const FinishTrial: FC<{ close: () => void }> = (props) => {
                     <div className="flex gap-[10px] mt-[20px]">
                       <Button className="flex-1" onClick={finishSubscription}>
                         {amount
-                          ? t('finish_trial_pay', 'End trial and pay {{amount}} now', {
-                              amount,
-                            })
-                          : t('finish_trial_pay_plain', 'End trial and pay now')}
+                          ? t(
+                              'finish_trial_pay',
+                              'End trial and pay {{amount}} now',
+                              {
+                                amount,
+                              }
+                            )
+                          : t(
+                              'finish_trial_pay_plain',
+                              'End trial and pay now'
+                            )}
                       </Button>
                       <Button className="flex-1" onClick={() => props.close()}>
                         {t('keep_my_trial', 'Keep my trial')}

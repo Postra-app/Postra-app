@@ -21,7 +21,9 @@ import { trialEmailKey } from '@gitroom/nestjs-libraries/services/trial-identity
 
 // One Stripe account serves every B K Company business, so each Postra
 // invoice names the trading name itself (D20, decision K. 2026-10-03).
-export const POSTRA_INVOICE_SETTINGS = { footer: 'B K Company trading as Postra' };
+export const POSTRA_INVOICE_SETTINGS = {
+  footer: 'B K Company trading as Postra',
+};
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || 'sk_nothing');
 
@@ -147,7 +149,9 @@ export class StripeService {
     } catch (err) {
       // Same case as requires_action above, except stripe-node reports it by
       // throwing when confirm happens off-session.
-      if ((err as Stripe.errors.StripeError)?.code === 'authentication_required') {
+      if (
+        (err as Stripe.errors.StripeError)?.code === 'authentication_required'
+      ) {
         const intent = (err as Stripe.errors.StripeCardError)?.payment_intent;
         if (intent?.id) {
           try {
@@ -163,7 +167,9 @@ export class StripeService {
       // card and cancel the subscription, then answer 200 so Stripe never
       // retried (E2E-07-14). Thrown, the webhook answers 500 and Stripe
       // tries again.
-      const stripeError = err as Stripe.errors.StripeError & { rawType?: string };
+      const stripeError = err as Stripe.errors.StripeError & {
+        rawType?: string;
+      };
       if (
         stripeError?.rawType !== 'card_error' &&
         stripeError?.type !== 'StripeCardError'
@@ -196,7 +202,9 @@ export class StripeService {
   // amount in pence, 0 when it was never paid, null when Stripe refused —
   // then the customer is told to contact us instead. Keyed per payment, so a
   // retried webhook cannot refund twice.
-  private async refundDuplicate(subscriptionId: string): Promise<number | null> {
+  private async refundDuplicate(
+    subscriptionId: string
+  ): Promise<number | null> {
     try {
       let refunded = 0;
       const invoices = await stripe.invoices.list({
@@ -226,7 +234,9 @@ export class StripeService {
                 : { charge: charge! }),
               limit: 10,
             })
-          ).data.filter((r) => r.status !== 'failed' && r.status !== 'canceled');
+          ).data.filter(
+            (r) => r.status !== 'failed' && r.status !== 'canceled'
+          );
           if (earlier.length) {
             refunded += earlier.reduce((sum, r) => sum + r.amount, 0);
             continue;
@@ -273,7 +283,8 @@ export class StripeService {
     const customer = subscription.customer as string;
     const { data } = await stripe.paymentMethods.list({ customer });
     const latest = data.reduce<Stripe.PaymentMethod | undefined>(
-      (prev, current) => (!prev || prev.created < current.created ? current : prev),
+      (prev, current) =>
+        !prev || prev.created < current.created ? current : prev,
       undefined
     );
     const card = latest?.card?.fingerprint;
@@ -369,13 +380,37 @@ export class StripeService {
       await this._organizationService.endTrialOffer(org.id);
       this._logger.warn(
         `Cancelling trial ${subscription.id} for ${subscription.customer}: ${
-          reason === 'no_card' ? 'no card fingerprint' : `${reason} already had a trial`
+          reason === 'no_card'
+            ? 'no card fingerprint'
+            : `${reason} already had a trial`
         }`
       );
     }
     if (subscription.status !== 'canceled') {
       await stripe.subscriptions.cancel(subscription.id);
     }
+  }
+
+  // The tier and period the organisation has today, for a subscription that
+  // is past_due: null when nothing is stored yet.
+  private async currentTier(current: Stripe.Subscription) {
+    const org = await this._organizationService.getOrgByCustomerId(
+      current.customer as string
+    );
+    const existing = org
+      ? await this._subscriptionService.getSubscription(org.id)
+      : null;
+    if (!existing?.subscriptionTier || !pricing[existing.subscriptionTier]) {
+      return null;
+    }
+    return {
+      billing: existing.subscriptionTier as
+        | 'STANDARD'
+        | 'TEAM'
+        | 'PRO'
+        | 'ULTIMATE',
+      period: existing.period as 'MONTHLY' | 'YEARLY',
+    };
   }
 
   private async syncSubscription(
@@ -391,7 +426,10 @@ export class StripeService {
       await this.rejectRepeatTrial(current, rejected);
       return { ok: true, skipped: `trial ${rejected} used before` };
     }
-    if (current.status === 'canceled' || current.status === 'incomplete_expired') {
+    if (
+      current.status === 'canceled' ||
+      current.status === 'incomplete_expired'
+    ) {
       // customer.subscription.deleted owns the downgrade.
       return { ok: true, skipped: current.status };
     }
@@ -442,7 +480,9 @@ export class StripeService {
             refund === null
               ? `A second subscription was started while you already had one, so we cancelled it. If you were charged twice, contact us and we will refund it.`
               : refund > 0
-              ? `A second subscription was started while you already had one, so we cancelled it and refunded its payment of ${formatAmount(refund)}. The refund reaches your card in 5-10 days.`
+              ? `A second subscription was started while you already had one, so we cancelled it and refunded its payment of ${formatAmount(
+                  refund
+                )}. The refund reaches your card in 5-10 days.`
               : `A second subscription was started while you already had one, so we cancelled it. Nothing was charged for it.`,
             true,
             false,
@@ -469,7 +509,10 @@ export class StripeService {
     if (trial) {
       for (const mark of ['card', 'email'] as const) {
         const value = trial[mark];
-        if (value && (await this.trialMarkUsedBefore(mark, value, trial.customer))) {
+        if (
+          value &&
+          (await this.trialMarkUsedBefore(mark, value, trial.customer))
+        ) {
           // Reservations this rejected trial took would block its own retry
           // and nobody else's, so they go.
           await this.releaseTrialMarks(trial);
@@ -512,14 +555,19 @@ export class StripeService {
     }
 
     // past_due is a paid plan in Stripe's retry window, not a trial: keep the
-    // tier until Stripe either collects or deletes the subscription.
+    // tier until Stripe either collects or deletes the subscription. That
+    // includes the tier itself: a plan change whose proration invoice is not
+    // paid yet (3-D Secure, declined card) already carries the new plan in
+    // the metadata, and writing it here granted the upgrade before the money.
+    const kept =
+      current.status === 'past_due' ? await this.currentTier(current) : null;
     return this._subscriptionService.createOrUpdateSubscription(
       current.status === 'trialing',
       uniqueId,
       current.customer as string,
-      pricing[billing].channel!,
-      billing,
-      period,
+      pricing[kept?.billing || billing].channel!,
+      kept?.billing || billing,
+      kept?.period || period,
       current.cancel_at,
       undefined,
       undefined,
@@ -626,7 +674,10 @@ export class StripeService {
     const seen = organization.paymentId ?? null;
     const customer = await stripe.customers.create(
       {
-        email: users.users[0].user.email.indexOf('@') > -1 ? users.users[0].user.email : `${users.users[0].user.email}@postra.co.uk`,
+        email:
+          users.users[0].user.email.indexOf('@') > -1
+            ? users.users[0].user.email
+            : `${users.users[0].user.email}@postra.co.uk`,
         name: organization.name,
         invoice_settings: POSTRA_INVOICE_SETTINGS,
       },
@@ -675,9 +726,7 @@ export class StripeService {
     }
 
     this._logger.warn(
-      `[stripe] organization ${organization.id} points at customer ${
-        organization.paymentId
-      }, which Stripe no longer has - creating a new one`
+      `[stripe] organization ${organization.id} points at customer ${organization.paymentId}, which Stripe no longer has - creating a new one`
     );
     return false;
   }
@@ -807,7 +856,9 @@ export class StripeService {
       };
     } catch (err) {
       this._logger.error(
-        `[prorate] preview failed org=${organizationId}: ${(err as Error)?.message ?? err}`
+        `[prorate] preview failed org=${organizationId}: ${
+          (err as Error)?.message ?? err
+        }`
       );
       return { price: 0 };
     }
@@ -868,7 +919,9 @@ export class StripeService {
     // Cancelled, then bought lower: it renews after all, on the lower plan.
     // (A schedule owns cancelling once attached, so this goes first.)
     if (sub.cancel_at_period_end) {
-      await stripe.subscriptions.update(sub.id, { cancel_at_period_end: false });
+      await stripe.subscriptions.update(sub.id, {
+        cancel_at_period_end: false,
+      });
     }
     const scheduleId =
       scheduleOf(sub) ??
@@ -962,7 +1015,10 @@ export class StripeService {
 
     const sub = currentUserSubscription.data[0];
     if (!sub) {
-      throw new HttpException('There is no active subscription to cancel.', 400);
+      throw new HttpException(
+        'There is no active subscription to cancel.',
+        400
+      );
     }
     // Every live subscription follows: with a duplicate left over, cancelling
     // only the first kept the other one charging (upstream 28e71678).
@@ -1091,7 +1147,11 @@ export class StripeService {
 
       return null;
     } catch (err) {
-      this._logger.error(`Error finding auto-apply promotion code: ${(err as Error)?.message ?? err}`);
+      this._logger.error(
+        `Error finding auto-apply promotion code: ${
+          (err as Error)?.message ?? err
+        }`
+      );
       return null;
     }
   }
@@ -1109,7 +1169,10 @@ export class StripeService {
 
     try {
       await stripe.customers.update(customer, {
-        email: user.email.indexOf('@') > -1 ? user.email : `${user.email}@postra.co.uk`,
+        email:
+          user.email.indexOf('@') > -1
+            ? user.email
+            : `${user.email}@postra.co.uk`,
         ...(body.dub
           ? {
               metadata: {
@@ -1491,7 +1554,11 @@ export class StripeService {
       if (cached) {
         return cached === '1';
       }
-      const used = await this.trialMarkedElsewhere('email', key, customer || '');
+      const used = await this.trialMarkedElsewhere(
+        'email',
+        key,
+        customer || ''
+      );
       if (used) {
         await this._organizationService.endTrialOffer(organizationId);
       }
@@ -1500,7 +1567,9 @@ export class StripeService {
     } catch (err) {
       // The checkout checks again; the page only loses the right wording.
       this._logger.warn(
-        `Trial offer check failed for ${organizationId}: ${(err as Error)?.message}`
+        `Trial offer check failed for ${organizationId}: ${
+          (err as Error)?.message
+        }`
       );
       return allowTrial;
     }
@@ -1613,7 +1682,11 @@ export class StripeService {
     // Changing at once put the unused part on the Stripe balance, where it
     // was lost on cancelling (E2E-07-44). A trial has nothing paid: at once.
     if (
-      waitsForRenewal(live, getCurrentSubscriptions.subscriptionTier, body.billing)
+      waitsForRenewal(
+        live,
+        getCurrentSubscriptions.subscriptionTier,
+        body.billing
+      )
     ) {
       return this.scheduleDowngrade(live, findPrice!, metadata, body);
     }
@@ -1621,7 +1694,7 @@ export class StripeService {
     try {
       // Anything else replaces a downgrade waiting for the renewal.
       await this.releaseSchedule(live);
-      await stripe.subscriptions.update(live.id, {
+      const updated = await stripe.subscriptions.update(live.id, {
         cancel_at_period_end: false,
         metadata,
         proration_behavior: 'always_invoice',
@@ -1632,15 +1705,67 @@ export class StripeService {
             quantity: 1,
           },
         ],
+        expand: ['latest_invoice'],
       });
 
-      return { id };
+      // A change during the trial keeps the subscription trialing: nothing is
+      // charged until the trial ends, so it is a success too (Codex, 24 X).
+      if (updated.status === 'active' || updated.status === 'trialing') {
+        return { id };
+      }
+
+      // Stripe does not throw when the proration invoice is not paid: the
+      // subscription goes past_due and the answer here read as a success,
+      // while the customer's bank wanted 3-D Secure or had declined the card
+      // (upstream 3adec5ef5, 96e037ee7). The plan changes once Stripe
+      // collects: syncSubscription keeps the current tier while past_due.
+      const invoice = updated.latest_invoice as Stripe.Invoice | null;
+      const payment = await this.invoicePaymentState(invoice);
+      if (payment === 'card-declined') {
+        const { url } = await this.createBillingPortalLink(customer);
+        return { portal: url };
+      }
+      return {
+        id,
+        paymentIncomplete: true,
+        url: invoice?.hosted_invoice_url || undefined,
+      };
     } catch (err) {
       const { url } = await this.createBillingPortalLink(customer);
       return {
         portal: url,
       };
     }
+  }
+
+  // What stopped an invoice from being paid at once: a card the bank turned
+  // down ('card-declined'), a payment the bank wants confirmed on-session
+  // ('requires-action'), or nothing we can name ('unknown').
+  private async invoicePaymentState(
+    invoice: Stripe.Invoice | null
+  ): Promise<'card-declined' | 'requires-action' | 'unknown'> {
+    if (!invoice?.id || invoice.status !== 'open') {
+      return 'unknown';
+    }
+    const full = await stripe.invoices.retrieve(invoice.id, {
+      expand: ['payments.data.payment.payment_intent'],
+    });
+    const intent = full.payments?.data
+      .map((p) => p.payment.payment_intent)
+      .find((p): p is Stripe.PaymentIntent => typeof p === 'object' && !!p);
+    if (!intent) {
+      return 'unknown';
+    }
+    if (intent.status === 'requires_payment_method') {
+      return 'card-declined';
+    }
+    if (
+      intent.status === 'requires_action' ||
+      intent.status === 'requires_confirmation'
+    ) {
+      return 'requires-action';
+    }
+    return 'unknown';
   }
 
   async paymentSucceeded(event: Stripe.InvoicePaymentSucceededEvent) {
@@ -1832,7 +1957,10 @@ export class StripeService {
       );
     // A plain Error here was a 500 for an ordinary refusal (BILL-11).
     if (getCurrentSubscription && !getCurrentSubscription?.isLifetime) {
-      throw new HttpException('You already have a non lifetime subscription', 400);
+      throw new HttpException(
+        'You already have a non lifetime subscription',
+        400
+      );
     }
 
     try {
