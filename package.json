@@ -188,7 +188,7 @@
     "mime-types": "3.0.2",
     "mobx": "catalog:",
     "mobx-react-lite": "catalog:",
-    "multer": "^2.4.0",
+    "multer": "^2.5.0",
     "music-metadata": "^11.16.1",
     "nestjs-command": "^3.1.5",
     "nestjs-real-ip": "^3.0.1",
