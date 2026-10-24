@@ -11,6 +11,7 @@ import React, {
   forwardRef,
   useImperativeHandle,
 } from 'react';
+import { Fragment, Slice } from '@tiptap/pm/model';
 import clsx from 'clsx';
 import { makeId } from '@gitroom/nestjs-libraries/services/make.is';
 import EmojiPicker from 'emoji-picker-react';
@@ -1112,6 +1113,27 @@ export const OnlyEditor = forwardRef<
     immediatelyRender: false,
     // @ts-expect-error paste handler signature doesn't match the editor prop overload
     onPaste: paste,
+    editorProps: {
+      // The default parser merges consecutive newlines, which drops the
+      // blank lines of pasted plain text; keep each one as an empty
+      // paragraph (upstream 774323e1c).
+      clipboardTextParser: (text, $context, _plain, view) => {
+        const { schema } = view.state;
+        const marks = $context.marks();
+        return Slice.maxOpen(
+          Fragment.from(
+            text
+              .split(/\r\n?|\n/)
+              .map((line) =>
+                schema.nodes.paragraph.create(
+                  null,
+                  line ? schema.text(line, marks) : undefined
+                )
+              )
+          )
+        );
+      },
+    },
     onUpdate: (innerProps) => {
       onChange?.(innerProps.editor.getHTML());
     },
