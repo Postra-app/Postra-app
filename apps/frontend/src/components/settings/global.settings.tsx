@@ -46,13 +46,19 @@ export const GlobalSettings = () => {
           )}
           &nbsp;
           <a
-            href="https://github.com/Postra-app/Postra-app"
+            href={sourceCodeUrl(process.env.NEXT_PUBLIC_VERSION)}
             target="_blank"
             rel="noopener noreferrer"
             className="underline underline-offset-4 hover:text-[#38bdf8]"
           >
             github.com/Postra-app/Postra-app
           </a>
+          {process.env.NEXT_PUBLIC_VERSION
+            ? ` (${t(
+                'open_source_version',
+                'version'
+              )} ${process.env.NEXT_PUBLIC_VERSION.slice(0, 7)})`
+            : ''}
           .
         </div>
       </Card>
@@ -60,3 +66,4 @@ export const GlobalSettings = () => {
     </div>
   );
 };
+import { sourceCodeUrl } from '@gitroom/helpers/utils/source.code.url';

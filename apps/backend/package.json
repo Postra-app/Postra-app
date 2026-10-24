@@ -10,7 +10,7 @@
   },
   "keywords": [],
   "author": "",
-  "license": "ISC",
+  "license": "AGPL-3.0",
   "dependencies": {
     "disposable-email-domains": "^1.0.62",
     "helmet": "^8.3.0"

@@ -1575,6 +1575,7 @@
   "removed_channel": "Removed channel",
   "signature_not_saved": "The signature was not saved.",
   "open_source": "Open source",
+  "open_source_version": "version",
   "open_source_description": "Postra is open-source software (AGPL-3.0). The complete source code of the version you are using is available at",
   "language_settings": "Language",
   "interface_language": "Interface language",

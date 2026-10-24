@@ -13,6 +13,8 @@ is in the LICENSE file. In accordance with the AGPL-3.0, the complete
 corresponding source code for Postra — including modifications to the upstream
 Postiz code — is made publicly available in this repository.
 
-Modifications by KrisRz include (non-exhaustive): Polish localization and
-PL-market branding, the Studio design editor and AI features, AWS deployment
-integration, and assorted fixes. These build on the original Postiz codebase.
+Modifications by KrisRz include (non-exhaustive): the Postra brand and
+UK-first product (pricing, trial and billing flows, terms), the Studio design
+editor with Photo retouch and the AI features, security hardening and
+observability, the public API, MCP server and Node.js SDK, and many fixes.
+These build on the original Postiz codebase.
