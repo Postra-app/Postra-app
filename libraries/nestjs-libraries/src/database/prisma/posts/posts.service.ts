@@ -1,4 +1,5 @@
 import { postsCycleWindow } from '@gitroom/nestjs-libraries/database/prisma/subscriptions/pricing';
+import { resolve, sep } from 'node:path';
 import {
   BadRequestException,
   Injectable,
@@ -181,7 +182,9 @@ export class PostsService {
         getIntegration.token
       );
     } catch (e) {
-      this._logger.warn(`getMissingContent failed: ${(e as Error)?.message ?? e}`);
+      this._logger.warn(
+        `getMissingContent failed: ${(e as Error)?.message ?? e}`
+      );
       // Retry once after a token refresh; a second RefreshToken means the
       // refresh didn't help (revoked scope) — recursing again would loop,
       // refreshing the token on every turn.
@@ -333,7 +336,9 @@ export class PostsService {
       );
       return loadAnalytics;
     } catch (e) {
-      this._logger.warn(`checkPostAnalytics failed: ${(e as Error)?.message ?? e}`);
+      this._logger.warn(
+        `checkPostAnalytics failed: ${(e as Error)?.message ?? e}`
+      );
       // Retry once, as in getMissingContent.
       if (e instanceof RefreshToken && !forceRefresh) {
         return this.checkPostAnalytics(orgId, postId, date, true);
@@ -437,9 +442,7 @@ export class PostsService {
     // Fetch the rest of the thread with one query and follow parentPostId in
     // memory (previously one query per thread part).
     const chain = await this._postRepository.getPostsChain(post.group, orgId);
-    const byParent = new Map(
-      chain.map((p) => [p.parentPostId, p] as const)
-    );
+    const byParent = new Map(chain.map((p) => [p.parentPostId, p] as const));
     const result: PostWithConditionals[] = [post];
     let next = byParent.get(post.id);
     while (next) {
@@ -501,7 +504,7 @@ export class PostsService {
             })
           )
         )
-          .filter((m: any) => m && m.path)
+          .filter((m: any) => m && m.path && this.isAllowedMediaPath(m.path))
           .map((m) => {
             return {
               ...m,
@@ -579,8 +582,30 @@ export class PostsService {
 
       return getImageList;
     } catch (err: any) {
-      return imagesList;
+      return (imagesList || []).filter((m: any) =>
+        this.isAllowedMediaPath(m?.path)
+      );
     }
+  }
+
+  // A media path that is not a remote URL is read straight from the worker's
+  // disk, so it has to resolve inside UPLOAD_DIRECTORY. On production every
+  // path is an S3 URL and MediaDto already requires one; this is defence in
+  // depth for a self-hosted instance (upstream 5f18f1ca6).
+  private isAllowedMediaPath(path: unknown) {
+    if (typeof path !== 'string' || /^https?:\/\//.test(path)) {
+      return true;
+    }
+
+    // "http" anywhere else skips the UPLOAD_DIRECTORY prefix, and the
+    // providers would then read it relative to the working directory.
+    if (path.indexOf('http') > -1) {
+      return false;
+    }
+
+    const base = resolve(String(process.env.UPLOAD_DIRECTORY));
+    const filePath = resolve(process.env.UPLOAD_DIRECTORY + path);
+    return filePath.startsWith(base + sep);
   }
 
   async getPostGroupDebugExport(orgId: string, group: string) {
@@ -646,12 +671,8 @@ export class PostsService {
     if (!readable?.integration) {
       return readable;
     }
-    const {
-      token,
-      refreshToken,
-      customInstanceDetails,
-      ...integration
-    } = readable.integration;
+    const { token, refreshToken, customInstanceDetails, ...integration } =
+      readable.integration;
     return { ...readable, integration };
   }
 
@@ -932,10 +953,7 @@ export class PostsService {
     released: string[] = [],
     tx?: Prisma.TransactionClient
   ) {
-    const months = new Map<
-      number,
-      { start: Date; end: Date; total: number }
-    >();
+    const months = new Map<number, { start: Date; end: Date; total: number }>();
     // A post named without a date (a status change) counts on its own date,
     // and an update keeps a post's state.
     const looked = requested
@@ -944,7 +962,9 @@ export class PostsService {
     const existing = looked.length
       ? await this._postRepository.getPublishDates(orgId, looked, tx)
       : [];
-    const savedOn = new Map(existing.map((p) => [p.id, p.publishDate] as const));
+    const savedOn = new Map(
+      existing.map((p) => [p.id, p.publishDate] as const)
+    );
     // A draft or a failed post edited with 'update' stays one, out of the
     // count; it was counted as a new post (Codex).
     const uncounted = new Set(
@@ -1107,7 +1127,12 @@ export class PostsService {
       integration: { id: string };
       value: Array<{
         content?: string;
-        image?: Array<{ path: string; thumbnail?: string }>;
+        image?: Array<{
+          path: string;
+          alt?: string;
+          thumbnail?: string;
+          thumbnailTimestamp?: number;
+        }>;
       }>;
       settings?: any;
     }>
@@ -1118,7 +1143,11 @@ export class PostsService {
       throw new BadRequestException('posts must be an array');
     }
     // Each post's value is a list too; `value: {}` died on `.map` (POSTS-13).
-    if ((posts || []).some((post) => post?.value != null && !Array.isArray(post.value))) {
+    if (
+      (posts || []).some(
+        (post) => post?.value != null && !Array.isArray(post.value)
+      )
+    ) {
       throw new BadRequestException('Each post value must be an array');
     }
 
@@ -1148,7 +1177,9 @@ export class PostsService {
 
         let additionalSettings: any[] = [];
         try {
-          additionalSettings = JSON.parse(integration.additionalSettings || '[]');
+          additionalSettings = JSON.parse(
+            integration.additionalSettings || '[]'
+          );
         } catch {
           additionalSettings = [];
         }
@@ -1248,8 +1279,12 @@ export class PostsService {
     throw new BadRequestException(
       `This post was already published on ${dayjs
         .utc(post.publishDate)
-        .format('YYYY-MM-DD HH:mm')} UTC. Saving it this way would publish it again to ${
-        post.integration?.name || post.integration?.providerIdentifier || 'the channel'
+        .format(
+          'YYYY-MM-DD HH:mm'
+        )} UTC. Saving it this way would publish it again to ${
+        post.integration?.name ||
+        post.integration?.providerIdentifier ||
+        'the channel'
       }. To edit it without publishing again, ${howToEdit}. To publish it again on purpose, send republish: true.`
     );
   }
@@ -1266,14 +1301,17 @@ export class PostsService {
     editedIds: string[]
   ) {
     const images = (body.posts || []).flatMap((post) =>
-      (post.value || []).flatMap((value) => (value.image || []) as { id?: string; path?: string }[])
+      (post.value || []).flatMap(
+        (value) => (value.image || []) as { id?: string; path?: string }[]
+      )
     );
     if (!images.length) {
       return;
     }
     const had = await this._postRepository.imagesOf(orgId, editedIds);
     const added = images.filter(
-      (i) => !(i?.id && had.ids.has(i.id)) && !(i?.path && had.paths.has(i.path))
+      (i) =>
+        !(i?.id && had.ids.has(i.id)) && !(i?.path && had.paths.has(i.path))
     );
     const deleted = await this._mediaService.deletedFromLibrary(
       orgId,
@@ -1319,9 +1357,7 @@ export class PostsService {
           .filter(Boolean) as string[],
         expectedUpdatedAt: post.expectedUpdatedAt || body.expectedUpdatedAt,
       }))
-      .filter(
-        (v): v is PostVersion => !!v.ids.length && !!v.expectedUpdatedAt
-      );
+      .filter((v): v is PostVersion => !!v.ids.length && !!v.expectedUpdatedAt);
     // Refused here before any work is done; the write below checks again
     // with the rows locked, which is what stops two saves at once.
     if (versions.length) {
@@ -1578,8 +1614,7 @@ export class PostsService {
     // workflow, which otherwise kept sleeping until the old time and
     // published then (POSTS-7). A published post only changes on the
     // calendar.
-    const waiting =
-      getPostById.state === 'QUEUE' && !getPostById.releaseId;
+    const waiting = getPostById.state === 'QUEUE' && !getPostById.releaseId;
     if (action === 'schedule' || waiting) {
       try {
         await this.startWorkflow(
@@ -1706,7 +1741,6 @@ export class PostsService {
     }
     return this.findFreeDateTimeFrom(orgId, times);
   }
-
 
   async createPopularPosts(post: {
     category: string;
