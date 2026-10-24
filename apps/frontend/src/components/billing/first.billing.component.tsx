@@ -15,7 +15,10 @@ import { AttachToFeedbackIcon } from '@gitroom/frontend/components/new-layout/se
 import NotificationComponent from '@gitroom/frontend/components/notifications/notification.component';
 import dynamic from 'next/dynamic';
 import { LogoTextComponent } from '@gitroom/frontend/components/ui/logo-text.component';
-import { pricing, planLabel } from '@gitroom/nestjs-libraries/database/prisma/subscriptions/pricing';
+import {
+  pricing,
+  planLabel,
+} from '@gitroom/nestjs-libraries/database/prisma/subscriptions/pricing';
 import { capitalize } from 'lodash';
 import clsx from 'clsx';
 import { LoadingComponent } from '@gitroom/frontend/components/layout/loading';
@@ -30,6 +33,7 @@ import { useDubClickId } from '@gitroom/frontend/components/layout/dubAnalytics'
 import { useModals } from '@gitroom/frontend/components/layout/new-modal';
 import useCookie from 'react-use-cookie';
 import { LogoutComponent } from '@gitroom/frontend/components/layout/logout.component';
+import { InvoicesComponent } from '@gitroom/frontend/components/layout/invoices.component';
 import DeleteAccountComponent from '@gitroom/frontend/components/settings/delete-account.component';
 import { TrialLimitsNote } from '@gitroom/frontend/components/billing/trial.limits.note';
 import {
@@ -194,6 +198,7 @@ export const FirstBillingComponent = () => {
         <div className="flex items-center">
           <div className="flex gap-[20px] text-textItemBlur">
             <OrganizationSelector />
+            <InvoicesComponent />
             <div className="hover:text-newTextColor">
               <ModeComponent />
             </div>
@@ -364,7 +369,8 @@ export const BillingFeatures: FC<{ tier: string }> = ({ tier }) => {
           key={feature.key}
           className={clsx(
             'flex items-center gap-[8px]',
-            feature.key === 'billing_plan_platforms' && 'col-span-2 mobile:col-span-1'
+            feature.key === 'billing_plan_platforms' &&
+              'col-span-2 mobile:col-span-1'
           )}
         >
           <div>

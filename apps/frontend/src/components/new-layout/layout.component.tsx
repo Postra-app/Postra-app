@@ -45,11 +45,15 @@ import { LanguageComponent } from '@gitroom/frontend/components/layout/language.
 import { ChromeExtensionComponent } from '@gitroom/frontend/components/layout/chrome.extension.component';
 import NotificationComponent from '@gitroom/frontend/components/notifications/notification.component';
 import { OrganizationSelector } from '@gitroom/frontend/components/layout/organization.selector';
+import { InvoicesComponent } from '@gitroom/frontend/components/layout/invoices.component';
 import { StreakComponent } from '@gitroom/frontend/components/layout/streak.component';
 import { PreConditionComponent } from '@gitroom/frontend/components/layout/pre-condition.component';
 import { AttachToFeedbackIcon } from '@gitroom/frontend/components/new-layout/sentry.feedback.component';
 import { FirstBillingComponent } from '@gitroom/frontend/components/billing/first.billing.component';
-import { MobileNav, BottomNav } from '@gitroom/frontend/components/new-layout/mobile-nav';
+import {
+  MobileNav,
+  BottomNav,
+} from '@gitroom/frontend/components/new-layout/mobile-nav';
 import { AgentHistoryMobile } from '@gitroom/frontend/components/agents/agent.history.mobile';
 import { TrialTracker } from '@gitroom/frontend/components/layout/gtm.component';
 import { ImpersonationBanner } from '@gitroom/frontend/components/new-layout/impersonation-banner';
@@ -110,7 +114,10 @@ export const LayoutComponent = ({ children }: { children: ReactNode }) => {
               <div />
               {/* An invitation is answered before any paywall: joining a paid
                   organisation is the way out of a free one (E2E-08-34). */}
-              {user.tier === 'FREE' && isGeneral && billingEnabled && pathname !== '/join' ? (
+              {user.tier === 'FREE' &&
+              isGeneral &&
+              billingEnabled &&
+              pathname !== '/join' ? (
                 <FirstBillingComponent />
               ) : (
                 <>
@@ -142,6 +149,7 @@ export const LayoutComponent = ({ children }: { children: ReactNode }) => {
                             <StreakComponent />
                             <div className="w-[1px] h-[20px] bg-blockSeparator" />
                             <OrganizationSelector />
+                            <InvoicesComponent />
                             <div className="hover:text-newTextColor">
                               <ModeComponent />
                             </div>
