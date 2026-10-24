@@ -1,7 +1,14 @@
 'use client';
 
 import { Slider } from '@gitroom/react/form/slider';
-import React, { FC, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import React, {
+  FC,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import { Button } from '@gitroom/frontend/components/ui/button';
 import { Card } from '@gitroom/frontend/components/ui/card';
 import { useFetch } from '@gitroom/helpers/utils/custom.fetch';
@@ -164,10 +171,7 @@ const Accept: FC<{ resolve: (res: boolean) => void }> = ({ resolve }) => {
   return (
     <div>
       <div className="mb-[20px]">
-        {t(
-          'accept_discount_q',
-          'How about 50% off for 3 months instead? 🙏🏻'
-        )}
+        {t('accept_discount_q', 'How about 50% off for 3 months instead? 🙏🏻')}
       </div>
       <div className="flex gap-[10px]">
         <Button loading={loading} onClick={apply}>
@@ -303,7 +307,9 @@ export const MainBillingComponent: FC<{
       const renewal =
         quote.renewsOn && quote.renewalPrice
           ? t(
-              period === 'YEARLY' ? 'plan_change_renewal_year' : 'plan_change_renewal_month',
+              period === 'YEARLY'
+                ? 'plan_change_renewal_year'
+                : 'plan_change_renewal_month',
               period === 'YEARLY'
                 ? 'From {{date}}: £{{price}} a year.'
                 : 'From {{date}}: £{{price}} a month.',
@@ -325,9 +331,13 @@ export const MainBillingComponent: FC<{
             'Change to {{plan}} on {{date}}? You keep {{current}} until then.',
             { plan, date: on, current: planLabel(current) }
           )} ${renewal}`.trim(),
-          approveLabel: t('plan_change_scheduled_confirm', 'Change on {{date}}', {
-            date: on,
-          }),
+          approveLabel: t(
+            'plan_change_scheduled_confirm',
+            'Change on {{date}}',
+            {
+              date: on,
+            }
+          ),
           cancelLabel: t('cancel', 'Cancel'),
         });
       }
@@ -345,7 +355,9 @@ export const MainBillingComponent: FC<{
               { plan }
             )} ${renewal}`.trim(),
         approveLabel: upgrade
-          ? t('plan_change_pay', 'Upgrade and pay {{amount}}', { amount: today })
+          ? t('plan_change_pay', 'Upgrade and pay {{amount}}', {
+              amount: today,
+            })
           : t('plan_change_confirm', 'Change plan'),
         cancelLabel: t('cancel', 'Cancel'),
       });
@@ -590,11 +602,30 @@ export const MainBillingComponent: FC<{
             );
             return;
           }
-          const { url, portal, scheduled } = await subscribeResponse.json();
+          const { url, portal, scheduled, paymentIncomplete } =
+            await subscribeResponse.json();
           if (scheduled) {
             // Nothing changes until the renewal; the note under the current
             // plan says when.
             await refreshPending();
+            return;
+          }
+          if (paymentIncomplete) {
+            // The bank wants the payment for the new plan confirmed: the
+            // plan changes once Stripe collects it, so nothing is updated
+            // here (it read "Subscription updated successfully" before).
+            if (
+              await deleteDialog(
+                t(
+                  'plan_change_payment_pending',
+                  'Your bank wants you to confirm the payment for the new plan. Your plan changes as soon as it is paid.'
+                ),
+                t('confirm_payment', 'Confirm payment'),
+                t('payment_confirmation_needed', 'Payment confirmation needed')
+              )
+            ) {
+              window.open(url || '/billing', '_blank');
+            }
             return;
           }
           if (url) {
@@ -689,7 +720,17 @@ export const MainBillingComponent: FC<{
         </div>
       </div>
 
-      {finishTrial && <FinishTrial close={() => setFinishTrial(false)} />}
+      {finishTrial && (
+        <FinishTrial
+          close={() => {
+            setFinishTrial(false);
+            // The first invoice and the pending change were stale until a
+            // reload (upstream 27705c05e).
+            mutate('/billing/invoices');
+            refreshPending();
+          }}
+        />
+      )}
       {!!user?.isTrailing && <TrialLimitsNote endTrialLink />}
       {!!subscription?.subscriptionTier && (
         <AiUsageThisMonth
@@ -779,10 +820,14 @@ export const MainBillingComponent: FC<{
                   !!pending?.billing &&
                   !!pending?.on && (
                     <div className="self-center text-newTextColor/70">
-                      {t('plan_pending_change', 'Changes to {{plan}} on {{date}}', {
-                        plan: planLabel(pending.billing),
-                        date: dayjs(pending.on).format('D MMMM'),
-                      })}
+                      {t(
+                        'plan_pending_change',
+                        'Changes to {{plan}} on {{date}}',
+                        {
+                          plan: planLabel(pending.billing),
+                          date: dayjs(pending.on).format('D MMMM'),
+                        }
+                      )}
                     </div>
                   )}
                 {subscription &&

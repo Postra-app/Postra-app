@@ -196,7 +196,7 @@ export default async function Auth(props: {
                     </div>
                     <div className="flex flex-col gap-[20px]">
                       <div
-                        className="text-sm whitespace-pre-wrap"
+                        className="preview text-sm whitespace-pre-wrap"
                         dangerouslySetInnerHTML={{
                           __html: sanitizePostContent(p.content),
                         }}

@@ -119,22 +119,45 @@ describe('CI workflows', () => {
   // parameters under /postra/dev.
   it('deploys to the box or to the group, chosen by repository variables', () => {
     const deploy = workflows.find((w) => w.name === 'deploy-dev.yml')!.text;
-    expect(deploy).toContain("SSM_PREFIX: ${{ vars.SSM_PREFIX || '/postra/dev' }}");
+    expect(deploy).toContain(
+      "SSM_PREFIX: ${{ vars.SSM_PREFIX || '/postra/dev' }}"
+    );
     expect(deploy).not.toMatch(/get-parameters-by-path --path \/postra\/dev\//);
     expect(deploy).toMatch(/--arg prefix "\$\{SSM_PREFIX\}"/);
-    expect(deploy).toMatch(/^  deploy:\n[\s\S]*?if: always\(\) && vars\.DEPLOY_TARGET != 'asg'/m);
-    expect(deploy).toMatch(/^  deploy-asg:\n[\s\S]*?if: always\(\) && vars\.DEPLOY_TARGET == 'asg'/m);
-    expect(deploy).toMatch(/put-parameter --name "\$\{SSM_PREFIX\}\/APP_IMAGE"/);
+    expect(deploy).toMatch(
+      /^  deploy:\n[\s\S]*?if: always\(\) && vars\.DEPLOY_TARGET != 'asg'/m
+    );
+    expect(deploy).toMatch(
+      /^  deploy-asg:\n[\s\S]*?if: always\(\) && vars\.DEPLOY_TARGET == 'asg'/m
+    );
+    expect(deploy).toMatch(
+      /put-parameter --name "\$\{SSM_PREFIX\}\/APP_IMAGE"/
+    );
     // The rollback target is the last image that passed the checks, written
     // after the smoke, never the image a cancelled deploy left in APP_IMAGE.
-    const verified = deploy.indexOf('put-parameter --name "${SSM_PREFIX}/APP_IMAGE_VERIFIED"');
-    expect(verified).toBeGreaterThan(deploy.indexOf('Smoke test (Playwright)', deploy.indexOf('deploy-asg:')));
-    expect(verified).toBeLessThan(deploy.indexOf('Roll back to the previous image', deploy.indexOf('deploy-asg:')));
-    expect(deploy).toMatch(/get-parameter --name "\$\{SSM_PREFIX\}\/APP_IMAGE_VERIFIED"/);
+    const verified = deploy.indexOf(
+      'put-parameter --name "${SSM_PREFIX}/APP_IMAGE_VERIFIED"'
+    );
+    expect(verified).toBeGreaterThan(
+      deploy.indexOf('Smoke test (Playwright)', deploy.indexOf('deploy-asg:'))
+    );
+    expect(verified).toBeLessThan(
+      deploy.indexOf(
+        'Roll back to the previous image',
+        deploy.indexOf('deploy-asg:')
+      )
+    );
+    expect(deploy).toMatch(
+      /get-parameter --name "\$\{SSM_PREFIX\}\/APP_IMAGE_VERIFIED"/
+    );
     expect(deploy).toContain('.github/scripts/asg-refresh.sh "${ASG_NAME}"');
     // The same commit again skips the build: the tag is immutable.
-    expect(deploy).toMatch(/ecr describe-images --repository-name "\$\{ECR_REPOSITORY\}" --image-ids "imageTag=\$\{IMAGE_TAG_SHA\}"/);
-    expect(deploy.match(/if: steps\.existing\.outputs\.exists != 'true'/g)).toHaveLength(2);
+    expect(deploy).toMatch(
+      /ecr describe-images --repository-name "\$\{ECR_REPOSITORY\}" --image-ids "imageTag=\$\{IMAGE_TAG_SHA\}"/
+    );
+    expect(
+      deploy.match(/if: steps\.existing\.outputs\.exists != 'true'/g)
+    ).toHaveLength(2);
   });
 
   // pm2 kept every process's output in /www/.pm2/logs for ever and nginx
@@ -178,6 +201,32 @@ describe('CI workflows', () => {
     expect(dlx.length).toBeGreaterThan(0);
     for (const line of dlx) {
       expect(line).toContain('--allow-build=@prisma/engines');
+    }
+  });
+
+  // 24 X: the stack's backend died with EADDRINUSE on 53000 in CI. Every
+  // stack port is inside Linux's ephemeral range, so the runner reserves
+  // them before the stack starts; a new port in the stack config must be
+  // added to that list.
+  it('reserves every stack port on the runner before the stack starts', () => {
+    const ci = workflows.find((w) => w.name === 'ci.yml')!.text;
+    const reserved = ci
+      .match(/ip_local_reserved_ports=([0-9,]+)/)![1]
+      .split(',')
+      .map(Number);
+    const stack = ['playwright.config.ts', 'docker-compose.yml', 'stack.env']
+      .map((f) => readFileSync(join(root, 'e2e', 'stack', f), 'utf8'))
+      .join('\n');
+    const used = new Set(
+      [
+        ...stack.matchAll(
+          /(?:localhost:|-p |PORT=|^\s*- ")(\d{4,5})(?::|\b)/gm
+        ),
+      ].map((m) => Number(m[1]))
+    );
+    expect(used.size).toBeGreaterThanOrEqual(8);
+    for (const port of used) {
+      expect(reserved).toContain(port);
     }
   });
 

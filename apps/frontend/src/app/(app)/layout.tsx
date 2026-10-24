@@ -17,7 +17,6 @@ import { ReactNode } from 'react';
 import { GeistSans } from 'geist/font/sans';
 import clsx from 'clsx';
 import { VariableContextComponent } from '@gitroom/react/helpers/variable.context';
-import { PHProvider } from '@gitroom/react/helpers/posthog';
 import UtmSaver from '@gitroom/helpers/utils/utm.saver';
 import { DubAnalytics } from '@gitroom/frontend/components/layout/dubAnalytics';
 import { FacebookComponent } from '@gitroom/frontend/components/layout/facebook.component';
@@ -124,16 +123,11 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
             <DubAnalytics />
             <FacebookComponent />
             <GoogleTagManagerComponent gtmId={process.env.NEXT_PUBLIC_GTM_ID} />
-            <PHProvider
-              phkey={process.env.NEXT_PUBLIC_POSTHOG_KEY}
-              host={process.env.NEXT_PUBLIC_POSTHOG_HOST}
-            >
-              <LayoutContext>
-                <UtmSaver />
-                <ConnectionStatus />
-                <SwrProvider>{children}</SwrProvider>
-              </LayoutContext>
-            </PHProvider>
+            <LayoutContext>
+              <UtmSaver />
+              <ConnectionStatus />
+              <SwrProvider>{children}</SwrProvider>
+            </LayoutContext>
           </SentryComponent>
         </VariableContextComponent>
       </body>

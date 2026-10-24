@@ -100,8 +100,7 @@ export class YoutubeProvider extends SocialAbstract implements SocialProvider {
     if (body.includes('invalidTags')) {
       return {
         type: 'bad-body',
-        value:
-          'The maximum allowed is 500 characters in total.',
+        value: 'The maximum allowed is 500 characters in total.',
       };
     }
 
@@ -201,6 +200,17 @@ export class YoutubeProvider extends SocialAbstract implements SocialProvider {
         type: 'bad-body',
         value:
           'We have uploaded your video but the thumbnail image is too wide.',
+      };
+    }
+
+    // Google reports the project's exhausted daily upload quota with the same
+    // reason (rateLimitExceeded) as a short throttle; the detail names it.
+    // It is Postra's Google project, so it hits every user at once.
+    if (body.includes('defaultVideoInsertPerDayPerProject')) {
+      return {
+        type: 'bad-body',
+        value:
+          "YouTube's daily upload quota is used up for today. Please reschedule this post for tomorrow.",
       };
     }
 
@@ -518,8 +528,16 @@ export class YoutubeProvider extends SocialAbstract implements SocialProvider {
     // throw on an undefined value.
     const panels: { label: string; key: string; average?: boolean }[] = [
       { label: 'Estimated Minutes Watched', key: 'estimatedMinutesWatched' },
-      { label: 'Average View Duration', key: 'averageViewDuration', average: true },
-      { label: 'Average View Percentage', key: 'averageViewPercentage', average: true },
+      {
+        label: 'Average View Duration',
+        key: 'averageViewDuration',
+        average: true,
+      },
+      {
+        label: 'Average View Percentage',
+        key: 'averageViewPercentage',
+        average: true,
+      },
       { label: 'Subscribers Gained', key: 'subscribersGained' },
       { label: 'Subscribers Lost', key: 'subscribersLost' },
       { label: 'Likes', key: 'likes' },

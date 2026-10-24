@@ -30,7 +30,17 @@ export const sanitizePostContent = (value: unknown): string => {
     return '';
   }
 
-  return DOMPurify.sanitize(value, {
+  // A block tag the editor does not know (div, section, blockquote, pre,
+  // h4-h6) was dropped with its text kept, gluing its line to the next one
+  // in posts sent through the API, MCP or pasted as HTML (upstream
+  // 14e5a4679). `[^<>]*`, not `[^>]*`: an unclosed tag made the latter
+  // quadratic on a long body (upstream 2ded21d14).
+  const paragraphs = value.replace(
+    /<(\/?)(div|section|article|blockquote|pre|h[4-6])\b[^<>]*>/gi,
+    '<$1p>'
+  );
+
+  return DOMPurify.sanitize(paragraphs, {
     ALLOWED_TAGS,
     ALLOWED_ATTR,
     ALLOWED_URI_REGEXP: /^(?:https?:|mailto:|\/|#)/i,

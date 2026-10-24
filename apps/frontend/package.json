@@ -14,7 +14,7 @@
   },
   "keywords": [],
   "author": "",
-  "license": "ISC",
+  "license": "AGPL-3.0",
   "dependencies": {
     "@blueprintjs/core": "^6.21.0",
     "@blueprintjs/icons": "^6.14.1",
