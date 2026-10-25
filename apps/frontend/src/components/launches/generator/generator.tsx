@@ -43,7 +43,7 @@ const FirstStep: FC = (props) => {
   const resolver = useMemo(() => {
     return classValidatorResolver(GeneratorDto);
   }, []);
-  const form = useForm({
+  const form = useForm<GeneratorDto>({
     mode: 'all',
     resolver,
     values: {

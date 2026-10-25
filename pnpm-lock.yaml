@@ -96,7 +96,7 @@ importers:
     dependencies:
       '@ag-ui/mastra':
         specifier: ^1.0.1
-        version: 1.1.6(@ag-ui/client@1.0.1)(@ag-ui/core@1.0.1(zod@4.6.7))(@copilotkit/runtime@1.10.6(98fad349293f617857ccd11766c562f5))(@mastra/client-js@1.55.0(@bufbuild/protobuf@2.16.0)(@grpc/grpc-js@1.14.6)(bufferutil@4.1.0)(effect@3.21.0)(express@5.2.1)(quansync@0.2.11)(rxjs@7.8.2)(utf-8-validate@5.0.10)(zod-to-json-schema@3.25.2(zod@4.6.7))(zod@4.6.7))(@mastra/core@1.78.0(@bufbuild/protobuf@2.16.0)(@grpc/grpc-js@1.14.6)(bufferutil@4.1.0)(effect@3.21.0)(express@5.2.1)(quansync@0.2.11)(rxjs@7.8.2)(utf-8-validate@5.0.10)(zod-to-json-schema@3.25.2(zod@4.6.7))(zod@4.6.7))
+        version: 1.1.6(@ag-ui/client@1.0.1)(@ag-ui/core@1.0.1(zod@4.6.7))(@copilotkit/runtime@1.10.6(98fad349293f617857ccd11766c562f5))(@mastra/client-js@1.55.0(@bufbuild/protobuf@2.16.0)(@grpc/grpc-js@1.14.6)(bufferutil@4.1.0)(express@5.2.1)(quansync@0.2.11)(rxjs@7.8.2)(utf-8-validate@5.0.10)(zod-to-json-schema@3.25.2(zod@4.6.7))(zod@4.6.7))(@mastra/core@1.78.0(@bufbuild/protobuf@2.16.0)(@grpc/grpc-js@1.14.6)(bufferutil@4.1.0)(express@5.2.1)(quansync@0.2.11)(rxjs@7.8.2)(utf-8-validate@5.0.10)(zod-to-json-schema@3.25.2(zod@4.6.7))(zod@4.6.7))
       '@ai-sdk/openai':
         specifier: ^2.0.135
         version: 2.0.135(zod@4.6.7)
@@ -128,8 +128,8 @@ importers:
         specifier: ^0.0.32
         version: 0.0.32
       '@hookform/resolvers':
-        specifier: ^3.10.0
-        version: 3.10.0(react-hook-form@7.90.0(@types/react@19.3.0)(react@19.3.1))
+        specifier: ^6.0.0
+        version: 6.0.0(@sinclair/typebox@0.27.10)(@standard-schema/spec@1.1.0)(ajv-formats@2.1.1(ajv@8.20.0))(ajv@8.20.0)(class-transformer@0.5.1)(class-validator@0.15.1)(react-hook-form@7.90.0(@types/react@19.3.0)(react@19.3.1))(yup@1.7.1)(zod@4.6.7)
       '@langchain/community':
         specifier: ^1.1.29
         version: 1.1.29(264fcfd72391374e4e18affe62e35a88)
@@ -159,19 +159,19 @@ importers:
         version: 5.10.5(@mantine/core@5.10.5(@emotion/react@11.14.0(@types/react@19.3.0)(react@19.3.1))(@mantine/hooks@5.10.5(react@19.3.1))(@types/react@19.3.0)(react-dom@19.3.1(react@19.3.1))(react@19.3.1))(@mantine/hooks@5.10.5(react@19.3.1))(react-dom@19.3.1(react@19.3.1))(react@19.3.1)
       '@mastra/client-js':
         specifier: 1.55.0
-        version: 1.55.0(@bufbuild/protobuf@2.16.0)(@grpc/grpc-js@1.14.6)(bufferutil@4.1.0)(effect@3.21.0)(express@5.2.1)(quansync@0.2.11)(rxjs@7.8.2)(utf-8-validate@5.0.10)(zod-to-json-schema@3.25.2(zod@4.6.7))(zod@4.6.7)
+        version: 1.55.0(@bufbuild/protobuf@2.16.0)(@grpc/grpc-js@1.14.6)(bufferutil@4.1.0)(express@5.2.1)(quansync@0.2.11)(rxjs@7.8.2)(utf-8-validate@5.0.10)(zod-to-json-schema@3.25.2(zod@4.6.7))(zod@4.6.7)
       '@mastra/core':
         specifier: ^1.77.0
-        version: 1.78.0(@bufbuild/protobuf@2.16.0)(@grpc/grpc-js@1.14.6)(bufferutil@4.1.0)(effect@3.21.0)(express@5.2.1)(quansync@0.2.11)(rxjs@7.8.2)(utf-8-validate@5.0.10)(zod-to-json-schema@3.25.2(zod@4.6.7))(zod@4.6.7)
+        version: 1.78.0(@bufbuild/protobuf@2.16.0)(@grpc/grpc-js@1.14.6)(bufferutil@4.1.0)(express@5.2.1)(quansync@0.2.11)(rxjs@7.8.2)(utf-8-validate@5.0.10)(zod-to-json-schema@3.25.2(zod@4.6.7))(zod@4.6.7)
       '@mastra/mcp':
         specifier: ^1.18.0
-        version: 1.18.0(@cfworker/json-schema@4.1.1)(@mastra/core@1.78.0(@bufbuild/protobuf@2.16.0)(@grpc/grpc-js@1.14.6)(bufferutil@4.1.0)(effect@3.21.0)(express@5.2.1)(quansync@0.2.11)(rxjs@7.8.2)(utf-8-validate@5.0.10)(zod-to-json-schema@3.25.2(zod@4.6.7))(zod@4.6.7))(express@5.2.1)(hono@4.13.12)(react-dom@19.3.1(react@19.3.1))(react@19.3.1)(zod@4.6.7)
+        version: 1.18.0(@cfworker/json-schema@4.1.1)(@mastra/core@1.78.0(@bufbuild/protobuf@2.16.0)(@grpc/grpc-js@1.14.6)(bufferutil@4.1.0)(express@5.2.1)(quansync@0.2.11)(rxjs@7.8.2)(utf-8-validate@5.0.10)(zod-to-json-schema@3.25.2(zod@4.6.7))(zod@4.6.7))(express@5.2.1)(hono@4.13.12)(react-dom@19.3.1(react@19.3.1))(react@19.3.1)(zod@4.6.7)
       '@mastra/memory':
         specifier: ^1.37.1
-        version: 1.38.0(@mastra/core@1.78.0(@bufbuild/protobuf@2.16.0)(@grpc/grpc-js@1.14.6)(bufferutil@4.1.0)(effect@3.21.0)(express@5.2.1)(quansync@0.2.11)(rxjs@7.8.2)(utf-8-validate@5.0.10)(zod-to-json-schema@3.25.2(zod@4.6.7))(zod@4.6.7))
+        version: 1.38.0(@mastra/core@1.78.0(@bufbuild/protobuf@2.16.0)(@grpc/grpc-js@1.14.6)(bufferutil@4.1.0)(express@5.2.1)(quansync@0.2.11)(rxjs@7.8.2)(utf-8-validate@5.0.10)(zod-to-json-schema@3.25.2(zod@4.6.7))(zod@4.6.7))
       '@mastra/pg':
         specifier: ^1.31.1
-        version: 1.31.2(@mastra/core@1.78.0(@bufbuild/protobuf@2.16.0)(@grpc/grpc-js@1.14.6)(bufferutil@4.1.0)(effect@3.21.0)(express@5.2.1)(quansync@0.2.11)(rxjs@7.8.2)(utf-8-validate@5.0.10)(zod-to-json-schema@3.25.2(zod@4.6.7))(zod@4.6.7))
+        version: 1.31.2(@mastra/core@1.78.0(@bufbuild/protobuf@2.16.0)(@grpc/grpc-js@1.14.6)(bufferutil@4.1.0)(express@5.2.1)(quansync@0.2.11)(rxjs@7.8.2)(utf-8-validate@5.0.10)(zod-to-json-schema@3.25.2(zod@4.6.7))(zod@4.6.7))
       '@meronex/icons':
         specifier: ^4.0.0
         version: 4.0.0(react@19.3.1)
@@ -483,7 +483,7 @@ importers:
         version: 4.18.1
       mastra:
         specifier: ^1.34.1
-        version: 1.34.2(@hono/node-server@1.19.11(hono@4.13.12))(@mastra/core@1.78.0(@bufbuild/protobuf@2.16.0)(@grpc/grpc-js@1.14.6)(bufferutil@4.1.0)(effect@3.21.0)(express@5.2.1)(quansync@0.2.11)(rxjs@7.8.2)(utf-8-validate@5.0.10)(zod-to-json-schema@3.25.2(zod@4.6.7))(zod@4.6.7))(bufferutil@4.1.0)(rxjs@7.8.2)(typescript@5.5.4)(utf-8-validate@5.0.10)(zod@4.6.7)
+        version: 1.34.2(@hono/node-server@1.19.11(hono@4.13.12))(@mastra/core@1.78.0(@bufbuild/protobuf@2.16.0)(@grpc/grpc-js@1.14.6)(bufferutil@4.1.0)(express@5.2.1)(quansync@0.2.11)(rxjs@7.8.2)(utf-8-validate@5.0.10)(zod-to-json-schema@3.25.2(zod@4.6.7))(zod@4.6.7))(bufferutil@4.1.0)(rxjs@7.8.2)(typescript@5.5.4)(utf-8-validate@5.0.10)(zod@4.6.7)
       md5:
         specifier: ^2.3.0
         version: 2.3.0
@@ -3215,10 +3215,83 @@ packages:
       '@standard-schema/spec': ^1.0.0
       hono: ^4.12.25
 
-  '@hookform/resolvers@3.10.0':
-    resolution: {integrity: sha512-79Dv+3mDF7i+2ajj7SkypSKHhl1cbln1OGavqrsF7p6mbUv11xpqpacPsGDCTRvCSjEEIez2ef1NveSVL3b0Ag==}
+  '@hookform/resolvers@6.0.0':
+    resolution: {integrity: sha512-6iBzQnB+YwAveVc8HUi6QYLITn5X+xNKRMFIcNXHZlvp2aTI7yWbj4n/JodXxirMCcBc4VCjb2aYAJh4x07mVw==}
     peerDependencies:
-      react-hook-form: ^7.0.0
+      '@sinclair/typebox': '>=0.25.24'
+      '@standard-schema/spec': ^1.0.0
+      '@typeschema/main': '>=0.13.7'
+      '@vinejs/vine': ^2.0.0 || ^3.0.0 || ^4.0.0
+      ajv: ^8.12.0
+      ajv-errors: ^3.0.0
+      ajv-formats: ^2.1.1
+      arktype: ^2.0.0
+      ata-validator: ^1.23.0
+      class-transformer: '>=0.4.0'
+      class-validator: '>=0.12.0'
+      computed-types: ^1.0.0
+      effect: ^4.0.0
+      fluentvalidation-ts: ^3.0.0
+      fp-ts: ^2.7.0
+      io-ts: ^2.0.0
+      joi: ^17.0.0 || ^18.0.0
+      nope-validator: '>=0.12.0'
+      react-hook-form: ^7.55.0
+      superstruct: '>=0.12.0'
+      typanion: ^3.3.2
+      valibot: '>=0.31.0 || ^1.0.0-beta.4 || ^1.0.0-rc'
+      vest: '>=6.0.0'
+      yup: ^1.0.0
+      zod: ^3.25.0 || ^4.0.0
+    peerDependenciesMeta:
+      '@sinclair/typebox':
+        optional: true
+      '@standard-schema/spec':
+        optional: true
+      '@typeschema/main':
+        optional: true
+      '@vinejs/vine':
+        optional: true
+      ajv:
+        optional: true
+      ajv-errors:
+        optional: true
+      ajv-formats:
+        optional: true
+      arktype:
+        optional: true
+      ata-validator:
+        optional: true
+      class-transformer:
+        optional: true
+      class-validator:
+        optional: true
+      computed-types:
+        optional: true
+      effect:
+        optional: true
+      fluentvalidation-ts:
+        optional: true
+      fp-ts:
+        optional: true
+      io-ts:
+        optional: true
+      joi:
+        optional: true
+      nope-validator:
+        optional: true
+      superstruct:
+        optional: true
+      typanion:
+        optional: true
+      valibot:
+        optional: true
+      vest:
+        optional: true
+      yup:
+        optional: true
+      zod:
+        optional: true
 
   '@humanfs/core@0.19.2':
     resolution: {integrity: sha512-UhXNm+CFMWcbChXywFwkmhqjs3PRCmcSa/hfBgLIb7oQ5HNb1wS0icWsGtSAUNgefHeI+eBrA8I1fxmbHsGdvA==}
@@ -7010,6 +7083,9 @@ packages:
 
   '@standard-schema/spec@1.1.0':
     resolution: {integrity: sha512-l2aFy5jALhniG5HgqrD6jXLi/rUWrKvqN/qJx6yoJsgKhblVd+iqqU4RCXavm/jPityDo5TCvKMnpjKnOriy0w==}
+
+  '@standard-schema/utils@0.3.0':
+    resolution: {integrity: sha512-e7Mew686owMaPJVNNLs55PUvgz371nKgwsc4vxE49zsODpJEnxgxRo2y/OKrqueavXgZNMDVj3DdHFlaSAeU8g==}
 
   '@stripe/react-stripe-js@5.6.1':
     resolution: {integrity: sha512-5xBrjkGmFvKvpMod6VvpOaFaa67eRbmieKeFTePZyOr/sUXzm7A3YY91l330pS0usUst5PxTZDUZHWfOc0v1GA==}
@@ -16313,14 +16389,14 @@ snapshots:
       - react-dom
       - ws
 
-  '@ag-ui/mastra@1.1.6(@ag-ui/client@1.0.1)(@ag-ui/core@1.0.1(zod@4.6.7))(@copilotkit/runtime@1.10.6(98fad349293f617857ccd11766c562f5))(@mastra/client-js@1.55.0(@bufbuild/protobuf@2.16.0)(@grpc/grpc-js@1.14.6)(bufferutil@4.1.0)(effect@3.21.0)(express@5.2.1)(quansync@0.2.11)(rxjs@7.8.2)(utf-8-validate@5.0.10)(zod-to-json-schema@3.25.2(zod@4.6.7))(zod@4.6.7))(@mastra/core@1.78.0(@bufbuild/protobuf@2.16.0)(@grpc/grpc-js@1.14.6)(bufferutil@4.1.0)(effect@3.21.0)(express@5.2.1)(quansync@0.2.11)(rxjs@7.8.2)(utf-8-validate@5.0.10)(zod-to-json-schema@3.25.2(zod@4.6.7))(zod@4.6.7))':
+  '@ag-ui/mastra@1.1.6(@ag-ui/client@1.0.1)(@ag-ui/core@1.0.1(zod@4.6.7))(@copilotkit/runtime@1.10.6(98fad349293f617857ccd11766c562f5))(@mastra/client-js@1.55.0(@bufbuild/protobuf@2.16.0)(@grpc/grpc-js@1.14.6)(bufferutil@4.1.0)(express@5.2.1)(quansync@0.2.11)(rxjs@7.8.2)(utf-8-validate@5.0.10)(zod-to-json-schema@3.25.2(zod@4.6.7))(zod@4.6.7))(@mastra/core@1.78.0(@bufbuild/protobuf@2.16.0)(@grpc/grpc-js@1.14.6)(bufferutil@4.1.0)(express@5.2.1)(quansync@0.2.11)(rxjs@7.8.2)(utf-8-validate@5.0.10)(zod-to-json-schema@3.25.2(zod@4.6.7))(zod@4.6.7))':
     dependencies:
       '@ag-ui/a2ui-toolkit': 0.0.4
       '@ag-ui/client': 1.0.1
       '@ag-ui/core': 1.0.1(zod@4.6.7)
       '@ai-sdk/ui-utils': 1.2.11(zod@3.25.76)
-      '@mastra/client-js': 1.55.0(@bufbuild/protobuf@2.16.0)(@grpc/grpc-js@1.14.6)(bufferutil@4.1.0)(effect@3.21.0)(express@5.2.1)(quansync@0.2.11)(rxjs@7.8.2)(utf-8-validate@5.0.10)(zod-to-json-schema@3.25.2(zod@4.6.7))(zod@4.6.7)
-      '@mastra/core': 1.78.0(@bufbuild/protobuf@2.16.0)(@grpc/grpc-js@1.14.6)(bufferutil@4.1.0)(effect@3.21.0)(express@5.2.1)(quansync@0.2.11)(rxjs@7.8.2)(utf-8-validate@5.0.10)(zod-to-json-schema@3.25.2(zod@4.6.7))(zod@4.6.7)
+      '@mastra/client-js': 1.55.0(@bufbuild/protobuf@2.16.0)(@grpc/grpc-js@1.14.6)(bufferutil@4.1.0)(express@5.2.1)(quansync@0.2.11)(rxjs@7.8.2)(utf-8-validate@5.0.10)(zod-to-json-schema@3.25.2(zod@4.6.7))(zod@4.6.7)
+      '@mastra/core': 1.78.0(@bufbuild/protobuf@2.16.0)(@grpc/grpc-js@1.14.6)(bufferutil@4.1.0)(express@5.2.1)(quansync@0.2.11)(rxjs@7.8.2)(utf-8-validate@5.0.10)(zod-to-json-schema@3.25.2(zod@4.6.7))(zod@4.6.7)
       fast-json-patch: 3.1.1
       rxjs: 7.8.1
       zod: 3.25.76
@@ -19435,9 +19511,19 @@ snapshots:
       '@standard-schema/spec': 1.1.0
       hono: 4.13.12
 
-  '@hookform/resolvers@3.10.0(react-hook-form@7.90.0(@types/react@19.3.0)(react@19.3.1))':
+  '@hookform/resolvers@6.0.0(@sinclair/typebox@0.27.10)(@standard-schema/spec@1.1.0)(ajv-formats@2.1.1(ajv@8.20.0))(ajv@8.20.0)(class-transformer@0.5.1)(class-validator@0.15.1)(react-hook-form@7.90.0(@types/react@19.3.0)(react@19.3.1))(yup@1.7.1)(zod@4.6.7)':
     dependencies:
+      '@standard-schema/utils': 0.3.0
       react-hook-form: 7.90.0(@types/react@19.3.0)(react@19.3.1)
+    optionalDependencies:
+      '@sinclair/typebox': 0.27.10
+      '@standard-schema/spec': 1.1.0
+      ajv: 8.20.0
+      ajv-formats: 2.1.1(ajv@8.20.0)
+      class-transformer: 0.5.1
+      class-validator: 0.15.1
+      yup: 1.7.1
+      zod: 4.6.7
 
   '@humanfs/core@0.19.2':
     dependencies:
@@ -20418,11 +20504,11 @@ snapshots:
     dependencies:
       react: 19.3.1
 
-  '@mastra/client-js@1.55.0(@bufbuild/protobuf@2.16.0)(@grpc/grpc-js@1.14.6)(bufferutil@4.1.0)(effect@3.21.0)(express@5.2.1)(quansync@0.2.11)(rxjs@7.8.2)(utf-8-validate@5.0.10)(zod-to-json-schema@3.25.2(zod@4.6.7))(zod@4.6.7)':
+  '@mastra/client-js@1.55.0(@bufbuild/protobuf@2.16.0)(@grpc/grpc-js@1.14.6)(bufferutil@4.1.0)(express@5.2.1)(quansync@0.2.11)(rxjs@7.8.2)(utf-8-validate@5.0.10)(zod-to-json-schema@3.25.2(zod@4.6.7))(zod@4.6.7)':
     dependencies:
       '@ai-sdk/ui-utils': 1.2.11(zod@4.6.7)
       '@lukeed/uuid': 2.0.1
-      '@mastra/core': 1.78.0(@bufbuild/protobuf@2.16.0)(@grpc/grpc-js@1.14.6)(bufferutil@4.1.0)(effect@3.21.0)(express@5.2.1)(quansync@0.2.11)(rxjs@7.8.2)(utf-8-validate@5.0.10)(zod-to-json-schema@3.25.2(zod@4.6.7))(zod@4.6.7)
+      '@mastra/core': 1.78.0(@bufbuild/protobuf@2.16.0)(@grpc/grpc-js@1.14.6)(bufferutil@4.1.0)(express@5.2.1)(quansync@0.2.11)(rxjs@7.8.2)(utf-8-validate@5.0.10)(zod-to-json-schema@3.25.2(zod@4.6.7))(zod@4.6.7)
       '@mastra/schema-compat': 1.3.15(zod@4.6.7)
       canonicalize: 1.0.8
       jose: 6.2.12
@@ -20448,7 +20534,7 @@ snapshots:
       - zod-openapi
       - zod-to-json-schema
 
-  '@mastra/core@1.78.0(@bufbuild/protobuf@2.16.0)(@grpc/grpc-js@1.14.6)(bufferutil@4.1.0)(effect@3.21.0)(express@5.2.1)(quansync@0.2.11)(rxjs@7.8.2)(utf-8-validate@5.0.10)(zod-to-json-schema@3.25.2(zod@4.6.7))(zod@4.6.7)':
+  '@mastra/core@1.78.0(@bufbuild/protobuf@2.16.0)(@grpc/grpc-js@1.14.6)(bufferutil@4.1.0)(express@5.2.1)(quansync@0.2.11)(rxjs@7.8.2)(utf-8-validate@5.0.10)(zod-to-json-schema@3.25.2(zod@4.6.7))(zod@4.6.7)':
     dependencies:
       '@a2a-js/sdk-v0_3': '@a2a-js/sdk@0.3.14(@bufbuild/protobuf@2.16.0)(@grpc/grpc-js@1.14.6)(express@5.2.1)'
       '@a2a-js/sdk-v1': '@a2a-js/sdk@1.0.1(@bufbuild/protobuf@2.16.0)(@grpc/grpc-js@1.14.6)(express@5.2.1)'
@@ -20468,7 +20554,7 @@ snapshots:
       fastq: 1.20.1
       gray-matter: 4.0.3
       hono: 4.13.12
-      hono-openapi: 1.3.4(effect@3.21.0)(hono@4.13.12)(quansync@0.2.11)(zod-to-json-schema@3.25.2(zod@4.6.7))(zod@4.6.7)
+      hono-openapi: 1.3.4(hono@4.13.12)(quansync@0.2.11)(zod-to-json-schema@3.25.2(zod@4.6.7))(zod@4.6.7)
       ignore: 7.0.5
       jpeg-js: 0.4.4
       json-schema: 0.4.0
@@ -20501,14 +20587,14 @@ snapshots:
       - zod-openapi
       - zod-to-json-schema
 
-  '@mastra/deployer@1.78.0(@hono/node-server@1.19.11(hono@4.13.12))(@mastra/core@1.78.0(@bufbuild/protobuf@2.16.0)(@grpc/grpc-js@1.14.6)(bufferutil@4.1.0)(effect@3.21.0)(express@5.2.1)(quansync@0.2.11)(rxjs@7.8.2)(utf-8-validate@5.0.10)(zod-to-json-schema@3.25.2(zod@4.6.7))(zod@4.6.7))(bufferutil@4.1.0)(typescript@5.5.4)(utf-8-validate@5.0.10)(zod@4.6.7)':
+  '@mastra/deployer@1.78.0(@hono/node-server@1.19.11(hono@4.13.12))(@mastra/core@1.78.0(@bufbuild/protobuf@2.16.0)(@grpc/grpc-js@1.14.6)(bufferutil@4.1.0)(express@5.2.1)(quansync@0.2.11)(rxjs@7.8.2)(utf-8-validate@5.0.10)(zod-to-json-schema@3.25.2(zod@4.6.7))(zod@4.6.7))(bufferutil@4.1.0)(typescript@5.5.4)(utf-8-validate@5.0.10)(zod@4.6.7)':
     dependencies:
       '@babel/core': 8.0.7
       '@babel/preset-typescript': 8.0.7(@babel/core@8.0.7)
       '@babel/traverse': 8.0.7
       '@hono/node-ws': 1.3.1(@hono/node-server@1.19.11(hono@4.13.12))(bufferutil@4.1.0)(hono@4.13.12)(utf-8-validate@5.0.10)
-      '@mastra/core': 1.78.0(@bufbuild/protobuf@2.16.0)(@grpc/grpc-js@1.14.6)(bufferutil@4.1.0)(effect@3.21.0)(express@5.2.1)(quansync@0.2.11)(rxjs@7.8.2)(utf-8-validate@5.0.10)(zod-to-json-schema@3.25.2(zod@4.6.7))(zod@4.6.7)
-      '@mastra/server': 1.78.0(@mastra/core@1.78.0(@bufbuild/protobuf@2.16.0)(@grpc/grpc-js@1.14.6)(bufferutil@4.1.0)(effect@3.21.0)(express@5.2.1)(quansync@0.2.11)(rxjs@7.8.2)(utf-8-validate@5.0.10)(zod-to-json-schema@3.25.2(zod@4.6.7))(zod@4.6.7))(zod@4.6.7)
+      '@mastra/core': 1.78.0(@bufbuild/protobuf@2.16.0)(@grpc/grpc-js@1.14.6)(bufferutil@4.1.0)(express@5.2.1)(quansync@0.2.11)(rxjs@7.8.2)(utf-8-validate@5.0.10)(zod-to-json-schema@3.25.2(zod@4.6.7))(zod@4.6.7)
+      '@mastra/server': 1.78.0(@mastra/core@1.78.0(@bufbuild/protobuf@2.16.0)(@grpc/grpc-js@1.14.6)(bufferutil@4.1.0)(express@5.2.1)(quansync@0.2.11)(rxjs@7.8.2)(utf-8-validate@5.0.10)(zod-to-json-schema@3.25.2(zod@4.6.7))(zod@4.6.7))(zod@4.6.7)
       '@optimize-lodash/rollup-plugin': 5.1.0(rollup@4.64.0)
       '@rollup/plugin-alias': 6.0.0(rollup@4.64.0)
       '@rollup/plugin-commonjs': 29.0.2(rollup@4.64.0)
@@ -20541,15 +20627,15 @@ snapshots:
       - utf-8-validate
       - zod
 
-  '@mastra/loggers@1.3.8(@mastra/core@1.78.0(@bufbuild/protobuf@2.16.0)(@grpc/grpc-js@1.14.6)(bufferutil@4.1.0)(effect@3.21.0)(express@5.2.1)(quansync@0.2.11)(rxjs@7.8.2)(utf-8-validate@5.0.10)(zod-to-json-schema@3.25.2(zod@4.6.7))(zod@4.6.7))':
+  '@mastra/loggers@1.3.8(@mastra/core@1.78.0(@bufbuild/protobuf@2.16.0)(@grpc/grpc-js@1.14.6)(bufferutil@4.1.0)(express@5.2.1)(quansync@0.2.11)(rxjs@7.8.2)(utf-8-validate@5.0.10)(zod-to-json-schema@3.25.2(zod@4.6.7))(zod@4.6.7))':
     dependencies:
-      '@mastra/core': 1.78.0(@bufbuild/protobuf@2.16.0)(@grpc/grpc-js@1.14.6)(bufferutil@4.1.0)(effect@3.21.0)(express@5.2.1)(quansync@0.2.11)(rxjs@7.8.2)(utf-8-validate@5.0.10)(zod-to-json-schema@3.25.2(zod@4.6.7))(zod@4.6.7)
+      '@mastra/core': 1.78.0(@bufbuild/protobuf@2.16.0)(@grpc/grpc-js@1.14.6)(bufferutil@4.1.0)(express@5.2.1)(quansync@0.2.11)(rxjs@7.8.2)(utf-8-validate@5.0.10)(zod-to-json-schema@3.25.2(zod@4.6.7))(zod@4.6.7)
       pino: 10.3.1
       pino-pretty: 13.1.3
 
-  '@mastra/mcp@1.18.0(@cfworker/json-schema@4.1.1)(@mastra/core@1.78.0(@bufbuild/protobuf@2.16.0)(@grpc/grpc-js@1.14.6)(bufferutil@4.1.0)(effect@3.21.0)(express@5.2.1)(quansync@0.2.11)(rxjs@7.8.2)(utf-8-validate@5.0.10)(zod-to-json-schema@3.25.2(zod@4.6.7))(zod@4.6.7))(express@5.2.1)(hono@4.13.12)(react-dom@19.3.1(react@19.3.1))(react@19.3.1)(zod@4.6.7)':
+  '@mastra/mcp@1.18.0(@cfworker/json-schema@4.1.1)(@mastra/core@1.78.0(@bufbuild/protobuf@2.16.0)(@grpc/grpc-js@1.14.6)(bufferutil@4.1.0)(express@5.2.1)(quansync@0.2.11)(rxjs@7.8.2)(utf-8-validate@5.0.10)(zod-to-json-schema@3.25.2(zod@4.6.7))(zod@4.6.7))(express@5.2.1)(hono@4.13.12)(react-dom@19.3.1(react@19.3.1))(react@19.3.1)(zod@4.6.7)':
     dependencies:
-      '@mastra/core': 1.78.0(@bufbuild/protobuf@2.16.0)(@grpc/grpc-js@1.14.6)(bufferutil@4.1.0)(effect@3.21.0)(express@5.2.1)(quansync@0.2.11)(rxjs@7.8.2)(utf-8-validate@5.0.10)(zod-to-json-schema@3.25.2(zod@4.6.7))(zod@4.6.7)
+      '@mastra/core': 1.78.0(@bufbuild/protobuf@2.16.0)(@grpc/grpc-js@1.14.6)(bufferutil@4.1.0)(express@5.2.1)(quansync@0.2.11)(rxjs@7.8.2)(utf-8-validate@5.0.10)(zod-to-json-schema@3.25.2(zod@4.6.7))(zod@4.6.7)
       '@modelcontextprotocol/client': 2.3.1
       '@modelcontextprotocol/core': 2.0.0
       '@modelcontextprotocol/ext-apps': 1.7.5(@modelcontextprotocol/sdk@1.32.1(@cfworker/json-schema@4.1.1)(zod@4.6.7))(react-dom@19.3.1(react@19.3.1))(react@19.3.1)(zod@4.6.7)
@@ -20568,9 +20654,9 @@ snapshots:
       - supports-color
       - zod
 
-  '@mastra/memory@1.38.0(@mastra/core@1.78.0(@bufbuild/protobuf@2.16.0)(@grpc/grpc-js@1.14.6)(bufferutil@4.1.0)(effect@3.21.0)(express@5.2.1)(quansync@0.2.11)(rxjs@7.8.2)(utf-8-validate@5.0.10)(zod-to-json-schema@3.25.2(zod@4.6.7))(zod@4.6.7))':
+  '@mastra/memory@1.38.0(@mastra/core@1.78.0(@bufbuild/protobuf@2.16.0)(@grpc/grpc-js@1.14.6)(bufferutil@4.1.0)(express@5.2.1)(quansync@0.2.11)(rxjs@7.8.2)(utf-8-validate@5.0.10)(zod-to-json-schema@3.25.2(zod@4.6.7))(zod@4.6.7))':
     dependencies:
-      '@mastra/core': 1.78.0(@bufbuild/protobuf@2.16.0)(@grpc/grpc-js@1.14.6)(bufferutil@4.1.0)(effect@3.21.0)(express@5.2.1)(quansync@0.2.11)(rxjs@7.8.2)(utf-8-validate@5.0.10)(zod-to-json-schema@3.25.2(zod@4.6.7))(zod@4.6.7)
+      '@mastra/core': 1.78.0(@bufbuild/protobuf@2.16.0)(@grpc/grpc-js@1.14.6)(bufferutil@4.1.0)(express@5.2.1)(quansync@0.2.11)(rxjs@7.8.2)(utf-8-validate@5.0.10)(zod-to-json-schema@3.25.2(zod@4.6.7))(zod@4.6.7)
       '@mastra/schema-compat': 1.3.15(zod@4.6.7)
       async-mutex: 0.5.0
       diff: 8.0.4
@@ -20582,9 +20668,9 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  '@mastra/pg@1.31.2(@mastra/core@1.78.0(@bufbuild/protobuf@2.16.0)(@grpc/grpc-js@1.14.6)(bufferutil@4.1.0)(effect@3.21.0)(express@5.2.1)(quansync@0.2.11)(rxjs@7.8.2)(utf-8-validate@5.0.10)(zod-to-json-schema@3.25.2(zod@4.6.7))(zod@4.6.7))':
+  '@mastra/pg@1.31.2(@mastra/core@1.78.0(@bufbuild/protobuf@2.16.0)(@grpc/grpc-js@1.14.6)(bufferutil@4.1.0)(express@5.2.1)(quansync@0.2.11)(rxjs@7.8.2)(utf-8-validate@5.0.10)(zod-to-json-schema@3.25.2(zod@4.6.7))(zod@4.6.7))':
     dependencies:
-      '@mastra/core': 1.78.0(@bufbuild/protobuf@2.16.0)(@grpc/grpc-js@1.14.6)(bufferutil@4.1.0)(effect@3.21.0)(express@5.2.1)(quansync@0.2.11)(rxjs@7.8.2)(utf-8-validate@5.0.10)(zod-to-json-schema@3.25.2(zod@4.6.7))(zod@4.6.7)
+      '@mastra/core': 1.78.0(@bufbuild/protobuf@2.16.0)(@grpc/grpc-js@1.14.6)(bufferutil@4.1.0)(express@5.2.1)(quansync@0.2.11)(rxjs@7.8.2)(utf-8-validate@5.0.10)(zod-to-json-schema@3.25.2(zod@4.6.7))(zod@4.6.7)
       async-mutex: 0.5.0
       pg: 8.23.1
       pg-connection-string: 2.14.1
@@ -20598,9 +20684,9 @@ snapshots:
       zod: 4.6.7
       zod-from-json-schema: 0.5.6
 
-  '@mastra/server@1.78.0(@mastra/core@1.78.0(@bufbuild/protobuf@2.16.0)(@grpc/grpc-js@1.14.6)(bufferutil@4.1.0)(effect@3.21.0)(express@5.2.1)(quansync@0.2.11)(rxjs@7.8.2)(utf-8-validate@5.0.10)(zod-to-json-schema@3.25.2(zod@4.6.7))(zod@4.6.7))(zod@4.6.7)':
+  '@mastra/server@1.78.0(@mastra/core@1.78.0(@bufbuild/protobuf@2.16.0)(@grpc/grpc-js@1.14.6)(bufferutil@4.1.0)(express@5.2.1)(quansync@0.2.11)(rxjs@7.8.2)(utf-8-validate@5.0.10)(zod-to-json-schema@3.25.2(zod@4.6.7))(zod@4.6.7))(zod@4.6.7)':
     dependencies:
-      '@mastra/core': 1.78.0(@bufbuild/protobuf@2.16.0)(@grpc/grpc-js@1.14.6)(bufferutil@4.1.0)(effect@3.21.0)(express@5.2.1)(quansync@0.2.11)(rxjs@7.8.2)(utf-8-validate@5.0.10)(zod-to-json-schema@3.25.2(zod@4.6.7))(zod@4.6.7)
+      '@mastra/core': 1.78.0(@bufbuild/protobuf@2.16.0)(@grpc/grpc-js@1.14.6)(bufferutil@4.1.0)(express@5.2.1)(quansync@0.2.11)(rxjs@7.8.2)(utf-8-validate@5.0.10)(zod-to-json-schema@3.25.2(zod@4.6.7))(zod@4.6.7)
       hono: 4.13.12
       zod: 4.6.7
 
@@ -22733,26 +22819,26 @@ snapshots:
 
   '@stablelib/base64@1.0.1': {}
 
-  '@standard-community/standard-json@0.3.5(@standard-schema/spec@1.1.0)(@types/json-schema@7.0.15)(effect@3.21.0)(quansync@0.2.11)(zod-to-json-schema@3.25.2(zod@4.6.7))(zod@4.6.7)':
+  '@standard-community/standard-json@0.3.5(@standard-schema/spec@1.1.0)(@types/json-schema@7.0.15)(quansync@0.2.11)(zod-to-json-schema@3.25.2(zod@4.6.7))(zod@4.6.7)':
     dependencies:
       '@standard-schema/spec': 1.1.0
       '@types/json-schema': 7.0.15
       quansync: 0.2.11
     optionalDependencies:
-      effect: 3.21.0
       zod: 4.6.7
       zod-to-json-schema: 3.25.2(zod@4.6.7)
 
-  '@standard-community/standard-openapi@0.2.9(@standard-community/standard-json@0.3.5(@standard-schema/spec@1.1.0)(@types/json-schema@7.0.15)(effect@3.21.0)(quansync@0.2.11)(zod-to-json-schema@3.25.2(zod@4.6.7))(zod@4.6.7))(@standard-schema/spec@1.1.0)(effect@3.21.0)(openapi-types@12.1.3)(zod@4.6.7)':
+  '@standard-community/standard-openapi@0.2.9(@standard-community/standard-json@0.3.5(@standard-schema/spec@1.1.0)(@types/json-schema@7.0.15)(quansync@0.2.11)(zod-to-json-schema@3.25.2(zod@4.6.7))(zod@4.6.7))(@standard-schema/spec@1.1.0)(openapi-types@12.1.3)(zod@4.6.7)':
     dependencies:
-      '@standard-community/standard-json': 0.3.5(@standard-schema/spec@1.1.0)(@types/json-schema@7.0.15)(effect@3.21.0)(quansync@0.2.11)(zod-to-json-schema@3.25.2(zod@4.6.7))(zod@4.6.7)
+      '@standard-community/standard-json': 0.3.5(@standard-schema/spec@1.1.0)(@types/json-schema@7.0.15)(quansync@0.2.11)(zod-to-json-schema@3.25.2(zod@4.6.7))(zod@4.6.7)
       '@standard-schema/spec': 1.1.0
       openapi-types: 12.1.3
     optionalDependencies:
-      effect: 3.21.0
       zod: 4.6.7
 
   '@standard-schema/spec@1.1.0': {}
+
+  '@standard-schema/utils@0.3.0': {}
 
   '@stripe/react-stripe-js@5.6.1(@stripe/stripe-js@8.11.0)(react-dom@19.3.1(react@19.3.1))(react@19.3.1)':
     dependencies:
@@ -24595,6 +24681,11 @@ snapshots:
   ajv-formats@2.1.1(ajv@8.18.0):
     optionalDependencies:
       ajv: 8.18.0
+
+  ajv-formats@2.1.1(ajv@8.20.0):
+    optionalDependencies:
+      ajv: 8.20.0
+    optional: true
 
   ajv-formats@3.0.1(ajv@8.18.0):
     optionalDependencies:
@@ -27640,11 +27731,11 @@ snapshots:
     dependencies:
       react-is: 16.13.1
 
-  hono-openapi@1.3.4(effect@3.21.0)(hono@4.13.12)(quansync@0.2.11)(zod-to-json-schema@3.25.2(zod@4.6.7))(zod@4.6.7):
+  hono-openapi@1.3.4(hono@4.13.12)(quansync@0.2.11)(zod-to-json-schema@3.25.2(zod@4.6.7))(zod@4.6.7):
     dependencies:
       '@hono/standard-validator': 0.4.0(@standard-schema/spec@1.1.0)(hono@4.13.12)
-      '@standard-community/standard-json': 0.3.5(@standard-schema/spec@1.1.0)(@types/json-schema@7.0.15)(effect@3.21.0)(quansync@0.2.11)(zod-to-json-schema@3.25.2(zod@4.6.7))(zod@4.6.7)
-      '@standard-community/standard-openapi': 0.2.9(@standard-community/standard-json@0.3.5(@standard-schema/spec@1.1.0)(@types/json-schema@7.0.15)(effect@3.21.0)(quansync@0.2.11)(zod-to-json-schema@3.25.2(zod@4.6.7))(zod@4.6.7))(@standard-schema/spec@1.1.0)(effect@3.21.0)(openapi-types@12.1.3)(zod@4.6.7)
+      '@standard-community/standard-json': 0.3.5(@standard-schema/spec@1.1.0)(@types/json-schema@7.0.15)(quansync@0.2.11)(zod-to-json-schema@3.25.2(zod@4.6.7))(zod@4.6.7)
+      '@standard-community/standard-openapi': 0.2.9(@standard-community/standard-json@0.3.5(@standard-schema/spec@1.1.0)(@types/json-schema@7.0.15)(quansync@0.2.11)(zod-to-json-schema@3.25.2(zod@4.6.7))(zod@4.6.7))(@standard-schema/spec@1.1.0)(openapi-types@12.1.3)(zod@4.6.7)
       '@standard-schema/spec': 1.1.0
       '@types/json-schema': 7.0.15
       hono: 4.13.12
@@ -29201,15 +29292,15 @@ snapshots:
 
   markdown-table@3.0.4: {}
 
-  mastra@1.34.2(@hono/node-server@1.19.11(hono@4.13.12))(@mastra/core@1.78.0(@bufbuild/protobuf@2.16.0)(@grpc/grpc-js@1.14.6)(bufferutil@4.1.0)(effect@3.21.0)(express@5.2.1)(quansync@0.2.11)(rxjs@7.8.2)(utf-8-validate@5.0.10)(zod-to-json-schema@3.25.2(zod@4.6.7))(zod@4.6.7))(bufferutil@4.1.0)(rxjs@7.8.2)(typescript@5.5.4)(utf-8-validate@5.0.10)(zod@4.6.7):
+  mastra@1.34.2(@hono/node-server@1.19.11(hono@4.13.12))(@mastra/core@1.78.0(@bufbuild/protobuf@2.16.0)(@grpc/grpc-js@1.14.6)(bufferutil@4.1.0)(express@5.2.1)(quansync@0.2.11)(rxjs@7.8.2)(utf-8-validate@5.0.10)(zod-to-json-schema@3.25.2(zod@4.6.7))(zod@4.6.7))(bufferutil@4.1.0)(rxjs@7.8.2)(typescript@5.5.4)(utf-8-validate@5.0.10)(zod@4.6.7):
     dependencies:
       '@babel/parser': 8.0.7
       '@babel/types': 8.0.6
       '@clack/prompts': 1.8.1
       '@expo/devcert': 1.2.1
-      '@mastra/core': 1.78.0(@bufbuild/protobuf@2.16.0)(@grpc/grpc-js@1.14.6)(bufferutil@4.1.0)(effect@3.21.0)(express@5.2.1)(quansync@0.2.11)(rxjs@7.8.2)(utf-8-validate@5.0.10)(zod-to-json-schema@3.25.2(zod@4.6.7))(zod@4.6.7)
-      '@mastra/deployer': 1.78.0(@hono/node-server@1.19.11(hono@4.13.12))(@mastra/core@1.78.0(@bufbuild/protobuf@2.16.0)(@grpc/grpc-js@1.14.6)(bufferutil@4.1.0)(effect@3.21.0)(express@5.2.1)(quansync@0.2.11)(rxjs@7.8.2)(utf-8-validate@5.0.10)(zod-to-json-schema@3.25.2(zod@4.6.7))(zod@4.6.7))(bufferutil@4.1.0)(typescript@5.5.4)(utf-8-validate@5.0.10)(zod@4.6.7)
-      '@mastra/loggers': 1.3.8(@mastra/core@1.78.0(@bufbuild/protobuf@2.16.0)(@grpc/grpc-js@1.14.6)(bufferutil@4.1.0)(effect@3.21.0)(express@5.2.1)(quansync@0.2.11)(rxjs@7.8.2)(utf-8-validate@5.0.10)(zod-to-json-schema@3.25.2(zod@4.6.7))(zod@4.6.7))
+      '@mastra/core': 1.78.0(@bufbuild/protobuf@2.16.0)(@grpc/grpc-js@1.14.6)(bufferutil@4.1.0)(express@5.2.1)(quansync@0.2.11)(rxjs@7.8.2)(utf-8-validate@5.0.10)(zod-to-json-schema@3.25.2(zod@4.6.7))(zod@4.6.7)
+      '@mastra/deployer': 1.78.0(@hono/node-server@1.19.11(hono@4.13.12))(@mastra/core@1.78.0(@bufbuild/protobuf@2.16.0)(@grpc/grpc-js@1.14.6)(bufferutil@4.1.0)(express@5.2.1)(quansync@0.2.11)(rxjs@7.8.2)(utf-8-validate@5.0.10)(zod-to-json-schema@3.25.2(zod@4.6.7))(zod@4.6.7))(bufferutil@4.1.0)(typescript@5.5.4)(utf-8-validate@5.0.10)(zod@4.6.7)
+      '@mastra/loggers': 1.3.8(@mastra/core@1.78.0(@bufbuild/protobuf@2.16.0)(@grpc/grpc-js@1.14.6)(bufferutil@4.1.0)(express@5.2.1)(quansync@0.2.11)(rxjs@7.8.2)(utf-8-validate@5.0.10)(zod-to-json-schema@3.25.2(zod@4.6.7))(zod@4.6.7))
       archiver: 8.0.0
       commander: 14.0.3
       dotenv: 17.4.2

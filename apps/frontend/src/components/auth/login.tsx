@@ -1,6 +1,6 @@
 'use client';
 
-import { useForm, SubmitHandler, FormProvider } from 'react-hook-form';
+import { useForm, SubmitHandler, FormProvider, Resolver } from 'react-hook-form';
 import { useFetch } from '@gitroom/helpers/utils/custom.fetch';
 import { isFetchHandledError } from '@gitroom/helpers/utils/fetch.errors';
 import Link from 'next/link';
@@ -26,7 +26,9 @@ export function Login() {
   const [notActivated, setNotActivated] = useState(false);
   const { isGeneral, genericOauth, disableRegistration } = useVariables();
   const resolver = useMemo(() => {
-    return classValidatorResolver(LoginUserDto);
+    // The DTO class validates the same fields; since @hookform/resolvers 5 the
+    // resolver is typed by that class, which is wider than the form's own type.
+    return classValidatorResolver(LoginUserDto) as unknown as Resolver<Inputs>;
   }, []);
   const form = useForm<Inputs>({
     resolver,
