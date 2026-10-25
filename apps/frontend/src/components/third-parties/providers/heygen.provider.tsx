@@ -122,6 +122,9 @@ const HeygenProviderComponent = () => {
         selectedVoice: string().min(1, 'Voice is required'),
         aspect_ratio: string().min(1, 'Aspect ratio is required'),
         captions: string().min(1, 'Captions is required'),
+        // Set by the avatar picker (avatar or talking_photo); kept in the
+        // parsed values, which drop keys the schema does not list.
+        type: string(),
       })
     ),
   });
