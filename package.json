@@ -250,7 +250,7 @@
     "ws": "^8.22.0",
     "yargs": "^17.7.3",
     "yup": "^1.7.1",
-    "zod": "^3.25.76",
+    "zod": "^4.6.6",
     "zustand": "^5.0.15"
   },
   "devDependencies": {
@@ -335,8 +335,8 @@
       "happy-dom@<20.8.9": "^20.8.9",
       "handlebars@<4.7.10": "^4.7.10",
       "hono@<4.12.25": "^4.12.25",
-      "fast-uri@>=3.0.0 <3.1.7": "^3.1.7",
-      "ip-address@<10.3.1": "^10.3.1",
+      "fast-uri@<3.1.9": "^3.1.9",
+      "ip-address@<10.7.4": "^10.7.4",
       "@grpc/grpc-js@>=1.14.0 <1.14.5": "^1.14.5",
       "multer@<2.3.0": "^2.3.0",
       "brace-expansion@<1.1.20": "^1.1.20",
@@ -384,7 +384,9 @@
       "@modelcontextprotocol/server@>=2.0.0 <2.3.1": "^2.3.1",
       "@modelcontextprotocol/server-legacy@>=2.0.0 <2.3.1": "^2.3.1",
       "deepmerge-ts@<8.0.0": "^8.0.0",
-      "undici@<6.29.1": "^6.29.1"
+      "undici@<6.29.1": "^6.29.1",
+      "body-parser@<1.20.9": "^1.20.9",
+      "body-parser@>=2.0.0 <2.4.0": "^2.4.0"
     },
     "onlyBuiltDependencies": [
       "bcrypt"
