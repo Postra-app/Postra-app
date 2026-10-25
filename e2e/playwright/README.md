@@ -28,7 +28,7 @@ per IP. That is why `retries` is 0.
 
 ## In CI
 
-`deploy-dev.yml` runs the suite after the health check, with the account from
+`deploy.yml` runs the suite after the health check, with the account from
 the `E2E_EMAIL` / `E2E_PASSWORD` / `E2E_ORG` secrets (skipped with a warning when
 they are not set). Traces are off in CI — they record the session cookie, and
 this repo's artifacts are public — so a failure uploads screenshots only.

@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Staging deploy (deploy-dev.yml, job "staging"): start the box and its
+# Staging deploy (deploy.yml, job "staging"): start the box and its
 # database, put IMAGE_URI on it, wait for health, run the Playwright smoke
 # against staging.postra.pl, and stop both again whatever happened — staging
 # costs ~$10/month only because it is off between deploys.
@@ -36,8 +36,9 @@ for _ in $(seq 1 60); do
 done
 [ "$PING" = "Online" ] || { echo "SSM agent on staging never came online"; exit 1; }
 
-# The same steps as production (deploy-dev.yml "Deploy on EC2 via SSM"),
-# minus the rollback bookkeeping: staging has nothing to roll back to.
+# The steps the production box ran over SSM before production moved to an
+# auto scaling group (2026-10-25), minus the rollback bookkeeping: staging has
+# nothing to roll back to.
 COMMANDS_JSON=$(jq -nc --arg region "$AWS_REGION" --arg registry "$ECR_REGISTRY" --arg image "$IMAGE_URI" '{
   commands: [
     "set -e",

@@ -4,7 +4,7 @@ import { tmpdir } from 'os';
 import { join } from 'path';
 
 // .github/scripts/asg-refresh.sh rolls the auto scaling group of the postra
-// account onto the image in SSM (deploy-dev.yml, job deploy-asg). It must
+// account onto the image in SSM (deploy.yml, job deploy). It must
 // cancel a refresh that is still running (a superseded deploy), start one,
 // and succeed only on Status=Successful - a Failed or Cancelled refresh, or
 // one that never ends, must fail the deploy so the rollback runs. Run with a
