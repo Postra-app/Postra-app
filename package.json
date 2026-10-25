@@ -188,7 +188,7 @@
     "mime-types": "3.0.2",
     "mobx": "catalog:",
     "mobx-react-lite": "catalog:",
-    "multer": "^2.4.0",
+    "multer": "^2.5.0",
     "music-metadata": "^11.16.1",
     "nestjs-command": "^3.1.5",
     "nestjs-real-ip": "^3.0.1",
@@ -197,7 +197,7 @@
     "next-plausible": "^3.12.5",
     "node-fetch": "^3.3.2",
     "node-telegram-bot-api": "^0.67.0",
-    "nodemailer": "^10.1.1",
+    "nodemailer": "^10.2.1",
     "nostr-tools": "^2.25.2",
     "openai": "^6.49.0",
     "p-limit": "^3.1.0",
@@ -243,7 +243,7 @@
     "tweetnacl": "^1.0.3",
     "twitter-api-v2": "^1.29.1",
     "twitter-text": "^3.1.0",
-    "undici": "^8.12.1",
+    "undici": "^8.12.3",
     "use-debounce": "^10.1.1",
     "utf-8-validate": "^5.0.10",
     "webextension-polyfill": "^0.12.0",
@@ -384,7 +384,7 @@
       "@modelcontextprotocol/server@>=2.0.0 <2.3.1": "^2.3.1",
       "@modelcontextprotocol/server-legacy@>=2.0.0 <2.3.1": "^2.3.1",
       "deepmerge-ts@<8.0.0": "^8.0.0",
-      "undici@<6.27.0": "^6.27.0"
+      "undici@<6.29.1": "^6.29.1"
     },
     "onlyBuiltDependencies": [
       "bcrypt"
