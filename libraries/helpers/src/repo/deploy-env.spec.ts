@@ -11,22 +11,17 @@ import {
 import { tmpdir } from 'os';
 import { join } from 'path';
 
-// Every deploy rebuilds /opt/postra/.env from SSM on the box. The file holds
+// A box deploy rebuilds /opt/postra/.env from SSM on the box. The file holds
 // decrypted secrets, so it must be root-only (E2E-11-10: production had 0644),
 // and a failed or partial SSM read must not replace a working .env. This runs
 // the exact commands the deploys send through SSM, with a fake `aws`.
 
 const root = join(__dirname, '..', '..', '..', '..');
 
+// Production left the box for an auto scaling group on 2026-10-25 (its
+// instances build .env in Postra-infra modules/app_asg); staging still
+// deploys a box this way.
 const sources = [
-  {
-    name: 'deploy-dev.yml',
-    prefix: '/postra/dev/',
-    text: readFileSync(
-      join(root, '.github', 'workflows', 'deploy-dev.yml'),
-      'utf8'
-    ),
-  },
   {
     name: 'scripts/deploy-staging.sh',
     prefix: '/postra/staging/',
@@ -46,7 +41,7 @@ const ssmCommands = (text: string): string[] => {
     .replace(/\\\(\$region\)/g, 'eu-west-2')
     .replace(/\\\(\$registry\)/g, 'registry.example')
     .replace(/\\\(\$image\)/g, 'image:tag')
-    // SSM_PREFIX, a repository variable; the box deploy's default.
+    // SSM_PREFIX, where a deploy passes one.
     .replace(/\\\(\$prefix\)/g, '/postra/dev');
   return JSON.parse(json).commands;
 };

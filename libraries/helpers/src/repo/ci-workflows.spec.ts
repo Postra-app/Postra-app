@@ -112,23 +112,26 @@ describe('CI workflows', () => {
     expect(docker).toMatch(/pnpm install --frozen-lockfile/);
   });
 
-  // One workflow, two places to deploy to (Postra-infra runbook A5, W3): the
-  // box on the shared account over SSM, and the auto scaling group of the
-  // postra account by APP_IMAGE in SSM plus an instance refresh. Repository
-  // variables choose; without them the box deploy runs as before, with its
-  // parameters under /postra/dev.
-  it('deploys to the box or to the group, chosen by repository variables', () => {
-    const deploy = workflows.find((w) => w.name === 'deploy-dev.yml')!.text;
+  // Production is the auto scaling group of the postra account since the move
+  // of 2026-10-25 (Postra-infra runbook A5, D6): one workflow named "Deploy",
+  // APP_IMAGE in SSM plus an instance refresh. The box deploy over SSM, its
+  // EC2_INSTANCE_ID fallback and the DEPLOY_TARGET switch are gone, so a
+  // missing repository variable can no longer send a deploy to a box that
+  // does not exist.
+  it('deploys to the auto scaling group of the postra account only', () => {
+    expect(workflows.map((w) => w.name)).not.toContain('deploy-dev.yml');
+    const deploy = workflows.find((w) => w.name === 'deploy.yml')!.text;
+    expect(deploy).toMatch(/^name: Deploy\n/);
+    expect(deploy).toMatch(/^concurrency:\n  group: deploy\n/m);
     expect(deploy).toContain(
-      "SSM_PREFIX: ${{ vars.SSM_PREFIX || '/postra/dev' }}"
+      "SSM_PREFIX: ${{ vars.SSM_PREFIX || '/postra/prod' }}"
     );
-    expect(deploy).not.toMatch(/get-parameters-by-path --path \/postra\/dev\//);
-    expect(deploy).toMatch(/--arg prefix "\$\{SSM_PREFIX\}"/);
-    expect(deploy).toMatch(
-      /^  deploy:\n[\s\S]*?if: always\(\) && vars\.DEPLOY_TARGET != 'asg'/m
+    expect(deploy).not.toMatch(
+      /EC2_INSTANCE_ID|DEPLOY_TARGET|postra-dev-app|\/postra\/dev/
     );
+    expect(deploy).not.toMatch(/^ {2}deploy-asg:/m);
     expect(deploy).toMatch(
-      /^  deploy-asg:\n[\s\S]*?if: always\(\) && vars\.DEPLOY_TARGET == 'asg'/m
+      /^ {2}deploy:\n {4}needs: \[build, staging\]\n {4}if: always\(\) && needs\.build\.result == 'success'/m
     );
     expect(deploy).toMatch(
       /put-parameter --name "\$\{SSM_PREFIX\}\/APP_IMAGE"/
@@ -139,12 +142,12 @@ describe('CI workflows', () => {
       'put-parameter --name "${SSM_PREFIX}/APP_IMAGE_VERIFIED"'
     );
     expect(verified).toBeGreaterThan(
-      deploy.indexOf('Smoke test (Playwright)', deploy.indexOf('deploy-asg:'))
+      deploy.indexOf('Smoke test (Playwright)', deploy.indexOf('\n  deploy:'))
     );
     expect(verified).toBeLessThan(
       deploy.indexOf(
         'Roll back to the previous image',
-        deploy.indexOf('deploy-asg:')
+        deploy.indexOf('\n  deploy:')
       )
     );
     expect(deploy).toMatch(
