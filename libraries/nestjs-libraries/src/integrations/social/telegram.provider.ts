@@ -22,6 +22,10 @@ import { ssrfSafeDispatcher } from '@gitroom/nestjs-libraries/dtos/webhooks/ssrf
 import { isSafePublicHttpsUrl } from '@gitroom/nestjs-libraries/dtos/webhooks/webhook.url.validator';
 
 const telegramBot = new TelegramBot(process.env.TELEGRAM_TOKEN!);
+const TELEGRAM_UPDATES_LOCK = 'telegram-updates-lock';
+const TELEGRAM_UPDATES_OFFSET = 'telegram-updates-offset';
+const TELEGRAM_CONNECT_POSTS = 'telegram-connect-posts';
+const TELEGRAM_PROOF_SECONDS = 15 * 60;
 // Added to support local storage posting
 const frontendURL = process.env.FRONTEND_URL || 'http://localhost:5000';
 const mediaStorage = process.env.STORAGE_PROVIDER || 'local';
@@ -80,6 +84,7 @@ export class TelegramProvider extends SocialAbstract implements SocialProvider {
     code: string;
     codeVerifier: string;
     refresh?: string;
+    organizationId?: string;
   }) {
     const chat = await telegramBot.getChat(params.code);
 
@@ -90,7 +95,14 @@ export class TelegramProvider extends SocialAbstract implements SocialProvider {
     // The chat id or @username alone connected any chat the shared bot was
     // in (E2E-04-25). The proof is "/connect <word>" posted in the chat,
     // which getBotId sees; it is good for one connection, briefly.
-    if (!(await ioRedis.getdel(`telegram-proven:${chat.id}`))) {
+    // The proof belongs to the organisation whose wizard saw the message
+    // (E2E-11-69): another organisation naming the chat in that window could
+    // otherwise take it.
+    const proven = await ioRedis.getdel(`telegram-proven:${chat.id}`);
+    if (
+      !proven ||
+      (params.organizationId && proven !== params.organizationId)
+    ) {
       return 'Post the /connect message in the chat first';
     }
 
@@ -110,33 +122,89 @@ export class TelegramProvider extends SocialAbstract implements SocialProvider {
     };
   }
 
-  async getBotId(query: { id?: number; word: string }) {
-    // Added allowed_updates Ensure only necessary updates are fetched
-    const res = await telegramBot.getUpdates({
-      ...(query.id ? { offset: query.id } : {}),
-      allowed_updates: ['message', 'channel_post'],
-    });
-    //message.text is for groups, channel_post.text is for channels
-    const match = res.find(
-      (p) =>
-        (p?.message?.text === `/connect ${query.word}` &&
-          p?.message?.chat?.id) ||
-        (p?.channel_post?.text === `/connect ${query.word}` &&
-          p?.channel_post?.chat?.id)
-    );
-    // get correct chatId based on the channel type
-    const chatId = match?.message?.chat?.id || match?.channel_post?.chat?.id;
+  // One bot serves every organisation, and getUpdates with an offset
+  // confirms every earlier update for all of them. Each wizard sent its own
+  // offset, so one organisation polling ate another's "/connect" and that
+  // wizard waited for ever (E2E-11-69). The server now reads the updates once,
+  // under a lock, and keeps the recent "/connect" posts for every wizard to
+  // look through; nothing else from the chats is kept.
+  private async recentConnectPosts(): Promise<
+    {
+      raw: string;
+      chatId: number;
+      text: string;
+      messageId: number;
+      at: number;
+    }[]
+  > {
+    if (
+      (await ioRedis.set(TELEGRAM_UPDATES_LOCK, '1', 'EX', 10, 'NX')) === 'OK'
+    ) {
+      try {
+        const offset = Number(await ioRedis.get(TELEGRAM_UPDATES_OFFSET));
+        const res = await telegramBot.getUpdates({
+          ...(offset ? { offset } : {}),
+          allowed_updates: ['message', 'channel_post'],
+        });
+        const posts = res
+          .map((u) => u.message || u.channel_post)
+          .filter((m) => m?.chat?.id && m?.text?.startsWith('/connect '))
+          .map((m) =>
+            JSON.stringify({
+              chatId: m!.chat.id,
+              text: m!.text,
+              messageId: m!.message_id,
+              at: Date.now(),
+            })
+          );
+        if (posts.length) {
+          await ioRedis.rpush(TELEGRAM_CONNECT_POSTS, ...posts);
+          await ioRedis.ltrim(TELEGRAM_CONNECT_POSTS, -200, -1);
+          await ioRedis.expire(TELEGRAM_CONNECT_POSTS, TELEGRAM_PROOF_SECONDS);
+        }
+        if (res.length) {
+          await ioRedis.set(
+            TELEGRAM_UPDATES_OFFSET,
+            String(res[res.length - 1].update_id + 1)
+          );
+        }
+      } finally {
+        await ioRedis.del(TELEGRAM_UPDATES_LOCK);
+      }
+    }
+    const since = Date.now() - TELEGRAM_PROOF_SECONDS * 1000;
+    return (await ioRedis.lrange(TELEGRAM_CONNECT_POSTS, 0, -1))
+      .map((raw) => ({ raw, ...JSON.parse(raw) }))
+      .filter((p) => p.at >= since);
+  }
+
+  // `query.id` (the offset the wizard used to send) is no longer used: the
+  // server keeps the offset.
+  async getBotId(
+    query: { id?: number; word: string },
+    organizationId?: string
+  ) {
+    const posts = await this.recentConnectPosts();
+    const found = posts.find((p) => p.text === `/connect ${query.word}`);
+    if (found) {
+      await ioRedis.lrem(TELEGRAM_CONNECT_POSTS, 1, found.raw);
+    }
+    const chatId = found?.chatId;
 
     // prevents the code from running while chatId is still undefined to avoid the error 'ETELEGRAM: 400 Bad Request: chat_id is empty'. the code would still work eventually but console spam is not pretty
     if (chatId) {
-      await ioRedis.set(`telegram-proven:${chatId}`, '1', 'EX', 15 * 60);
+      await ioRedis.set(
+        `telegram-proven:${chatId}`,
+        organizationId || '1',
+        'EX',
+        TELEGRAM_PROOF_SECONDS
+      );
       //get the numberic ID of the bot
       const botId = (await telegramBot.getMe()).id;
       // check if the bot is an admin in the chat
       const isAdmin = await this.botIsAdmin(chatId, botId);
       // get the messageId of the message that triggered the connection
-      const connectMessageId =
-        match?.message?.message_id || match?.channel_post?.message_id;
+      const connectMessageId = found!.messageId;
 
       if (!isAdmin) {
         // alternatively you can log here instead if you do not want to inform the user of the bot's admin status
@@ -159,14 +227,7 @@ export class TelegramProvider extends SocialAbstract implements SocialProvider {
       }
     }
 
-    // modified lastChatId to work with any type of channel (private/public groups/channels)
-    return chatId
-      ? { chatId }
-      : res.length > 0
-      ? {
-          lastChatId: res[res.length - 1].update_id + 1,
-        }
-      : {};
+    return chatId ? { chatId } : {};
   }
 
   private processMedia(mediaFiles: PostDetails['media']) {
@@ -270,7 +331,12 @@ export class TelegramProvider extends SocialAbstract implements SocialProvider {
     } catch (err: any) {
       const body = err?.response?.body;
       const status = Number(body?.error_code ?? err?.response?.statusCode);
-      if (err?.code === 'ETELEGRAM' && status >= 400 && status < 500 && status !== 429) {
+      if (
+        err?.code === 'ETELEGRAM' &&
+        status >= 400 &&
+        status < 500 &&
+        status !== 429
+      ) {
         throw new BadBody(
           'telegram',
           JSON.stringify(body || {}),
@@ -418,7 +484,11 @@ export class TelegramProvider extends SocialAbstract implements SocialProvider {
     const [commentPost] = postDetails;
     const replyToId = Number(lastCommentId || postId);
 
-    const messageId = await this.sendMessage(accessToken, commentPost, replyToId);
+    const messageId = await this.sendMessage(
+      accessToken,
+      commentPost,
+      replyToId
+    );
 
     if (messageId) {
       return [
@@ -461,7 +531,9 @@ export class TelegramProvider extends SocialAbstract implements SocialProvider {
 
       return false;
     } catch (error) {
-      this._logger.warn(`Error checking bot privileges: ${(error as Error)?.message ?? error}`);
+      this._logger.warn(
+        `Error checking bot privileges: ${(error as Error)?.message ?? error}`
+      );
       return false;
     }
   }

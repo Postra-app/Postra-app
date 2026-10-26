@@ -167,3 +167,32 @@ test('E2E-05-13: the public preview leaks no internals', async () => {
     expect(keys, leaked).not.toContain(leaked);
   }
 });
+
+// finalappcheck §46 (26 X): every one of these was already refused, but some
+// answered 500 (and a Sentry event) instead of the 404 the rest give
+// (E2E-11-68), and the rest had no test.
+test("B cannot reach A's webhook, and A's channel settings or B's unknown ids are 404, not 500", async () => {
+  const created = await a.post('/webhooks', {
+    data: { name: '[stack] isolation hook', url: 'https://example.com/stack-hook', integrations: [] },
+  });
+  expect(created.status()).toBe(201);
+  const { id } = await created.json();
+  try {
+    expect((await b.get(`/webhooks/${id}/secret`)).status()).toBe(404);
+    expect((await b.delete(`/webhooks/${id}`)).status()).toBe(404);
+    expect(
+      (await b.put('/webhooks', { data: { id, name: 'x', url: 'https://example.com/x', integrations: [] } })).status()
+    ).toBe(404);
+
+    const unknown = '00000000-0000-4000-8000-000000000000';
+    const statuses = {
+      settings: (await b.post(`/integrations/${channelOf('a')}/settings`, { data: { additionalSettings: '[]' } })).status(),
+      template: (await b.put(`/media/${unknown}/template`, { data: { isTemplate: true } })).status(),
+      canvas: (await b.put(`/media/${unknown}/canvas`, { data: { canvasJson: '{"objects":[]}' } })).status(),
+      thirdParty: (await b.delete(`/third-party/${unknown}`)).status(),
+    };
+    expect(statuses).toEqual({ settings: 404, template: 404, canvas: 404, thirdParty: 404 });
+  } finally {
+    await a.delete(`/webhooks/${id}`);
+  }
+});

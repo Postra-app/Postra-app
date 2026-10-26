@@ -125,3 +125,32 @@ describe('backfillMediaType', () => {
     expect(calls.updateMany).toHaveLength(0);
   });
 });
+
+// E2E-11-68: an org-scoped update of another organisation's (or an unknown)
+// media id threw Prisma P2025, which reached the client as a 500 and a Sentry
+// event. Nothing was written, but it is a 404, like every other route that
+// looks up a resource of another organisation.
+describe('updating media that is not this organisation’s', () => {
+  const notFound = () => {
+    const media = {
+      update: () =>
+        Promise.reject(Object.assign(new Error('Record to update not found.'), { code: 'P2025' })),
+    };
+    return new MediaRepository({ model: { media } } as any);
+  };
+
+  it.each([
+    ['saveCanvasJson', (r: MediaRepository) => r.saveCanvasJson('org-b', 'm-a', '{"objects":[]}')],
+    ['setTemplateFlag', (r: MediaRepository) => r.setTemplateFlag('org-b', 'm-a', true)],
+    ['saveDesignSpec', (r: MediaRepository) => r.saveDesignSpec('org-b', 'm-a', {} as any)],
+    ['savePostDesignSpec', (r: MediaRepository) => r.savePostDesignSpec('org-b', 'm-a', {} as any)],
+  ])('%s answers 404', async (_name, call) => {
+    await expect(call(notFound())).rejects.toMatchObject({ status: 404 });
+  });
+
+  it('other errors are not turned into a 404', async () => {
+    const media = { update: () => Promise.reject(new Error('connection lost')) };
+    const repository = new MediaRepository({ model: { media } } as any);
+    await expect(repository.setTemplateFlag('org-a', 'm-a', true)).rejects.toThrow('connection lost');
+  });
+});

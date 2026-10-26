@@ -11,6 +11,8 @@ export interface IAuthenticator {
       code: string;
       codeVerifier: string;
       refresh?: string;
+      // The organisation connecting, for proofs bound to it (Telegram).
+      organizationId?: string;
     },
     clientInformation?: ClientInformation
   ): Promise<AuthTokenDetails | string>;

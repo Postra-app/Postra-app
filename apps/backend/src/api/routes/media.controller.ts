@@ -29,6 +29,12 @@ import { Organization } from '@prisma/client';
 import { MediaService } from '@gitroom/nestjs-libraries/database/prisma/media/media.service';
 import { ApiTags } from '@nestjs/swagger';
 import handleR2Upload from '@gitroom/nestjs-libraries/upload/r2.uploader';
+import {
+  forgetUpload,
+  ownsUpload,
+  recordUploadOwner,
+  uploadPairOf,
+} from '@gitroom/nestjs-libraries/upload/multipart.owner';
 import handleS3Upload from '@gitroom/nestjs-libraries/upload/s3.uploader';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { CustomFileValidationPipe } from '@gitroom/nestjs-libraries/upload/custom.upload.validation';
@@ -248,10 +254,7 @@ export class MediaController {
 
   @Get('/pixabay-videos')
   @Throttle({ default: { ttl: 300_000, limit: 60 } })
-  async pixabayVideos(
-    @Query('q') q: unknown,
-    @Query('page') page: unknown
-  ) {
+  async pixabayVideos(@Query('q') q: unknown, @Query('page') page: unknown) {
     const apiKey = process.env.PIXABAY_API_KEY;
     if (!apiKey) {
       return { hits: [], note: 'PIXABAY_API_KEY not configured' };
@@ -259,12 +262,16 @@ export class MediaController {
     const safeQuery = queryString(q).slice(0, 100).trim().toLowerCase();
     const safePage = queryPage(page);
     // Pixabay license requires caching responses for 24h to avoid duplicate calls.
-    const cacheKey = `pixabay:videos:${createHash('md5').update(`${safeQuery}|${safePage}`).digest('hex')}`;
+    const cacheKey = `pixabay:videos:${createHash('md5')
+      .update(`${safeQuery}|${safePage}`)
+      .digest('hex')}`;
     const cached = await ioRedis.get(cacheKey);
     if (cached) {
       return JSON.parse(cached);
     }
-    const url = `https://pixabay.com/api/videos/?key=${apiKey}&q=${encodeURIComponent(safeQuery)}&page=${safePage}&per_page=20&safesearch=true`;
+    const url = `https://pixabay.com/api/videos/?key=${apiKey}&q=${encodeURIComponent(
+      safeQuery
+    )}&page=${safePage}&per_page=20&safesearch=true`;
     const res = await fetch(url);
     if (!res.ok) {
       throw new HttpException(`Pixabay error ${res.status}`, 502);
@@ -279,10 +286,7 @@ export class MediaController {
 
   @Get('/pixabay-images')
   @Throttle({ default: { ttl: 300_000, limit: 60 } })
-  async pixabayImages(
-    @Query('q') q: unknown,
-    @Query('page') page: unknown
-  ) {
+  async pixabayImages(@Query('q') q: unknown, @Query('page') page: unknown) {
     const apiKey = process.env.PIXABAY_API_KEY;
     if (!apiKey) {
       return { hits: [], note: 'PIXABAY_API_KEY not configured' };
@@ -290,12 +294,16 @@ export class MediaController {
     const safeQuery = queryString(q).slice(0, 100).trim().toLowerCase();
     const safePage = queryPage(page);
     // Pixabay license requires caching responses for 24h to avoid duplicate calls.
-    const cacheKey = `pixabay:images:${createHash('md5').update(`${safeQuery}|${safePage}`).digest('hex')}`;
+    const cacheKey = `pixabay:images:${createHash('md5')
+      .update(`${safeQuery}|${safePage}`)
+      .digest('hex')}`;
     const cached = await ioRedis.get(cacheKey);
     if (cached) {
       return JSON.parse(cached);
     }
-    const url = `https://pixabay.com/api/?key=${apiKey}&q=${encodeURIComponent(safeQuery)}&image_type=photo&page=${safePage}&per_page=24&safesearch=true`;
+    const url = `https://pixabay.com/api/?key=${apiKey}&q=${encodeURIComponent(
+      safeQuery
+    )}&image_type=photo&page=${safePage}&per_page=24&safesearch=true`;
     const res = await fetch(url);
     if (!res.ok) {
       throw new HttpException(`Pixabay error ${res.status}`, 502);
@@ -310,7 +318,11 @@ export class MediaController {
 
   // Pexels, the second free stock library. Same 24 h cache and throttle as
   // Pixabay; Pexels allows 200 requests an hour on a free key.
-  private async pexelsSearch(kind: 'images' | 'videos', q: unknown, page: unknown) {
+  private async pexelsSearch(
+    kind: 'images' | 'videos',
+    q: unknown,
+    page: unknown
+  ) {
     const apiKey = process.env.PEXELS_API_KEY;
     if (!apiKey) {
       return { hits: [], note: 'PEXELS_API_KEY not configured' };
@@ -320,21 +332,32 @@ export class MediaController {
       return { hits: [] };
     }
     const safePage = queryPage(page);
-    const cacheKey = `pexels:${kind}:${createHash('md5').update(`${safeQuery}|${safePage}`).digest('hex')}`;
+    const cacheKey = `pexels:${kind}:${createHash('md5')
+      .update(`${safeQuery}|${safePage}`)
+      .digest('hex')}`;
     const cached = await ioRedis.get(cacheKey);
     if (cached) {
       return JSON.parse(cached);
     }
     const path = kind === 'images' ? '/v1/search' : '/videos/search';
     const res = await fetch(
-      pexelsApiUrl(`${path}?query=${encodeURIComponent(safeQuery)}&page=${safePage}&per_page=${kind === 'images' ? 24 : 20}`),
-      { headers: { Authorization: apiKey }, signal: AbortSignal.timeout(15_000) }
+      pexelsApiUrl(
+        `${path}?query=${encodeURIComponent(
+          safeQuery
+        )}&page=${safePage}&per_page=${kind === 'images' ? 24 : 20}`
+      ),
+      {
+        headers: { Authorization: apiKey },
+        signal: AbortSignal.timeout(15_000),
+      }
     );
     if (!res.ok) {
       throw new HttpException(`Pexels error ${res.status}`, 502);
     }
     const data = await res.json();
-    const result = { hits: kind === 'images' ? pexelsPhotoHits(data) : pexelsVideoHits(data) };
+    const result = {
+      hits: kind === 'images' ? pexelsPhotoHits(data) : pexelsVideoHits(data),
+    };
     await ioRedis.set(cacheKey, JSON.stringify(result), 'EX', 60 * 60 * 24);
     return result;
   }
@@ -364,14 +387,23 @@ export class MediaController {
     const safePage = queryPage(page);
     // 50 requests an hour until Unsplash approves production: an hour of
     // cache keeps repeated searches off the limit.
-    const cacheKey = `unsplash:images:${createHash('md5').update(`${safeQuery}|${safePage}`).digest('hex')}`;
+    const cacheKey = `unsplash:images:${createHash('md5')
+      .update(`${safeQuery}|${safePage}`)
+      .digest('hex')}`;
     const cached = await ioRedis.get(cacheKey);
     if (cached) {
       return JSON.parse(cached);
     }
     const res = await fetch(
-      unsplashApiUrl(`/search/photos?query=${encodeURIComponent(safeQuery)}&page=${safePage}&per_page=24&content_filter=high`),
-      { headers: { Authorization: `Client-ID ${key}`, 'Accept-Version': 'v1' }, signal: AbortSignal.timeout(15_000) }
+      unsplashApiUrl(
+        `/search/photos?query=${encodeURIComponent(
+          safeQuery
+        )}&page=${safePage}&per_page=24&content_filter=high`
+      ),
+      {
+        headers: { Authorization: `Client-ID ${key}`, 'Accept-Version': 'v1' },
+        signal: AbortSignal.timeout(15_000),
+      }
     );
     if (!res.ok) {
       throw new HttpException(`Unsplash error ${res.status}`, 502);
@@ -419,7 +451,11 @@ export class MediaController {
     if (!media?.path) {
       throw new HttpException('Media not found', 404);
     }
-    const srt = await this._captionsService.generateSrtFromVideoUrl(media.path, body.language, org.id);
+    const srt = await this._captionsService.generateSrtFromVideoUrl(
+      media.path,
+      body.language,
+      org.id
+    );
     return { srt };
   }
 
@@ -438,8 +474,15 @@ export class MediaController {
     if (!body.srt?.trim()) {
       throw new HttpException('Empty SRT', 400);
     }
-    const result = await this._captionsService.burnCaptionsIntoVideo(media.path, body.srt);
-    return this._mediaService.saveFile(org.id, result.path.split('/').pop() ?? 'captioned.mp4', result.path);
+    const result = await this._captionsService.burnCaptionsIntoVideo(
+      media.path,
+      body.srt
+    );
+    return this._mediaService.saveFile(
+      org.id,
+      result.path.split('/').pop() ?? 'captioned.mp4',
+      result.path
+    );
   }
 
   @Post('/pixabay-videos/import')
@@ -452,7 +495,11 @@ export class MediaController {
       throw new HttpException('Invalid Pixabay video URL', 400);
     }
     // Pixabay TOS: store video on our server rather than hotlinking.
-    return this._mediaService.importPixabayVideo(org.id, body.url, body.sourceId);
+    return this._mediaService.importPixabayVideo(
+      org.id,
+      body.url,
+      body.sourceId
+    );
   }
 
   @Post('/pixabay-images/import')
@@ -465,7 +512,11 @@ export class MediaController {
       throw new HttpException('Invalid Pixabay image URL', 400);
     }
     // Pixabay TOS: store the image on our server rather than hotlinking.
-    return this._mediaService.importPixabayImage(org.id, body.url, body.sourceId);
+    return this._mediaService.importPixabayImage(
+      org.id,
+      body.url,
+      body.sourceId
+    );
   }
 
   @Post('/pexels-images/import')
@@ -477,7 +528,12 @@ export class MediaController {
     if (!isPexelsAssetUrl(body?.url)) {
       throw new HttpException('Invalid Pexels image URL', 400);
     }
-    return this._mediaService.importStockAsset(org.id, body.url, 'image', `pexels-${Number(body.sourceId) || 'unknown'}`);
+    return this._mediaService.importStockAsset(
+      org.id,
+      body.url,
+      'image',
+      `pexels-${Number(body.sourceId) || 'unknown'}`
+    );
   }
 
   @Post('/pexels-videos/import')
@@ -489,7 +545,12 @@ export class MediaController {
     if (!isPexelsAssetUrl(body?.url)) {
       throw new HttpException('Invalid Pexels video URL', 400);
     }
-    return this._mediaService.importStockAsset(org.id, body.url, 'video', `pexels-${Number(body.sourceId) || 'unknown'}`);
+    return this._mediaService.importStockAsset(
+      org.id,
+      body.url,
+      'video',
+      `pexels-${Number(body.sourceId) || 'unknown'}`
+    );
   }
 
   @Post('/unsplash-images/import')
@@ -504,7 +565,12 @@ export class MediaController {
     if (!key || !isUnsplashAssetUrl(body?.url) || !/^[\w-]{1,40}$/.test(id)) {
       throw new HttpException('Invalid Unsplash photo', 400);
     }
-    const media = await this._mediaService.importStockAsset(org.id, body.url, 'image', `unsplash-${id}`);
+    const media = await this._mediaService.importStockAsset(
+      org.id,
+      body.url,
+      'image',
+      `unsplash-${id}`
+    );
     // Unsplash's terms: report the download. The address is built from the
     // id, never taken from the request (CodeQL), and a failed report must not
     // undo the import the customer just made.
@@ -578,10 +644,7 @@ export class MediaController {
   @CheckPolicies([AuthorizationActions.Create, Sections.AI])
   @Throttle({ default: { ttl: 300000, limit: 30 } })
   @UseGuards(AccountAgeGuard)
-  aiEdit(
-    @GetOrgFromRequest() org: Organization,
-    @Body() body: AiEditTextDto
-  ) {
+  aiEdit(@GetOrgFromRequest() org: Organization, @Body() body: AiEditTextDto) {
     return this._mediaService.aiEditText(org, body);
   }
 
@@ -602,7 +665,11 @@ export class MediaController {
     @Param('id') id: string,
     @Body() body: SaveDesignSpecDto
   ) {
-    return this._mediaService.saveDesignSpec(org.id, id, body.spec as StudioSpec);
+    return this._mediaService.saveDesignSpec(
+      org.id,
+      id,
+      body.spec as StudioSpec
+    );
   }
 
   @Post('/upload-server')
@@ -698,13 +765,37 @@ export class MediaController {
     @Res() res: Response,
     @Param('endpoint') endpoint: string
   ) {
-    const upload =
+    const handle = () =>
       process.env.STORAGE_PROVIDER === 's3'
-        ? await handleS3Upload(endpoint, req, res)
-        : await handleR2Upload(endpoint, req, res);
+        ? handleS3Upload(endpoint, req, res)
+        : handleR2Upload(endpoint, req, res);
+
+    // The upload belongs to the organisation that started it (E2E-11-70):
+    // the first call records it, every later call must come from it.
+    if (endpoint === 'create-multipart-upload') {
+      let created: any;
+      const send = res.json.bind(res);
+      res.json = ((body: any) => {
+        created = body;
+        return res;
+      }) as typeof res.json;
+      await handle();
+      res.json = send;
+      if (created?.uploadId && created?.key) {
+        await recordUploadOwner(org.id, created.uploadId, created.key);
+      }
+      return res.json(created);
+    }
+    const pair = uploadPairOf(endpoint, req.body);
+    if (!(await ownsUpload(org.id, pair.uploadId, pair.key))) {
+      return res.status(404).json({ message: 'Upload not found' });
+    }
+
+    const upload = await handle();
     if (endpoint !== 'complete-multipart-upload') {
       return upload;
     }
+    await forgetUpload(pair.uploadId);
 
     // complete-multipart-upload already wrote a response (e.g. a 400 when the
     // uploaded bytes failed the magic-byte check) — nothing left to save.

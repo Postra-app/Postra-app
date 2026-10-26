@@ -1,5 +1,5 @@
 import { PrismaRepository } from '@gitroom/nestjs-libraries/database/prisma/prisma.service';
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import dayjs from 'dayjs';
 import { Integration } from '@prisma/client';
 import { makeId } from '@gitroom/nestjs-libraries/services/make.is';
@@ -165,16 +165,24 @@ export class IntegrationRepository {
     return findIt.length > 0;
   }
 
+  // An id that is not this org's channel threw P2025, a 500 (E2E-11-68).
   updateProviderSettings(org: string, id: string, settings: string) {
-    return this._integration.model.integration.update({
-      where: {
-        id,
-        organizationId: org,
-      },
-      data: {
-        additionalSettings: settings,
-      },
-    });
+    return this._integration.model.integration
+      .update({
+        where: {
+          id,
+          organizationId: org,
+        },
+        data: {
+          additionalSettings: settings,
+        },
+      })
+      .catch((err) => {
+        if (err?.code === 'P2025') {
+          throw new NotFoundException('Channel not found');
+        }
+        throw err;
+      });
   }
 
   // Minutes kept within one day: after local midnight in `tz`, or after UTC
