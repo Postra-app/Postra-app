@@ -12,7 +12,7 @@ import { ToolNode } from '@langchain/langgraph/prebuilt';
 import { ChatPromptTemplate } from '@langchain/core/prompts';
 import dayjs from 'dayjs';
 import { PostsService } from '@gitroom/nestjs-libraries/database/prisma/posts/posts.service';
-import { z } from 'zod';
+import { category, contentZod, hook, topic } from './agent.schemas';
 import { MediaService } from '@gitroom/nestjs-libraries/database/prisma/media/media.service';
 import { OpenaiService } from '@gitroom/nestjs-libraries/openai/openai.service';
 import { SubscriptionService } from '@gitroom/nestjs-libraries/database/prisma/subscriptions/subscription.service';
@@ -51,7 +51,7 @@ interface WorkflowChannelsState {
   tone: 'personal' | 'company';
   content?: {
     content: string;
-    website?: string;
+    website?: string | null;
     prompt?: string;
     image?: string;
   }[];
@@ -61,54 +61,6 @@ interface WorkflowChannelsState {
   brandVoice?: string;
   brandVisual?: string;
 }
-
-const category = z.object({
-  category: z.string().describe('The category for the post'),
-});
-
-const topic = z.object({
-  topic: z.string().describe('The topic for the post'),
-});
-
-const hook = z.object({
-  hook: z
-    .string()
-    .describe(
-      'Hook for the new post, don\'t take it from "the request of the user"'
-    ),
-});
-
-const contentZod = (
-  isPicture: boolean,
-  format: 'one_short' | 'one_long' | 'thread_short' | 'thread_long'
-) => {
-  const content = z.object({
-    content: z.string().describe('Content for the new post'),
-    website: z
-      .string()
-      .nullable()
-      .optional()
-      .describe(
-        "Website for the new post if exists, If one of the post present a brand, website link must be to the root domain of the brand or don't include it, website url should contain the brand name"
-      ),
-    ...(isPicture
-      ? {
-          prompt: z
-            .string()
-            .describe(
-              "Prompt to generate a picture for this post later, make sure it doesn't contain brand names and make it very descriptive in terms of style"
-            ),
-        }
-      : {}),
-  });
-
-  return z.object({
-    content:
-      format === 'one_short' || format === 'one_long'
-        ? content
-        : z.array(content).min(2).describe(`Content for the new post`),
-  });
-};
 
 @Injectable()
 export class AgentGraphService {

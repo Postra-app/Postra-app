@@ -22,6 +22,16 @@ import { Tool } from '@gitroom/nestjs-libraries/integrations/tool.decorator';
 import { Rules } from '@gitroom/nestjs-libraries/chat/rules.description.decorator';
 import { hasExtension } from '@gitroom/helpers/utils/has.extension';
 
+// PINTEREST_API_BASE points every API call (token exchange included) at
+// another host: Trial apps may only create Pins on
+// https://api-sandbox.pinterest.com, and a sandbox token comes only from the
+// sandbox oauth/token. The consent screen stays on www.pinterest.com.
+export const pinterestApi = (path: string) =>
+  `${(process.env.PINTEREST_API_BASE || 'https://api.pinterest.com').replace(
+    /\/+$/,
+    ''
+  )}/v5${path}`;
+
 @Rules(
   'Pinterest requires at least one media, if posting a video, you must have two attachment, one for video, one for the cover picture, When posting a video, there can be only one, if posting images, there can be maximum 5'
 )
@@ -147,7 +157,7 @@ export class PinterestProvider
 
   async refreshToken(refreshToken: string): Promise<AuthTokenDetails> {
     const { access_token, expires_in } = await (
-      await fetch('https://api.pinterest.com/v5/oauth/token', {
+      await fetch(pinterestApi('/oauth/token'), {
         method: 'POST',
         headers: {
           'Content-Type': 'application/x-www-form-urlencoded',
@@ -165,7 +175,7 @@ export class PinterestProvider
     ).json();
 
     const { id, profile_image, username } = await (
-      await fetch('https://api.pinterest.com/v5/user_account', {
+      await fetch(pinterestApi('/user_account'), {
         method: 'GET',
         headers: {
           Authorization: `Bearer ${access_token}`,
@@ -205,7 +215,7 @@ export class PinterestProvider
     refresh: string;
   }) {
     const { access_token, refresh_token, expires_in, scope } = await (
-      await fetch('https://api.pinterest.com/v5/oauth/token', {
+      await fetch(pinterestApi('/oauth/token'), {
         method: 'POST',
         headers: {
           'Content-Type': 'application/x-www-form-urlencoded',
@@ -224,7 +234,7 @@ export class PinterestProvider
     this.checkScopes(this.scopes, scope);
 
     const { id, profile_image, username } = await (
-      await fetch('https://api.pinterest.com/v5/user_account', {
+      await fetch(pinterestApi('/user_account'), {
         method: 'GET',
         headers: {
           Authorization: `Bearer ${access_token}`,
@@ -245,21 +255,40 @@ export class PinterestProvider
 
   @Tool({ description: 'List of boards', dataSchema: [] })
   async boards(accessToken: string) {
-    const { items } = await (
-      await fetch('https://api.pinterest.com/v5/boards?page_size=250', {
-        method: 'GET',
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-        },
-      })
-    ).json();
+    // Follow the bookmark: the sandbox can answer a page with no items and a
+    // bookmark even when boards exist, and more than 250 boards spill over.
+    const boards: { name: string; id: string }[] = [];
+    let bookmark = '';
+    for (let page = 0; page < 10; page++) {
+      const { items, bookmark: next } = await (
+        await fetch(
+          pinterestApi(
+            `/boards?page_size=250${
+              bookmark ? `&bookmark=${encodeURIComponent(bookmark)}` : ''
+            }`
+          ),
+          {
+            method: 'GET',
+            headers: {
+              Authorization: `Bearer ${accessToken}`,
+            },
+          }
+        )
+      ).json();
 
-    return (
-      items?.map((item: any) => ({
-        name: item.name,
-        id: item.id,
-      })) || []
-    );
+      boards.push(
+        ...(items || []).map((item: any) => ({
+          name: item.name,
+          id: item.id,
+        }))
+      );
+      if (!next) {
+        break;
+      }
+      bookmark = next;
+    }
+
+    return boards;
   }
 
   async post(
@@ -277,7 +306,7 @@ export class PinterestProvider
 
     if (findMp4) {
       const { upload_url, media_id, upload_parameters } = await (
-        await this.fetch('https://api.pinterest.com/v5/media', {
+        await this.fetch(pinterestApi('/media'), {
           method: 'POST',
           body: JSON.stringify({
             media_type: 'video',
@@ -314,7 +343,7 @@ export class PinterestProvider
         }
         const mediafile = await (
           await this.fetch(
-            'https://api.pinterest.com/v5/media/' + media_id,
+            pinterestApi('/media/' + media_id),
             {
               method: 'GET',
               headers: {
@@ -348,7 +377,7 @@ export class PinterestProvider
     }));
 
     const { id: pId } = await (
-      await this.fetch('https://api.pinterest.com/v5/pins', {
+      await this.fetch(pinterestApi('/pins'), {
         method: 'POST',
         headers: {
           Authorization: `Bearer ${accessToken}`,
@@ -409,11 +438,13 @@ export class PinterestProvider
       .subtract(Math.min(date, 89), 'day')
       .format('YYYY-MM-DD');
 
-    const {
-      all: { daily_metrics },
-    } = await (
+    // An error body (expired token, or the sandbox, which has no account
+    // analytics) has no `all`; it crashed the destructuring and the page.
+    const body = await (
       await fetch(
-        `https://api.pinterest.com/v5/user_account/analytics?start_date=${since}&end_date=${until}`,
+        pinterestApi(
+          `/user_account/analytics?start_date=${since}&end_date=${until}`
+        ),
         {
           method: 'GET',
           headers: {
@@ -423,6 +454,7 @@ export class PinterestProvider
         }
       )
     ).json();
+    const daily_metrics: any[] = body?.all?.daily_metrics || [];
 
     return daily_metrics.reduce(
       (acc: any, item: any) => {
@@ -480,7 +512,9 @@ export class PinterestProvider
     try {
       // Fetch pin analytics from Pinterest API
       const response = await fetch(
-        `https://api.pinterest.com/v5/pins/${postId}/analytics?start_date=${since}&end_date=${today}&metric_types=IMPRESSION,PIN_CLICK,OUTBOUND_CLICK,SAVE`,
+        pinterestApi(
+          `/pins/${postId}/analytics?start_date=${since}&end_date=${today}&metric_types=IMPRESSION,PIN_CLICK,OUTBOUND_CLICK,SAVE`
+        ),
         {
           method: 'GET',
           headers: {
