@@ -433,9 +433,9 @@ export class UsersController {
     @Req() request: Request,
     @Res({ passthrough: true }) response: Response
   ) {
-    // Clearing the cookie ends the browser's session, and used to be all that
-    // happened — a token in the app's Keychain kept working for the rest of its
-    // 30 days. A mobile token carries a session id, and this is
+    // Clearing the cookie used to be all that happened: a token in the app's
+    // Keychain, or a browser cookie someone had copied, kept working for the
+    // rest of its life. Both carry a session id now (E2E-11-74), and this is
     // where it stops being accepted.
     await this._authService.endMobileSession(
       (request.headers.auth as string) || request.cookies?.auth

@@ -370,6 +370,7 @@ export class NoAuthIntegrationsController {
             code: body.code,
             codeVerifier: getCodeVerifier,
             refresh: body.refresh,
+            organizationId: organization,
           },
           details ? JSON.parse(details) : undefined
         );

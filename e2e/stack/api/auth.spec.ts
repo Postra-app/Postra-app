@@ -208,3 +208,25 @@ test('a password reset link works once, even for two requests at the same moment
     await prisma.$disconnect();
   }
 });
+
+// E2E-11-72: the session token (the `auth` cookie, or the app's token) has
+// the current tokenVersion and no `expires`, and the reset took it: a stolen
+// session set a new password without the old one.
+test('a session token does not reset the password', async () => {
+  const prisma = database();
+  const org = await throwawayOrg(prisma, { tier: 'PRO', totalChannels: 3, channels: 0 });
+  try {
+    const { userId } = await prisma.userOrganization.findFirstOrThrow({ where: { organizationId: org.orgId } });
+    const user = await prisma.user.findUniqueOrThrow({ where: { id: userId } });
+    const session = sign({ id: user.id, email: user.email, tokenVersion: user.tokenVersion }, process.env.JWT_SECRET!, { expiresIn: '30d' });
+    const api = await anonymous();
+    const password = 'Taken-over-account-1!';
+    const res = await api.post('/auth/forgot-return', { data: { token: session, password, repeatPassword: password } });
+    expect(await res.json()).toMatchObject({ reset: false });
+    expect((await prisma.user.findUniqueOrThrow({ where: { id: userId } })).tokenVersion).toBe(user.tokenVersion);
+    await api.dispose();
+  } finally {
+    await org.remove();
+    await prisma.$disconnect();
+  }
+});

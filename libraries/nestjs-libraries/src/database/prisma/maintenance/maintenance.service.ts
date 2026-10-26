@@ -26,6 +26,8 @@ export interface RetentionWindows {
   errorsDays: number;
   auditDays: number;
   aiUsageDays: number;
+  /** Handled Stripe webhook events (StripeProcessedEvent). */
+  stripeEventsDays: number;
   /** How long a soft-deleted media row waits before its object is swept. */
   mediaGraceDays: number;
 }
@@ -39,6 +41,10 @@ export const DEFAULT_RETENTION: RetentionWindows = {
   // answered.
   auditDays: 400,
   aiUsageDays: 400,
+  // The webhook's record of handled events only has to outlive redeliveries:
+  // Stripe retries for 3 days and the CLI resends up to 30 days after the
+  // event. Kept as long as technical logs; it grew without a limit (E2E-11-63).
+  stripeEventsDays: 90,
   // A soft-deleted file is recoverable until this passes. Long enough that
   // "I deleted it by mistake" is answerable, short enough to bound the bucket.
   mediaGraceDays: 30,
@@ -50,6 +56,7 @@ export interface PurgeReport {
   errors: number;
   auditLog: number;
   aiUsage: number;
+  stripeEvents: number;
 }
 
 export interface SweepReport {
@@ -76,6 +83,7 @@ export class MaintenanceService {
       | 'user'
       | 'socialMediaAgency'
       | 'oAuthApp'
+      | 'stripeProcessedEvent'
     >
   ) {}
 
@@ -96,20 +104,29 @@ export class MaintenanceService {
     const errorsWhere = { createdAt: { lt: cutoff(windows.errorsDays) } };
     const auditWhere = { createdAt: { lt: cutoff(windows.auditDays) } };
     const aiUsageWhere = { createdAt: { lt: cutoff(windows.aiUsageDays) } };
+    const stripeEventsWhere = {
+      createdAt: { lt: cutoff(windows.stripeEventsDays) },
+    };
 
     if (!apply) {
-      const [errors, auditLog, aiUsage] = await Promise.all([
+      const [errors, auditLog, aiUsage, stripeEvents] = await Promise.all([
         this._prisma.model.errors.count({ where: errorsWhere }),
         this._prisma.model.auditLog.count({ where: auditWhere }),
         this._prisma.model.aiUsage.count({ where: aiUsageWhere }),
+        this._prisma.model.stripeProcessedEvent.count({
+          where: stripeEventsWhere,
+        }),
       ]);
-      return { apply, windows, errors, auditLog, aiUsage };
+      return { apply, windows, errors, auditLog, aiUsage, stripeEvents };
     }
 
-    const [errors, auditLog, aiUsage] = await Promise.all([
+    const [errors, auditLog, aiUsage, stripeEvents] = await Promise.all([
       this._prisma.model.errors.deleteMany({ where: errorsWhere }),
       this._prisma.model.auditLog.deleteMany({ where: auditWhere }),
       this._prisma.model.aiUsage.deleteMany({ where: aiUsageWhere }),
+      this._prisma.model.stripeProcessedEvent.deleteMany({
+        where: stripeEventsWhere,
+      }),
     ]);
 
     return {
@@ -118,6 +135,7 @@ export class MaintenanceService {
       errors: errors.count,
       auditLog: auditLog.count,
       aiUsage: aiUsage.count,
+      stripeEvents: stripeEvents.count,
     };
   }
 

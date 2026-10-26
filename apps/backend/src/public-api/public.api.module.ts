@@ -6,7 +6,6 @@ import { PermissionsService } from '@gitroom/backend/services/auth/permissions/p
 import { IntegrationManager } from '@gitroom/nestjs-libraries/integrations/integration.manager';
 import { UploadModule } from '@gitroom/nestjs-libraries/upload/upload.module';
 import { OpenaiService } from '@gitroom/nestjs-libraries/openai/openai.service';
-import { CodesService } from '@gitroom/nestjs-libraries/services/codes.service';
 import { PublicIntegrationsController } from '@gitroom/backend/public-api/routes/v1/public.integrations.controller';
 import { PublicAuthMiddleware } from '@gitroom/backend/services/auth/public.auth.middleware';
 
@@ -20,7 +19,6 @@ const authenticatedController = [PublicIntegrationsController];
     OpenaiService,
     PoliciesGuard,
     PermissionsService,
-    CodesService,
     IntegrationManager,
   ],
   get exports() {

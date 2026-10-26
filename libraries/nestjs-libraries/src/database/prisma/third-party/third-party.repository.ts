@@ -1,5 +1,5 @@
 import { PrismaRepository } from '@gitroom/nestjs-libraries/database/prisma/prisma.service';
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { AuthService } from '@gitroom/helpers/auth/auth.service';
 
 @Injectable()
@@ -17,11 +17,19 @@ export class ThirdPartyRepository {
     });
   }
 
+  // An id that is not this org's threw P2025, a 500 (E2E-11-68). A 404.
   deleteIntegration(org: string, id: string) {
-    return this._thirdParty.model.thirdParty.update({
-      where: { id, organizationId: org },
-      data: { deletedAt: new Date() },
-    });
+    return this._thirdParty.model.thirdParty
+      .update({
+        where: { id, organizationId: org },
+        data: { deletedAt: new Date() },
+      })
+      .catch((err) => {
+        if (err?.code === 'P2025') {
+          throw new NotFoundException('Integration not found');
+        }
+        throw err;
+      });
   }
 
   getIntegrationById(org: string, id: string) {

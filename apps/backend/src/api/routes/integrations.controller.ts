@@ -690,8 +690,11 @@ export class IntegrationsController {
 
   @Get('/telegram/updates')
   @Throttle({ default: { ttl: 300_000, limit: 300 } })
-  async getUpdates(@Query() query: { word: string; id?: number }) {
-    return new TelegramProvider().getBotId(query);
+  async getUpdates(
+    @GetOrgFromRequest() org: Organization,
+    @Query() query: { word: string; id?: number }
+  ) {
+    return new TelegramProvider().getBotId(query, org.id);
   }
 
   @Post('/moltbook/register')

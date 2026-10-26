@@ -139,7 +139,8 @@ export class PostsRepository {
   // @updatedAt on every update it makes.
   updateImages(id: string, images: string) {
     return this._prismaTransaction.model.$transaction(
-      (tx) => tx.$executeRaw`UPDATE "Post" SET "image" = ${images} WHERE "id" = ${id}`
+      (tx) =>
+        tx.$executeRaw`UPDATE "Post" SET "image" = ${images} WHERE "id" = ${id}`
     );
   }
 
@@ -334,7 +335,9 @@ export class PostsRepository {
         },
       ],
       ...stateAndDate,
-      ...(includesThePast ? {} : { publishDate: { gte: dayjs.utc().toDate() } }),
+      ...(includesThePast
+        ? {}
+        : { publishDate: { gte: dayjs.utc().toDate() } }),
       deletedAt: null as Date | null,
       parentPostId: null as string | null,
       // Repeating posts used to be filtered out here, so a weekly post never
@@ -600,7 +603,6 @@ export class PostsRepository {
     }
   }
 
-
   clearReleases(orgId: string, ids: string[]) {
     return this._post.model.post.updateMany({
       where: {
@@ -796,22 +798,14 @@ export class PostsRepository {
     });
   }
 
-  getPublishDates(
-    orgId: string,
-    ids: string[],
-    tx?: Prisma.TransactionClient
-  ) {
+  getPublishDates(orgId: string, ids: string[], tx?: Prisma.TransactionClient) {
     return (tx || this._post.model).post.findMany({
       where: { organizationId: orgId, id: { in: ids }, deletedAt: null },
       select: { id: true, publishDate: true, state: true },
     });
   }
 
-  async getPostState(
-    tx: Prisma.TransactionClient,
-    orgId: string,
-    id: string
-  ) {
+  async getPostState(tx: Prisma.TransactionClient, orgId: string, id: string) {
     return (
       await tx.post.findFirst({
         where: { id, organizationId: orgId, deletedAt: null },
@@ -889,170 +883,174 @@ export class PostsRepository {
     // half-created thread with the old group still live — all-or-nothing now,
     // and inside the caller's transaction when a save spans several channels.
     const write = async (tx: Prisma.TransactionClient) => {
-    const posts: Post[] = [];
-    const uuid = uuidv4();
+      const posts: Post[] = [];
+      const uuid = uuidv4();
 
-    // An edited post stays in the batch it was created in, also when it is
-    // saved on its own. Read before the writes below give it a new group.
-    const ids = body.value.map((value) => value.id).filter(Boolean) as string[];
-    const existingBatchId =
-      body.group || ids.length
-        ? (
-            await tx.post.findFirst({
-              where: {
-                organizationId: orgId,
-                deletedAt: null,
-                batchId: { not: null },
-                OR: [
-                  ...(body.group ? [{ group: body.group }] : []),
-                  ...(ids.length ? [{ id: { in: ids } }] : []),
-                ],
-              },
-              select: { batchId: true },
-            })
-          )?.batchId
-        : undefined;
-
-    for (const value of body.value) {
-      const updateData = (type: 'create' | 'update') => ({
-        publishDate: dayjs(date).toDate(),
-        integration: {
-          connect: {
-            id: body.integration.id,
-            organizationId: orgId,
-          },
-        },
-        ...(posts?.[posts.length - 1]?.id
-          ? {
-              parentPost: {
-                connect: {
-                  id: posts[posts.length - 1]?.id,
+      // An edited post stays in the batch it was created in, also when it is
+      // saved on its own. Read before the writes below give it a new group.
+      const ids = body.value
+        .map((value) => value.id)
+        .filter(Boolean) as string[];
+      const existingBatchId =
+        body.group || ids.length
+          ? (
+              await tx.post.findFirst({
+                where: {
+                  organizationId: orgId,
+                  deletedAt: null,
+                  batchId: { not: null },
+                  OR: [
+                    ...(body.group ? [{ group: body.group }] : []),
+                    ...(ids.length ? [{ id: { in: ids } }] : []),
+                  ],
                 },
-              },
-            }
-          : type === 'update'
-          ? {
-              parentPost: {
-                disconnect: true,
-              },
-            }
-          : {}),
-        content: value.content,
-        delay: value.delay || 0,
-        group: uuid,
-        batchId: existingBatchId || batchId || null,
-        intervalInDays: inter && +inter >= 1 ? Math.floor(+inter) : null,
-        approvedSubmitForOrder: APPROVED_SUBMIT_FOR_ORDER.NO,
-        ...(type === 'create' ? { creationMethod } : {}),
-        ...(state === 'update'
-          ? {}
-          : {
-              state:
-                state === 'draft' ? ('DRAFT' as const) : ('QUEUE' as const),
-            }),
-        image: JSON.stringify(value.image),
-        settings: JSON.stringify(body.settings),
-        organization: {
-          connect: {
-            id: orgId,
-          },
-        },
-      });
+                select: { batchId: true },
+              })
+            )?.batchId
+          : undefined;
 
-      posts.push(
-        await tx.post.upsert({
-          where: {
-            id: value.id || uuidv4(),
-            organizationId: orgId,
-          },
-          create: { ...updateData('create') },
-          update: {
-            ...updateData('update'),
-            lastMessage: {
-              disconnect: true,
-            },
-            submittedForOrder: {
-              disconnect: true,
+      for (const value of body.value) {
+        const updateData = (type: 'create' | 'update') => ({
+          publishDate: dayjs(date).toDate(),
+          integration: {
+            connect: {
+              id: body.integration.id,
+              organizationId: orgId,
             },
           },
-        })
-      );
-
-      if (posts.length === 1) {
-        await tx.tagsPosts.deleteMany({
-          where: {
-            post: {
-              id: posts[0].id,
+          ...(posts?.[posts.length - 1]?.id
+            ? {
+                parentPost: {
+                  connect: {
+                    id: posts[posts.length - 1]?.id,
+                  },
+                },
+              }
+            : type === 'update'
+            ? {
+                parentPost: {
+                  disconnect: true,
+                },
+              }
+            : {}),
+          content: value.content,
+          delay: value.delay || 0,
+          group: uuid,
+          batchId: existingBatchId || batchId || null,
+          intervalInDays: inter && +inter >= 1 ? Math.floor(+inter) : null,
+          approvedSubmitForOrder: APPROVED_SUBMIT_FOR_ORDER.NO,
+          ...(type === 'create' ? { creationMethod } : {}),
+          ...(state === 'update'
+            ? {}
+            : {
+                state:
+                  state === 'draft' ? ('DRAFT' as const) : ('QUEUE' as const),
+              }),
+          image: JSON.stringify(value.image),
+          settings: JSON.stringify(body.settings),
+          organization: {
+            connect: {
+              id: orgId,
             },
           },
         });
 
-        if (tags.length) {
-          const tagsList = await tx.tags.findMany({
+        posts.push(
+          await tx.post.upsert({
             where: {
-              orgId: orgId,
-              // A deleted tag of the same name was attached too, unseen.
-              deletedAt: null,
-              name: {
-                in: tags.map((tag) => tag.label).filter((f) => f),
+              id: value.id || uuidv4(),
+              organizationId: orgId,
+            },
+            create: { ...updateData('create') },
+            update: {
+              ...updateData('update'),
+              lastMessage: {
+                disconnect: true,
+              },
+              submittedForOrder: {
+                disconnect: true,
+              },
+            },
+          })
+        );
+
+        if (posts.length === 1) {
+          await tx.tagsPosts.deleteMany({
+            where: {
+              post: {
+                id: posts[0].id,
               },
             },
           });
 
-          if (tagsList.length) {
-            await tx.post.update({
+          if (tags.length) {
+            const tagsList = await tx.tags.findMany({
               where: {
-                id: posts[posts.length - 1].id,
-              },
-              data: {
-                tags: {
-                  createMany: {
-                    data: tagsList.map((tag) => ({
-                      tagId: tag.id,
-                    })),
-                  },
+                orgId: orgId,
+                // A deleted tag of the same name was attached too, unseen.
+                deletedAt: null,
+                name: {
+                  in: tags.map((tag) => tag.label).filter((f) => f),
                 },
               },
             });
+
+            if (tagsList.length) {
+              await tx.post.update({
+                where: {
+                  id: posts[posts.length - 1].id,
+                },
+                data: {
+                  tags: {
+                    createMany: {
+                      data: tagsList.map((tag) => ({
+                        tagId: tag.id,
+                      })),
+                    },
+                  },
+                },
+              });
+            }
           }
         }
       }
-    }
 
-    const previousPost = body.group
-      ? (
-          await tx.post.findFirst({
-            where: {
-              group: body.group,
-              organizationId: orgId,
-              deletedAt: null,
-              parentPostId: null,
-            },
-            select: {
-              id: true,
-            },
-          })
-        )?.id!
-      : undefined;
+      const previousPost = body.group
+        ? (
+            await tx.post.findFirst({
+              where: {
+                group: body.group,
+                organizationId: orgId,
+                deletedAt: null,
+                parentPostId: null,
+              },
+              select: {
+                id: true,
+              },
+            })
+          )?.id!
+        : undefined;
 
-    if (body.group) {
-      await tx.post.updateMany({
-        where: {
-          group: body.group,
-          organizationId: orgId,
-          deletedAt: null,
-        },
-        data: {
-          parentPostId: null,
-          deletedAt: new Date(),
-        },
-      });
-    }
+      if (body.group) {
+        await tx.post.updateMany({
+          where: {
+            group: body.group,
+            organizationId: orgId,
+            deletedAt: null,
+          },
+          data: {
+            parentPostId: null,
+            deletedAt: new Date(),
+          },
+        });
+      }
 
-    return { previousPost, posts };
+      return { previousPost, posts };
     };
 
-    return outer ? write(outer) : this._prismaTransaction.model.$transaction(write);
+    return outer
+      ? write(outer)
+      : this._prismaTransaction.model.$transaction(write);
   }
 
   // A whole save, every channel of it, commits or fails together. Generous
@@ -1214,11 +1212,14 @@ export class PostsRepository {
     return posts.map((post) => post.publishDate);
   }
 
+  // Also served without a login (GET /public/posts/:id/comments): a deleted
+  // post's preview is empty, so are its comments (E2E-11-71).
   async getComments(postId: string) {
     return this._comments.model.comments.findMany({
       where: {
         postId,
         deletedAt: null,
+        post: { deletedAt: null },
       },
       orderBy: {
         createdAt: 'asc',
@@ -1314,7 +1315,12 @@ export class PostsRepository {
     // already stored as releaseId — looked up by our id alone, every webhook
     // body was [] (upstream b1930421).
     return this._post.model.post.findMany({
-      where: { releaseId: postId, integrationId, deletedAt: null, parentPostId: null },
+      where: {
+        releaseId: postId,
+        integrationId,
+        deletedAt: null,
+        parentPostId: null,
+      },
       orderBy: { updatedAt: 'desc' },
       take: 1,
       select,

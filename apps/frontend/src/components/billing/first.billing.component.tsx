@@ -166,7 +166,7 @@ export const FirstBillingComponent = () => {
               <div>
                 {t(
                   'billing_pay_nothing_7_days',
-                  'Pay NOTHING for the first 7-days'
+                  'Pay nothing for the first 7 days'
                 )}
               </div>
             </div>
@@ -175,7 +175,7 @@ export const FirstBillingComponent = () => {
                 <CheckIconComponent />
               </div>
               <div>
-                {t('billing_cancel_anytime', 'Cancel anytime, from settings')}
+                {t('billing_cancel_anytime', 'Cancel any time in Settings')}
               </div>
             </div>
           </div>

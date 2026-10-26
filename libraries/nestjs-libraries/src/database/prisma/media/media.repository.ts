@@ -1,5 +1,5 @@
 import { PrismaRepository } from '@gitroom/nestjs-libraries/database/prisma/prisma.service';
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { SaveMediaInformationDto } from '@gitroom/nestjs-libraries/dtos/media/save.media.information.dto';
 import { StudioSpec } from '@gitroom/nestjs-libraries/studio/studio-spec';
@@ -8,6 +8,15 @@ import {
   MediaType,
   mediaTypeFromPath,
 } from '@gitroom/helpers/utils/media.type';
+
+// An org-scoped update of an id that is not this org's media throws P2025,
+// which reached the client as a 500 (E2E-11-68). It is a 404.
+const mediaNotFound = (err: any): never => {
+  if (err?.code === 'P2025') {
+    throw new NotFoundException('Media not found');
+  }
+  throw err;
+};
 
 @Injectable()
 export class MediaRepository {
@@ -128,23 +137,27 @@ export class MediaRepository {
     id: string,
     data: { spec: unknown; sourceId: string; level: string }
   ) {
-    return this._media.model.media.update({
-      where: { id, organizationId: org },
-      data: {
-        retouchSpec: data.spec as Prisma.InputJsonValue,
-        retouchSourceId: data.sourceId,
-        retouchLevel: data.level,
-      },
-      select: { id: true },
-    });
+    return this._media.model.media
+      .update({
+        where: { id, organizationId: org },
+        data: {
+          retouchSpec: data.spec as Prisma.InputJsonValue,
+          retouchSourceId: data.sourceId,
+          retouchLevel: data.level,
+        },
+        select: { id: true },
+      })
+      .catch(mediaNotFound);
   }
 
   saveDesignSpec(org: string, id: string, spec: StudioSpec) {
-    return this._media.model.media.update({
-      where: { id, organizationId: org },
-      data: { designSpec: spec as unknown as Prisma.InputJsonValue },
-      select: { id: true },
-    });
+    return this._media.model.media
+      .update({
+        where: { id, organizationId: org },
+        data: { designSpec: spec as unknown as Prisma.InputJsonValue },
+        select: { id: true },
+      })
+      .catch(mediaNotFound);
   }
 
   // The flat generation shape (headline/subtext/cta over a background). Stored
@@ -152,27 +165,33 @@ export class MediaRepository {
   // produced server-side). Shares the `designSpec` column with `StudioSpec`;
   // the two are told apart on read by shape (`layout`/`headline` vs `layers`).
   savePostDesignSpec(org: string, id: string, spec: PostDesignSpec) {
-    return this._media.model.media.update({
-      where: { id, organizationId: org },
-      data: { designSpec: spec as unknown as Prisma.InputJsonValue },
-      select: { id: true },
-    });
+    return this._media.model.media
+      .update({
+        where: { id, organizationId: org },
+        data: { designSpec: spec as unknown as Prisma.InputJsonValue },
+        select: { id: true },
+      })
+      .catch(mediaNotFound);
   }
 
   saveCanvasJson(org: string, id: string, canvasJson: string) {
-    return this._media.model.media.update({
-      where: { id, organizationId: org },
-      data: { canvasJson },
-      select: { id: true },
-    });
+    return this._media.model.media
+      .update({
+        where: { id, organizationId: org },
+        data: { canvasJson },
+        select: { id: true },
+      })
+      .catch(mediaNotFound);
   }
 
   setTemplateFlag(org: string, id: string, isTemplate: boolean) {
-    return this._media.model.media.update({
-      where: { id, organizationId: org },
-      data: { isTemplate },
-      select: { id: true, isTemplate: true },
-    });
+    return this._media.model.media
+      .update({
+        where: { id, organizationId: org },
+        data: { isTemplate },
+        select: { id: true, isTemplate: true },
+      })
+      .catch(mediaNotFound);
   }
 
   getTemplates(org: string) {
@@ -225,12 +244,7 @@ export class MediaRepository {
     });
   }
 
-  async getMedia(
-    org: string,
-    page: number,
-    search?: string,
-    type?: MediaType
-  ) {
+  async getMedia(org: string, page: number, search?: string, type?: MediaType) {
     const pageNum = (page || 1) - 1;
     const trimmedSearch = search?.trim();
     const searchFilter = trimmedSearch

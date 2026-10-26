@@ -29,6 +29,7 @@ const buildPrisma = (data: {
   errors?: number;
   auditLog?: number;
   aiUsage?: number;
+  stripeProcessedEvent?: number;
 }) => {
   const deleted: Record<string, unknown[]> = {};
 
@@ -84,6 +85,7 @@ const buildPrisma = (data: {
       errors: counted(data.errors),
       auditLog: counted(data.auditLog),
       aiUsage: counted(data.aiUsage),
+      stripeProcessedEvent: counted(data.stripeProcessedEvent),
     },
   };
 };
@@ -125,6 +127,36 @@ describe('purgeOldRecords', () => {
     expect(prisma.model.errors.deleteMany).toHaveBeenCalled();
     expect(prisma.model.auditLog.deleteMany).toHaveBeenCalled();
     expect(prisma.model.aiUsage.deleteMany).toHaveBeenCalled();
+  });
+});
+
+// E2E-11-63 (A3): the Stripe webhook's record of handled events grew without
+// a limit. A row only has to outlive the redeliveries: Stripe retries for 3
+// days and the CLI resends up to 30 days after the event.
+describe('handled Stripe events', () => {
+  it('are kept longer than Stripe can resend them, and no longer than technical logs', () => {
+    expect(DEFAULT_RETENTION.stripeEventsDays).toBeGreaterThan(30);
+    expect(DEFAULT_RETENTION.stripeEventsDays).toBeLessThanOrEqual(
+      DEFAULT_RETENTION.errorsDays
+    );
+  });
+
+  it('are counted on a dry run and deleted on apply', async () => {
+    const prisma = buildPrisma({ stripeProcessedEvent: 6 });
+    const service = new MaintenanceService(prisma as any);
+
+    expect(await service.purgeOldRecords(false)).toMatchObject({
+      stripeEvents: 6,
+    });
+    expect(prisma.model.stripeProcessedEvent.deleteMany).not.toHaveBeenCalled();
+
+    expect(await service.purgeOldRecords(true)).toMatchObject({
+      stripeEvents: 6,
+    });
+    const cutoff = (prisma.model.stripeProcessedEvent.deleteMany.mock
+      .calls[0] as any)[0].where.createdAt.lt as Date;
+    const days = (Date.now() - cutoff.getTime()) / 86_400_000;
+    expect(Math.round(days)).toBe(DEFAULT_RETENTION.stripeEventsDays);
   });
 });
 

@@ -11,7 +11,6 @@ import { OrganizationService } from '@gitroom/nestjs-libraries/database/prisma/o
 import { makeId } from '@gitroom/nestjs-libraries/services/make.is';
 import { BillingSubscribeDto } from '@gitroom/nestjs-libraries/dtos/billing/billing.subscribe.dto';
 import { pricing } from '@gitroom/nestjs-libraries/database/prisma/subscriptions/pricing';
-import { AuthService } from '@gitroom/helpers/auth/auth.service';
 import { TrackService } from '@gitroom/nestjs-libraries/track/track.service';
 import { NotificationService } from '@gitroom/nestjs-libraries/database/prisma/notifications/notification.service';
 import { UsersService } from '@gitroom/nestjs-libraries/database/prisma/users/users.service';
@@ -431,6 +430,32 @@ export class StripeService {
       current.status === 'incomplete_expired'
     ) {
       // customer.subscription.deleted owns the downgrade.
+      return { ok: true, skipped: current.status };
+    }
+    // Stripe stopped charging: `unpaid` once every retry failed (when the
+    // Dashboard keeps the subscription), `paused` when a trial ended without a
+    // payment method. Stripe says to revoke access; both used to write the
+    // full plan with nothing paid (E2E-11-62). Paying again makes the
+    // subscription `active`, and that update writes the plan back.
+    if (current.status === 'unpaid' || current.status === 'paused') {
+      // The plan row is per customer: another live subscription keeps it, as
+      // in deleteSubscription below (Codex 26 X).
+      const otherLive = (
+        await stripe.subscriptions.list({
+          customer: current.customer as string,
+          status: 'all',
+          limit: 100,
+        })
+      ).data.some(
+        (s) =>
+          s.id !== current.id &&
+          ['active', 'trialing', 'past_due'].includes(s.status)
+      );
+      if (!otherLive) {
+        await this._subscriptionService.deleteSubscription(
+          current.customer as string
+        );
+      }
       return { ok: true, skipped: current.status };
     }
 
@@ -1190,7 +1215,7 @@ export class StripeService {
       autoApplyPromoCode = await this.findAutoApplyPromotionCode();
     }
 
-    const isUtm = body.utm ? `&utm_source=${body.utm}` : '';
+    const isUtm = body.utm ? `&utm_source=${encodeURIComponent(body.utm)}` : '';
     const { client_secret } = await stripe.checkout.sessions.create({
       ui_mode: 'custom',
       customer,
@@ -1246,7 +1271,7 @@ export class StripeService {
     userId: string,
     allowTrial: boolean
   ) {
-    const isUtm = body.utm ? `&utm_source=${body.utm}` : '';
+    const isUtm = body.utm ? `&utm_source=${encodeURIComponent(body.utm)}` : '';
 
     if (body.dub) {
       await stripe.customers.update(customer, {
@@ -1932,84 +1957,6 @@ export class StripeService {
     for (const subscription of subscriptions) {
       await this.releaseSchedule(subscription);
       await stripe.subscriptions.cancel(subscription.id);
-    }
-  }
-
-  async lifetimeDeal(organizationId: string, code: string) {
-    // One code at a time per organisation. Two different codes redeemed at
-    // once both read N channels and both wrote N + 5: both codes were spent
-    // and five channels were lost (BILL-10). The second waits for a retry.
-    const lock = `lifetime-deal:${organizationId}`;
-    if ((await ioRedis.set(lock, '1', 'EX', 30, 'NX')) !== 'OK') {
-      return { success: false };
-    }
-    try {
-      return await this.redeemLifetimeCode(organizationId, code);
-    } finally {
-      await ioRedis.del(lock).catch(() => undefined);
-    }
-  }
-
-  private async redeemLifetimeCode(organizationId: string, code: string) {
-    const getCurrentSubscription =
-      await this._subscriptionService.getSubscriptionByOrganizationId(
-        organizationId
-      );
-    // A plain Error here was a 500 for an ordinary refusal (BILL-11).
-    if (getCurrentSubscription && !getCurrentSubscription?.isLifetime) {
-      throw new HttpException(
-        'You already have a non lifetime subscription',
-        400
-      );
-    }
-
-    try {
-      const testCode = AuthService.fixedDecryption(code);
-      const findCode = await this._subscriptionService.getCode(testCode);
-      if (findCode) {
-        return {
-          success: false,
-        };
-      }
-
-      // The first code gives Starter, each one after it Pro (+5 channels once
-      // on Pro). A code never lowers the plan: on a lifetime Business (an
-      // admin grant) it set Pro and Pro's channels (E2E-07-36).
-      const stacked = !getCurrentSubscription ? 'STANDARD' : 'PRO';
-      const keepsTier =
-        !!getCurrentSubscription &&
-        TIER_ORDER.indexOf(getCurrentSubscription.subscriptionTier) >=
-          TIER_ORDER.indexOf(stacked);
-      const nextPackage = keepsTier
-        ? getCurrentSubscription!.subscriptionTier
-        : stacked;
-      const findPricing = pricing[nextPackage];
-
-      await this._subscriptionService.createOrUpdateSubscription(
-        false,
-        makeId(10),
-        organizationId,
-        keepsTier
-          ? getCurrentSubscription!.totalChannels + 5
-          : findPricing.channel!,
-        nextPackage,
-        'MONTHLY',
-        null,
-        testCode,
-        organizationId
-      );
-      return {
-        success: true,
-      };
-    } catch (err) {
-      this._logger.error(
-        `Lifetime deal failed for organization ${organizationId}: ${
-          (err as Error)?.message ?? err
-        }`
-      );
-      return {
-        success: false,
-      };
     }
   }
 }

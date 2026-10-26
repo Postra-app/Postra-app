@@ -27,7 +27,7 @@ export class PurgeOldRecords {
   @Command({
     command: 'purge-old-records',
     describe:
-      'Housekeeping. Drops Errors, AuditLog and AiUsage rows past their retention window, then removes stored objects behind media rows that were soft-deleted long enough ago and that nothing refers to any more. Three tables had no retention at all and the bucket kept every deleted upload (E2E-06-01). Windows: --errors-days, --audit-days, --ai-usage-days, --media-grace-days. Dry-run unless --apply.',
+      'Housekeeping. Drops Errors, AuditLog, AiUsage and handled Stripe event rows past their retention window, then removes stored objects behind media rows that were soft-deleted long enough ago and that nothing refers to any more. Three tables had no retention at all and the bucket kept every deleted upload (E2E-06-01). Windows: --errors-days, --audit-days, --ai-usage-days, --stripe-events-days, --media-grace-days. Dry-run unless --apply.',
   })
   async run() {
     const apply = process.argv.includes('--apply');
@@ -35,6 +35,10 @@ export class PurgeOldRecords {
       errorsDays: numberFlag('errors-days', DEFAULT_RETENTION.errorsDays),
       auditDays: numberFlag('audit-days', DEFAULT_RETENTION.auditDays),
       aiUsageDays: numberFlag('ai-usage-days', DEFAULT_RETENTION.aiUsageDays),
+      stripeEventsDays: numberFlag(
+        'stripe-events-days',
+        DEFAULT_RETENTION.stripeEventsDays
+      ),
       mediaGraceDays: numberFlag(
         'media-grace-days',
         DEFAULT_RETENTION.mediaGraceDays
@@ -43,14 +47,14 @@ export class PurgeOldRecords {
 
     const mode = apply ? 'APPLY' : 'DRY-RUN';
     console.log(
-      `[purge-old-records] ${mode} - retention: errors ${windows.errorsDays}d, audit ${windows.auditDays}d, ai-usage ${windows.aiUsageDays}d, media grace ${windows.mediaGraceDays}d`
+      `[purge-old-records] ${mode} - retention: errors ${windows.errorsDays}d, audit ${windows.auditDays}d, ai-usage ${windows.aiUsageDays}d, stripe events ${windows.stripeEventsDays}d, media grace ${windows.mediaGraceDays}d`
     );
 
     const purge = await this._maintenance.purgeOldRecords(apply, windows);
     console.log(
       `  rows ${apply ? 'deleted' : 'to delete'}: Errors ${purge.errors}, AuditLog ${
         purge.auditLog
-      }, AiUsage ${purge.aiUsage}`
+      }, AiUsage ${purge.aiUsage}, StripeProcessedEvent ${purge.stripeEvents}`
     );
 
     const sweep = await this._maintenance.sweepOrphanMedia(

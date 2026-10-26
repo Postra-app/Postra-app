@@ -76,7 +76,7 @@ describe('password policy', () => {
     Object.assign(service, {
       _userService: { getUserById: async () => ({ id: 'u1', tokenVersion: 1 }), updatePassword },
     });
-    const token = AuthChecker.signJWT({ id: 'u1', tokenVersion: 1, expires: new Date(Date.now() + 600_000).toISOString() });
+    const token = AuthChecker.signJWT({ id: 'u1', tokenVersion: 1, expires: new Date(Date.now() + 600_000).toISOString(), purpose: 'reset' });
 
     await expect(service.forgotReturn({ token, password: 'password123', repeatPassword: 'password123' })).resolves.toBe(true);
     expect(updatePassword).toHaveBeenCalledWith('u1', 'password123', 1);

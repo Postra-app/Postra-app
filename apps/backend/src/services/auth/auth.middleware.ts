@@ -156,12 +156,13 @@ export class AuthMiddleware implements NestMiddleware {
         throw new HttpForbiddenException();
       }
 
-      // Second revocation gate, for the native app only. A mobile token carries
-      // a session id that signing out puts on a deny list, so logging out on the
-      // phone actually ends that session instead of leaving the token valid in
-      // the Keychain for the rest of its life. Browser tokens carry
-      // no `sid` and skip this entirely — ending one user's phone session must
-      // not end the tab they left open.
+      // Second revocation gate, per session. A token carries a session id that
+      // signing out puts on a deny list, so logging out actually ends that
+      // session instead of leaving the token valid (the app's in the Keychain,
+      // a browser cookie someone copied) for the rest of its life. One
+      // session ends, not the user's others: signing out on the phone must not
+      // end the tab they left open. Browser tokens from before E2E-11-74 carry
+      // no `sid` and skip this.
       const sid = (payload as any).sid as string | undefined;
       if (sid && (await isMobileSessionRevoked(sid))) {
         throw new HttpForbiddenException();

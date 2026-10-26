@@ -265,15 +265,9 @@ export class BillingController {
     return this._stripeService.prorate(org.id, body);
   }
 
-  @Post('/lifetime')
-  @CheckPolicies(BILLING_ADMIN)
-  @Throttle({ default: { ttl: 300_000, limit: 10 } })
-  async lifetime(
-    @GetOrgFromRequest() org: Organization,
-    @Body() body: { code: string }
-  ) {
-    return this._stripeService.lifetimeDeal(org.id, body.code);
-  }
+  // POST /billing/lifetime redeemed codes nothing in Postra issues, and about
+  // 1 random string in 250 passed as one (AES-CBC without a MAC): a free plan
+  // for good (E2E-11-61). Plans without payment are an administrator's grant.
 
   // The admin-only charge, refund and cancel routes used to live here, reading
   // the organization from the session. That made them usable only from inside
