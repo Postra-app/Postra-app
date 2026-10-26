@@ -21,9 +21,8 @@ const i18next = require('./i18next').default;
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const { useT } = require('./get.transation.service.client');
 // eslint-disable-next-line @typescript-eslint/no-require-imports
-const {
-  VariableContextComponent,
-} = require('@gitroom/react/helpers/variable.context');
+const variables = require('@gitroom/react/helpers/variable.context');
+const { VariableContextComponent } = variables;
 
 // The server renders the language the layout resolved; the browser detects
 // its own (here jsdom's en-US) and i18next keeps it until the new language's
