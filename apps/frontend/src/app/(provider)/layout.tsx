@@ -10,10 +10,12 @@ import { GeistSans } from 'geist/font/sans';
 import clsx from 'clsx';
 import { VariableContextComponent } from '@gitroom/react/helpers/variable.context';
 import UtmSaver from '@gitroom/helpers/utils/utm.saver';
+import { requestLanguage } from '@gitroom/frontend/components/layout/request.language';
 
 export default async function AppLayout({ children }: { children: ReactNode }) {
+  const language = await requestLanguage();
   return (
-    <html>
+    <html lang={language}>
       <head>
         <link rel="icon" href="/postra-icon.webp" type="image/webp" />
       </head>
@@ -21,7 +23,7 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
         className={clsx(GeistSans.className, 'dark text-primary !bg-primary')}
       >
         <VariableContextComponent
-          language="en"
+          language={language}
           storageProvider={
             process.env.STORAGE_PROVIDER! as 'local' | 'cloudflare' | 's3'
           }

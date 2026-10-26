@@ -21,12 +21,7 @@ import UtmSaver from '@gitroom/helpers/utils/utm.saver';
 import { DubAnalytics } from '@gitroom/frontend/components/layout/dubAnalytics';
 import { FacebookComponent } from '@gitroom/frontend/components/layout/facebook.component';
 import { GoogleTagManagerComponent } from '@gitroom/frontend/components/layout/gtm.component';
-import { cookies, headers } from 'next/headers';
-import {
-  cookieName,
-  fallbackLng,
-  headerName,
-} from '@gitroom/react/translation/i18n.config';
+import { requestLanguage } from '@gitroom/frontend/components/layout/request.language';
 import { HtmlComponent } from '@gitroom/frontend/components/layout/html.component';
 import Script from 'next/script';
 import { ChangeDirClient } from '@gitroom/frontend/components/new-layout/change.dir.client';
@@ -35,13 +30,7 @@ import { SwrProvider } from '@gitroom/frontend/components/layout/swr.provider';
 import { ConnectionStatus } from '@gitroom/frontend/components/layout/connection.status';
 
 export default async function AppLayout({ children }: { children: ReactNode }) {
-  const cookieStore = await cookies();
-  // Explicit cookie choice first; else the device language proxy.ts resolved from
-  // Accept-Language (so a first-time visitor renders in their language, no PL flash).
-  const language =
-    cookieStore.get(cookieName)?.value ||
-    (await headers()).get(headerName) ||
-    fallbackLng;
+  const language = await requestLanguage();
   // Plausible (no cookies, no personal data): on only where the site's own
   // script id is set, e.g. pa-xxxx for app.postra.co.uk. It used to follow the
   // Stripe key and report to the postra.pl site (E2E-02-13).
