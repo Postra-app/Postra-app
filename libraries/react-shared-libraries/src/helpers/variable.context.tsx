@@ -1,6 +1,15 @@
 'use client';
 
-import { createContext, FC, ReactNode, useContext, useEffect } from 'react';
+import {
+  createContext,
+  FC,
+  ReactNode,
+  useContext,
+  useEffect,
+  useState,
+} from 'react';
+import i18next from '@gitroom/react/translation/i18next';
+import { LanguageContext } from '@gitroom/react/translation/language.context';
 interface VariableContextInterface {
   stripeClient: string;
   billingEnabled: boolean;
@@ -68,6 +77,18 @@ export const VariableContextComponent: FC<
   }
 > = (props) => {
   const { children, ...otherProps } = props;
+  // Before the first render: the browser has to start on the language the
+  // server rendered (useT), not on what it detects itself, or hydration finds
+  // different text.
+  useState(() => {
+    if (
+      typeof window !== 'undefined' &&
+      otherProps.language &&
+      i18next.language !== otherProps.language
+    ) {
+      i18next.changeLanguage(otherProps.language);
+    }
+  });
   useEffect(() => {
     if (typeof window !== 'undefined') {
       // @ts-ignore
@@ -76,7 +97,9 @@ export const VariableContextComponent: FC<
   }, []);
   return (
     <VariableContext.Provider value={otherProps}>
-      {children}
+      <LanguageContext.Provider value={otherProps.language}>
+        {children}
+      </LanguageContext.Provider>
     </VariableContext.Provider>
   );
 };
