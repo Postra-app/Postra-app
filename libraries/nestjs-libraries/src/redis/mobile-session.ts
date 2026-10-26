@@ -12,12 +12,13 @@ import { ioRedis } from '@gitroom/nestjs-libraries/redis/redis.service';
  *
  * The obvious lever, bumping `user.tokenVersion`, is too blunt: it ends every
  * session that user has, so signing out on the phone would sign them out of the
- * browser mid-edit. Instead a mobile token carries its own session id, and this
- * is the list of the ones that have been revoked. Web tokens carry no `sid` and
- * never reach the check.
+ * browser mid-edit. Instead a token carries its own session id, and this is the
+ * list of the ones that have been revoked. Since E2E-11-74 browser tokens carry
+ * one too: deleting the cookie ended the browser's copy only, and a copied
+ * cookie kept working for the rest of its 30 days.
  *
- * The list is short-lived by construction: an entry only has to outlive the
- * tokens it revokes, and those expire within MOBILE_TOKEN_TTL of being issued.
+ * An entry only has to outlive the tokens it revokes: a week for the app, the
+ * rest of the token's life for the browser (the caller passes it).
  */
 export const MOBILE_TOKEN_TTL_SECONDS = 7 * 24 * 60 * 60;
 
@@ -30,10 +31,10 @@ const revokedKey = (sid: string) => `mobilesession:revoked:${sid}`;
  * End a mobile session. Every token carrying this id stops being accepted,
  * including ones refresh has already handed out — refresh keeps the id.
  */
-export const revokeMobileSession = (sid: string) =>
-  ioRedis
-    .set(revokedKey(sid), '1', 'EX', MOBILE_TOKEN_TTL_SECONDS)
-    .catch(() => null);
+export const revokeMobileSession = (
+  sid: string,
+  ttlSeconds: number = MOBILE_TOKEN_TTL_SECONDS
+) => ioRedis.set(revokedKey(sid), '1', 'EX', ttlSeconds).catch(() => null);
 
 /**
  * Fails open, deliberately. Treating an unreachable Redis as "revoked" would

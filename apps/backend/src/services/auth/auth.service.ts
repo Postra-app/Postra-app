@@ -26,6 +26,12 @@ import {
 } from '@gitroom/nestjs-libraries/redis/mobile-session';
 
 // Per-account login lockout (brute-force defense, independent of IP throttling).
+// What a password is compared with when no account has the address, so a
+// sign-in costs the same either way. Hashed once, from a value nobody knows.
+let standInHash: string | undefined;
+const unknownUserHash = () =>
+  (standInHash ??= AuthChecker.hashPassword(randomUUID()));
+
 const MAX_LOGIN_FAILURES = 10;
 const LOGIN_LOCKOUT_WINDOW_SECONDS = 15 * 60;
 
@@ -145,7 +151,14 @@ export class AuthService {
         );
       }
 
-      if (!user || !AuthChecker.comparePassword(body.password, user.password)) {
+      // bcrypt runs for an unknown address too, against a stand-in hash: the
+      // time it takes told whether an account existed (~55 ms against ~6 ms,
+      // E2E-11-73). Asynchronous, so a sign-in does not stall the event loop.
+      const passwordMatches = await AuthChecker.comparePassword(
+        body.password,
+        user?.password || unknownUserHash()
+      );
+      if (!user || !passwordMatches) {
         const total = await ioRedis.incr(failuresKey);
         if (total === 1) {
           await ioRedis.expire(failuresKey, LOGIN_LOCKOUT_WINDOW_SECONDS);
@@ -329,7 +342,14 @@ export class AuthService {
       id: string;
       tokenVersion?: number;
       expires: string;
+      purpose?: string;
     };
+    // Only a reset link resets. A session token carries the current
+    // tokenVersion and no `expires`, so the session cookie or the app's token
+    // set a new password without the old one (E2E-11-72).
+    if (user.purpose !== 'reset' || !user.expires) {
+      return false;
+    }
     if (dayjs(user.expires).isBefore(dayjs())) {
       return false;
     }
@@ -368,16 +388,22 @@ export class AuthService {
     // meeting a 500 instead of being told to request a new one
     //. getOrgFromCookie in this same file already
     // handles the same call this way.
-    let user: { id: string; activated: boolean; email: string };
+    let user: {
+      id: string;
+      activated: boolean;
+      email: string;
+      purpose?: string;
+    };
     try {
-      user = AuthChecker.verifyJWT(code) as {
-        id: string;
-        activated: boolean;
-        email: string;
-      };
+      user = AuthChecker.verifyJWT(code) as typeof user;
     } catch (err) {
       // Distinct from "already activated" (false): the page told everyone
       // with a mangled or expired link that their account was active.
+      throw new Error(ACTIVATION_LINK_INVALID);
+    }
+    // Only an activation link activates: a session or reset token carries no
+    // `activated` and read as one (E2E-11-72).
+    if (user.purpose !== 'activate') {
       throw new Error(ACTIVATION_LINK_INVALID);
     }
     if (user.id && !user.activated) {
@@ -523,15 +549,24 @@ export class AuthService {
     );
   }
 
-  /** End a mobile session, if the caller is holding one. Web tokens have no id. */
+  /**
+   * End the session the caller holds, app or browser, for as long as its token
+   * could still be used. Browser tokens issued before E2E-11-74 have no id.
+   */
   async endMobileSession(jwt: string | undefined): Promise<void> {
     if (!jwt) {
       return;
     }
     try {
-      const { sid } = AuthChecker.verifyJWT(jwt) as { sid?: string };
+      const { sid, exp } = AuthChecker.verifyJWT(jwt) as {
+        sid?: string;
+        exp?: number;
+      };
       if (sid) {
-        await revokeMobileSession(sid);
+        await revokeMobileSession(
+          sid,
+          exp ? Math.max(60, exp - Math.floor(Date.now() / 1000)) : undefined
+        );
       }
     } catch {
       // An unreadable token cannot be revoked and does not need to be — it
@@ -562,10 +597,14 @@ export class AuthService {
     // and never trusts token claims, so a fat token just meant a bigger cookie
     // and stale/leaked fields. `tokenVersion` is the revocation check (see the
     // column comment + auth.middleware).
+    // `sid` lets signing out end this session on the server, not only by
+    // deleting the cookie: a copied cookie kept working for the rest of its
+    // 30 days (E2E-11-74).
     return AuthChecker.signJWT({
       id: user.id,
       email: user.email,
       tokenVersion: user.tokenVersion ?? 0,
+      sid: randomUUID(),
     });
   }
 }

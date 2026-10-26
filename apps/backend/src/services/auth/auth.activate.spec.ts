@@ -44,6 +44,7 @@ describe('activation link', () => {
       id: 'u1',
       activated: false,
       email: 'a@b.co',
+      purpose: 'activate',
     });
     await expect(service.activate(code, '')).resolves.toBe(false);
   });

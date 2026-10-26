@@ -3,10 +3,12 @@ import { AuthService as AuthChecker } from '@gitroom/helpers/auth/auth.service';
 // The deny list is the only part that needs a stand-in; everything else is
 // signing and verifying real tokens.
 const store = new Map<string, string>();
+const ttls = new Map<string, number>();
 jest.mock('@gitroom/nestjs-libraries/redis/redis.service', () => ({
   ioRedis: {
-    set: jest.fn(async (k: string) => {
+    set: jest.fn(async (k: string, _v: string, _ex?: string, ttl?: number) => {
       store.set(k, '1');
+      if (ttl) ttls.set(k, ttl);
       return 'OK';
     }),
     exists: jest.fn(async (k: string) => (store.has(k) ? 1 : 0)),
@@ -37,6 +39,7 @@ describe('mobile session (E2E-10-17)', () => {
   beforeEach(() => {
     process.env.JWT_SECRET = 'test-secret';
     store.clear();
+    ttls.clear();
   });
 
   it('gives the app a token that carries a session id and dies within a week', () => {
@@ -50,10 +53,24 @@ describe('mobile session (E2E-10-17)', () => {
     expect(payload.exp - payload.iat).toBe(MOBILE_TOKEN_TTL_SECONDS);
   });
 
-  it('leaves the browser token alone - it carries no session id', () => {
-    const payload = AuthChecker.verifyJWT(WEB_JWT()) as any;
-    expect(payload.sid).toBeUndefined();
+  // E2E-11-74: the browser's session ended only when its cookie did, so a
+  // copied cookie kept working for the rest of 30 days after signing out.
+  it('gives the browser a token with its own session id, living 30 days', async () => {
+    const token = await (makeService() as any).jwt({ id: 'u1', email: 'a@b.c', tokenVersion: 3, suspendedAt: null });
+    const payload = AuthChecker.verifyJWT(token) as any;
+    expect(payload.sid).toEqual(expect.any(String));
     expect(payload.exp - payload.iat).toBe(30 * 24 * 60 * 60);
+  });
+
+  it('signing out on the web ends that browser session for the rest of its life', async () => {
+    const service = makeService();
+    const token = await (service as any).jwt({ id: 'u1', email: 'a@b.c', tokenVersion: 3, suspendedAt: null });
+    await service.endMobileSession(token);
+
+    const { sid } = AuthChecker.verifyJWT(token) as any;
+    await expect(isMobileSessionRevoked(sid)).resolves.toBe(true);
+    // Kept as long as the token could still be used, not the app's week.
+    expect([...ttls.values()][0]).toBeGreaterThan(29 * 24 * 60 * 60);
   });
 
   it('refresh keeps the session id, so the session stays one session', () => {
@@ -77,7 +94,7 @@ describe('mobile session (E2E-10-17)', () => {
     await expect(isMobileSessionRevoked(sid)).resolves.toBe(true);
   });
 
-  it('signing out on the web revokes nothing - there is no session id to revoke', async () => {
+  it('a browser token from before session ids revokes nothing - there is no id to revoke', async () => {
     const service = makeService();
     await expect(service.endMobileSession(WEB_JWT())).resolves.toBeUndefined();
     expect(store.size).toBe(0);
