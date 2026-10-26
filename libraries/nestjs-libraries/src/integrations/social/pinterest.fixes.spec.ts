@@ -6,7 +6,7 @@ jest.mock('@gitroom/nestjs-libraries/media/fetch.media.buffer', () => ({ fetchMe
 
 import { validate } from 'class-validator';
 import { plainToInstance } from 'class-transformer';
-import { PinterestProvider } from './pinterest.provider';
+import { PinterestProvider, pinterestApi } from './pinterest.provider';
 import { PinterestSettingsDto } from '@gitroom/nestjs-libraries/dtos/posts/providers-settings/pinterest.dto';
 
 // Pinterest fixes from upstream (002a341b, 538f3e6f, 8f92a37e, cd899eaa).
@@ -82,5 +82,72 @@ describe('PinterestProvider.handleErrors: transient 2787', () => {
       JSON.stringify({ code: 2787, message: 'Something went wrong on our end. Sorry about that.' })
     );
     expect(res?.type).toBe('retry');
+  });
+});
+
+// Trial apps may create Pins only on api-sandbox.pinterest.com, and the
+// sandbox accepts only a token from its own oauth/token: PINTEREST_API_BASE
+// moves every API call, the token exchange included (2026-10-26).
+describe('Pinterest API base', () => {
+  const original = process.env.PINTEREST_API_BASE;
+  afterEach(() => {
+    if (original === undefined) delete process.env.PINTEREST_API_BASE;
+    else process.env.PINTEREST_API_BASE = original;
+    jest.restoreAllMocks();
+  });
+
+  const reply = (body: object) =>
+    ({ ok: true, status: 200, json: async () => body } as any);
+
+  it('defaults to the production API', () => {
+    delete process.env.PINTEREST_API_BASE;
+    expect(pinterestApi('/pins')).toBe('https://api.pinterest.com/v5/pins');
+  });
+
+  it('the sandbox takes the code exchange, the profile and the boards; the consent screen stays on pinterest.com', async () => {
+    process.env.PINTEREST_API_BASE = 'https://api-sandbox.pinterest.com/';
+    const urls: string[] = [];
+    jest.spyOn(global, 'fetch' as any).mockImplementation(async (url: any) => {
+      urls.push(String(url));
+      return reply({
+        access_token: 't',
+        refresh_token: 'r',
+        expires_in: 1,
+        scope: 'boards:read,boards:write,pins:read,pins:write,user_accounts:read',
+        id: 'u1',
+        username: 'postra',
+        items: [{ id: '1', name: 'Postra' }],
+      });
+    });
+    const provider = new PinterestProvider();
+    expect((await provider.generateAuthUrl()).url).toMatch(/^https:\/\/www\.pinterest\.com\/oauth\//);
+    await provider.authenticate({ code: 'c', codeVerifier: 'v', refresh: '' });
+    await provider.boards('t');
+    expect(urls).toEqual([
+      'https://api-sandbox.pinterest.com/v5/oauth/token',
+      'https://api-sandbox.pinterest.com/v5/user_account',
+      'https://api-sandbox.pinterest.com/v5/boards?page_size=250',
+    ]);
+  });
+
+  it('boards follow the bookmark past an empty page', async () => {
+    delete process.env.PINTEREST_API_BASE;
+    const pages = [
+      { items: [], bookmark: 'b1' },
+      { items: [{ id: '42', name: 'Postra' }], bookmark: null },
+    ];
+    const fetchSpy = jest
+      .spyOn(global, 'fetch' as any)
+      .mockImplementation(async () => reply(pages.shift()!));
+    expect(await new PinterestProvider().boards('t')).toEqual([{ id: '42', name: 'Postra' }]);
+    expect(String(fetchSpy.mock.calls[1][0])).toBe(
+      'https://api.pinterest.com/v5/boards?page_size=250&bookmark=b1'
+    );
+  });
+
+  it('account analytics without data (an error body, or the sandbox) is empty, not a crash', async () => {
+    jest.spyOn(global, 'fetch' as any).mockResolvedValue(reply({ code: 3, message: 'no' }));
+    const result = await new PinterestProvider().analytics('u1', 't', 30);
+    expect(result.map((r) => r.data.length)).toEqual([0, 0, 0, 0, 0]);
   });
 });
