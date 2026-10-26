@@ -53,7 +53,7 @@ export class HousekeepingActivity {
     const purge = await this._maintenance.purgeOldRecords(true);
     const sweep = await this._maintenance.sweepOrphanMedia(true);
     this._logger.log(
-      `housekeeping: rows deleted Errors ${purge.errors}, AuditLog ${purge.auditLog}, AiUsage ${purge.aiUsage}; media objects removed ${sweep.removed}${sweep.failed ? `, failed ${sweep.failed}` : ''}`
+      `housekeeping: rows deleted Errors ${purge.errors}, AuditLog ${purge.auditLog}, AiUsage ${purge.aiUsage}, StripeProcessedEvent ${purge.stripeEvents}; media objects removed ${sweep.removed}${sweep.failed ? `, failed ${sweep.failed}` : ''}`
     );
     return { ...purge, removed: sweep.removed, failed: sweep.failed };
   }

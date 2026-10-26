@@ -2,7 +2,7 @@ import { expect, request as pwRequest, test } from '@playwright/test';
 import { BACKEND_URL, database, throwawayOrg } from '../helpers';
 
 // Inputs a client gets wrong answered 500 (and a Sentry issue) instead of
-// telling the client what was wrong: POSTS-13, API-11…14, BILL-11.
+// telling the client what was wrong: POSTS-13, API-11…14 (BILL-11's route, /billing/lifetime, is gone: E2E-11-61).
 test('malformed requests are 4xx, not 500', async () => {
   const prisma = database();
   const org = await throwawayOrg(prisma, { tier: 'ULTIMATE', totalChannels: 5, channels: 1 });
@@ -21,7 +21,6 @@ test('malformed requests are 4xx, not 500', async () => {
       ['API-11 canvas of an unknown medium', () => org.api.put(`/media/${unknown}/canvas`, { data: { canvasJson: '{}' } })],
       ['API-13 upload without a file', () => org.api.post('/media/upload-simple', { multipart: { other: 'x' } })],
       ['API-14 unknown third-party provider', () => org.api.post('/third-party/not-a-provider', { data: { api: 'x' } })],
-      ['BILL-11 a lifetime code for a paying org', () => org.api.post('/billing/lifetime', { data: { code: 'x' } })],
     ];
     const results: string[] = [];
     for (const [name, call] of cases) {

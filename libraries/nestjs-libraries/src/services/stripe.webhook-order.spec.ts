@@ -461,3 +461,30 @@ describe('the quote shown before changing plan (E2E-07-43)', () => {
   });
 });
 
+
+// Stripe: revoke access when a subscription is `unpaid` (all retries failed,
+// when the Dashboard is set to keep it) or `paused` (a trial ended without a
+// payment method). Both used to write the full plan, with nothing paid
+// (E2E-11-62). Paying again makes it `active`, and the update writes the plan
+// back.
+describe('a subscription Stripe stopped charging has no plan', () => {
+  it.each(['unpaid', 'paused'])('%s drops the organisation to no plan', async (status) => {
+    retrieveSubscription.mockResolvedValue(sub(status));
+    const { service, subscriptionService } = build();
+
+    await service.updateSubscription(event('customer.subscription.updated', sub(status)));
+
+    expect(subscriptionService.createOrUpdateSubscription).not.toHaveBeenCalled();
+    expect(subscriptionService.deleteSubscription).toHaveBeenCalledWith('cus_1');
+  });
+
+  it('active again writes the plan back', async () => {
+    retrieveSubscription.mockResolvedValue(sub('active'));
+    const { service, subscriptionService } = build();
+
+    await service.updateSubscription(event('customer.subscription.updated', sub('active')));
+
+    expect(subscriptionService.deleteSubscription).not.toHaveBeenCalled();
+    expect(subscriptionService.createOrUpdateSubscription.mock.calls[0][4]).toBe('PRO');
+  });
+});

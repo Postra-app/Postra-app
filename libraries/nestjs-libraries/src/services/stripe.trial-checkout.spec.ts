@@ -50,8 +50,8 @@ beforeEach(() => {
 });
 
 describe.each([
-  ['embedded', (s: StripeService) => s.embedded('track', 'org-1', 'user-1', body, true)],
-  ['hosted', (s: StripeService) => s.subscribe('track', 'org-1', 'user-1', body, true)],
+  ['embedded', (s: StripeService, b = body) => s.embedded('track', 'org-1', 'user-1', b, true)],
+  ['hosted', (s: StripeService, b = body) => s.subscribe('track', 'org-1', 'user-1', b, true)],
 ])('%s checkout', (_name, checkout) => {
   it('a trial checkout takes cards only', async () => {
     searchCustomers.mockResolvedValue({ data: [] });
@@ -76,6 +76,21 @@ describe.each([
     expect(params.subscription_data.trial_period_days).toBeUndefined();
     expect(params.payment_method_types).toBeUndefined();
     expect(organizationService.endTrialOffer).toHaveBeenCalledWith('org-1');
+  });
+
+  // E2E-11-64: `utm` came from the request body into the return address as
+  // it was, so `&check=` in it added a parameter of the caller's choosing.
+  it('the utm value is one encoded parameter of the return address', async () => {
+    searchCustomers.mockResolvedValue({ data: [] });
+    process.env.FRONTEND_URL = 'https://app.example';
+    const { service } = build();
+
+    await checkout(service, { ...body, utm: 'mail&check=forged' });
+
+    const params = createSession.mock.calls[0][0];
+    const back = new URL(params.return_url ?? params.success_url);
+    expect(back.searchParams.getAll('check')).toHaveLength(1);
+    expect(back.searchParams.get('utm_source')).toBe('mail&check=forged');
   });
 });
 
