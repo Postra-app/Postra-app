@@ -67,4 +67,26 @@ describe('multipart upload steps', () => {
     expect(s3).toHaveBeenCalledTimes(1);
     expect(listed.status).toHaveBeenCalledWith(200);
   });
+
+  // Codex 26 X: a failed completion (S3 answered 500) is retried by the
+  // browser; forgetting the owner at that point turned the retry into a 404.
+  it('a completion that failed keeps the upload its organisation’s', async () => {
+    s3.mockImplementation(async (_e: string, _req: any, res: any) =>
+      res.status(200).json({ uploadId: 'up-3', key: '2026/10/26/c.mp4' })
+    );
+    await controller.uploadFile({ id: 'org-a' } as any, { body: { file: { name: 'c.mp4' } } } as any, response(), 'create-multipart-upload');
+
+    s3.mockReset();
+    s3.mockImplementation(async (_e: string, _req: any, res: any) => {
+      res.headersSent = true;
+      return res.status(500).json({ error: 'Upload failed' });
+    });
+    await controller.uploadFile({ id: 'org-a' } as any, { body: { uploadId: 'up-3', key: '2026/10/26/c.mp4' } } as any, response(), 'complete-multipart-upload');
+
+    s3.mockReset();
+    s3.mockImplementation(async (_e: string, _req: any, res: any) => res.status(200).json([]));
+    const retried = response();
+    await controller.uploadFile({ id: 'org-a' } as any, { body: { uploadId: 'up-3', key: '2026/10/26/c.mp4' } } as any, retried, 'list-parts');
+    expect(retried.status).toHaveBeenCalledWith(200);
+  });
 });

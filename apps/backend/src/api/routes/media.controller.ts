@@ -795,13 +795,13 @@ export class MediaController {
     if (endpoint !== 'complete-multipart-upload') {
       return upload;
     }
-    await forgetUpload(pair.uploadId);
-
     // complete-multipart-upload already wrote a response (e.g. a 400 when the
-    // uploaded bytes failed the magic-byte check) — nothing left to save.
+    // uploaded bytes failed the magic-byte check) — nothing left to save. The
+    // owner stays: a failed completion is retried (Codex 26 X).
     if (res.headersSent) {
       return;
     }
+    await forgetUpload(pair.uploadId);
 
     // @ts-ignore
     const name = upload.Location.split('/').pop();

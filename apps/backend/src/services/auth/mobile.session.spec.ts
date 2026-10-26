@@ -111,4 +111,16 @@ describe('mobile session (E2E-10-17)', () => {
     await revokeMobileSession('seen');
     await expect(isMobileSessionRevoked('seen')).resolves.toBe(true);
   });
+
+  // Codex 26 X: refresh keeps the session id and extends the token. Signing
+  // out with an older token of the session must still cover the newest one.
+  it('signing out with an older token still covers the refreshed one', async () => {
+    const service = makeService();
+    const old = AuthChecker.signJWT(
+      { id: 'u1', email: 'a@b.c', tokenVersion: 3, sid: 'session-1' },
+      { expiresIn: 60 * 60 } // one hour left
+    );
+    await service.endMobileSession(old);
+    expect([...ttls.values()][0]).toBeGreaterThanOrEqual(MOBILE_TOKEN_TTL_SECONDS);
+  });
 });

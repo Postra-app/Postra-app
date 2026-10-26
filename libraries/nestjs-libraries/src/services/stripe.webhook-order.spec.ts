@@ -478,6 +478,18 @@ describe('a subscription Stripe stopped charging has no plan', () => {
     expect(subscriptionService.deleteSubscription).toHaveBeenCalledWith('cus_1');
   });
 
+  // Codex 26 X: the plan row is per customer; an old subscription going
+  // unpaid must not take away the plan another live one pays for.
+  it('an unpaid old subscription leaves the plan another live one pays for', async () => {
+    retrieveSubscription.mockResolvedValue(sub('unpaid'));
+    listSubscriptions.mockResolvedValue({ data: [sub('unpaid'), { ...sub('active'), id: 'sub_2' }] });
+    const { service, subscriptionService } = build();
+
+    await service.updateSubscription(event('customer.subscription.updated', sub('unpaid')));
+
+    expect(subscriptionService.deleteSubscription).not.toHaveBeenCalled();
+  });
+
   it('active again writes the plan back', async () => {
     retrieveSubscription.mockResolvedValue(sub('active'));
     const { service, subscriptionService } = build();

@@ -96,4 +96,16 @@ describe('Connecting a Telegram chat', () => {
       await provider.authenticate({ code: '-100123', codeVerifier: '', organizationId: 'org-a' })
     ).toHaveProperty('accessToken', '-100123');
   });
+
+  // Codex 26 X: the proof was spent before the organisation was compared, so
+  // another organisation naming the chat made the rightful one post
+  // "/connect" again.
+  it('a refused attempt by another organisation leaves the proof for the one that earned it', async () => {
+    const provider = new TelegramProvider();
+    await provider.getBotId({ word: 'w0rd' }, 'org-a');
+    await provider.authenticate({ code: '-100123', codeVerifier: '', organizationId: 'org-b' });
+    expect(
+      await provider.authenticate({ code: '-100123', codeVerifier: '', organizationId: 'org-a' })
+    ).toHaveProperty('accessToken', '-100123');
+  });
 });

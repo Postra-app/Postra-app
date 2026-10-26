@@ -438,9 +438,24 @@ export class StripeService {
     // full plan with nothing paid (E2E-11-62). Paying again makes the
     // subscription `active`, and that update writes the plan back.
     if (current.status === 'unpaid' || current.status === 'paused') {
-      await this._subscriptionService.deleteSubscription(
-        current.customer as string
+      // The plan row is per customer: another live subscription keeps it, as
+      // in deleteSubscription below (Codex 26 X).
+      const otherLive = (
+        await stripe.subscriptions.list({
+          customer: current.customer as string,
+          status: 'all',
+          limit: 100,
+        })
+      ).data.some(
+        (s) =>
+          s.id !== current.id &&
+          ['active', 'trialing', 'past_due'].includes(s.status)
       );
+      if (!otherLive) {
+        await this._subscriptionService.deleteSubscription(
+          current.customer as string
+        );
+      }
       return { ok: true, skipped: current.status };
     }
 
@@ -1200,9 +1215,7 @@ export class StripeService {
       autoApplyPromoCode = await this.findAutoApplyPromotionCode();
     }
 
-    const isUtm = body.utm
-      ? `&utm_source=${encodeURIComponent(body.utm)}`
-      : '';
+    const isUtm = body.utm ? `&utm_source=${encodeURIComponent(body.utm)}` : '';
     const { client_secret } = await stripe.checkout.sessions.create({
       ui_mode: 'custom',
       customer,
@@ -1258,9 +1271,7 @@ export class StripeService {
     userId: string,
     allowTrial: boolean
   ) {
-    const isUtm = body.utm
-      ? `&utm_source=${encodeURIComponent(body.utm)}`
-      : '';
+    const isUtm = body.utm ? `&utm_source=${encodeURIComponent(body.utm)}` : '';
 
     if (body.dub) {
       await stripe.customers.update(customer, {

@@ -22,6 +22,7 @@ import {
 import { randomBytes, randomUUID } from 'crypto';
 import {
   MOBILE_TOKEN_EXPIRES_IN,
+  MOBILE_TOKEN_TTL_SECONDS,
   revokeMobileSession,
 } from '@gitroom/nestjs-libraries/redis/mobile-session';
 
@@ -563,9 +564,14 @@ export class AuthService {
         exp?: number;
       };
       if (sid) {
+        // At least the app's week: refresh keeps the session id and extends
+        // the token, so a newer token of this session can outlive the one
+        // signing out (Codex 26 X). A browser token lives longer and is never
+        // refreshed: its own expiry.
+        const left = exp ? exp - Math.floor(Date.now() / 1000) : 0;
         await revokeMobileSession(
           sid,
-          exp ? Math.max(60, exp - Math.floor(Date.now() / 1000)) : undefined
+          Math.max(MOBILE_TOKEN_TTL_SECONDS, left)
         );
       }
     } catch {

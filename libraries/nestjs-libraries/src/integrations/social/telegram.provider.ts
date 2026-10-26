@@ -98,10 +98,15 @@ export class TelegramProvider extends SocialAbstract implements SocialProvider {
     // The proof belongs to the organisation whose wizard saw the message
     // (E2E-11-69): another organisation naming the chat in that window could
     // otherwise take it.
-    const proven = await ioRedis.getdel(`telegram-proven:${chat.id}`);
+    // Compared before it is spent, so another organisation naming the chat
+    // cannot use up the rightful one's proof (Codex 26 X); GETDEL keeps it
+    // good for one connection.
+    const proofKey = `telegram-proven:${chat.id}`;
+    const proven = await ioRedis.get(proofKey);
     if (
       !proven ||
-      (params.organizationId && proven !== params.organizationId)
+      (params.organizationId && proven !== params.organizationId) ||
+      (await ioRedis.getdel(proofKey)) !== proven
     ) {
       return 'Post the /connect message in the chat first';
     }
