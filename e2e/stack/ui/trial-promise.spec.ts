@@ -26,7 +26,7 @@ for (const trial of [true, false]) {
       await page.goto('/billing');
       // The paywall renders its intro twice (wide and narrow layouts).
       await expect(page.getByText('Create a month of content').first()).toBeVisible({ timeout: 20_000 });
-      const promise = page.getByText('Pay NOTHING for the first 7-days');
+      const promise = page.getByText('Pay nothing for the first 7 days');
       if (trial) {
         await expect(promise.filter({ visible: true })).toHaveCount(1);
       } else {

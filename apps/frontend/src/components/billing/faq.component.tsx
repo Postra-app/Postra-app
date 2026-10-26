@@ -21,7 +21,7 @@ const useFaqList = () => {
             ),
             description: t(
               'faq_to_confirm_credit_card_information_postra_will_hold',
-              'To confirm credit card information Postra will hold £1 and release it immediately, you can cancel your subscription anytime from settings without talking to a person'
+              'You pay when your trial ends, unless you cancel before then. To check your card we hold £1 and release it straight away. You can cancel any time in Settings, without talking to anyone.'
             ),
           },
         ]

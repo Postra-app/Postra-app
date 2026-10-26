@@ -329,7 +329,7 @@ const PriceBreakdown: FC = () => {
           <strong>
             {t(
               'billing_cancel_notice',
-              'Cancel anytime from settings without talking to a person and never be charged.'
+              'Cancel any time in Settings, without talking to anyone. After you cancel, you are not charged again.'
             )}
           </strong>
         </div>

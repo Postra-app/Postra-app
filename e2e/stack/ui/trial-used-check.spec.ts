@@ -45,7 +45,7 @@ test('a card that already had a trial is named after the checkout, and the plan 
     // The checkout was loaded again, this time without the trial, and the
     // page no longer promises one.
     await expect.poll(() => checkouts.includes(false), { timeout: 20_000 }).toBe(true);
-    await expect(page.getByText('Pay NOTHING for the first 7-days')).toHaveCount(0);
+    await expect(page.getByText('Pay nothing for the first 7 days')).toHaveCount(0);
     // Answered once: a reload does not run the check and its message again.
     expect(new URL(page.url()).searchParams.has('check')).toBe(false);
   } finally {
