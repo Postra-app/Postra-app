@@ -414,3 +414,58 @@ describe('push tokens of ended sessions', () => {
     expect(prisma.model.mobilePushToken.deleteMany).not.toHaveBeenCalled();
   });
 });
+
+// E2E-11-89: the agent's chat memory lives in Mastra's own tables, keyed by
+// the organisation id with no foreign key, so deleting an account left the
+// conversations of its organisations behind (production 27 X: 3 threads, 18
+// messages of organisations that no longer exist). The policy deletes content
+// within 30 days of account deletion.
+describe('agent chat memory of deleted organisations', () => {
+  const rawPrisma = (tablesExist: boolean, orphans: number) => {
+    const executed: string[] = [];
+    return {
+      executed,
+      model: {
+        $queryRawUnsafe: jest.fn(async (sql: string) =>
+          sql.includes('to_regclass')
+            ? [{ ok: tablesExist }]
+            : [{ n: orphans }]
+        ),
+        $executeRawUnsafe: jest.fn(async (sql: string) => {
+          executed.push(sql);
+          return orphans;
+        }),
+      },
+    };
+  };
+
+  it('deletes messages, threads and working memory of organisations that are gone', async () => {
+    const prisma = rawPrisma(true, 3);
+    const removed = await new MaintenanceService(prisma as any).purgeOrphanAgentMemory(true);
+    expect(removed).toBe(3);
+    const sql = prisma.executed.join('\n');
+    expect(sql).toMatch(/DELETE FROM mastra_messages/);
+    expect(sql).toMatch(/DELETE FROM mastra_threads/);
+    expect(sql).toMatch(/DELETE FROM mastra_resources/);
+    // Every delete is bounded by "no such organisation".
+    for (const statement of prisma.executed) {
+      expect(statement).toMatch(/NOT EXISTS \(SELECT 1 FROM "Organization"/);
+    }
+  });
+
+  it('only counts on a dry run', async () => {
+    const prisma = rawPrisma(true, 3);
+    await expect(
+      new MaintenanceService(prisma as any).purgeOrphanAgentMemory(false)
+    ).resolves.toBe(3);
+    expect(prisma.executed).toEqual([]);
+  });
+
+  it('does nothing where the agent never created its tables', async () => {
+    const prisma = rawPrisma(false, 0);
+    await expect(
+      new MaintenanceService(prisma as any).purgeOrphanAgentMemory(true)
+    ).resolves.toBe(0);
+    expect(prisma.executed).toEqual([]);
+  });
+});

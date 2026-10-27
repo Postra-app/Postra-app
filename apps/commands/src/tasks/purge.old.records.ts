@@ -74,6 +74,11 @@ export class PurgeOldRecords {
       }`
     );
 
+    const agentThreads = await this._maintenance.purgeOrphanAgentMemory(apply);
+    console.log(
+      `  agent chat threads of deleted organisations ${apply ? 'deleted' : 'to delete'}: ${agentThreads}`
+    );
+
     if (!apply) {
       console.log(
         '[purge-old-records] DRY-RUN only - nothing deleted. Re-run with -- --apply to persist.'

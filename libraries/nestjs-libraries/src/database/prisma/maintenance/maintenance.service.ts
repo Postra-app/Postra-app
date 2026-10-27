@@ -94,8 +94,49 @@ export class MaintenanceService {
       | 'oAuthApp'
       | 'stripeProcessedEvent'
       | 'mobilePushToken'
+      | '$queryRawUnsafe'
+      | '$executeRawUnsafe'
     >
   ) {}
+
+  /**
+   * The agent's chat memory of organisations that no longer exist.
+   *
+   * Mastra keeps threads, messages and working memory in its own tables, keyed
+   * by the organisation id with no foreign key, so nothing cascaded when an
+   * account was deleted and its conversations stayed (E2E-11-89). Run daily,
+   * this keeps the policy's "deleted within 30 days of account deletion" for
+   * them too. Returns the threads removed (or that would be).
+   */
+  async purgeOrphanAgentMemory(apply: boolean): Promise<number> {
+    const [{ ok }] = await this._prisma.model.$queryRawUnsafe<{ ok: boolean }[]>(
+      `SELECT to_regclass('mastra_threads') IS NOT NULL
+          AND to_regclass('mastra_messages') IS NOT NULL
+          AND to_regclass('mastra_resources') IS NOT NULL AS ok`
+    );
+    if (!ok) {
+      return 0;
+    }
+    const orphanThread = `NOT EXISTS (SELECT 1 FROM "Organization" o WHERE o.id = t."resourceId")`;
+    if (!apply) {
+      const [{ n }] = await this._prisma.model.$queryRawUnsafe<{ n: number }[]>(
+        `SELECT count(*)::int AS n FROM mastra_threads t WHERE ${orphanThread}`
+      );
+      return n;
+    }
+    await this._prisma.model.$executeRawUnsafe(
+      `DELETE FROM mastra_messages m
+        WHERE m.thread_id IN (SELECT t.id FROM mastra_threads t WHERE ${orphanThread})`
+    );
+    const threads = await this._prisma.model.$executeRawUnsafe(
+      `DELETE FROM mastra_threads t WHERE ${orphanThread}`
+    );
+    await this._prisma.model.$executeRawUnsafe(
+      `DELETE FROM mastra_resources r
+        WHERE NOT EXISTS (SELECT 1 FROM "Organization" o WHERE o.id = r.id)`
+    );
+    return threads;
+  }
 
   /**
    * Drop rows older than their retention window.
