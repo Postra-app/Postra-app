@@ -12,7 +12,7 @@ describe('planFeatures', () => {
   it('lists Starter as the customer sees it', () => {
     expect(texts('STANDARD')).toEqual([
       '3 channels',
-      'On Facebook, Instagram, TikTok, LinkedIn',
+      'On Facebook, Instagram, TikTok, LinkedIn, Pinterest',
       '400 posts a month',
       '1 person',
       'AI writer, assistant and auto-complete',
@@ -28,8 +28,8 @@ describe('planFeatures', () => {
     const pro = texts('PRO');
     expect(pro).toContain(
       // Only platforms a customer can connect today, like the landing's
-      // "6 channels on 9 platforms" (K. 10-09: no "(soon)").
-      'On Facebook, Instagram, TikTok, LinkedIn, YouTube, Threads, Bluesky, Mastodon, Telegram'
+      // "6 channels on 10 platforms" (K. 10-09: no "(soon)"; Pinterest 10-27).
+      'On Facebook, Instagram, TikTok, LinkedIn, Pinterest, YouTube, Threads, Bluesky, Mastodon, Telegram'
     );
     expect(pro).toContain('Blog to posts from 3 RSS feeds');
     expect(pro).toContain('Unlimited posts');

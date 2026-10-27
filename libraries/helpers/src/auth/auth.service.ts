@@ -52,6 +52,11 @@ export function encrypt_legacy_using_IV(utf8Plaintext: string) {
   ]);
   return out.toString('hex');
 }
+// Every token Postra issues is HS256. Verification used to take whatever HMAC
+// the token's header named; it now names the one it accepts (RFC 8725 §3.1,
+// E2E-11-79).
+const JWT_ALGORITHM = 'HS256' as const;
+
 export class AuthService {
   static hashPassword(password: string) {
     return hashSync(password, 10);
@@ -69,6 +74,7 @@ export class AuthService {
     return sign(value, secret, {
       expiresIn: '30d',
       ...options,
+      algorithm: JWT_ALGORITHM,
     });
   }
   static verifyJWT(token: string) {
@@ -76,7 +82,7 @@ export class AuthService {
     if (!secret) {
       throw new Error('JWT_SECRET is not defined');
     }
-    return verify(token, secret);
+    return verify(token, secret, { algorithms: [JWT_ALGORITHM] });
   }
 
   static fixedEncryption(value: string) {

@@ -306,6 +306,24 @@ export const CHANNEL_GUIDES: ChannelGuide[] = [
       'First comments and threads are not available on TikTok.',
     ],
   },
+  {
+    identifier: 'pinterest',
+    name: 'Pinterest',
+    connectType: 'oauth',
+    steps: [
+      'Click "Add Channel", pick Pinterest, log in and approve access.',
+    ],
+    gotchas: [
+      'Every Pin goes to a board, so the account needs at least one board (create it on Pinterest first).',
+      'Pinterest needs a picture: a Pin without media cannot be published.',
+    ],
+    composer: [
+      'Board (required), title (up to 100 characters) and an optional destination link.',
+      'Up to 5 images, or one video with a cover image as the second file.',
+      'Description limit: 500 characters.',
+      'First comments and threads are not available on Pinterest.',
+    ],
+  },
 ];
 
 export const APP_TABS: AppTabGuide[] = [

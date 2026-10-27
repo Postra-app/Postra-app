@@ -123,4 +123,62 @@ describe('mobile session (E2E-10-17)', () => {
     await service.endMobileSession(old);
     expect([...ttls.values()][0]).toBeGreaterThanOrEqual(MOBILE_TOKEN_TTL_SECONDS);
   });
+
+  // E2E-11-80: refresh kept the session id and handed out a fresh week every
+  // time, so a phone in use (or a stolen token, refreshed) never had to sign
+  // in again. NIST SP 800-63B-4 asks for a definite overall timeout, no more
+  // than 30 days at AAL1 - the browser's token already ends there.
+  describe('the app session ends 30 days after signing in', () => {
+    const DAY = 24 * 60 * 60;
+    const now = () => Math.floor(Date.now() / 1000);
+
+    it('carries the sign-in time from the browser token into the app token', async () => {
+      const service = makeService();
+      const web = await (service as any).jwt({ id: 'u1', email: 'a@b.c', tokenVersion: 3, suspendedAt: null });
+      const { sat } = AuthChecker.verifyJWT(web) as any;
+      expect(sat).toBeGreaterThan(now() - 5);
+      expect((AuthChecker.verifyJWT(service.mobileJwt(web)) as any).sat).toBe(sat);
+    });
+
+    it('refresh keeps the sign-in time', () => {
+      const service = makeService();
+      const first = service.mobileJwt(WEB_JWT());
+      const a = AuthChecker.verifyJWT(first) as any;
+      const b = AuthChecker.verifyJWT(service.refreshMobileJwt(first)) as any;
+      expect(b.sat).toBe(a.sat);
+    });
+
+    it('a refresh near the end does not reach past 30 days from signing in', () => {
+      const sat = now() - 27 * DAY;
+      const token = AuthChecker.signJWT(
+        { id: 'u1', email: 'a@b.c', tokenVersion: 3, sid: 's1', sat },
+        { expiresIn: 7 * DAY }
+      );
+      const refreshed = AuthChecker.verifyJWT(
+        makeService().refreshMobileJwt(token)
+      ) as any;
+      expect(refreshed.exp).toBeLessThanOrEqual(sat + 30 * DAY);
+    });
+
+    it('refuses a refresh once the 30 days are up', () => {
+      const sat = now() - 31 * DAY;
+      const token = AuthChecker.signJWT(
+        { id: 'u1', email: 'a@b.c', tokenVersion: 3, sid: 's1', sat },
+        { expiresIn: 7 * DAY }
+      );
+      expect(() => makeService().refreshMobileJwt(token)).toThrow();
+    });
+
+    it('a token from before the sign-in time counts from when it was issued', () => {
+      const token = AuthChecker.signJWT(
+        { id: 'u1', email: 'a@b.c', tokenVersion: 3, sid: 's1' },
+        { expiresIn: 7 * DAY }
+      );
+      const { iat } = AuthChecker.verifyJWT(token) as any;
+      const refreshed = AuthChecker.verifyJWT(
+        makeService().refreshMobileJwt(token)
+      ) as any;
+      expect(refreshed.sat).toBe(iat);
+    });
+  });
 });

@@ -52,10 +52,16 @@ export class HousekeepingActivity {
   async purgeOldRecords() {
     const purge = await this._maintenance.purgeOldRecords(true);
     const sweep = await this._maintenance.sweepOrphanMedia(true);
+    const agentThreads = await this._maintenance.purgeOrphanAgentMemory(true);
     this._logger.log(
-      `housekeeping: rows deleted Errors ${purge.errors}, AuditLog ${purge.auditLog}, AiUsage ${purge.aiUsage}, StripeProcessedEvent ${purge.stripeEvents}; media objects removed ${sweep.removed}${sweep.failed ? `, failed ${sweep.failed}` : ''}`
+      `housekeeping: rows deleted Errors ${purge.errors}, AuditLog ${purge.auditLog}, AiUsage ${purge.aiUsage}, StripeProcessedEvent ${purge.stripeEvents}, MobilePushToken ${purge.pushTokens}; media objects removed ${sweep.removed}${sweep.failed ? `, failed ${sweep.failed}` : ''}; agent threads of deleted organisations ${agentThreads}`
     );
-    return { ...purge, removed: sweep.removed, failed: sweep.failed };
+    return {
+      ...purge,
+      removed: sweep.removed,
+      failed: sweep.failed,
+      agentThreads,
+    };
   }
 
   // The margin guard, daily: Postra administrators get one mail when an

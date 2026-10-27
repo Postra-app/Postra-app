@@ -64,6 +64,23 @@ test('a Google sign-in state works once', async () => {
   await api.dispose();
 });
 
+// Domain=.postra.co.uk sent every cookie, the session token included, to
+// every subdomain - the status page on GitHub Pages among them. The sign-in
+// state cookie is written with the session cookie's scope.
+test('E2E-11-78: cookies are host-only', async () => {
+  const api = await anonymous();
+  const res = await api.get('/auth/oauth/GOOGLE');
+  expect(res.status()).toBe(200);
+  const cookie = res
+    .headersArray()
+    .filter((h) => h.name.toLowerCase() === 'set-cookie')
+    .map((h) => h.value)
+    .find((v) => v.startsWith('postra_oauth='));
+  expect(cookie).toBeDefined();
+  expect(cookie).not.toMatch(/domain=/i);
+  await api.dispose();
+});
+
 test('E2E-02-27: a link from a mail (password reset, activation) is not a session', async () => {
   // The reset link carried the same id and tokenVersion a session does, under
   // the default 30-day JWT expiry: a leaked, unused link signed its holder in

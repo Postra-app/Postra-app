@@ -49,3 +49,21 @@ describe('var/docker/nginx.conf Content-Security-Policy', () => {
     expect(appPolicy?.value).not.toContain("'unsafe-eval'");
   });
 });
+
+// §48 (2026-10-27): no Permissions-Policy anywhere, so any script on the page
+// - our own, Stripe's, Plausible's, or one that got in - could ask for the
+// camera, the microphone or the location. Postra uses none of them.
+describe('var/docker/nginx.conf Permissions-Policy', () => {
+  const policy = conf.match(/add_header\s+Permissions-Policy\s+"([^"]+)"\s+always;/)?.[1];
+
+  it('turns off the device features the app never uses', () => {
+    for (const feature of ['camera', 'microphone', 'geolocation', 'usb']) {
+      expect(policy).toMatch(new RegExp(`${feature}=\\(\\)`));
+    }
+  });
+
+  it('is sent beside the other security headers of the server block', () => {
+    const block = conf.slice(conf.indexOf('add_header X-Frame-Options'));
+    expect(block.indexOf('Permissions-Policy')).toBeLessThan(block.indexOf('location '));
+  });
+});

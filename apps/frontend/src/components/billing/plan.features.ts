@@ -16,6 +16,7 @@ export const PLATFORM_NAMES: Record<string, string> = {
   'instagram-standalone': 'Instagram',
   tiktok: 'TikTok',
   linkedin: 'LinkedIn',
+  pinterest: 'Pinterest',
   youtube: 'YouTube',
   threads: 'Threads',
   'linkedin-page': 'LinkedIn Pages',
@@ -28,7 +29,7 @@ export const PLATFORM_NAMES: Record<string, string> = {
 
 // Platforms a plan includes but the picker still shows as "Soon" (kept out of
 // enabledProviders in integration.manager.ts). The plan cards leave them out,
-// like the landing ("6 channels on 9 platforms"): only what a customer can
+// like the landing ("6 channels on 10 platforms" for Pro since Pinterest, 2026-10-27): only what a customer can
 // connect today (K. 10-09). They appear once they are enabled.
 export const SOON_PLATFORMS = new Set(['linkedin-page']);
 

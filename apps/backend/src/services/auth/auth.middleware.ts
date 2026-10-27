@@ -27,8 +27,14 @@ import { clientIpFromForwardedFor } from '@gitroom/nestjs-libraries/throttler/th
  * The admin surface acts on everybody, so reaching it from inside an
  * impersonated session means the action lands under the customer's name. The
  * one exception is `/user/impersonate`, which is how the session gets out.
+ * Deleting the account is the customer's own decision and cannot be undone
+ * (E2E-11-83); an organisation that has to go goes through the admin panel.
  */
-const FORBIDDEN_WHILE_IMPERSONATING = ['/admin', '/billing/add-subscription'];
+const FORBIDDEN_WHILE_IMPERSONATING = [
+  '/admin',
+  '/billing/add-subscription',
+  '/user/delete',
+];
 
 /**
  * Refusing a route while impersonating must not log the admin out.

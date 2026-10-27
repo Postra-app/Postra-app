@@ -19,7 +19,10 @@ import { ForgotReturnPasswordDto } from '@gitroom/nestjs-libraries/dtos/auth/for
 import { ForgotPasswordDto } from '@gitroom/nestjs-libraries/dtos/auth/forgot.password.dto';
 import { ResendActivationDto } from '@gitroom/nestjs-libraries/dtos/auth/resend-activation.dto';
 import { ApiTags } from '@nestjs/swagger';
-import { getCookieUrlFromDomain } from '@gitroom/helpers/subdomain/subdomain.management';
+import {
+  expireDomainWideCookies,
+  sessionCookieOptions,
+} from '@gitroom/nestjs-libraries/services/auth/remove.auth';
 import { EmailService } from '@gitroom/nestjs-libraries/services/email.service';
 import { RealIP } from 'nestjs-real-ip';
 import { UserAgent } from '@gitroom/nestjs-libraries/user/user.agent';
@@ -38,20 +41,23 @@ import { AuditService } from '@gitroom/nestjs-libraries/database/prisma/audit/au
 // which left an expired-token cookie sitting in the browser for 11 months after
 // the JWT it carried had died.
 const AUTH_COOKIE_MAX_AGE_MS = 1000 * 60 * 60 * 24 * 30;
+// Host-only, like every Postra cookie since E2E-11-78 (sessionCookieOptions).
 const authCookieOptions = () => ({
-  domain: getCookieUrlFromDomain(process.env.FRONTEND_URL!),
-  ...(!process.env.NOT_SECURED
-    ? { secure: true, httpOnly: true, sameSite: 'lax' as const }
-    : {}),
+  ...sessionCookieOptions(),
   expires: new Date(Date.now() + AUTH_COOKIE_MAX_AGE_MS),
 });
 
+// A new session replaces whatever the browser held, including the
+// domain-wide cookies from before E2E-11-78: an older `auth` is sent first
+// and would win over the one set here.
+const setSessionCookie = (response: Response, jwt: string) => {
+  expireDomainWideCookies(response);
+  response.cookie('auth', jwt, authCookieOptions());
+};
+
 // The invitation an `/auth?org=…` link left behind (frontend proxy.ts), with
-// the attributes it was set with: host-only in plain-http development.
-const orgCookieClearOptions = () =>
-  process.env.NOT_SECURED
-    ? { path: '/' }
-    : { path: '/', domain: getCookieUrlFromDomain(process.env.FRONTEND_URL!) };
+// the attributes it was set with.
+const orgCookieClearOptions = () => ({ path: '/' });
 
 // Ties a sign-in with Google/GitHub/… to the browser that started it; see
 // AuthService.oauthLink.
@@ -59,7 +65,6 @@ const OAUTH_STATE_COOKIE = 'postra_oauth';
 // Nothing in the page reads it, so it is HttpOnly in every mode; only
 // `secure` waits for HTTPS (NOT_SECURED is plain-http local development).
 const oauthStateCookieOptions = () => ({
-  domain: getCookieUrlFromDomain(process.env.FRONTEND_URL!),
   path: '/',
   maxAge: 600 * 1000,
   httpOnly: true,
@@ -124,7 +129,7 @@ export class AuthController {
         return;
       }
 
-      response.cookie('auth', jwt, authCookieOptions());
+      setSessionCookie(response, jwt);
 
       if (process.env.NOT_SECURED) {
         response.header('auth', jwt);
@@ -198,7 +203,7 @@ export class AuthController {
         metadata: { email: body.email, provider: body.provider },
       });
 
-      response.cookie('auth', jwt, authCookieOptions());
+      setSessionCookie(response, jwt);
 
       if (process.env.NOT_SECURED) {
         response.header('auth', jwt);
@@ -330,7 +335,7 @@ export class AuthController {
       return response.status(200).json({ can: true, kept: true });
     }
 
-    response.cookie('auth', activate, authCookieOptions());
+    setSessionCookie(response, activate);
 
     if (process.env.NOT_SECURED) {
       response.header('auth', activate);
@@ -398,7 +403,7 @@ export class AuthController {
       return response.json({ token });
     }
 
-    response.cookie('auth', jwt, authCookieOptions());
+    setSessionCookie(response, jwt);
 
     if (process.env.NOT_SECURED) {
       response.header('auth', jwt);

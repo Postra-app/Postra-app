@@ -23,8 +23,10 @@ import { randomBytes, randomUUID } from 'crypto';
 import {
   MOBILE_TOKEN_EXPIRES_IN,
   MOBILE_TOKEN_TTL_SECONDS,
+  SESSION_MAX_AGE_SECONDS,
   revokeMobileSession,
 } from '@gitroom/nestjs-libraries/redis/mobile-session';
+import { HttpForbiddenException } from '@gitroom/nestjs-libraries/services/exception.filter';
 
 // Per-account login lockout (brute-force defense, independent of IP throttling).
 // What a password is compared with when no account has the address, so a
@@ -201,7 +203,14 @@ export class AuthService {
 
     try {
       const getOrg: any = AuthChecker.verifyJWT(cookie);
-      if (dayjs(getOrg.timeLimit).isBefore(dayjs())) {
+      // An invitation and nothing else, and never without its hour: a token
+      // with no `timeLimit` passed as one that never runs out, and any token
+      // Postra signs could be read as an invitation (E2E-11-84).
+      if (
+        getOrg?.purpose !== 'invite' ||
+        !getOrg.timeLimit ||
+        !dayjs(getOrg.timeLimit).isAfter(dayjs())
+      ) {
         return false;
       }
 
@@ -517,14 +526,18 @@ export class AuthService {
    * always agree on who the user is; only the lifetime and the id differ.
    */
   mobileJwt(webJwt: string): string {
-    const { id, email, tokenVersion } = AuthChecker.verifyJWT(webJwt) as {
+    const { id, email, tokenVersion, sat, iat } = AuthChecker.verifyJWT(
+      webJwt
+    ) as {
       id: string;
       email: string;
       tokenVersion: number;
+      sat?: number;
+      iat?: number;
     };
 
     return AuthChecker.signJWT(
-      { id, email, tokenVersion, sid: randomUUID() },
+      { id, email, tokenVersion, sid: randomUUID(), sat: sat ?? iat },
       { expiresIn: MOBILE_TOKEN_EXPIRES_IN }
     );
   }
@@ -535,18 +548,30 @@ export class AuthService {
    * many times it refreshed.
    */
   refreshMobileJwt(currentJwt: string): string {
-    const { id, email, tokenVersion, sid } = AuthChecker.verifyJWT(
+    const { id, email, tokenVersion, sid, sat, iat } = AuthChecker.verifyJWT(
       currentJwt
     ) as {
       id: string;
       email: string;
       tokenVersion: number;
       sid?: string;
+      sat?: number;
+      iat?: number;
     };
 
+    // The session ends 30 days after signing in, refreshed or not: every
+    // refresh used to add a week, so a session in use never ended
+    // (E2E-11-80). A token from before `sat` counts from when it was issued.
+    const signedInAt = sat ?? iat ?? Math.floor(Date.now() / 1000);
+    const left =
+      signedInAt + SESSION_MAX_AGE_SECONDS - Math.floor(Date.now() / 1000);
+    if (left <= 0) {
+      throw new HttpForbiddenException();
+    }
+
     return AuthChecker.signJWT(
-      { id, email, tokenVersion, sid: sid ?? randomUUID() },
-      { expiresIn: MOBILE_TOKEN_EXPIRES_IN }
+      { id, email, tokenVersion, sid: sid ?? randomUUID(), sat: signedInAt },
+      { expiresIn: Math.min(MOBILE_TOKEN_TTL_SECONDS, left) }
     );
   }
 
@@ -606,11 +631,14 @@ export class AuthService {
     // `sid` lets signing out end this session on the server, not only by
     // deleting the cookie: a copied cookie kept working for the rest of its
     // 30 days (E2E-11-74).
+    // `sat` (signed in at) carries into the app's token and its refreshes,
+    // which end 30 days from here like this one (E2E-11-80).
     return AuthChecker.signJWT({
       id: user.id,
       email: user.email,
       tokenVersion: user.tokenVersion ?? 0,
       sid: randomUUID(),
+      sat: Math.floor(Date.now() / 1000),
     });
   }
 }

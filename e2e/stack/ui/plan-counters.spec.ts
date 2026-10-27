@@ -17,7 +17,8 @@ test('Add Channel says how many of the plan’s channels are used', async ({ pag
   await expect(
     page.getByText(new RegExp(`^${used} of ${self.totalChannels} channels used · Pro`))
   ).toBeVisible();
-  await expect(page.getByText(/pick any of the 9 platforms below/)).toBeVisible();
+  // Pro: 10 platforms since Pinterest joined every plan (2026-10-27).
+  await expect(page.getByText(/pick any of the 10 platforms below/)).toBeVisible();
 });
 
 test('Teams says how many seats are used', async ({ page }) => {

@@ -47,8 +47,11 @@ import { IntegrationService } from '@gitroom/nestjs-libraries/database/prisma/in
 import { ioRedis } from '@gitroom/nestjs-libraries/redis/redis.service';
 import { startMetricsServer } from './metrics/metrics';
 import { failBoot } from './boot.failed';
+import { assertNotSecuredOnlyOverHttp } from './not.secured.guard';
+import { ownOrigins, sameOriginGuard } from './same.origin.guard';
 
 async function start() {
+  assertNotSecuredOnlyOverHttp();
   bootStep('nest create');
   const app = await NestFactory.create(AppModule, {
     rawBody: true,
@@ -148,6 +151,7 @@ async function start() {
     })
   );
   app.use(cookieParser());
+  app.use(sameOriginGuard(ownOrigins()));
   app.use(compression());
   app.useGlobalFilters(
     new SubscriptionExceptionFilter(),

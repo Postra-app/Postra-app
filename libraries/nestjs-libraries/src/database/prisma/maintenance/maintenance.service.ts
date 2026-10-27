@@ -30,6 +30,8 @@ export interface RetentionWindows {
   stripeEventsDays: number;
   /** How long a soft-deleted media row waits before its object is swept. */
   mediaGraceDays: number;
+  /** A phone's push token not refreshed for this long belongs to an ended session. */
+  pushTokenDays: number;
 }
 
 export const DEFAULT_RETENTION: RetentionWindows = {
@@ -38,9 +40,10 @@ export const DEFAULT_RETENTION: RetentionWindows = {
   errorsDays: 90,
   // Accountability records outlive diagnostics: who granted what, to whom,
   // from which address. Kept over a year so a dispute a year old can be
-  // answered.
-  auditDays: 400,
-  aiUsageDays: 400,
+  // answered, and within the policy's "up to 13 months": 400 days outlived
+  // the shortest 13 months by days (§62, 2026-10-27).
+  auditDays: 390,
+  aiUsageDays: 390,
   // The webhook's record of handled events only has to outlive redeliveries:
   // Stripe retries for 3 days and the CLI resends up to 30 days after the
   // event. Kept as long as technical logs; it grew without a limit (E2E-11-63).
@@ -48,6 +51,11 @@ export const DEFAULT_RETENTION: RetentionWindows = {
   // A soft-deleted file is recoverable until this passes. Long enough that
   // "I deleted it by mistake" is answerable, short enough to bound the bucket.
   mediaGraceDays: 30,
+  // The policy keeps a push token "until you sign out". The app refreshes its
+  // token on every launch and a session ends 30 days after signing in
+  // (E2E-11-80), so an older token is a phone that has signed out without
+  // telling us: reinstalled, wiped or abandoned (E2E-11-86).
+  pushTokenDays: 30,
 };
 
 export interface PurgeReport {
@@ -57,6 +65,7 @@ export interface PurgeReport {
   auditLog: number;
   aiUsage: number;
   stripeEvents: number;
+  pushTokens: number;
 }
 
 export interface SweepReport {
@@ -84,8 +93,50 @@ export class MaintenanceService {
       | 'socialMediaAgency'
       | 'oAuthApp'
       | 'stripeProcessedEvent'
+      | 'mobilePushToken'
+      | '$queryRawUnsafe'
+      | '$executeRawUnsafe'
     >
   ) {}
+
+  /**
+   * The agent's chat memory of organisations that no longer exist.
+   *
+   * Mastra keeps threads, messages and working memory in its own tables, keyed
+   * by the organisation id with no foreign key, so nothing cascaded when an
+   * account was deleted and its conversations stayed (E2E-11-89). Run daily,
+   * this keeps the policy's "deleted within 30 days of account deletion" for
+   * them too. Returns the threads removed (or that would be).
+   */
+  async purgeOrphanAgentMemory(apply: boolean): Promise<number> {
+    const [{ ok }] = await this._prisma.model.$queryRawUnsafe<{ ok: boolean }[]>(
+      `SELECT to_regclass('mastra_threads') IS NOT NULL
+          AND to_regclass('mastra_messages') IS NOT NULL
+          AND to_regclass('mastra_resources') IS NOT NULL AS ok`
+    );
+    if (!ok) {
+      return 0;
+    }
+    const orphanThread = `NOT EXISTS (SELECT 1 FROM "Organization" o WHERE o.id = t."resourceId")`;
+    if (!apply) {
+      const [{ n }] = await this._prisma.model.$queryRawUnsafe<{ n: number }[]>(
+        `SELECT count(*)::int AS n FROM mastra_threads t WHERE ${orphanThread}`
+      );
+      return n;
+    }
+    await this._prisma.model.$executeRawUnsafe(
+      `DELETE FROM mastra_messages m
+        WHERE m.thread_id IN (SELECT t.id FROM mastra_threads t WHERE ${orphanThread})`
+    );
+    const threads = await this._prisma.model.$executeRawUnsafe(
+      `DELETE FROM mastra_threads t WHERE ${orphanThread}`
+    );
+    await this._prisma.model.$executeRawUnsafe(
+      `DELETE FROM mastra_resources r
+        WHERE NOT EXISTS (SELECT 1 FROM "Organization" o WHERE o.id = r.id)`
+    );
+    return threads;
+  }
 
   /**
    * Drop rows older than their retention window.
@@ -107,27 +158,44 @@ export class MaintenanceService {
     const stripeEventsWhere = {
       createdAt: { lt: cutoff(windows.stripeEventsDays) },
     };
+    const pushTokensWhere = {
+      updatedAt: { lt: cutoff(windows.pushTokenDays) },
+    };
 
     if (!apply) {
-      const [errors, auditLog, aiUsage, stripeEvents] = await Promise.all([
-        this._prisma.model.errors.count({ where: errorsWhere }),
-        this._prisma.model.auditLog.count({ where: auditWhere }),
-        this._prisma.model.aiUsage.count({ where: aiUsageWhere }),
-        this._prisma.model.stripeProcessedEvent.count({
-          where: stripeEventsWhere,
-        }),
-      ]);
-      return { apply, windows, errors, auditLog, aiUsage, stripeEvents };
+      const [errors, auditLog, aiUsage, stripeEvents, pushTokens] =
+        await Promise.all([
+          this._prisma.model.errors.count({ where: errorsWhere }),
+          this._prisma.model.auditLog.count({ where: auditWhere }),
+          this._prisma.model.aiUsage.count({ where: aiUsageWhere }),
+          this._prisma.model.stripeProcessedEvent.count({
+            where: stripeEventsWhere,
+          }),
+          this._prisma.model.mobilePushToken.count({ where: pushTokensWhere }),
+        ]);
+      return {
+        apply,
+        windows,
+        errors,
+        auditLog,
+        aiUsage,
+        stripeEvents,
+        pushTokens,
+      };
     }
 
-    const [errors, auditLog, aiUsage, stripeEvents] = await Promise.all([
-      this._prisma.model.errors.deleteMany({ where: errorsWhere }),
-      this._prisma.model.auditLog.deleteMany({ where: auditWhere }),
-      this._prisma.model.aiUsage.deleteMany({ where: aiUsageWhere }),
-      this._prisma.model.stripeProcessedEvent.deleteMany({
-        where: stripeEventsWhere,
-      }),
-    ]);
+    const [errors, auditLog, aiUsage, stripeEvents, pushTokens] =
+      await Promise.all([
+        this._prisma.model.errors.deleteMany({ where: errorsWhere }),
+        this._prisma.model.auditLog.deleteMany({ where: auditWhere }),
+        this._prisma.model.aiUsage.deleteMany({ where: aiUsageWhere }),
+        this._prisma.model.stripeProcessedEvent.deleteMany({
+          where: stripeEventsWhere,
+        }),
+        this._prisma.model.mobilePushToken.deleteMany({
+          where: pushTokensWhere,
+        }),
+      ]);
 
     return {
       apply,
@@ -136,6 +204,7 @@ export class MaintenanceService {
       auditLog: auditLog.count,
       aiUsage: aiUsage.count,
       stripeEvents: stripeEvents.count,
+      pushTokens: pushTokens.count,
     };
   }
 

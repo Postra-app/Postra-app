@@ -46,7 +46,9 @@ export interface PricingInterface {
 // few more. Starter is the four platforms a small UK business actually runs on
 // (the personal LinkedIn profile included, because freelancers and B2B sellers
 // live there); its 3 slots still cap usage. Instagram comes both ways, through
-// a Facebook Page and without one (K. 2026-10-27): one platform, two logins. Pro adds video and text-first
+// a Facebook Page and without one (K. 2026-10-27): one platform, two logins.
+// Pinterest is there too (K. 2026-10-27): visual small businesses live on it
+// and every rival offers it on its cheapest plan. Pro adds video and text-first
 // platforms and LinkedIn Pages (post as the company); X (our X API volume is
 // capped) and Discord stay Business-only, so Business is every platform.
 const STARTER_PROVIDERS = [
@@ -55,6 +57,7 @@ const STARTER_PROVIDERS = [
   'instagram-standalone',
   'tiktok',
   'linkedin',
+  'pinterest',
 ];
 const PRO_PROVIDERS = [
   ...STARTER_PROVIDERS,
@@ -154,8 +157,8 @@ export const pricing: PricingInterface = {
     year_price: 790,
     // A slot for every platform in BUSINESS_PROVIDERS (both Instagram logins
     // count as one) — keep in sync when enabling a new channel globally (X
-    // added 2026-07, Discord added 2026-07).
-    channel: 12,
+    // added 2026-07, Discord added 2026-07, Pinterest 2026-10-27).
+    channel: 13,
     allowedProviders: BUSINESS_PROVIDERS,
     posts_per_month: 1000000,
     image_generation_count: 600,
