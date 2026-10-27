@@ -15,7 +15,8 @@ const store = new Map<string, string>();
 jest.mock('@gitroom/nestjs-libraries/redis/redis.service', () => ({
   ioRedis: {
     get: jest.fn(async (k: string) => store.get(k) ?? null),
-    set: jest.fn(async (k: string, v: string) => {
+    set: jest.fn(async (k: string, v: string, ...rest: unknown[]) => {
+      if (rest.includes('NX') && store.has(k)) return null;
       store.set(k, v);
       return 'OK';
     }),
@@ -63,6 +64,8 @@ const integrationService = (channels: any[]) => {
     ),
     getIntegrationsList: jest.fn(async () => channels),
     connectedThroughOtherRoute: real.connectedThroughOtherRoute.bind(real),
+    lockSameAccount: real.lockSameAccount.bind(real),
+    unlockSameAccount: real.unlockSameAccount.bind(real),
     checkPreviousConnections: jest.fn(async () => false),
     createOrUpdateIntegration: jest.fn(async () => ({ id: 'int-new' })),
   };
@@ -89,11 +92,12 @@ const manager = {
 describe('POST /integrations/social-connect/instagram-standalone', () => {
   beforeAll(() => (process.env.JWT_SECRET = 'test-secret'));
 
-  const connect = async (channels: any[], refresh?: string) => {
+  const connect = async (channels: any[], refresh?: string, held?: string) => {
     store.clear();
     store.set('login:st-1', 'cv');
     store.set('organization:st-1', 'org-1');
     if (refresh) store.set('refresh:st-1', refresh);
+    if (held) store.set(held, '1');
     const integrations = integrationService(channels);
     const controller = new NoAuthIntegrationsController(
       manager as any,
@@ -141,6 +145,23 @@ describe('POST /integrations/social-connect/instagram-standalone', () => {
       { providerIdentifier: 'instagram', internalId: '17841499999999999' },
     ]);
     expect(integrations.createOrUpdateIntegration).toHaveBeenCalled();
+  });
+
+  // Codex 27 X: the Page pick for the same account was between its check and
+  // its write; the callback must not pass its own check in that window.
+  it('⛔ waits out the same account being connected through a Page', async () => {
+    const { outcome, integrations } = await connect(
+      [],
+      undefined,
+      `same-account:org-1:instagram:${IG_ACCOUNT}`
+    );
+    expect(outcome).toBe('409 Another channel is being connected. Please try again.');
+    expect(integrations.createOrUpdateIntegration).not.toHaveBeenCalled();
+  });
+
+  it('lets the account go once the channel is saved', async () => {
+    await connect([]);
+    expect(store.has(`same-account:org-1:instagram:${IG_ACCOUNT}`)).toBe(false);
   });
 
   it('reconnecting the channel it already is still works', async () => {

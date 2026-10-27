@@ -472,19 +472,6 @@ export class NoAuthIntegrationsController {
       throw new HttpException('The channel to reconnect was not found', 404);
     }
 
-    // The same Instagram account through the other route would be a second
-    // channel posting everything twice. A reconnect keeps what it has.
-    if (!refresh) {
-      const other = await this._integrationService.connectedThroughOtherRoute(
-        org.id,
-        integration,
-        String(id)
-      );
-      if (other) {
-        throw new HttpException(sameAccountMessage(other), 409);
-      }
-    }
-
     let validName = name;
     if (!validName) {
       if (username) {
@@ -519,20 +506,48 @@ export class NoAuthIntegrationsController {
     // The slot check and the write, one connection at a time per
     // organisation: two callbacks at once both saw the one free slot and both
     // added a channel (INT-12). Same lock as switching a channel on.
+    // The same Instagram account through the other route would be a second
+    // channel posting everything twice; the check and the write hold the
+    // account, so the Page pick cannot slip in between. A reconnect keeps
+    // what it has.
+    const accountLock = refresh
+      ? null
+      : await this._integrationService.lockSameAccount(
+          org.id,
+          integration,
+          String(id)
+        );
     const capLock =
       process.env.STRIPE_PUBLISHABLE_KEY && !refresh
         ? `channels-enable:${org.id}`
         : null;
-    if (capLock && (await ioRedis.set(capLock, '1', 'EX', 15, 'NX')) !== 'OK') {
-      throw new HttpException(
-        'Another channel is being connected. Please try again.',
-        409
-      );
-    }
+    let capHeld = false;
     let createUpdate: Awaited<
       ReturnType<IntegrationService['createOrUpdateIntegration']>
     >;
     try {
+      if (capLock) {
+        if ((await ioRedis.set(capLock, '1', 'EX', 15, 'NX')) !== 'OK') {
+          throw new HttpException(
+            'Another channel is being connected. Please try again.',
+            409
+          );
+        }
+        capHeld = true;
+      }
+
+      if (!refresh) {
+        const other =
+          await this._integrationService.connectedThroughOtherRoute(
+            org.id,
+            integration,
+            String(id)
+          );
+        if (other) {
+          throw new HttpException(sameAccountMessage(other), 409);
+        }
+      }
+
       if (process.env.STRIPE_PUBLISHABLE_KEY && !refresh) {
         const list = await this._integrationService.getIntegrationsList(org.id);
         const alreadyConnected = list.some(
@@ -602,9 +617,10 @@ export class NoAuthIntegrationsController {
           grantedScopes
         );
     } finally {
-      if (capLock) {
+      if (capLock && capHeld) {
         await ioRedis.del(capLock).catch(() => undefined);
       }
+      await this._integrationService.unlockSameAccount(accountLock);
     }
 
     // Without a session, an invitee picks the page of this very channel on

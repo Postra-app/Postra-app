@@ -37,6 +37,7 @@ import { fetch } from 'undici';
 import { AuthService } from '@gitroom/helpers/auth/auth.service';
 import {
   SAME_ACCOUNT_PROVIDERS,
+  platformOf,
   sameAccountMessage,
 } from '@gitroom/nestjs-libraries/integrations/same.account';
 
@@ -390,6 +391,31 @@ export class IntegrationService {
     );
   }
 
+  // The duplicate check and the write, one at a time per Instagram account
+  // in an organisation, whichever way it connects: the Page pick and the
+  // callback without a Page for the same account at once both passed the
+  // check and the org got two channels (Codex 2026-10-27). Null when the
+  // provider has no other route.
+  async lockSameAccount(org: string, provider: string, internalId: string) {
+    if (!SAME_ACCOUNT_PROVIDERS[provider]) {
+      return null;
+    }
+    const key = `same-account:${org}:${platformOf(provider)}:${internalId}`;
+    if ((await ioRedis.set(key, '1', 'EX', 30, 'NX')) !== 'OK') {
+      throw new HttpException(
+        'Another channel is being connected. Please try again.',
+        409
+      );
+    }
+    return key;
+  }
+
+  async unlockSameAccount(key: string | null) {
+    if (key) {
+      await ioRedis.del(key).catch(() => undefined);
+    }
+  }
+
   backfillTokenEncryption(apply = true) {
     return this._integrationRepository.backfillTokenEncryption(apply);
   }
@@ -728,28 +754,37 @@ export class IntegrationService {
     );
 
     // Instagram through a Page only learns the account id here.
-    const other = await this.connectedThroughOtherRoute(
+    const accountLock = await this.lockSameAccount(
       org,
       getIntegration.providerIdentifier,
       String(getIntegrationInformation.id)
     );
-    if (other) {
-      throw new HttpException(sameAccountMessage(other), HttpStatus.CONFLICT);
-    }
+    try {
+      const other = await this.connectedThroughOtherRoute(
+        org,
+        getIntegration.providerIdentifier,
+        String(getIntegrationInformation.id)
+      );
+      if (other) {
+        throw new HttpException(sameAccountMessage(other), HttpStatus.CONFLICT);
+      }
 
-    await this.checkForDeletedOnceAndUpdate(
-      org,
-      String(getIntegrationInformation.id)
-    );
-    await this._integrationRepository.updateIntegration(id, {
-      picture: getIntegrationInformation.picture,
-      internalId: String(getIntegrationInformation.id),
-      organizationId: org,
-      name: getIntegrationInformation.name,
-      inBetweenSteps: false,
-      token: getIntegrationInformation.access_token,
-      profile: getIntegrationInformation.username,
-    });
+      await this.checkForDeletedOnceAndUpdate(
+        org,
+        String(getIntegrationInformation.id)
+      );
+      await this._integrationRepository.updateIntegration(id, {
+        picture: getIntegrationInformation.picture,
+        internalId: String(getIntegrationInformation.id),
+        organizationId: org,
+        name: getIntegrationInformation.name,
+        inBetweenSteps: false,
+        token: getIntegrationInformation.access_token,
+        profile: getIntegrationInformation.username,
+      });
+    } finally {
+      await this.unlockSameAccount(accountLock);
+    }
 
     return { success: true };
   }
