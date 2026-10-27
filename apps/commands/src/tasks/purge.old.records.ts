@@ -27,7 +27,7 @@ export class PurgeOldRecords {
   @Command({
     command: 'purge-old-records',
     describe:
-      'Housekeeping. Drops Errors, AuditLog, AiUsage and handled Stripe event rows past their retention window, then removes stored objects behind media rows that were soft-deleted long enough ago and that nothing refers to any more. Three tables had no retention at all and the bucket kept every deleted upload (E2E-06-01). Windows: --errors-days, --audit-days, --ai-usage-days, --stripe-events-days, --media-grace-days. Dry-run unless --apply.',
+      'Housekeeping. Drops Errors, AuditLog, AiUsage and handled Stripe event rows past their retention window, then removes stored objects behind media rows that were soft-deleted long enough ago and that nothing refers to any more. Three tables had no retention at all and the bucket kept every deleted upload (E2E-06-01). Push tokens of ended mobile sessions go too. Windows: --errors-days, --audit-days, --ai-usage-days, --stripe-events-days, --media-grace-days, --push-token-days. Dry-run unless --apply.',
   })
   async run() {
     const apply = process.argv.includes('--apply');
@@ -43,18 +43,22 @@ export class PurgeOldRecords {
         'media-grace-days',
         DEFAULT_RETENTION.mediaGraceDays
       ),
+      pushTokenDays: numberFlag(
+        'push-token-days',
+        DEFAULT_RETENTION.pushTokenDays
+      ),
     };
 
     const mode = apply ? 'APPLY' : 'DRY-RUN';
     console.log(
-      `[purge-old-records] ${mode} - retention: errors ${windows.errorsDays}d, audit ${windows.auditDays}d, ai-usage ${windows.aiUsageDays}d, stripe events ${windows.stripeEventsDays}d, media grace ${windows.mediaGraceDays}d`
+      `[purge-old-records] ${mode} - retention: errors ${windows.errorsDays}d, audit ${windows.auditDays}d, ai-usage ${windows.aiUsageDays}d, stripe events ${windows.stripeEventsDays}d, media grace ${windows.mediaGraceDays}d, push tokens ${windows.pushTokenDays}d`
     );
 
     const purge = await this._maintenance.purgeOldRecords(apply, windows);
     console.log(
       `  rows ${apply ? 'deleted' : 'to delete'}: Errors ${purge.errors}, AuditLog ${
         purge.auditLog
-      }, AiUsage ${purge.aiUsage}, StripeProcessedEvent ${purge.stripeEvents}`
+      }, AiUsage ${purge.aiUsage}, StripeProcessedEvent ${purge.stripeEvents}, MobilePushToken ${purge.pushTokens}`
     );
 
     const sweep = await this._maintenance.sweepOrphanMedia(

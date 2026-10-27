@@ -30,6 +30,7 @@ const buildPrisma = (data: {
   auditLog?: number;
   aiUsage?: number;
   stripeProcessedEvent?: number;
+  mobilePushToken?: number;
 }) => {
   const deleted: Record<string, unknown[]> = {};
 
@@ -86,6 +87,7 @@ const buildPrisma = (data: {
       auditLog: counted(data.auditLog),
       aiUsage: counted(data.aiUsage),
       stripeProcessedEvent: counted(data.stripeProcessedEvent),
+      mobilePushToken: counted(data.mobilePushToken),
     },
   };
 };
@@ -364,10 +366,51 @@ describe('sweepOrphanMedia', () => {
 // The privacy policy says technical logs are kept up to 90 days; audit and
 // billing usage records up to 13 months (decision 2026-10-04).
 describe('retention matches the privacy policy', () => {
-  it('keeps error logs 90 days, audit and AI usage about 13 months', () => {
+  it('keeps error logs 90 days', () => {
     expect(DEFAULT_RETENTION.errorsDays).toBe(90);
-    expect(DEFAULT_RETENTION.auditDays).toBeLessThanOrEqual(400);
-    expect(DEFAULT_RETENTION.aiUsageDays).toBeLessThanOrEqual(400);
+  });
+
+  // "Up to 13 months" is a promise, not an approximation: 400 days outlived
+  // every 13-month span by days (§62, 2026-10-27). The shortest 13 months in
+  // the calendar decide, and housekeeping runs once a day, so a row can be
+  // one day older than its window before it goes.
+  it('never keeps audit and AI usage records past 13 months', () => {
+    const shortest13Months = Math.min(
+      ...Array.from({ length: 366 * 4 }, (_, i) => {
+        const start = new Date(Date.UTC(2026, 0, 1 + i));
+        const end = new Date(start);
+        end.setUTCMonth(end.getUTCMonth() + 13);
+        return Math.round((end.getTime() - start.getTime()) / 86_400_000);
+      })
+    );
+    expect(DEFAULT_RETENTION.auditDays + 1).toBeLessThanOrEqual(shortest13Months);
+    expect(DEFAULT_RETENTION.aiUsageDays + 1).toBeLessThanOrEqual(shortest13Months);
   });
 });
 
+// E2E-11-86: the privacy policy keeps a phone's push token "until you sign
+// out of the app or delete your Postra account". A reinstalled or abandoned
+// app never signs out, so its token stayed for good (production 27 X: 70
+// tokens for 3 people, 47 not seen for over 30 days). The app refreshes its
+// token on every launch and a session lasts at most 30 days (E2E-11-80): a
+// token not refreshed for longer belongs to a session that has ended.
+describe('push tokens of ended sessions', () => {
+  it('are deleted once not refreshed for 30 days', async () => {
+    const prisma = buildPrisma({ mobilePushToken: 47 });
+    const service = new MaintenanceService(prisma as any);
+
+    const report = await service.purgeOldRecords(true);
+
+    expect(report.pushTokens).toBe(47);
+    const where = prisma.model.mobilePushToken.deleteMany.mock.calls[0][0].where;
+    const days = (Date.now() - where.updatedAt.lt.getTime()) / 86_400_000;
+    expect(Math.round(days)).toBe(30);
+  });
+
+  it('are only counted on a dry run', async () => {
+    const prisma = buildPrisma({ mobilePushToken: 5 });
+    const report = await new MaintenanceService(prisma as any).purgeOldRecords(false);
+    expect(report.pushTokens).toBe(5);
+    expect(prisma.model.mobilePushToken.deleteMany).not.toHaveBeenCalled();
+  });
+});
