@@ -10,9 +10,7 @@ import { join } from 'path';
 const root = join(__dirname, '..', '..', '..', '..');
 
 const allowed: { file: string; why: string }[] = [
-  // Media are served from cdn-dev.postra.pl, and TikTok pulls videos from it
-  // under the verified URL prefix.
-  { file: 'libraries/helpers/src/utils/read.or.fetch.ts', why: 'CDN host' },
+  // Media stored before 2026-10-27 keep their cdn-dev.postra.pl URLs.
   { file: 'libraries/helpers/src/utils/valid.url.path.ts', why: 'CDN host' },
   // TikTok's redirect stays on app.postra.pl: a change there is a new review.
   { file: 'libraries/nestjs-libraries/src/integrations/social/tiktok.provider.ts', why: 'TikTok redirect' },

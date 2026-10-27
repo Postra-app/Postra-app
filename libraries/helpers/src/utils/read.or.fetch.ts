@@ -1,10 +1,12 @@
 import { readFileSync } from 'fs';
 import { resolve } from 'path';
 import axios from 'axios';
+import { ownMediaHosts } from './own.media.url';
 
+// Our own media come from the storage hosts in the environment (the CDN under
+// its current and older names), not a list here: the CDN moved to
+// cdn.postra.co.uk on 2026-10-27 and the older name came along.
 const ALLOWED_HOSTS = new Set([
-  'cdn.postra.pl',
-  'cdn-dev.postra.pl',
   'pbs.twimg.com',
   'video.twimg.com',
   'media.licdn.com',
@@ -16,11 +18,15 @@ const ALLOWED_HOSTS = new Set([
   'pixabay.com',
 ]);
 
-const isAllowedUrl = (url: string): boolean => {
+export const isAllowedUrl = (
+  url: string,
+  env: Record<string, string | undefined> = process.env
+): boolean => {
   try {
     const parsed = new URL(url);
     if (parsed.protocol !== 'https:') return false;
     return (
+      ownMediaHosts(env).includes(parsed.host.toLowerCase()) ||
       ALLOWED_HOSTS.has(parsed.hostname) ||
       parsed.hostname.endsWith('.twimg.com') ||
       parsed.hostname.endsWith('.licdn.com') ||
@@ -29,8 +35,7 @@ const isAllowedUrl = (url: string): boolean => {
       parsed.hostname.endsWith('.cdninstagram.com') ||
       parsed.hostname.endsWith('.tiktokcdn.com') ||
       parsed.hostname.endsWith('.pinimg.com') ||
-      parsed.hostname.endsWith('.ytimg.com') ||
-      parsed.hostname.endsWith('.postra.pl')
+      parsed.hostname.endsWith('.ytimg.com')
     );
   } catch {
     return false;
