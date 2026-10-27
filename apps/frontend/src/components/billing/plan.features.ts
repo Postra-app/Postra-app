@@ -12,6 +12,8 @@ export interface PlanFeature {
 export const PLATFORM_NAMES: Record<string, string> = {
   facebook: 'Facebook',
   instagram: 'Instagram',
+  // Instagram without a Facebook Page: the same platform, named once.
+  'instagram-standalone': 'Instagram',
   tiktok: 'TikTok',
   linkedin: 'LinkedIn',
   youtube: 'YouTube',
@@ -53,10 +55,13 @@ export const planFeatures = (tier: string): PlanFeature[] => {
     key: 'billing_plan_platforms',
     text: 'On {{platforms}}',
     vars: {
-      platforms: plan.allowedProviders
-        .filter((p) => !SOON_PLATFORMS.has(p))
-        .map((p) => PLATFORM_NAMES[p] || p)
-        .join(', '),
+      platforms: [
+        ...new Set(
+          plan.allowedProviders
+            .filter((p) => !SOON_PLATFORMS.has(p))
+            .map((p) => PLATFORM_NAMES[p] || p)
+        ),
+      ].join(', '),
     },
   });
   list.push(

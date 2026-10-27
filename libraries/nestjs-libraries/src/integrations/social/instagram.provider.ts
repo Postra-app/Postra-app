@@ -36,7 +36,7 @@ export class InstagramProvider
 {
   private readonly _logger = new Logger(InstagramProvider.name);
   identifier = 'instagram';
-  name = 'Instagram\n(Facebook Business)';
+  name = 'Instagram\n(with Facebook Page)';
   isBetweenSteps = true;
   toolTip = 'Instagram must be business and connected to a Facebook page';
   scopes = [

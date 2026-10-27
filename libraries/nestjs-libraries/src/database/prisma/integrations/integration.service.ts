@@ -35,6 +35,10 @@ import { RefreshIntegrationService } from '@gitroom/nestjs-libraries/integration
 import { TemporalService } from 'nestjs-temporal-core';
 import { fetch } from 'undici';
 import { AuthService } from '@gitroom/helpers/auth/auth.service';
+import {
+  SAME_ACCOUNT_PROVIDERS,
+  sameAccountMessage,
+} from '@gitroom/nestjs-libraries/integrations/same.account';
 
 dayjs.extend(utc);
 
@@ -360,6 +364,29 @@ export class IntegrationService {
       (i) =>
         i.providerIdentifier === provider &&
         String(i.internalId) === String(internalId)
+    );
+  }
+
+  /**
+   * The provider of a live channel that already holds this account through
+   * another route (Instagram through a Page and without one), or null.
+   */
+  async connectedThroughOtherRoute(
+    org: string,
+    provider: string,
+    internalId: string
+  ) {
+    const others = SAME_ACCOUNT_PROVIDERS[provider];
+    if (!others) {
+      return null;
+    }
+    const list = await this._integrationRepository.getIntegrationsList(org);
+    return (
+      list.find(
+        (i) =>
+          others.includes(i.providerIdentifier) &&
+          String(i.internalId) === String(internalId)
+      )?.providerIdentifier ?? null
     );
   }
 
@@ -699,6 +726,16 @@ export class IntegrationService {
       getIntegration.token,
       data
     );
+
+    // Instagram through a Page only learns the account id here.
+    const other = await this.connectedThroughOtherRoute(
+      org,
+      getIntegration.providerIdentifier,
+      String(getIntegrationInformation.id)
+    );
+    if (other) {
+      throw new HttpException(sameAccountMessage(other), HttpStatus.CONFLICT);
+    }
 
     await this.checkForDeletedOnceAndUpdate(
       org,

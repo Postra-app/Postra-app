@@ -37,6 +37,7 @@ import {
   Sections,
 } from '@gitroom/nestjs-libraries/services/auth/permission.exception.class';
 import { RefreshIntegrationService } from '@gitroom/nestjs-libraries/integrations/refresh.integration.service';
+import { sameAccountMessage } from '@gitroom/nestjs-libraries/integrations/same.account';
 import { OrganizationService } from '@gitroom/nestjs-libraries/database/prisma/organizations/organization.service';
 import { SubscriptionService } from '@gitroom/nestjs-libraries/database/prisma/subscriptions/subscription.service';
 import {
@@ -469,6 +470,19 @@ export class NoAuthIntegrationsController {
       !(await this._integrationService.hasChannel(org.id, integration, refresh))
     ) {
       throw new HttpException('The channel to reconnect was not found', 404);
+    }
+
+    // The same Instagram account through the other route would be a second
+    // channel posting everything twice. A reconnect keeps what it has.
+    if (!refresh) {
+      const other = await this._integrationService.connectedThroughOtherRoute(
+        org.id,
+        integration,
+        String(id)
+      );
+      if (other) {
+        throw new HttpException(sameAccountMessage(other), 409);
+      }
     }
 
     let validName = name;

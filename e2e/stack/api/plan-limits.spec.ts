@@ -195,13 +195,21 @@ test('a preview platform is "Coming soon" for customers and open to a super admi
       expect([402, 403], `${platform}: ${await res.text()}`).toContain(res.status());
     }
 
-    // Instagram without a Facebook Page is hidden from customers: listed for
-    // the picker only with adminOnly, which shows it to a super admin alone.
+    // Instagram without a Facebook Page passed Meta's App Review (2026-10-26):
+    // a customer on Starter sees it and connects it like Instagram.
     const catalogue = await (await customer.api.get('/integrations')).json();
+    const standalone = catalogue.social.find(
+      (p: any) => p.identifier === 'instagram-standalone'
+    );
+    expect(standalone).toMatchObject({
+      enabled: true,
+      name: 'Instagram\n(no Facebook Page)',
+    });
+    expect(standalone.adminOnly).toBeFalsy();
     expect(
-      catalogue.social.find((p: any) => p.identifier === 'instagram-standalone')
-    ).toMatchObject({ enabled: false, preview: true, adminOnly: true });
-    expect((await admin.api.get(connect('instagram-standalone'))).status()).toBe(200);
+      catalogue.social.find((p: any) => p.identifier === 'instagram')
+    ).toMatchObject({ enabled: true, name: 'Instagram\n(with Facebook Page)' });
+    expect((await customer.api.get(connect('instagram-standalone'))).status()).toBe(200);
 
     // Starter has neither platform: the preview pass skips the plan gate too.
     for (const platform of ['pinterest', 'wordpress']) {
@@ -256,17 +264,17 @@ test('a preview organisation connects a preview platform without being a super a
     expect(self).toMatchObject({ previewChannels: true, isSuperAdmin: false });
     expect((await (await customer.api.get('/user/self')).json()).previewChannels).toBe(false);
 
-    for (const platform of ['instagram-standalone', 'pinterest', 'wordpress']) {
+    for (const platform of ['pinterest', 'wordpress']) {
       const res = await reviewer.api.get(connect(platform));
       expect(res.status(), `${platform}: ${await res.text()}`).toBe(200);
     }
-    const refused = await customer.api.get(connect('instagram-standalone'));
+    const refused = await customer.api.get(connect('wordpress'));
     expect([402, 403], await refused.text()).toContain(refused.status());
 
     // Still only the preview list, and not through an invite link.
     expect((await reviewer.api.get(connect('linkedin-page'))).status()).toBe(402);
     expect(
-      (await reviewer.api.get(`${connect('instagram-standalone')}?invite=true`)).status()
+      (await reviewer.api.get(`${connect('wordpress')}?invite=true`)).status()
     ).not.toBe(200);
   } finally {
     await reviewer.remove();

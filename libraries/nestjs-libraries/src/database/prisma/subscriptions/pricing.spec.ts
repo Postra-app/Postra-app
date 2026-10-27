@@ -36,22 +36,29 @@ describe('pricing matrix', () => {
     expect(pricing.ULTIMATE.channel).toBe(12);
   });
 
-  it('gives Business a slot for every provider in its allowlist', () => {
-    expect(pricing.ULTIMATE.channel).toBe(
-      pricing.ULTIMATE.allowedProviders.length
+  it('gives Business a slot for every platform in its allowlist', () => {
+    // Instagram counts once: through a Page and without one is the same
+    // account, which cannot be connected twice (same.account.ts).
+    const platforms = new Set(
+      pricing.ULTIMATE.allowedProviders.map((p) =>
+        p === 'instagram-standalone' ? 'instagram' : p
+      )
     );
+    expect(pricing.ULTIMATE.channel).toBe(platforms.size);
   });
 
   it('keeps the per-tier platform allowlists', () => {
     expect(pricing.STANDARD.allowedProviders).toEqual([
       'facebook',
       'instagram',
+      'instagram-standalone',
       'tiktok',
       'linkedin',
     ]);
     expect(pricing.PRO.allowedProviders).toEqual([
       'facebook',
       'instagram',
+      'instagram-standalone',
       'tiktok',
       'linkedin',
       'youtube',
@@ -64,6 +71,7 @@ describe('pricing matrix', () => {
     expect(pricing.ULTIMATE.allowedProviders).toEqual([
       'facebook',
       'instagram',
+      'instagram-standalone',
       'tiktok',
       'linkedin',
       'youtube',

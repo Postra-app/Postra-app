@@ -43,10 +43,13 @@ describe('planFeatures', () => {
       const line = texts(tier).find((t) => t.startsWith('On '))!;
       expect(line).toBe(
         'On ' +
-          pricing[tier].allowedProviders
-            .filter((p) => !SOON_PLATFORMS.has(p))
-            .map((p) => PLATFORM_NAMES[p])
-            .join(', ')
+          [
+            ...new Set(
+              pricing[tier].allowedProviders
+                .filter((p) => !SOON_PLATFORMS.has(p))
+                .map((p) => PLATFORM_NAMES[p])
+            ),
+          ].join(', ')
       );
     }
   });

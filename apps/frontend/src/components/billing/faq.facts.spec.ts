@@ -17,6 +17,7 @@ const NAMES: Record<string, string> = {
   x: 'X',
   facebook: 'Facebook',
   instagram: 'Instagram',
+  'instagram-standalone': 'Instagram',
   tiktok: 'TikTok',
   youtube: 'YouTube',
   linkedin: 'LinkedIn',

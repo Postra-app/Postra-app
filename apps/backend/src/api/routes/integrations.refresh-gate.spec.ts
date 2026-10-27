@@ -52,6 +52,7 @@ const integrationService = (channels: any[]) => ({
     )
   ),
   getIntegrationsList: jest.fn(async () => channels),
+  connectedThroughOtherRoute: jest.fn(async () => null),
   checkPreviousConnections: jest.fn(async () => false),
   createOrUpdateIntegration: jest.fn(async () => ({ id: 'int-new' })),
 });

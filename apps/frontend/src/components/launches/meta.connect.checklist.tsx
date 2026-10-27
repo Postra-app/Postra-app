@@ -25,7 +25,7 @@ export const metaChecklists = {
     },
     intro: {
       key: 'instagram_precheck_intro',
-      text: 'Meta only lets apps publish to an Instagram professional account that is linked to a Facebook Page. Setting that up takes about two minutes in the Instagram app, and you only do it once.',
+      text: 'This way publishes through the Facebook Page your Instagram professional account is linked to. Setting that up takes about two minutes in the Instagram app, and you only do it once. No Facebook Page? Pick "Instagram (no Facebook Page)" instead.',
     },
     steps: [
       {
@@ -44,6 +44,37 @@ export const metaChecklists = {
     note: {
       key: 'instagram_precheck_note',
       text: 'A personal Instagram account is invisible to every scheduling tool, not just Postra. The linking happens inside Instagram and Facebook - Postra never connects, moves or removes your accounts.',
+    },
+  },
+  // Instagram login: no Page in the chain, but the account still has to be
+  // professional, and an account already connected through a Page is refused
+  // (same.account.ts).
+  'instagram-standalone': {
+    title: {
+      key: 'instagram_standalone_precheck_title',
+      text: 'Before you connect Instagram',
+    },
+    intro: {
+      key: 'instagram_standalone_precheck_intro',
+      text: 'This way you sign in to Instagram itself, so no Facebook Page is needed. Meta still lets apps publish only to an Instagram professional account.',
+    },
+    steps: [
+      {
+        key: 'instagram_standalone_precheck_step_professional',
+        text: 'In the Instagram app: Settings → Account type and tools → Switch to professional account → Business or Creator.',
+      },
+      {
+        key: 'instagram_standalone_precheck_step_login',
+        text: 'Then come back here, sign in with that Instagram account and allow every permission Meta asks for.',
+      },
+      {
+        key: 'instagram_standalone_precheck_step_once',
+        text: 'Already connected this account in Postra through a Facebook Page? Keep that channel: one Instagram account can be connected only once.',
+      },
+    ],
+    note: {
+      key: 'instagram_standalone_precheck_note',
+      text: 'A personal Instagram account is invisible to every scheduling tool, not just Postra. Postra never changes anything on your Instagram account.',
     },
   },
   facebook: {
