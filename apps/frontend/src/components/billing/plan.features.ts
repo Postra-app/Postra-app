@@ -16,6 +16,7 @@ export const PLATFORM_NAMES: Record<string, string> = {
   'instagram-standalone': 'Instagram',
   tiktok: 'TikTok',
   linkedin: 'LinkedIn',
+  pinterest: 'Pinterest',
   youtube: 'YouTube',
   threads: 'Threads',
   'linkedin-page': 'LinkedIn Pages',

@@ -189,11 +189,18 @@ test('a preview platform is "Coming soon" for customers and open to a super admi
   const adminUser = (await prisma.userOrganization.findFirstOrThrow({ where: { organizationId: admin.orgId } })).userId;
   await prisma.user.update({ where: { id: adminUser }, data: { isSuperAdmin: true } });
   try {
-    for (const platform of ['pinterest', 'wordpress']) {
-      // Refused: 402 because Starter lacks it, before "Coming soon" (403).
-      const res = await customer.api.get(connect(platform));
-      expect([402, 403], `${platform}: ${await res.text()}`).toContain(res.status());
-    }
+    // Refused: 402 because Starter lacks it, before "Coming soon" (403).
+    const wordpress = await customer.api.get(connect('wordpress'));
+    expect([402, 403], await wordpress.text()).toContain(wordpress.status());
+
+    // Pinterest left the preview on 2026-10-27 (Standard access approved):
+    // a customer on Starter connects it like the other Starter platforms.
+    const pinterest = (await (await customer.api.get('/integrations')).json()).social.find(
+      (p: any) => p.identifier === 'pinterest'
+    );
+    expect(pinterest).toMatchObject({ enabled: true });
+    expect(pinterest.adminOnly).toBeFalsy();
+    expect((await customer.api.get(connect('pinterest'))).status()).toBe(200);
 
     // Instagram without a Facebook Page passed Meta's App Review (2026-10-26):
     // a customer on Starter sees it and connects it like Instagram.
@@ -211,17 +218,16 @@ test('a preview platform is "Coming soon" for customers and open to a super admi
     ).toMatchObject({ enabled: true, name: 'Instagram\n(with Facebook Page)' });
     expect((await customer.api.get(connect('instagram-standalone'))).status()).toBe(200);
 
-    // Starter has neither platform: the preview pass skips the plan gate too.
-    for (const platform of ['pinterest', 'wordpress']) {
-      const res = await admin.api.get(connect(platform));
-      expect(res.status(), `${platform}: ${await res.text()}`).toBe(200);
-    }
+    // Starter lacks WordPress: the preview pass skips the plan gate too.
+    const preview = await admin.api.get(connect('wordpress'));
+    expect(preview.status(), await preview.text()).toBe(200);
     // Not through an invite link, which connects someone else's account.
-    expect((await admin.api.get(`${connect('pinterest')}?invite=true`)).status()).toBe(402);
+    expect((await admin.api.get(`${connect('wordpress')}?invite=true`)).status()).toBe(402);
     // Not for a platform outside the preview list.
     expect((await admin.api.get(connect('linkedin-page'))).status()).toBe(402);
 
-    // A pass minted for Pinterest does not open WordPress at the callback.
+    // A link minted for another platform (Pinterest, no preview pass) does
+    // not open WordPress at the callback.
     const minted = await admin.api.get(connect('pinterest'));
     const state = new URL((await minted.json()).url).searchParams.get('state');
     const other = await admin.api.post('/integrations/social-connect/wordpress', {

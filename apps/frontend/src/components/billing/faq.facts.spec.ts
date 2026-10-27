@@ -3,7 +3,7 @@ import { join } from 'path';
 
 // E2E-07-37: the Billing FAQ (shown on the paywall too) promised a "$2" hold
 // while Stripe holds £1, and named Reddit, Dribbble and Pinterest, which no
-// plan has. The facts in the English text come from the code.
+// plan had then (Pinterest joined on 2026-10-27). The facts in the English text come from the code.
 
 const root = join(__dirname, '..', '..', '..', '..', '..');
 const read = (path: string) => readFileSync(join(root, path), 'utf8');
@@ -26,6 +26,7 @@ const NAMES: Record<string, string> = {
   mastodon: 'Mastodon',
   telegram: 'Telegram',
   discord: 'Discord',
+  pinterest: 'Pinterest',
 };
 
 it('names the card hold Stripe actually places', () => {
@@ -46,7 +47,8 @@ it('lists exactly the platforms a channel can be connected to', () => {
     expect(NAMES[id]).toBeTruthy();
     expect(text).toContain(NAMES[id]);
   }
-  for (const missing of ['Reddit', 'Dribbble', 'Pinterest']) {
+  // Pinterest is on since 2026-10-27 (Standard access approved).
+  for (const missing of ['Reddit', 'Dribbble']) {
     expect(text).not.toContain(missing);
   }
 });

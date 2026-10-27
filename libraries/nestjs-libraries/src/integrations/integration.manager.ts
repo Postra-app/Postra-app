@@ -98,6 +98,9 @@ const enabledProviders = new Set([
   'threads',
   'x',
   'discord',
+  // Pinterest: Standard access approved on 2026-10-27 (app 1622258), so any
+  // Pinterest account can authorise and pins are public (K.: from Starter).
+  'pinterest',
 ]);
 
 // Platforms on their way in: still waiting for the platform's review, or for
@@ -106,7 +109,6 @@ const enabledProviders = new Set([
 // on production to test them and to record the review video. Move one to
 // enabledProviders once it is approved and proven.
 const previewProviders = new Set([
-  'pinterest',
   'wordpress',
 ]);
 
