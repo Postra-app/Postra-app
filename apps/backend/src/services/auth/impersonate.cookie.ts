@@ -1,4 +1,5 @@
 import { Response } from 'express';
+import { expireDomainWideCookies } from '@gitroom/nestjs-libraries/services/auth/remove.auth';
 
 /**
  * How long a session may wear someone else's identity before it lapses.
@@ -22,7 +23,11 @@ const baseOptions = () => ({
     : {}),
 });
 
+// An impersonation started before E2E-11-78 left a domain-wide copy, which
+// the browser sends first: Stop cleared the host-only one and the next request
+// impersonated again (Codex 27 X). Both paths expire the old copy.
 export const setImpersonateCookie = (res: Response, id: string) => {
+  expireDomainWideCookies(res, ['impersonate']);
   res.cookie('impersonate', id, {
     ...baseOptions(),
     expires: new Date(Date.now() + IMPERSONATE_MAX_AGE_MS),
@@ -36,6 +41,7 @@ export const setImpersonateCookie = (res: Response, id: string) => {
  * logged a row indistinguishable from a start.
  */
 export const clearImpersonateCookie = (res: Response) => {
+  expireDomainWideCookies(res, ['impersonate']);
   res.cookie('impersonate', '', {
     ...baseOptions(),
     expires: new Date(0),

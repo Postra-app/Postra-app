@@ -189,7 +189,10 @@ describe('a session that is impersonating', () => {
     const res = response();
     await middleware.use(request('/posts') as any, res as any, jest.fn());
 
-    const [name, value, options] = res.cookie.mock.calls[0];
+    // The renewal, not the expiry of a domain-wide leftover (E2E-11-78).
+    const [name, value, options] = res.cookie.mock.calls.find(
+      ([, v]: [string, string]) => v
+    );
     expect(name).toBe('impersonate');
     expect(value).toBe('uo-1');
     expect(options.maxAge).toBe(IMPERSONATE_MAX_AGE_MS);
