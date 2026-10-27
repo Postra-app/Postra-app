@@ -9,6 +9,11 @@ export const SAME_ACCOUNT_PROVIDERS: Record<string, string[]> = {
   'instagram-standalone': ['instagram'],
 };
 
+// The platform an identifier belongs to, for counting platforms rather than
+// tiles: both Instagram logins are Instagram.
+export const platformOf = (identifier: string) =>
+  identifier === 'instagram-standalone' ? 'instagram' : identifier;
+
 // What the customer reads when the account is already a channel the other
 // way. `existing` is the provider of the channel they already have.
 export const sameAccountMessage = (existing: string) =>

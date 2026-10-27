@@ -12,6 +12,7 @@ import {
   TRIAL_LIMITS,
   planLimits,
 } from './pricing';
+import { platformOf } from '@gitroom/nestjs-libraries/integrations/same.account';
 
 // Pins the paid-plan matrix so an upstream sync (Postiz ships different
 // tiers/prices) or a careless edit cannot silently change what customers pay
@@ -39,11 +40,7 @@ describe('pricing matrix', () => {
   it('gives Business a slot for every platform in its allowlist', () => {
     // Instagram counts once: through a Page and without one is the same
     // account, which cannot be connected twice (same.account.ts).
-    const platforms = new Set(
-      pricing.ULTIMATE.allowedProviders.map((p) =>
-        p === 'instagram-standalone' ? 'instagram' : p
-      )
-    );
+    const platforms = new Set(pricing.ULTIMATE.allowedProviders.map(platformOf));
     expect(pricing.ULTIMATE.channel).toBe(platforms.size);
   });
 
