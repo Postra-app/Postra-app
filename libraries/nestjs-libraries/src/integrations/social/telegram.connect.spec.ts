@@ -36,7 +36,7 @@ const getUpdates = jest.fn(async (o: { offset?: number } = {}) => {
 
 const bot = {
   getChat: jest.fn(async () => ({ id: -100123, title: 'Their channel', username: 'theirchannel' })),
-  getFileLink: jest.fn(),
+  getFile: jest.fn(),
   getUpdates,
   getMe: jest.fn(async () => ({ id: 1 })),
   getChatMember: jest.fn(async () => ({ status: 'member' })),
@@ -44,7 +44,11 @@ const bot = {
   sendMessage: jest.fn(async () => ({ message_id: 6 })),
   deleteMessage: jest.fn(),
 };
-jest.mock('node-telegram-bot-api', () => jest.fn().mockImplementation(() => bot));
+// Only the API client is a stand-in; errors and files are the library's own.
+jest.mock('node-telegram-bot-api', () => ({
+  ...jest.requireActual('node-telegram-bot-api'),
+  Api: jest.fn().mockImplementation(() => bot),
+}));
 
 import { TelegramProvider } from '@gitroom/nestjs-libraries/integrations/social/telegram.provider';
 

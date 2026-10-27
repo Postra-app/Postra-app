@@ -10,6 +10,18 @@ test('a link to /help#channel-facebook lands on the Facebook section', async ({ 
   await expect(section).toBeInViewport();
 });
 
+// The checklist of Instagram without a Facebook Page links here (2026-10-27).
+test('Help explains both ways to connect Instagram', async ({ page }) => {
+  await page.goto('/help#channel-instagram-standalone');
+  const section = page.locator('#channel-instagram-standalone');
+  await expect(section).toBeInViewport();
+  await expect(section).toContainText('Instagram (no Facebook Page)');
+  await expect(section).toContainText('no Page to create or link');
+  const pageRoute = page.locator('#channel-instagram');
+  await expect(pageRoute).toContainText('Which Instagram?');
+  await expect(pageRoute).not.toContainText('there is no route around it');
+});
+
 test('every channel in the help contents has a section', async ({ page }) => {
   await page.goto('/help');
   await expect(page.locator('a[href^="#channel-"]').first()).toBeVisible();

@@ -11,7 +11,7 @@ const CW = `https://${REGION}.console.aws.amazon.com/cloudwatch/home?region=${RE
 const links: { name: string; desc: string; href: string }[] = [
   { name: 'CloudWatch', desc: 'RAM, disk, CPU, RDS, ALB · dashboard postra-dev', href: `${CW}#dashboards/dashboard/postra-dev` },
   { name: 'Alarms', desc: '7 alarms → email (5xx, RAM, disk, RDS, recovery)', href: `${CW}#alarmsV2:` },
-  { name: 'Status page', desc: 'status.postra.pl · uptime + response time', href: 'https://status.postra.pl' },
+  { name: 'Status page', desc: 'status.postra.co.uk · uptime + response time', href: 'https://status.postra.co.uk' },
   { name: 'Sentry', desc: 'errors + traces (FE + BE)', href: 'https://bk-company-9c.sentry.io/issues/' },
 ];
 
@@ -197,10 +197,10 @@ export const AdminDashboardsComponent: FC = () => {
       <AppMetricsSection />
 
       {/* Live uptime — embedded status page */}
-      <Section title={t('admin_dashboards_uptime', 'Live uptime')} hint={t('admin_dashboards_uptime_hint', '- built-in status.postra.pl')} />
+      <Section title={t('admin_dashboards_uptime', 'Live uptime')} hint={t('admin_dashboards_uptime_hint', '- built-in status.postra.co.uk')} />
       <div className="bg-white/[0.03] border border-white/10 rounded-[16px] overflow-hidden backdrop-blur-[8px]">
         <iframe
-          src="https://status.postra.pl"
+          src="https://status.postra.co.uk"
           title="Postra status"
           className="w-full h-[420px] border-0"
           loading="lazy"

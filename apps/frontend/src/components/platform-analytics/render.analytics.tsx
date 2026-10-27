@@ -20,6 +20,7 @@ interface AnalyticsDataItem {
 const ZERO_METRICS: Record<string, string[]> = {
   facebook: ['Page Impressions', 'Posts Engagement', 'Page followers'],
   instagram: ['Reach', 'Likes', 'Comments'],
+  'instagram-standalone': ['Reach', 'Likes', 'Comments'],
   tiktok: ['Followers', 'Total Likes', 'Views'],
   youtube: ['Views', 'Estimated Minutes Watched', 'Subscribers Gained'],
 };

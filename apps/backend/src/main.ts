@@ -46,6 +46,7 @@ import { startMcp } from '@gitroom/nestjs-libraries/chat/start.mcp';
 import { IntegrationService } from '@gitroom/nestjs-libraries/database/prisma/integrations/integration.service';
 import { ioRedis } from '@gitroom/nestjs-libraries/redis/redis.service';
 import { startMetricsServer } from './metrics/metrics';
+import { failBoot } from './boot.failed';
 
 async function start() {
   bootStep('nest create');
@@ -188,7 +189,7 @@ async function start() {
 
     Logger.log(`🚀 Backend is running on: http://localhost:${port}`);
   } catch (e) {
-    Logger.error(`Backend failed to start on port ${port}`, e);
+    await failBoot(e);
   }
 }
 
@@ -232,4 +233,4 @@ async function runTokenBackfill(app: Awaited<ReturnType<typeof NestFactory.creat
   }
 }
 
-start();
+start().catch(failBoot);

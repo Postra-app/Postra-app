@@ -70,11 +70,23 @@ test('tiles carry no hover hints; Instagram explains its requirements on click',
   // the customer picks the platform.
   await page.goto('/launches');
   await page.getByRole('button', { name: 'Add Channel' }).click();
-  const tile = page.getByText('Instagram', { exact: false }).filter({ hasText: 'Facebook Business' });
+  const tile = page.getByText('Instagram', { exact: false }).filter({ hasText: 'with Facebook Page' });
   await tile.hover();
   await expect(page.locator('#tooltip')).toBeHidden();
   await tile.click();
   await expect(page.getByText('Before you connect Instagram')).toBeVisible();
+  // The Page route sends anyone without a Page to the other tile.
+  await expect(page.getByText('Pick "Instagram (no Facebook Page)" instead')).toBeVisible();
+});
+
+test('Instagram without a Facebook Page has its own checklist', async ({ page }) => {
+  // Approved by Meta 2026-10-26: a customer tile, with no Page in its steps.
+  await page.goto('/launches');
+  await page.getByRole('button', { name: 'Add Channel' }).click();
+  await page.getByText('Instagram', { exact: false }).filter({ hasText: 'no Facebook Page' }).click();
+  await expect(page.getByText('Before you connect Instagram')).toBeVisible();
+  await expect(page.getByText('so no Facebook Page is needed')).toBeVisible();
+  await expect(page.getByText('one Instagram account can be connected only once')).toBeVisible();
 });
 
 test('removing a time slot removes that slot, not its neighbour', async ({ page }) => {

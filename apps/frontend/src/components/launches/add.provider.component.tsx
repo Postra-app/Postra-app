@@ -32,6 +32,7 @@ import {
   pricing,
   planLabel,
 } from '@gitroom/nestjs-libraries/database/prisma/subscriptions/pricing';
+import { platformOf } from '@gitroom/nestjs-libraries/integrations/same.account';
 const resolver = classValidatorResolver(ApiKeyDto);
 
 export const useAddProvider = (update?: () => void, invite?: boolean) => {
@@ -792,11 +793,17 @@ export const AddProviderComponent: FC<{
     isTrailing: user?.isTrailing,
     subscription: { totalChannels: user?.totalChannels || 0 },
   });
+  // Platforms, not tiles: both Instagram tiles are one platform.
   const platformCount = allowedProviders
-    ? social.filter(
-        (item) =>
-          item.enabled !== false && allowedProviders.includes(item.identifier)
-      ).length
+    ? new Set(
+        social
+          .filter(
+            (item) =>
+              item.enabled !== false &&
+              allowedProviders.includes(item.identifier)
+          )
+          .map((item) => platformOf(item.identifier))
+      ).size
     : 0;
   const showCounter =
     !props.invite &&

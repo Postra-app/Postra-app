@@ -24,7 +24,7 @@
     "matches": [
       "http://localhost/*",
       "https://localhost/*",
-      "https://*.postra.pl/*"
+      "https://*.postra.co.uk/*"
     ]
   }
 }

@@ -120,6 +120,7 @@ export interface DesignSize {
 export const platformDesignSize = (platform?: string): DesignSize => {
   switch ((platform || '').toLowerCase()) {
     case 'instagram':
+    case 'instagram-standalone':
     case 'facebook':
     case 'threads':
     case 'linkedin':

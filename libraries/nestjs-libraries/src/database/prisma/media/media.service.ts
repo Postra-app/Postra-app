@@ -64,6 +64,7 @@ const POST_DESIGN_BG_CACHE_TTL = 60 * 60 * 24 * 7; // 7 days
 // resolved separately from `platformDesignSize`.
 const DESIGN_PLATFORM_BY_SOCIAL: Record<string, PostDesignPlatform> = {
   instagram: 'instagram-feed',
+  'instagram-standalone': 'instagram-feed',
   facebook: 'facebook-feed',
   linkedin: 'linkedin-feed',
   tiktok: 'tiktok-cover',

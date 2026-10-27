@@ -58,7 +58,7 @@ export class OrganizationRepository {
                 activated: true,
                 email: email
                   ? email.split('@').join(`+${saasName}@`)
-                  : `${saasName}+` + makeId(10) + '@postra.pl',
+                  : `${saasName}+` + makeId(10) + '@postra.co.uk',
                 name: name ? `${name}###${id}` : `Unnamed User###${id}`,
                 providerName: 'LOCAL',
                 password: AuthService.hashPassword(makeSecureId(500)),

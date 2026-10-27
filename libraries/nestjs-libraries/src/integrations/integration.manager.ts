@@ -77,6 +77,10 @@ export const socialIntegrationList: Array<SocialAbstract & SocialProvider> = [
 const enabledProviders = new Set([
   'facebook',
   'instagram',
+  // Instagram without a Facebook Page (Instagram login, instagram_business_*
+  // scopes): Meta approved its App Review on 2026-10-26. Same account as
+  // `instagram`, so one account cannot be both (same.account.ts).
+  'instagram-standalone',
   'linkedin',
   // 'linkedin-page' shows as "Coming soon" until LinkedIn moves the
   // "Postra Pages" app from Community Management Development Tier to
@@ -104,10 +108,6 @@ const enabledProviders = new Set([
 const previewProviders = new Set([
   'pinterest',
   'wordpress',
-  // Instagram without a Facebook Page: needs its own Meta App Review for the
-  // instagram_business_* scopes. Hidden from customers, who already have the
-  // Instagram tile; the review video is recorded as a super admin.
-  'instagram-standalone',
 ]);
 
 // Organisations that get the preview platforms the way a super admin does,
@@ -123,7 +123,6 @@ export const isPreviewOrganization = (orgId?: string) =>
     .includes(orgId);
 
 const hiddenProviders = new Set([
-  'instagram-standalone',
   // Upstream crypto channels Postra doesn't offer — keep the providers
   // registered but out of the add-channel picker (no "coming soon" tiles).
   'wrapcast',
