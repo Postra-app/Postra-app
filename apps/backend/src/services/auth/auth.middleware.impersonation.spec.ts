@@ -171,6 +171,19 @@ describe('a session that is impersonating', () => {
     expect(next).not.toHaveBeenCalled();
   });
 
+  // E2E-11-83: the customer's own "delete my account" ran as them - their
+  // organisations, channels, posts and media gone for good, and the
+  // confirmation mail in their inbox - on an admin's click.
+  it("cannot delete the account it is wearing", async () => {
+    const { middleware } = build(impersonatedTarget);
+    const next = jest.fn();
+
+    await expect(
+      middleware.use(request('/user/delete') as any, response() as any, next)
+    ).rejects.toMatchObject({ status: 403 });
+    expect(next).not.toHaveBeenCalled();
+  });
+
   it('renews its own window on activity instead of running for a year', async () => {
     const { middleware } = build(impersonatedTarget);
     const res = response();

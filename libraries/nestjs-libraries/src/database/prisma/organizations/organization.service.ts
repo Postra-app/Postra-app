@@ -120,7 +120,15 @@ export class OrganizationService {
     const id = makeId(5);
     const url =
       process.env.FRONTEND_URL +
-      `/?org=${AuthService.signJWT({ ...body, orgId, timeLimit, id })}`;
+      // `purpose` makes it an invitation and nothing else: acceptance read any
+      // signed token as one (E2E-11-84).
+      `/?org=${AuthService.signJWT({
+        ...body,
+        purpose: 'invite',
+        orgId,
+        timeLimit,
+        id,
+      })}`;
     if (body.sendEmail) {
       await this._notificationsService.sendEmail(
         body.email,

@@ -203,7 +203,14 @@ export class AuthService {
 
     try {
       const getOrg: any = AuthChecker.verifyJWT(cookie);
-      if (dayjs(getOrg.timeLimit).isBefore(dayjs())) {
+      // An invitation and nothing else, and never without its hour: a token
+      // with no `timeLimit` passed as one that never runs out, and any token
+      // Postra signs could be read as an invitation (E2E-11-84).
+      if (
+        getOrg?.purpose !== 'invite' ||
+        !getOrg.timeLimit ||
+        !dayjs(getOrg.timeLimit).isAfter(dayjs())
+      ) {
         return false;
       }
 
