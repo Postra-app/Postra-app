@@ -30,8 +30,11 @@ describe('var/docker/nginx.conf Content-Security-Policy', () => {
   // Admin → Dashboards embeds the status page; the click-through on 10-15
   // missed that screen and Codex caught it (report: frame-src
   // blocked=https://status.postra.pl/).
+  // The status page moved to status.postra.co.uk on 2026-10-27; the old name
+  // no longer serves it.
   it('lets the admin dashboards frame the status page', () => {
-    expect(appPolicy?.value).toMatch(/frame-src [^;]*https:\/\/status\.postra\.pl/);
+    expect(appPolicy?.value).toMatch(/frame-src [^;]*https:\/\/status\.postra\.co\.uk/);
+    expect(appPolicy?.value).not.toContain('status.postra.pl');
   });
 
   it('keeps the parts that must never loosen', () => {

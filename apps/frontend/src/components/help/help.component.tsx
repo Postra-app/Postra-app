@@ -407,12 +407,12 @@ export const HelpComponent = () => {
             <div>
               Service status:{' '}
               <a
-                href="https://status.postra.pl"
+                href="https://status.postra.co.uk"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="text-sky-300 hover:underline"
               >
-                status.postra.pl
+                status.postra.co.uk
               </a>
             </div>
           </div>
