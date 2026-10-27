@@ -13,7 +13,8 @@ import {
 } from '@gitroom/nestjs-libraries/integrations/social.abstract';
 //@ts-ignore
 import mime from 'mime';
-import TelegramBot from 'node-telegram-bot-api';
+import { Api, InputFile, TelegramApiError } from 'node-telegram-bot-api';
+import { readFile } from 'fs/promises';
 import { ioRedis } from '@gitroom/nestjs-libraries/redis/redis.service';
 import { Integration } from '@prisma/client';
 import striptags from 'striptags';
@@ -21,7 +22,32 @@ import { fetch } from 'undici';
 import { ssrfSafeDispatcher } from '@gitroom/nestjs-libraries/dtos/webhooks/ssrf.safe.dispatcher';
 import { isSafePublicHttpsUrl } from '@gitroom/nestjs-libraries/dtos/webhooks/webhook.url.validator';
 
-const telegramBot = new TelegramBot(process.env.TELEGRAM_TOKEN!);
+// node-telegram-bot-api 2: the Bot API one to one, parameters as one object,
+// errors as TelegramApiError (2026-10-27; 0.67 pulled in `request`, which has
+// no fix, and old tough-cookie, qs and uuid). 2.x refuses an empty token when
+// the client is built, so it is built on first use: at import time it took
+// the whole backend down wherever TELEGRAM_TOKEN is not set.
+let telegramApi: Api | undefined;
+const telegram = () => (telegramApi ??= new Api(process.env.TELEGRAM_TOKEN!));
+
+// The 1.x library read a non-URL string as a path on disk; 2.x sends strings
+// as a file_id or URL. Local storage keeps its uploads on disk, so those and
+// downloaded bytes go up as files.
+const telegramFile = async (media: {
+  media: string | Buffer;
+  fileOptions: { filename?: string; contentType: string };
+}) =>
+  typeof media.media !== 'string'
+    ? new InputFile(new Uint8Array(media.media), media.fileOptions)
+    : mediaStorage === 'local' && !media.media.startsWith('http')
+    ? new InputFile(
+        new Uint8Array(await readFile(media.media)),
+        media.fileOptions
+      )
+    : media.media;
+
+const replyTo = (messageId?: number) =>
+  messageId ? { reply_parameters: { message_id: messageId } } : {};
 const TELEGRAM_UPDATES_LOCK = 'telegram-updates-lock';
 const TELEGRAM_UPDATES_OFFSET = 'telegram-updates-offset';
 const TELEGRAM_CONNECT_POSTS = 'telegram-connect-posts';
@@ -86,7 +112,7 @@ export class TelegramProvider extends SocialAbstract implements SocialProvider {
     refresh?: string;
     organizationId?: string;
   }) {
-    const chat = await telegramBot.getChat(params.code);
+    const chat = await telegram().getChat({ chat_id: params.code });
 
     if (!chat?.id) {
       return 'No chat found';
@@ -111,9 +137,14 @@ export class TelegramProvider extends SocialAbstract implements SocialProvider {
       return 'Post the /connect message in the chat first';
     }
 
-    const photo = !chat?.photo?.big_file_id
-      ? ''
-      : await telegramBot.getFileLink(chat.photo.big_file_id);
+    // The file URL carries the bot token; the picture is downloaded and
+    // stored by us (createOrUpdateIntegration), the URL is never kept.
+    const file = chat?.photo?.big_file_id
+      ? await telegram().getFile({ file_id: chat.photo.big_file_id })
+      : undefined;
+    const photo = file?.file_path
+      ? `https://api.telegram.org/file/bot${process.env.TELEGRAM_TOKEN}/${file.file_path}`
+      : '';
 
     // Modified id to work with chat.username (public groups/channels) or chat.id (private groups/channels) when chat.username is not available
     return {
@@ -147,12 +178,18 @@ export class TelegramProvider extends SocialAbstract implements SocialProvider {
     ) {
       try {
         const offset = Number(await ioRedis.get(TELEGRAM_UPDATES_OFFSET));
-        const res = await telegramBot.getUpdates({
+        const res = await telegram().getUpdates({
           ...(offset ? { offset } : {}),
           allowed_updates: ['message', 'channel_post'],
         });
         const posts = res
-          .map((u) => u.message || u.channel_post)
+          .map((u) =>
+            'message' in u
+              ? u.message
+              : 'channel_post' in u
+              ? u.channel_post
+              : undefined
+          )
           .filter((m) => m?.chat?.id && m?.text?.startsWith('/connect '))
           .map((m) =>
             JSON.stringify({
@@ -205,7 +242,7 @@ export class TelegramProvider extends SocialAbstract implements SocialProvider {
         TELEGRAM_PROOF_SECONDS
       );
       //get the numberic ID of the bot
-      const botId = (await telegramBot.getMe()).id;
+      const botId = (await telegram().getMe()).id;
       // check if the bot is an admin in the chat
       const isAdmin = await this.botIsAdmin(chatId, botId);
       // get the messageId of the message that triggered the connection
@@ -213,21 +250,31 @@ export class TelegramProvider extends SocialAbstract implements SocialProvider {
 
       if (!isAdmin) {
         // alternatively you can log here instead if you do not want to inform the user of the bot's admin status
-        telegramBot.sendMessage(
-          chatId,
-          "Connection Successful. I don't have admin privileges to delete these messages, please go ahead and remove them yourself."
-        );
+        telegram()
+          .sendMessage({
+            chat_id: chatId,
+            text: "Connection Successful. I don't have admin privileges to delete these messages, please go ahead and remove them yourself.",
+          })
+          .catch(() => undefined);
       } else {
         // Delete the message that triggered the connection
-        await telegramBot.deleteMessage(chatId, connectMessageId);
+        await telegram().deleteMessage({
+          chat_id: chatId,
+          message_id: connectMessageId,
+        });
         // Send success message to the chat
-        const successMessage = await telegramBot.sendMessage(
-          chatId,
-          'Connection Successful. Message will be deleted in 10 seconds.'
-        );
+        const successMessage = await telegram().sendMessage({
+          chat_id: chatId,
+          text: 'Connection Successful. Message will be deleted in 10 seconds.',
+        });
         // Delete the success message after 10 seconds
-        setTimeout(async () => {
-          await telegramBot.deleteMessage(chatId, successMessage.message_id);
+        setTimeout(() => {
+          telegram()
+            .deleteMessage({
+              chat_id: chatId,
+              message_id: successMessage.message_id,
+            })
+            .catch(() => undefined);
         }, 10000);
       }
     }
@@ -334,19 +381,20 @@ export class TelegramProvider extends SocialAbstract implements SocialProvider {
         replyToMessageId
       );
     } catch (err: any) {
-      const body = err?.response?.body;
-      const status = Number(body?.error_code ?? err?.response?.statusCode);
       if (
-        err?.code === 'ETELEGRAM' &&
-        status >= 400 &&
-        status < 500 &&
-        status !== 429
+        err instanceof TelegramApiError &&
+        err.errorCode >= 400 &&
+        err.errorCode < 500 &&
+        err.errorCode !== 429
       ) {
         throw new BadBody(
           'telegram',
-          JSON.stringify(body || {}),
+          JSON.stringify({
+            error_code: err.errorCode,
+            description: err.description,
+          }),
           '{}',
-          body?.description || err.message
+          err.description || err.message
         );
       }
       throw err;
@@ -378,9 +426,11 @@ export class TelegramProvider extends SocialAbstract implements SocialProvider {
 
     // if there's no media, bot sends a text message only
     if (processedMedia.length === 0) {
-      const response = await telegramBot.sendMessage(accessToken, text, {
+      const response = await telegram().sendMessage({
+        chat_id: accessToken,
+        text,
         parse_mode: 'HTML',
-        ...(replyToMessageId ? { reply_to_message_id: replyToMessageId } : {}),
+        ...replyTo(replyToMessageId),
       });
       messageId = response.message_id;
     }
@@ -388,53 +438,38 @@ export class TelegramProvider extends SocialAbstract implements SocialProvider {
     else if (processedMedia.length === 1) {
       const media = processedMedia[0];
       const options = {
+        chat_id: accessToken,
         caption,
         parse_mode: 'HTML' as const,
-        ...(replyToMessageId ? { reply_to_message_id: replyToMessageId } : {}),
+        ...replyTo(replyToMessageId),
       };
+      const file = await telegramFile(media);
       const response =
         media.type === 'video'
-          ? await telegramBot.sendVideo(
-              accessToken,
-              media.media,
-              options,
-              media.fileOptions
-            )
+          ? await telegram().sendVideo({ ...options, video: file })
           : media.type === 'photo'
-          ? await telegramBot.sendPhoto(
-              accessToken,
-              media.media,
-              options,
-              media.fileOptions
-            )
-          : await telegramBot.sendDocument(
-              accessToken,
-              media.media,
-              options,
-              media.fileOptions
-            );
+          ? await telegram().sendPhoto({ ...options, photo: file })
+          : await telegram().sendDocument({ ...options, document: file });
       messageId = response.message_id;
     }
     // if there are multiple media, bot sends them as a media group - max 10 media per group - with the text as a caption (if there are more than 1 group, the caption will only be sent with the first group)
     else {
       const mediaGroups = this.chunkMedia(processedMedia, 10);
       for (let i = 0; i < mediaGroups.length; i++) {
-        const mediaGroup = mediaGroups[i].map((m, index) => ({
-          type: m.type === 'document' ? 'document' : m.type, // Documents are not allowed in media groups
-          media: m.media,
-          caption: i === 0 && index === 0 ? caption : undefined,
-          parse_mode: 'HTML',
-        }));
-
-        const response = await telegramBot.sendMediaGroup(
-          accessToken,
-          mediaGroup as any[],
-          {
-            ...(replyToMessageId && i === 0
-              ? { reply_to_message_id: replyToMessageId }
-              : {}),
-          }
+        const mediaGroup = await Promise.all(
+          mediaGroups[i].map(async (m, index) => ({
+            type: m.type === 'document' ? 'document' : m.type, // Documents are not allowed in media groups
+            media: await telegramFile(m as any),
+            caption: i === 0 && index === 0 ? caption : undefined,
+            parse_mode: 'HTML',
+          }))
         );
+
+        const response = await telegram().sendMediaGroup({
+          chat_id: accessToken,
+          media: mediaGroup as any[],
+          ...(i === 0 ? replyTo(replyToMessageId) : {}),
+        });
         if (i === 0) {
           messageId = response[0].message_id;
         }
@@ -442,9 +477,11 @@ export class TelegramProvider extends SocialAbstract implements SocialProvider {
     }
 
     if (processedMedia.length > 0 && !captionFits && text.trim()) {
-      await telegramBot.sendMessage(accessToken, text, {
+      await telegram().sendMessage({
+        chat_id: accessToken,
+        text,
         parse_mode: 'HTML',
-        ...(messageId ? { reply_to_message_id: messageId } : {}),
+        ...replyTo(messageId ?? undefined),
       });
     }
 
@@ -524,17 +561,19 @@ export class TelegramProvider extends SocialAbstract implements SocialProvider {
 
   async botIsAdmin(chatId: number, botId: number): Promise<boolean> {
     try {
-      const chatMember = await telegramBot.getChatMember(chatId, botId);
+      const chatMember = await telegram().getChatMember({
+        chat_id: chatId,
+        user_id: botId,
+      });
 
-      if (
-        chatMember.status === 'administrator' ||
-        chatMember.status === 'creator'
-      ) {
-        const permissions = chatMember.can_delete_messages;
-        return !!permissions; // Return true if bot can delete messages
-      }
-
-      return false;
+      // A bot is never the creator; an administrator says what it may do.
+      // The generated types keep `status` a plain string, so they cannot
+      // narrow the union.
+      return (
+        chatMember.status === 'administrator' &&
+        'can_delete_messages' in chatMember &&
+        !!chatMember.can_delete_messages
+      );
     } catch (error) {
       this._logger.warn(
         `Error checking bot privileges: ${(error as Error)?.message ?? error}`
