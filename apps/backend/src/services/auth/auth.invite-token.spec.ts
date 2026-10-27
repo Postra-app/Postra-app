@@ -21,6 +21,8 @@ const service = () =>
 describe('invitation tokens (E2E-11-84)', () => {
   beforeEach(() => {
     process.env.JWT_SECRET = 'test-secret';
+    // The invitation link is built on it; CI has no .env.
+    process.env.FRONTEND_URL = 'https://app.postra.co.uk';
   });
 
   const invite = (extra: Record<string, unknown> = {}) =>
