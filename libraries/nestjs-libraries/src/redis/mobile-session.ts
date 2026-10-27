@@ -22,6 +22,14 @@ import { ioRedis } from '@gitroom/nestjs-libraries/redis/redis.service';
  */
 export const MOBILE_TOKEN_TTL_SECONDS = 7 * 24 * 60 * 60;
 
+/**
+ * How long a session lasts from signing in, however often the app refreshes
+ * its token: the browser's token already ends here. Tokens carry the sign-in
+ * time as `sat` (E2E-11-80, NIST SP 800-63B-4: a definite overall timeout, no
+ * more than 30 days at AAL1).
+ */
+export const SESSION_MAX_AGE_SECONDS = 30 * 24 * 60 * 60;
+
 /** jsonwebtoken's `expiresIn`, kept in step with the TTL above. */
 export const MOBILE_TOKEN_EXPIRES_IN = `${MOBILE_TOKEN_TTL_SECONDS}s`;
 

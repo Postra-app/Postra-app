@@ -21,7 +21,6 @@ import {
 } from '@nestjs/common';
 import { Request, Response } from 'express';
 import { randomBytes } from 'crypto';
-import { getCookieUrlFromDomain } from '@gitroom/helpers/subdomain/subdomain.management';
 import { ioRedis } from '@gitroom/nestjs-libraries/redis/redis.service';
 import { ConnectIntegrationDto } from '@gitroom/nestjs-libraries/dtos/integrations/connect.integration.dto';
 import { IntegrationManager } from '@gitroom/nestjs-libraries/integrations/integration.manager';
@@ -146,7 +145,6 @@ export class NoAuthIntegrationsController {
       const nonce = randomBytes(32).toString('hex');
       await ioRedis.set(`invited:${invite.state}`, nonce, 'EX', 3600);
       res.cookie(INVITE_COOKIE, nonce, {
-        domain: getCookieUrlFromDomain(process.env.FRONTEND_URL!),
         path: '/',
         maxAge: 3600 * 1000,
         ...(!process.env.NOT_SECURED
@@ -255,6 +253,9 @@ export class NoAuthIntegrationsController {
     // An invitee whose browser came through followInvite for this very state
     // may finish without being a member — with or without a Postra account of
     // their own — and only once. Everyone else needs a member's session.
+    // Who finished the connection, when it was a member: the extension token
+    // below is bound to them (E2E-11-81).
+    let connectedBy: { id: string; tokenVersion: number } | undefined;
     const inviteNonce = req.cookies?.[INVITE_COOKIE];
     const invited =
       !!inviteNonce &&
@@ -303,6 +304,10 @@ export class NoAuthIntegrationsController {
           403
         );
       }
+      connectedBy = {
+        id: sessionUser.id,
+        tokenVersion: sessionUser.tokenVersion ?? 0,
+      };
     }
 
     const org = await this._organizationService.getOrgById(organization);
@@ -689,12 +694,24 @@ export class NoAuthIntegrationsController {
       await ioRedis.del(`redirect:${body.state}`);
     }
 
+    // For the browser extension to send back with fresh cookies. It names
+    // its purpose, so no other token passes for it, and the member it was
+    // handed to, so it stops working when they leave (E2E-11-81). An invitee
+    // has no membership to check; the organisation ends theirs by removing
+    // the channel.
     const extensionToken = integrationProvider.isChromeExtension
       ? AuthService.signJWT({
+          purpose: 'extension',
           integrationId: createUpdate.id,
           organizationId: org.id,
           internalId: String(id),
           provider: integration,
+          ...(connectedBy
+            ? {
+                userId: connectedBy.id,
+                tokenVersion: connectedBy.tokenVersion,
+              }
+            : {}),
         })
       : undefined;
 
@@ -763,9 +780,36 @@ export class NoAuthIntegrationsController {
       throw new HttpException('Invalid token', 401);
     }
 
+    // Only a token issued for the extension. Any JWT carrying these four
+    // fields used to do (E2E-11-81).
+    if (payload?.purpose !== 'extension') {
+      throw new HttpException('Invalid token', 401);
+    }
+
     const { integrationId, organizationId, internalId, provider } = payload;
     if (!integrationId || !organizationId || !internalId || !provider) {
       throw new HttpException('Invalid token payload', 400);
+    }
+
+    if (
+      !this._integrationManager
+        .getAllowedSocialsIntegrations()
+        .includes(provider)
+    ) {
+      throw new HttpException('Integration not allowed', 400);
+    }
+
+    // The member who connected it must still be one, with the same password
+    // generation and an account in good standing - as social-connect checks.
+    if (
+      payload.userId &&
+      !(await this._organizationService.getSessionMembership(
+        payload.userId,
+        organizationId,
+        payload.tokenVersion ?? 0
+      ))
+    ) {
+      throw new HttpException('No longer a member of this organization', 403);
     }
 
     const integration = await this._integrationService.getIntegrationById(

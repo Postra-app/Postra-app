@@ -47,8 +47,10 @@ import { IntegrationService } from '@gitroom/nestjs-libraries/database/prisma/in
 import { ioRedis } from '@gitroom/nestjs-libraries/redis/redis.service';
 import { startMetricsServer } from './metrics/metrics';
 import { failBoot } from './boot.failed';
+import { assertNotSecuredOnlyOverHttp } from './not.secured.guard';
 
 async function start() {
+  assertNotSecuredOnlyOverHttp();
   bootStep('nest create');
   const app = await NestFactory.create(AppModule, {
     rawBody: true,

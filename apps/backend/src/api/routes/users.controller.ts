@@ -20,7 +20,11 @@ import { Response, Request } from 'express';
 import { AuthService } from '@gitroom/backend/services/auth/auth.service';
 import { OrganizationService } from '@gitroom/nestjs-libraries/database/prisma/organizations/organization.service';
 import { CheckPolicies } from '@gitroom/backend/services/auth/permissions/permissions.ability';
-import { getCookieUrlFromDomain } from '@gitroom/helpers/subdomain/subdomain.management';
+import {
+  clearSessionCookies,
+  expireDomainWideCookies,
+  sessionCookieOptions,
+} from '@gitroom/nestjs-libraries/services/auth/remove.auth';
 import { channelLimitFor } from '@gitroom/nestjs-libraries/database/prisma/subscriptions/pricing';
 import { ApiTags } from '@nestjs/swagger';
 import { UsersService } from '@gitroom/nestjs-libraries/database/prisma/users/users.service';
@@ -397,15 +401,11 @@ export class UsersController {
     @Body('id') id: string,
     @Res({ passthrough: true }) response: Response
   ) {
+    // An older domain-wide `showorg` (before E2E-11-78) is sent first and
+    // would win over this one: the switch would not take.
+    expireDomainWideCookies(response, ['showorg']);
     response.cookie('showorg', id, {
-      domain: getCookieUrlFromDomain(process.env.FRONTEND_URL!),
-      ...(!process.env.NOT_SECURED
-        ? {
-            secure: true,
-            httpOnly: true,
-            sameSite: 'lax',
-          }
-        : {}),
+      ...sessionCookieOptions(),
       expires: new Date(Date.now() + 1000 * 60 * 60 * 24 * 365),
     });
 
@@ -442,60 +442,10 @@ export class UsersController {
     );
 
     response.header('logout', 'true');
-    response.cookie('auth', '', {
-      domain: getCookieUrlFromDomain(process.env.FRONTEND_URL!),
-      ...(!process.env.NOT_SECURED
-        ? {
-            secure: true,
-            httpOnly: true,
-            sameSite: 'lax',
-          }
-        : {}),
-      maxAge: -1,
-      expires: new Date(0),
-    });
-
-    // The impersonate cookie lives for a year — without clearing it here a
-    // superadmin who logs out mid-impersonation gets re-impersonated on the
-    // very next login.
-    response.cookie('impersonate', '', {
-      domain: getCookieUrlFromDomain(process.env.FRONTEND_URL!),
-      ...(!process.env.NOT_SECURED
-        ? {
-            secure: true,
-            httpOnly: true,
-            sameSite: 'lax' as const,
-          }
-        : {}),
-      maxAge: -1,
-      expires: new Date(0),
-    });
-
-    response.cookie('showorg', '', {
-      domain: getCookieUrlFromDomain(process.env.FRONTEND_URL!),
-      ...(!process.env.NOT_SECURED
-        ? {
-            secure: true,
-            httpOnly: true,
-            sameSite: 'lax',
-          }
-        : {}),
-      maxAge: -1,
-      expires: new Date(0),
-    });
-
-    response.cookie('impersonate', '', {
-      domain: getCookieUrlFromDomain(process.env.FRONTEND_URL!),
-      ...(!process.env.NOT_SECURED
-        ? {
-            secure: true,
-            httpOnly: true,
-            sameSite: 'lax',
-          }
-        : {}),
-      maxAge: -1,
-      expires: new Date(0),
-    });
+    // The host-only cookies and the domain-wide ones from before E2E-11-78.
+    // `impersonate` too: a super admin who signs out mid-impersonation is
+    // otherwise impersonating again on the next sign-in.
+    clearSessionCookies(response);
 
     response.status(200).send();
   }
@@ -539,20 +489,7 @@ export class UsersController {
     }
 
     response.header('logout', 'true');
-    for (const name of ['auth', 'showorg', 'impersonate']) {
-      response.cookie(name, '', {
-        domain: getCookieUrlFromDomain(process.env.FRONTEND_URL!),
-        ...(!process.env.NOT_SECURED
-          ? {
-              secure: true,
-              httpOnly: true,
-              sameSite: 'lax',
-            }
-          : {}),
-        maxAge: -1,
-        expires: new Date(0),
-      });
-    }
+    clearSessionCookies(response);
 
     response.status(200).json({ deleted: true });
   }
@@ -581,7 +518,6 @@ export class UsersController {
     );
     if (!req.cookies.track) {
       res.cookie('track', uniqueId, {
-        domain: getCookieUrlFromDomain(process.env.FRONTEND_URL!),
         ...(!process.env.NOT_SECURED
           ? {
               secure: true,

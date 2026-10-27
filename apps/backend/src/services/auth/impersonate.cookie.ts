@@ -1,5 +1,4 @@
 import { Response } from 'express';
-import { getCookieUrlFromDomain } from '@gitroom/helpers/subdomain/subdomain.management';
 
 /**
  * How long a session may wear someone else's identity before it lapses.
@@ -14,7 +13,6 @@ import { getCookieUrlFromDomain } from '@gitroom/helpers/subdomain/subdomain.man
 export const IMPERSONATE_MAX_AGE_MS = 30 * 60 * 1000;
 
 const baseOptions = () => ({
-  domain: getCookieUrlFromDomain(process.env.FRONTEND_URL!),
   ...(!process.env.NOT_SECURED
     ? {
         secure: true,

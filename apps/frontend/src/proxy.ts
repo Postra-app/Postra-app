@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { isLogoutPath } from '@gitroom/frontend/components/layout/safe.url';
 import type { NextRequest } from 'next/server';
-import { getCookieUrlFromDomain } from '@gitroom/helpers/subdomain/subdomain.management';
+import { legacyCookieDomain } from '@gitroom/helpers/subdomain/subdomain.management';
 import { internalFetch } from '@gitroom/helpers/utils/internal.fetch';
 import acceptLanguage from 'accept-language';
 import {
@@ -96,8 +96,18 @@ export async function proxy(request: NextRequest) {
           }
         : {}),
       maxAge: -1,
-      domain: getCookieUrlFromDomain(process.env.FRONTEND_URL!),
     });
+    // The domain-wide `auth` from before E2E-11-78 too. Appended after the
+    // cookies API, which rewrites Set-Cookie and keeps one cookie per name.
+    const legacyDomain = legacyCookieDomain();
+    if (legacyDomain) {
+      response.headers.append(
+        'Set-Cookie',
+        `auth=; Domain=${legacyDomain}; Path=/; Expires=Thu, 01 Jan 1970 00:00:00 GMT; Max-Age=0${
+          !process.env.NOT_SECURED ? '; Secure; HttpOnly; SameSite=Lax' : ''
+        }`
+      );
+    }
     return response;
   }
 
@@ -198,7 +208,6 @@ export async function proxy(request: NextRequest) {
         secure: true,
         httpOnly: true,
         sameSite: 'lax' as const,
-        domain: getCookieUrlFromDomain(process.env.FRONTEND_URL!),
       }
     : {};
   if (nextUrl.pathname.startsWith('/auth') && !authCookie) {
