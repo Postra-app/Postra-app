@@ -26,6 +26,9 @@ import * as dns from 'node:dns';
 dns.setDefaultResultOrder('ipv4first');
 
 import { Runtime } from '@temporalio/worker';
+import { TemporalWorkerManagerService } from 'nestjs-temporal-core';
+import { temporalWorkers } from '@gitroom/nestjs-libraries/temporal/temporal.module';
+import { exitAfterDrain } from '@gitroom/orchestrator/shutdown';
 
 // Temporal SDK (worker) Prometheus metrics — workflow success/failure, activity
 // retries, schedule-to-start latency, task-queue backlog. This is the core
@@ -45,7 +48,19 @@ bootStep('temporal runtime installed');
 async function bootstrap() {
   bootStep('nest create');
   const app = await NestFactory.create(AppModule);
-  app.enableShutdownHooks();
+  // Not enableShutdownHooks: it closes the Temporal connection before the
+  // workers have drained (shutdown.ts). 45 s sits past the workers' own
+  // shutdownForceTime (temporal.module.ts) and under pm2's kill_timeout
+  // (apps/orchestrator/package.json).
+  const manager = app.get(TemporalWorkerManagerService);
+  exitAfterDrain(
+    () => app.close(),
+    () =>
+      temporalWorkers('', [])
+        .map((w) => manager.getWorker(w.taskQueue))
+        .filter((w) => !!w),
+    45_000
+  );
   const port = process.env.ORCHESTRATOR_PORT || 3002;
   await app.listen(port);
   Logger.log(`Orchestrator health check listening on port ${port}`, 'Bootstrap');

@@ -48,6 +48,12 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 # AWS rotates its RDS CAs.
 COPY var/docker/rds-ca-eu-west-2.pem /etc/ssl/rds/eu-west-2-bundle.pem
 ENV NODE_EXTRA_CA_CERTS=/etc/ssl/rds/eu-west-2-bundle.pem
+# Prisma reads only the first certificate of a file, so each root also gets
+# a file of its own (eu-west-2-rsa2048-g1.pem, ...): DATABASE_CA_FILE names
+# the one the instance uses, and Prisma then verifies the server
+# (prisma.service.ts verifiedDatabaseUrl).
+RUN node -e "const fs=require('fs'),{X509Certificate}=require('crypto');for(const c of fs.readFileSync('/etc/ssl/rds/eu-west-2-bundle.pem','utf8').match(/-----BEGIN CERTIFICATE-----[\\s\\S]+?-----END CERTIFICATE-----/g)){const m=new X509Certificate(c).subject.match(/Root CA (\\S+) (G\\d+)/);fs.writeFileSync('/etc/ssl/rds/eu-west-2-'+(m[1]+'-'+m[2]).toLowerCase()+'.pem',c+'\\n')}" \
+ && ls /etc/ssl/rds
 
 RUN addgroup --system www \
  && adduser --system --ingroup www --home /www --shell /usr/sbin/nologin www \
@@ -108,4 +114,5 @@ RUN pm2 install "pm2-logrotate@$(node -p "require('/tmp/tools/package.json').dep
  && pm2 set pm2-logrotate:compress true \
  && pm2 kill
 
-CMD ["sh", "-c", "nginx && pnpm run pm2"]
+# The script, not a `sh -c` chain, is PID 1: it is what takes `docker stop`.
+CMD ["sh", "/app/var/docker/start.sh"]

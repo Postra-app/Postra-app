@@ -144,16 +144,28 @@ test.describe('posting times in London', () => {
   }) => {
     // Stored as 480 (minutes after UTC midnight) in summer time, it showed
     // and was suggested at 08:00 after the clocks went back.
+    //
+    // Discord A, by name: the API specs change and then restore the slots
+    // of channelOf('a') in parallel, and when this test took the first
+    // channel in the list (that same one) their restore wiped the 09:00 it
+    // had just saved - red only in a full run, green alone.
     const api = await signedIn('a');
-    const list = async () =>
-      (await (await api.get('/integrations/list')).json()).integrations as {
-        id: string;
-        time: { time: number; tz?: string }[];
-      }[];
-    const before = await list();
+    const channel = USERS.a.discord.id;
+    const slots = async () =>
+      (
+        (await (await api.get('/integrations/list')).json()).integrations as {
+          id: string;
+          time: { time: number; tz?: string }[];
+        }[]
+      ).find((i) => i.id === channel)!.time;
+    const before = await slots();
     try {
       await page.goto('/launches');
-      await page.getByRole('button', { name: 'Channel options' }).first().click();
+      await page
+        .getByText(USERS.a.discord.name, { exact: true })
+        .locator('xpath=ancestor::*[.//*[@aria-label="Channel options"]][1]')
+        .getByRole('button', { name: 'Channel options' })
+        .click();
       await page.getByText('Edit Time Slots', { exact: true }).click();
       await page.getByRole('combobox').nth(0).selectOption('09');
       await page.getByRole('button', { name: 'Add', exact: true }).click();
@@ -162,16 +174,12 @@ test.describe('posting times in London', () => {
       await expect(page.getByText('Time Table Slots')).toBeHidden();
 
       await expect
-        .poll(async () =>
-          (await list()).flatMap((i) => i.time).filter((s) => s.tz)
-        )
+        .poll(async () => (await slots()).filter((s) => s.tz))
         .toContainEqual({ time: 540, tz: 'Europe/London' });
     } finally {
-      for (const channel of before) {
-        await api.post(`/integrations/${channel.id}/time`, {
-          data: { time: channel.time },
-        });
-      }
+      await api.post(`/integrations/${channel}/time`, {
+        data: { time: before },
+      });
       await api.dispose();
     }
   });

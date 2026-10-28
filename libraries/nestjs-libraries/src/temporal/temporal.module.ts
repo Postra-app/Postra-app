@@ -26,6 +26,13 @@ export const temporalWorkers = (
         // within a second; the 60 s default could hold it back long
         // enough for a dying worker to take it along.
         maxHeartbeatThrottleInterval: '1 second',
+        // On SIGTERM (deploy, instance replaced) a worker stops polling and
+        // lets its activities finish; after 25 s they are asked to cancel,
+        // after 40 s the SDK gives up and the process exits (orchestrator
+        // shutdown.ts). Activities cut off here are retried by the new
+        // instance; markPublishing guards a post against going out twice.
+        shutdownGraceTime: '25 seconds',
+        shutdownForceTime: '40 seconds',
         ...(integration.maxConcurrentJob
           ? {
               maxConcurrentActivityTaskExecutions:

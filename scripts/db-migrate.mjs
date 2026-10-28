@@ -24,7 +24,7 @@
  * Idempotent: safe to run on every boot, every replica.
  */
 import { execFileSync } from 'node:child_process';
-import { readdirSync } from 'node:fs';
+import { existsSync, readdirSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -34,6 +34,21 @@ const schema = join(
   'libraries/nestjs-libraries/src/database/prisma/schema.prisma'
 );
 const migrationsDir = join(dirname(schema), 'migrations');
+
+// Same as verifiedDatabaseUrl in prisma.service.ts: verify the database's
+// certificate when DATABASE_CA_FILE names its root CA (sslmode=require alone
+// encrypts without checking it).
+{
+  const url = process.env.DATABASE_URL;
+  const ca = process.env.DATABASE_CA_FILE;
+  if (url && ca && !url.includes('sslaccept=')) {
+    if (!existsSync(ca)) {
+      console.error(`DATABASE_CA_FILE ${ca} does not exist`);
+      process.exit(1);
+    }
+    process.env.DATABASE_URL = `${url}${url.includes('?') ? '&' : '?'}sslaccept=strict&sslcert=${ca}`;
+  }
+}
 
 const prisma = (args, opts = {}) =>
   // The CLI from the lockfile, the same version as @prisma/client: a pinned

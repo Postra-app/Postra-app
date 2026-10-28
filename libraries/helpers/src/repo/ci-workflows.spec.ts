@@ -131,8 +131,15 @@ describe('CI workflows', () => {
     );
     expect(deploy).not.toMatch(/^ {2}deploy-asg:/m);
     expect(deploy).toMatch(
-      /^ {2}deploy:\n {4}needs: \[build, staging\]\n {4}if: always\(\) && needs\.build\.result == 'success'/m
+      /^ {2}deploy:\n {4}needs: \[build, staging, replay\]\n {4}if: always\(\) && needs\.build\.result == 'success'/m
     );
+    // Production's running workflows replay on the new image before it ships
+    // (E2E-11-94): a failed replay stops the deploy, a skipped one (variables
+    // unset) does not.
+    expect(deploy).toContain(
+      "(needs.replay.result == 'success' || needs.replay.result == 'skipped')"
+    );
+    expect(deploy).toContain('node /app/scripts/replay-histories.mjs /histories');
     expect(deploy).toMatch(
       /put-parameter --name "\$\{SSM_PREFIX\}\/APP_IMAGE"/
     );

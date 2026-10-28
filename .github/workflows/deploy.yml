@@ -97,6 +97,69 @@ jobs:
           docker push "${{ steps.image.outputs.image_latest }}"
           docker push "${{ steps.image.outputs.image_sha }}"
 
+  # The workflows running in production now - a post waiting weeks for its
+  # date, the daily housekeeping - must replay on this build, or every task of
+  # theirs fails after the deploy with a nondeterminism error (E2E-11-94,
+  # E2E-11-15). Their histories hold tokens and post text, so none is kept in
+  # this public repository: the operator's state box exports them for this
+  # run into a private bucket (an SSM document, Postra-infra modules/state_box
+  # replay.tf), and scripts/replay-histories.mjs replays them inside the image
+  # just built. Off until the repository variable REPLAY_EXPORT_DOCUMENT is
+  # set:
+  #   REPLAY_EXPORT_DOCUMENT  (variable) SSM document that exports the histories
+  #   REPLAY_EXPORT_TARGET    (variable) Name tag of the box it runs on
+  #   REPLAY_BUCKET           (secret: its name holds the account id, and the
+  #                           logs of this public repository are public) the
+  #                           bucket it writes runs/<run id>/histories.tgz to
+  replay:
+    needs: build
+    if: vars.REPLAY_EXPORT_DOCUMENT != ''
+    runs-on: ubuntu-26.04
+    timeout-minutes: 20
+    env:
+      EXPORT_DOCUMENT: ${{ vars.REPLAY_EXPORT_DOCUMENT }}
+      EXPORT_TARGET: ${{ vars.REPLAY_EXPORT_TARGET }}
+      REPLAY_BUCKET: ${{ secrets.REPLAY_BUCKET }}
+    steps:
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v6
+        with:
+          role-to-assume: ${{ secrets.AWS_DEPLOY_ROLE_ARN }}
+          role-session-name: postra-deploy-${{ github.run_id }}
+          aws-region: ${{ secrets.AWS_REGION }}
+
+      - name: Login to Amazon ECR
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Export the running workflows' histories
+        run: |
+          CID=$(aws ssm send-command --document-name "$EXPORT_DOCUMENT" \
+            --targets "Key=tag:Name,Values=$EXPORT_TARGET" \
+            --parameters "RunId=$GITHUB_RUN_ID" --query Command.CommandId --output text)
+          for _ in $(seq 1 60); do
+            sleep 5
+            STATUS=$(aws ssm list-command-invocations --command-id "$CID" --query 'CommandInvocations[0].Status' --output text)
+            case "$STATUS" in
+              Success) break ;;
+              Pending|InProgress|Delayed|None) ;;
+              *) echo "Export $STATUS"; aws ssm list-command-invocations --command-id "$CID" --details \
+                   --query 'CommandInvocations[0].CommandPlugins[0].Output' --output text; exit 1 ;;
+            esac
+          done
+          [ "$STATUS" = Success ] || { echo "Export did not finish"; exit 1; }
+          aws ssm list-command-invocations --command-id "$CID" --details \
+            --query 'CommandInvocations[0].CommandPlugins[0].Output' --output text
+          mkdir -p histories
+          aws s3 cp --only-show-errors "s3://$REPLAY_BUCKET/runs/$GITHUB_RUN_ID/histories.tgz" .
+          tar -xzf histories.tgz -C histories
+
+      - name: Replay them on the new image
+        run: |
+          IMAGE="${ECR_REGISTRY}/${ECR_REPOSITORY}:${IMAGE_TAG_SHA}"
+          docker pull --quiet "$IMAGE"
+          docker run --rm -v "$PWD/histories:/histories:ro" "$IMAGE" \
+            node /app/scripts/replay-histories.mjs /histories
+
   # Staging (Plan/lunchdayfinal.md P7): the same image on staging.postra.pl,
   # started for this deploy and stopped after it, health + smoke there before
   # production gets it. Off until the repo variable STAGING_ENABLED is "true"
@@ -148,8 +211,8 @@ jobs:
   # staging stops it. The rollback puts the last verified image name back and
   # refreshes again, since the refresh cannot undo an SSM change.
   deploy:
-    needs: [build, staging]
-    if: always() && needs.build.result == 'success' && (needs.staging.result == 'success' || needs.staging.result == 'skipped')
+    needs: [build, staging, replay]
+    if: always() && needs.build.result == 'success' && (needs.staging.result == 'success' || needs.staging.result == 'skipped') && (needs.replay.result == 'success' || needs.replay.result == 'skipped')
     environment: production
     runs-on: ubuntu-26.04
     timeout-minutes: 75

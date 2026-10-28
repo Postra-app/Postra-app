@@ -1,6 +1,6 @@
 /**
  * The daily housekeeping run: retention + media sweep, then the margin guard
- * (behind a patch, see housekeeping.workflow.replay.spec.ts), a day of sleep
+ * (behind a patch; the deploy replays the live run, scripts/replay-histories.mjs), a day of sleep
  * and continue-as-new. One step failing must not skip the other.
  */
 const purgeOldRecords = jest.fn();
