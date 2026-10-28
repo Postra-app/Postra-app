@@ -12,7 +12,6 @@ dist
 /apps/workers/dist
 /apps/cron/dist
 /apps/commands/dist
-.devcontainer
 **/.git
 **/*.md
 **/LICENSE
