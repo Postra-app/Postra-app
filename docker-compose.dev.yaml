@@ -83,49 +83,85 @@ services:
       - 5432
     volumes:
       - /var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U temporal"]
+      interval: 2s
+      retries: 30
+
+  # temporalio/server only runs the server, so the schema is created or
+  # upgraded first with admin-tools of the same version. Each step leaves
+  # an up-to-date database alone. Visibility stays in SQL, like production.
+  temporal-schema:
+    container_name: temporal-schema
+    image: temporalio/admin-tools:1.32.1
+    profiles: [temporal]
+    depends_on:
+      temporal-postgresql:
+        condition: service_healthy
+    environment:
+      - SQL_PLUGIN=postgres12
+      - SQL_HOST=temporal-postgresql
+      - SQL_PORT=5432
+      - SQL_USER=temporal
+      - SQL_PASSWORD=temporal
+    entrypoint: ["/bin/sh", "-ec"]
+    command:
+      - |
+        for s in temporal:temporal temporal_visibility:visibility; do
+          temporal-sql-tool --db "$${s%%:*}" create
+          temporal-sql-tool --db "$${s%%:*}" setup-schema -v 0.0
+          temporal-sql-tool --db "$${s%%:*}" update-schema -d "/etc/temporal/schema/postgresql/v12/$${s##*:}/versioned"
+        done
+    networks:
+      - temporal-network
 
   temporal:
     container_name: temporal
-    image: temporalio/auto-setup:1.28.4
+    image: temporalio/server:1.32.1
     profiles: [temporal]
     ports:
       - "7233:7233"
     depends_on:
-      - temporal-postgresql
+      temporal-schema:
+        condition: service_completed_successfully
     environment:
       - DB=postgres12
       - DB_PORT=5432
       - POSTGRES_USER=temporal
       - POSTGRES_PWD=temporal
       - POSTGRES_SEEDS=temporal-postgresql
+      - BIND_ON_IP=0.0.0.0
       - DYNAMIC_CONFIG_FILE_PATH=config/dynamicconfig/development-sql.yaml
-      # Production runs Temporal with Elasticsearch off and visibility in SQL.
-      # Local used to force it on, which meant a heavyweight container nobody
-      # needed and a configuration that did not match the one being debugged.
-      # The Elasticsearch container is gone from this file for the same reason.
-      - ENABLE_ES=false
-      - SKIP_ADD_CUSTOM_SEARCH_ATTRIBUTES=true
-      - TEMPORAL_NAMESPACE=default
     networks:
       - temporal-network
     volumes:
       - ./dynamicconfig:/etc/temporal/config/dynamicconfig
+    healthcheck:
+      test: ["CMD", "nc", "-z", "localhost", "7233"]
+      interval: 2s
+      retries: 60
     labels:
       kompose.volume.type: configMap
 
+  # The Temporal CLI; it registers the default namespace on start.
   temporal-admin-tools:
     container_name: temporal-admin-tools
-    image: temporalio/admin-tools:1.28.4-tctl-1.18.4-cli-1.6.2
+    image: temporalio/admin-tools:1.32.1
     profiles: [temporal]
     environment:
       - TEMPORAL_ADDRESS=temporal:7233
-      - TEMPORAL_CLI_ADDRESS=temporal:7233
+    entrypoint: ["/bin/sh", "-ec"]
+    command:
+      - |
+        until temporal operator cluster health >/dev/null 2>&1; do sleep 1; done
+        temporal operator namespace describe -n default >/dev/null 2>&1 ||
+          temporal operator namespace create -n default --retention 168h
+        exec sleep infinity
     networks:
       - temporal-network
-    stdin_open: true
     depends_on:
-      - temporal
-    tty: true
+      temporal:
+        condition: service_healthy
 
   temporal-ui:
     container_name: temporal-ui
