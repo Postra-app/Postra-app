@@ -1,6 +1,10 @@
 services:
   postra:
-    image: ghcr.io/Postra-app/Postra-app:latest
+    # Built from this checkout: no registry publishes the image.
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    image: postra-app:local
     container_name: postra
     restart: always
     environment:
@@ -143,7 +147,7 @@ services:
       timeout: 3s
       retries: 3
   postra-redis:
-    image: redis:7.2
+    image: redis:8.10.3-alpine
     container_name: postra-redis
     restart: always
     healthcheck:
@@ -158,11 +162,10 @@ services:
 
   # For Application Monitoring / Debugging
   spotlight:
-    pull_policy: always
     container_name: spotlight
     ports:
       - 8969:8969/tcp
-    image: ghcr.io/getsentry/spotlight:latest
+    image: ghcr.io/getsentry/spotlight:4.12.1
     networks:
       - postra-network
 

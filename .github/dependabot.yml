@@ -99,16 +99,15 @@ updates:
         update-types: ["version-update:semver-major", "version-update:semver-minor", "version-update:semver-patch"]
       - dependency-name: "*"
         update-types: ["version-update:semver-major"]
-  # Images in the local compose files, in one PR. Temporal follows the
-  # production box (infra issue #196) and docker-compose.yaml is upstream's
-  # self-host file, so only minors and patches of the tools come here.
+  # Images in the compose files (local, self-host, the e2e stack), in one
+  # PR. A Temporal minor is safe here: temporal-schema migrates the database
+  # with admin-tools of the new version before the server starts, and the
+  # group keeps server and admin-tools on the same version.
   - package-ecosystem: "docker-compose"
-    directory: "/"
+    directories: ["/", "/e2e/stack"]
     schedule:
       interval: "monthly"
     ignore:
-      - dependency-name: "temporalio/*"
-        update-types: ["version-update:semver-major", "version-update:semver-minor", "version-update:semver-patch"]
       - dependency-name: "*"
         update-types: ["version-update:semver-major"]
     groups:

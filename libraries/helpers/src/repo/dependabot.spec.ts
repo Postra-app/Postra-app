@@ -1,5 +1,5 @@
 import { readFileSync } from 'fs';
-import { join } from 'path';
+import { dirname, join } from 'path';
 
 // Dependabot gives a package to a group by dependency type before a group by
 // wildcard pattern. On 2026-10-07 every @temporalio/* and @copilotkit/*
@@ -120,11 +120,15 @@ describe('Dependabot groups', () => {
     expect(guard).toContain('node scripts/dependency-freshness.mjs');
   });
 
-  // pgAdmin and RedisInsight ran on :latest in the dev compose, with nothing
-  // saying when they moved. Exact tags, and Dependabot watches the compose
-  // images like the Dockerfile's.
-  it('pins every dev compose image and watches the compose files', () => {
-    const compose = readFileSync(join(root, 'docker-compose.dev.yaml'), 'utf8');
+  // pgAdmin and RedisInsight ran on :latest in the dev compose, Spotlight in
+  // the self-host one, and the e2e stack's Temporal had no watcher at all.
+  // Exact tags everywhere, and Dependabot watches every compose directory.
+  it.each([
+    'docker-compose.dev.yaml',
+    'docker-compose.yaml',
+    'e2e/stack/docker-compose.yml',
+  ])('pins every image in %s and watches its directory', (file) => {
+    const compose = readFileSync(join(root, file), 'utf8');
     const images = [...compose.matchAll(/^\s*image:\s*(\S+)/gm)].map(
       (m) => m[1]
     );
@@ -132,6 +136,25 @@ describe('Dependabot groups', () => {
     expect(images.filter((image) => /:latest$|^[^:]+$/.test(image))).toEqual(
       []
     );
-    expect(config).toMatch(/- package-ecosystem: "docker-compose"/);
+    const dir = `/${dirname(file)}`.replace(/\/\.$/, '/');
+    const block = config.split(/^\s*- package-ecosystem:/m).find((b) =>
+      b.startsWith(' "docker-compose"')
+    );
+    expect(block).toContain(`"${dir}"`);
   });
+
+  // server and admin-tools share a version: admin-tools migrates the schema
+  // the server is about to run on. (The self-host file still runs auto-setup
+  // with Elasticsearch visibility: moving it needs a visibility migration.)
+  it.each(['docker-compose.dev.yaml'])(
+    'keeps Temporal server and admin-tools on one version in %s',
+    (file) => {
+      const compose = readFileSync(join(root, file), 'utf8');
+      const tags = [
+        ...compose.matchAll(/image:\s*temporalio\/(server|admin-tools):(\S+)/g),
+      ].map((m) => m[2]);
+      expect(tags.length).toBeGreaterThanOrEqual(3);
+      expect(new Set(tags).size).toBe(1);
+    }
+  );
 });
