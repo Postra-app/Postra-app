@@ -78,13 +78,15 @@ jobs:
 
       - name: Build Docker image
         if: steps.existing.outputs.exists != 'true'
+        env:
+          SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
         run: |
           docker build \
             -f Dockerfile.dev \
             --build-arg NEXT_PUBLIC_VERSION=${GITHUB_SHA} \
             --build-arg SENTRY_ORG="${{ secrets.SENTRY_ORG }}" \
             --build-arg SENTRY_PROJECT="${{ secrets.SENTRY_PROJECT }}" \
-            --build-arg SENTRY_AUTH_TOKEN="${{ secrets.SENTRY_AUTH_TOKEN }}" \
+            --secret id=sentry_auth_token,env=SENTRY_AUTH_TOKEN \
             -t "${{ steps.image.outputs.image_latest }}" \
             -t "${{ steps.image.outputs.image_sha }}" \
             .

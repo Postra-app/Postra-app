@@ -1,15 +1,16 @@
 FROM node:22.23.4-bookworm-slim
 ARG NEXT_PUBLIC_VERSION
 ENV NEXT_PUBLIC_VERSION=$NEXT_PUBLIC_VERSION
-# Source map upload is a build-time step: without these three the Sentry
-# plugin silently uploads nothing and every frontend stack trace stays
-# minified. Absent values keep the old behaviour, so the build never breaks.
+# Source map upload is a build-time step: without the org, the project and a
+# token the Sentry plugin silently uploads nothing and every frontend stack
+# trace stays minified. Absent values keep the old behaviour, so the build
+# never breaks. The token comes in as a build secret on the build step only
+# (`docker build --secret id=sentry_auth_token,env=SENTRY_AUTH_TOKEN`): a
+# build argument would stay in the image's config and layer history.
 ARG SENTRY_ORG
 ARG SENTRY_PROJECT
-ARG SENTRY_AUTH_TOKEN
 ENV SENTRY_ORG=$SENTRY_ORG
 ENV SENTRY_PROJECT=$SENTRY_PROJECT
-ENV SENTRY_AUTH_TOKEN=$SENTRY_AUTH_TOKEN
 # `procps` is not optional. pm2 starts every app as `pm2 start pnpm -- start`,
 # so the process pm2 owns is a pnpm wrapper and the real Node server is its
 # child. On restart pm2 signals the wrapper and relies on its tree-kill to
@@ -89,7 +90,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends fontconfig \
  && fc-list | grep -i geist || echo "WARN: Geist not registered in fontconfig" \
  && rm -rf /var/lib/apt/lists/*
 
-RUN NODE_OPTIONS="--max-old-space-size=4096" pnpm run build
+RUN --mount=type=secret,id=sentry_auth_token,env=SENTRY_AUTH_TOKEN \
+    NODE_OPTIONS="--max-old-space-size=4096" pnpm run build
 
 # Prebuild the maintenance CLI (apps/commands — e.g. `sync-channel-slots` after
 # enabling a new platform). It must ship in the image: the prod box is a
