@@ -107,13 +107,13 @@ export class ThrottlerBehindProxyGuard extends ThrottlerGuard {
     // hop adds what it saw, so the tail is the ALB's own observation and
     // everything before it is whatever the client chose to send. If nginx ever
     // appends again, the tail becomes the ALB node and all anonymous users on
-    // that node share one bucket — measured on prod 2026-10-05. Reading index 0 handed the bucket key to the caller — sending
-    // `X-Forwarded-For: <anything>` produced a fresh bucket on every request
-    // and the per-IP limits on login, register and forgot stopped applying
-    //. Reaching the app without going through the ALB
-    // is not possible: the security group only accepts port 5000 from the
-    // load balancer's own group, and a request that arrives with no header at
-    // all still falls through to the socket address below.
+    // that node share one bucket. Reading index 0 handed the bucket key to the
+    // caller: sending `X-Forwarded-For: <anything>` produced a fresh bucket on
+    // every request and the per-IP limits on login, register and forgot
+    // stopped applying. Reaching the app without going through the ALB is not
+    // possible: the security group only accepts port 5000 from the load
+    // balancer's own group, and a request that arrives with no header at all
+    // still falls through to the socket address below.
     const ip =
       clientIpFromForwardedFor(req.headers?.['x-forwarded-for'] as string) ||
       req.ip ||
