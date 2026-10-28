@@ -172,6 +172,24 @@ services:
   # -----------------------
   # Temporal Stack
   # -----------------------
+  temporal-elasticsearch:
+    container_name: temporal-elasticsearch
+    image: elasticsearch:7.17.28
+    environment:
+      - cluster.routing.allocation.disk.threshold_enabled=true
+      - cluster.routing.allocation.disk.watermark.low=512mb
+      - cluster.routing.allocation.disk.watermark.high=256mb
+      - cluster.routing.allocation.disk.watermark.flood_stage=128mb
+      - discovery.type=single-node
+      - ES_JAVA_OPTS=-Xms256m -Xmx256m
+      - xpack.security.enabled=false
+    networks:
+      - temporal-network
+    expose:
+      - 9200
+    volumes:
+      - /var/lib/elasticsearch/data
+
   temporal-postgresql:
     container_name: temporal-postgresql
     image: postgres:16
@@ -184,82 +202,45 @@ services:
       - 5432
     volumes:
       - /var/lib/postgresql/data
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U temporal"]
-      interval: 2s
-      retries: 30
-
-  # temporalio/server only runs the server, so the schema is created or
-  # upgraded first with admin-tools of the same version. Each step leaves
-  # an up-to-date database alone. Visibility stays in SQL, like production.
-  temporal-schema:
-    container_name: temporal-schema
-    image: temporalio/admin-tools:1.32.1
-    depends_on:
-      temporal-postgresql:
-        condition: service_healthy
-    environment:
-      - SQL_PLUGIN=postgres12
-      - SQL_HOST=temporal-postgresql
-      - SQL_PORT=5432
-      - SQL_USER=temporal
-      - SQL_PASSWORD=temporal
-    entrypoint: ["/bin/sh", "-ec"]
-    command:
-      - |
-        for s in temporal:temporal temporal_visibility:visibility; do
-          temporal-sql-tool --db "$${s%%:*}" create
-          temporal-sql-tool --db "$${s%%:*}" setup-schema -v 0.0
-          temporal-sql-tool --db "$${s%%:*}" update-schema -d "/etc/temporal/schema/postgresql/v12/$${s##*:}/versioned"
-        done
-    networks:
-      - temporal-network
 
   temporal:
     container_name: temporal
-    image: temporalio/server:1.32.1
     ports:
-      - "7233:7233"
+      - '7233:7233'
+    image: temporalio/auto-setup:1.28.4
     depends_on:
-      temporal-schema:
-        condition: service_completed_successfully
+      - temporal-postgresql
+      - temporal-elasticsearch
     environment:
       - DB=postgres12
       - DB_PORT=5432
       - POSTGRES_USER=temporal
       - POSTGRES_PWD=temporal
       - POSTGRES_SEEDS=temporal-postgresql
-      - BIND_ON_IP=0.0.0.0
       - DYNAMIC_CONFIG_FILE_PATH=config/dynamicconfig/development-sql.yaml
+      - ENABLE_ES=true
+      - ES_SEEDS=temporal-elasticsearch
+      - ES_VERSION=v7
+      - TEMPORAL_NAMESPACE=default
     networks:
       - temporal-network
     volumes:
       - ./dynamicconfig:/etc/temporal/config/dynamicconfig
-    healthcheck:
-      test: ["CMD", "nc", "-z", "localhost", "7233"]
-      interval: 2s
-      retries: 60
     labels:
       kompose.volume.type: configMap
 
-  # The Temporal CLI; it registers the default namespace on start.
   temporal-admin-tools:
     container_name: temporal-admin-tools
-    image: temporalio/admin-tools:1.32.1
+    image: temporalio/admin-tools:1.28.4-tctl-1.18.4-cli-1.6.2
     environment:
       - TEMPORAL_ADDRESS=temporal:7233
-    entrypoint: ["/bin/sh", "-ec"]
-    command:
-      - |
-        until temporal operator cluster health >/dev/null 2>&1; do sleep 1; done
-        temporal operator namespace describe -n default >/dev/null 2>&1 ||
-          temporal operator namespace create -n default --retention 168h
-        exec sleep infinity
+      - TEMPORAL_CLI_ADDRESS=temporal:7233
     networks:
       - temporal-network
+    stdin_open: true
     depends_on:
-      temporal:
-        condition: service_healthy
+      - temporal
+    tty: true
 
   temporal-ui:
     container_name: temporal-ui
