@@ -14,6 +14,7 @@ import {
   newDayjs,
 } from '@gitroom/frontend/components/layout/set.timezone';
 import { useVariables } from '@gitroom/react/helpers/variable.context';
+import { useFireEvents } from '@gitroom/helpers/utils/use.fire.events';
 
 interface TwoStepState {
   integrationId: string;
@@ -50,6 +51,17 @@ export const ContinueIntegration: FC<{
   const [twoStepState, setTwoStepState] = useState<TwoStepState | null>(null);
   const [successState, setSuccessState] = useState<SuccessState | null>(null);
   const [isSaving, setIsSaving] = useState(false);
+  const fireEvents = useFireEvents();
+
+  // Which platforms fail to connect, and whether people declined or it broke
+  // (the message itself can carry account details, so it is not sent).
+  useEffect(() => {
+    if (!error) return;
+    fireEvents('channel_connect_failed', {
+      provider,
+      reason: searchParams?.error === 'access_denied' ? 'declined' : 'failed',
+    });
+  }, [error, fireEvents, provider, searchParams?.error]);
 
   // Helper to handle navigation - redirects if logged or returnURL exists, otherwise shows inline
   const navigateOrShow = useCallback(

@@ -42,6 +42,7 @@ import {
 import { useHasScroll } from '@gitroom/frontend/components/ui/is.scroll.hook';
 import { useShortlinkPreference } from '@gitroom/frontend/components/settings/shortlink-preference.component';
 import dayjs from 'dayjs';
+import { useFireEvents } from '@gitroom/helpers/utils/use.fire.events';
 import { Button } from '@gitroom/frontend/components/ui/button';
 
 export const ManageModal: FC<AddEditModalProps> = (props) => {
@@ -51,6 +52,7 @@ export const ManageModal: FC<AddEditModalProps> = (props) => {
   const existingData = useExistingData();
   const [loading, setLoading] = useState(false);
   const toaster = useToaster();
+  const fireEvents = useFireEvents();
   const modal = useModals();
   const [showSettings, setShowSettings] = useState(false);
   // Phones have no room for the preview column beside the editor; the
@@ -828,6 +830,10 @@ export const ManageModal: FC<AddEditModalProps> = (props) => {
               return;
             }
             mutate();
+            fireEvents('post_saved', {
+              type,
+              edit: !!existingData.integration,
+            });
             toaster.show(
               !existingData.integration
                 ? t('added_successfully', 'Added successfully')
@@ -872,6 +878,7 @@ export const ManageModal: FC<AddEditModalProps> = (props) => {
       shortlinkPreferenceData,
       selectedIntegrations,
       existingData,
+      fireEvents,
     ]
   );
 

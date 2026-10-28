@@ -4,6 +4,10 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import EventEmitter from 'events';
 import clsx from 'clsx';
 import { addToast, removeToast, ToastItem } from './toaster.queue';
+import {
+  plausibleEvent,
+  routeTemplate,
+} from '@gitroom/react/helpers/plausible.event';
 const toaster = new EventEmitter();
 // Warnings are usually longer and matter more than a success note: give them
 // time to be read.
@@ -170,6 +174,12 @@ const ToastRow = ({
 export const useToaster = () => {
   return {
     show: useCallback((text: string, type?: 'success' | 'warning') => {
+      // Where people hit errors, counted per page; the text stays here.
+      if (type === 'warning') {
+        plausibleEvent('error_shown', {
+          page: routeTemplate(window.location.pathname),
+        });
+      }
       toaster.emit('show', {
         text,
         type,
