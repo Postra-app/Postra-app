@@ -108,4 +108,5 @@ RUN pm2 install "pm2-logrotate@$(node -p "require('/tmp/tools/package.json').dep
  && pm2 set pm2-logrotate:compress true \
  && pm2 kill
 
-CMD ["sh", "-c", "nginx && pnpm run pm2"]
+# The script, not a `sh -c` chain, is PID 1: it is what takes `docker stop`.
+CMD ["sh", "/app/var/docker/start.sh"]

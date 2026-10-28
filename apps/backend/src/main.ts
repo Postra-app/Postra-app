@@ -80,6 +80,9 @@ async function start() {
       ],
     },
   });
+  // pm2 stops the backend with SIGINT (var/docker/start.sh): close the HTTP
+  // server and the modules' connections instead of dying mid-request.
+  app.enableShutdownHooks();
 
   try {
     // startMcp boots the AI copilot (Mastra + MCP server). It must never take
