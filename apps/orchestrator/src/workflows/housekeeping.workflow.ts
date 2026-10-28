@@ -28,7 +28,7 @@ export async function housekeepingWorkflow() {
   // A run is alive at every deploy and replays this code against its own
   // history, so every new step goes behind a patch: the run started before
   // the step shipped skips it, sleeps out its day and continues as new with
-  // it (E2E-11-15; housekeeping.workflow.replay.spec.ts).
+  // it (E2E-11-15; the deploy replays the live run first, scripts/replay-histories.mjs).
   let checkInId: string | undefined;
   if (patched('housekeeping-check-in')) {
     try {
