@@ -3,7 +3,7 @@ import { channels, promo, settingsFor } from './publish.helpers';
 
 // AI on production with the real OpenAI key, once a night (e2e-canary.yml,
 // never at deploy; budget agreed 2026-10-01). A mock cannot catch what has
-// actually broken AI here: an SDK or undici upgrade (E2E-01-23), an expired
+// actually broken AI here: an SDK or undici upgrade, an expired
 // key, a model change. Every engine runs: composer rewrite and hashtags, the
 // post Creator graph, the Agent in the browser, and on Mondays one Studio
 // image.

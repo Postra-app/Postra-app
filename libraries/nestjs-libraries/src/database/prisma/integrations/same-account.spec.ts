@@ -83,7 +83,7 @@ describe('saveProviderPage: one Instagram account, one channel', () => {
   });
 });
 
-describe('one connection of an Instagram account at a time (Codex 27 X)', () => {
+describe('one connection of an Instagram account at a time', () => {
   // The Page pick and the callback without a Page, for the same account at
   // once: both checks ran before either write and the org got two channels.
   const key = `same-account:org-1:instagram:${IG_ACCOUNT}`;

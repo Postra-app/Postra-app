@@ -280,7 +280,7 @@ export const AddOrEditWebhook: FC<{
   const saving = useRef(false);
   const callBack = useCallback(
     async (values: any) => {
-      // One save at a time: a double click created two webhooks (E2E-08-37).
+      // One save at a time: a double click created two webhooks.
       if (saving.current) return;
       saving.current = true;
       try {

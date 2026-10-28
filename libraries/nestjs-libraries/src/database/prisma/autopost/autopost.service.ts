@@ -241,7 +241,7 @@ export class AutopostService {
       headers: { accept: 'application/rss+xml, application/xml, text/xml, */*' },
     });
     // Read with a ceiling: `res.text()` buffered whatever the server sent,
-    // and a feed URL is anything a signed-in user types (AI-10). Real feeds
+    // and a feed URL is anything a signed-in user types. Real feeds
     // are kilobytes to a few megabytes.
     const body = (await readResponseCapped(res as any, FEED_MAX_BYTES)).toString('utf8');
     return parser.parseString(body);
@@ -341,7 +341,7 @@ export class AutopostService {
 
       // `fresh` is newest-first. The oldest `max` go now and the cursor moves
       // to the last of them; taking the newest lost the older ones for good,
-      // the cursor having already passed them (E2E-06-24).
+      // the cursor having already passed them.
       return fresh
         .slice(-max)
         .reverse()
@@ -437,7 +437,7 @@ export class AutopostService {
     // The per-autopost tone wins when the user set one; otherwise the org's
     // Brand Kit speaks, and only with neither do we fall back to a default.
     // Interpolated into a LangChain template, where `{x}` is a variable: a
-    // tone like "Friendly {company}" failed every run of the feed (E2E-06-25).
+    // tone like "Friendly {company}" failed every run of the feed.
     const braces = (text: string) => text.replace(/[{}]/g, (b) => b + b);
     const toneInstruction = state.body.tone
       ? `- Tone of voice: ${braces(state.body.tone)}`
@@ -486,7 +486,7 @@ export class AutopostService {
         language: languageRule({ scope: 'the posts', follow: 'the article' }),
       });
 
-    // No long dashes in posts customers publish (K. 10-09).
+    // No long dashes in posts customers publish.
     const clean = deepWithoutLongDashes(platformContent);
     return {
       ...state,
@@ -634,7 +634,7 @@ export class AutopostService {
     if (integrations.length === 0) {
       // Every channel needs an image and there is none (generation failed or
       // credits ran out). Returning here moved the cursor past the article
-      // for good (AI-4); failing keeps it, and the next run tries again.
+      // for good; failing keeps it, and the next run tries again.
       if (state.integrations.length) {
         throw new Error(
           'This article needs an image for the selected channels and none could be made. It will be tried again on the next run.'
@@ -647,7 +647,7 @@ export class AutopostService {
 
     // The post and the feed's cursor are two writes. A worker killed between
     // them left the cursor behind, and the retry posted the same article
-    // again (AI-2). Channels that already have it are left out; with none
+    // again. Channels that already have it are left out; with none
     // left, update-url moves the cursor on.
     const done = await this._postsService.channelsWithRecentAutopost(
       orgId,
@@ -779,7 +779,7 @@ export class AutopostService {
     }
 
     // Auto Post counts against the plan's posts a month like any other post
-    // (Codex 10-17: it wrote past the cap, a trial's 30 included). Asked
+    // (it wrote past the cap, a trial's 30 included). Asked
     // before the AI writes anything; the article waits for the next run, when
     // the month or the plan may have room again.
     const cap = await this._subscriptionService.postCap(

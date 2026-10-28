@@ -46,7 +46,7 @@ export const useAddProvider = (update?: () => void, invite?: boolean) => {
     try {
       const [data, list] = await Promise.all([
         (await fetch('/integrations')).json(),
-        // How many channels take a slot now, for the counter (K. 10-09).
+        // How many channels take a slot now, for the counter.
         fetch('/integrations/list')
           .then((r) => r.json())
           .catch(() => null),
@@ -787,7 +787,7 @@ export const AddProviderComponent: FC<{
     [social, user?.previewChannels]
   );
 
-  // Nine platform tiles read as nine channels on Pro (K. 10-09): say how
+  // Nine platform tiles read as nine channels on Pro: say how
   // many of the plan's channels are used, and on how many platforms.
   const channelLimit = channelLimitFor({
     isTrailing: user?.isTrailing,

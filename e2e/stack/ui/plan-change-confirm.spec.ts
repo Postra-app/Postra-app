@@ -1,9 +1,9 @@
 import { expect, test } from '@playwright/test';
 
-// E2E-07-43 (Kris Company, 2026-10-09): "Purchase plan" on a paying account
-// charged at once — no window, and the amount next to the button was the one
-// quoted when the page loaded (£50.00 shown, £49.68 charged). The change now
-// asks first, with a fresh quote. The stack has no Stripe: routes answer.
+// "Purchase plan" on a paying account charged at once — no window, and the
+// amount next to the button was the one quoted when the page loaded (£50.00
+// shown, £49.68 charged). The change now asks first, with a fresh quote. The
+// stack has no Stripe: routes answer.
 test('changing plan asks first, with a fresh amount and the renewal', async ({ page }) => {
   const subscribe: string[] = [];
   // The page quotes when it loads; the click must ask again (the price has
@@ -32,9 +32,9 @@ test('changing plan asks first, with a fresh amount and the renewal', async ({ p
   await expect.poll(() => subscribe).toEqual(['POST']);
 });
 
-// E2E-07-44 (Kris Company, 2026-10-09): Business → Starter changed at once and
-// the unused Business went to the Stripe balance. A lower plan now starts at
-// the renewal, as the subscription terms say, and Billing shows when.
+// Business → Starter changed at once and the unused Business went to the Stripe
+// balance. A lower plan now starts at the renewal, as the subscription terms
+// say, and Billing shows when.
 test('a lower plan waits for the renewal, and Billing says when', async ({ page }) => {
   const on = '2026-11-09T09:35:51.000Z';
   const subscribe: string[] = [];
@@ -62,18 +62,17 @@ test('a lower plan waits for the renewal, and Billing says when', async ({ page 
   await expect.poll(() => subscribe).toEqual(['POST']);
   await expect(page.getByText('Changes to Starter on 9 November')).toBeVisible();
   await expect(page.getByRole('button', { name: 'Current plan' })).toHaveCount(1);
-  // 18 X: the Starter card still offered "Purchase plan (Pay Today £0.00)".
+  // The Starter card still offered "Purchase plan (Pay Today £0.00)".
   await expect(page.getByRole('button', { name: 'Starts on 9 November' })).toBeDisabled();
   // The mocked quote is £0 for every plan: only Business still shows one.
   await expect(page.getByText(/^\(Pay Today/)).toHaveCount(1);
-  // Codex: Starter yearly is not the scheduled change and can still be chosen.
+  // Starter yearly is not the scheduled change and can still be chosen.
   await page.getByRole('switch', { name: 'Bill yearly' }).click();
   await expect(page.getByRole('button', { name: 'Starts on 9 November' })).toHaveCount(0);
 });
 
-// Codex on the 10-09 branch: when the quote failed, the window offered the
-// change as free ("Nothing to pay today") and went on to charge. No quote, no
-// window and no change.
+// When the quote failed, the window offered the change as free ("Nothing to pay
+// today") and went on to charge. No quote, no window and no change.
 test('without a quote from Stripe nothing is offered or changed', async ({ page }) => {
   const subscribe: string[] = [];
   await page.goto('/billing');

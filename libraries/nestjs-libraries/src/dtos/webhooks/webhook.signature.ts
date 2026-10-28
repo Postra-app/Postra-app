@@ -1,7 +1,7 @@
 import { createHmac, randomBytes, timingSafeEqual } from 'crypto';
 
 // Every webhook delivery is signed, so the receiver can check that Postra
-// sent it and that the body was not changed (E2E-08-49). Stripe's scheme,
+// sent it and that the body was not changed. Stripe's scheme,
 // which receivers already know: the header carries the time and an
 // HMAC-SHA256 of "<time>.<raw body>" with the webhook's secret.
 export const WEBHOOK_SIGNATURE_HEADER = 'Postra-Signature';

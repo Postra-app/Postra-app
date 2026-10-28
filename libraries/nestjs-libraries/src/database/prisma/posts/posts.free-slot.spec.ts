@@ -18,7 +18,7 @@ import { PostsRepository } from '@gitroom/nestjs-libraries/database/prisma/posts
 
 /**
  * "Next free slot" (composer, Auto Post, public API find-slot, mobile) for a
- * channel with a 09:00 London slot (E2E-05-85, E2E-10-59). The answer is a
+ * channel with a 09:00 London slot. The answer is a
  * UTC time without a zone suffix, as the clients expect.
  */
 const build = (slots: Array<{ time: number; tz?: string }>, taken: string[] = []) => {

@@ -34,7 +34,7 @@ const LINKEDIN_PART = 1024 * 1024 * 2;
 
 // The body of a LinkedIn answer, or an error carrying its status. An outage
 // comes back as an HTML page; parsing it as JSON threw a SyntaxError that
-// counted as a refused grant and disconnected the channel (E2E-04-26). With
+// counted as a refused grant and disconnected the channel. With
 // the status, a 429/5xx is a passing outage (isTransientRefreshError) and a
 // 400/401 a refused grant.
 export const linkedinJson = async (res: Response) => {
@@ -139,7 +139,7 @@ export class LinkedinProvider extends SocialAbstract implements SocialProvider {
     );
 
     // Optional: with the OIDC scopes alone /v2/me answers 403, and the
-    // vanity name is a nicety — a good refresh must not fail over it (Codex).
+    // vanity name is a nicety — a good refresh must not fail over it.
     const meResponse = await fetch('https://api.linkedin.com/v2/me', {
       headers: {
         Authorization: `Bearer ${accessToken}`,

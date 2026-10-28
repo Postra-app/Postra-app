@@ -20,7 +20,7 @@ const VEO3Settings: FC = () => {
     value: [],
   });
   // The API reads `images`, which existed only after a pick: a prompt alone
-  // was refused with 400 after the modal had closed (FE-ST-12).
+  // was refused with 400 after the modal had closed.
   register('images', {
     value: [],
   });

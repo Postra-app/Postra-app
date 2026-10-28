@@ -4,7 +4,7 @@ jest.mock('@gitroom/nestjs-libraries/redis/auth-context.cache', () => ({ bustAut
 
 import { SubscriptionService } from '@gitroom/nestjs-libraries/database/prisma/subscriptions/subscription.service';
 
-// E2E-07-40 (Kris Company, 2026-10-09): the AI allowance month ran from the
+// The AI allowance month ran from the
 // day the subscription was created (3 Oct), invoices from the end of the
 // trial (9 Oct) — a video made in the trial counted against the first paid
 // month, and "This month" would reset six days before the next invoice.

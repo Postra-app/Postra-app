@@ -11,7 +11,7 @@ jest.mock('@gitroom/helpers/auth/auth.service', () => ({
 import { RefreshIntegrationService } from './refresh.integration.service';
 
 /**
- * INT-13 — any failed refresh marked the channel "reconnect needed" and
+ * Any failed refresh marked the channel "reconnect needed" and
  * disconnected it, a 503 or a dropped connection included. A brief outage at
  * the provider cost the customer a manual reconnect.
  */
@@ -63,7 +63,7 @@ it('a refused grant still asks for a reconnect', async () => {
   expect(integrations.disconnectChannel).toHaveBeenCalled();
 });
 
-// INT-7: a channel removed while its token was being refreshed came back to
+// A channel removed while its token was being refreshed came back to
 // life when the new tokens were written through the upsert.
 it('a channel removed during the refresh is not written back', async () => {
   const integrations = {

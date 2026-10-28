@@ -3,8 +3,8 @@ import { anonymous, channelOf, createDraft, database, signedIn, throwawayOrg } f
 
 // Organisation B must not be able to read, change or delete anything that
 // belongs to organisation A — and must not even learn that it exists (404,
-// never 403). Each case here was an open door on production before the
-// E2E-05-* fixes.
+// never 403). Each case here was an open door on production before it was
+// fixed.
 
 let a: APIRequestContext;
 let b: APIRequestContext;
@@ -84,7 +84,7 @@ test("B cannot rename A's channel", async () => {
   expect(row?.customName ?? null).not.toBe('[stack] foreign name');
 });
 
-test("E2E-05-19: B cannot put a plug on A's channel", async () => {
+test("B cannot put a plug on A's channel", async () => {
   const res = await b.post(`/integrations/${channelOf('a')}/plugs`, {
     data: {
       func: 'autoPlugPost',
@@ -104,7 +104,7 @@ test("E2E-05-19: B cannot put a plug on A's channel", async () => {
   ).toBe(404);
 });
 
-test('E2E-05-18: B cannot overwrite or delete A\'s signature', async () => {
+test('B cannot overwrite or delete A\'s signature', async () => {
   const created = await a.post('/signatures', {
     data: { content: '[stack] signature A', autoAdd: false },
   });
@@ -121,9 +121,9 @@ test('E2E-05-18: B cannot overwrite or delete A\'s signature', async () => {
   expect((await a.delete(`/signatures/${id}`)).status()).toBe(200);
 });
 
-// E2E-02-05: these were 500s (the data held, the answers were wrong). Two
-// throwaway organisations: a set in A makes the composer ask "Select a Set",
-// which would block the UI tests running beside this file.
+// These were 500s (the data held, the answers were wrong). Two throwaway
+// organisations: a set in A makes the composer ask "Select a Set", which would
+// block the UI tests running beside this file.
 test("B cannot overwrite or delete A's set", async () => {
   const prisma = database();
   const owner = await throwawayOrg(prisma, { tier: 'PRO', totalChannels: 5, channels: 0 });
@@ -158,7 +158,7 @@ test("B cannot rename or delete A's tag", async () => {
   expect((await a.delete(`/posts/tags/${id}`)).status()).toBe(200);
 });
 
-test('E2E-05-13: the public preview leaks no internals', async () => {
+test('the public preview leaks no internals', async () => {
   const res = await (await anonymous()).get(`/public/posts/${post.id}`);
   expect(res.status()).toBe(200);
   const body = await res.json();
@@ -168,9 +168,8 @@ test('E2E-05-13: the public preview leaks no internals', async () => {
   }
 });
 
-// finalappcheck §46 (26 X): every one of these was already refused, but some
-// answered 500 (and a Sentry event) instead of the 404 the rest give
-// (E2E-11-68), and the rest had no test.
+// Every one of these was already refused, but some answered 500 (and a Sentry
+// event) instead of the 404 the rest give, and the rest had no test.
 test("B cannot reach A's webhook, and A's channel settings or B's unknown ids are 404, not 500", async () => {
   const created = await a.post('/webhooks', {
     data: { name: '[stack] isolation hook', url: 'https://example.com/stack-hook', integrations: [] },

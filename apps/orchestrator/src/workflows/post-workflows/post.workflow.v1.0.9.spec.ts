@@ -1,7 +1,7 @@
 /**
- * U13 — restart-safe publishing. A deploy or watchdog restart mid-publish used
+ * Restart-safe publishing. A deploy or watchdog restart mid-publish used
  * to leave the activity hanging until its 10-minute startToCloseTimeout, after
- * which the SDK retried it blindly (E2E-11-01, Plan/upstream_sync.md §0).
+ * which the SDK retried it blindly.
  * v1.0.9 retries a publish only when the activity never reached the platform.
  */
 const activities: Record<string, jest.Mock> = {};
@@ -171,7 +171,7 @@ describe('postWorkflowV109 — worker restarts mid-publish', () => {
 });
 
 describe('postWorkflowV109 — repeating posts', () => {
-  // POSTS-3: the interval was counted from the start of the workflow, before
+  // The interval was counted from the start of the workflow, before
   // the wait for the publish date, so a post scheduled 10 days ahead with a
   // 1-day interval repeated right after it went out.
   it('the first repeat comes one interval after the post, not at once', async () => {
@@ -209,7 +209,7 @@ describe('postWorkflowV109 — repeating posts', () => {
 });
 
 describe('postWorkflowV109 — after the platform has the post', () => {
-  // POSTS-9: a notification that could not be sent turned a published post
+  // A notification that could not be sent turned a published post
   // into an error and stopped its comments.
   it('a failed notification neither marks the post failed nor stops its comment', async () => {
     activities.getPostsList.mockResolvedValue([post, comment]);
@@ -228,7 +228,7 @@ describe('postWorkflowV109 — after the platform has the post', () => {
 });
 
 describe('postWorkflowV109 — plug checks', () => {
-  // APP-11 (Codex audit 10-05): every delay is counted from the publish, but
+  // Every delay is counted from the publish, but
   // each sleep was the full delay again, so a plug checking every 6 h ran at
   // 6, 18 and 36 h instead of 6, 12 and 18 h, and a repeating post with a
   // plug slipped by up to a day and a half each cycle.

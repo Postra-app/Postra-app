@@ -219,7 +219,7 @@ export const AdminAiUsageComponent = () => {
           >
             {/* The raw enum was rendered capitalised, so ai_images read as
                 "Ai_images", and `count` is the number of ledger rows, not of
-                model calls (E2E-09-33). */}
+                model calls. */}
             <div className="text-[12px] opacity-60">
               {creditTypeLabel(entry.type)}
             </div>
@@ -304,7 +304,7 @@ export const AdminAiUsageComponent = () => {
               </div>
               {/* The histogram is a picture of numbers, not a control: a list
                   with per-bar labels is readable, where a row of bare divs
-                  carrying only `title` is not (E2E-09-13). */}
+                  carrying only `title` is not. */}
               <ul
                 className="flex items-end gap-[2px] h-[60px] list-none m-0 p-0"
                 aria-label="Credits by hour"

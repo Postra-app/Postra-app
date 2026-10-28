@@ -36,7 +36,7 @@ describe('proxy - invitation cookie', () => {
   });
 });
 
-// E2E-11-78: cookies were set for the whole domain (.postra.co.uk), so the
+// Cookies were set for the whole domain (.postra.co.uk), so the
 // session token reached every subdomain, the status page on GitHub Pages
 // among them. They are host-only now; signing out also expires the
 // domain-wide `auth` a browser may still hold.

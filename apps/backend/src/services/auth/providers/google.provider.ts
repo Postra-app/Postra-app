@@ -9,7 +9,7 @@ const defaultRedirect = () =>
 
 // A redirect_uri from the caller is used only when it points back at this
 // app; Google's allowlist is the real gate, this keeps the code from relying
-// on it alone (E2E-03-02). Nothing in the web or mobile app sends one today.
+// on it alone. Nothing in the web or mobile app sends one today.
 export const safeRedirect = (candidate?: string) => {
   const own = process.env.FRONTEND_URL;
   if (!candidate || !own) return defaultRedirect();

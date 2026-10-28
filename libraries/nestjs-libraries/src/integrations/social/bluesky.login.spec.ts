@@ -47,7 +47,7 @@ describe('Bluesky login failures', () => {
   });
 });
 
-// E2E-04-24 (INT-3): the service URL comes from the client inside `code`,
+// The service URL comes from the client inside `code`,
 // and the server logged in there with the user's credentials — a request to
 // any host, internal ones included.
 describe('Bluesky connect with a service URL', () => {

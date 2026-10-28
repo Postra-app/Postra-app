@@ -12,7 +12,7 @@ const parse = async <T extends object>(cls: new () => T, body: object) => {
   return { dto, errors: await validate(dto) };
 };
 
-describe('email normalisation on auth forms (E2E-03-01)', () => {
+describe('email normalisation on auth forms', () => {
   const typed = '  Kris.Test@Example.COM ';
 
   it('signs in with the address as typed, spaces and capitals included', async () => {

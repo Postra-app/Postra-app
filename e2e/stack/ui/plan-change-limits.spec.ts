@@ -1,10 +1,10 @@
 import { expect, test } from '@playwright/test';
 
-// Kris Company, 2026-10-09: after Business → Starter the server said Starter
-// (3 channels, X and Discord refused with 402), but the open tab still
-// offered every platform in Add Channel. A plan change must bring the new
-// plan's limits into the page without a reload. The stack has no Stripe:
-// routes answer, and /user/self reports Starter once the change is made.
+// After Business → Starter the server said Starter (3 channels, X and Discord
+// refused with 402), but the open tab still offered every platform in Add
+// Channel. A plan change must bring the new plan's limits into the page without
+// a reload. The stack has no Stripe: routes answer, and /user/self reports
+// Starter once the change is made.
 test('after a plan change Add Channel locks what the new plan does not have', async ({ page }) => {
   let changed = false;
   await page.route('**/api/billing/prorate', (route) =>

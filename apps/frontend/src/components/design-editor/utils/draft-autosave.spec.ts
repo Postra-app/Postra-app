@@ -9,7 +9,7 @@ const store = new Map<string, string>();
 
 import { draftSlides, jsonHasObjects, readDraft, writeDraft } from './draft-autosave';
 
-// E2E-06-23: a carousel draft kept only the slide on screen.
+// A carousel draft kept only the slide on screen.
 const canvas = (n: number) => JSON.stringify({ objects: Array.from({ length: n }, () => ({ type: 'textbox' })) });
 
 describe('carousel drafts', () => {

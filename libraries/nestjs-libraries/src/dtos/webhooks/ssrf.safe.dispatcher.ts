@@ -28,7 +28,7 @@ const connect = buildConnector({
 
 // Node never calls `lookup` for a literal IP, so `http://127.0.0.1:…` used to
 // connect straight past the check — and so did any redirect to one, since
-// every hop goes through this dispatcher (E2E-08-26). Checked before
+// every hop goes through this dispatcher. Checked before
 // connecting instead.
 export const ssrfSafeDispatcher = new Agent({
   connect(options, callback) {

@@ -7,7 +7,7 @@ jest.mock('node:dns/promises', () => ({ lookup: async () => ({ address: '93.184.
 
 import { PostActivity } from './post.activity';
 
-// POSTS-6: a receiver answering 429/503 or timing out lost the event for good:
+// A receiver answering 429/503 or timing out lost the event for good:
 // the response was never checked and errors were swallowed.
 const activity = () => {
   const a = Object.create(PostActivity.prototype) as any;

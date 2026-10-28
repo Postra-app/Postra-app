@@ -3,7 +3,7 @@ jest.mock('nostr-tools', () => ({ getPublicKey: jest.fn(), Relay: class {}, fina
 
 import { OrganizationRepository } from './organization.repository';
 
-// E2E-07-40 (Codex): the organisation the session carries is what the app's
+// The organisation the session carries is what the app's
 // AI credit checks read. Its subscription lacked periodAnchor (and, when
 // impersonating, createdAt), so the app counted credits differently from the
 // public API and the admin reset.

@@ -1,7 +1,7 @@
 import { OAuthRepository } from './oauth.repository';
 import { OrganizationRepository } from '../organizations/organization.repository';
 
-// API-7: checkCredits starts the cycle at subscription.createdAt, which the
+// CheckCredits starts the cycle at subscription.createdAt, which the
 // public API and MCP never loaded — the cycle started at the time of the
 // request.
 it('the API key and OAuth token lookups load the subscription start', async () => {

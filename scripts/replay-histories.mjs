@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // Replays workflow histories against the compiled workflows of this build
-// and exits non-zero if any of them no longer replays (E2E-11-94).
+// and exits non-zero if any of them no longer replays.
 //
 //   node scripts/replay-histories.mjs <dir with *.json histories>
 //
@@ -8,7 +8,7 @@
 // histories of the workflows running in production at that moment (exported
 // by the operator's own infrastructure; this repository holds no history).
 // A workflow change that does not match a live run's history would fail
-// every task of that run after the deploy (E2E-11-15), so the deploy stops
+// every task of that run after the deploy, so the deploy stops
 // here instead: put the change behind patched() or in a new workflow version.
 import fs from 'fs';
 import path from 'path';

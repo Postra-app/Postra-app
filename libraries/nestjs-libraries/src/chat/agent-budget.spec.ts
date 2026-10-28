@@ -18,7 +18,7 @@ describe('agent model', () => {
     expect(agentModelId('  gpt-5.6-luna ')).toBe('gpt-5.6-luna');
   });
 
-  it('runs on gpt-5.6-luna: as good with the tools as gpt-5.5 at ~1/25 of the price (K. 2026-10-08, stack eval)', () => {
+  it('runs on gpt-5.6-luna: as good with the tools as gpt-5.5 at ~1/25 of the price (stack eval)', () => {
     expect(AGENT_DEFAULT_MODEL).toBe('gpt-5.6-luna');
   });
 

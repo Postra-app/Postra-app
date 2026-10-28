@@ -19,7 +19,7 @@ import {
   takeAgentRunSlot,
 } from './agent-run-slot';
 
-// E2E-07-28: parallel agent chats each passed the budget check and together
+// Parallel agent chats each passed the budget check and together
 // ran past the organisation's allowance.
 describe('agent runs in flight per organisation', () => {
   beforeEach(() => counters.clear());

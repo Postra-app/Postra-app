@@ -35,7 +35,7 @@ export async function drainWorkers(
 
 /**
  * SIGTERM/SIGINT handling for the orchestrator, in place of Nest's
- * enableShutdownHooks (E2E-11-76). Nest runs onModuleDestroy first, where
+ * enableShutdownHooks. Nest runs onModuleDestroy first, where
  * nestjs-temporal-core calls worker.shutdown() without waiting for the drain
  * and closes the connection the workers report through; then it re-raises the
  * signal and the process dies with activities still in flight. Here the

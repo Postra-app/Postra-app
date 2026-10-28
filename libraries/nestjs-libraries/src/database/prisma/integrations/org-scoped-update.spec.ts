@@ -1,7 +1,7 @@
 import { IntegrationRepository } from '@gitroom/nestjs-libraries/database/prisma/integrations/integration.repository';
 import { ThirdPartyRepository } from '@gitroom/nestjs-libraries/database/prisma/third-party/third-party.repository';
 
-// E2E-11-68: another organisation's (or an unknown) id in an org-scoped
+// Another organisation's (or an unknown) id in an org-scoped
 // update threw Prisma P2025, a 500 and a Sentry event. Nothing was written;
 // it is a 404, as everywhere else.
 const missing = () =>

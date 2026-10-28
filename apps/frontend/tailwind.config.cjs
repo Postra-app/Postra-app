@@ -316,7 +316,7 @@ module.exports = {
         // Below this the admin panel cannot be used: the sidebar is a fixed
         // 230px with no way to collapse it, and the narrowest table still
         // needs ~810px. At 390px that left 92px of content, clipped rather
-        // than scrollable (E2E-09-48).
+        // than scrollable.
         adminNarrow: {
           max: '899px',
         },

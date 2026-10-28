@@ -3,7 +3,7 @@ packages:
   - libraries/*
 
 # Versions both the root and apps/frontend declare: one number for both, so a
-# bump cannot split the design editor's dependency graph again (19 X).
+# bump cannot split the design editor's dependency graph again.
 catalog:
   mobx: 6.15.0
   mobx-react-lite: 4.1.1

@@ -15,7 +15,7 @@ export const useCustomProviderFunction = () => {
         }),
       });
       // Never true as `> 299 && < 200`: an error body went on as data and
-      // pickers crashed on it (E2E-05-47).
+      // pickers crashed on it.
       if (!load.ok) {
         throw new Error('Failed to fetch');
       }

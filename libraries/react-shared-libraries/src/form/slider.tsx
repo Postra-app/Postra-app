@@ -5,7 +5,7 @@ import clsx from 'clsx';
 
 // An on/off switch. It was a div with onClick: no role, no name, never
 // reached by Tab, so a keyboard or screen reader user could not turn email
-// notifications, Auto Post feeds or plugs on or off (E2E-05-73).
+// notifications, Auto Post feeds or plugs on or off.
 export const Slider: FC<{
   value: 'on' | 'off';
   fill?: boolean;

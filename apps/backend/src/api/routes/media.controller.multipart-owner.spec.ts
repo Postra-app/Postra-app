@@ -22,7 +22,7 @@ const response = () => {
   return res;
 };
 
-// E2E-11-70: the browser drives a multipart upload with the key and uploadId
+// The browser drives a multipart upload with the key and uploadId
 // the first call returned. Another organisation holding that pair could list,
 // sign parts into, abort or complete the upload.
 describe('multipart upload steps', () => {
@@ -68,7 +68,7 @@ describe('multipart upload steps', () => {
     expect(listed.status).toHaveBeenCalledWith(200);
   });
 
-  // Codex 26 X: a failed completion (S3 answered 500) is retried by the
+  // A failed completion (S3 answered 500) is retried by the
   // browser; forgetting the owner at that point turned the retry into a 404.
   it('a completion that failed keeps the upload its organisation’s', async () => {
     s3.mockImplementation(async (_e: string, _req: any, res: any) =>

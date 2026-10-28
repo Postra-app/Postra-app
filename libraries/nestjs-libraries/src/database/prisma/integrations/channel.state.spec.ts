@@ -12,7 +12,7 @@ import {
  *
  * A dry run of `refresh` on production printed `3 channel(s) due` and that
  * read as an incident; it was the resting state of two providers with
- * short-lived tokens (E2E-09-59). These lock the distinction down, because it
+ * short-lived tokens. These lock the distinction down, because it
  * is the entire value of the tab: an operator has to be able to tell "this is
  * fine" from "the customer has to reconnect" without opening a database.
  */

@@ -19,7 +19,7 @@ import { validate } from 'class-validator';
 import { plainToInstance } from 'class-transformer';
 import { MediaDto } from '@gitroom/nestjs-libraries/dtos/media/media.dto';
 
-// Upstream b318a6a5a + c1f824ce0 (24 X 2026): an agent could attach media
+// Upstream b318a6a5a + c1f824ce0 (2026-10-24): an agent could attach media
 // only as URL strings, so it could not set alt text, a video cover or the
 // cover frame, which the public API and the composer already take.
 describe('agent attachments', () => {

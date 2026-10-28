@@ -66,7 +66,7 @@ interface ProviderRow {
  * Channels, and the state of the tokens behind them.
  *
  * The last of the six customer requests the panel could not answer: "my
- * channel keeps disconnecting" (05-gaps §1e). Until now the only way to see
+ * channel keeps disconnecting". Until now the only way to see
  * any of this was running the refresh command over SSM, and that output read
  * as an incident when it was describing a healthy account.
  *

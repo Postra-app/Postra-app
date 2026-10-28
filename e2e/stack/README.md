@@ -47,7 +47,7 @@ Writing tests:
 - Anything one organisation owns gets a case in `tenant-isolation.spec.ts`:
   the other organisation must get 404 (not 403 - it must not learn the
   resource exists) and must change nothing.
-- Name a test after the e2e/bugs.md entry it guards (`E2E-05-12: …`).
+- Name a test after the behaviour it guards.
 - UI selectors by role and text, never by Tailwind classes.
 - Locally a server already listening on its port is reused; after a code
   change stop it (`lsof -ti tcp:53000 | xargs kill`, same for 9464, 58080,

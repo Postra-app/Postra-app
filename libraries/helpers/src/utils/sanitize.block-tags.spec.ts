@@ -1,9 +1,8 @@
 import { sanitizePostContent } from './sanitize.post.content';
 
-// Upstream 14e5a4679 + 2ded21d14 (24 X 2026): a block tag the editor does
-// not know was dropped with its text kept, so "Line one" and "Line two"
-// from a <div> each came out as one line, through the API, MCP and pasted
-// HTML alike.
+// Upstream 14e5a4679 + 2ded21d14: a block tag the editor does not know was
+// dropped with its text kept, so "Line one" and "Line two" from a <div> each
+// came out as one line, through the API, MCP and pasted HTML alike.
 describe('sanitizePostContent and unknown block tags', () => {
   it('turns unknown block tags into paragraphs instead of gluing their text', () => {
     expect(sanitizePostContent('<div>Line one</div><div>Line two</div>')).toBe(

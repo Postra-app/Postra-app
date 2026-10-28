@@ -1,10 +1,10 @@
 import { expect, test } from '@playwright/test';
 import { database, throwawayOrg } from '../helpers';
 
-// Pexels as a second free stock library next to Pixabay (K. 2026-10-08):
-// search through our API (the key stays on the server), import into the media
-// library (no hotlinking), and the photographer's name comes along for the
-// credit Pexels asks for. The fake answers in fake-mastodon.mjs.
+// Pexels as a second free stock library next to Pixabay: search through our API
+// (the key stays on the server), import into the media library (no hotlinking),
+// and the photographer's name comes along for the credit Pexels asks for. The
+// fake answers in fake-mastodon.mjs.
 
 const prisma = database();
 test.afterAll(() => prisma.$disconnect());

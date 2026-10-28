@@ -7,7 +7,7 @@ import { HttpException } from '@nestjs/common';
 import { MonitorController } from './monitor.controller';
 
 /**
- * E2E-01-07 — the deploy gate and Upptime read this route, and it answered
+ * The deploy gate and Upptime read this route, and it answered
  * "healthy" without checking anything.
  */
 const controllerWith = (query: () => Promise<unknown>) =>

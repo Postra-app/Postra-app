@@ -1,5 +1,5 @@
 /**
- * E2E-05-18 — measured on production 2026-09-26 with a second account:
+ * Measured on production 2026-09-26 with a second account:
  * - PUT /signatures/<another org's id> answered 200 and created a brand-new
  *   signature in the caller's org, made it the default;
  * - DELETE of another org's signature or set, POST/PUT /sets with another

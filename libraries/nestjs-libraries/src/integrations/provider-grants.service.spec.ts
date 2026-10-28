@@ -1,7 +1,7 @@
 import { AuthService } from '@gitroom/helpers/auth/auth.service';
 import { ProviderGrantsService, ProviderGrant } from './provider-grants.service';
 
-// E2E-09-66: deleting an account destroyed our tokens, but Postra stayed in
+// Deleting an account destroyed our tokens, but Postra stayed in
 // the person's Facebook, Google, LinkedIn and TikTok settings. A grant is the
 // person's whole platform login, so it goes only when nothing left in Postra
 // uses that login.
@@ -96,7 +96,7 @@ describe('revoking platform grants after an account is deleted', () => {
     expect(await service.collect([])).toEqual([]);
   });
 
-  // Codex review 10-10: LinkedIn Pages is its own OAuth app
+  // LinkedIn Pages is its own OAuth app
   // (LINKEDIN_PAGE_CLIENT_ID); its token was sent with the profile app's
   // credentials and the revoke was refused.
   it('revokes a LinkedIn Page grant with the Pages app, and a profile grant with the profile app', async () => {

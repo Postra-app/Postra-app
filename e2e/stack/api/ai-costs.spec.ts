@@ -1,8 +1,8 @@
 import { expect, test } from '@playwright/test';
 import { database, throwawayOrg } from '../helpers';
 
-// The margin guard (Plan "💷 Analiza" pkt 9e): what AI cost each paying
-// organisation in the last 30 days against its plan price. Admins only.
+// The margin guard: what AI cost each paying organisation in the last 30 days
+// against its plan price. Admins only.
 
 const prisma = database();
 test.afterAll(() => prisma.$disconnect());

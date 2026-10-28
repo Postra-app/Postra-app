@@ -3,7 +3,7 @@ import { AddressInfo } from 'node:net';
 import { fetch } from 'undici';
 import { readResponseCapped } from './fetch.media.buffer';
 
-// E2E-08-27 (APP-9): importing media from a URL buffered the whole body
+// Importing media from a URL buffered the whole body
 // before looking at it — a server streaming gigabytes, with or without
 // Content-Length, filled the backend's memory for every user.
 let server: http.Server;

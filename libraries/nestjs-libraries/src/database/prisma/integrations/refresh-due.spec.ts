@@ -13,7 +13,7 @@ import { IntegrationService } from '@gitroom/nestjs-libraries/database/prisma/in
  * lives about an hour, and TikTok, whose token lives 23 hours, that condition
  * is the permanent steady state — those refresh reactively on a 401 during
  * publishing. Measured on production: `3 channel(s) due`, which reads as an
- * incident and is not one (E2E-09-59).
+ * incident and is not one.
  *
  * The number an operator has to act on is a token that is *already* expired on
  * a channel no scheduled workflow watches. `refreshCron` is what puts a channel

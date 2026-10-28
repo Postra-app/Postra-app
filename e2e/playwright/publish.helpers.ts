@@ -8,7 +8,7 @@ export const stamp = `${new Date().toISOString().slice(0, 16)}Z ${
   process.env.GITHUB_SHA?.slice(0, 7) || 'local'
 }`;
 
-// These posts are public, so they read as Postra ads (Krzysztof, 2026-10-01).
+// These posts are public, so they read as Postra ads.
 // One line per weekday; the stamp at the end keeps every night's post unique
 // so the test can find it.
 export const PROMO = [

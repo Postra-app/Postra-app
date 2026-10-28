@@ -32,7 +32,7 @@ export class ThirdPartyManager {
     ).find((p: any) => p.identifier === identifier);
 
     // An unknown name was read as `undefined.target`, a 500 before the
-    // callers' own "Invalid identifier" answer could run (API-14).
+    // callers' own "Invalid identifier" answer could run.
     if (!thirdParty) {
       return undefined;
     }

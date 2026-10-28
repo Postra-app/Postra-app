@@ -1,6 +1,6 @@
 import { videoUploadRequest } from './bluesky.provider';
 
-// E2E-05-29: every Bluesky video failed with "fetch failed" — undici rejected
+// Every Bluesky video failed with "fetch failed" — undici rejected
 // the hand-set Content-Length ("invalid content-length header").
 describe('Bluesky video upload request', () => {
   const body = Buffer.from('mp4-bytes');

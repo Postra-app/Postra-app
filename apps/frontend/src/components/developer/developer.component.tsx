@@ -136,7 +136,7 @@ export const DeveloperComponent: FC = () => {
         }),
       });
       // A refused app (a callback that is not a URL) closed the form without
-      // a word (E2E-08-36).
+      // a word.
       if (!res.ok) {
         toaster.show(
           await refusalMessage(res, t('oauth_app_create_failed', 'Failed to create the app')),
@@ -197,7 +197,7 @@ export const DeveloperComponent: FC = () => {
 
   // One rotation at a time: a second one started while the first was in
   // flight could show the first secret last, after the second had replaced
-  // it (FE-S-3).
+  // it.
   const rotating = useRef(false);
   const rotateSecret = useCallback(async () => {
     if (rotating.current) return;

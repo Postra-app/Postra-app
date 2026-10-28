@@ -40,8 +40,8 @@ const money = (amount: number, currency: string) =>
  * "The customer wants a refund" was the first request in the panel's gap list
  * and the only red one that touches money: the endpoints were written and
  * tested, and their sole caller was the impersonation panel Postra replaced
- * during a layout rebuild, so the product had no answer at all (05-gaps §1b,
- * §2). Nothing here reaches for the session's organization — it is named, the
+ * during a layout rebuild, so the product had no answer at all. Nothing
+ * here reaches for the session's organization — it is named, the
  * way comp and revoke name it.
  */
 export const AdminBillingModal: FC<{

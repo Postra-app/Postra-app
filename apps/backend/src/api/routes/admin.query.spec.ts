@@ -11,7 +11,6 @@ import {
 //   ?from=garbage / ?days=abc -> Invalid Date into a Prisma filter and into a
 //                                $queryRaw parameter slot
 //   ?limit=999999 on /admin/organizations -> the whole table, unthrottled
-// E2E-09-36, E2E-09-37, E2E-09-38.
 
 describe('parsePaging', () => {
   it('defaults to the first page of twenty', () => {

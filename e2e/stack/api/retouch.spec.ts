@@ -4,11 +4,11 @@ import { join } from 'path';
 import sharp from 'sharp';
 import { database, throwawayOrg } from '../helpers';
 
-// Photo retouch (Plan/photo-retouch.md): a library photo in, a new library
-// photo out, the source untouched. The fake OpenAI answers the vision call
-// with a spec of all ones (instanceOf: every number is 1), which the level
-// caps; when OpenAI is down the heuristic decides and the photo still comes
-// back. No credit is spent, the decision is metered as engine "retouch".
+// Photo retouch: a library photo in, a new library photo out, the source
+// untouched. The fake OpenAI answers the vision call with a spec of all ones
+// (instanceOf: every number is 1), which the level caps; when OpenAI is down
+// the heuristic decides and the photo still comes back. No credit is spent, the
+// decision is metered as engine "retouch".
 
 const FAKE = 'http://localhost:58090';
 const UPLOADS = process.env.UPLOAD_DIRECTORY || '/tmp/postra-e2e-stack-uploads';

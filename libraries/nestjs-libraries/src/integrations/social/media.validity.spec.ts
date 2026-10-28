@@ -1,5 +1,5 @@
 /**
- * E2E-05-05 — X and Mastodon had no media check: 5 images, or an image with a
+ * X and Mastodon had no media check: 5 images, or an image with a
  * video, passed POST /posts/valid and failed at publish time (Mastodon on
  * production: "Cannot attach more than four files").
  */

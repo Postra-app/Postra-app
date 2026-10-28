@@ -9,8 +9,7 @@ import { Select } from '@gitroom/react/form/select';
 import { useSettings } from '@gitroom/frontend/components/launches/helpers/use.values';
 import { useT } from '@gitroom/react/translation/get.transation.service.client';
 
-// Every Mastodon post went out public (K32, 2026-10-10); public stays the
-// default.
+// Every Mastodon post used to go out public; public stays the default.
 const MastodonSettings = () => {
   const t = useT();
   const { register } = useSettings();

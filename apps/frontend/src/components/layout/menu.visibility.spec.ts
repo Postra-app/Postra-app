@@ -1,6 +1,6 @@
 import { canSeeMenuEntry } from '@gitroom/frontend/components/layout/menu.visibility';
 
-// E2E-09-05: the mobile drawer never checked superAdminOnly, so "Admin" was in
+// The mobile drawer never checked superAdminOnly, so "Admin" was in
 // the menu of every signed-in user — FREE accounts included — and stayed there
 // while an admin was impersonating, which is the opposite of what the desktop
 // menu does. The rule existed in three copies and the drawer's had drifted.

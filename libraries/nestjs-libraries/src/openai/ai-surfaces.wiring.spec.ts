@@ -119,7 +119,7 @@ describe('brand guidance comes from one place', () => {
   });
 });
 
-// E2E-06-05: the shared structured-output helper used to label everything
+// The shared structured-output helper used to label everything
 // 'creator', so Studio's spend showed up as the post Creator's.
 describe('every structured text call names the surface that spends it', () => {
   it('openai.service passes an engine to each parseChat call', () => {

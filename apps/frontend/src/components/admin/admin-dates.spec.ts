@@ -9,10 +9,10 @@ import {
   today,
 } from '@gitroom/frontend/components/admin/admin-dates';
 
-// E2E-09-24: every Stats preset ended a day late, all summer. Dates were built
+// Every Stats preset ended a day late, all summer. Dates were built
 // with toISOString(), which reads the clock in UTC, and the header rendered the
 // server's inclusive end-of-day back in local time.
-// E2E-09-04: the twelve-month Growth axis read "22 23 24 25 26 27 28 14 15 26
+// The twelve-month Growth axis read "22 23 24 25 26 27 28 14 15 26
 // 28 9" — day numbers with no month and no year — because the label was a
 // slice of the ISO string.
 

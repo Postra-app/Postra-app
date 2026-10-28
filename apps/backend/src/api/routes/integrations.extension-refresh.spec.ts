@@ -19,7 +19,7 @@ import { AuthService } from '@gitroom/helpers/auth/auth.service';
 import { NoAuthIntegrationsController } from './no.auth.integrations.controller';
 
 /**
- * E2E-11-81 — `POST /integrations/extension-refresh` is public: the browser
+ * `POST /integrations/extension-refresh` is public: the browser
  * extension sends the token it was handed when the channel was connected and
  * the platform's cookies. The token named only the channel and organisation,
  * so whoever connected it kept refreshing it for 30 days after leaving the
@@ -75,7 +75,7 @@ const token = (extra: Record<string, unknown> = {}) =>
     ...extra,
   });
 
-describe('POST /integrations/extension-refresh (E2E-11-81)', () => {
+describe('POST /integrations/extension-refresh', () => {
   beforeEach(() => {
     process.env.JWT_SECRET = 'test-secret';
   });

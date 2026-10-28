@@ -40,7 +40,7 @@ export const VideoCaptions: FC<VideoCaptionsProps> = ({ mediaId, source, onCapti
   const [replacedSource, setReplacedSource] = useState(false);
   // The clip the captions were burned onto. "Use in post" swaps the studio's
   // media for the captioned result, so `mediaId` alone pointed the remove
-  // button at the new file and deleted it (E2E-06-19).
+  // button at the new file and deleted it.
   const [burnSource, setBurnSource] = useState<string | null>(null);
   // Caption size is the one styling choice worth exposing: 0.78 of the auto
   // size reads well on a phone held close, and badly on a laptop screencast.

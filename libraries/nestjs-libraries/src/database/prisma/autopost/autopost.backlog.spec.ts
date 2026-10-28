@@ -7,7 +7,7 @@ jest.mock('@gitroom/nestjs-libraries/dtos/webhooks/webhook.url.validator', () =>
 
 import { AutopostService } from './autopost.service';
 
-// E2E-06-24 (AI-3): eight new articles since the last run — the five newest
+// Eight new articles since the last run — the five newest
 // were taken and the cursor moved to the newest, so the three older ones were
 // never posted. A burst is now worked off oldest-first, five per run.
 describe('a burst of new feed items', () => {

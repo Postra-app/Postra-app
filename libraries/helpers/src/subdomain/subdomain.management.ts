@@ -6,9 +6,10 @@ export function getCookieUrlFromDomain(domain: string) {
 }
 
 /**
- * The domain Postra's cookies were set for until E2E-11-78 (`.postra.co.uk`
- * for app.postra.co.uk), kept only to expire what browsers still hold. None
- * for a bare host such as localhost, where nothing was domain-wide.
+ * The domain Postra's cookies were set for until they became host-only
+ * (`.postra.co.uk` for app.postra.co.uk), kept only to expire what browsers
+ * still hold. None for a bare host such as localhost, where nothing was
+ * domain-wide.
  *
  * New cookies are host-only: a Domain sent them, the session token included,
  * to every subdomain - the landing pages, the CDN and the status page GitHub

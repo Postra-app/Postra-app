@@ -94,9 +94,9 @@ test('a file finishing first does not drop another still uploading', async ({ pa
   expect(problems.filter((p) => !expectedNoise(p))).toEqual([]);
 });
 
-// E2E-06-36: a long upload (a big video picked by mistake) could not be
-// stopped; the customer had to wait or close the tab.
-test('E2E-06-36: a slow upload can be cancelled, and the next one still works', async ({ page }) => {
+// A long upload (a big video picked by mistake) could not be stopped; the
+// customer had to wait or close the tab.
+test('a slow upload can be cancelled, and the next one still works', async ({ page }) => {
   test.setTimeout(60_000);
   const problems = watchForErrors(page);
   let release: () => void = () => undefined;
@@ -129,10 +129,10 @@ test('E2E-06-36: a slow upload can be cancelled, and the next one still works', 
   expect(problems.filter((p) => !expectedNoise(p))).toEqual([]);
 });
 
-// K12 (10-10): the client let images up to 30 MB through, the server takes
-// 10 MB. JPEG, PNG and WebP are shrunk to 1000 px first, so 30 MB is fine for
-// them, but a GIF is sent as it is: a 12 MB GIF went all the way to the server
-// and came back as a 400.
+// The client let images up to 30 MB through, the server takes 10 MB. JPEG, PNG
+// and WebP are shrunk to 1000 px first, so 30 MB is fine for them, but a GIF is
+// sent as it is: a 12 MB GIF went all the way to the server and came back as a
+// 400.
 test('a GIF over 10 MB is refused before it is sent', async ({ page }) => {
   test.setTimeout(60_000);
   const sent: string[] = [];
@@ -158,8 +158,8 @@ test('a GIF over 10 MB is refused before it is sent', async ({ page }) => {
   expect(sent).toEqual([]);
 });
 
-// E2E-06-07 / D6 (K. 2026-10-10: 2048 px): every photo was shrunk to 1000 px
-// before upload, below what Instagram asks for (1080) and soft on any screen.
+// Every photo was shrunk to 1000 px before upload, below what Instagram asks
+// for (1080) and soft on any screen.
 test('a large photo is kept at 2048 px, not shrunk to 1000', async ({ page }) => {
   test.setTimeout(60_000);
   await openComposer(page, 'bluesky', `[stack ui] big photo ${Date.now()}`);
@@ -190,11 +190,10 @@ test('a large photo is kept at 2048 px, not shrunk to 1000', async ({ page }) =>
   expect(width).toBe(2048);
 });
 
-// E2E-06-44 (IG standalone recording, 10-10): "Post now" clicked while a new
-// file was still uploading sent the post without it, and Instagram answered
-// "Should have at least one media" with the picture on screen. Nothing may
-// leave the composer until the upload is in the post.
-test('E2E-06-44: the post waits for a file still uploading', async ({ page }) => {
+// "Post now" clicked while a new file was still uploading sent the post without
+// it, and Instagram answered "Should have at least one media" with the picture
+// on screen. Nothing may leave the composer until the upload is in the post.
+test('the post waits for a file still uploading', async ({ page }) => {
   test.setTimeout(60_000);
   let release: () => void = () => undefined;
   const held = new Promise<void>((resolve) => (release = resolve));

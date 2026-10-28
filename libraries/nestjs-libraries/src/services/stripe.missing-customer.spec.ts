@@ -7,8 +7,7 @@ const updateCustomer = jest.fn().mockResolvedValue({});
 
 jest.mock('stripe', () => {
   // Keep the real `errors` namespace on the mock: the rejections below have to
-  // be built by the SDK, or they carry a shape production never produces
-  // (E2E-07-02).
+  // be built by the SDK, or they carry a shape production never produces.
   const actual = jest.requireActual('stripe');
   const mock: any = jest.fn().mockImplementation(() => ({
     subscriptions: { list: listSubscriptions },
@@ -136,8 +135,8 @@ describe('a Stripe customer we stored and Stripe no longer has', () => {
     );
   });
 
-  // The Cancel button of an organisation with nothing live to cancel (E2E-02-03:
-  // it used to answer 500). retrieve is the customer check in createOrGetCustomer.
+  // The Cancel button of an organisation with nothing live to cancel (it used
+  // to answer 500). retrieve is the customer check in createOrGetCustomer.
   it('answers 400 when there is no live subscription to cancel', async () => {
     retrieveCustomer.mockResolvedValueOnce({ id: 'cus_1', deleted: false });
     listSubscriptions.mockResolvedValueOnce({
@@ -212,7 +211,7 @@ describe('a Stripe customer we stored and Stripe no longer has', () => {
   });
 });
 
-describe('two first checkouts of one organisation at once (E2E-07-12)', () => {
+describe('two first checkouts of one organisation at once', () => {
   // A plan switched while the first checkout loads, or two tabs: each
   // created a customer and the last write won, so the other customer could
   // still pay and its webhook found no organisation.
@@ -273,7 +272,7 @@ describe('two first checkouts of one organisation at once (E2E-07-12)', () => {
   });
 });
 
-describe('a checkout for an organisation that already pays (BILL-1)', () => {
+describe('a checkout for an organisation that already pays', () => {
   // A checkout always starts a new subscription: an organisation with a live
   // one got a second on the same customer, and cancelling stopped only one.
   it('is refused with 409, without opening a checkout session', async () => {
@@ -287,7 +286,7 @@ describe('a checkout for an organisation that already pays (BILL-1)', () => {
   });
 });
 
-// 18 X: a trial refused because the card had one already showed "Invalid
+// A trial refused because the card had one already showed "Invalid
 // payment - we could not verify your payment method", though nothing failed.
 describe('GET /billing/check/:id after the checkout', () => {
   const cancelled = (metadata: Record<string, string>) => ({

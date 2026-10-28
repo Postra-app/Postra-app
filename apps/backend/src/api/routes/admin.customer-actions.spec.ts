@@ -12,13 +12,13 @@ import { AdminController } from '@gitroom/backend/api/routes/admin.controller';
 import { HttpException } from '@nestjs/common';
 
 /**
- * The six customer requests the panel could not answer are in
- * e2e/admin/05-gaps.md §1. Three of them are here: a refund, a cancellation
+ * The admin panel could not answer six customer requests. Three of them
+ * are here: a refund, a cancellation
  * and an erasure. What these guard is the part that cannot be clicked into
  * existence on production — refusing an action that would otherwise be a
  * confident no-op, and naming the organization outright instead of inferring
- * it from whoever the session is wearing, which is the shape that made
- * E2E-09-09 possible.
+ * it from whoever the session is wearing, which is the shape that once let
+ * a plan change land on the wrong organization.
  */
 const admin = { id: 'admin-1', isSuperAdmin: true } as any;
 const notAdmin = { id: 'user-1', isSuperAdmin: false } as any;

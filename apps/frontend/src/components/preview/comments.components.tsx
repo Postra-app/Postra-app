@@ -35,7 +35,7 @@ export const RenderComponents: FC<{
   const submit: SubmitHandler<FieldValues> = useCallback(
     async (e) => {
       // Cleared only once it is saved: a refused or lost comment used to
-      // vanish with the text (E2E-05-46).
+      // vanish with the text.
       try {
         const res = await fetch(`/posts/${postId}/comments`, {
           method: 'POST',

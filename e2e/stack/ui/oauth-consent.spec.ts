@@ -5,8 +5,8 @@ import { USERS } from '../seed';
 
 // The consent screen ChatGPT and Claude send a person to (app #350). Access
 // goes to the organisation selected in Postra, and the screen did not say
-// which: on prod 10-08 the approval landed in an organisation with no
-// channels and the assistant answered "you have no channels".
+// which: on production the approval landed in an organisation with no channels
+// and the assistant answered "you have no channels".
 
 const consentUrl = async () => {
   const anon = await anonymous();
@@ -54,8 +54,8 @@ test('with more than one organisation, the person picks which one', async ({ pag
   await expect.poll(() => changed).toEqual(['org-two']);
 });
 
-// Codex on -08-f: a failed switch (network error) left the form disabled for
-// good — no reload, Authorize and Deny greyed out.
+// A failed switch (network error) left the form disabled for good — no reload,
+// Authorize and Deny greyed out.
 test('a failed organisation switch leaves the form usable', async ({ page }) => {
   await page.route('**/api/user/organizations', (route) =>
     route.fulfill({ json: [{ id: 'org-one', name: 'First Org' }, { id: 'org-two', name: 'Second Org' }] })

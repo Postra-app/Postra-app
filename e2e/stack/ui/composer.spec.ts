@@ -60,8 +60,8 @@ test('"Post Now" from the composer publishes to the platform', async ({ page }) 
   expect(problems).toEqual([]);
 });
 
-// Regressions of E2E-05-04/07/09/22 (fixed 2026-09-26), re-run after the
-// ESLint 9 sweep touched these components.
+// Regressions of earlier composer fixes, re-run after the ESLint 9 sweep
+// touched these components.
 const LINK = `https://example.com/spring-offer?utm_source=newsletter&utm_medium=email&utm_campaign=${'x'.repeat(120)}`;
 
 // One composer per test: on a CI runner a second one in the same test ran

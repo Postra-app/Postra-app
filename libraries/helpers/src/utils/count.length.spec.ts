@@ -1,5 +1,5 @@
 /**
- * E2E-05-04, E2E-05-07 — lengths measured on production 2026-09-26 with
+ * Lengths measured on production 2026-09-26 with
  * POST /posts/valid: posts the platforms accept were rejected as too long.
  */
 import { providerTextLength } from '@gitroom/helpers/utils/count.length';

@@ -38,7 +38,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 # `pg`, whose current default resolves sslmode to verify-full. Without these
 # roots that connection dies with "self-signed certificate in certificate
 # chain" at boot, which is exactly what NODE_TLS_REJECT_UNAUTHORIZED=0 had been
-# hiding on the box (e2e/bugs.md E2E-01-21).
+# hiding on the box.
 #
 # NODE_EXTRA_CA_CERTS *adds* to the built-in roots rather than replacing them,
 # so public HTTPS keeps verifying normally. The bundle is vendored rather than
@@ -104,7 +104,7 @@ USER www
 
 # pm2 writes each process's stdout and stderr to /www/.pm2/logs and never
 # rotates them: the backend's log grew for as long as the container lived,
-# and a crash loop could fill the root volume (E2E-11-35). pm2-logrotate is
+# and a crash loop could fill the root volume. pm2-logrotate is
 # a pm2 module, kept in /www/.pm2 of the user pm2 runs as, so it is installed
 # here, after USER www; a fresh pm2 daemon starts it with the apps. 10 MB a
 # file, the last five kept compressed: at most ~100 MB of logs a process.

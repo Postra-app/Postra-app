@@ -1,7 +1,7 @@
 // Media in a post, and the /public/stream proxy, must come from our own
 // storage: every upload, stock import (Pixabay forbids hotlinking), AutoPost
 // image and AI image is stored there first. On production all 85 media of the
-// last 120 days were on the CDN (E2E-02-22, measured 2026-10-03).
+// last 120 days were on the CDN (measured 2026-10-03).
 //
 // Hosts: the upload CDN (NEXT_PUBLIC_UPLOAD_STATIC_DIRECTORY), the app itself
 // (FRONTEND_URL, local storage) and any listed in RESTRICT_UPLOAD_DOMAINS

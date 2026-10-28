@@ -34,7 +34,7 @@ jest.mock('@gitroom/helpers/utils/timer', () => ({ timer: async () => undefined 
 
 import { XProvider } from './x.provider';
 
-// E2E-05-91: X plugs compared the users on one page of liking_users (at most
+// X plugs compared the users on one page of liking_users (at most
 // 100) with the threshold, so a threshold over 100 never fired.
 describe('X plugs and the likes threshold', () => {
   const provider = new XProvider();

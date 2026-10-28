@@ -113,11 +113,10 @@ describe('CI workflows', () => {
   });
 
   // Production is the auto scaling group of the postra account since the move
-  // of 2026-10-25 (Postra-infra runbook A5, D6): one workflow named "Deploy",
-  // APP_IMAGE in SSM plus an instance refresh. The box deploy over SSM, its
-  // EC2_INSTANCE_ID fallback and the DEPLOY_TARGET switch are gone, so a
-  // missing repository variable can no longer send a deploy to a box that
-  // does not exist.
+  // of 2026-10-25: one workflow named "Deploy", APP_IMAGE in SSM plus an
+  // instance refresh. The box deploy over SSM, its EC2_INSTANCE_ID fallback and
+  // the DEPLOY_TARGET switch are gone, so a missing repository variable can no
+  // longer send a deploy to a box that does not exist.
   it('deploys to the auto scaling group of the postra account only', () => {
     expect(workflows.map((w) => w.name)).not.toContain('deploy-dev.yml');
     const deploy = workflows.find((w) => w.name === 'deploy.yml')!.text;
@@ -133,9 +132,8 @@ describe('CI workflows', () => {
     expect(deploy).toMatch(
       /^ {2}deploy:\n {4}needs: \[build, staging, replay\]\n {4}if: always\(\) && needs\.build\.result == 'success'/m
     );
-    // Production's running workflows replay on the new image before it ships
-    // (E2E-11-94): a failed replay stops the deploy, a skipped one (variables
-    // unset) does not.
+    // Production's running workflows replay on the new image before it ships: a
+    // failed replay stops the deploy, a skipped one (variables unset) does not.
     expect(deploy).toContain(
       "(needs.replay.result == 'success' || needs.replay.result == 'skipped')"
     );
@@ -170,11 +168,11 @@ describe('CI workflows', () => {
     ).toHaveLength(2);
   });
 
-  // pm2 kept every process's output in /www/.pm2/logs for ever and nginx
-  // wrote access.log into the container, read by nobody and reset only by a
-  // deploy (E2E-11-35). pm2-logrotate comes from the same pinned manifest as
-  // pm2 (Dependabot watches it), is installed as the user pm2 runs as, and
-  // nginx logs to the container's output, which Docker rotates.
+  // pm2 kept every process's output in /www/.pm2/logs for ever and nginx wrote
+  // access.log into the container, read by nobody and reset only by a deploy.
+  // pm2-logrotate comes from the same pinned manifest as pm2 (Dependabot
+  // watches it), is installed as the user pm2 runs as, and nginx logs to the
+  // container's output, which Docker rotates.
   it('rotates the logs inside the image', () => {
     const tools = JSON.parse(
       readFileSync(join(root, 'var', 'docker', 'tools', 'package.json'), 'utf8')
@@ -201,9 +199,9 @@ describe('CI workflows', () => {
     expect(nginx).not.toMatch(/\/var\/log\/nginx\/access\.log/);
   });
 
-  // pnpm 10.34 runs no build scripts in `pnpm dlx` unless allowed: Prisma
-  // then downloaded its engines in the middle of `migrate diff`, and one
-  // dropped connection failed the job (19 X).
+  // pnpm 10.34 runs no build scripts in `pnpm dlx` unless allowed: Prisma then
+  // downloaded its engines in the middle of `migrate diff`, and one dropped
+  // connection failed the job.
   it('lets dlx prisma install its engines', () => {
     const dlx = workflows
       .flatMap(({ text }) => text.split('\n'))
@@ -214,10 +212,9 @@ describe('CI workflows', () => {
     }
   });
 
-  // 24 X: the stack's backend died with EADDRINUSE on 53000 in CI. Every
-  // stack port is inside Linux's ephemeral range, so the runner reserves
-  // them before the stack starts; a new port in the stack config must be
-  // added to that list.
+  // The stack's backend died with EADDRINUSE on 53000 in CI. Every stack port
+  // is inside Linux's ephemeral range, so the runner reserves them before the
+  // stack starts; a new port in the stack config must be added to that list.
   it('reserves every stack port on the runner before the stack starts', () => {
     const ci = workflows.find((w) => w.name === 'ci.yml')!.text;
     const reserved = ci

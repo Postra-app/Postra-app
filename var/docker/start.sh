@@ -1,12 +1,12 @@
 #!/bin/sh
-# PID 1 of the app container (E2E-11-76). Before this, PID 1 was
+# PID 1 of the app container. Before this, PID 1 was
 # `sh -c "nginx && pnpm run pm2"`: a shell as PID 1 with no handler for
 # SIGTERM ignores it, so `docker stop` (deploy, instance replaced) waited out
 # its grace and SIGKILLed everything, the Temporal worker mid-activity
 # included. This one traps the signal and has pm2 stop the apps: SIGINT to
 # each process tree, SIGKILL only after that app's --kill-timeout
-# (apps/*/package.json). The container's stop_grace_period in the app host's
-# user_data (Postra-infra) must outlast the longest of them.
+# (apps/*/package.json). The container's stop grace period on the host must
+# outlast the longest of them.
 
 stop() {
   trap - TERM INT

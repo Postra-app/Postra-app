@@ -6,7 +6,7 @@ import { AuthMiddleware } from '@gitroom/backend/services/auth/auth.middleware';
 import { AuthService } from '@gitroom/helpers/auth/auth.service';
 import { bustAuthContextCache } from '@gitroom/nestjs-libraries/redis/auth-context.cache';
 
-// E2E-10-82: a user in two organizations switched in the mobile app and kept
+// A user in two organizations switched in the mobile app and kept
 // seeing the previous one's channels and posts. The app picks the organization
 // with the `showorg` header, but its native HTTP client also stores the
 // year-long `showorg` cookie set by /user/change-org — and the middleware read
@@ -33,7 +33,7 @@ let orgs: any[] = [];
 beforeEach(async () => {
   orgs = [org('org-a'), org('org-b')];
   // The middleware caches the user's organizations; each case sets its own.
-  // del, not flushall: CI runs without Redis on MockRedis (Codex, 10-16).
+  // del, not flushall: CI runs without Redis on MockRedis.
   await bustAuthContextCache(user.id);
 });
 

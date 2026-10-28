@@ -7,7 +7,7 @@ import { GetPostsDto } from '@gitroom/nestjs-libraries/dtos/posts/get.posts.dto'
 
 // What the API accepts, not the server's DTO classes as written: those mark
 // fields the API treats as optional as required, so the README example did
-// not compile in strict TypeScript (E2E-08-56).
+// not compile in strict TypeScript.
 type Optional<T, K extends keyof T> = Omit<T, K> & Partial<Pick<T, K>>;
 export type PostValueInput = Optional<PostContent, 'id' | 'delay'>;
 export type PostInput = Optional<Omit<Post, 'value'>, 'group' | 'settings'> & {

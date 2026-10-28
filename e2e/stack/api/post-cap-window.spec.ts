@@ -1,10 +1,10 @@
 import { APIRequestContext, expect, request as pwRequest, test } from '@playwright/test';
 import { BACKEND_URL, database, throwawayOrg } from '../helpers';
 
-// E2E-07-34: two ways past Starter's 400 posts a month. Scheduling drafts
-// that already exist counted as an edit (adding = 0), so at 399 one request
-// scheduled any number of them; and the count had no end date, so posts
-// scheduled for next month ate this month's allowance.
+// Two ways past Starter's 400 posts a month. Scheduling drafts that already
+// exist counted as an edit (adding = 0), so at 399 one request scheduled any
+// number of them; and the count had no end date, so posts scheduled for next
+// month ate this month's allowance.
 
 const prisma = database();
 test.afterAll(async () => {
@@ -79,9 +79,9 @@ test("posts for next month count against next month, not this one", async () => 
   }
 });
 
-// Codex on E2E-07-34: the public API drops a per-channel date and saves on
-// the request date, so the check has to count there too; and a draft
-// scheduled through PUT /posts/:id/status counts against its own month.
+// The public API drops a per-channel date and saves on the request date, so the
+// check has to count there too; and a draft scheduled through PUT
+// /posts/:id/status counts against its own month.
 test('the public API counts a post where it saves it', async () => {
   const org = await throwawayOrg(prisma, { tier: 'STANDARD', totalChannels: 3, channels: 1, provider: 'facebook' });
   const channel = org.channelIds[0];
@@ -182,7 +182,7 @@ test('moving a scheduled post into a full month is refused, within it is fine', 
   }
 });
 
-test('Codex: a bad date is a 400, a query cannot pass as the public API, a draft moves freely', async () => {
+test('a bad date is a 400, a query cannot pass as the public API, a draft moves freely', async () => {
   const org = await throwawayOrg(prisma, { tier: 'STANDARD', totalChannels: 3, channels: 1, provider: 'facebook' });
   const channel = org.channelIds[0];
   try {
@@ -211,7 +211,7 @@ test('Codex: a bad date is a 400, a query cannot pass as the public API, a draft
   }
 });
 
-test('Codex: a failed post moves freely, and a far-out date answers', async () => {
+test('a failed post moves freely, and a far-out date answers', async () => {
   const org = await throwawayOrg(prisma, { tier: 'STANDARD', totalChannels: 3, channels: 1, provider: 'facebook' });
   const channel = org.channelIds[0];
   try {
@@ -228,8 +228,8 @@ test('Codex: a failed post moves freely, and a far-out date answers', async () =
   }
 });
 
-// Codex: a save of type 'update' keeps each post's state, so editing drafts
-// or failed posts adds nothing to the month; it was refused at a full month.
+// A save of type 'update' keeps each post's state, so editing drafts or failed
+// posts adds nothing to the month; it was refused at a full month.
 test('editing drafts and failed posts with "update" goes through at a full month', async () => {
   const org = await throwawayOrg(prisma, { tier: 'STANDARD', totalChannels: 3, channels: 1, provider: 'facebook' });
   const channel = org.channelIds[0];
@@ -265,8 +265,8 @@ test('editing drafts and failed posts with "update" goes through at a full month
   }
 });
 
-// Codex: the guard counted outside any lock, so saves or moves sent at once
-// with one post left in the month all went through.
+// The guard counted outside any lock, so saves or moves sent at once with one
+// post left in the month all went through.
 const countIn = (orgId: string, from: Date, to: Date) =>
   prisma.post.count({ where: { organizationId: orgId, deletedAt: null, state: 'QUEUE', publishDate: { gte: from, lt: to } } });
 
@@ -305,9 +305,9 @@ test('posts moved at once into a month with one post left: only one moves', asyn
   }
 });
 
-// Codex: a save at a full month that takes one post out of the count (kept as
-// a draft, or moved to another month) and puts another in leaves the month as
-// full as it was; it was refused.
+// A save at a full month that takes one post out of the count (kept as a draft,
+// or moved to another month) and puts another in leaves the month as full as it
+// was; it was refused.
 const saveAs = (api: APIRequestContext, channel: string, posts: { id: string; group: string; type: string; date: Date }[]) =>
   api.post('/posts', {
     data: {
@@ -365,8 +365,8 @@ test('two full months can swap a post each in one save', async () => {
   }
 });
 
-// Codex: a date a hundred years out passed validation, counted as this month
-// and was saved on its own year, so posts never filled any month.
+// A date a hundred years out passed validation, counted as this month and was
+// saved on its own year, so posts never filled any month.
 test('a save on a date a hundred years out is a 400', async () => {
   const org = await throwawayOrg(prisma, { tier: 'STANDARD', totalChannels: 3, channels: 1, provider: 'facebook' });
   const channel = org.channelIds[0];
@@ -396,8 +396,8 @@ test('a save on a date a hundred years out is a 400', async () => {
   }
 });
 
-// Codex: a move read the post's state before the lock, so a draft scheduled
-// meanwhile moved into a full month uncounted. Here the scheduling holds the
+// A move read the post's state before the lock, so a draft scheduled meanwhile
+// moved into a full month uncounted. Here the scheduling holds the
 // organisation's lock (as a status change does) while the move is sent.
 test('a draft scheduled while it is moved into a full month does not take it past the cap', async () => {
   const org = await throwawayOrg(prisma, { tier: 'STANDARD', totalChannels: 3, channels: 1, provider: 'facebook' });
@@ -423,9 +423,9 @@ test('a draft scheduled while it is moved into a full month does not take it pas
   }
 });
 
-// Codex: "now" was counted to the second and saved to the minute, so a post
-// sent just after a billing month began counted in the new month and was
-// saved in the full one before it.
+// A post for "now" was counted to the second and saved to the minute, so one
+// sent just after a billing month began counted in the new month and was saved
+// in the full one before it.
 test('"Post now" just after a billing month begins counts where it is saved', async () => {
   const org = await throwawayOrg(prisma, { tier: 'STANDARD', totalChannels: 3, channels: 1, provider: 'facebook' });
   const channel = org.channelIds[0];

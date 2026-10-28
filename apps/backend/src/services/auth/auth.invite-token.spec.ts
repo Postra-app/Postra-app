@@ -12,13 +12,13 @@ const service = () =>
   new AuthService({} as any, {} as any, {} as any, {} as any, {} as any);
 
 /**
- * E2E-11-84 — an invitation is a JWT in a link. Accepting one checked the
+ * An invitation is a JWT in a link. Accepting one checked the
  * signature and a `timeLimit`, and a token with no `timeLimit` passed as never
  * expiring: every token Postra signs (a session, a reset link, an extension
  * token) read as an invitation that never runs out. Invitations now say what
  * they are, and one without an expiry is not one.
  */
-describe('invitation tokens (E2E-11-84)', () => {
+describe('invitation tokens', () => {
   beforeEach(() => {
     process.env.JWT_SECRET = 'test-secret';
     // The invitation link is built on it; CI has no .env.

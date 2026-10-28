@@ -121,7 +121,7 @@ export class OrganizationService {
     const url =
       process.env.FRONTEND_URL +
       // `purpose` makes it an invitation and nothing else: acceptance read any
-      // signed token as one (E2E-11-84).
+      // signed token as one.
       `/?org=${AuthService.signJWT({
         ...body,
         purpose: 'invite',
@@ -157,7 +157,7 @@ export class OrganizationService {
     }
 
     // The owner removing themselves left the team with nobody who can manage
-    // members or billing (AUTH-7).
+    // members or billing.
     if (
       userRole === 'SUPERADMIN' &&
       (await this._organizationRepository.countOwners(org.id)) <= 1

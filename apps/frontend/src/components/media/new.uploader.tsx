@@ -13,8 +13,7 @@ import { useLaunchStore } from '@gitroom/frontend/components/new-launch/store';
 import { uniqBy } from 'lodash';
 
 // Shrunk to at most 2048 px in the browser before upload (see the size
-// check). 1000 px was below Instagram's 1080 and soft everywhere; 2048 is
-// K.'s choice of 2026-10-10 (D6, E2E-06-07).
+// check). 1000 px was below Instagram's 1080 and soft everywhere, so 2048.
 const MAX_IMAGE_EDGE = 2048;
 const COMPRESSED_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
 
@@ -41,7 +40,7 @@ export class CompressionWrapper<M = any, B = any> extends Compressor<any, any> {
 }
 
 // Shown over the upload progress bar while a file is uploading: a big video
-// picked by mistake could not be stopped (E2E-06-36).
+// picked by mistake could not be stopped.
 export const UploadCancelButton = ({ uppy }: { uppy: Uppy<any, any> }) => {
   const t = useT();
   const [uploading, setUploading] = useState(false);
@@ -192,8 +191,7 @@ export function useUppyUploader(props: {
             // JPEG, PNG and WebP are shrunk to 2048 px below before upload,
             // so 30 MB is fine for them. Anything sent as it is (a GIF, or
             // every image when compression is off) meets the server's 10 MB
-            // limit, and above it came back as a 400 after the whole upload
-            // (K12, 10-10).
+            // limit, and above it came back as a 400 after the whole upload.
             const shrunk =
               !disableImageCompression &&
               COMPRESSED_TYPES.includes(file.type || '');
@@ -283,7 +281,7 @@ export function useUppyUploader(props: {
     uppy2.on('upload-start', () => {
       props.onStart();
     });
-    // Cancel upload (E2E-06-36): cancelAll() aborts the requests (and an S3
+    // Cancel upload: cancelAll() aborts the requests (and an S3
     // multipart upload through abortMultipartUpload) but fires no 'complete',
     // so the composer would stay locked.
     uppy2.on('cancel-all', () => {

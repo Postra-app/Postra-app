@@ -113,8 +113,8 @@ test.describe('Auto Post feeds', () => {
     expect((await business.api.post('/autopost', { data: feed(4) })).status()).toBe(201);
   });
 
-  // BILL-7: a feed could be switched back on past the plan's feeds (made on
-  // Pro, then moved to Starter). Switching off stays possible.
+  // A feed could be switched back on past the plan's feeds (made on Pro, then
+  // moved to Starter). Switching off stays possible.
   test('a plan cannot switch on more feeds than it holds, only off', async () => {
     const starter = await org({ tier: 'STANDARD', totalChannels: 3, channels: 0 });
     await seedFeeds(starter.orgId, 3);
@@ -128,7 +128,7 @@ test.describe('Auto Post feeds', () => {
     expect((await starter.api.post(`/autopost/${seeded[0].id}/active`, { data: { active: false } })).status()).toBe(201);
   });
 
-  // AI-13: a feed that does not exist (or is another org's) answered 500.
+  // A feed that does not exist (or is another org's) answered 500.
   test('an unknown feed is 404 on edit, switch and delete', async () => {
     const pro = await org({ tier: 'PRO', totalChannels: 6, channels: 0 });
     const unknown = '00000000-0000-4000-8000-000000000000';
@@ -137,7 +137,7 @@ test.describe('Auto Post feeds', () => {
     expect((await pro.api.delete(`/autopost/${unknown}`)).status()).toBe(404);
   });
 
-  // AI-6: two feeds created at once both passed the count of the guard.
+  // Two feeds created at once both passed the count of the guard.
   test('one feed left on Pro, two created at once: only one is', async () => {
     const pro = await org({ tier: 'PRO', totalChannels: 6, channels: 0 });
     await seedFeeds(pro.orgId, 2);

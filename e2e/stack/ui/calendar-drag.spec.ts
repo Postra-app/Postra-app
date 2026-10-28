@@ -9,13 +9,13 @@ dayjs.extend(timezone);
 import { USERS } from '../seed';
 import { dragWithMouse, quietSlot, weekOf } from './ui-helpers';
 
-// E2E-05-49: a post dragged to another slot moves on screen before the
+// A post dragged to another slot moves on screen before the
 // server answers. When the server refused (the post deleted in another tab,
 // a 404), the tile stayed in the new slot as if it had been saved.
 
 const SLOT = quietSlot(4);
 
-test('E2E-05-49: a move the server refuses puts the post back', async ({
+test('a move the server refuses puts the post back', async ({
   page,
 }) => {
   const api = await signedIn('a');
@@ -86,12 +86,12 @@ test('E2E-05-49: a move the server refuses puts the post back', async ({
   }
 });
 
-test('E2E-05-49: the old week answering late does not replace the new week', async ({
+test('the old week answering late does not replace the new week', async ({
   page,
 }) => {
   // After a refused move the calendar reloads the week it was on. If the
   // customer moves to the next week before that answer arrives, the late
-  // answer must not replace what the next week shows (Codex, 2026-10-07).
+  // answer must not replace what the next week shows.
   const api = await signedIn('a');
   const stamp = Date.now();
   const make = async (when: Date, content: string) => {

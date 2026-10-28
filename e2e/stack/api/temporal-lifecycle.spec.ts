@@ -79,7 +79,7 @@ test('Repeat keeps the workflow waiting after publishing, and Delete stops it', 
   await expect.poll(() => running(created.id), { timeout: 15_000 }).toEqual([]);
 });
 
-// The daily housekeeping (E2E-06-01): started by the backend when RUN_CRON is
+// The daily housekeeping: started by the backend when RUN_CRON is
 // set; here started by hand. Its first run removes the file behind a media row
 // deleted longer ago than the grace period, and the row.
 test('housekeeping removes a file deleted past its grace period', async () => {

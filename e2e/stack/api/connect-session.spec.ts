@@ -13,7 +13,7 @@ const stateFor = async (api: APIRequestContext) => {
 const connect = (api: APIRequestContext, state: string, code: string) =>
   api.post('/integrations/social-connect/mastodon', { data: { state, code, timezone: '0' } });
 
-test('E2E-04-22: a session ended elsewhere cannot finish connecting a channel', async () => {
+test('a session ended elsewhere cannot finish connecting a channel', async () => {
   const prisma = database();
   const org = await throwawayOrg(prisma, { tier: 'PRO', totalChannels: 5, channels: 0 });
   try {
@@ -34,7 +34,7 @@ test('E2E-04-22: a session ended elsewhere cannot finish connecting a channel', 
   }
 });
 
-test('E2E-04-23: the session-less page picker only finishes an invitee\'s own connection', async () => {
+test('the session-less page picker only finishes an invitee\'s own connection', async () => {
   const prisma = database();
   const org = await throwawayOrg(prisma, { tier: 'PRO', totalChannels: 5, channels: 0 });
   try {
@@ -53,7 +53,7 @@ test('E2E-04-23: the session-less page picker only finishes an invitee\'s own co
   }
 });
 
-test('E2E-08-31: a connect flow refuses a return address that is not a web address', async () => {
+test('a connect flow refuses a return address that is not a web address', async () => {
   // Stored with the flow and navigated to by whoever finished it:
   // `javascript:` ran script in a colleague's session.
   const prisma = database();
@@ -73,8 +73,7 @@ test('E2E-08-31: a connect flow refuses a return address that is not a web addre
   }
 });
 
-// INT-12: two callbacks at once both saw the one free slot and both added
-// a channel.
+// Two callbacks at once both saw the one free slot and both added a channel.
 test('one free slot, two channels connected at once: only one is added', async () => {
   const prisma = database();
   const org = await throwawayOrg(prisma, { tier: 'PRO', totalChannels: 3, channels: 2 });

@@ -1,7 +1,7 @@
 import { expect, test } from '@playwright/test';
 import { database, throwawayOrg } from '../helpers';
 
-// 18 X: the paywall promised "Pay NOTHING for the first 7-days" from the
+// The paywall promised "Pay NOTHING for the first 7-days" from the
 // organisation's offer while the checkout, for an email that already had a
 // trial, charged £19 at once. The page now promises free days only when the
 // checkout it shows has them.

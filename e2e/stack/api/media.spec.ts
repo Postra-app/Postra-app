@@ -99,7 +99,7 @@ test("B cannot see, read, describe or delete A's media", async () => {
   expect((await a.delete(`/media/${media.id}`)).status()).toBe(200);
 });
 
-// E2E-02-07: the name is stored as the file's path under the bucket URL.
+// The name is stored as the file's path under the bucket URL.
 test('save-media refuses a name that is a path', async () => {
   const api = await signedIn('a');
   for (const name of ['../../evil.html', 'a/../../../etc/passwd', '.hidden', 'x/y.png']) {
@@ -108,11 +108,10 @@ test('save-media refuses a name that is a path', async () => {
   await api.dispose();
 });
 
-// E2E-06-33 (K. 2026-10-10: refuse it): the nightly sweep removes the files of
-// media deleted from the library. A post saved with such a file in the moment
-// between the sweep's last look and the removal lost its picture. A picture
-// deleted from the library cannot be added to a post; one the post already
-// had stays editable.
+// The nightly sweep removes the files of media deleted from the library. A post
+// saved with such a file in the moment between the sweep's last look and the
+// removal lost its picture. A picture deleted from the library cannot be added
+// to a post; one the post already had stays editable.
 test('a picture deleted from the library cannot be added to a post, but an existing one keeps it', async () => {
   const kept = await upload(a, `stack-kept-${Date.now()}.png`);
   const draft = (image: Media[], id?: string) => ({

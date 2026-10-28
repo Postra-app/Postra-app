@@ -1,7 +1,7 @@
 import { APIRequestContext, expect, request as pwRequest, test } from '@playwright/test';
 import { BACKEND_URL, database, throwawayOrg } from '../helpers';
 
-// E2E-08-47: the agent asked through MCP (`ask_postra`) ran outside the
+// The agent asked through MCP (`ask_postra`) ran outside the
 // organisation's monthly allowance (now `agent_messages`): its usage was recorded
 // with no organisation, and the budget check never knew whose run it was.
 // The fake OpenAI answers the Responses API the agent's model uses.

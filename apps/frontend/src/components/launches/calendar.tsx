@@ -893,7 +893,7 @@ export const CalendarColumn: FC<{
         // the post keeps its own time of day there instead of moving to 23:59.
         // A time already gone, the current hour's cell included, goes to the
         // next full hour: a queued post dropped on a past time was published
-        // at once (E2E-05-99).
+        // at once.
         const target = dropTarget(
           getDate,
           post?.publishDate,
@@ -916,7 +916,7 @@ export const CalendarColumn: FC<{
           }),
         });
         // Refused (the post deleted in another tab, a 404): the tile was
-        // already moved here and stayed there as if saved (E2E-05-49).
+        // already moved here and stayed there as if saved.
         if (status >= 400) {
           revertDate(item.id, move);
           reloadCalendarView();
@@ -999,8 +999,8 @@ export const CalendarColumn: FC<{
                 ],
               }
             : {})}
-          // A month cell used to open at a random hour of the day
-          // (E2E-05-100); now the channels' earliest posting time that day.
+          // A month cell used to open at a random hour of the day; now the
+          // channels' earliest posting time that day.
           date={cellPostDate(
             getDate,
             !!randomHour,
@@ -1035,7 +1035,7 @@ export const CalendarColumn: FC<{
           : 'border border-white/[0.05] rounded-[8px]'
       )}
       ref={drop as any}
-      // The slot a dragged post lands in, for tests (E2E-05-49).
+      // The slot a dragged post lands in, for tests.
       data-slot={getDate.format('YYYY-MM-DDTHH:mm')}
     >
       {display === 'month' && (
@@ -1095,7 +1095,7 @@ export const CalendarColumn: FC<{
               </div>
             </div>
           ))}
-          {/* Buttons, not divs: Tab never reached them (E2E-05-101). */}
+          {/* Buttons, not divs: Tab never reached them. */}
           {!showAll && postList.length > 3 && (
             <button
               type="button"
@@ -1117,7 +1117,7 @@ export const CalendarColumn: FC<{
         </div>
         {!isBeforeNow && (
           <div
-            // Reachable from the keyboard too (E2E-05-101); named by the
+            // Reachable from the keyboard too; named by the
             // slot, so a screen reader hears where the post would go.
             role="button"
             tabIndex={0}
@@ -1301,8 +1301,8 @@ const CalendarItem: FC<{
       }}
     >
       {state === 'ERROR' && (
-        // A button with the error as its name: the reason was hover-only
-        // (E2E-05-101), so a keyboard or screen-reader user saw a red ring
+        // A button with the error as its name: the reason was hover-only,
+        // so a keyboard or screen-reader user saw a red ring
         // and nothing else.
         <button
           type="button"
@@ -1469,7 +1469,7 @@ const CalendarItem: FC<{
           post:", the channel (the avatar's alt), then the text on screen. A
           name of its own ("Open post: <channel>") left out what the tile
           shows, so voice control could not reach it by what the customer
-          sees (WCAG 2.5.3, E2E-05-71). */}
+          sees (WCAG 2.5.3). */}
       <div
         role="button"
         tabIndex={0}

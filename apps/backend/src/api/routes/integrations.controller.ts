@@ -50,7 +50,7 @@ import { RefreshIntegrationService } from '@gitroom/nestjs-libraries/integration
 // Composer pickers that read from the platform but are not @Tool methods.
 const PICKER_FUNCTIONS = new Set([
   // The editor's @-mention search (POST /integrations/mentions); refused, it
-  // fell back to the cache and looked like "no results" (INT-15).
+  // fell back to the cache and looked like "no results".
   'mention',
   'pages',
   'companies',
@@ -63,8 +63,8 @@ const PICKER_FUNCTIONS = new Set([
 ]);
 
 // What a picker returns goes to the browser of whoever opened it, a plain
-// member included. Facebook's page list carried every page's access token
-// (E2E-08-28); the server fetches the page token itself once a page is chosen.
+// member included. Facebook's page list carried every page's access token;
+// the server fetches the page token itself once a page is chosen.
 const TOKEN_KEYS = new Set([
   'access_token',
   'accessToken',
@@ -346,7 +346,7 @@ export class IntegrationsController {
       }
     }
 
-    // A platform still "Coming soon" takes no new channels (E2E-08-50);
+    // A platform still "Coming soon" takes no new channels;
     // after the plan gate, so a plan without it still answers 402.
     if (
       !refresh &&
@@ -363,7 +363,7 @@ export class IntegrationsController {
       this._integrationManager.getSocialIntegration(integration);
 
     // Handed back to whoever finishes the connection and navigated to: a web
-    // address, a path or the app — never `javascript:` (E2E-08-31). Checked
+    // address, a path or the app — never `javascript:`. Checked
     // before the try below, which turns errors into a 200.
     if (
       redirectUrl &&
@@ -521,7 +521,7 @@ export class IntegrationsController {
   }
 
   // One refresh per request: a platform refusing the refreshed token too made
-  // the route refresh and call itself with no end (Codex review, E2E-08-63).
+  // the route refresh and call itself with no end.
   private async runProviderFunction(
     org: Organization,
     body: IntegrationFunctionDto,
@@ -545,7 +545,7 @@ export class IntegrationsController {
     // The method name comes from the client. Only what the composer calls
     // may run: methods marked @Tool plus the pickers that are not tools. Any
     // truthy property used to pass, including `constructor`, `toString` and
-    // the provider's own `post` and `refreshToken` (E2E-02-08).
+    // the provider's own `post` and `refreshToken`.
     if (!isCallableProviderFunction(integrationProvider, body.name)) {
       throw new NotFoundException('Function not found');
     }

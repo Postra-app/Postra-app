@@ -6,7 +6,7 @@ dayjs.extend(utc);
 dayjs.extend(timezone);
 
 // A channel's posting time. With `tz`: minutes after local midnight in that
-// IANA zone, so 09:00 stays 09:00 when the clocks change (E2E-05-85).
+// IANA zone, so 09:00 stays 09:00 when the clocks change.
 // Without: minutes after UTC midnight, as every slot was stored before.
 export type PostingTime = { time: number; tz?: string };
 

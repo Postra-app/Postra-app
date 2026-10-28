@@ -1,7 +1,7 @@
 # Postra Public API
 
 The reference lives in the public docs at **https://postra.co.uk/docs/**. This
-folder used to hold a copy, and the copy fell behind the code (E2E-08-59), so
+folder used to hold a copy, and the copy fell behind the code, so
 it now only points there.
 
 | Topic | Page |
@@ -16,5 +16,4 @@ it now only points there.
 | Sign in with Postra (OAuth) for apps used by other Postra customers | https://postra.co.uk/docs/oauth/ |
 
 The docs are written from this repository's code; a change to a public route,
-its fields or its limits needs the matching docs page changed too (the pages
-are in the Postra-infra repository, `landing/src/pages/docs/`).
+its fields or its limits needs the matching docs page changed too.

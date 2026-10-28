@@ -3,7 +3,7 @@ import type { NextFunction, Request, Response } from 'express';
 const SAFE_METHODS = new Set(['GET', 'HEAD', 'OPTIONS']);
 
 /**
- * Cross-site request forgery, second layer (§48, 2026-10-27). The session
+ * Cross-site request forgery, second layer. The session
  * cookie is SameSite=Lax, so another site cannot send it with a POST; OWASP
  * counts that as defence in depth rather than the defence. Here a change that
  * rides the session cookie must come from one of our own pages, by the

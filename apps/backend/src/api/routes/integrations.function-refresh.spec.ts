@@ -8,7 +8,7 @@ const { IntegrationsController } = require('./integrations.controller');
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const { RefreshToken } = require('@gitroom/nestjs-libraries/integrations/social.abstract');
 
-// Codex review of E2E-08-63: TikTok creator info now raises RefreshToken on a
+// TikTok creator info raises RefreshToken on a
 // 401. When the platform refused the refreshed token too, the route refreshed
 // and called itself again with no limit, so the composer never got an answer.
 describe('POST /integrations/function after a token refresh', () => {

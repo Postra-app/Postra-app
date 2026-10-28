@@ -97,7 +97,7 @@ export class UsersService {
   // ON DELETE CASCADE removes all org children (integrations + OAuth tokens,
   // posts, media, comments, ...). Organizations shared with other members are
   // kept; the user is simply detached (their UserOrganization row cascades away
-  // when the user is deleted). See Plan/app_review.md §1B (B2).
+  // when the user is deleted).
   // MobilePushToken cascades from both User and Organization (schema.prisma);
   // an older comment here said it did not.
   //
@@ -119,7 +119,7 @@ export class UsersService {
         })
       : [];
     const otherFiles = new Map<string, string[]>();
-    // The platform grants behind their channels (E2E-09-66), with the tokens
+    // The platform grants behind their channels, with the tokens
     // that can still revoke them.
     const grants = new Map<string, ProviderGrant[]>();
     for (const id of soleOrgIds) {
@@ -132,7 +132,7 @@ export class UsersService {
       for (const id of soleOrgIds) {
         // Counted again under the organisation's row lock: someone accepting
         // an invitation between the first count and here had their new
-        // membership, posts and channels deleted with the org (AUTH-1). A
+        // membership, posts and channels deleted with the org. A
         // membership insert holds a key lock on this row, so the two wait
         // for each other.
         await tx.$queryRaw`SELECT "id" FROM "Organization" WHERE "id" = ${id} FOR UPDATE`;
@@ -144,7 +144,7 @@ export class UsersService {
         deletedOrgIds.add(id);
       }
 
-      // E2E-05-93: an organisation that stays needs an owner. The owner
+      // An organisation that stays needs an owner. The owner
       // leaving made nobody able to manage members or billing; the highest
       // role, then the longest-standing active member, takes over.
       const staying = await tx.userOrganization.findMany({

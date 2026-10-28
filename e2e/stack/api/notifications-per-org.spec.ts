@@ -1,7 +1,7 @@
 import { expect, test } from '@playwright/test';
 import { database, throwawayOrg } from '../helpers';
 
-// E2E-02-38: the bell's "read" marker sat on the user, so opening the bell in
+// The bell's "read" marker sat on the user, so opening the bell in
 // one organisation marked every other organisation's notifications read.
 test('opening the bell in one organisation leaves the other one unread', async () => {
   const prisma = database();

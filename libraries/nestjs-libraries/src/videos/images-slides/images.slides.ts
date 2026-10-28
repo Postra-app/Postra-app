@@ -81,7 +81,7 @@ export class ImagesSlides extends VideoAbstract<ImagesSlidesParams> {
         // Plain async functions, not `new Promise(async …)`: an error inside
         // an async executor rejects a promise nobody holds, and the outer
         // one never settled — the request hung, the reserved credit was
-        // never refunded and Node saw an unhandled rejection (AI-1).
+        // never refunded and Node saw an unhandled rejection.
         all.push(
           (async () => ({
             len: 0,

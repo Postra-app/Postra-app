@@ -1,6 +1,6 @@
 import { isBlockedIp } from './webhook.url.validator';
 
-// Upstream 5f18f1ca6 (24 X 2026): the string checks compared the dotted
+// Upstream 5f18f1ca6 (2026-10-24): the string checks compared the dotted
 // IPv4-mapped form only. The URL parser normalises [::ffff:127.0.0.1] to
 // ::ffff:7f00:1, which no check matched, and a dual-stack socket then
 // connected to 127.0.0.1. Same for the instance metadata address, NAT64

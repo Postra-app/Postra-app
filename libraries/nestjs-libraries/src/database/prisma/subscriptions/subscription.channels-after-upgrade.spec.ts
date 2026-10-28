@@ -127,7 +127,7 @@ describe('channels after paying again', () => {
     expect(integrationService.enableChannels).not.toHaveBeenCalled();
   });
 
-  // Codex review 10-06: the decision is made on the list read inside the
+  // The decision is made on the list read inside the
   // lock that connecting a channel also takes.
   it('a channel connected meanwhile is counted, and then nothing is switched on', async () => {
     const before = [ch('fb', 'facebook'), ch('ig', 'instagram'), ch('tt', 'tiktok')];

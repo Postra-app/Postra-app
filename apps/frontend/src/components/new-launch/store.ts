@@ -173,7 +173,7 @@ const initialState = {
   internal: [] as Internal[],
   chars: {},
   // Part of what reset() clears: a repeat set in one composer was saved with
-  // the next, unrelated post (E2E-05-44).
+  // the next, unrelated post.
   repeater: undefined as number | undefined,
 };
 
@@ -348,7 +348,7 @@ export const useLaunchStore = create<StoreState>()((set) => ({
   // A channel version made from AI adaptations of the shared text. Only
   // creates one: if the channel got its own version, or left the post, while
   // the AI was answering, nothing changes. The toggle used here before
-  // deleted that hand-made version (E2E-05-60).
+  // deleted that hand-made version.
   addAdaptedInternal: (integrationId: string, texts: (string | null)[]) =>
     set((state) => {
       const integration = state.selectedIntegrations.find(

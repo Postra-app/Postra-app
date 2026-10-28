@@ -1,6 +1,6 @@
 import { useLaunchStore } from './store';
 
-// E2E-05-60 (FE-C-2): "Adapt to each channel" applied each answer with the
+// "Adapt to each channel" applied each answer with the
 // add/remove toggle. A channel version the user made while the AI was
 // answering got deleted instead, and the channel fell back to the shared text.
 const channel = (id: string) =>

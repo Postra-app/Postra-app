@@ -3,7 +3,7 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { AutopostDto } from '@gitroom/nestjs-libraries/dtos/autopost/autopost.dto';
 
 // An org-scoped update of an id that is not this org's feed throws P2025,
-// which reached the client as a 500 (AI-13). It is a 404.
+// which reached the client as a 500. It is a 404.
 const feedNotFound = (err: any): never => {
   if (err?.code === 'P2025') {
     throw new NotFoundException('Auto Post feed not found');

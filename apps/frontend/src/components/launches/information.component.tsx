@@ -63,7 +63,7 @@ export const InformationComponent: FC<{
   isPicture: boolean;
   text?: string;
   // The plain text, so each channel is counted the way its platform counts
-  // (links as 23 on X/Mastodon, graphemes on Bluesky — E2E-05-04).
+  // (links as 23 on X/Mastodon, graphemes on Bluesky).
   countText?: string;
 }> = ({ totalChars, totalAllowedChars, chars, isPicture, text, countText }) => {
   const t = useT();

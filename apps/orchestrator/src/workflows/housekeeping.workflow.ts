@@ -28,20 +28,20 @@ export async function housekeepingWorkflow() {
   // A run is alive at every deploy and replays this code against its own
   // history, so every new step goes behind a patch: the run started before
   // the step shipped skips it, sleeps out its day and continues as new with
-  // it (E2E-11-15; the deploy replays the live run first, scripts/replay-histories.mjs).
+  // it (the deploy replays the live run first, scripts/replay-histories.mjs).
   let checkInId: string | undefined;
   if (patched('housekeeping-check-in')) {
     try {
       checkInId = await housekeepingStarted();
     } catch (err) {
       // Reporting is not the work: the day runs unreported and the
-      // monitor's missed check-in says so (Codex).
+      // monitor's missed check-in says so.
     }
   }
   let ok = true;
   try {
     // The media sweep swallows storage errors and counts them: a day on
-    // which files could not be removed is not an "ok" day (Codex).
+    // which files could not be removed is not an "ok" day.
     const purged = await purgeOldRecords();
     if ((purged?.failed ?? 0) > 0) ok = false;
   } catch (err) {

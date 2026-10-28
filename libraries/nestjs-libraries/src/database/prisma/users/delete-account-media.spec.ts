@@ -7,7 +7,7 @@ jest.mock('@gitroom/nestjs-libraries/upload/upload.factory', () => ({
 
 import { UsersService } from '@gitroom/nestjs-libraries/database/prisma/users/users.service';
 
-// E2E-09-58: removeFile is implemented three times and was called nowhere, and
+// RemoveFile is implemented three times and was called nowhere, and
 // media deletion is soft — so after someone exercised their right to erasure,
 // every photo and video they had uploaded was still a working URL on the CDN.
 // Postra is registered with the ICO (ZC223242).
@@ -202,7 +202,7 @@ describe('deleting an account removes every file the organisation stored', () =>
   });
 });
 
-// E2E-09-66: the platform grants behind the deleted channels are revoked,
+// The platform grants behind the deleted channels are revoked,
 // read before the rows go and revoked only for organisations really deleted.
 describe('deleting an account revokes platform grants', () => {
   it('collects before the delete and revokes after, for deleted organisations only', async () => {
@@ -227,7 +227,7 @@ describe('deleting an account revokes platform grants', () => {
   });
 });
 
-// AUTH-1: the members were counted before the transaction. Someone accepting
+// The members were counted before the transaction. Someone accepting
 // an invitation in between lost their membership, posts and channels with the
 // org.
 describe('deleting an account while someone joins the organisation', () => {
@@ -245,7 +245,7 @@ describe('deleting an account while someone joins the organisation', () => {
   });
 });
 
-// E2E-05-93: an organisation that stays gets a new owner when the only one
+// An organisation that stays gets a new owner when the only one
 // leaves; the highest role, then the longest-standing active member.
 describe('the owner leaving an organisation that stays', () => {
   it('hands it to the next member in line', async () => {

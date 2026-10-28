@@ -1,6 +1,6 @@
 import { minutesInZone, postingMinutesInZone, slotDate } from './day-view.slots';
 
-// E2E-05-61: Europe/Warsaw, a post on 6 October 2026 at 00:30 did not show in
+// Europe/Warsaw, a post on 6 October 2026 at 00:30 did not show in
 // that day's view — its row came out as 7 October, 00:30.
 describe('day view rows in the user time zone', () => {
   const tz = 'Europe/Warsaw';
@@ -22,7 +22,7 @@ describe('day view rows in the user time zone', () => {
     expect(postingMinutesInZone({ time: 7 * 60 }, '2026-11-06', tz)).toBe(8 * 60);
   });
 
-  it('a posting time with a zone keeps its wall-clock time after the clocks change (E2E-05-85)', () => {
+  it('a posting time with a zone keeps its wall-clock time after the clocks change', () => {
     const nine = { time: 9 * 60, tz };
     expect(postingMinutesInZone(nine, '2026-10-06', tz)).toBe(9 * 60);
     expect(postingMinutesInZone(nine, '2026-11-06', tz)).toBe(9 * 60);

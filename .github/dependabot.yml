@@ -2,7 +2,7 @@
 # in a handful of groups. Majors are left to
 # .github/workflows/dependency-freshness.yml, which keeps one issue listing
 # them: checking ~100 majors one by one ran past the 55-minute limit every
-# week (E2E-01-28), and each needs work of its own anyway. Security fixes
+# week, and each needs work of its own anyway. Security fixes
 # come separately and are not affected (ignore applies to version updates
 # only).
 #
@@ -23,7 +23,7 @@
 # #386); the weekly freshness issue lists them instead (#334). Every ignore
 # names version-update types only, so security updates still come for them.
 #
-# Monthly, not weekly (K. 2026-10-17: too many bump PRs for no gain). Security
+# Monthly, not weekly: weekly gave too many bump PRs for no gain. Security
 # updates are not version updates: they still come as soon as GitHub has them.
 version: 2
 updates:
@@ -50,7 +50,7 @@ updates:
       - dependency-name: "polotno"
         update-types: ["version-update:semver-major", "version-update:semver-minor", "version-update:semver-patch"]
       # polotno pins mobx exactly; a newer mobx in the catalog puts a second
-      # MobX under the design editor (#398, 19 X). mobx moves with polotno.
+      # MobX under the design editor (#398). mobx moves with polotno.
       - dependency-name: "mobx"
         update-types: ["version-update:semver-major", "version-update:semver-minor", "version-update:semver-patch"]
     groups:
@@ -89,7 +89,7 @@ updates:
   # Global tools of the image. pnpm must equal packageManager
   # (ci-workflows.spec.ts), which Dependabot does not move, so pnpm is bumped
   # by hand in both places; the freshness issue says when it is behind. The
-  # peers a relock used to move are pinned since 19 X (lockfile-peers.spec).
+  # peers a relock used to move are pinned (lockfile-peers.spec).
   - package-ecosystem: "npm"
     directory: "/var/docker/tools"
     schedule:

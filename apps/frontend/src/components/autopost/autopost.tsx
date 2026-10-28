@@ -318,7 +318,7 @@ export const AddOrEditWebhook: FC<{
   const callBack = useCallback(
     async (values: any) => {
       // One save at a time: a double click created two feeds publishing the
-      // same RSS (E2E-06-20); a refused save is not "added" (E2E-08-36).
+      // same RSS; a refused save is not "added".
       if (saving.current) return;
       saving.current = true;
       let res: Response;

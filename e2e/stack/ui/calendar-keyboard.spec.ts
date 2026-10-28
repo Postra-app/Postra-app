@@ -115,9 +115,9 @@ test('the period arrows, Today and the view switch work from the keyboard', asyn
   await expect(page.getByRole('button', { name: 'Next page' })).toBeVisible();
 });
 
-// E2E-05-101: "+ Show more" (a cell with more than three posts) and the
-// empty part of a cell that opens the composer were divs with click handlers:
-// no name, and Tab never reached them.
+// "+ Show more" (a cell with more than three posts) and the empty part of a
+// cell that opens the composer were divs with click handlers: no name, and Tab
+// never reached them.
 test('"Show more" and "Add post" work from the keyboard', async ({ page }) => {
   const api = await signedIn('b');
   const stamp = Date.now();

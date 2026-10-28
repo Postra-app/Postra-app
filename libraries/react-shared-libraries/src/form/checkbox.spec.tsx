@@ -41,7 +41,7 @@ describe('Checkbox', () => {
     );
   });
 
-  // E2E-03-06: TikTok's audit requires Branded content to stay unticked
+  // TikTok's audit requires Branded content to stay unticked
   // while privacy is Self only — the box is disabled, so a click must not
   // change it, whether on the box or on its label.
   it('ignores clicks on the box and the label when disabled', () => {

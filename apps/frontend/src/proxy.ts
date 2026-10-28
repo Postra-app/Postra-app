@@ -64,10 +64,10 @@ export async function proxy(request: NextRequest) {
     // `[\w-]+\.\w+`, which cannot match a path segment starting with a dot.
     nextUrl.pathname.startsWith('/.well-known/') ||
     nextUrl.pathname.startsWith('/icons/') ||
-    // Language-switcher flags (public/flags, E2E-11-48). The matcher's
+    // Language-switcher flags (public/flags). The matcher's
     // extension escape only covers a top-level `<name>.<ext>`, so this
     // nested path reached the gate and a signed-out browser got 307 /auth
-    // for an SVG (measured after the deploy, 22 X).
+    // for an SVG (measured after the deploy).
     nextUrl.pathname.startsWith('/flags/')
   ) {
     return topResponse;
@@ -81,7 +81,7 @@ export async function proxy(request: NextRequest) {
   }
 
   // If the URL is logout, delete the cookie and redirect to login. The path
-  // itself: `?next=/auth/logout` in any link signed people out (E2E-08-32).
+  // itself: `?next=/auth/logout` in any link signed people out.
   if (isLogoutPath(nextUrl.pathname)) {
     const response = NextResponse.redirect(
       new URL('/auth/login', nextUrl.href)
@@ -97,7 +97,8 @@ export async function proxy(request: NextRequest) {
         : {}),
       maxAge: -1,
     });
-    // The domain-wide `auth` from before E2E-11-78 too. Appended after the
+    // The domain-wide `auth` from before cookies became host-only too.
+    // Appended after the
     // cookies API, which rewrites Set-Cookie and keeps one cookie per name.
     const legacyDomain = legacyCookieDomain();
     if (legacyDomain) {
@@ -226,7 +227,7 @@ export async function proxy(request: NextRequest) {
   try {
     // An invitation opened before logging in waits in the `org` cookie. A
     // password login does not read it, so the person landed in their own
-    // calendar and the invitation was lost (E2E-05-95): ask on /join, once.
+    // calendar and the invitation was lost: ask on /join, once.
     const invitedTo = request.cookies.get('org')?.value;
     if (!org && invitedTo && nextUrl.pathname !== '/join') {
       const redirect = NextResponse.redirect(
@@ -240,7 +241,7 @@ export async function proxy(request: NextRequest) {
     }
     // An invitation is accepted on a page that asks first. Joining right
     // here let any site send a signed-in person into its organisation, as
-    // whichever account the browser happened to hold (E2E-08-34).
+    // whichever account the browser happened to hold.
     if (org && nextUrl.pathname !== '/join') {
       return NextResponse.redirect(
         new URL(`/join?org=${encodeURIComponent(org)}`, nextUrl.href)

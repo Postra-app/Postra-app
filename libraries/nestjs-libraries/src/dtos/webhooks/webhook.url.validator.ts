@@ -24,7 +24,7 @@ const blockedIPv4Ranges: [string, number][] = [
 // BlockList matches an IPv4 rule against the address in any notation,
 // including IPv4-mapped IPv6 like ::ffff:7f00:1 (what the URL parser turns
 // [::ffff:127.0.0.1] into), so the addresses are never compared as strings.
-// Until 24 X 2026 the string checks let [::ffff:127.0.0.1] and
+// Until 2026-10-24 the string checks let [::ffff:127.0.0.1] and
 // [::ffff:169.254.169.254] through (upstream 5f18f1ca6).
 const blockedIps = new net.BlockList();
 

@@ -45,7 +45,7 @@ test('a trial cannot connect a channel another organisation had; a paying one ca
     await prisma.organization.update({ where: { id: trial.orgId }, data: { isTrailing: true } });
     const refused = await connect(trial.api, trialState, code);
     expect(refused.status()).toBe(412);
-    // E2E-07-38: with a reason for API clients (the app shows its own text).
+    // With a reason for API clients (the app shows its own text).
     expect((await refused.json()).message).toContain('free trial');
     expect(await prisma.integration.count({ where: { organizationId: trial.orgId } })).toBe(0);
 

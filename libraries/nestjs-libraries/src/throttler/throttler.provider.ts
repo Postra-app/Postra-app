@@ -107,7 +107,7 @@ export class ThrottlerBehindProxyGuard extends ThrottlerGuard {
     // hop adds what it saw, so the tail is the ALB's own observation and
     // everything before it is whatever the client chose to send. If nginx ever
     // appends again, the tail becomes the ALB node and all anonymous users on
-    // that node share one bucket — measured on prod 2026-10-05 (E2E-02-39). Reading index 0 handed the bucket key to the caller — sending
+    // that node share one bucket — measured on prod 2026-10-05. Reading index 0 handed the bucket key to the caller — sending
     // `X-Forwarded-For: <anything>` produced a fresh bucket on every request
     // and the per-IP limits on login, register and forgot stopped applying
     //. Reaching the app without going through the ALB

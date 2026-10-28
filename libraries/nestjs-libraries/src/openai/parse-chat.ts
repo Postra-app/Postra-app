@@ -49,7 +49,7 @@ export async function parseChat(
       let parsed: any = null;
       if (content) {
         try {
-          // No long dashes in what customers read (K. 10-09): the prompts
+          // No long dashes in what customers read: the prompts
           // ask for none, this makes sure.
           parsed = deepWithoutLongDashes(JSON.parse(content));
         } catch {

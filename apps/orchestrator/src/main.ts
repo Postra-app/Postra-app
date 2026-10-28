@@ -1,4 +1,4 @@
-// Boot stages with time and RSS, as in the backend (B0, the start that hangs
+// Boot stages with time and RSS, as in the backend (the start that hangs
 // before Nest logs anything). writeSync: a hung loop never flushes async writes.
 import { writeSync } from 'fs';
 const bootStep = (step: string) =>

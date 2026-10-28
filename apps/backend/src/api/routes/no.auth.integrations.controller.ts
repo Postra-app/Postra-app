@@ -45,7 +45,7 @@ import {
   channelsInUse,
 } from '@gitroom/nestjs-libraries/database/prisma/subscriptions/pricing';
 
-// The native app's URL scheme, registered in Postra-mobile's app.json. The
+// The native app's URL scheme, registered in the app's app.json. The
 // callback page is allowed to hand an OAuth return back to this scheme and no
 // other.
 const APP_SCHEME = 'postra';
@@ -254,7 +254,7 @@ export class NoAuthIntegrationsController {
     // may finish without being a member — with or without a Postra account of
     // their own — and only once. Everyone else needs a member's session.
     // Who finished the connection, when it was a member: the extension token
-    // below is bound to them (E2E-11-81).
+    // below is bound to them.
     let connectedBy: { id: string; tokenVersion: number } | undefined;
     const inviteNonce = req.cookies?.[INVITE_COOKIE];
     const invited =
@@ -280,8 +280,7 @@ export class NoAuthIntegrationsController {
       }
       // This route sits outside AuthMiddleware, so it checks what the
       // middleware does: a signature alone let a logged-out, revoked or
-      // suspended session (and a link from a mail) finish a connection
-      // (E2E-04-22).
+      // suspended session (and a link from a mail) finish a connection.
       if (
         !sessionUser?.id ||
         sessionUser.purpose ||
@@ -339,7 +338,7 @@ export class NoAuthIntegrationsController {
       previewFor === integration &&
       this._integrationManager.isPreview(integration);
 
-    // A platform still "Coming soon" takes no new channels (E2E-08-50), also
+    // A platform still "Coming soon" takes no new channels, also
     // with a state minted for another platform or before it was turned off.
     if (
       !refresh &&
@@ -405,7 +404,7 @@ export class NoAuthIntegrationsController {
             // as in RefreshIntegrationService. `refreshToken: body.refresh`
             // stored the channel id as the refresh token and dropped the
             // expiry, so a reconnected YouTube channel failed its next
-            // refresh (E2E-04-34).
+            // refresh.
             return res({ ...auth, ...newAuth });
           } catch (err: any) {
             return res({
@@ -494,8 +493,7 @@ export class NoAuthIntegrationsController {
         String(id)
       ))
     ) {
-      // The app shows its own text for 412; API clients get it too
-      // (E2E-07-38).
+      // The app shows its own text for 412; API clients get it too.
       throw new HttpException(
         'This channel was already connected to another Postra account, so it cannot be added during a free trial.',
         412
@@ -510,7 +508,7 @@ export class NoAuthIntegrationsController {
     // channel already exists (an update adds no new channel).
     // The slot check and the write, one connection at a time per
     // organisation: two callbacks at once both saw the one free slot and both
-    // added a channel (INT-12). Same lock as switching a channel on.
+    // added a channel. Same lock as switching a channel on.
     // The same Instagram account through the other route would be a second
     // channel posting everything twice; the check and the write hold the
     // account, so the Page pick cannot slip in between. A reconnect keeps
@@ -696,7 +694,7 @@ export class NoAuthIntegrationsController {
 
     // For the browser extension to send back with fresh cookies. It names
     // its purpose, so no other token passes for it, and the member it was
-    // handed to, so it stops working when they leave (E2E-11-81). An invitee
+    // handed to, so it stops working when they leave. An invitee
     // has no membership to check; the organisation ends theirs by removing
     // the channel.
     const extensionToken = integrationProvider.isChromeExtension
@@ -743,8 +741,8 @@ export class NoAuthIntegrationsController {
 
     // The session-less route finishes only an invitee's own connection. It
     // took any pending channel of the organisation named by a state, so a
-    // state outlived its holder's membership and reached other channels
-    // (E2E-04-23). Members pick their page on the authenticated route.
+    // state outlived its holder's membership and reached other channels.
+    // Members pick their page on the authenticated route.
     const invitedChannel = await ioRedis.get(`invited-page:${body.state}`);
     if (!invitedChannel || invitedChannel !== id) {
       throw new HttpException(
@@ -781,7 +779,7 @@ export class NoAuthIntegrationsController {
     }
 
     // Only a token issued for the extension. Any JWT carrying these four
-    // fields used to do (E2E-11-81).
+    // fields used to do.
     if (payload?.purpose !== 'extension') {
       throw new HttpException('Invalid token', 401);
     }

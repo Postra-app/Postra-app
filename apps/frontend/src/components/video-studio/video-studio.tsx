@@ -163,7 +163,7 @@ export const VideoStudio: FC<VideoStudioProps> = ({
   fileRef.current = file;
 
   // The clip every tab works on. An upload that finishes after the user
-  // loaded another clip must not become that clip's library id (E2E-06-34):
+  // loaded another clip must not become that clip's library id:
   // captions transcribed clip A while preview and render used B. And a tab's
   // results (subtitles, burned-in captions, exported formats) belong to one
   // clip, so the tabs start over when it changes.

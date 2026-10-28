@@ -1,5 +1,5 @@
 /**
- * E2E-05-14 — a provider without its own handleErrors (Mastodon) turned
+ * A provider without its own handleErrors (Mastodon) turned
  * "Cannot attach more than four files" into "Unknown Error" in the failure
  * email and in-app notification.
  */

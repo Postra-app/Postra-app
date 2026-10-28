@@ -1,12 +1,12 @@
 import { expect, test } from '@playwright/test';
 import { database, throwawayOrg } from '../helpers';
 
-// E2E-08-63: when TikTok's creator info could not be read (the backend answers
+// When TikTok's creator info could not be read (the backend answers
 // `false` once a token refresh fails), the composer kept saying "Loading your
 // TikTok settings…" over an empty privacy list and the post could not be saved.
 test.use({ storageState: { cookies: [], origins: [] } });
 
-test('E2E-08-63: the composer says when TikTok settings could not be loaded', async ({ page, context }) => {
+test('the composer says when TikTok settings could not be loaded', async ({ page, context }) => {
   const prisma = database();
   const org = await throwawayOrg(prisma, { tier: 'PRO', totalChannels: 6, channels: 1, provider: 'tiktok' });
   try {

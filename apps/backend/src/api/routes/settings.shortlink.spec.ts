@@ -1,5 +1,5 @@
 /**
- * E2E-05-23 — production has no link shortener configured (no Dub, Short.io,
+ * Production has no link shortener configured (no Dub, Short.io,
  * Kutt or LinkDrip keys), yet Settings offered "Always shortlink", which does
  * nothing there. The preference now says whether a shortener exists.
  */

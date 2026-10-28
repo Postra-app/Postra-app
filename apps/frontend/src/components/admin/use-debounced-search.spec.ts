@@ -3,7 +3,7 @@ import {
   searchNeedsUpdate,
 } from '@gitroom/frontend/components/admin/use-debounced-search';
 
-// E2E-09-16: both admin tables refetched on every keystroke and sent the raw
+// Both admin tables refetched on every keystroke and sent the raw
 // value, so typing an eleven-character email fired eleven paged queries, each
 // with a `contains` scan and — in Organizations — three correlated counts per
 // row. A trailing space from a paste matched nothing.

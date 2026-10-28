@@ -1,6 +1,6 @@
 import { PostsRepository } from '@gitroom/nestjs-libraries/database/prisma/posts/posts.repository';
 
-// E2E-09-01: a failed publish wrote the whole in-flight post list into
+// A failed publish wrote the whole in-flight post list into
 // Errors.body, and each post carries its full Integration row because
 // publishing needs the token. Measured on production: 103 plaintext
 // token/refreshToken values across 100 rows, all Instagram and YouTube — the
@@ -115,8 +115,8 @@ describe('changeState does not write credentials into Errors', () => {
  * It was inert only by accident: no select in the repository asks for `error`,
  * so it never reached a response. But the web calendar already renders
  * `post.error` in a tooltip (calendar.tsx), so the field is one `error: true`
- * away from being shown, and E2E-10-51 is exactly the change that wants to put
- * a publication failure in front of the user. Redact at the write, so whoever
+ * away from being shown, and putting a publication failure in front of the
+ * user is exactly the change that wants it there. Redact at the write, so whoever
  * selects it later cannot reopen this.
  */
 describe('changeState does not write credentials onto the post either', () => {

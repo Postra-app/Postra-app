@@ -49,8 +49,7 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
           layout it cannot fit. Below ~900px the fixed 230px sidebar leaves
           less room than the narrowest table needs, and the app shell clips
           the overflow instead of scrolling it — at 390px that hid 458px of
-          every row, the View and Copy buttons included (E2E-09-48,
-          E2E-09-52). */}
+          every row, the View and Copy buttons included. */}
       <div
         className="hidden adminNarrow:flex flex-1 flex-col items-center justify-center gap-[8px] text-center px-[24px] py-[48px]"
         style={{ background: ADMIN_BG }}
@@ -77,7 +76,7 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
           Postra · Admin
         </div>
         {/* A screen reader was getting ten anonymous links with no indication
-            of which one it was standing on (E2E-09-56). */}
+            of which one it was standing on. */}
         <nav className="flex flex-col gap-[2px]" aria-label="Admin sections">
           {tabs.map((tab) => {
             const isActive = pathname.startsWith(tab.path);

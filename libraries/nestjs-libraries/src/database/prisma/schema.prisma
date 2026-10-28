@@ -165,7 +165,7 @@ model UsedCodes {
   // `prisma db push` took prod down (502, 2026-07-08).
   code         String        @unique
   // Null once the organisation is deleted: the code stays used, so deleting
-  // the account and signing up again cannot redeem it twice (E2E-02-17).
+  // the account and signing up again cannot redeem it twice.
   orgId        String?
   createdAt    DateTime      @default(now())
   updatedAt    DateTime      @updatedAt
@@ -179,7 +179,7 @@ model UserOrganization {
   disabled       Boolean      @default(false)
   role           Role         @default(USER)
   // Per organisation: one timestamp on User marked every organisation's
-  // notifications read when the bell was opened in one (E2E-02-38). Null
+  // notifications read when the bell was opened in one. Null
   // until the bell is first opened here; User.lastReadNotifications stands in.
   lastReadNotifications DateTime?
   createdAt      DateTime     @default(now())
@@ -348,7 +348,7 @@ model Subscription {
   totalChannels    Int
   isLifetime       Boolean          @default(false)
   // Stripe's billing_cycle_anchor: the AI allowance month starts here, with
-  // the invoices (E2E-07-40). Empty for plans Stripe does not bill.
+  // the invoices. Empty for plans Stripe does not bill.
   periodAnchor     DateTime?
   createdAt        DateTime         @default(now())
   updatedAt        DateTime         @updatedAt
@@ -412,7 +412,7 @@ model Integration {
 
   // With the provider: Facebook and Instagram sign in through the same Meta
   // account, so their pending channels share an internalId, and the second
-  // sign-in turned the first into the other platform (E2E-04-35).
+  // sign-in turned the first into the other platform.
   @@unique([organizationId, providerIdentifier, internalId])
   @@index([rootInternalId])
   @@index([organizationId])
@@ -967,7 +967,7 @@ model OAuthAuthorization {
   authorizationCode String?
   codeExpiresAt     DateTime?
   // PKCE (RFC 7636, S256 only): the challenge sent with the code request,
-  // checked against code_verifier when the code is exchanged (E2E-08-44).
+  // checked against code_verifier when the code is exchanged.
   codeChallenge     String?
   // The address the code was sent to (dynamic clients): the exchange must name
   // the same one (RFC 6749 §4.1.3).
@@ -1070,7 +1070,7 @@ model Announcement {
   createdAt   DateTime          @default(now())
   // A banner every signed-in session fetches, with no way to stop showing it
   // except an operator remembering to delete it. An outage notice that
-  // outlives the outage is worse than none (E2E-09-26).
+  // outlives the outage is worse than none.
   expiresAt   DateTime?
   // Soft delete, so the audit row that says who removed it still points at
   // something. Nothing outside the panel ever reads a deleted announcement.

@@ -28,7 +28,7 @@ import { clientIpFromForwardedFor } from '@gitroom/nestjs-libraries/throttler/th
  * impersonated session means the action lands under the customer's name. The
  * one exception is `/user/impersonate`, which is how the session gets out.
  * Deleting the account is the customer's own decision and cannot be undone
- * (E2E-11-83); an organisation that has to go goes through the admin panel.
+ *; an organisation that has to go goes through the admin panel.
  */
 const FORBIDDEN_WHILE_IMPERSONATING = [
   '/admin',
@@ -102,7 +102,7 @@ export class AuthMiddleware implements NestMiddleware {
 
       // A link from a mail is not a session. A password-reset token carried
       // the same id and tokenVersion a session does, so a leaked, unused
-      // reset link signed its holder in for 30 days (E2E-02-27). Those links
+      // reset link signed its holder in for 30 days. Those links
       // carry `expires`, and from now on a `purpose`.
       if ((payload as any).purpose || (payload as any).expires) {
         throw new HttpForbiddenException();
@@ -167,8 +167,8 @@ export class AuthMiddleware implements NestMiddleware {
       // session instead of leaving the token valid (the app's in the Keychain,
       // a browser cookie someone copied) for the rest of its life. One
       // session ends, not the user's others: signing out on the phone must not
-      // end the tab they left open. Browser tokens from before E2E-11-74 carry
-      // no `sid` and skip this.
+      // end the tab they left open. Older browser tokens carry no `sid` and
+      // skip this.
       const sid = (payload as any).sid as string | undefined;
       if (sid && (await isMobileSessionRevoked(sid))) {
         throw new HttpForbiddenException();
@@ -226,7 +226,7 @@ export class AuthMiddleware implements NestMiddleware {
             () => {
               // Every change made in the customer's name is on the trail,
               // not only the actions on the audit list: deleting a post or a
-              // webhook left just the start and the stop (K25, 10-10).
+              // webhook left just the start and the stop.
               if (!['GET', 'HEAD', 'OPTIONS'].includes(req.method || 'GET')) {
                 this._audit?.record({
                   action: 'admin.impersonated.request',

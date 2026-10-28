@@ -90,8 +90,9 @@ export const AdminOrganizationsComponent = () => {
    *
    * Account deletion already removed the organizations a user solely owns;
    * this is the other half — a workspace a customer wants gone, or one created
-   * by mistake — which previously meant the database (05-gaps §1c). The
-   * objects behind its media rows go too, for the reason E2E-09-58 exists.
+   * by mistake — which previously meant the database. The
+   * objects behind its media rows go too, so no customer file outlives its
+   * workspace in storage.
    */
   const deleteOrganization = useCallback(
     (org: OrgItem) => async () => {
@@ -158,7 +159,7 @@ export const AdminOrganizationsComponent = () => {
       <div className="rounded-[8px] border border-white/10 overflow-hidden overflow-x-auto">
         {/* overflow-x-auto, not overflow-hidden: the app shell clips its own
             overflow, so anything past the edge was unreachable rather than
-            scrollable (E2E-09-49). */}
+            scrollable. */}
         <table className="w-full min-w-[560px]">
           <thead>
             <tr className="text-left border-b border-white/10 bg-white/[0.03]">
@@ -180,8 +181,7 @@ export const AdminOrganizationsComponent = () => {
               <th className="p-[12px] text-[13px] font-[500] text-newTextColor/60">
                 {/* Every post the org has ever created, drafts and failures
                     included. Stats and Growth both count published posts under
-                    the same word, and the two numbers never agree
-                    (E2E-09-25). */}
+                    the same word, and the two numbers never agree. */}
                 {t('admin_posts_all', 'Posts (all)')}
               </th>
               <th className="p-[12px] text-[13px] font-[500] text-newTextColor/60">
@@ -291,7 +291,7 @@ export const AdminOrganizationsComponent = () => {
 
       {/* The whole block, count included, used to be hidden when everything
           fitted on one page — so the number of organizations was invisible in
-          the one state where it is easiest to read (E2E-09-29). */}
+          the one state where it is easiest to read. */}
       {!!data && (
         <div className="flex items-center justify-between text-[13px]">
           <span className="text-newTextColor/60">

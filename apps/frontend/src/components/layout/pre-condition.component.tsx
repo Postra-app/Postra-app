@@ -16,8 +16,7 @@ export const PreConditionComponentModal: FC = () => {
         payment on the next screen.
       </div>
       <div className="flex gap-[2px] justify-center">
-        {/* Goes to the confirmation; nothing is charged by this button
-            (E2E-07-41). */}
+        {/* Goes to the confirmation; nothing is charged by this button. */}
         <Button
           onClick={() => (window.location.href = '/billing?finishTrial=true')}
         >

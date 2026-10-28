@@ -41,7 +41,7 @@ const statusOf = async (p: Promise<unknown>) => {
   }
 };
 
-describe('image generation answers (E2E-02-16)', () => {
+describe('image generation answers', () => {
   const env = process.env.STRIPE_PUBLISHABLE_KEY;
   beforeAll(() => {
     process.env.STRIPE_PUBLISHABLE_KEY = 'pk_test_x';

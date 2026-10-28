@@ -12,7 +12,7 @@ import { CHANNEL_STATES } from '@gitroom/nestjs-libraries/database/prisma/integr
  * The tier pill was defined twice for the same six tiers, and the copy in
  * Subscriptions put white text on a pastel fill. Measured in the live DOM
  * against its own background: 2.64:1, where 11px text needs 4.5:1
- * (E2E-09-55 — the first pass fixed the /30 opacities and never looked at
+ * (the first pass fixed the /30 opacities and never looked at
  * this pill). Testing the class rather than the colour, because the thing that
  * went wrong was two definitions, not one bad value.
  */
@@ -43,7 +43,7 @@ describe('tierBadgeClass', () => {
 
   it('treats a missing tier as FREE and not as an error', () => {
     // FREE is the commonest tier there is; falling through to the error colour
-    // painted every free account red (E2E-09-29).
+    // painted every free account red.
     expect(tierLabel(null)).toBe('FREE');
     expect(tierLabel(undefined)).toBe('FREE');
     expect(tierBadgeClass(null)).toBe(tierBadgeClass('FREE'));

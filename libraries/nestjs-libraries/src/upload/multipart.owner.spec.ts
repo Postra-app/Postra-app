@@ -14,7 +14,7 @@ import {
   uploadPairOf,
 } from '@gitroom/nestjs-libraries/upload/multipart.owner';
 
-// E2E-11-70: a multipart upload belongs to the organisation that started it.
+// A multipart upload belongs to the organisation that started it.
 describe('multipart upload owner', () => {
   beforeEach(() => store.clear());
 

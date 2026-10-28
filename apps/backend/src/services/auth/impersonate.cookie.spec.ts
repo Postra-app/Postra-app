@@ -15,7 +15,7 @@ const fakeResponse = () => {
 };
 
 /**
- * Codex 27 X on E2E-11-78: an impersonation started before cookies became
+ * An impersonation started before cookies became
  * host-only left a domain-wide `impersonate` in the browser. "Stop" cleared
  * the host-only copy only, and the next request impersonated the customer
  * again from the old one.

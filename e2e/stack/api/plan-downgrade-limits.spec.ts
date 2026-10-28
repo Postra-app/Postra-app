@@ -1,10 +1,10 @@
 import { expect, test } from '@playwright/test';
 import { database, throwawayOrg } from '../helpers';
 
-// E2E-07-33: a plan change trimmed channels and seats, but not Auto Post feeds
-// or webhooks. Business -> Pro left all ten feeds running (Pro allows 3) and
-// any switched-off feed could be switched on again; webhooks over the new
-// limit (even FREE's 0) kept receiving deliveries.
+// A plan change trimmed channels and seats, but not Auto Post feeds or
+// webhooks. Business -> Pro left all ten feeds running (Pro allows 3) and any
+// switched-off feed could be switched on again; webhooks over the new limit
+// (even FREE's 0) kept receiving deliveries.
 
 const prisma = database();
 test.afterAll(async () => {
@@ -77,8 +77,8 @@ test('a downgrade keeps the oldest feeds and webhooks within the new plan, and t
   }
 });
 
-// Codex: the count and the switch-on were separate, so two feeds switched on
-// at once both saw room for one.
+// The count and the switch-on were separate, so two feeds switched on at once
+// both saw room for one.
 test('two feeds switched on at once with room for one: only one runs', async () => {
   const org = await throwawayOrg(prisma, { tier: 'PRO', totalChannels: 6, channels: 0 });
   try {
@@ -101,7 +101,7 @@ test('two feeds switched on at once with room for one: only one runs', async () 
   }
 });
 
-// Codex: PUT /autopost/:id with active: true switched a feed on past the limit.
+// PUT /autopost/:id with active: true switched a feed on past the limit.
 test('an edit that switches a feed on counts against the limit too', async () => {
   const org = await throwawayOrg(prisma, { tier: 'PRO', totalChannels: 6, channels: 0 });
   try {

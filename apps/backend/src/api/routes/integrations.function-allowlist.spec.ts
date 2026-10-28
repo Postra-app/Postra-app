@@ -7,7 +7,7 @@ jest.mock('nostr-tools', () => ({ getPublicKey: jest.fn(), Relay: class {}, fina
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const { isCallableProviderFunction } = require('./integrations.controller');
 
-// E2E-02-08: POST /integrations/function ran any truthy property of the
+// POST /integrations/function ran any truthy property of the
 // provider named by the client.
 class FakeProvider {
   @Tool({ description: 'Channels', dataSchema: [] })
@@ -60,7 +60,7 @@ describe('the composer\'s calls on the real providers', () => {
   });
 });
 
-// E2E-08-28: the Facebook page picker returned every page with its page
+// The Facebook page picker returned every page with its page
 // access token straight to the browser of whoever opened it, a plain member
 // included. The server fetches the page token itself when a page is chosen.
 describe('provider pickers never hand tokens to the browser', () => {

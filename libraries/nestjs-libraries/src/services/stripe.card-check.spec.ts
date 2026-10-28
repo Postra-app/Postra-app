@@ -25,7 +25,7 @@ import { StripeService } from '@gitroom/nestjs-libraries/services/stripe.service
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const { StripeError } = (require('stripe') as any).errors;
 
-// E2E-07-14 (APP-8): the £1 check before a first subscription detached the
+// The £1 check before a first subscription detached the
 // card and cancelled the subscription on any failure but 3-D Secure — a
 // Stripe outage or rate limit included — and answered 200, so Stripe never
 // retried.

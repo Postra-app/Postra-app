@@ -2,7 +2,7 @@ import { ioRedis } from '@gitroom/nestjs-libraries/redis/redis.service';
 
 // The agent budget is read before a run and spent as it goes, so every run
 // started at the same moment saw the same remaining budget: several chats in
-// parallel each ran up to the full allowance (E2E-07-28, BILL-9). Capping the
+// parallel each ran up to the full allowance. Capping the
 // runs in flight per organisation bounds that overshoot; the in-run check
 // every few steps stops each of them.
 export const AGENT_RUNS_PER_ORG = 2;

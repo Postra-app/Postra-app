@@ -87,7 +87,7 @@ const enabledProviders = new Set([
   // Standard: Development Tier caps the whole app at 500 API calls a day, and
   // the upgrade has sat at stage 1 of 3 since 2026-07-28. Pages connected
   // before this keep working and can be reconnected; new connections are
-  // refused (isOffered, E2E-08-50).
+  // refused (isOffered).
   'tiktok',
   'youtube',
   'bluesky',
@@ -99,7 +99,7 @@ const enabledProviders = new Set([
   'x',
   'discord',
   // Pinterest: Standard access approved on 2026-10-27 (app 1622258), so any
-  // Pinterest account can authorise and pins are public (K.: from Starter).
+  // Pinterest account can authorise and pins are public. Offered from Starter.
   'pinterest',
 ]);
 
@@ -233,7 +233,7 @@ export class IntegrationManager {
 
   // Whether a new channel of this platform may be connected. "Coming soon"
   // platforms were refused only by the UI: the API handed out their auth URL
-  // and the callback connected them (E2E-08-50). Reconnecting a channel the
+  // and the callback connected them. Reconnecting a channel the
   // organisation already has stays allowed.
   isOffered(identifier: string) {
     return enabledProviders.has(identifier);

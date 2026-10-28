@@ -69,7 +69,7 @@ export class DiscordProvider extends SocialAbstract implements SocialProvider {
     const state = makeSecureId(6);
     // View Channel, Send Messages, Attach Files, Read Message History and the
     // thread permissions: posting with media and post statistics work on any
-    // server, not only where everyone has them (Codex).
+    // server, not only where everyone has them.
     return {
       url: `https://discord.com/oauth2/authorize?client_id=${
         process.env.DISCORD_CLIENT_ID
@@ -153,8 +153,8 @@ export class DiscordProvider extends SocialAbstract implements SocialProvider {
     const channel = firstPost.settings.channel;
 
     // The bot is shared by every organisation and a channel id is no secret:
-    // a post naming a channel of another organisation's server went there
-    // (E2E-04-21). Only channels of the server this channel was connected to.
+    // a post naming a channel of another organisation's server went there.
+    // Only channels of the server this channel was connected to.
     const target = await (
       await this.fetch(`https://discord.com/api/channels/${channel}`, {
         headers: {

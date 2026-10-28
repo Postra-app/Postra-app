@@ -9,7 +9,7 @@ export class NotificationsRepository {
     private _userOrg: PrismaRepository<'userOrganization'>
   ) {}
 
-  // When this user last opened the bell in this organisation (E2E-02-38).
+  // When this user last opened the bell in this organisation.
   async getLastReadNotification(userId: string, organizationId: string) {
     const membership = await this._userOrg.model.userOrganization.findUnique({
       where: { userId_organizationId: { userId, organizationId } },

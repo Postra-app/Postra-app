@@ -2,7 +2,7 @@ import 'reflect-metadata';
 import { google } from 'googleapis';
 import { YoutubeProvider } from '@gitroom/nestjs-libraries/integrations/social/youtube.provider';
 
-// E2E-04-36: the channel picked after sign-in was looked up by its public id,
+// The channel picked after sign-in was looked up by its public id,
 // so a client could save channel C on a token of channel D — and the upload,
 // which takes no channel id, went to D under C's name.
 

@@ -18,7 +18,7 @@ import {
  * The old version painted a solid fill with white text and dimmed the
  * unchosen options with `opacity-70`, which drags the label down with the
  * background: "Warning (Amber)" measured 3.19:1 on production against the
- * 4.5:1 floor (E2E-09-55, missed by the first pass). White on amber never had
+ * 4.5:1 floor (missed by the first pass). White on amber never had
  * the headroom to survive being dimmed, so the chosen option now carries dark
  * text on the solid fill and the unchosen ones use the tinted-fill pattern the
  * rest of the panel already uses — no opacity on text either way.
@@ -212,7 +212,7 @@ export const AdminAnnouncementsComponent = () => {
         </span>
         {/* A radio group, not three divs with onClick: as divs they took no
             focus, answered no keyboard, and said nothing about which one was
-            chosen (E2E-09-13). */}
+            chosen. */}
         <div
           role="radiogroup"
           aria-labelledby="admin-announcement-color"

@@ -1,8 +1,8 @@
 import { expect, test } from '@playwright/test';
 
 // Studio → Video → Stock B-roll: the late answer of an older search replaced
-// the newer one's clips (the same race the photo panel had, prod 10-08 (e)).
-// The newest search wins.
+// the newer one's clips (the same race the photo panel had). The newest search
+// wins.
 test('a B-roll search typed while another is running shows its own clips', async ({ page }) => {
   test.setTimeout(60_000);
   const clip = (user: string, id: number) => ({

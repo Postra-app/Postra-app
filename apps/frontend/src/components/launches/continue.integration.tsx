@@ -68,7 +68,7 @@ export const ContinueIntegration: FC<{
     (path: string, returnURL: string | undefined, outcome: Outcome) => {
       // The return address is stored from the flow's start and can be
       // anything a member asked for: `javascript:` ran script in whoever
-      // finished the connection (E2E-08-31).
+      // finished the connection.
       if (returnURL && isNavigableUrl(returnURL, window.location.origin)) {
         // If returnURL exists, always redirect to it with the path params
         const params = path.includes('?') ? path.split('?')[1] : '';
@@ -129,7 +129,7 @@ export const ContinueIntegration: FC<{
   }, []);
 
   /**
-   * ⛔ E2E-10-70 — a phone could not finish connecting a channel at all.
+   * ⛔ A phone could not finish connecting a channel at all.
    *
    * The provider always redirects the *browser* here, and this page then POSTs
    * the callback. That POST needs a Postra session, and the browser on a phone
@@ -194,8 +194,8 @@ export const ContinueIntegration: FC<{
       if (searchParams?.error || searchParams?.error_description) {
         // ⚠️ A refusal has to reach the app too. Before this, the app was told
         // nothing: the browser showed "Could not add provider" and nothing came
-        // back over `postra://`, so the app sat on an open tab forever
-        // (E2E-10-71 fixed the app's side of the same loop).
+        // back over `postra://`, so the app sat on an open tab forever (the
+        // app fixed its own side of the same loop).
         if (
           await handOffToApp({
             state: searchParams.state || modifiedParams?.state,
@@ -225,7 +225,7 @@ export const ContinueIntegration: FC<{
       }
 
       // The IANA zone, so the new channel's posting times keep their local
-      // time when the clocks change (E2E-05-85).
+      // time when the clocks change.
       const timezone = getTimezone();
 
       // Try public endpoint first (handles both public and fallback scenarios)

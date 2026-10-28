@@ -36,8 +36,8 @@ test('Billing lists the invoices with our plan names and links, without the £0 
   expect(problems).toEqual([]);
 });
 
-// Codex on -08-e: after a subscription ends its row is deleted, and the
-// history was only shown with a subscription — the old invoices disappeared.
+// After a subscription ends its row is deleted, and the history was only shown
+// with a subscription — the old invoices disappeared.
 test('an organisation without a subscription still sees its past invoices', async ({ page }) => {
   await page.route('**/api/user/subscription', (route) => route.fulfill({ json: { subscription: null } }));
   await page.route('**/api/billing/invoices', (route) =>

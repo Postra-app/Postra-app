@@ -1,10 +1,10 @@
 import { expect, test } from '@playwright/test';
 import { database, throwawayOrg } from '../helpers';
 
-// Unsplash as the second free photo library next to Pixabay (K. 2026-10-08,
-// Pexels stopped issuing keys). Its API terms: credit the photographer and
-// Unsplash, and report every download to /photos/:id/download. The fake
-// answers in fake-mastodon.mjs.
+// Unsplash as the second free photo library next to Pixabay (Pexels stopped
+// issuing keys). Its API terms: credit the photographer and Unsplash, and
+// report every download to /photos/:id/download. The fake answers in
+// fake-mastodon.mjs.
 
 const prisma = database();
 test.afterAll(() => prisma.$disconnect());

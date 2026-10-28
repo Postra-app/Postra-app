@@ -1,6 +1,6 @@
 import { PostsRepository } from '@gitroom/nestjs-libraries/database/prisma/posts/posts.repository';
 
-// E2E-11-71: GET /public/posts/:id/comments needs no login. The preview of a
+// GET /public/posts/:id/comments needs no login. The preview of a
 // deleted post is empty, but its comments were still served to anyone with
 // the link. Only a post that still exists has comments to show.
 describe('public comments', () => {

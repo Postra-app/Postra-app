@@ -1,6 +1,6 @@
 // A URL taken from a query parameter or a stored "return to" value must not
 // become `javascript:` in window.location or the router: that ran script in
-// the app's origin (E2E-08-30, E2E-08-31).
+// the app's origin.
 
 const parse = (value: string, base: string) => {
   try {

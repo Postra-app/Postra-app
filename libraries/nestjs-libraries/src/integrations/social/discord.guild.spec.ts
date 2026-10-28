@@ -1,6 +1,6 @@
 import { DiscordProvider } from './discord.provider';
 
-// E2E-04-21 (INT-1): the bot is shared by every organisation and a channel id
+// The bot is shared by every organisation and a channel id
 // is no secret, so a post naming a channel of another organisation's server
 // went there. Only channels of the connected server are written to.
 describe('Discord posts stay in the connected server', () => {

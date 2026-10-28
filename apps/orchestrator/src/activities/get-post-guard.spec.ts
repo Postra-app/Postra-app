@@ -10,7 +10,7 @@
  * TypeError and Temporal retried it, instead of the workflow taking the path
  * written for exactly this case. The old condition was also dead by
  * construction: the query's where clause already carries `deletedAt: null`, so
- * a non-null row here always has a null deletedAt (E2E-05-03).
+ * a non-null row here always has a null deletedAt.
  *
  * Testing the guard rather than the activity class: importing PostActivity
  * drags the whole integration manager and the Temporal client in with it, and

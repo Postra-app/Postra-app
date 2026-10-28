@@ -57,8 +57,8 @@ test('the home page loads without errors or broken resources', async ({ page }) 
 });
 
 test('pricing does not promise LinkedIn Company Pages', async ({ page }) => {
-  // Company Pages need LinkedIn's Standard Tier, which we do not have yet
-  // (Plan/app_review.md). A landing redeploy from an old copy must not bring
+  // Company Pages need LinkedIn's Standard Tier, which we do not have yet.
+  // A landing redeploy from an old copy must not bring
   // the promise back.
   await page.goto('/');
   await expect(page.locator('body')).not.toContainText(/company pages?/i);

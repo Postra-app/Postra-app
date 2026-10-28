@@ -21,7 +21,7 @@ export default function OAuthAuthorizePage() {
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   // The approval goes to the organisation selected in Postra; say which,
-  // and let a person in several pick (E2E-08-61).
+  // and let a person in several pick.
   const [orgs, setOrgs] = useState<{ id: string; name: string }[]>([]);
   const [orgId, setOrgId] = useState('');
 

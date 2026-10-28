@@ -2,9 +2,9 @@ import { readdirSync, readFileSync } from 'fs';
 import { join } from 'path';
 
 // The nightly canary and the channel matrix publish real, public posts that
-// read as Postra ads, so they follow the same rule as the app: no long
-// dashes (K. 10-09). The canary posted "posts it on time — postra.co.uk" to
-// Mastodon on 2026-10-09, after the rule was in place.
+// read as Postra ads, so they follow the same rule as the app: no long dashes.
+// The canary posted "posts it on time — postra.co.uk" to Mastodon on
+// 2026-10-09, after the rule was in place.
 const dir = join(__dirname, '..', '..', '..', '..', 'e2e', 'playwright');
 
 const published: string[] = [];

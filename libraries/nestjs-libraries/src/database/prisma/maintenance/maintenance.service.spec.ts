@@ -132,7 +132,7 @@ describe('purgeOldRecords', () => {
   });
 });
 
-// E2E-11-63 (A3): the Stripe webhook's record of handled events grew without
+// The Stripe webhook's record of handled events grew without
 // a limit. A row only has to outlive the redeliveries: Stripe retries for 3
 // days and the CLI resends up to 30 days after the event.
 describe('handled Stripe events', () => {
@@ -187,7 +187,7 @@ describe('sweepOrphanMedia', () => {
   });
 
   it('leaves a file a scheduled post still holds', async () => {
-    // This is the whole reason E2E-06-01 could not be closed by calling
+    // This is the whole reason stored files could not be removed by calling
     // removeFile at the point of deletion: media deletion is soft because a
     // post can still be publishing the file.
     const prisma = buildPrisma({
@@ -215,7 +215,7 @@ describe('sweepOrphanMedia', () => {
     expect(removeFile).not.toHaveBeenCalled();
   });
 
-  it('leaves a file a post started using while the sweep ran (E2E-06-33)', async () => {
+  it('leaves a file a post started using while the sweep ran', async () => {
     const prisma = buildPrisma({
       media: [
         { id: 'm1', path: 'uploads/reused.jpg', thumbnail: null, deletedAt: longAgo },
@@ -364,14 +364,14 @@ describe('sweepOrphanMedia', () => {
 });
 
 // The privacy policy says technical logs are kept up to 90 days; audit and
-// billing usage records up to 13 months (decision 2026-10-04).
+// billing usage records up to 13 months.
 describe('retention matches the privacy policy', () => {
   it('keeps error logs 90 days', () => {
     expect(DEFAULT_RETENTION.errorsDays).toBe(90);
   });
 
   // "Up to 13 months" is a promise, not an approximation: 400 days outlived
-  // every 13-month span by days (§62, 2026-10-27). The shortest 13 months in
+  // every 13-month span by days. The shortest 13 months in
   // the calendar decide, and housekeeping runs once a day, so a row can be
   // one day older than its window before it goes.
   it('never keeps audit and AI usage records past 13 months', () => {
@@ -388,11 +388,11 @@ describe('retention matches the privacy policy', () => {
   });
 });
 
-// E2E-11-86: the privacy policy keeps a phone's push token "until you sign
+// The privacy policy keeps a phone's push token "until you sign
 // out of the app or delete your Postra account". A reinstalled or abandoned
-// app never signs out, so its token stayed for good (production 27 X: 70
+// app never signs out, so its token stayed for good (production 2026-10-27: 70
 // tokens for 3 people, 47 not seen for over 30 days). The app refreshes its
-// token on every launch and a session lasts at most 30 days (E2E-11-80): a
+// token on every launch and a session lasts at most 30 days: a
 // token not refreshed for longer belongs to a session that has ended.
 describe('push tokens of ended sessions', () => {
   it('are deleted once not refreshed for 30 days', async () => {
@@ -415,9 +415,9 @@ describe('push tokens of ended sessions', () => {
   });
 });
 
-// E2E-11-89: the agent's chat memory lives in Mastra's own tables, keyed by
+// The agent's chat memory lives in Mastra's own tables, keyed by
 // the organisation id with no foreign key, so deleting an account left the
-// conversations of its organisations behind (production 27 X: 3 threads, 18
+// conversations of its organisations behind (production 2026-10-27: 3 threads, 18
 // messages of organisations that no longer exist). The policy deletes content
 // within 30 days of account deletion.
 describe('agent chat memory of deleted organisations', () => {

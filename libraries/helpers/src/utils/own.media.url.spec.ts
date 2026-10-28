@@ -5,7 +5,7 @@ const env = {
   FRONTEND_URL: 'https://app.postra.pl',
 };
 
-describe('isOwnMediaUrl (E2E-02-22)', () => {
+describe('isOwnMediaUrl', () => {
   it('accepts our CDN and the app', () => {
     expect(isOwnMediaUrl('https://cdn-dev.postra.pl/uploads/2026/10/03/a.png', env)).toBe(true);
     expect(isOwnMediaUrl('https://app.postra.pl/uploads/a.mp4', env)).toBe(true);

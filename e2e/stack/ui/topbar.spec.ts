@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test';
 
-// App-wide pieces outside any one screen (e2e/08-settings-team-api.md §8.9).
+// App-wide pieces outside any one screen.
 
 test('a dropped connection is announced, and so is its return', async ({ page, context }) => {
   await page.goto('/launches');

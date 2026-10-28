@@ -1,7 +1,7 @@
 import { expect, test } from '@playwright/test';
 import { database, throwawayOrg } from '../helpers';
 
-// E2E-08-34: opening an invitation link added the signed-in person at once,
+// Opening an invitation link added the signed-in person at once,
 // so any site could send them into its organisation, as whichever account the
 // browser held. The link now asks first.
 //
@@ -76,7 +76,7 @@ test.describe('from an organisation without a plan', () => {
   });
 });
 
-test('an invitation opened before logging in asks to join after the login (E2E-05-95)', async ({ page }) => {
+test('an invitation opened before logging in asks to join after the login', async ({ page }) => {
   // Without a session the link only leaves a cookie; a password login read
   // nothing from it, so the person landed in their own calendar and the
   // invitation was lost.

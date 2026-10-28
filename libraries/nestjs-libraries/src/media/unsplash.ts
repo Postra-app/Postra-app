@@ -1,6 +1,6 @@
 /**
- * Unsplash — free photos next to Pixabay (K. 2026-10-08; Pexels stopped
- * issuing keys). API terms (unsplash.com/documentation): authenticate with
+ * Unsplash — free photos next to Pixabay (Pexels stopped issuing
+ * keys). API terms (unsplash.com/documentation): authenticate with
  * "Client-ID <access key>", credit the photographer and Unsplash with a
  * referral back, and report each download to the photo's download_location.
  * Previews in the Studio load from Unsplash's own URLs; the picked photo is

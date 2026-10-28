@@ -4,7 +4,7 @@ jest.mock('nostr-tools', () => ({ getPublicKey: jest.fn(), Relay: class {}, fina
 import { PermissionsService } from './permissions.service';
 import { AuthorizationActions, Sections } from '@gitroom/nestjs-libraries/services/auth/permission.exception.class';
 
-// K. 2026-10-16: a 7-day trial is held to 30 posts a month, 1 person,
+// A 7-day trial is held to 30 posts a month, 1 person,
 // 1 webhook and 1 Auto Post feed, whatever plan it runs on. Before, a
 // Business trial had 10 000 webhooks, 10 feeds, 5 seats and unlimited posts.
 describe('a trial on Business', () => {

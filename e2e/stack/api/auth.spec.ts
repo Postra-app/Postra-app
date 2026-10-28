@@ -67,7 +67,7 @@ test('a Google sign-in state works once', async () => {
 // Domain=.postra.co.uk sent every cookie, the session token included, to
 // every subdomain - the status page on GitHub Pages among them. The sign-in
 // state cookie is written with the session cookie's scope.
-test('E2E-11-78: cookies are host-only', async () => {
+test('cookies are host-only', async () => {
   const api = await anonymous();
   const res = await api.get('/auth/oauth/GOOGLE');
   expect(res.status()).toBe(200);
@@ -81,7 +81,7 @@ test('E2E-11-78: cookies are host-only', async () => {
   await api.dispose();
 });
 
-test('E2E-02-27: a link from a mail (password reset, activation) is not a session', async () => {
+test('a link from a mail (password reset, activation) is not a session', async () => {
   // The reset link carried the same id and tokenVersion a session does, under
   // the default 30-day JWT expiry: a leaked, unused link signed its holder in
   // for a month. The activation link was the session token itself.
@@ -124,7 +124,7 @@ test('E2E-02-27: a link from a mail (password reset, activation) is not a sessio
   }
 });
 
-test('E2E-02-29: a wallet sign-in with a bad signature gets no account', async () => {
+test('a wallet sign-in with a bad signature gets no account', async () => {
   // An unverifiable wallet token came back as { id: '', email: '' }, which
   // passed as a user: the first one created an account with an empty
   // identity and every later bad signature signed into it.
@@ -149,7 +149,7 @@ test('E2E-02-29: a wallet sign-in with a bad signature gets no account', async (
   }
 });
 
-test("E2E-08-33: someone else's activation link does not replace the session in this browser", async () => {
+test("someone else's activation link does not replace the session in this browser", async () => {
   // The activation page posts on open and the answer set the auth cookie, so
   // opening another account's link signed the browser into that account.
   const prisma = database();
@@ -180,12 +180,12 @@ test("E2E-08-33: someone else's activation link does not replace the session in 
   }
 });
 
-// E2E-02-28: the state was good in any browser. Someone could start a sign-in
+// The state was good in any browser. Someone could start a sign-in
 // with their own Google account, stop at the callback and send the link on:
 // the victim's browser finished it and landed in the sender's account (or
 // registered one the sender can sign in to). The state now only works in the
 // browser that asked for it.
-test('E2E-02-28: a Google sign-in state does not work in another browser', async () => {
+test('a Google sign-in state does not work in another browser', async () => {
   const attacker = await anonymous();
   const link = await (await attacker.get('/auth/oauth/GOOGLE')).text();
   const state = new URL(link.replace(/^"|"$/g, '')).searchParams.get('state');
@@ -198,8 +198,8 @@ test('E2E-02-28: a Google sign-in state does not work in another browser', async
   await Promise.all([attacker.dispose(), victim.dispose()]);
 });
 
-// AUTH-3: two requests with the same reset link both passed the single-use
-// check before either wrote, and the later password won.
+// Two requests with the same reset link both passed the single-use check before
+// either wrote, and the later password won.
 test('a password reset link works once, even for two requests at the same moment', async () => {
   const prisma = database();
   const org = await throwawayOrg(prisma, { tier: 'PRO', totalChannels: 3, channels: 0 });
@@ -226,7 +226,7 @@ test('a password reset link works once, even for two requests at the same moment
   }
 });
 
-// E2E-11-72: the session token (the `auth` cookie, or the app's token) has
+// The session token (the `auth` cookie, or the app's token) has
 // the current tokenVersion and no `expires`, and the reset took it: a stolen
 // session set a new password without the old one.
 test('a session token does not reset the password', async () => {

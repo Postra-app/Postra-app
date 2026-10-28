@@ -4,10 +4,10 @@ import Stripe from 'stripe';
 import { Connection, WorkflowClient } from '@temporalio/client';
 import { database, throwawayOrg } from '../helpers';
 
-// P2b steps that need a signed-in customer (e2e/07-billing.md §7.P2b #4, #5,
-// #6, #10, #11): the app's own billing endpoints against Stripe TEST mode, the
-// webhook delivered by `stripe listen`, state read back from Stripe, the
-// database and Temporal. Run with `pnpm e2e:stack:billing` (see README).
+// Billing steps that need a signed-in customer: the app's own billing endpoints
+// against Stripe TEST mode, the webhook delivered by `stripe listen`, state
+// read back from Stripe, the database and Temporal. Run with
+// `pnpm e2e:stack:billing` (see README).
 
 const sk = process.env.STRIPE_SECRET_KEY || '';
 test.skip(!sk.startsWith('sk_test_'), 'needs Stripe test-mode keys');
@@ -84,9 +84,9 @@ test('#4 upgrade Starter → Pro: the amount /billing/prorate quotes is the invo
   expect(subs.data, 'still one subscription').toHaveLength(1);
 });
 
-// Codex on the 10-09 branch: the quote's renewal date and "today" must be
-// what the change does. Monthly to yearly starts a new cycle today; monthly
-// Pro to yearly Starter is a lower plan and waits for the renewal.
+// The quote's renewal date and "today" must be what the change does. Monthly to
+// yearly starts a new cycle today; monthly Pro to yearly Starter is a lower
+// plan and waits for the renewal.
 test('the quote says when a change renews and whether it waits', async () => {
   const org = await payingOrg('PRO');
   const down = await (await org.api.post('/billing/prorate', { data: { billing: 'STANDARD', period: 'YEARLY', utm: '' } })).json();
@@ -127,10 +127,10 @@ test('#5 #11 downgrade Business → Starter: what switches off, and a member kee
   }
   await prisma.userOrganization.create({ data: { userId: members[1], organizationId: other.orgId, role: 'USER' } });
 
-  // E2E-07-44 (Kris Company, 2026-10-09): the downgrade took effect at once
-  // and the unused Business went to the Stripe balance as a credit, lost on
-  // cancelling. The subscription terms say a downgrade starts with the next
-  // billing period: Business stays until then, nothing is credited.
+  // The downgrade took effect at once and the unused Business went to the
+  // Stripe balance as a credit, lost on cancelling. The subscription terms say
+  // a downgrade starts with the next billing period: Business stays until then,
+  // nothing is credited.
   const changed = await subscribe(org.api, 'STANDARD');
   expect(changed.status(), await changed.text()).toBe(201);
   const periodEnd = (await stripe.subscriptions.retrieve(org.sub)).items.data[0].current_period_end;
@@ -254,10 +254,9 @@ const emailsSince = async (since: Date) => {
   return out;
 };
 
-// P2 (Plan/lunchdayfinal.md, queue 3): the admin refund path, which the live
-// card test does not exercise (K. keeps that payment). A Postra staff user
-// lists the organisation's charges and refunds the paid one; a charge that
-// belongs to another customer is refused even when its id is sent.
+// The admin refund path, which the live card test does not exercise. A Postra
+// staff user lists the organisation's charges and refunds the paid one; a
+// charge that belongs to another customer is refused even when its id is sent.
 test('a superadmin refunds a paid charge; another customer\'s charge is refused', async () => {
   const org = await payingOrg('STANDARD');
   const other = await payingOrg('STANDARD');

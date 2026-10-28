@@ -6,8 +6,8 @@ import { expect, test } from '@playwright/test';
 test('a trial refused a reused channel is told why and offered to pay now', async ({ page }) => {
   await page.goto('/launches?precondition=true');
   await expect(page.getByText('previously connected to another Postra account')).toBeVisible();
-  // The payment is confirmed, with its price, on the next screen
-  // (E2E-07-41); nothing here says the charge cannot be refunded.
+  // The payment is confirmed, with its price, on the next screen; nothing here
+  // says the charge cannot be refunded.
   await expect(page.getByText('confirm the payment on the next screen')).toBeVisible();
   await expect(page.getByText('not be eligible for a refund')).toHaveCount(0);
   await expect(page.getByRole('button', { name: 'End my trial' })).toBeVisible();

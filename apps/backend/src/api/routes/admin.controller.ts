@@ -300,7 +300,8 @@ export class AdminController {
    * to seat an org on Starter or Pro, which is an ordinary request. The control
    * that existed rendered only while impersonating, inside a panel that is
    * hidden while impersonating, so it could never be reached — and that was the
-   * only thing standing between a click and E2E-09-09. The endpoint
+   * only thing standing between a click and a plan changed on the wrong
+   * organization. The endpoint
    * behind it is safe now, and this one names the organization outright instead
    * of inferring it from whoever the session is wearing.
    */
@@ -1011,7 +1012,8 @@ export class AdminController {
    *
    * Every action below used to be reachable only from inside an impersonated
    * session, which meant the organization was whoever the session happened to
-   * be wearing — the pattern that made E2E-09-09 possible. comp-subscription
+   * be wearing — the pattern that let a plan change land on the wrong
+   * organization. comp-subscription
    * and revoke-subscription already take the id in the body; these do the
    * same.
    */
@@ -1083,7 +1085,7 @@ export class AdminController {
    * caller was the impersonation panel Postra replaced during a layout
    * rebuild, so the first thing a paying customer can ask for — "what have I
    * been charged, and can I have some of it back" — had no answer anywhere in
-   * the product (05-gaps §1b, §2). Nothing about the service needed changing;
+   * the product. Nothing about the service needed changing;
    * it always took an organization id.
    */
   @Get('/charges')
@@ -1232,9 +1234,9 @@ export class AdminController {
    * The right to erasure had exactly one route: the customer clicking Delete
    * in their own settings. When the request arrives by email — which is how it
    * arrives — the operator had to impersonate the account and press the button
-   * as them, which is both a worse audit record and a worse failure mode
-   * (05-gaps §1c). Same engine as the self-serve path, including the S3 sweep
-   * added in E2E-09-58, with Stripe cancelled first while the customer can
+   * as them, which is both a worse audit record and a worse failure mode.
+   * Same engine as the self-serve path, including the S3 sweep of the
+   * account's media, with Stripe cancelled first while the customer can
    * still be looked up.
    */
   @Post('/delete-user')
@@ -1395,7 +1397,7 @@ export class AdminController {
    * Every channel, with the state of its token — and none of its token.
    *
    * The one customer request out of six the panel still could not answer:
-   * "my channel keeps disconnecting" (05-gaps §1e). The panel showed no token
+   * "my channel keeps disconnecting". The panel showed no token
    * state at all — not `tokenExpiration`, not `refreshNeeded`, not `disabled`
    * — so the only way to see it was running the refresh command over SSM, and
    * that output conflated a short-lived token with a dead one.
@@ -1531,7 +1533,7 @@ export class AdminController {
           expiresInSeconds: expiresInSeconds(row.tokenExpiration, now.getTime()),
           // null means the column predates this channel, which is not the same
           // as a platform that granted nothing — the difference decides
-          // whether a reconnect would actually help (05-gaps §8.1).
+          // whether a reconnect would actually help.
           grantedScopes: row.grantedScopes ? grantedScopesOf(row) : null,
           commentScope: socialProvider?.commentScope ?? null,
           commentCapable: canPostComments(socialProvider, row),

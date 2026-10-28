@@ -16,7 +16,7 @@ jest.mock('@gitroom/nestjs-libraries/redis/auth-context.cache', () => ({
 
 import { SubscriptionService } from '@gitroom/nestjs-libraries/database/prisma/subscriptions/subscription.service';
 
-// E2E-09-09: addSubscription opened with setCustomerId(orgId, userId), writing
+// AddSubscription opened with setCustomerId(orgId, userId), writing
 // the *user's* id into organization.paymentId — the org's only handle on
 // Stripe. Every later webhook for that org then matched no organization, and
 // the original cus_… was gone with no copy. That method no longer exists; this
@@ -182,8 +182,8 @@ describe('tier change by org applies the same limits as the webhook path', () =>
     );
   });
 
-  // BILL-7: only FREE stopped Auto Post. E2E-07-33: a plan with fewer feeds
-  // keeps only its number running (Starter 2 since 2026-10-08).
+  // Only FREE used to stop Auto Post. A plan with fewer feeds now keeps
+  // only its number running (Starter 2).
   it.each([
     ['STANDARD', 2],
     ['TEAM', pricing.TEAM.autoPostLimit],

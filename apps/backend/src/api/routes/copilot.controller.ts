@@ -74,7 +74,7 @@ export class CopilotController {
       endpoint: '/copilot/chat',
       runtime: new CopilotRuntime(),
       // Ghost-text suggestions; recorded in AiUsage like every other AI call
-      // (decision 2026-10-02: keep the feature, meter it).
+      // (the feature stays, metered).
       serviceAdapter: meterCopilotAdapter(
         new OpenAIAdapter({
           model: 'gpt-4.1',
@@ -160,7 +160,7 @@ export class CopilotController {
       requestContext: requestContext as any,
     });
     // Without a state client CopilotKit's loadAgentState answered "no
-    // messages" and the browser emptied a chat opened again (K. 2026-10-08).
+    // messages" and the browser emptied a chat opened again.
     const memory = await mastra.getAgent('postra').getMemory();
     for (const agent of Object.values(agents)) {
       Object.assign(agent, {

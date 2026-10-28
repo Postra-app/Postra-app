@@ -1,6 +1,6 @@
 import { APP_TABS, FAQ_ITEMS } from './help.data';
 
-// Help told customers things the app does not do (docs P2 check, 2026-10-09):
+// Help told customers things the app does not do:
 // LinkedIn Pages is "Coming soon" for new connections (integration.manager.ts
 // enabledProviders), so it has no analytics page and no plugs to offer; and a
 // failed post's error shows on the red "!" of its calendar tile, not inside

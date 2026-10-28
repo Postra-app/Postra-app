@@ -30,7 +30,7 @@ describe('assetlinks.json', () => {
 
   it('claims the package the store build actually uses', () => {
     // ⛔ `com.postra.app` was taken by another company on both stores, so the
-    // identifier moved (E2E-10-46). A stale one here verifies nothing.
+    // identifier moved. A stale one here verifies nothing.
     expect(ANDROID_PACKAGE).toBe('uk.co.postra.app');
     expect(assetLinks()[0].target.package_name).toBe('uk.co.postra.app');
   });
@@ -103,7 +103,7 @@ describe('apple-app-site-association', () => {
    * The team id was read off the Apple Developer account's Membership details
    * page on 2026-09-20 and hardcoded — it is published verbatim in this very
    * file, so it is not a secret. The bundle id half has moved once already
-   * (`com.postra.app` turned out to be taken, E2E-10-46), which is the part
+   * (`com.postra.app` turned out to be taken), which is the part
    * worth pinning: a stale one verifies nothing and says nothing.
    */
   it('serves the real team id and bundle id with no environment set', () => {

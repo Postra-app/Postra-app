@@ -5,7 +5,7 @@ jest.mock('undici', () => ({ ...jest.requireActual('undici'), fetch: (...a: unkn
 
 import { AutopostService } from './autopost.service';
 
-// AI-10: the feed body was read whole with res.text(), whatever its size.
+// The feed body was read whole with res.text(), whatever its size.
 it('a feed larger than the ceiling is refused before it is read into memory', async () => {
   const big = 'x'.repeat(11 * 1024 * 1024);
   fetchMock.mockResolvedValue(new Response(big, { headers: { 'content-length': String(big.length) } }));

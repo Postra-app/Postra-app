@@ -19,7 +19,7 @@ import { platformOf } from '@gitroom/nestjs-libraries/integrations/same.account'
 // for. If one of these fails, the change must be deliberate: update the test
 // together with Stripe prices and the landing/pricing copy.
 describe('pricing matrix', () => {
-  it('keeps GBP prices at £19/£29/£79 (yearly = 10x monthly; Starter from £12, K. 2026-10-08)', () => {
+  it('keeps GBP prices at £19/£29/£79 (yearly = 10x monthly; Starter from £12)', () => {
     expect(pricing.FREE.month_price).toBe(0);
     expect(pricing.STANDARD.month_price).toBe(19);
     expect(pricing.STANDARD.year_price).toBe(190);
@@ -142,7 +142,7 @@ describe('pricing matrix', () => {
     expect(pricing.ULTIMATE.team_members).toBe(5);
   });
 
-  it('gives every paid plan the assistant without a visible limit: fair use of 2200 messages a month (K. 2026-10-08)', () => {
+  it('gives every paid plan the assistant without a visible limit: fair use of 2200 messages a month', () => {
     expect(pricing.FREE.agent_messages).toBe(0);
     for (const tier of ['STANDARD', 'PRO', 'ULTIMATE'] as const) {
       expect(pricing[tier].agent_messages).toBe(AGENT_FAIR_USE_MESSAGES);
@@ -150,7 +150,7 @@ describe('pricing matrix', () => {
     expect(AGENT_FAIR_USE_MESSAGES).toBe(2200);
   });
 
-  it('gives Starter AI images; AI video clips per month 0 / 15 / 30 / 60 (K. 2026-10-08)', () => {
+  it('gives Starter AI images; AI video clips per month 0 / 15 / 30 / 60', () => {
     expect(pricing.STANDARD.image_generator).toBe(true);
     expect(pricing.FREE.generate_videos).toBe(0);
     expect(pricing.STANDARD.generate_videos).toBe(15);
@@ -159,7 +159,7 @@ describe('pricing matrix', () => {
   });
 });
 
-// E2E-07-39: the limits the landing and Help promise, pinned, so a change in
+// The limits the landing and Help promise, pinned, so a change in
 // pricing.ts has to be a deliberate change here too (and of the landing).
 describe('pricing limits the landing promises', () => {
   it('keeps posts a month: Starter 400, Pro and Business unlimited', () => {
@@ -190,7 +190,7 @@ describe('pricing limits the landing promises', () => {
   });
 
   // The editor and Studio offer AI images by image_generator; the backend
-  // gates the same routes by `ai` (E2E-08-48): they must not disagree.
+  // gates the same routes by `ai`: they must not disagree.
   it('offers AI images in the app exactly where the backend allows AI', () => {
     for (const tier of Object.keys(pricing) as (keyof typeof pricing)[]) {
       expect(`${tier}: ${pricing[tier].image_generator}`).toBe(`${tier}: ${pricing[tier].ai}`);
@@ -221,7 +221,7 @@ describe('pricing limits the landing promises', () => {
   });
 });
 
-// E2E-07-34 (Codex): both ends of a billing month come from the subscription
+// Both ends of a billing month come from the subscription
 // date, so a month-end start leaves no gap and no day counts twice.
 describe('postsCycleWindow', () => {
   it.each([
@@ -306,7 +306,7 @@ describe('trialAiAllowance', () => {
     ).toBe(pricing.STANDARD.agent_messages);
   });
 
-  it('gives a trial one AI video clip, whatever the tier (K. 2026-10-08)', () => {
+  it('gives a trial one AI video clip, whatever the tier', () => {
     expect(TRIAL_VIDEO_CLIPS).toBe(1);
     for (const tier of ['STANDARD', 'PRO', 'ULTIMATE'] as const) {
       expect(trialAiAllowance(pricing[tier].generate_videos, true, 'generate_videos')).toBe(1);
@@ -331,7 +331,7 @@ describe('postsCycleStart', () => {
   });
 });
 
-// Codex: an invalid date never left the window's loop.
+// An invalid date never left the window's loop.
 it('postsCycleWindow takes an invalid date as now, and returns', () => {
   const { start, end } = postsCycleWindow('2026-01-15T00:00:00Z', 'invalid');
   expect(+start).toBeLessThanOrEqual(Date.now());
@@ -346,10 +346,10 @@ it('postsCycleWindow takes a date out of range as now, and returns', () => {
   }
 });
 
-// K. 2026-10-16: a 7-day trial on any plan posts at most 30 a month, is one
+// A 7-day trial on any plan posts at most 30 a month, is one
 // person, one webhook and one Auto Post feed, whatever the plan pays for.
 describe('planLimits', () => {
-  it('keeps the trial at 30 posts, 1 person, 1 webhook and 1 feed (K. 2026-10-16)', () => {
+  it('keeps the trial at 30 posts, 1 person, 1 webhook and 1 feed', () => {
     expect(TRIAL_LIMITS).toEqual({
       posts_per_month: 30,
       team_members: 1,

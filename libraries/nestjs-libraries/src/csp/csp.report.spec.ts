@@ -64,7 +64,7 @@ describe('CSP reports', () => {
     expect(lines[0]).toBe('[csp] img-src blocked=https://a.example/x.png page=/');
   });
 
-  it('ignores a line number that is not a number (Codex: 500)', () => {
+  it('ignores a line number that is not a number instead of answering 500', () => {
     expect(() =>
       cspViolations({
         'csp-report': {

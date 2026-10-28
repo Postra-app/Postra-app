@@ -11,11 +11,11 @@ import { AdminController } from '@gitroom/backend/api/routes/admin.controller';
 import { HttpException } from '@nestjs/common';
 
 /**
- * The sixth customer request: "my channel keeps disconnecting" (05-gaps §1e).
+ * The sixth customer request: "my channel keeps disconnecting".
  *
  * Two things here cannot be clicked into existence on production. One is that
  * the response carries no credential — the table this feature reads is the
- * same table whose tokens leaked into `Errors` (E2E-09-01), so the absence is
+ * same table whose tokens leaked into `Errors`, so the absence is
  * asserted on the serialised body rather than trusted to a select list
  * somebody may extend later. The other is that the header counts the whole
  * filtered set: production has twelve channels and one page, so a summary

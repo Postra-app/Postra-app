@@ -84,7 +84,7 @@ const openDraft = async (api: APIRequestContext, channel: string) => {
   return (await created.json())[0].postId as string;
 };
 
-test('E2E-05-39: saves opened from the same version at the same moment - one goes through, the rest are a 409', async () => {
+test('saves opened from the same version at the same moment - one goes through, the rest are a 409', async () => {
   const org = await throwawayOrg(prisma, { tier: 'PRO', totalChannels: 5, channels: 1 });
   try {
     const channel = org.channelIds[0];
@@ -108,7 +108,7 @@ test('E2E-05-39: saves opened from the same version at the same moment - one goe
   }
 });
 
-test('E2E-05-40: opening a post whose media is stored by id alone does not turn the first save into a 409', async () => {
+test('opening a post whose media is stored by id alone does not turn the first save into a 409', async () => {
   const org = await throwawayOrg(prisma, { tier: 'PRO', totalChannels: 5, channels: 1 });
   try {
     const channel = org.channelIds[0];
@@ -135,7 +135,7 @@ test('E2E-05-40: opening a post whose media is stored by id alone does not turn 
   }
 });
 
-test('E2E-05-41: a save of two channels refused on one of them leaves the other one as it was', async () => {
+test('a save of two channels refused on one of them leaves the other one as it was', async () => {
   const org = await throwawayOrg(prisma, { tier: 'PRO', totalChannels: 5, channels: 2 });
   try {
     const [first, second] = org.channelIds;
@@ -183,7 +183,7 @@ test('E2E-05-41: a save of two channels refused on one of them leaves the other 
   }
 });
 
-test('E2E-05-42: two saves of the same two posts listed in opposite order both go through', async () => {
+test('two saves of the same two posts listed in opposite order both go through', async () => {
   const org = await throwawayOrg(prisma, { tier: 'PRO', totalChannels: 5, channels: 2 });
   try {
     const [first, second] = org.channelIds;

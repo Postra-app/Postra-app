@@ -9,7 +9,7 @@ import { IntegrationService } from '@gitroom/nestjs-libraries/database/prisma/in
 import { RefreshIntegrationService } from './refresh.integration.service';
 
 // From upstream 49aa92ac (its main fix, the reconnect branch storing
-// body.refresh, we already had as E2E-04-34): a reconnect whose provider
+// body.refresh, we already had): a reconnect whose provider
 // sends no new refresh token (Google re-consent) wiped the stored one, and a
 // failed refresh told the customer twice.
 describe('reconnecting a channel keeps its refresh token', () => {

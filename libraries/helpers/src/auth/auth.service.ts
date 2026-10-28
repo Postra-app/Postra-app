@@ -53,8 +53,7 @@ export function encrypt_legacy_using_IV(utf8Plaintext: string) {
   return out.toString('hex');
 }
 // Every token Postra issues is HS256. Verification used to take whatever HMAC
-// the token's header named; it now names the one it accepts (RFC 8725 §3.1,
-// E2E-11-79).
+// the token's header named; it now names the one it accepts (RFC 8725 §3.1).
 const JWT_ALGORITHM = 'HS256' as const;
 
 export class AuthService {
@@ -62,7 +61,7 @@ export class AuthService {
     return hashSync(password, 10);
   }
   // Asynchronous: bcrypt takes tens of milliseconds, and compareSync held the
-  // event loop for every request that long on each sign-in (E2E-11-73).
+  // event loop for every request that long on each sign-in.
   static comparePassword(password: string, hash: string) {
     return compare(password, hash);
   }

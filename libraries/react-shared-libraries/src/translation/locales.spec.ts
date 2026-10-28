@@ -4,7 +4,7 @@ import { languages, defaultNS } from './i18n.config';
 
 // i18next only loads the languages listed in i18n.config.ts. A catalogue
 // without an entry there is dead weight nobody can reach (bn and ka_ge sat
-// here unreachable with 694 and 505 keys, E2E-01-14); an entry without a
+// here unreachable with 694 and 505 keys); an entry without a
 // catalogue fails to load at runtime. Keep the two lists the same.
 
 const dir = join(__dirname, 'locales');

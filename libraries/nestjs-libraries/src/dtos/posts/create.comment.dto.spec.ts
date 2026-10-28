@@ -1,4 +1,4 @@
-/** E2E-05-16 — an empty comment was stored and a missing one was a 500. */
+/** An empty comment was stored and a missing one was a 500. */
 import 'reflect-metadata';
 import { plainToInstance } from 'class-transformer';
 import { validate } from 'class-validator';

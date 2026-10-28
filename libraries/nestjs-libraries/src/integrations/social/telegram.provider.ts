@@ -119,13 +119,13 @@ export class TelegramProvider extends SocialAbstract implements SocialProvider {
     }
 
     // The chat id or @username alone connected any chat the shared bot was
-    // in (E2E-04-25). The proof is "/connect <word>" posted in the chat,
+    // in. The proof is "/connect <word>" posted in the chat,
     // which getBotId sees; it is good for one connection, briefly.
-    // The proof belongs to the organisation whose wizard saw the message
-    // (E2E-11-69): another organisation naming the chat in that window could
+    // The proof belongs to the organisation whose wizard saw the message:
+    // another organisation naming the chat in that window could
     // otherwise take it.
     // Compared before it is spent, so another organisation naming the chat
-    // cannot use up the rightful one's proof (Codex 26 X); GETDEL keeps it
+    // cannot use up the rightful one's proof; GETDEL keeps it
     // good for one connection.
     const proofKey = `telegram-proven:${chat.id}`;
     const proven = await ioRedis.get(proofKey);
@@ -161,7 +161,7 @@ export class TelegramProvider extends SocialAbstract implements SocialProvider {
   // One bot serves every organisation, and getUpdates with an offset
   // confirms every earlier update for all of them. Each wizard sent its own
   // offset, so one organisation polling ate another's "/connect" and that
-  // wizard waited for ever (E2E-11-69). The server now reads the updates once,
+  // wizard waited for ever. The server now reads the updates once,
   // under a lock, and keeps the recent "/connect" posts for every wizard to
   // look through; nothing else from the chats is kept.
   private async recentConnectPosts(): Promise<

@@ -1,5 +1,5 @@
 // Boot stages with time and RSS, for the start that hangs before Nest's first
-// log line (e2e/backend/01-boot-hang.md, B0): the last [boot] line before a
+// log line: the last [boot] line before a
 // hang names the step. writeSync because a hung event loop never flushes an
 // async write to the pm2 pipe.
 import { writeSync } from 'fs';

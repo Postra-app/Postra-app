@@ -126,7 +126,7 @@ describe('backfillMediaType', () => {
   });
 });
 
-// E2E-11-68: an org-scoped update of another organisation's (or an unknown)
+// An org-scoped update of another organisation's (or an unknown)
 // media id threw Prisma P2025, which reached the client as a 500 and a Sentry
 // event. Nothing was written, but it is a 404, like every other route that
 // looks up a resource of another organisation.

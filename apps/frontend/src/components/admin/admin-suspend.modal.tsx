@@ -33,7 +33,7 @@ export const AdminSuspendModal: FC<{
       toaster.show(t('admin_suspend_failed', 'Could not suspend the account'), 'warning');
       return;
     } finally {
-      // A thrown 5xx left the button disabled for good (FE-S-10).
+      // A thrown 5xx left the button disabled for good.
       setBusy(false);
     }
     if (!res.ok) {

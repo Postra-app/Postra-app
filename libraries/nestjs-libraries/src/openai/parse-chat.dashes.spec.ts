@@ -1,8 +1,8 @@
 import { parseChat } from './parse-chat';
 
 // Every structured AI answer (composer ribbon, post generator, carousels,
-// branded drafts, Studio) passes here: no long dashes reach the customer
-// (K. 10-09), whatever the model writes.
+// branded drafts, Studio) passes here: no long dashes reach the customer,
+// whatever the model writes.
 describe('parseChat', () => {
   it('returns the parsed answer without long dashes', async () => {
     const openai = {

@@ -35,7 +35,7 @@ test('every channel in the help contents has a section', async ({ page }) => {
 });
 
 // The Developers tab (API key, MCP, SDK, OAuth apps) and webhooks are
-// explained in Help before they are promoted (E2E-11-12).
+// explained in Help before they are promoted.
 test('Help explains the Developers tab, the API, SDK, MCP, webhooks and their safety', async ({ page }) => {
   await page.goto('/help');
   await expect(page.getByText('Developers', { exact: true }).first()).toBeAttached();
@@ -51,8 +51,8 @@ test('Help explains the Developers tab, the API, SDK, MCP, webhooks and their sa
   }
 });
 
-// K. 10-09: the in-app Help keeps its short answers and links to the full
-// user guide on postra.co.uk — at the top, and from each section to its page.
+// The in-app Help keeps its short answers and links to the full user guide on
+// postra.co.uk — at the top, and from each section to its page.
 test('Help links to the user guide, at the top and from each section', async ({ page }) => {
   await page.goto('/help');
   const guide = page.getByRole('link', { name: 'User guide' });

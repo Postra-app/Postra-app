@@ -116,7 +116,7 @@ export class UsersRepository {
   /**
    * Writes only if the session version is still the one the reset link was
    * minted for. Two requests with the same link both passed the check before
-   * either wrote, and the later password won (AUTH-3). Returns how many rows
+   * either wrote, and the later password won. Returns how many rows
    * changed: 0 means the link was already used.
    */
   async updatePassword(id: string, password: string, tokenVersion: number) {

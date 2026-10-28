@@ -33,7 +33,7 @@ export class MediaDto {
   thumbnail?: string;
 
   // The video frame to use as the cover, in milliseconds (Instagram Reels,
-  // TikTok). The global whitelist dropped it silently before 24 X 2026.
+  // TikTok). The global whitelist dropped it silently before 2026-10-24.
   @IsOptional()
   @IsInt()
   @Min(0)

@@ -32,7 +32,7 @@ import { IntegrationsController } from './integrations.controller';
 import { NoAuthIntegrationsController } from './no.auth.integrations.controller';
 
 /**
- * ⛔ E2E-01-19 — `refresh` let a FREE org connect a platform outside its plan.
+ * ⛔ `refresh` let a FREE org connect a platform outside its plan.
  *
  * A reconnect skips the plan and channel-limit gates, so an existing channel
  * can always be re-authenticated. But `refresh` was whatever the caller put in
@@ -169,7 +169,7 @@ describe('POST /integrations/social-connect/:integration with refresh', () => {
 });
 
 /**
- * E2E-04-34 — a reconnect through a provider with pages (YouTube, Facebook,
+ * A reconnect through a provider with pages (YouTube, Facebook,
  * Instagram, LinkedIn Page) stored the channel id as the refresh token and
  * no expiry, so the channel failed its next token refresh.
  */

@@ -1,5 +1,5 @@
 /**
- * E2E-05-13 — GET /public/posts/:id is unauthenticated and used to return the
+ * GET /public/posts/:id is unauthenticated and used to return the
  * whole Post row: Post.error (Temporal JSON with stack traces), organization
  * and group ids, settings. Only what /p/[id] renders may leave.
  */
@@ -76,7 +76,7 @@ describe('PublicController.getPreview', () => {
   });
 });
 
-describe('PublicController.getComments (E2E-05-16)', () => {
+describe('PublicController.getComments', () => {
   const rows: any[] = [
     { id: 'c1', content: 'hi', createdAt: new Date(), userId: 'user-a', organizationId: 'org-1', postId: 'p1', deletedAt: null, updatedAt: new Date() },
     { id: 'c2', content: 'yo', createdAt: new Date(), userId: 'user-b', organizationId: 'org-1', postId: 'p1', deletedAt: null, updatedAt: new Date() },

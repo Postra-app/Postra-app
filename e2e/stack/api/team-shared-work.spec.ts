@@ -3,11 +3,10 @@ import { PrismaClient } from '@prisma/client';
 import { database, listPosts, signedIn, throwawayOrg } from '../helpers';
 import { ORG_C } from '../seed';
 
-// Several people working in one agency (Plan/testing.md §9): Organisation C
-// is a Business team (owner, ADMIN, three USERs) on one channel. What is
-// measured here: everyone sees one calendar, anyone in the team can change a
-// teammate's post, two people saving the same post, and one person who works
-// for two organisations.
+// Several people working in one agency: Organisation C is a Business team
+// (owner, ADMIN, three USERs) on one channel. What is measured here: everyone
+// sees one calendar, anyone in the team can change a teammate's post, two
+// people saving the same post, and one person who works for two organisations.
 test.describe.configure({ mode: 'serial' });
 
 const inDays = (days: number) => new Date(Date.now() + days * 86_400_000).toISOString();

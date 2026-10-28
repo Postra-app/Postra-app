@@ -5,7 +5,7 @@ import { META_GRAPH_API_VERSION } from '@gitroom/nestjs-libraries/integrations/s
 
 /**
  * Takes back Postra's access at the platform when an account is deleted
- * (E2E-09-66).
+ *.
  *
  * Deleting the rows destroys our copy of the tokens, but the grant itself
  * stays with the platform: Postra kept appearing in the person's Facebook
@@ -59,7 +59,7 @@ const FAMILIES: Record<string, { providers: string[]; revoke: Revoke }> = {
       ),
   },
   // Two LinkedIn apps: profiles and Pages each have their own client and
-  // their own grant (Codex review 10-10).
+  // their own grant.
   linkedin: {
     providers: ['linkedin'],
     revoke: ({ token }) =>

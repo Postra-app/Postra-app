@@ -101,7 +101,7 @@ export const TimeTable: FC<{
 
   // Local time with the zone, so 09:00 stays 09:00 when the clocks change.
   // It used to be stored as minutes after UTC midnight from today's offset,
-  // and moved by an hour twice a year (E2E-05-85).
+  // and moved by an hour twice a year.
   const addHour = useCallback(() => {
     setCurrentTimes((prev) => [
       ...prev,

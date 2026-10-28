@@ -1,8 +1,8 @@
 import { expect, test } from '@playwright/test';
 import { signedIn } from '../helpers';
 
-// E2E-08-42: settings that save on click could save out of order or twice.
-// E2E-05-73: the on/off switches were divs a keyboard never reached.
+// Settings that save on click could save out of order or twice.
+// The on/off switches were divs a keyboard never reached.
 
 // The first two change the same user's settings: one at a time, or one
 // restores what the other is about to read (the stack runs fully parallel).
@@ -18,9 +18,7 @@ const settings = async () => {
   return { api, read };
 };
 
-test('E2E-08-42: two quick toggles save in the order clicked', async ({
-  page,
-}) => {
+test('two quick toggles save in the order clicked', async ({ page }) => {
   const { api, read } = await settings();
   const before = await read();
   try {
@@ -56,7 +54,7 @@ test('E2E-08-42: two quick toggles save in the order clicked', async ({
   }
 });
 
-test('E2E-05-73: a switch turns from the keyboard and says its state', async ({
+test('a switch turns from the keyboard and says its state', async ({
   page,
 }) => {
   const { api, read } = await settings();
@@ -83,7 +81,7 @@ test('E2E-05-73: a switch turns from the keyboard and says its state', async ({
   }
 });
 
-test('E2E-08-42: one secret rotation at a time', async ({ page }) => {
+test('one secret rotation at a time', async ({ page }) => {
   const api = await signedIn('a');
   const existing = await (await api.get('/user/oauth-app')).json();
   if (!existing) {

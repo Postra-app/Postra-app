@@ -127,7 +127,7 @@ export const deleteOutcome = (
  * Organizations and Subscriptions each kept their own map for the same tiers,
  * and the Subscriptions one put white text on a pastel fill. Measured on
  * production against its own background: 2.64:1, where 11px text needs 4.5:1
- * (E2E-09-55 again — the first pass fixed the /30 opacities and never looked
+ * (the first pass fixed the /30 opacities and never looked
  * at this pill). The accessible pairing is a tinted fill with saturated text,
  * which is what Organizations already used, so that is the one that stays.
  *

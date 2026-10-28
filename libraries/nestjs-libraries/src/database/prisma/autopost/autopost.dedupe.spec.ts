@@ -4,7 +4,7 @@ jest.mock('nostr-tools', () => ({ getPublicKey: jest.fn(), Relay: class {}, fina
 import { AutopostService } from './autopost.service';
 
 /**
- * AI-2 — the post and the feed's cursor are two writes. A worker killed
+ * The post and the feed's cursor are two writes. A worker killed
  * between them left the cursor behind, and the retry posted the same article
  * again.
  */
@@ -45,7 +45,7 @@ it('a new article is posted', async () => {
   expect(posts.createPost).toHaveBeenCalledTimes(1);
 });
 
-// AI-4: with every channel needing an image and none made, the article was
+// With every channel needing an image and none made, the article was
 // skipped and the cursor moved past it for good.
 it('an article that cannot get the image its channels need is kept for the next run', async () => {
   const { service, posts } = build(false);
@@ -58,7 +58,7 @@ it('an article that cannot get the image its channels need is kept for the next 
   expect(posts.createPost).not.toHaveBeenCalled();
 });
 
-// Codex review: one channel having the article skipped the others too.
+// One channel having the article skipped the others too.
 it('only the channels that already have the article are left out', async () => {
   const { service, posts } = build(['ch-1']);
   const twoChannels = {

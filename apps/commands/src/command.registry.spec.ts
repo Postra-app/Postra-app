@@ -11,11 +11,11 @@ const taskFiles = readdirSync(join(ROOT, 'tasks')).filter((f) =>
 const readTask = (file: string) =>
   readFileSync(join(ROOT, 'tasks', file), 'utf8');
 
-// E2E-09-42: grandfather-subscriptions was a one-off backfill run before Stripe
+// Grandfather-subscriptions was a one-off backfill run before Stripe
 // billing went live, and it stayed registered. One flag would write ULTIMATE,
 // isLifetime and a hundred channels onto every organization with an empty or
 // soft-deleted subscription — after launch, the whole free tier, permanently,
-// with no product path back (E2E-09-41).
+// with no product path back.
 
 describe('command registry', () => {
   it('does not register the pre-launch grandfather backfill', () => {
@@ -30,7 +30,7 @@ describe('command registry', () => {
   });
 });
 
-// E2E-09-44: `refresh` and `encrypt-tokens` wrote the moment they were called,
+// `refresh` and `encrypt-tokens` wrote the moment they were called,
 // while every other mutating command here defaults to a dry-run — so the
 // muscle memory that these are safe to run and read was wrong exactly twice.
 // `refresh` is the least read-only of all of them: it calls the providers,

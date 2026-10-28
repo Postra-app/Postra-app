@@ -18,7 +18,7 @@ const browser = (extra: any = {}) => ({
 });
 
 /**
- * §48 (2026-10-27) — the session cookie (SameSite=Lax) was Postra's only
+ * The session cookie (SameSite=Lax) was Postra's only
  * defence against cross-site request forgery; OWASP counts SameSite as a
  * second layer, not the first. A browser names the page a request comes from
  * in `Origin`, and a request riding the session cookie from any other page is

@@ -14,7 +14,7 @@ import { StudioIcon } from '@gitroom/frontend/components/studio/studio-icons';
  * done for a batch of library photos at once. No sliders: pick how far it may
  * go (Light / Medium / Strong / Black & white), Postra looks at each photo,
  * decides the adjustments and makes a new library file. The original is never
- * touched; hold a result to see it. Plan/photo-retouch.md.
+ * touched; hold a result to see it.
  */
 
 export type RetouchLevel = 'light' | 'medium' | 'strong' | 'bw';

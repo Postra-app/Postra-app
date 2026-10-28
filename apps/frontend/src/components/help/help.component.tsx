@@ -26,7 +26,7 @@ const ComingSoon = () => (
 );
 
 // The full step-by-step user guide on postra.co.uk. Help keeps the short
-// answers next to the work; each section links to its page there (K. 10-09).
+// answers next to the work; each section links to its page there.
 export const GUIDE_URL = 'https://postra.co.uk/docs/guide/';
 
 const Section: FC<{

@@ -2,11 +2,11 @@ import { expect, request, test } from '@playwright/test';
 import { BACKEND_URL } from '../helpers';
 import { USERS } from '../seed';
 
-// E2E-08-60: ChatGPT and Claude used to reach MCP with the API key in the
-// address (/mcp/<key>, /sse/<key>, /message/<key>), so the key landed in the
-// ALB and WAF logs, the assistant's logs and browser history. They sign in by
-// OAuth now (/mcp-oauth, proven on prod 10-08), other clients send the key in
-// the Authorization header, and the key-in-path routes are gone.
+// ChatGPT and Claude used to reach MCP with the API key in the address
+// (/mcp/<key>, /sse/<key>, /message/<key>), so the key landed in the ALB and
+// WAF logs, the assistant's logs and browser history. They sign in by OAuth now
+// (/mcp-oauth, proven on production), other clients send the key in the
+// Authorization header, and the key-in-path routes are gone.
 
 const init = {
   jsonrpc: '2.0',

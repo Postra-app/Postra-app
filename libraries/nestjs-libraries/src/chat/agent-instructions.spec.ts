@@ -3,7 +3,7 @@ import {
   schedulingRule,
 } from '@gitroom/nestjs-libraries/chat/agent-instructions';
 
-// E2E-08-53: through MCP (ask_postra) there is no second turn, so "ask the
+// Through MCP (ask_postra) there is no second turn, so "ask the
 // user to confirm" meant nothing could ever be scheduled that way.
 describe('the scheduling rule of the assistant', () => {
   it('in the app chat, asks the person to confirm before scheduling', () => {

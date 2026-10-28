@@ -393,7 +393,7 @@ export const AdminErrorsComponent: FC = () => {
           {/* overflow-x-auto, not overflow-hidden: the app shell clips its own
               overflow, so the columns past the edge were unreachable rather
               than scrollable. At 390px that hid 458px of every row — the View
-              and Copy buttons among them (E2E-09-48). The min-width sits on an
+              and Copy buttons among them. The min-width sits on an
               inner wrapper so the header and rows stay aligned while
               scrolling. */}
           <div className="min-w-[810px]">

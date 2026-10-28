@@ -361,8 +361,8 @@ export const AdminUsersComponent = () => {
    *
    * The right to erasure had one route: the customer pressing Delete in their
    * own settings. A request that arrives by email — which is how it arrives —
-   * left the operator impersonating the account to press it as them (05-gaps
-   * §1c). Two confirmations, because this is the one action in the panel with
+   * left the operator impersonating the account to press it as them. Two
+   * confirmations, because this is the one action in the panel with
    * nothing behind it.
    */
   const deleteUser = useCallback(
@@ -579,7 +579,7 @@ export const AdminUsersComponent = () => {
       {/* The "Currently Impersonating / Stop" strip that used to live here was
           unreachable for the same reason the comp control was: the layout
           blocks this whole panel while impersonating. The global banner is the
-          Stop button (E2E-09-02, E2E-09-18). */}
+          Stop button. */}
 
       <div className="flex items-center gap-[12px]">
         <div className="flex-1 max-w-[500px]">

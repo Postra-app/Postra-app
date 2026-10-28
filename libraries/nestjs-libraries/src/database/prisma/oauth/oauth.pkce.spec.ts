@@ -1,6 +1,6 @@
 import { pkceMatches } from './oauth.service';
 
-// E2E-08-44: the metadata promised PKCE (S256) and /oauth/token never looked
+// The metadata promised PKCE (S256) and /oauth/token never looked
 // at code_verifier. Vector from RFC 7636 Appendix B.
 const verifier = 'dBjftJeZ4CVP-mB92K27uhbUJU1p1r_wW1gFWFOEjXk';
 const challenge = 'E9Melhoa2OwvFrEMTJguCHaoeK1t8URWbuGJSstw-cM';

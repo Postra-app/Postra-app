@@ -9,7 +9,7 @@ import { BillingHistory } from '@gitroom/frontend/components/billing/billing.his
 
 // The invoices, from the header and from the paywall. A customer who
 // cancelled drops to FREE and the paywall covers the whole app, billing page
-// included, so until 24 X 2026 their old invoices were out of reach
+// included, so their old invoices used to be out of reach
 // (upstream 8613f4ffc, be0c0ae57). Hidden for USER members: the endpoint
 // is billing-admin only.
 export const InvoicesComponent: FC = () => {

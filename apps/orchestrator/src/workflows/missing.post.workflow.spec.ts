@@ -1,5 +1,5 @@
 /**
- * E2E-05-24 — missingPostWorkflow had never run on production (RUN_CRON was
+ * MissingPostWorkflow had never run on production (RUN_CRON was
  * unset). Before turning it on: one failed search after retries used to fail
  * the workflow for good, and the loop never continued-as-new.
  */

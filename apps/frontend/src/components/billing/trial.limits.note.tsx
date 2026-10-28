@@ -10,8 +10,8 @@ import {
 import { useT } from '@gitroom/react/translation/get.transation.service.client';
 
 // A trial is held to channelLimitFor, trialAiAllowance and TRIAL_LIMITS in
-// pricing.ts whatever plan was picked. Every limit said out loud (text K.
-// 2026-10-16), so a Pro or Business trial does not meet a 402 at the fourth
+// pricing.ts whatever plan was picked. Every limit said out loud, so a Pro
+// or Business trial does not meet a 402 at the fourth
 // channel, the 31st post or the second webhook without knowing why.
 export const TrialLimitsNote: FC<{ endTrialLink?: boolean }> = ({
   endTrialLink,

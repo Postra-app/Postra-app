@@ -139,7 +139,7 @@ test('the bot dialog says what it changes and is a single card', async ({ page }
 test.describe('posting times in London', () => {
   test.use({ timezoneId: 'Europe/London' });
 
-  test('a slot added at 09:00 is stored as 09:00 London, not as UTC minutes (E2E-05-85)', async ({
+  test('a slot added at 09:00 is stored as 09:00 London, not as UTC minutes', async ({
     page,
   }) => {
     // Stored as 480 (minutes after UTC midnight) in summer time, it showed
@@ -188,7 +188,7 @@ test.describe('posting times in London', () => {
 test.describe('Bluesky channel of organisation B', () => {
   test.use({ storageState: stateFile('b') });
 
-  test('"Update Credentials" opens a window with that title (E2E-05-82)', async ({ page }) => {
+  test('"Update Credentials" opens a window with that title', async ({ page }) => {
     // The window was titled "Custom URL".
     await page.goto('/launches');
     await page.getByRole('button', { name: 'Channel options' }).first().click();

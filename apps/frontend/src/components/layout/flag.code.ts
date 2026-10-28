@@ -7,7 +7,7 @@ countries.registerLocale(countriesEn);
 // MIT, pinned in package.json and checked by flags.spec.ts). The component's
 // default loads them from cdn.jsdelivr.net on every page: a third-party
 // request with the visitor's IP that nothing in the privacy policy named,
-// and a dependency on someone else's CDN for the top bar (E2E-11-48).
+// and a dependency on someone else's CDN for the top bar.
 export const FLAGS_URL = '/flags/';
 
 export const getCountryCodeForFlag = (languageCode: string) => {

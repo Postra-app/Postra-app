@@ -3,9 +3,9 @@ import { AnnouncementsRepository } from '@gitroom/nestjs-libraries/database/pris
 /**
  * An announcement is served to every signed-in session and stopped only when
  * an operator remembers to delete it, so an outage notice outlives the outage
- * (E2E-09-26). Delete is now soft, which keeps the audit row pointing at
+ *. Delete is now soft, which keeps the audit row pointing at
  * something and keeps "delete something already gone" a 200 answering
- * `deleted:false` rather than a 500 (E2E-09-46).
+ * `deleted:false` rather than a 500.
  */
 const buildPrisma = () => {
   const announcement = {

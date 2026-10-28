@@ -280,7 +280,7 @@ export const CalendarWeekProvider: FC<{
     {
       // Hourly, but every 15 s while a queued post is due, and again when
       // the tab comes back into focus: a post published in the background
-      // used to keep its "scheduled" tile until a reload (E2E-05-102).
+      // used to keep its "scheduled" tile until a reload.
       refreshInterval: (latest) =>
         calendarRefreshInterval(latest?.posts, Date.now()),
       refreshWhenOffline: false,
@@ -426,7 +426,7 @@ export const CalendarWeekProvider: FC<{
 
   // A move the server refused: the tile was moved on screen at once
   // (changeDate) and stays there, because a reload that brings the same
-  // posts back leaves local state alone (E2E-05-49). Put back this post
+  // posts back leaves local state alone. Put back this post
   // only, at the date the server has, so another move made meanwhile stays.
   // Each move of a post is numbered; a refusal that arrives after a newer
   // move of the same post is not undone over it.

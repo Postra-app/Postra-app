@@ -73,7 +73,7 @@ async function reduceImageBySize(url: string, maxSizeKB = 976) {
 
 // The video upload request. No Content-Length header: fetch derives it from
 // the Buffer, and undici rejects one set by hand ("invalid content-length
-// header", E2E-05-29: every Bluesky video failed with "fetch failed").
+// header": every Bluesky video failed with "fetch failed").
 export const videoUploadRequest = (
   did: string,
   videoPath: string,
@@ -258,8 +258,8 @@ export class BlueskyProvider extends SocialAbstract implements SocialProvider {
     const body = JSON.parse(Buffer.from(params.code, 'base64').toString());
 
     // The service URL comes from the client, and the server logs in there
-    // with the user's credentials: any host, internal ones included
-    // (E2E-04-24). Same rule as Lemmy's instance URL.
+    // with the user's credentials: any host, internal ones included.
+    // Same rule as Lemmy's instance URL.
     let service: string;
     try {
       service = await assertSafeInstanceUrl(body.service, 'bluesky');

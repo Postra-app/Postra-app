@@ -5,7 +5,7 @@ import { getCountryCodeForFlag } from './flag.code';
 
 // The language switcher shows a flag for every language in the list. The
 // files live in public/flags so the browser never asks a third-party CDN
-// (E2E-11-48), and each one must be the flag-icons package's copy, so a
+// for them, and each one must be the flag-icons package's copy, so a
 // Dependabot bump of flag-icons fails here until the files are refreshed.
 const publicFlags = join(__dirname, '..', '..', '..', 'public', 'flags');
 const packageFlags = join(
@@ -45,7 +45,7 @@ describe('language switcher flags', () => {
 describe('flags are public', () => {
   // The proxy matcher only skips top-level `<name>.<ext>` paths, so
   // /flags/gb.svg reached the auth gate and answered 307 to /auth for a
-  // signed-out browser (production, 22 X after the first deploy).
+  // signed-out browser (production, after the first deploy).
   it('proxy.ts lets /flags/ through without a session', () => {
     const proxy = readFileSync(join(__dirname, '..', '..', 'proxy.ts'), 'utf8');
     expect(proxy).toContain("nextUrl.pathname.startsWith('/flags/')");

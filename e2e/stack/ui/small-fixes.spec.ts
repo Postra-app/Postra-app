@@ -2,7 +2,7 @@ import { expect, test } from '@playwright/test';
 import { database, signedIn, stateFile } from '../helpers';
 import { USERS } from '../seed';
 
-// E2E-05-94: small things found while writing the user guide (2026-10-09).
+// Small things found while writing the user guide (2026-10-09).
 test.describe('organisation A', () => {
   test.use({ storageState: stateFile('a') });
 

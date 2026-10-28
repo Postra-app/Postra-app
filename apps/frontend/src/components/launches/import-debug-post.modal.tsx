@@ -229,9 +229,9 @@ export const ImportDebugPostModal: FC<{ close: () => void }> = ({ close }) => {
                  interactive elements — the close button and "Import as Draft" —
                  and the channel rows were neither. Since the button stays
                  disabled until a channel is picked, somebody using a keyboard
-                 reached a control that could never unlock (E2E-09-60). Same
+                 reached a control that could never unlock. Same
                  defect as the three divs that used to be the announcement
-                 colour picker (E2E-09-13), in the control that gates the only
+                 colour picker, in the control that gates the only
                  action this modal has. */
               <div
                 role="radiogroup"

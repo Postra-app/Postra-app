@@ -44,7 +44,7 @@ export const CheckPaymentInner: FC<{
 
   // One failed request (a 503, a dropped connection) ended the polling with
   // the full-screen loader still up, and a payment that stayed pending kept
-  // it up for good (E2E-07-17). Errors are retried, and after about two
+  // it up for good. Errors are retried, and after about two
   // minutes the app is handed back with a note.
   const checkSubscription = useCallback(async (attempt = 0): Promise<void> => {
     let status: number | undefined;

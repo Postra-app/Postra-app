@@ -75,8 +75,8 @@ test('"Create Post" clicked before the sets have loaded still asks for a set', a
   }
 });
 
-// E2E-05-94 (5): "Use Signature" added the signature and left the Add
-// Signature window open over the editor.
+// "Use Signature" added the signature and left the Add Signature window open
+// over the editor.
 test('"Use Signature" adds it and closes the Add Signature window', async ({ page }) => {
   const api = await signedIn('b');
   const text = `Small fixes signature ${Date.now()}`;
