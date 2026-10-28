@@ -86,7 +86,7 @@ services:
 
   temporal:
     container_name: temporal
-    image: temporalio/auto-setup:1.28.1
+    image: temporalio/auto-setup:1.28.4
     profiles: [temporal]
     ports:
       - "7233:7233"
@@ -115,7 +115,7 @@ services:
 
   temporal-admin-tools:
     container_name: temporal-admin-tools
-    image: temporalio/admin-tools:1.28.1-tctl-1.18.4-cli-1.4.1
+    image: temporalio/admin-tools:1.28.4-tctl-1.18.4-cli-1.6.2
     profiles: [temporal]
     environment:
       - TEMPORAL_ADDRESS=temporal:7233
@@ -129,7 +129,7 @@ services:
 
   temporal-ui:
     container_name: temporal-ui
-    image: temporalio/ui:2.34.0
+    image: temporalio/ui:2.57.0
     profiles: [temporal]
     environment:
       - TEMPORAL_ADDRESS=temporal:7233

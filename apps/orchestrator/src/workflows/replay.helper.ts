@@ -56,7 +56,12 @@ export async function replayHistory(workflowFile: string, historyFile: string) {
           webpackConfigHook: (config) => {
             config.resolve = {
               ...config.resolve,
-              modules: [path.join(repo, 'node_modules'), 'node_modules'],
+              // Nearest node_modules first, the repo's only as a fallback
+              // for the temp entry: with the repo first, a package's own
+              // nested copy lost to the hoisted one (SDK 1.25: ms 2 instead
+              // of the ms 3 under @temporalio/common, and every sleep()
+              // threw), which the worker's own bundle never does.
+              modules: ['node_modules', path.join(repo, 'node_modules')],
             };
             return config;
           },
