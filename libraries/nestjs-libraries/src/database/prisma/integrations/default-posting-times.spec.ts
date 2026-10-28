@@ -6,7 +6,7 @@ import { IntegrationRepository } from '@gitroom/nestjs-libraries/database/prisma
 // A new channel gets three posting times: 09:20, 14:10 and 19:00 in the
 // customer's time zone. They used to be minutes after UTC midnight shifted by
 // the browser's offset on the day of connecting, so they moved by an hour at
-// every clock change (E2E-05-85). The web app sends the IANA zone; the mobile
+// every clock change. The web app sends the IANA zone; the mobile
 // app still sends the offset.
 describe('posting times of a new channel', () => {
   afterEach(() => jest.useRealTimers());

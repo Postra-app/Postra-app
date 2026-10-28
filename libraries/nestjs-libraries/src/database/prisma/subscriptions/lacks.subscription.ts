@@ -6,7 +6,7 @@ import { pricing } from '@gitroom/nestjs-libraries/database/prisma/subscriptions
 // so a cancelled organisation kept reading its data through it.
 //
 // And only a plan that includes the public API: the plans' public_api flag
-// decided nothing (E2E-08-48). Every tier a subscription can have includes
+// decided nothing. Every tier a subscription can have includes
 // it today (FREE is "no subscription"); pricing.spec pins that.
 export const lacksSubscription = (
   org?: { subscription?: { subscriptionTier?: string } | null } | null

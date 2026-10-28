@@ -108,8 +108,7 @@ function LayoutContextInner(params: { children: ReactNode }) {
         return false;
       }
       if (response.status === 406) {
-        // The next screen shows the price and asks before charging
-        // (E2E-07-41).
+        // The next screen shows the price and asks before charging.
         if (
           await deleteDialog(
             'You are on a free trial. To use this feature, end your trial - you will see the price and confirm the payment on the next screen.',

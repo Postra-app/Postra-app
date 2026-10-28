@@ -29,7 +29,7 @@ import { BlueskyProvider } from './bluesky.provider';
 
 // A plug is checked every 6 hours, 3 times; `true` means "done, stop". Both
 // Bluesky plugs said done below the likes threshold, so a post that reached
-// it at hour 12 was never reposted (docs P3 check, 2026-10-09). X answers
+// it at hour 12 was never reposted. X answers
 // `false` there.
 describe('Bluesky plugs below the likes threshold', () => {
   const provider = new BlueskyProvider();

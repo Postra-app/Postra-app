@@ -1,8 +1,8 @@
 import { APIRequestContext, expect, test } from '@playwright/test';
 import { createDraft, draftBody, listPosts, signedIn } from '../helpers';
 
-// Contracts the composer and calendar rely on. Each E2E-05-* case was a 500
-// or a silent success on production before it was fixed (e2e/bugs.md).
+// Contracts the composer and calendar rely on. Each case was a 500 or a silent
+// success on production before it was fixed.
 
 let api: APIRequestContext;
 test.beforeAll(async () => {
@@ -28,7 +28,7 @@ test('a draft is created, listed, read and deleted', async () => {
   expect((await listPosts(api)).some((p) => p.content.includes(text))).toBe(false);
 });
 
-test('E2E-05-01: deleting a group twice reports the second time honestly', async () => {
+test('deleting a group twice reports the second time honestly', async () => {
   const post = await createDraft(api, 'a', unique('double delete'));
   expect(await (await api.delete(`/posts/${post.group}`)).json()).toMatchObject({
     deleted: true,
@@ -38,13 +38,13 @@ test('E2E-05-01: deleting a group twice reports the second time honestly', async
   });
 });
 
-test('E2E-05-02: an unknown post id is 404, not a crash', async () => {
+test('an unknown post id is 404, not a crash', async () => {
   for (const id of ['00000000-0000-4000-8000-000000000000', 'not-a-post']) {
     expect((await api.get(`/posts/${id}`)).status(), id).toBe(404);
   }
 });
 
-test('E2E-05-08: posts that is not an array is 400 on both routes', async () => {
+test('posts that is not an array is 400 on both routes', async () => {
   for (const path of ['/posts', '/posts/valid']) {
     const res = await api.post(path, {
       data: draftBody('a', unique('bad shape'), { posts: { not: 'an array' } }),
@@ -60,7 +60,7 @@ test('an unknown post type is refused', async () => {
   expect(res.status()).toBe(400);
 });
 
-test('E2E-05-12: moving a post refuses a bad date and an unknown post', async () => {
+test('moving a post refuses a bad date and an unknown post', async () => {
   const post = await createDraft(api, 'a', unique('move'));
   const bad = await api.put(`/posts/${post.id}/date`, {
     data: { date: 'not-a-date' },
@@ -73,7 +73,7 @@ test('E2E-05-12: moving a post refuses a bad date and an unknown post', async ()
   await api.delete(`/posts/${post.group}`);
 });
 
-test('E2E-05-20: a release id for a post that is not waiting for one is 404', async () => {
+test('a release id for a post that is not waiting for one is 404', async () => {
   const post = await createDraft(api, 'a', unique('release id'));
   const res = await api.put(`/posts/${post.id}/release-id`, {
     data: { releaseId: 'platform-123' },
@@ -82,7 +82,7 @@ test('E2E-05-20: a release id for a post that is not waiting for one is 404', as
   await api.delete(`/posts/${post.group}`);
 });
 
-test('E2E-05-16: an empty comment is refused', async () => {
+test('an empty comment is refused', async () => {
   const post = await createDraft(api, 'a', unique('comment'));
   const res = await api.post(`/posts/${post.id}/comments`, {
     data: { comment: '   ' },
@@ -117,7 +117,7 @@ test('tags: create, rename, delete; an unknown tag is 404', async () => {
   ).toBe(404);
 });
 
-test('E2E-05-43: a repeat interval below one day is refused', async () => {
+test('a repeat interval below one day is refused', async () => {
   // `inter: -1` was stored as is: the workflow clamped the delay to zero and
   // every publication started the next one at once — a post repeating
   // without end on the customer's channel.

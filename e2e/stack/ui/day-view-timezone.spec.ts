@@ -7,7 +7,7 @@ import { draftBody, listPosts, signedIn, stateFile } from '../helpers';
 dayjs.extend(utc);
 dayjs.extend(timezone);
 
-// E2E-05-61: in Europe/Warsaw a post at 00:20 was missing from its own day
+// In Europe/Warsaw a post at 00:20 was missing from its own day
 // view — the row came out as the next day at 00:20. Organisation B, so the
 // draft is not under the other UI tests' clicks.
 test.use({ storageState: stateFile('b'), timezoneId: 'Europe/Warsaw' });

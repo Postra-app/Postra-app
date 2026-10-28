@@ -23,13 +23,13 @@ const fakeResponse = () => {
 };
 
 /**
- * E2E-11-78 — Postra's cookies carried Domain=.postra.co.uk, so the browser
+ * Postra's cookies carried Domain=.postra.co.uk, so the browser
  * sent the session token to every subdomain: the landing pages, the CDN and
  * status.postra.co.uk, which GitHub Pages serves (measured on production
  * 2026-10-27). They are host-only now, and the domain-wide ones a browser
  * still holds are expired wherever a session starts or ends.
  */
-describe('session cookies are host-only (E2E-11-78)', () => {
+describe('session cookies are host-only', () => {
   const env = { ...process.env };
   beforeEach(() => {
     process.env.FRONTEND_URL = 'https://app.postra.co.uk';

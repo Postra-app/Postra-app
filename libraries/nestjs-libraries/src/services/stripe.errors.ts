@@ -10,7 +10,7 @@
  * Read paths must treat that as "this org has no customer" instead of throwing:
  * an org whose customer is gone has no charges and no subscriptions, so a 500
  * on `/billing/check/:id` is the wrong answer to a question we can answer
- * (e2e/bugs.md — Sentry "No such customer" on GET /billing/check/:id).
+ * (Sentry "No such customer" on GET /billing/check/:id).
  */
 export function isMissingCustomerError(err: unknown): boolean {
   const e = err as {

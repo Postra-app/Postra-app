@@ -3,7 +3,7 @@ import { mkdtempSync, writeFileSync, mkdirSync, cpSync } from 'fs';
 import { tmpdir } from 'os';
 import { join } from 'path';
 
-// E2E-08-55/56: the published package, built as npm gets it. `import Postra
+// The published package, built as npm gets it. `import Postra
 // from '@postra/node'` in plain Node ESM threw "Postra is not a constructor"
 // (CJS-only build), and the README example did not compile in strict
 // TypeScript (fields the API treats as optional were required in the types).

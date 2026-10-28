@@ -62,7 +62,7 @@ export class WebhookController {
     return this._webhooksService.createWebhook(org.id, body);
   }
 
-  // The secret that signs this webhook's deliveries (E2E-08-49). It lets
+  // The secret that signs this webhook's deliveries. It lets
   // whoever holds it forge a delivery to the customer's endpoint: admins only,
   // like the webhooks themselves, and never in the list above.
   @Get('/:id/secret')

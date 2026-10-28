@@ -125,7 +125,7 @@ describe('repositionObjectFromTo', () => {
   });
 
   it('keeps two stacked middle layers apart instead of piling them up', () => {
-    // The reported bug (STU-G-34). Both layers sit in the middle band, so both
+    // The reported bug. Both layers sit in the middle band, so both
     // were classed 'centre' and both were then placed at the exact centre of
     // the destination — one printed on top of the other. Every mid-canvas
     // layout is built like this: headline, then a line under it.
@@ -238,7 +238,7 @@ describe('isBackgroundBox', () => {
   });
 });
 
-// E2E-06-35: a template saved as an X post and applied on IG Feed kept its
+// A template saved as an X post and applied on IG Feed kept its
 // X coordinates, so a headline at the right edge fell outside the export.
 describe('fitTemplateToPlatform', () => {
   const x = { key: 'x', label: 'X Post', width: 1600, height: 900 };

@@ -6,7 +6,7 @@ on:
       - main
 
 # id-token: GitHub's OIDC token is exchanged for the deploy role of the
-# postra account (Postra-infra, AWS_DEPLOY_ROLE_ARN) — no AWS keys are stored
+# AWS account (AWS_DEPLOY_ROLE_ARN) — no AWS keys are stored
 # in this public repo's secrets.
 permissions:
   contents: read
@@ -24,9 +24,7 @@ concurrency:
   group: deploy
   cancel-in-progress: true
 
-# Production is the auto scaling group of the postra account (Postra-infra
-# modules/app_asg) since the move of 2026-10-25 (runbook A5); the box on the
-# shared account and its SSM deploy are gone. Repository variables:
+# Production is an auto scaling group. Repository variables:
 #   SSM_PREFIX     parameters the instances build .env from; APP_IMAGE and
 #                  APP_IMAGE_VERIFIED live under it
 #   ASG_NAME       the group to refresh
@@ -99,12 +97,11 @@ jobs:
 
   # The workflows running in production now - a post waiting weeks for its
   # date, the daily housekeeping - must replay on this build, or every task of
-  # theirs fails after the deploy with a nondeterminism error (E2E-11-94,
-  # E2E-11-15). Their histories hold tokens and post text, so none is kept in
-  # this public repository: the operator's state box exports them for this
-  # run into a private bucket (an SSM document, Postra-infra modules/state_box
-  # replay.tf), and scripts/replay-histories.mjs replays them inside the image
-  # just built. Off until the repository variable REPLAY_EXPORT_DOCUMENT is
+  # theirs fails after the deploy with a nondeterminism error. Their
+  # histories hold tokens and post text, so none is kept in this public
+  # repository: the operator's state box exports them for this run into a
+  # private bucket (an SSM document), and scripts/replay-histories.mjs
+  # replays them inside the image just built. Off until the repository variable REPLAY_EXPORT_DOCUMENT is
   # set:
   #   REPLAY_EXPORT_DOCUMENT  (variable) SSM document that exports the histories
   #   REPLAY_EXPORT_TARGET    (variable) Name tag of the box it runs on
@@ -160,10 +157,8 @@ jobs:
           docker run --rm -v "$PWD/histories:/histories:ro" "$IMAGE" \
             node /app/scripts/replay-histories.mjs /histories
 
-  # Staging (Plan/lunchdayfinal.md P7): the same image on staging.postra.pl,
-  # started for this deploy and stopped after it, health + smoke there before
-  # production gets it. Off until the repo variable STAGING_ENABLED is "true"
-  # (staging is applied ~a week before D2, decision K. 2026-10-03).
+  # Staging: the same image on staging.postra.pl, started for this deploy
+  # and stopped after it, health + smoke there before production gets it. Off until the repo variable STAGING_ENABLED is "true"
   staging:
     needs: build
     if: vars.STAGING_ENABLED == 'true'
@@ -202,8 +197,7 @@ jobs:
           retention-days: 7
           include-hidden-files: true
 
-  # The postra account runs the app in an auto scaling group (Postra-infra
-  # modules/app_asg, "step 0" of resilience): a deploy writes the image name
+  # The app runs in an auto scaling group: a deploy writes the image name
   # to SSM and refreshes the group, so a fresh instance boots with the new
   # image and the old one goes once the new one is healthy behind the load
   # balancer. No SSH, no SSM shell on the box, nothing to patch in place.
@@ -239,7 +233,7 @@ jobs:
       # image that passed the health check and the smoke, written at the end
       # of this job. The rollback goes to the verified one, not to whatever
       # APP_IMAGE held: a deploy cancelled by the next one (cancel-in-progress)
-      # leaves its unchecked image in APP_IMAGE (Codex).
+      # leaves its unchecked image in APP_IMAGE.
       - name: Point the group at the new image
         id: param
         run: |

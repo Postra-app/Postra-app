@@ -32,7 +32,7 @@ export class WebhooksDto {
   url: string;
 
   // `{}` passed as a list and failed only after the webhook was written,
-  // leaving it on every channel behind a 500 (POSTS-4).
+  // leaving it on every channel behind a 500.
   @Type(() => WebhooksIntegrationDto)
   @IsArray()
   @ValidateNested({ each: true })

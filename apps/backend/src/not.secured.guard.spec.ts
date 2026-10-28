@@ -1,6 +1,6 @@
 import { assertNotSecuredOnlyOverHttp } from './not.secured.guard';
 
-describe('assertNotSecuredOnlyOverHttp (E2E-11-82)', () => {
+describe('assertNotSecuredOnlyOverHttp', () => {
   it('refuses NOT_SECURED on an https deployment', () => {
     expect(() =>
       assertNotSecuredOnlyOverHttp({

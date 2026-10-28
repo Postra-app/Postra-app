@@ -12,7 +12,7 @@ type Step = 'confirm' | 'working' | 'done' | 'already' | 'problem';
 
 // Ending the trial charges the card. It used to happen the moment this page
 // opened with ?finishTrial=true — no price, no question, and again on every
-// reload (E2E-07-41, Kris Company 2026-10-09). Now the customer sees what
+// reload. Now the customer sees what
 // they will pay and confirms; the parameter leaves the address bar at once.
 export const FinishTrial: FC<{ close: () => void }> = (props) => {
   const [step, setStep] = useState<Step>('confirm');
@@ -36,7 +36,7 @@ export const FinishTrial: FC<{ close: () => void }> = (props) => {
     (async () => {
       try {
         // What Stripe will charge for this subscription now, not today's
-        // price list (an older price or a discount differ — Codex).
+        // price list (an older price or a discount differ).
         const preview = await (
           await fetch('/billing/finish-trial/preview')
         ).json();
@@ -68,7 +68,7 @@ export const FinishTrial: FC<{ close: () => void }> = (props) => {
     }
     if (finished) {
       setStep('done');
-      // The open app still held the trial's limits (E2E-07-18).
+      // The open app still held the trial's limits.
       mutate('/user/self');
       mutate('/billing/invoices');
       return;
@@ -83,7 +83,7 @@ export const FinishTrial: FC<{ close: () => void }> = (props) => {
 
   const finishSubscription = useCallback(async () => {
     setStep('working');
-    // A failed request left the dialog spinning for good (E2E-07-18).
+    // A failed request left the dialog spinning for good.
     let result: { finish?: boolean; url?: string; reason?: string } | undefined;
     try {
       result = await (
@@ -95,8 +95,7 @@ export const FinishTrial: FC<{ close: () => void }> = (props) => {
       setStep('problem');
       return;
     }
-    // Paid already: a second visit used to read as a failed payment
-    // (E2E-07-42).
+    // Paid already: a second visit used to read as a failed payment.
     if (result?.reason === 'no-trial') {
       setStep('already');
       mutate('/user/self');

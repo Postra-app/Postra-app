@@ -1,5 +1,5 @@
 /**
- * E2E-05-17 — measured on production 2026-09-26: a Telegram post failed with
+ * Measured on production 2026-09-26: a Telegram post failed with
  * "ETELEGRAM: 400 … caption is too long" (not a bad_body failure), turned red in
  * the calendar, and the user got no bell entry and no email. Only bad_body told
  * anyone anything. v1.0.8 notifies on every publish failure.

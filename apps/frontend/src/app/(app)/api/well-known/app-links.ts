@@ -1,7 +1,7 @@
 /**
  * App Links (Android) and Universal Links (iOS) verification payloads.
  *
- * ⛔ Why these were missing and why it mattered (E2E-10-70 follow-up). Measured
+ * ⛔ Why these were missing and why it mattered. Measured
  * on production 2026-09-19, before this shipped:
  *
  *   GET /.well-known/assetlinks.json              → 307 to /auth

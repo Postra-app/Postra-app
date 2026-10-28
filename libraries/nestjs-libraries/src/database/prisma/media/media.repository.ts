@@ -10,7 +10,7 @@ import {
 } from '@gitroom/helpers/utils/media.type';
 
 // An org-scoped update of an id that is not this org's media throws P2025,
-// which reached the client as a 500 (E2E-11-68). It is a 404.
+// which reached the client as a 500. It is a 404.
 const mediaNotFound = (err: any): never => {
   if (err?.code === 'P2025') {
     throw new NotFoundException('Media not found');
@@ -90,7 +90,7 @@ export class MediaRepository {
 
   /**
    * Which of these pictures are in the library only as deleted ones: a
-   * deleted row and no live row for the same file (E2E-06-33). By id or by
+   * deleted row and no live row for the same file. By id or by
    * path, since a post's image list may hold either.
    */
   async deletedFromLibrary(org: string, ids: string[], paths: string[]) {

@@ -33,7 +33,7 @@ describe('MobilePushService authorization', () => {
       expect(arg.update).not.toHaveProperty('userId');
     });
 
-    it('REFUSES to claim a token registered to a different user (E2E-10-19)', async () => {
+    it('REFUSES to claim a token registered to a different user', async () => {
       const { service, model } = makeService();
       model.findUnique.mockResolvedValue({ userId: 'victim' });
       await service.registerToken('attacker', 'orgAttacker', TOKEN, 'ios');
@@ -42,7 +42,7 @@ describe('MobilePushService authorization', () => {
   });
 
   describe('removeToken', () => {
-    it('deletes only rows owned by the caller (E2E-10-18)', async () => {
+    it('deletes only rows owned by the caller', async () => {
       const { service, model } = makeService();
       await service.removeToken(TOKEN, 'userA');
       expect(model.deleteMany).toHaveBeenCalledWith({
@@ -64,7 +64,7 @@ describe('MobilePushService authorization', () => {
   });
 });
 
-describe('notifyOrg recipients (E2E-02-30)', () => {
+describe('notifyOrg recipients', () => {
   // Removing a member left their phone registered for the organisation, so
   // every publication and failure still reached it.
   it('pushes only to active, unsuspended members of the organisation', async () => {

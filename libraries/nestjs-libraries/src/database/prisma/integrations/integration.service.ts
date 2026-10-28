@@ -58,8 +58,7 @@ export class IntegrationService {
   ) {}
 
   // Stops the organisation's Auto Post feeds, all of them or all but the
-  // `keep` oldest running ones (a downgrade to a plan with fewer feeds,
-  // E2E-07-33).
+  // `keep` oldest running ones (a downgrade to a plan with fewer feeds).
   async changeActiveCron(orgId: string, keep = 0) {
     const data = await this._autopostsRepository.getAutoposts(orgId);
     const running = data
@@ -394,7 +393,7 @@ export class IntegrationService {
   // The duplicate check and the write, one at a time per Instagram account
   // in an organisation, whichever way it connects: the Page pick and the
   // callback without a Page for the same account at once both passed the
-  // check and the org got two channels (Codex 2026-10-27). Null when the
+  // check and the org got two channels. Null when the
   // provider has no other route.
   async lockSameAccount(org: string, provider: string, internalId: string) {
     if (!SAME_ACCOUNT_PROVIDERS[provider]) {
@@ -642,7 +641,7 @@ export class IntegrationService {
 
   async enableChannel(org: string, totalChannels: number, id: string) {
     // Counted and switched on one at a time per organisation: two requests
-    // at once both saw a free slot and both enabled (BILL-6).
+    // at once both saw a free slot and both enabled.
     const lock = `channels-enable:${org}`;
     if ((await ioRedis.set(lock, '1', 'EX', 15, 'NX')) !== 'OK') {
       throw new HttpException(
@@ -943,7 +942,7 @@ export class IntegrationService {
   }) {
     const getPlugById = await this._integrationRepository.getPlug(data.plugId);
     // Switched off, or its channel disabled or removed, after the post went
-    // out: the scheduled comment or repost still ran (INT-14). `true` ends
+    // out: the scheduled comment or repost still ran. `true` ends
     // the plug's runs.
     if (
       !getPlugById ||

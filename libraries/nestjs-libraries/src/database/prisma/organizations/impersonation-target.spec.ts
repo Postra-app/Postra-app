@@ -2,8 +2,8 @@ import { OrganizationRepository } from './organization.repository';
 
 // Impersonation loads its target through getUserOrg, before the middleware's
 // own activated and disabled checks run. A deactivated account, or a seat
-// disabled after a downgrade, was fully usable that way, publishing included
-// (E2E-09-27). No match leaves the admin as themselves.
+// disabled after a downgrade, was fully usable that way, publishing included.
+// No match leaves the admin as themselves.
 describe('the impersonation target', () => {
   it('is only an active seat of an activated account', async () => {
     const findFirst = jest.fn().mockResolvedValue(null);

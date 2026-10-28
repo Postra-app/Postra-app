@@ -73,7 +73,7 @@ test('a post saved for two channels opens with both, and each keeps its own text
   }
 });
 
-// Codex: saving the post from one channel gave the other channel its tags.
+// Saving the post from one channel gave the other channel its tags.
 test('editing one channel of a post leaves the tags of the other', async ({ page }) => {
   test.setTimeout(90_000);
   const api = await signedIn('a');

@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Rolls the app's auto scaling group onto the image named in SSM: starts an
 # instance refresh and waits for it. A new instance boots with the image
-# (Postra-infra modules/app_asg userdata reads APP_IMAGE), joins the load
+# (its user data reads APP_IMAGE), joins the load
 # balancer, and the old one goes once the new one is healthy. The refresh
 # itself cannot roll back an image change (the launch template did not
 # change), so the caller does that: previous image back into SSM, refresh

@@ -13,7 +13,7 @@ export class IntegrationValidateTimeDto {
   @IsNumber()
   time: number;
 
-  // IANA zone of a local-time slot (E2E-05-85); without it the minutes are
+  // IANA zone of a local-time slot; without it the minutes are
   // after UTC midnight.
   @IsOptional()
   @IsTimeZone()

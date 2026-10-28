@@ -63,7 +63,7 @@ describe('housekeepingWorkflow', () => {
     expect(continueAsNew).toHaveBeenCalledTimes(2);
   });
 
-  // Sentry's cron monitor (E2E-11-15): one check-in opened before the steps
+  // Sentry's cron monitor: one check-in opened before the steps
   // and closed after them, "error" as soon as one step failed, and nothing
   // reported by a run that started before the check-in shipped.
   it('reports the day to the cron monitor: ok, or error when a step failed', async () => {
@@ -99,7 +99,7 @@ describe('housekeepingWorkflow', () => {
     expect(continueAsNew).toHaveBeenCalledTimes(1);
 
     // The opening check-in failing (worker restarts, timeouts) must not end
-    // the workflow before the work (Codex): the day runs, unreported.
+    // the workflow before the work: the day runs, unreported.
     housekeepingStarted.mockRejectedValueOnce(new Error('sentry down'));
     await housekeepingWorkflow();
     expect(purgeOldRecords).toHaveBeenCalledTimes(2);

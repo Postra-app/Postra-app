@@ -203,7 +203,7 @@ export class OAuthRepository {
   /**
    * Spends the code in the same write that issues the token. Two exchanges of
    * one code both read it before either wrote, both answered with a token,
-   * and the first one stopped working (API-6). Returns 0 when it was spent.
+   * and the first one stopped working. Returns 0 when it was spent.
    */
   async exchangeCodeForToken(
     id: string,
@@ -241,7 +241,7 @@ export class OAuthRepository {
                 totalChannels: true,
                 isLifetime: true,
                 // The credit cycle starts here; without it the public API and
-                // MCP counted from the time of the request (API-7).
+                // MCP counted from the time of the request.
                 createdAt: true,
                 deletedAt: true,
               },
@@ -280,7 +280,7 @@ export class OAuthRepository {
       },
       // What the Approved Apps page shows, nothing more: the full rows carried
       // the app's encrypted client secret and this grant's encrypted access
-      // token (AUTH-12).
+      // token.
       select: {
         id: true,
         createdAt: true,

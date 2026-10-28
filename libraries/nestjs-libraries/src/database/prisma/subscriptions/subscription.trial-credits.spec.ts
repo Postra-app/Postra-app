@@ -5,7 +5,7 @@ jest.mock('@gitroom/nestjs-libraries/redis/auth-context.cache', () => ({ bustAut
 import { SubscriptionService } from '@gitroom/nestjs-libraries/database/prisma/subscriptions/subscription.service';
 import { pricing } from '@gitroom/nestjs-libraries/database/prisma/subscriptions/pricing';
 
-// E2E-07-21 (BILL-8): images generated in the background (Creator, Auto Post)
+// Images generated in the background (Creator, Auto Post)
 // were counted against the full Business pool during a trial — the trial
 // flag never reached the enforcement.
 describe('background image generation during a trial', () => {

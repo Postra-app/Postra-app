@@ -1,7 +1,7 @@
 import { TiktokProvider } from './tiktok.provider';
 import { RefreshToken } from '@gitroom/nestjs-libraries/integrations/social.abstract';
 
-// E2E-08-63: the composer's "Who can see this video?" list came back empty.
+// The composer's "Who can see this video?" list came back empty.
 // TikTok access tokens live 24 h; past that creator_info answers 401 with no
 // data, and creatorInfo turned it into an empty option list instead of asking
 // for a token refresh, so a TikTok post could not be scheduled at all.

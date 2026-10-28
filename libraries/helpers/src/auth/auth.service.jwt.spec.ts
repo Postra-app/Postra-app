@@ -1,7 +1,7 @@
 import { sign } from 'jsonwebtoken';
 import { AuthService } from './auth.service';
 
-describe('AuthService JWT algorithm (E2E-11-79)', () => {
+describe('AuthService JWT algorithm', () => {
   beforeEach(() => {
     process.env.JWT_SECRET = 'test-secret';
   });

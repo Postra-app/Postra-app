@@ -32,7 +32,7 @@ export const startMcp = async (app: INestApplication) => {
 
   // The agent asked through MCP (`ask_postra`) spends the same monthly
   // fair use (pricing.agent_messages) as the chat, and like the chat it is checked before a run
-  // starts; the run itself re-checks only every few steps (E2E-08-47).
+  // starts; the run itself re-checks only every few steps.
   // Answered as a tool error, which MCP clients show to the person.
   const AGENT_LIMIT =
     `You have reached this month's fair-use limit for the AI assistant (${AGENT_FAIR_USE_MESSAGES.toLocaleString('en-GB')} questions, the same on every plan). It resets with your next billing month.`;
@@ -146,7 +146,7 @@ export const startMcp = async (app: INestApplication) => {
     oauth: {
       // The address clients connect to, which they must find again in the
       // metadata (RFC 9728 §3.3). `new URL('/mcp-oauth', …/api)` dropped
-      // the /api (E2E-08-45).
+      // the /api.
       resource: publicBackendUrl('/mcp-oauth'),
       authorizationServers: [process.env.NEXT_PUBLIC_BACKEND_URL!],
       validateToken: async (token: string) => {
@@ -198,7 +198,7 @@ export const startMcp = async (app: INestApplication) => {
       // Claude, ChatGPT and other MCP clients register themselves here
       // (RFC 7591); "none" is a public client using PKCE.
       registration_endpoint: `${process.env.NEXT_PUBLIC_OVERRIDE_BACKEND_URL || process.env.NEXT_PUBLIC_BACKEND_URL}/oauth/register`,
-      // Checked at /oauth/token since E2E-08-44. No scopes_supported: an
+      // Checked at /oauth/token. No scopes_supported: an
       // approved app gets the whole organisation, so naming read/write
       // scopes promised a limit nothing enforced.
       code_challenge_methods_supported: ['S256'],
@@ -333,7 +333,7 @@ export const startMcp = async (app: INestApplication) => {
 
   // /mcp/:key, /sse/:key and /message/:key took the API key in the address:
   // it landed in the ALB and WAF logs, the assistant's logs and browser
-  // history. Removed 10-08 (E2E-08-60) once ChatGPT and Claude were signing
+  // history. Removed 10-08 once ChatGPT and Claude were signing
   // in through /mcp-oauth on prod; other clients send the key in the
   // Authorization header to /mcp.
 };

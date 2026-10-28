@@ -50,7 +50,7 @@ export const weekOf = (date: Date) => {
 // jumps to the target in one move, and react-dnd's HTML5 backend then
 // sometimes sees no dragover on the cell, so nothing is dropped - the Month
 // cell's centre holds the "+" button, which made it fail there every time
-// during the day (E2E-01-36).
+// during the day.
 // A point of the element that is really on top at that spot: the calendar's
 // weekday header is sticky, and a cell scrolled under it has a box Playwright
 // calls visible while every press there lands on the header.
@@ -71,7 +71,7 @@ export const dragWithMouse = async (page: Page, from: Locator, to: Locator) => {
   await from.scrollIntoViewIfNeeded();
   // A busy day makes its week row tall; scrolling the tile into view can then
   // push the target cell of the row above under the sticky header (Month
-  // view, a Monday post moved to Sunday: E2E-01-36, 2026-10-15). Drop on a
+  // view, a Monday post moved to Sunday). Drop on a
   // point of the cell that is really there, and scroll it into view if no
   // such point exists.
   let drop = await visiblePoint(to);

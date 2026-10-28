@@ -7,7 +7,7 @@ import { getAuth } from '@gitroom/nestjs-libraries/chat/async.storage';
 // the wrapped model reads the orgId back out at call time. MCP runs the agent in
 // its own scope (runWithContext, the organisation of the API key or OAuth
 // token); without reading it, every MCP run was recorded org-less and never
-// counted against the plan (E2E-08-47). Outside both, the row is org-less.
+// counted against the plan. Outside both, the row is org-less.
 export const aiUsageOrgContext = new AsyncLocalStorage<string>();
 
 // Hand-rolled delegation instead of ai's wrapLanguageModel: the monorepo hoists

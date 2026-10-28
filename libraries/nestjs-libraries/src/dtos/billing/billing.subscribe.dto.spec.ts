@@ -2,7 +2,7 @@ import { plainToInstance } from 'class-transformer';
 import { validate } from 'class-validator';
 import { BillingSubscribeDto } from './billing.subscribe.dto';
 
-// E2E-11-64: these strings go into the Stripe subscription's metadata, where
+// These strings go into the Stripe subscription's metadata, where
 // a value over 500 characters is refused. A longer one was a Stripe 400, our
 // 500 and a Sentry event per request, from any signed-in account.
 describe('BillingSubscribeDto', () => {

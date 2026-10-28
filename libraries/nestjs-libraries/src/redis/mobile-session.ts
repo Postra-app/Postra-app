@@ -13,7 +13,7 @@ import { ioRedis } from '@gitroom/nestjs-libraries/redis/redis.service';
  * The obvious lever, bumping `user.tokenVersion`, is too blunt: it ends every
  * session that user has, so signing out on the phone would sign them out of the
  * browser mid-edit. Instead a token carries its own session id, and this is the
- * list of the ones that have been revoked. Since E2E-11-74 browser tokens carry
+ * list of the ones that have been revoked. Browser tokens carry
  * one too: deleting the cookie ended the browser's copy only, and a copied
  * cookie kept working for the rest of its 30 days.
  *
@@ -25,7 +25,7 @@ export const MOBILE_TOKEN_TTL_SECONDS = 7 * 24 * 60 * 60;
 /**
  * How long a session lasts from signing in, however often the app refreshes
  * its token: the browser's token already ends here. Tokens carry the sign-in
- * time as `sat` (E2E-11-80, NIST SP 800-63B-4: a definite overall timeout, no
+ * time as `sat` (NIST SP 800-63B-4: a definite overall timeout, no
  * more than 30 days at AAL1).
  */
 export const SESSION_MAX_AGE_SECONDS = 30 * 24 * 60 * 60;

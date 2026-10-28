@@ -2,10 +2,10 @@ import { APIRequestContext, expect, test } from '@playwright/test';
 import { channelOf, database, signedIn, throwawayOrg } from '../helpers';
 import { ORG_C } from '../seed';
 
-// Seats and roles in a team (Plan/testing.md §9). team_members counts every
-// seat including the owner: Starter 1, Pro 2, Business 5. Organisation C is a
-// Business agency with all five seats taken: owner, one ADMIN, three USERs.
-// Serial: the last tests free a seat, the first need the team full.
+// Seats and roles in a team. team_members counts every seat including the
+// owner: Starter 1, Pro 2, Business 5. Organisation C is a Business agency with
+// all five seats taken: owner, one ADMIN, three USERs. Serial: the last tests
+// free a seat, the first need the team full.
 test.describe.configure({ mode: 'serial' });
 
 const UNKNOWN = '00000000-0000-4000-8000-000000000000';
@@ -31,7 +31,7 @@ test('Starter cannot invite anyone: the owner is its only seat', async () => {
   const starter = await signedIn('b');
   const res = await starter.post('/settings/team', invite());
   expect(res.status()).toBe(402);
-  // About seats (E2E-07-38): Starter's only seat is the owner's.
+  // About seats: Starter's only seat is the owner's.
   expect((await res.json()).message).toContain('team seats are all taken');
   await starter.dispose();
 });
@@ -49,11 +49,11 @@ test('Business with five seats taken refuses the sixth, from the owner and an ad
   expect(JSON.stringify(team)).toContain(ORG_C.leaver.email);
 });
 
-// E2E-02-02: a role that is too low is 403, a plan that is too small is 402.
-// [method, path, body, USER, ADMIN]. A member works with posts and channels
-// in the calendar; deleting, disabling or moving channels between agency
-// clients, webhooks, the team, billing, the API key and organisation settings
-// are for admins.
+// A role that is too low is 403, a plan that is too small is 402. [method,
+// path, body, USER, ADMIN]. A member works with posts and channels in the
+// calendar; deleting, disabling or moving channels between agency clients,
+// webhooks, the team, billing, the API key and organisation settings are for
+// admins.
 type Row = [
   'get' | 'post' | 'put' | 'delete',
   string,
@@ -147,7 +147,7 @@ test('Business with a seat free can invite again', async () => {
   expect((await res.json()).url).toContain('/?org=');
 });
 
-test('E2E-02-31: a used team invite cannot be used again, by anyone', async () => {
+test('a used team invite cannot be used again, by anyone', async () => {
   // The spent mark sat in one field of the user who used it: their next
   // invite overwrote it and the first link worked again for anyone, with the
   // role it carried.
@@ -181,8 +181,8 @@ test('E2E-02-31: a used team invite cannot be used again, by anyone', async () =
   }
 });
 
-// BILL-5: seats were checked when an invite was sent, and sending one
-// reserves nothing — a Pro owner could send several and all of them got in.
+// Seats were checked when an invite was sent, and sending one reserves
+// nothing — a Pro owner could send several and all of them got in.
 test('Pro: two invites sent with one seat free, only the first person gets in', async () => {
   const prisma = database();
   const pro = await throwawayOrg(prisma, { tier: 'PRO', totalChannels: 5, channels: 0 });
@@ -198,8 +198,8 @@ test('Pro: two invites sent with one seat free, only the first person gets in', 
     const join = async (who: typeof pro, token: string) =>
       (await (await who.api.post('/user/join-org', { data: { org: token } })).json()).id as string | null;
     expect(await join(first, one)).toBe(pro.orgId);
-    // E2E-07-38: refused with the reason, not a bare {id: null} that the
-    // invitation page read as "expired or already used".
+    // Refused with the reason, not a bare {id: null} that the invitation page
+    // read as "expired or already used".
     const refused = await second.api.post('/user/join-org', { data: { org: two } });
     expect(await refused.json()).toEqual({ id: null, reason: 'no_seats' });
     expect(await prisma.userOrganization.count({ where: { organizationId: pro.orgId, disabled: false } })).toBe(2);

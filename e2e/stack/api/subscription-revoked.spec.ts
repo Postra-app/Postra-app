@@ -1,7 +1,7 @@
 import { expect, request as pwRequest, test } from '@playwright/test';
 import { BACKEND_URL, database, throwawayOrg } from '../helpers';
 
-// E2E-07-32: a revoked subscription is soft-deleted (deletedAt), but the
+// A revoked subscription is soft-deleted (deletedAt), but the
 // organisation loaded for a request (session, API key, MCP) still carried it:
 // the permission guard said FREE while /user/self, the public API and MCP
 // went on as if the plan were there.

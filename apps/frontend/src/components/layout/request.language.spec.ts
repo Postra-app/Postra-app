@@ -33,7 +33,7 @@ describe('requestLanguage', () => {
 
   // (provider) and (extension) passed language="en": the server rendered
   // English for a Polish browser, and the browser, starting on the server's
-  // language, saved "en" over the visitor's choice (Codex, 2026-10-26).
+  // language, saved "en" over the visitor's choice.
   it('every layout renders the request language', () => {
     for (const group of ['(app)', '(provider)', '(extension)']) {
       const layout = readFileSync(

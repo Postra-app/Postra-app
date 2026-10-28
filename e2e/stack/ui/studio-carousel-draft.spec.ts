@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test';
 
-// E2E-06-23: Studio kept only the slide on screen in its draft, and an Undo
+// Studio kept only the slide on screen in its draft, and an Undo
 // right after switching slides loaded the previous slide's state, which the
 // next switch then saved over this slide.
 test.use({ viewport: { width: 1440, height: 900 } });

@@ -706,7 +706,7 @@ export class MediaService {
       return media;
     }
     // Deleted from the library: forget it, so the same request can make the
-    // clip again instead of reading as "already being made" (Codex). Only
+    // clip again instead of reading as "already being made". Only
     // while the key still names that clip — a new run may own it by now.
     await ioRedis
       .eval(
@@ -754,7 +754,7 @@ export class MediaService {
   // token usage is still recorded to AiUsage (observational, not billing) so a
   // real `ai_text` bucket can be priced once there is post-launch traffic.
   /**
-   * Photo retouch (Plan/photo-retouch.md): a new library file made from an
+   * Photo retouch: a new library file made from an
    * untouched source. The model decides, sharp applies; when AI is down the
    * heuristic decides, so the photo still comes back. Unmetered like Refine
    * (throttled at the route, tokens recorded to AiUsage); never AI-generated

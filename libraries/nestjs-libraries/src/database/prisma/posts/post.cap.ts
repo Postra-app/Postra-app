@@ -3,7 +3,7 @@ import { saveTypeOfPost } from '@gitroom/nestjs-libraries/dtos/posts/create.post
 
 // A publish date a post can be saved on: a date, within a hundred years. The
 // database cannot hold some years, and the monthly count treats a date it
-// cannot place as now, while the post would be saved on the far date (Codex).
+// cannot place as now, while the post would be saved on the far date.
 export const isPostDate = (date: unknown): boolean =>
   (typeof date === 'string' || date instanceof Date) &&
   dayjs(date).isValid() &&
@@ -50,7 +50,7 @@ export const postsCountedBy = (
 
 // Existing posts a save keeps as drafts: they leave the count as the save's
 // other posts join it, so a save at a full month that swaps one for another
-// fits (Codex).
+// fits.
 export const postsReleasedBy = (
   body: any,
   typeOf: (post: any) => unknown = (post) => saveTypeOfPost(body, post)

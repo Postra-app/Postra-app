@@ -4,7 +4,7 @@ jest.mock('@gitroom/backend/services/auth/permissions/permissions.service', () =
 
 import { isUnguardedPath } from './permissions.guard';
 
-// E2E-08-25: the guard skipped every path containing "/auth", so approving an
+// The guard skipped every path containing "/auth", so approving an
 // OAuth app (`/oauth/authorize`) ran without its admin-only policy.
 describe('isUnguardedPath', () => {
   it('skips sign-in routes and the channel-connect callbacks', () => {

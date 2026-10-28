@@ -56,7 +56,7 @@ const clamp = (v: number, lo: number, hi: number) =>
  * The model's decision as stored: numbers kept inside the contract's own
  * range (-1..1, shadows and sharpen 0..1) and the summary sanitised, but NOT
  * capped to a level. The level caps at pipeline time, so a decision made for
- * Light can be redone at Strong and go further (Codex, 2026-10-23).
+ * Light can be redone at Strong and go further.
  */
 export const boundSpec = (spec: RetouchSpec): RetouchSpec => ({
   exposure: clamp(spec.exposure, -1, 1),
@@ -100,7 +100,7 @@ export interface RetouchPipeline {
   normalise: { lower: number; upper: number };
   // shadows lift as a gamma on the whole image (sharp gamma, 1 = off). CLAHE
   // did this locally and better, and took 25 s on a 12-megapixel phone photo
-  // on the production box (Plan/photo-retouch.md §13); gamma takes 0.1 s.
+  // on the production box; gamma takes 0.1 s.
   shadowsGamma: number;
   // sharp modulate saturation multiplier (1 = unchanged)
   saturation: number;
@@ -109,8 +109,8 @@ export interface RetouchPipeline {
   mono: boolean;
 }
 
-// Full-range reach of each control, chosen on real photos (Plan/photo-retouch.md
-// §6): exposure +-35 %, white balance +-12 % per channel, contrast +-30 %.
+// Full-range reach of each control, chosen on real photos: exposure +-35 %,
+// white balance +-12 % per channel, contrast +-30 %.
 const EXPOSURE_RANGE = 0.35;
 const TEMPERATURE_RANGE = 0.12;
 const TINT_RANGE = 0.08;

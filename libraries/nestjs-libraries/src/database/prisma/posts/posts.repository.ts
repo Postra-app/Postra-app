@@ -135,7 +135,7 @@ export class PostsRepository {
   // Filling in a media path (or swapping a PNG for a JPEG) is not an edit.
   // Through Prisma it bumped `updatedAt`, so the editor whose opening of the
   // post triggered it held a version that already looked stale, and its first
-  // save was refused with a 409 (E2E-05-40). Raw SQL because Prisma sets
+  // save was refused with a 409. Raw SQL because Prisma sets
   // @updatedAt on every update it makes.
   updateImages(id: string, images: string) {
     return this._prismaTransaction.model.$transaction(
@@ -447,7 +447,7 @@ export class PostsRepository {
         deletedAt: null,
         integration: { deletedAt: null },
       },
-      // With their tags, which the editor saves them with (Codex).
+      // With their tags, which the editor saves them with.
       include: {
         integration: true,
         tags: {
@@ -556,9 +556,9 @@ export class PostsRepository {
   // First thing in a save's transaction: lock every post it overwrites, in
   // one fixed order, until it commits. Checked only before the write, two
   // saves opened from the same version both passed and the later replaced
-  // the earlier without a 409 (E2E-05-39); locked post by post as the writes
-  // went, [A, B] and [B, A] at once deadlocked and one got a 500
-  // (E2E-05-42). Now the second save waits for the first, then sees its
+  // the earlier without a 409; locked post by post as the writes
+  // went, [A, B] and [B, A] at once deadlocked and one got a 500.
+  // Now the second save waits for the first, then sees its
   // version.
   async lockForSave(
     tx: Prisma.TransactionClient,
@@ -696,7 +696,6 @@ export class PostsRepository {
         // YouTube) write a plaintext access token back onto that same object,
         // so the row would otherwise land here as a working credential — shown
         // by "View" and copied by "Copy Debug Code" in the admin panel.
-        // E2E-09-01.
         await this._errors.model.errors.create({
           data: {
             message: redactSecretsInJson(
@@ -1213,7 +1212,7 @@ export class PostsRepository {
   }
 
   // Also served without a login (GET /public/posts/:id/comments): a deleted
-  // post's preview is empty, so are its comments (E2E-11-71).
+  // post's preview is empty, so are its comments.
   async getComments(postId: string) {
     return this._comments.model.comments.findMany({
       where: {

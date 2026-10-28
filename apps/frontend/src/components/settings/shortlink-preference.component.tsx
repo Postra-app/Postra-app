@@ -42,7 +42,7 @@ const ShortlinkPreferenceComponent = () => {
 
   const [localValue, setLocalValue] = useState<ShortLinkPreference>('ASK');
   // A second choice while the first was saving could be overtaken by it, and
-  // the earlier choice stayed saved (FE-S-8). The control waits for the save.
+  // the earlier choice stayed saved. The control waits for the save.
   const [saving, setSaving] = useState(false);
 
   // Sync local state with fetched data

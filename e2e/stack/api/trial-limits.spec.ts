@@ -1,10 +1,10 @@
 import { expect, request, test } from '@playwright/test';
 import { BACKEND_URL, database, throwawayOrg } from '../helpers';
 
-// K. 2026-10-16: a 7-day trial on any plan posts at most 30 a month, is one
-// person, one webhook and one Auto Post feed (pricing.ts TRIAL_LIMITS). Before,
-// a Business trial had unlimited posts, 5 seats, 10 000 webhooks and 10 feeds
-// before the first charge.
+// A 7-day trial on any plan posts at most 30 a month, is one person, one
+// webhook and one Auto Post feed (pricing.ts TRIAL_LIMITS). Before, a Business
+// trial had unlimited posts, 5 seats, 10 000 webhooks and 10 feeds before the
+// first charge.
 
 const prisma = database();
 const orgs: { remove: () => Promise<void> }[] = [];

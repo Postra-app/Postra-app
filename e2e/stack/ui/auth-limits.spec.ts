@@ -2,8 +2,8 @@ import { expect, test } from '@playwright/test';
 
 // The reset and resend forms rejected on a 429 before any branch of their own
 // handling ran: the reset button spun forever and the resend form said "An
-// error occurred" (final app check §6, 2026-10-22). Both limits are the
-// endpoints' own @Throttle (5 per 15 min, 5 per hour), mocked here.
+// error occurred". Both limits are the endpoints' own @Throttle (5 per 15 min,
+// 5 per hour), mocked here.
 test.use({ storageState: { cookies: [], origins: [] } });
 
 const tooMany = {

@@ -238,8 +238,7 @@ export class PostsService {
     forceRefresh = false
   ): Promise<AnalyticsData[] | { missing: true }> {
     // Days to load, as in IntegrationService.checkAnalytics: the public API
-    // passes `+date`, so a missing `date` asked the platform for NaN days
-    // (E2E-08-57).
+    // passes `+date`, so a missing `date` asked the platform for NaN days.
     date = date > 0 ? date : 7;
     const post = await this._postRepository.getPostById(postId, orgId);
     if (!post || !post.releaseId) {
@@ -365,7 +364,7 @@ export class PostsService {
     organization: string,
     replaceDraft: boolean = false
   ): Promise<CreatePostDto> {
-    // `posts: {}` has no `.every` and was a 500 before validation (API-12).
+    // `posts: {}` has no `.every` and was a 500 before validation.
     if (
       !Array.isArray(body?.posts) ||
       !body.posts.every((p) => p?.integration?.id)
@@ -642,7 +641,7 @@ export class PostsService {
         providerName: rootPost.integration?.name,
         state: rootPost.state,
         error: rootPost.error,
-        // Second line of defence: rows written before E2E-09-01 was fixed
+        // Second line of defence: rows written before redaction at the write
         // still hold plaintext tokens, and this export goes straight to a
         // clipboard and into a support thread.
         errors: errors.map((e) => ({
@@ -940,7 +939,7 @@ export class PostsService {
    * post allowance. Each post counts against the billing month of its publish
    * date (now when it has none), and a post already counted there is an edit.
    * A draft being scheduled was counted as an edit too, so at 399 of 400 one
-   * request scheduled any number of drafts (E2E-07-34). Without posts (a
+   * request scheduled any number of drafts. Without posts (a
    * status change) it asks whether this month has room for one more.
    * `released` are posts of the same save that leave the count (kept as
    * drafts); a post moved to another month leaves its old one.
@@ -966,7 +965,7 @@ export class PostsService {
       existing.map((p) => [p.id, p.publishDate] as const)
     );
     // A draft or a failed post edited with 'update' stays one, out of the
-    // count; it was counted as a new post (Codex).
+    // count; it was counted as a new post.
     const uncounted = new Set(
       existing
         .filter((p) => p.state !== 'QUEUE' && p.state !== 'PUBLISHED')
@@ -1142,7 +1141,7 @@ export class PostsService {
     if (posts != null && !Array.isArray(posts)) {
       throw new BadRequestException('posts must be an array');
     }
-    // Each post's value is a list too; `value: {}` died on `.map` (POSTS-13).
+    // Each post's value is a list too; `value: {}` died on `.map`.
     if (
       (posts || []).some(
         (post) => post?.value != null && !Array.isArray(post.value)
@@ -1290,7 +1289,7 @@ export class PostsService {
   }
 
   /**
-   * E2E-06-33: the nightly sweep removes the files of media deleted from the
+   * The nightly sweep removes the files of media deleted from the
    * library, so a post saved with one in the moment between the sweep's last
    * look and the removal lost its picture. A deleted picture cannot be added
    * to a post; one the post already had stays, so old posts remain editable.
@@ -1408,12 +1407,12 @@ export class PostsService {
     // publishing.
     // "Now" once, for the count and the save alike: counted to the second
     // and saved to the minute, a post at the start of a billing month
-    // counted in one month and was saved in the one before (Codex).
+    // counted in one month and was saved in the one before.
     const now = dayjs().format('YYYY-MM-DDTHH:mm:00');
     const counted = cap ? postsCountedBy(body, true, undefined, now) : [];
     const written = await this._postRepository.transaction(async (tx) => {
       // The guard counted outside any lock, so two saves at once could both
-      // take the last post of the month (Codex). Counted again here, behind a
+      // take the last post of the month. Counted again here, behind a
       // lock of the organisation taken before the rows'.
       if (cap && counted.length) {
         await this.refuseOverPostCap(
@@ -1509,7 +1508,7 @@ export class PostsService {
 
     const state: State = status === 'draft' ? 'DRAFT' : 'QUEUE';
     await this._postRepository.transaction(async (tx) => {
-      // Counted and scheduled behind one lock, like a save (Codex).
+      // Counted and scheduled behind one lock, like a save.
       if (cap && state === 'QUEUE') {
         await this.refuseOverPostCap(tx, orgId, cap, [{ id }]);
       }
@@ -1522,8 +1521,8 @@ export class PostsService {
       );
     });
     // The publish guard returns a saved release instead of publishing, so a
-    // republish through the public API reported success and sent nothing
-    // (POSTS-8). The editor's republish clears it the same way.
+    // republish through the public API reported success and sent nothing.
+    // The editor's republish clears it the same way.
     if (status === 'schedule' && republish) {
       // The whole thread: comments with a saved release were skipped and
       // reported under the old post.
@@ -1567,7 +1566,7 @@ export class PostsService {
 
     // A post that counts (scheduled, or scheduled by this move) counts
     // against the month it moves to: moving one from an emptier month into
-    // a full one went past the allowance (Codex on E2E-07-34). A draft stays
+    // a full one went past the allowance. A draft stays
     // a draft whatever the action (the calendar drags drafts with
     // "schedule"), and a failed post moved with "update" stays out of the
     // count.
@@ -1576,7 +1575,7 @@ export class PostsService {
     const newDate = await this._postRepository.transaction(async (tx) => {
       // Counted and moved behind one lock: two moves at once both found the
       // last post of the month free; and the state is read behind it too, or
-      // a draft scheduled meanwhile moved as a draft (Codex).
+      // a draft scheduled meanwhile moved as a draft.
       let state = getPostById.state;
       if (cap) {
         await this._postRepository.lockPostCap(tx, orgId);
@@ -1612,7 +1611,7 @@ export class PostsService {
 
     // A new date for a post still waiting to go out has to reach its
     // workflow, which otherwise kept sleeping until the old time and
-    // published then (POSTS-7). A published post only changes on the
+    // published then. A published post only changes on the
     // calendar.
     const waiting = getPostById.state === 'QUEUE' && !getPostById.releaseId;
     if (action === 'schedule' || waiting) {
@@ -1754,7 +1753,7 @@ export class PostsService {
   // Walks the calendar a week at a time. Each slot's moment comes from its
   // own zone, so a week's candidates are built from the calendar days around
   // it (a zone far ahead or behind UTC puts a day's slot on the neighbouring
-  // UTC day) and only those inside the week are taken (E2E-05-85, E2E-10-59).
+  // UTC day) and only those inside the week are taken.
   private async findFreeDateTimeFrom(
     orgId: string,
     times: PostingTime[]

@@ -4,7 +4,7 @@ import { ioRedis } from '@gitroom/nestjs-libraries/redis/redis.service';
 // carrying the `key` and `uploadId` the first call returned. Nothing tied them
 // to the organisation that started the upload: any signed-in account holding
 // a leaked pair could list, sign parts into, abort or complete it, and a
-// completed upload was saved to the caller's library (E2E-11-70). The first
+// completed upload was saved to the caller's library. The first
 // call records the owner; every later one must come from it.
 const TTL_SECONDS = 24 * 60 * 60;
 const ownerKey = (uploadId: string) => `multipart-owner:${uploadId}`;

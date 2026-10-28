@@ -20,7 +20,7 @@ import { StripeController } from './stripe.controller';
 import { StripeEventStore } from '@gitroom/nestjs-libraries/services/stripe.event.store';
 
 /**
- * E2E-07-13 — the event id was written before the handler ran. A process
+ * The event id was written before the handler ran. A process
  * killed in the middle (a deploy, a restart) left it behind, and every retry
  * from Stripe was answered "duplicate" for work that never finished: a paid
  * subscription that was never granted.
@@ -132,7 +132,7 @@ describe('Stripe webhook: one run per event, and a crash is not "done"', () => {
     expect(keys.size).toBe(0);
   });
 
-  // BILL-2: an update that read the subscription and lost the race to a
+  // An update that read the subscription and lost the race to a
   // deletion wrote the old plan back after it.
   it('two events of one customer are handled one after the other', async () => {
     const forCustomer = (id: string, type: string) => ({
@@ -152,7 +152,7 @@ describe('Stripe webhook: one run per event, and a crash is not "done"', () => {
       async () => undefined,
       forCustomer('evt_b', 'customer.subscription.updated')
     );
-    // 18 X: the second answered 409 at once and Stripe came back minutes
+    // The second used to answer 409 at once and Stripe came back minutes
     // later. It now waits for the first and runs after it, in one delivery.
     const waiting = second.deliver();
     await new Promise((r) => setTimeout(r, 300));

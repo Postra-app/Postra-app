@@ -453,7 +453,7 @@ export const STUDIO_GRAPHICS_TOOLS: StudioToolGuide[] = [
 
 // Studio → Photos (photo-retouch.tsx). Unlike the Graphics and Video guides
 // above, every sentence goes through t(): the feature shipped with its help
-// in English and Polish from day one (K., 2026-10-23). Facts come from the
+// in English and Polish from day one. Facts come from the
 // retouch code — keep in sync when levels or limits change.
 type Translate = (key: string, fallback: string) => string;
 

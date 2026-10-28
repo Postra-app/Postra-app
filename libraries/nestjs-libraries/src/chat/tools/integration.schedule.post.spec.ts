@@ -17,7 +17,7 @@ import { postAllowance } from '@gitroom/nestjs-libraries/database/prisma/subscri
 
 // The dashboard enforces posts_per_month through CheckPolicies; the agent
 // tool created posts without asking, so a Starter org could pass 400. The
-// counting itself (per billing month, E2E-07-34) is PostsService.postCapReached,
+// counting itself (per billing month) is PostsService.postCapReached,
 // tested on the stack (post-cap-window.spec.ts); here: the tool asks it with
 // the plan's limit and every post of the batch.
 const build = (tier: string | null, used: number, trialing = false) => {
@@ -64,14 +64,14 @@ describe('agent post cap', () => {
     expect(postsService.postCapReached.mock.calls[0][2]).toBe(400);
   });
 
-  // K. 2026-10-16: a trial posts at most 30 a month, whatever the plan.
+  // A trial posts at most 30 a month, whatever the plan.
   it('stops a Business trial at 30 posts, like the app', async () => {
     const { tool, postsService } = build('ULTIMATE', 30, true);
     await expect(tool.postLimitReached('org-1', new Date().toISOString(), posts(1))).resolves.toBe(true);
     expect(postsService.postCapReached.mock.calls[0][2]).toBe(30);
   });
 
-  // AI-8: one batch of ten at 399 of 400 went through in full.
+  // One batch of ten at 399 of 400 went through in full.
   it('counts the whole batch, not just whether one more fits', async () => {
     const { tool } = build('STANDARD', 399);
     await expect(tool.postLimitReached('org-1', new Date().toISOString(), posts(10))).resolves.toBe(true);
@@ -96,7 +96,7 @@ describe('agent post cap', () => {
   });
 });
 
-// Codex: the check above runs before any post is written, so saves at once
+// The check above runs before any post is written, so saves at once
 // could all pass it. createPost counts again behind a lock with this cap.
 describe('agent post cap passed to createPost', () => {
   const key = process.env.STRIPE_PUBLISHABLE_KEY;
@@ -116,8 +116,8 @@ describe('agent post cap passed to createPost', () => {
     await expect(tool.postCap('org-1', new Date().toISOString())).resolves.toBeUndefined();
   });
 
-  // Codex on the 10-09 branch: the dashboard and the public API count the
-  // month from Stripe's billing anchor (E2E-07-40); the agent still counted
+  // The dashboard and the public API count the
+  // month from Stripe's billing anchor; the agent still counted
   // from the subscription's creation, a week off after a trial.
   it("counts the month from Stripe's billing anchor, like the dashboard", async () => {
     process.env.STRIPE_PUBLISHABLE_KEY = 'pk_test';

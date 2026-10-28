@@ -9,8 +9,8 @@ import { ioRedis } from '@gitroom/nestjs-libraries/redis/redis.service';
 import { marginAlertMail } from '@gitroom/nestjs-libraries/ai-cost/margin-alert.mail';
 import * as Sentry from '@sentry/nestjs';
 
-// Sentry's cron monitor of the daily run. Postra-infra modules/sentry owns
-// the monitor (slug, schedule, margins); the SDK only reports to it.
+// Sentry's cron monitor of the daily run. The operator's monitoring setup
+// owns the monitor (slug, schedule, margins); the SDK only reports to it.
 export const HOUSEKEEPING_MONITOR = 'housekeeping';
 
 @Injectable()
@@ -25,8 +25,8 @@ export class HousekeepingActivity {
   ) {}
 
   // The daily run reports to Sentry's cron monitor: a day without an "ok", or
-  // an "error", opens an issue. When the run broke on 2026-10-09 (E2E-11-15,
-  // replay spec) nothing said so for a week.
+  // an "error", opens an issue. When the run once broke, nothing said so for
+  // a week.
   @ActivityMethod()
   async housekeepingStarted() {
     return Sentry.captureCheckIn({
@@ -47,7 +47,7 @@ export class HousekeepingActivity {
   // What `purge-old-records --apply` does, with its default windows. It
   // existed as a command only and nothing ran it, so rows outlived their
   // retention and files deleted on 2026-09-10 were still on the CDN on
-  // 2026-10-04 (E2E-06-01).
+  // 2026-10-04.
   @ActivityMethod()
   async purgeOldRecords() {
     const purge = await this._maintenance.purgeOldRecords(true);
@@ -92,7 +92,7 @@ export class HousekeepingActivity {
     for (const admin of admins) {
       delivered = (await this._email.sendEmailSync(admin.email, subject, html)) || delivered;
     }
-    // Marked only once someone got it (Codex): a failed send is tried again
+    // Marked only once someone got it: a failed send is tried again
     // by the activity's retry and by tomorrow's run.
     if (!delivered) {
       throw new Error(`margin guard: alert for ${fresh.length} organisation(s) not delivered`);

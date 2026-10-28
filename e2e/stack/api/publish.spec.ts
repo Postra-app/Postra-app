@@ -130,8 +130,8 @@ test('a platform refusal marks the post failed, with the reason', async () => {
   await settledState(post.id).toBe('ERROR');
   const after = await stored(post.id);
   expect(after.releaseURL).toBeFalsy();
-  // E2E-05-10: the platform's own reason in one readable sentence — not
-  // Temporal's JSON with stack traces and container paths.
+  // The platform's own reason in one readable sentence — not Temporal's JSON
+  // with stack traces and container paths.
   expect(after.error).toContain('Text character limit of 500 exceeded');
   expect(after.error).not.toMatch(/\bat \w+|\/app\/|node_modules|workflowId/);
 
@@ -149,8 +149,7 @@ test('a platform refusal marks the post failed, with the reason', async () => {
 });
 
 // Editing a scheduled post (composer → save with the same post id): the old
-// workflow is stopped and a new one publishes the new text, once (S2,
-// 05-composer-publish.md §5.3 "Edit zaplanowanego").
+// workflow is stopped and a new one publishes the new text, once.
 test('an edited scheduled post publishes the new text, once', async () => {
   const tag = Date.now();
   const original = `[stack] before edit ${tag}`;
@@ -218,10 +217,10 @@ test('duplicating a post makes an independent copy', async () => {
   }
 });
 
-// §5.4 error paths: the channel goes bad between scheduling and publishing.
-// The post fails with a plain reason, the team is told in the app, and
-// nothing reaches the platform. Each runs in its own organisation: disabling
-// A's Mastodon hid it from the UI tests running beside this file.
+// Error paths: the channel goes bad between scheduling and publishing. The post
+// fails with a plain reason, the team is told in the app, and nothing reaches
+// the platform. Each runs in its own organisation: disabling A's Mastodon hid
+// it from the UI tests running beside this file.
 const badChannelPost = async (
   breakIt: (prisma: ReturnType<typeof database>, channelId: string, owner: APIRequestContext) => Promise<void>
 ) => {
@@ -290,9 +289,9 @@ test('a channel that needs reconnecting: the post fails as "Refresh channel need
   }
 });
 
-// §5.4 "comment failure": the post goes out, the platform refuses the reply.
-// The post stays published, only the reply is flagged, and the team is told
-// which part did not make it.
+// A failed comment: the post goes out, the platform refuses the reply. The post
+// stays published, only the reply is flagged, and the team is told which part
+// did not make it.
 test('a refused reply leaves the post published and flags only the reply', async () => {
   const tag = Date.now();
   const main = `[stack] main part ${tag}`;
@@ -330,9 +329,8 @@ test('a refused reply leaves the post published and flags only the reply', async
   expect(notices).toContain('one of the comments attached to it could not be posted');
 });
 
-// K32 (K. 2026-10-10): every Mastodon post went out public. The composer now
-// asks who can see it (public, unlisted, followers only); public stays the
-// default.
+// Every Mastodon post went out public. The composer now asks who can see it
+// (public, unlisted, followers only); public stays the default.
 test('a Mastodon post goes out with the chosen visibility', async () => {
   const content = `[stack] unlisted ${Date.now()}`;
   const res = await api.post('/posts', {

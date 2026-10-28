@@ -1,9 +1,9 @@
 import { expect, test } from '@playwright/test';
 import { database, throwawayOrg } from '../helpers';
 
-// 18 X: a second account paid with a card that already had a trial. Nothing
-// was charged and the trial was cancelled, but the page said "Invalid payment -
-// we could not verify your payment method" and kept offering the trial.
+// A second account paid with a card that already had a trial. Nothing was
+// charged and the trial was cancelled, but the page said "Invalid payment - we
+// could not verify your payment method" and kept offering the trial.
 test.use({ storageState: { cookies: [], origins: [] } });
 
 test('a card that already had a trial is named after the checkout, and the plan comes back without one', async ({

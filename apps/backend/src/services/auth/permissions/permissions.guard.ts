@@ -24,7 +24,7 @@ import {
 // Sign-in routes and the channel-connect callbacks run before there is an
 // organisation to check against. Matched as a prefix: the old substring test
 // let anything containing "/auth" through, so `/oauth/authorize` — approving an
-// app that then acts as an admin — skipped every policy (E2E-08-25).
+// app that then acts as an admin — skipped every policy.
 export const isUnguardedPath = (path: string) =>
   path === '/auth' ||
   path.startsWith('/auth/') ||
@@ -59,7 +59,7 @@ export class PoliciesGuard implements CanActivate {
     const { org }: { org: Organization } = request;
 
     const refreshChannelId = typeof request.query?.refresh === 'string' ? request.query.refresh : undefined;
-    // By the path alone: a query string could carry "/public/v1/" (Codex).
+    // By the path alone: a query string could carry "/public/v1/".
     const path = String(request.originalUrl || request.url || '').split('?')[0];
     const publicApi = /(^|\/)public\/v1\//.test(path);
     // The editor saves each channel with its own type; the public API uses
@@ -79,7 +79,7 @@ export class PoliciesGuard implements CanActivate {
 
     // Every channel and every thread part of a save is a post against the
     // monthly cap; the check used to let one request through for any count
-    // below it (BILL-4, POSTS-12). Ids that already exist are edits.
+    // below it. Ids that already exist are edits.
     // Each with the date it is saved on, so it counts against that billing
     // month ("now" posts against this one). The public API saves every post
     // on the request date (it drops a per-channel one). Channels kept as

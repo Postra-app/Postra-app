@@ -385,8 +385,7 @@ export const MediaComponentInner: FC<{
           </label>
           {/* The field has always been here with nothing to fill it, so most
               posts go out without any. One call, one sentence, editable. */}
-          {/* AI in the plan only: without it the button ended in a refusal
-              (E2E-05-94). */}
+          {/* AI in the plan only: without it the button ended in a refusal. */}
           {!!user?.tier?.ai && !hasExtension(media?.path, 'mp4') && media?.id && (
             <button
               type="button"

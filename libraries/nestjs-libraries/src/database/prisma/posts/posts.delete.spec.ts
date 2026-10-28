@@ -1,5 +1,5 @@
 /**
- * E2E-10-35 — `DELETE /posts/:group` answered `{ error: true }` whether or not
+ * `DELETE /posts/:group` answered `{ error: true }` whether or not
  * it deleted anything. The client could not tell success from failure; the web
  * app simply always said "deleted".
  */
@@ -54,7 +54,7 @@ describe('PostsService.deletePost', () => {
   });
 });
 
-describe('PostsRepository.deletePost (E2E-05-01)', () => {
+describe('PostsRepository.deletePost', () => {
   // Imported here so the service mocks above stay the only ones in play.
   // eslint-disable-next-line @typescript-eslint/no-require-imports
   const { PostsRepository } = require('@gitroom/nestjs-libraries/database/prisma/posts/posts.repository');

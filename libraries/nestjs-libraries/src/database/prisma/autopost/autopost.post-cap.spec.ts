@@ -3,7 +3,7 @@ jest.mock('nostr-tools', () => ({ getPublicKey: jest.fn(), Relay: class {}, fina
 
 import { AutopostService } from './autopost.service';
 
-// Codex 10-17: Auto Post wrote posts past the plan's posts a month (createPost
+// Auto Post wrote posts past the plan's posts a month (createPost
 // without a cap), a trial's 30 and Starter's 400 alike. The run now asks
 // before the AI writes anything, and the write checks again.
 const cap = { anchor: new Date('2026-10-10T10:00:00Z'), limit: 30 };

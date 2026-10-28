@@ -165,8 +165,7 @@ export const TeamsComponent = () => {
     });
   }, [t]);
   // Someone accepting an invite joins while this list sits in the cache: it
-  // is fetched again on opening the tab and on coming back to the window
-  // (FE-S-9).
+  // is fetched again on opening the tab and on coming back to the window.
   const { data, isLoading, mutate } = useSWR('/api/teams', loadTeam, {
     revalidateOnFocus: true,
     revalidateOnMount: true,
@@ -286,7 +285,7 @@ export const TeamsComponent = () => {
           <Button onClick={addMember}>
             {t('add_another_member', 'Add another member')}
           </Button>
-          {/* How many of the plan's seats are taken (K. 10-09), like the
+          {/* How many of the plan's seats are taken, like the
               webhook and Auto Post counters. Billing off: no limit to show. */}
           {!!user?.tier?.team_members && !isLoading && (
             <span className="text-[13px] text-newTextColor/70">

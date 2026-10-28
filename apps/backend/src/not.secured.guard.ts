@@ -3,7 +3,7 @@
  * and SameSite flags from every cookie, hands the session token back in
  * response headers, opens CORS to localhost and serves Swagger. Nothing kept
  * it off a server that serves https, where any of that hands sessions to
- * scripts and other sites (E2E-11-82, planned as A18 in July). Refuse to start
+ * scripts and other sites (planned as A18 in July). Refuse to start
  * instead.
  */
 export const assertNotSecuredOnlyOverHttp = (

@@ -2,7 +2,7 @@ import { AuditService } from '@gitroom/nestjs-libraries/database/prisma/audit/au
 
 /**
  * The writer was corrected in #227 and then nothing read it, so "who put this
- * account on Business, and when" still meant a psql session (E2E-09-34).
+ * account on Business, and when" still meant a psql session.
  *
  * What matters here is that the reader resolves people to email addresses: an
  * audit row full of uuids answers the question no better than the table did.

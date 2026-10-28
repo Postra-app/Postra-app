@@ -31,7 +31,7 @@ export const SignaturesComponent: FC<{
   }, []);
   const { data, mutate: reloadList } = useSWR('signatures', load);
   // The composer reads the default signature from its own key; an edit here
-  // left it adding the old one until a page reload (FE-C-10).
+  // left it adding the old one until a page reload.
   const { mutate: mutateKey } = useSWRConfig();
   const mutate = useCallback(async () => {
     await Promise.all([reloadList(), mutateKey('default-sign')]);
@@ -178,7 +178,7 @@ const AddOrRemoveSignature: FC<{
   const callBack = useCallback(
     async (values: any) => {
       // One save at a time (a double click made two signatures), and a
-      // refused one is not "added" (E2E-08-37, E2E-08-36).
+      // refused one is not "added".
       if (saving.current) return;
       saving.current = true;
       let res: Response;

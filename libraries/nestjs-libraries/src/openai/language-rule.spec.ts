@@ -62,7 +62,7 @@ describe('tooShortToDetectLanguage', () => {
   });
 });
 
-describe('punctuation in every AI text (K. 10-09)', () => {
+describe('punctuation in every AI text', () => {
   it('asks for no long dashes, whatever the language', () => {
     for (const rule of [languageRule(), languageRule({ targetNamedIn: 'the settings block' })]) {
       expect(rule).toMatch(/Never use em dashes .* or en dashes/);

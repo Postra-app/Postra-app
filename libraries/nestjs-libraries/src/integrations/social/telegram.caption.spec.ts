@@ -1,5 +1,5 @@
 /**
- * E2E-05-06 — measured on production 2026-09-26: 1181 characters + one image
+ * Measured on production 2026-09-26: 1181 characters + one image
  * passed validation, then Telegram answered "400 Bad Request: message caption
  * is too long", and Temporal retried that certain failure for ~4.5 minutes.
  */

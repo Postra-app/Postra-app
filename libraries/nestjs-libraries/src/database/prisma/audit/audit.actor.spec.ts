@@ -1,7 +1,7 @@
 import { AuditService } from '@gitroom/nestjs-libraries/database/prisma/audit/audit.service';
 import { runWithAuditActor } from '@gitroom/nestjs-libraries/database/prisma/audit/audit.actor';
 
-// E2E-09-35: audit rows were written with the user from the request, which
+// Audit rows were written with the user from the request, which
 // during impersonation is the *target*. Every action an admin took while
 // wearing someone's identity was filed against that person. The sharpest case
 // is chaining — admin impersonates A, and from that session impersonates B, so

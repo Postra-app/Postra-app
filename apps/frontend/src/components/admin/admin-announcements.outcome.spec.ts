@@ -5,8 +5,8 @@ import { deleteOutcome } from '@gitroom/frontend/components/admin/admin-ui';
  *
  * Deleting an announcement that is already gone answers 200 with
  * `{deleted:false}` — the repository stopped throwing so the endpoint would
- * stop answering 500 (E2E-09-46) — and a handler checking only `res.ok`
- * reports that as a success for a delete that removed nothing (E2E-09-14).
+ * stop answering 500 — and a handler checking only `res.ok`
+ * reports that as a success for a delete that removed nothing.
  * Measured on production: DELETE on an unknown id answers 200.
  */
 describe('deleteOutcome', () => {

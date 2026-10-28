@@ -13,7 +13,7 @@ beforeAll(() => {
   process.env.JWT_SECRET = process.env.JWT_SECRET || 'test-secret';
 });
 
-// E2E-11-72: the reset checked the signature, `expires` and `tokenVersion`,
+// The reset checked the signature, `expires` and `tokenVersion`,
 // not what the token was for. A session token carries the current
 // tokenVersion and no `expires`, so the session cookie or the app's token set
 // a new password without the old one (local stack, 2026-10-26: 201
@@ -60,7 +60,7 @@ describe('a token does only what it was issued for', () => {
   });
 });
 
-// E2E-11-73: a wrong password for an existing account took ~55 ms (bcrypt),
+// A wrong password for an existing account took ~55 ms (bcrypt),
 // an unknown address ~6 ms, so the time told whether an account existed.
 describe('signing in with an unknown address', () => {
   it('compares against a stand-in hash, like a known one', async () => {

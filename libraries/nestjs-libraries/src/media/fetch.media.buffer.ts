@@ -38,7 +38,7 @@ async function fetchMediaResponse(
 // A body read into memory has to have an end. Importing media from a URL
 // buffered whatever the server sent before looking at it, so one server
 // streaming gigabytes — with or without Content-Length — filled the backend's
-// memory for every user (E2E-08-27).
+// memory for every user.
 export const URL_IMPORT_MAX_BYTES = 100 * 1024 * 1024;
 export async function readResponseCapped(
   response: Awaited<ReturnType<typeof fetch>>,

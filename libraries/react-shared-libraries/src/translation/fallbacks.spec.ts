@@ -1,11 +1,11 @@
 import { readdirSync, readFileSync } from 'fs';
 import { join } from 'path';
 
-// t('key', 'English text') shows the English catalogue's entry when the key
-// is there, so the text in the code is only a fallback. Fixes made to that
-// text never reached anyone: Studio promised "5-10 seconds" for a month after
-// the code said 30 (E2E-06-08), and account deletion never mentioned that
-// the subscription is cancelled. The code and the catalogue have to agree.
+// t('key', 'English text') shows the English catalogue's entry when the key is
+// there, so the text in the code is only a fallback. Fixes made to that text
+// never reached anyone: Studio promised "5-10 seconds" for a month after the
+// code said 30, and account deletion never mentioned that the subscription is
+// cancelled. The code and the catalogue have to agree.
 
 const root = join(__dirname, '..', '..', '..', '..');
 const en: Record<string, string> = JSON.parse(
@@ -35,9 +35,8 @@ const norm = (s: string) =>
     .trim();
 
 const mismatches: string[] = [];
-// E2E-05-94 (9): hundreds of texts lived only as fallbacks in the code, so
-// the catalogue was not the list of what customers read and wording reviews
-// missed them.
+// Hundreds of texts lived only as fallbacks in the code, so the catalogue was
+// not the list of what customers read and wording reviews missed them.
 const missing: string[] = [];
 const fallbackTexts = new Set<string>();
 let calls = 0;
@@ -50,8 +49,8 @@ for (const file of sources) {
     if (lineText.startsWith('//') || lineText.startsWith('*')) continue;
     if (quote === '`' && fallback.includes('${')) continue;
     calls++;
-    // The admin panel is English only and keeps its keys out of every
-    // locale file on purpose (E2E-09-12, admin-a11y.wiring.spec.ts).
+    // The admin panel is English only and keeps its keys out of every locale
+    // file on purpose (admin-a11y.wiring.spec.ts).
     if (!(key in en) && !key.startsWith('admin_')) {
       missing.push(`${file.slice(root.length + 1)}:${line} ${key}`);
     }
@@ -78,7 +77,7 @@ describe('English fallbacks', () => {
     expect(missing).toEqual([]);
   });
 
-  it('have no long dashes, in the code or in any language (K. 10-09)', () => {
+  it('have no long dashes, in the code or in any language', () => {
     const dir = join(__dirname, 'locales');
     const withDash: string[] = [...fallbackTexts].filter((t) => /[—–]/.test(t));
     for (const lang of readdirSync(dir)) {

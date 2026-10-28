@@ -6,7 +6,7 @@ import { join } from 'path';
 // proxy_pass redirects the slash-less URI). With the defaults that Location
 // was absolute and carried the listen port: http://app.postra.co.uk:5000/api/,
 // plain http and the container port, from behind an HTTPS balancer
-// (measured on production 2026-10-22, E2E-11-44). The Server header also
+// (measured on production 2026-10-22). The Server header also
 // carried the nginx version. Relative redirects and no version, in the one
 // server block.
 

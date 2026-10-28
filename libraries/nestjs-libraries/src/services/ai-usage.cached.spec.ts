@@ -3,7 +3,7 @@ import { AiUsageCallbackHandler } from './ai-usage.langchain';
 import { meterLanguageModel } from './ai-usage.model-wrap';
 import { parseChat } from '../openai/parse-chat';
 
-// Cached prompt tokens (P5 §9.3b) reach AiUsage from every text path, so the
+// Cached prompt tokens reach AiUsage from every text path, so the
 // cache hit rate can be measured before prompts are reordered for it.
 describe('AiUsage cachedAmount', () => {
   let events: AiUsageEvent[];

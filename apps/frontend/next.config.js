@@ -3,6 +3,8 @@ import { withSentryConfig } from '@sentry/nextjs';
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  // next dev would otherwise write an AGENTS.md into the project.
+  agentRules: false,
   experimental: {
     proxyTimeout: 90_000,
     optimizePackageImports: ['@mantine/core', '@mantine/hooks', '@mantine/dates', '@mantine/modals', 'lodash', 'dayjs'],
@@ -27,7 +29,7 @@ const nextConfig = {
   },
   reactStrictMode: false,
   // No x-powered-by: Next.js adds it by default (docs: poweredByHeader) and
-  // the app host announced it on every response (E2E-11-44).
+  // the app host announced it on every response.
   poweredByHeader: false,
   transpilePackages: ['crypto-hash'],
   // Browser source maps are off. Because this is set explicitly, @sentry/nextjs
@@ -55,7 +57,7 @@ const nextConfig = {
     return [
       // RFC 9116 §3.1: security.txt applies only to the host it was fetched
       // from, and a retrieval may result in a redirect. The landing holds the
-      // one copy; the app host answered 404 (E2E-11-45). /.well-known/ is
+      // one copy; the app host answered 404. /.well-known/ is
       // already outside the auth gate in proxy.ts.
       {
         source: '/.well-known/security.txt',

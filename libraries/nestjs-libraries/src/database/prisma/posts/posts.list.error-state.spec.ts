@@ -3,7 +3,7 @@ import { State } from '@prisma/client';
 
 /**
  * A post whose publication failed vanished from the mobile agenda without a
- * trace (E2E-10-51). The agenda asks for `state=scheduled`, which is exactly
+ * trace. The agenda asks for `state=scheduled`, which is exactly
  * `State.QUEUE`, so a post moving to `State.ERROR` simply stopped existing for
  * the user: no row, no marker, no reason. That is the product's core promise
  * ("schedule it and we publish it") failing silently.
@@ -76,7 +76,7 @@ describe('getPostsList - failed posts have to be reachable', () => {
     expect(args.orderBy.publishDate).toBe('desc');
   });
 
-  // Changed by E2E-05-21: this used to pin "upcoming drafts only", which hid
+  // This used to pin "upcoming drafts only", which hid
   // a past-dated draft from the Draft tab while "All" still listed it.
   it('state=draft lists drafts whatever their date, newest first', async () => {
     const args = await callWith('draft');
@@ -87,7 +87,7 @@ describe('getPostsList - failed posts have to be reachable', () => {
 });
 
 /**
- * ⛔ E2E-10-73 — the same date filter made the tab labelled "All" answer 55 of
+ * The same date filter made the tab labelled "All" answer 55 of
  * 111 rows. `all` already listed every state; the `publishDate >= now` clause
  * then cut the past ones straight back out. Measured on production 2026-09-20
  * on the main org:
@@ -132,7 +132,7 @@ describe('getPostsList - "all" has to mean all', () => {
   });
 });
 
-describe('getPostsList - drafts and repeating posts (E2E-05-21)', () => {
+describe('getPostsList - drafts and repeating posts', () => {
   it('state=draft keeps drafts dated in the past', async () => {
     const args = await callWith('draft');
     expect(args.where.state).toBe(State.DRAFT);

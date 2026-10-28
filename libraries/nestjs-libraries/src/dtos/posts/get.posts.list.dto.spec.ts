@@ -4,7 +4,7 @@ import { GetPostsListDto } from '@gitroom/nestjs-libraries/dtos/posts/get.posts.
 
 /**
  * The state allowlist is the first gate a request meets, and it is where
- * E2E-10-51 stopped: measured on production 2026-09-19,
+ * listing failed posts stopped: measured on production 2026-09-19,
  *
  *   GET /posts/list?state=error → 400
  *   {"message":["state must be one of the following values:

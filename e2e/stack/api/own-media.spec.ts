@@ -1,7 +1,7 @@
 import { expect, test } from '@playwright/test';
 import { anonymous, channelOf, signedIn } from '../helpers';
 
-// E2E-02-22: a post's media and the /public/stream proxy accept only our own
+// A post's media and the /public/stream proxy accept only our own
 // storage — exact host, not "contains our domain somewhere".
 
 const draftWith = (path: string) => ({

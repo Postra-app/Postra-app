@@ -37,7 +37,7 @@ test('posting times are kept within one day', async () => {
   await a.dispose();
 });
 
-test('posting times keep their time zone and find-slot honours it (E2E-05-85)', async () => {
+test('posting times keep their time zone and find-slot honours it', async () => {
   // A 09:00 slot saved in London has to stay 09:00 London after the clocks
   // change; it used to be stored as minutes after UTC midnight.
   const a = await signedIn('a');
@@ -160,11 +160,11 @@ test('P1a #13: channel endpoints answer 4xx, not 500, for bad input', async () =
   await anon.dispose();
 });
 
-// E2E-04-35: Facebook and Instagram sign in through the same Meta account, so
+// Facebook and Instagram sign in through the same Meta account, so
 // both pending channels carry the same internalId (the Meta user id). The
 // unique key had no provider: the Instagram sign-in turned the waiting
 // Facebook channel into an Instagram one and its page picker broke.
-test('E2E-04-35: pending Facebook and Instagram channels of one Meta account live side by side', async () => {
+test('pending Facebook and Instagram channels of one Meta account live side by side', async () => {
   const prisma = database();
   const org = await throwawayOrg(prisma, { tier: 'PRO', totalChannels: 5, channels: 0 });
   try {

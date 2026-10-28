@@ -1,11 +1,11 @@
 import { expect, test } from '@playwright/test';
 import { database, throwawayOrg } from '../helpers';
 
-// 18 X (Sentry): the paid-but-not-yet-confirmed organisation reloaded the
-// paywall, `/billing/embedded` answered 409 and the page still handed the
-// error body to Stripe. `initCheckout()` threw "Missing value for
-// initCheckout(): options.clientSecret" and no form appeared. Any answer
-// without a client secret (409, 429, 500) now shows a message instead.
+// Found in Sentry: the paid-but-not-yet-confirmed organisation reloaded the
+// paywall, `/billing/embedded` answered 409 and the page still handed the error
+// body to Stripe. `initCheckout()` threw "Missing value for initCheckout():
+// options.clientSecret" and no form appeared. Any answer without a client
+// secret (409, 429, 500) now shows a message instead.
 test.use({ storageState: { cookies: [], origins: [] } });
 
 // Stands in for js.stripe.com: like the real one, initCheckout() throws

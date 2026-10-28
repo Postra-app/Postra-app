@@ -144,8 +144,8 @@ test('the same clip asked for twice is made and paid for once', async () => {
   }
 });
 
-// Codex: a clip deleted from the library left its id behind, and asking for
-// it again within the reuse window answered 409 "already being made".
+// A clip deleted from the library left its id behind, and asking for it again
+// within the reuse window answered 409 "already being made".
 test('a clip deleted from the library can be made again', async () => {
   const pro = await throwawayOrg(prisma, { tier: 'PRO', totalChannels: 6, channels: 0 });
   try {

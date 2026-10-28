@@ -17,7 +17,7 @@ export class ThirdPartyRepository {
     });
   }
 
-  // An id that is not this org's threw P2025, a 500 (E2E-11-68). A 404.
+  // An id that is not this org's threw P2025, a 500. A 404.
   deleteIntegration(org: string, id: string) {
     return this._thirdParty.model.thirdParty
       .update({

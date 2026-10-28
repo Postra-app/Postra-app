@@ -81,8 +81,7 @@ export class ShortLinkService {
           urls.map(async (url) => {
             if (url.indexOf(ShortLinkService.provider.shortLinkDomain) === -1) {
               // A shortener that fails or answers without a link leaves the
-              // link as it was; it used to become "undefined" in the post
-              // (E2E-05-50).
+              // link as it was; it used to become "undefined" in the post.
               try {
                 replacementMap[url] =
                   (await ShortLinkService.provider.convertLinkToShortLink(id, url)) ||

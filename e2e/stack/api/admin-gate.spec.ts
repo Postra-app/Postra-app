@@ -3,7 +3,7 @@ import { anonymous, signedIn } from '../helpers';
 
 // The Postra admin panel is for Postra staff (User.isSuperAdmin), not for the
 // owner of an organisation — the seeded users are owners. Every admin route
-// must refuse them with 403 (E2E-09-63: was 400 "Unauthorized") and without a
+// must refuse them with 403 (was 400 "Unauthorized") and without a
 // session with 401.
 
 const UNKNOWN = '00000000-0000-4000-8000-000000000000';
@@ -56,8 +56,8 @@ test('admin routes without a session are 401', async () => {
   await api.dispose();
 });
 
-// K25 (10-10): a change made by an admin in a customer's name is on the audit
-// trail with the real admin, the customer, the method and the path.
+// A change made by an admin in a customer's name is on the audit trail with the
+// real admin, the customer, the method and the path.
 test('a change made while impersonating is audited with the real admin', async () => {
   const { database, throwawayOrg } = await import('../helpers');
   const prisma = database();

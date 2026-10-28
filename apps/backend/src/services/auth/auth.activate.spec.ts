@@ -16,7 +16,7 @@ const { AuthService: AuthChecker } = require('@gitroom/helpers/auth/auth.service
 
 // A mangled or expired activation link answered `false`, the same as a link
 // that was already used, so the page told its owner "This user is already
-// activated" (production, 2026-10-22, E2E-11-50). The two cases differ.
+// activated" (production, 2026-10-22). The two cases differ.
 describe('activation link', () => {
   beforeAll(() => {
     process.env.JWT_SECRET = process.env.JWT_SECRET || 'test-secret';

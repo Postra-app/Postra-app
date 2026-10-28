@@ -405,7 +405,7 @@ export class PostActivity {
 
     // One run publishes a post at a time. Rescheduling a post while it was
     // going out terminated its workflow and started another, which found no
-    // saved release yet and published it again (POSTS-1). The second run
+    // saved release yet and published it again. The second run
     // waits for the regular retry, by which time the first has saved the
     // release and the guard below returns it.
     // The lock is short and kept alive while this run works, so a worker
@@ -633,7 +633,7 @@ export class PostActivity {
       integrationId
     );
     // Signed with each webhook's secret, so the receiver can check that the
-    // request came from Postra and the body is as sent (E2E-08-49).
+    // request came from Postra and the body is as sent.
     const body = JSON.stringify(post);
     await Promise.all(
       webhooks.map(async (webhook) => {
@@ -644,7 +644,7 @@ export class PostActivity {
         }
         // A receiver that is briefly down (429, 5xx, a timeout, a dropped
         // connection) gets the event again; it used to be dropped on the
-        // first failure without a word (POSTS-6). Each webhook retries on its
+        // first failure without a word. Each webhook retries on its
         // own, so one slow receiver never sends a duplicate to another.
         for (let attempt = 1; attempt <= 3; attempt++) {
           try {

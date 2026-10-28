@@ -3,7 +3,7 @@ import { canvasJsonHasAi } from './ai-provenance';
 const json = (objects: unknown[], extra: object = {}) =>
   JSON.stringify({ version: '7', objects, ...extra });
 
-describe('canvasJsonHasAi (E2E-06-04)', () => {
+describe('canvasJsonHasAi', () => {
   it('is true when any layer came from an image model', () => {
     expect(
       canvasJsonHasAi(

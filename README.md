@@ -66,7 +66,6 @@ Postra is a derivative of the open-source **[Postiz](https://github.com/gitroomh
 | Scheduler | Temporal |
 | Data | PostgreSQL + Redis |
 | AI | OpenAI (GPT, image generation, Whisper) |
-| Infra | AWS (EC2, RDS, ALB, ECR, S3, CloudFront) — managed in a private infra repo |
 
 ## Monorepo
 
@@ -78,7 +77,7 @@ apps/
 libraries/       # shared services (DB/Prisma, OpenAI, studio, upload, …)
 ```
 
-Built with **pnpm**. See `CLAUDE.md` for repo conventions.
+Built with **pnpm**.
 
 ## Development
 

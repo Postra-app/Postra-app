@@ -1,6 +1,6 @@
 import { postingTimeOn, postingMinutesIn } from './posting.times';
 
-// E2E-05-85: posting times were stored as minutes after UTC midnight, worked
+// Posting times were stored as minutes after UTC midnight, worked
 // out from the browser's UTC offset on the day they were saved. A 09:00 slot
 // saved in British Summer Time (480) fell at 08:00 once the clocks went back
 // on 25 October 2026. A slot with a time zone keeps its wall-clock time.

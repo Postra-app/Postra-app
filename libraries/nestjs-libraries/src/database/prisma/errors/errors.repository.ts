@@ -115,7 +115,7 @@ export class ErrorsRepository {
   }
 
   /**
-   * Rows written before E2E-09-01 was fixed still hold plaintext channel
+   * Rows written before redaction at the write still hold plaintext channel
    * tokens, and the panel renders `body` under "View" and copies it with "Copy
    * Debug Code". Redacting on the way out keeps those rows readable without
    * waiting for the backfill, and keeps the guarantee if anything ever writes

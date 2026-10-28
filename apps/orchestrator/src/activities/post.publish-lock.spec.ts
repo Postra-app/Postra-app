@@ -10,7 +10,7 @@ jest.mock('@gitroom/nestjs-libraries/redis/redis.service', () => {
 import { AuthService } from '@gitroom/helpers/auth/auth.service';
 import { PostActivity } from './post.activity';
 
-// POSTS-1: rescheduling a post while it was going out terminated its workflow
+// Rescheduling a post while it was going out terminated its workflow
 // and started another, which found no saved release yet and published the
 // post a second time.
 describe('two runs publishing the same post', () => {

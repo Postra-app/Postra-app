@@ -12,7 +12,7 @@ dayjs.extend(utc);
 
 const now = dayjs('2026-10-23T10:33:00');
 
-describe('dropTarget (E2E-05-99)', () => {
+describe('dropTarget', () => {
   it('a week cell in the future is the cell itself', () => {
     const cell = dayjs('2026-10-24T15:00:00');
     expect(dropTarget(cell, '2026-10-30T12:00:00Z', false, now).isSame(cell)).toBe(true);
@@ -39,7 +39,7 @@ describe('dropTarget (E2E-05-99)', () => {
   });
 });
 
-describe('cellPostDate (E2E-05-100)', () => {
+describe('cellPostDate', () => {
   it('a month cell opens at the earliest posting time of the channels', () => {
     const cell = dayjs('2026-10-28T23:59:59');
     expect(cellPostDate(cell, true, [11 * 60 + 40, 7 * 60 + 30], now).format('YYYY-MM-DD HH:mm')).toBe('2026-10-28 07:30');
@@ -63,7 +63,7 @@ describe('cellPostDate (E2E-05-100)', () => {
     expect(cellPostDate(cell, false, [], now).isSame(cell)).toBe(true);
   });
 
-  it('a day view slot later in the current hour keeps its minutes (Codex)', () => {
+  it('a day view slot later in the current hour keeps its minutes', () => {
     const slot = dayjs('2026-10-23T10:45:00');
     expect(cellPostDate(slot, false, [], now).format('HH:mm')).toBe('10:45');
     // a slot of this hour already gone starts ten minutes from now
@@ -73,7 +73,7 @@ describe('cellPostDate (E2E-05-100)', () => {
   });
 });
 
-describe('calendarRefreshInterval (E2E-05-102)', () => {
+describe('calendarRefreshInterval', () => {
   const nowMs = now.valueOf();
   it('polls while a queued post is due', () => {
     const due = dayjs.utc(nowMs).subtract(30, 'second').toISOString();
@@ -103,7 +103,7 @@ describe('calendarRefreshInterval (E2E-05-102)', () => {
     expect(calendarRefreshInterval(undefined, nowMs)).toBe(IDLE_REFRESH_MS);
   });
 
-  it('a post due in three minutes gets a timer that ends when it enters the window (Codex)', () => {
+  it('a post due in three minutes gets a timer that ends when it enters the window', () => {
     const inThree = dayjs.utc(nowMs).add(3, 'minute').toISOString();
     expect(calendarRefreshInterval([{ state: 'QUEUE', publishDate: inThree }], nowMs)).toBe(60_000);
     // never shorter than the pending interval, never longer than an hour

@@ -29,8 +29,8 @@ export const PLATFORM_NAMES: Record<string, string> = {
 
 // Platforms a plan includes but the picker still shows as "Soon" (kept out of
 // enabledProviders in integration.manager.ts). The plan cards leave them out,
-// like the landing ("6 channels on 10 platforms" for Pro since Pinterest, 2026-10-27): only what a customer can
-// connect today (K. 10-09). They appear once they are enabled.
+// like the landing ("6 channels on 10 platforms" for Pro since Pinterest
+// joined on 2026-10-27): only what a customer can connect today. They appear once they are enabled.
 export const SOON_PLATFORMS = new Set(['linkedin-page']);
 
 const UNLIMITED = 10000;

@@ -3,8 +3,8 @@ import sharp from 'sharp';
 import { watchForErrors } from './ui-helpers';
 
 // Studio → Photos: a library photo in, a retouched copy out, from the tab
-// itself (Plan/photo-retouch.md). The fake OpenAI answers the vision call
-// with ones, so the photo gets brighter and warmer within the level.
+// itself. The fake OpenAI answers the vision call with ones, so the photo gets
+// brighter and warmer within the level.
 
 test.use({ viewport: { width: 1440, height: 900 } });
 

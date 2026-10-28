@@ -5,7 +5,7 @@ jest.mock('nostr-tools', () => ({ getPublicKey: jest.fn(), Relay: class {}, fina
 const { sendActivationMail } = require('./auth.service');
 
 // Sign-in mails go out directly, never through the Temporal mail queue: with
-// the queue down registration failed (E2E-02-04), with its workflow stuck the
+// the queue down registration failed, with its workflow stuck the
 // queue still took signals and nothing left, and the reset mail vanished
 // without a log (upstream 1f5f24e5).
 describe('activation mail', () => {
@@ -60,7 +60,7 @@ describe('password reset mail', () => {
 });
 
 
-// K. 2026-10-18: "this is not a banking app". A password found in a public
+// "This is not a banking app". A password found in a public
 // breach list used to be refused at sign-up and reset, which put people off;
 // the minimum length (8, in the DTOs) is the rule now.
 describe('password policy', () => {
@@ -87,7 +87,7 @@ describe('password policy', () => {
 
 // 18 Oct: the activation mail landed in Yahoo spam. It was one "click here"
 // link with no address shown, and a footer about notification settings sent
-// to someone who has no account yet (text K. 2026-10-18).
+// to someone who has no account yet.
 describe('sign-in mail content', () => {
   // eslint-disable-next-line @typescript-eslint/no-require-imports
   const { authEmails, authEmailFooter } = require('./auth.emails');

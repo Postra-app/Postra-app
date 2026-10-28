@@ -19,7 +19,7 @@ import { AuthService } from '@gitroom/helpers/auth/auth.service';
 import { ioRedis } from '@gitroom/nestjs-libraries/redis/redis.service';
 
 /**
- * GET /public/v1/analytics/post/:id without `date` (E2E-08-57): the
+ * GET /public/v1/analytics/post/:id without `date`: the
  * controller passes `+date`, so the platform was asked for NaN days and the
  * result cached under "NaN". The docs promise 7 days, as channel analytics
  * already do (integration.service checkAnalytics).

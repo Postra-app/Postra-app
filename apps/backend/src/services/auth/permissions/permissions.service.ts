@@ -68,7 +68,7 @@ export class PermissionsService {
     const { options } = await this.getPackageOptions(orgId, isTrailing);
     const subscription = await this._subscriptionService.getSubscription(orgId);
     return {
-      // The month runs with Stripe's invoices (E2E-07-40); a plan Stripe
+      // The month runs with Stripe's invoices; a plan Stripe
       // does not bill counts from its creation.
       anchor: subscription?.periodAnchor || subscription?.createdAt || createdAt,
       limit: options.posts_per_month,
@@ -190,7 +190,7 @@ export class PermissionsService {
 
       if (section === Sections.POSTS_PER_MONTH) {
         const current = await this._subscriptionService.getSubscription(orgId);
-        // From Stripe's billing anchor, like the AI allowance (E2E-07-40).
+        // From Stripe's billing anchor, like the AI allowance.
         const createdAt =
           current?.periodAnchor || current?.createdAt || created_at;
         if (

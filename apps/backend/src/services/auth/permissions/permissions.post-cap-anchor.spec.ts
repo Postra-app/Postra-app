@@ -4,9 +4,8 @@ jest.mock('nostr-tools', () => ({ getPublicKey: jest.fn(), Relay: class {}, fina
 import { PermissionsService } from './permissions.service';
 import { AuthorizationActions, Sections } from '@gitroom/nestjs-libraries/services/auth/permission.exception.class';
 
-// Same as E2E-07-40 for the monthly post allowance (Starter: 400): it ran
-// from the day the subscription was created, invoices from Stripe's billing
-// anchor (found in the Pro limits check of Kris Company, 2026-10-09).
+// The monthly post allowance (Starter: 400) ran from the day the
+// subscription was created, invoices from Stripe's billing anchor.
 describe('the monthly post allowance', () => {
   const anchor = new Date('2026-10-09T09:35:51Z');
   const build = () => {

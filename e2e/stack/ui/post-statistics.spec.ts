@@ -3,9 +3,8 @@ import { database, signedIn } from '../helpers';
 import { USERS } from '../seed';
 import { quietSlot, weekOf } from './ui-helpers';
 
-// K. 2026-10-07 (🆕 pkt 2b): Post Statistics on a platform that gives apps no
-// post statistics said "No statistics available for this post", as if they
-// were still to come.
+// Post Statistics on a platform that gives apps no post statistics said "No
+// statistics available for this post", as if they were still to come.
 const prisma = database();
 test.afterAll(async () => {
   await prisma.$disconnect();

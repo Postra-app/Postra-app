@@ -3,8 +3,8 @@ jest.mock('nostr-tools', () => ({ getPublicKey: jest.fn(), Relay: class {}, fina
 
 import { BillingController } from './billing.controller';
 
-// E2E-07-41: ending the trial charges the card, and nothing recorded who did
-// it or when — on Kris Company (2026-10-09) it could not be told whether the
+// Ending the trial charges the card, and nothing recorded who did
+// it or when — on a test organisation it could not be told whether the
 // button was clicked.
 describe('POST /billing/finish-trial', () => {
   it('records who ended the trial and the result', async () => {

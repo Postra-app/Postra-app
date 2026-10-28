@@ -179,7 +179,7 @@ export class UsersController {
     // `admin.impersonate` row indistinguishable from the row that began it.
     if (!id) {
       clearImpersonateCookie(response);
-      // Who stopped, so a stop pairs with its start (E2E-09-64). While
+      // Who stopped, so a stop pairs with its start. While
       // impersonating, `user` is the target; record() puts the admin from
       // the JWT in its place and the target beside it.
       this._auditService.record({
@@ -319,7 +319,7 @@ export class UsersController {
   }
 
   // What an invitation is for, without accepting it: the join page asks
-  // "Join X as Y?" before anything is written (E2E-08-34).
+  // "Join X as Y?" before anything is written.
   @Get('/invite-preview')
   async invitePreview(
     @GetUserFromRequest() user: User,
@@ -365,7 +365,7 @@ export class UsersController {
     // old one until the cache ran out.
     await bustAuthContextCache(user.id);
 
-    // A full team is said so (E2E-07-38); the page read a bare {id: null} as
+    // A full team is said so; the page read a bare {id: null} as
     // "expired or already used". 200, not 402: the person joining does not
     // pay for that workspace, and 402 opens the paywall.
     if (addedOrg === 'no_seats') {
@@ -379,7 +379,7 @@ export class UsersController {
 
   // The list every member's browser loads for the organisation switcher. It
   // carried the API key (a SUPERADMIN credential for the public API and MCP)
-  // and the Stripe customer id to every member, USER included (E2E-08-24);
+  // and the Stripe customer id to every member, USER included;
   // /user/self shows the key to admins only, and nothing here needs either.
   // Only the fields the switchers read (web and mobile), so a column added to
   // Organization later does not reach every member by default (upstream
@@ -401,7 +401,8 @@ export class UsersController {
     @Body('id') id: string,
     @Res({ passthrough: true }) response: Response
   ) {
-    // An older domain-wide `showorg` (before E2E-11-78) is sent first and
+    // An older domain-wide `showorg` (from before cookies became host-only)
+    // is sent first and
     // would win over this one: the switch would not take.
     expireDomainWideCookies(response, ['showorg']);
     response.cookie('showorg', id, {
@@ -435,14 +436,14 @@ export class UsersController {
   ) {
     // Clearing the cookie used to be all that happened: a token in the app's
     // Keychain, or a browser cookie someone had copied, kept working for the
-    // rest of its life. Both carry a session id now (E2E-11-74), and this is
+    // rest of its life. Both carry a session id now, and this is
     // where it stops being accepted.
     await this._authService.endMobileSession(
       (request.headers.auth as string) || request.cookies?.auth
     );
 
     response.header('logout', 'true');
-    // The host-only cookies and the domain-wide ones from before E2E-11-78.
+    // The host-only cookies and the domain-wide ones from before them.
     // `impersonate` too: a super admin who signs out mid-impersonation is
     // otherwise impersonating again on the next sign-in.
     clearSessionCookies(response);
@@ -473,7 +474,7 @@ export class UsersController {
 
     await this._userService.deleteAccount(user.id);
     // Another device signed in as this user kept reading the shared org for
-    // up to the 30 s the auth context is cached (AUTH-8).
+    // up to the 30 s the auth context is cached.
     await bustAuthContextCache(user.id);
 
     // GDPR art. 12: confirm the erasure to the data subject, in writing.

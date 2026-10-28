@@ -30,7 +30,7 @@ jest.mock('@gitroom/nestjs-libraries/track/track.service', () => ({ TrackService
 import { StripeService } from '@gitroom/nestjs-libraries/services/stripe.service';
 import { trialEmailKey } from '@gitroom/nestjs-libraries/services/trial-identity';
 
-// K. 2026-10-16: one free trial per card. A new organisation meant a new
+// One free trial per card. A new organisation meant a new
 // trial, so one card could run trials for ever. A card that already had a
 // trial cancels the new one before anything is charged (nothing is captured
 // in a trial), the next checkout comes without a trial, and the customer is
@@ -87,7 +87,7 @@ it('cancels a trial on a card that already had one, before any charge', async ()
   expect(subscriptionService.createOrUpdateSubscription).not.toHaveBeenCalled();
   expect(organizationService.endTrialOffer).toHaveBeenCalledWith('org-2');
   // The offer ends before the cancel: the page reloads its checkout when it
-  // sees the cancel, and must not get a trial checkout again (18 X).
+  // sees the cancel, and must not get a trial checkout again.
   expect(organizationService.endTrialOffer.mock.invocationCallOrder[0]).toBeLessThan(
     cancelSubscription.mock.invocationCallOrder[0]
   );
@@ -144,7 +144,7 @@ it('a checked trial is marked on its subscription, so later events skip the chec
   expect(updateSubscription).toHaveBeenCalledWith('sub_2', { metadata: { trial_checked: '1' } });
 });
 
-// Codex 10-18: a checkout opened while the offer stood keeps its trial after
+// A checkout opened while the offer stood keeps its trial after
 // the offer ends (another organisation's trial, then the email check at the
 // next checkout). The offer used to skip the webhook check, so that trial ran.
 it('checks a trial although the organisation\u2019s offer has ended since its checkout opened', async () => {
@@ -158,7 +158,7 @@ it('checks a trial although the organisation\u2019s offer has ended since its ch
   expect(result).toEqual({ ok: true, skipped: 'trial card used before' });
 });
 
-// Codex 10-17: Stripe's search index lags (~20 s on the sandbox), so two
+// Stripe's search index lags (~20 s on the sandbox), so two
 // trials started at once on one card both found nothing.
 it('two trials at once on one card: the second is cancelled although search finds nothing yet', async () => {
   searchCustomers.mockResolvedValue({ data: [] });
@@ -184,7 +184,7 @@ it('a declined card gives its reservation back', async () => {
   expect(subscriptionService.createOrUpdateSubscription).toHaveBeenCalled();
 });
 
-// Codex 10-17: cancelled in Stripe, then a failure before the offer was taken
+// Cancelled in Stripe, then a failure before the offer was taken
 // away; the retry stopped at "cancelled" and the next checkout offered a trial.
 it('a retry finishes a rejection cut short after the cancel', async () => {
   retrieveSubscription.mockResolvedValue({ ...trialing, status: 'canceled', metadata: { ...trialing.metadata, trial_rejected: 'card' } });
@@ -208,7 +208,7 @@ it('and does nothing more once the rejection is complete', async () => {
   expect(organizationService.endTrialOffer).not.toHaveBeenCalled();
 });
 
-// K. 2026-10-18: one trial per email as well. A test account got
+// One trial per email as well. A test account got
 // a second trial: its first one ran through Link, which has no card
 // fingerprint, and an account deleted from Postra leaves only its Stripe
 // customer behind.
@@ -262,7 +262,7 @@ describe('one trial per email', () => {
     expect(result).toEqual({ ok: true, skipped: 'trial email used before' });
   });
 
-  // K. 18 X: a card without a fingerprint cannot be marked, so a new email
+  // A card without a fingerprint cannot be marked, so a new email
   // would start another trial on it. No fingerprint, no trial.
   it('a trial without a card fingerprint is cancelled before any charge, even for a new email', async () => {
     listMethods.mockResolvedValue({ data: [{ id: 'pm_link', created: 10, type: 'link' }] });

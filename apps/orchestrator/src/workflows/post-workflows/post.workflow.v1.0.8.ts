@@ -315,7 +315,7 @@ export async function postWorkflowV108({
         //
         // v1.0.8: until now only bad_body told the user anything; every other
         // failure turned the post red in silence — no bell, no email
-        // (E2E-05-17, a Telegram failure on production). Say so, and say to
+        // (a Telegram failure on production). Say so, and say to
         // check the channel before retrying, for the reason above.
         const reason =
           (err instanceof ActivityFailure && err.cause?.message) ||

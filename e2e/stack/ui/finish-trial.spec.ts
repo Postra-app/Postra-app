@@ -1,17 +1,17 @@
 import { expect, test } from '@playwright/test';
 
-// E2E-07-41 / 07-42 (Kris Company, 2026-10-09): opening /billing?finishTrial=true
-// ended the trial and charged the card at once — no price, no question — and
-// a reload after the payment said "We could not take the first payment yet".
-// The stack has no Stripe: the billing routes are answered here.
+// Opening /billing?finishTrial=true ended the trial and charged the card at
+// once — no price, no question — and a reload after the payment said "We could
+// not take the first payment yet". The stack has no Stripe: the billing routes
+// are answered here.
 const routes = async (
   page: import('@playwright/test').Page,
   answer: object,
   preview: object = { amount: 2900, currency: 'gbp', tier: 'PRO', period: 'MONTHLY' }
 ) => {
   const calls: string[] = [];
-  // What Stripe would charge for this subscription right now (Codex: the
-  // price list is wrong for an older price or a discount).
+  // What Stripe would charge for this subscription right now (the price list is
+  // wrong for an older price or a discount).
   await page.route('**/api/billing/finish-trial/preview', (route) => route.fulfill({ json: preview }));
   await page.route('**/api/billing/prorate', (route) => route.fulfill({ json: { price: 0 } }));
   await page.route('**/api/user/subscription', (route) =>

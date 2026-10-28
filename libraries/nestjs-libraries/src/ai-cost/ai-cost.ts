@@ -1,8 +1,8 @@
 import { pricing } from '@gitroom/nestjs-libraries/database/prisma/subscriptions/pricing';
 
 /**
- * What AI cost us, from AiUsage rows — the margin guard (Plan/lunchdayfinal.md
- * "💷 Analiza" pkt 4.5 and 9e): an organisation whose AI costs more than 70%
+ * What AI cost us, from AiUsage rows — the margin guard: an organisation
+ * whose AI costs more than 70%
  * of its plan price is one to look at before it eats the margin.
  *
  * Text prices per 1M tokens from developers.openai.com/api/docs/pricing

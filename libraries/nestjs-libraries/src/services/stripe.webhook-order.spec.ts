@@ -129,7 +129,7 @@ describe('subscription events are written from Stripe’s current state', () => 
     expect(subscriptionService.createOrUpdateSubscription.mock.calls[0][0]).toBe(false);
   });
 
-  it('stores Stripe’s billing anchor, where the AI allowance month starts (E2E-07-40)', async () => {
+  it('stores Stripe’s billing anchor, where the AI allowance month starts', async () => {
     // Trial ended early on 2026-10-09 09:35:51: invoices run from then, not
     // from the day the subscription was created.
     retrieveSubscription.mockResolvedValue(sub('active', 'PRO', { billing_cycle_anchor: 1791538551 }));
@@ -244,7 +244,7 @@ describe('a second live subscription for the same customer', () => {
     expect(notificationService.inAppNotification).toHaveBeenCalled();
   });
 
-  // E2E-07-30: the duplicate's payment comes back by itself.
+  // The duplicate's payment comes back by itself.
   it('a paid duplicate is refunded, once per payment, and the customer told the amount', async () => {
     retrieveSubscription.mockResolvedValue(sub('active', 'PRO', { created: 200 }));
     listSubscriptions.mockResolvedValue({ data: [older, { ...sub('active'), created: 200 }] });
@@ -299,7 +299,7 @@ describe('a second live subscription for the same customer', () => {
     expect(notificationService.inAppNotification.mock.calls[0][2]).toContain('contact us');
   });
 
-  // Codex review 10-06: a crash between refund and cancel must not lose the
+  // A crash between refund and cancel must not lose the
   // refund nor repeat it.
   it('refunds before cancelling, and a retry does not refund again', async () => {
     retrieveSubscription.mockResolvedValue(sub('active', 'PRO', { created: 200 }));
@@ -384,7 +384,7 @@ describe('the price shown before ending a trial', () => {
   });
 });
 
-describe('the quote shown before changing plan (E2E-07-43)', () => {
+describe('the quote shown before changing plan', () => {
   it('has today’s amount, the renewal date and the new price', async () => {
     listProducts.mockResolvedValue({ data: [{ id: 'prod_b', name: 'ULTIMATE', metadata: { tier: 'ULTIMATE' } }] });
     listPrices.mockResolvedValue({
@@ -407,7 +407,7 @@ describe('the quote shown before changing plan (E2E-07-43)', () => {
     });
   });
 
-  // Codex on the 10-09 branch: from monthly to yearly Stripe starts a new
+  // From monthly to yearly Stripe starts a new
   // cycle today, so the renewal is a year away, not the old month's end.
   it('a change to yearly renews a year from the new cycle, as the invoice says', async () => {
     listProducts.mockResolvedValue({ data: [{ id: 'prod_b', name: 'ULTIMATE', metadata: { tier: 'ULTIMATE' } }] });
@@ -436,8 +436,8 @@ describe('the quote shown before changing plan (E2E-07-43)', () => {
     expect(quote.scheduled).toBe(false);
   });
 
-  // Codex: monthly Pro to yearly Starter previews a charge, but it is a
-  // lower plan, which waits for the renewal (E2E-07-44). The quote says so.
+  // Monthly Pro to yearly Starter previews a charge, but it is a
+  // lower plan, which waits for the renewal. The quote says so.
   it('a lower plan is scheduled for the renewal, whatever the preview charges', async () => {
     listProducts.mockResolvedValue({ data: [{ id: 'prod_s', name: 'STANDARD', metadata: { tier: 'STANDARD' } }] });
     listPrices.mockResolvedValue({
@@ -464,8 +464,8 @@ describe('the quote shown before changing plan (E2E-07-43)', () => {
 
 // Stripe: revoke access when a subscription is `unpaid` (all retries failed,
 // when the Dashboard is set to keep it) or `paused` (a trial ended without a
-// payment method). Both used to write the full plan, with nothing paid
-// (E2E-11-62). Paying again makes it `active`, and the update writes the plan
+// payment method). Both used to write the full plan, with nothing paid.
+// Paying again makes it `active`, and the update writes the plan
 // back.
 describe('a subscription Stripe stopped charging has no plan', () => {
   it.each(['unpaid', 'paused'])('%s drops the organisation to no plan', async (status) => {
@@ -478,7 +478,7 @@ describe('a subscription Stripe stopped charging has no plan', () => {
     expect(subscriptionService.deleteSubscription).toHaveBeenCalledWith('cus_1');
   });
 
-  // Codex 26 X: the plan row is per customer; an old subscription going
+  // The plan row is per customer; an old subscription going
   // unpaid must not take away the plan another live one pays for.
   it('an unpaid old subscription leaves the plan another live one pays for', async () => {
     retrieveSubscription.mockResolvedValue(sub('unpaid'));

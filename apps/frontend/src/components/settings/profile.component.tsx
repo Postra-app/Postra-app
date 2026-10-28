@@ -14,7 +14,7 @@ type Picture = { id: string; path: string } | null;
 
 // Name, bio and picture: what a team sees on comments and in Teams. The API
 // was here all along, but the form had no fields since an upstream rework, so
-// nobody could change their name or picture on the web (K21, 2026-10-10).
+// nobody could change their name or picture on the web.
 const ProfileComponent = () => {
   const t = useT();
   const fetch = useFetch();
@@ -36,7 +36,7 @@ const ProfileComponent = () => {
   }, [data]);
 
   const choosePicture = useCallback(() => {
-    // The library hands back a list (Codex review 10-10).
+    // The library hands back a list.
     showMediaBox(([media]) => {
       if (media?.id) setPicture({ id: media.id, path: media.path });
     });

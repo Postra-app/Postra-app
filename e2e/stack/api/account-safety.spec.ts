@@ -4,8 +4,8 @@ import { BACKEND_URL, addMember, anonymous, database, throwawayOrg } from '../he
 const prisma = database();
 test.afterAll(() => prisma.$disconnect());
 
-// AUTH-7: the owner removing themselves left the team with nobody who can
-// manage members or billing.
+// The owner removing themselves left the team with nobody who can manage
+// members or billing.
 test('the only owner cannot remove themselves from the team', async () => {
   const org = await throwawayOrg(prisma, { tier: 'ULTIMATE', totalChannels: 5, channels: 0 });
   const member = await addMember(prisma, org.orgId, 'USER');
@@ -24,8 +24,8 @@ test('the only owner cannot remove themselves from the team', async () => {
   }
 });
 
-// AUTH-8: after deleting the account, another device signed in as the same
-// person kept reading the shared organisation while the auth context was cached.
+// After deleting the account, another device signed in as the same person kept
+// reading the shared organisation while the auth context was cached.
 test('a deleted account is signed out on every device at once', async () => {
   const org = await throwawayOrg(prisma, { tier: 'ULTIMATE', totalChannels: 5, channels: 0 });
   const member = await addMember(prisma, org.orgId, 'USER');
@@ -47,8 +47,8 @@ test('a deleted account is signed out on every device at once', async () => {
   }
 });
 
-// AUTH-9: any providerToken switched the password policy off for a LOCAL
-// sign-up, which then stored the password as sent.
+// Any providerToken switched the password policy off for a LOCAL sign-up, which
+// then stored the password as sent.
 test('a LOCAL sign-up with a providerToken still meets the password policy', async () => {
   const api = await anonymous();
   const res = await api.post('/auth/register', {
@@ -66,8 +66,8 @@ test('a LOCAL sign-up with a providerToken still meets the password policy', asy
   await api.dispose();
 });
 
-// AUTH-10: two signatures made the default at once each switched the other
-// off, and the organisation was left with no default at all.
+// Two signatures made the default at once each switched the other off, and the
+// organisation was left with no default at all.
 test('two signatures made the default at once leave exactly one default', async () => {
   const org = await throwawayOrg(prisma, { tier: 'ULTIMATE', totalChannels: 5, channels: 0 });
   try {

@@ -3,7 +3,7 @@ import { listPosts, signedIn } from '../helpers';
 import { USERS } from '../seed';
 import { expandShowMore, watchForErrors, weekOf } from './ui-helpers';
 
-// E2E-05-102: a post that goes out while the calendar is open used to keep
+// A post that goes out while the calendar is open used to keep
 // its "scheduled" tile for up to an hour (SWR refreshed hourly, never on
 // focus). While a queued post is due the calendar now asks again every 15 s,
 // so the tile turns green on its own.

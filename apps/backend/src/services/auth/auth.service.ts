@@ -40,7 +40,7 @@ const LOGIN_LOCKOUT_WINDOW_SECONDS = 15 * 60;
 
 // Sign-in mails (activation, password reset) are sent directly, never
 // through the Temporal mail queue. With the queue down, registration answered
-// 400 for an account it had created and no mail came (E2E-02-04); with the
+// 400 for an account it had created and no mail came; with the
 // queue's workflow stuck, signals are still accepted, so no fallback ever
 // fired and the mail never left; and the reset mail had no fallback at all —
 // it vanished without a log (upstream 1f5f24e5). They are few and urgent.
@@ -155,8 +155,8 @@ export class AuthService {
       }
 
       // bcrypt runs for an unknown address too, against a stand-in hash: the
-      // time it takes told whether an account existed (~55 ms against ~6 ms,
-      // E2E-11-73). Asynchronous, so a sign-in does not stall the event loop.
+      // time it takes told whether an account existed (~55 ms against
+      // ~6 ms). Asynchronous, so a sign-in does not stall the event loop.
       const passwordMatches = await AuthChecker.comparePassword(
         body.password,
         user?.password || unknownUserHash()
@@ -205,7 +205,7 @@ export class AuthService {
       const getOrg: any = AuthChecker.verifyJWT(cookie);
       // An invitation and nothing else, and never without its hour: a token
       // with no `timeLimit` passed as one that never runs out, and any token
-      // Postra signs could be read as an invitation (E2E-11-84).
+      // Postra signs could be read as an invitation.
       if (
         getOrg?.purpose !== 'invite' ||
         !getOrg.timeLimit ||
@@ -236,7 +236,7 @@ export class AuthService {
 
     // A provider that could not verify the token may still answer with an
     // object: the wallet provider returned { id: '' }, which signed every bad
-    // signature into one shared account (E2E-02-29). No id, no user.
+    // signature into one shared account. No id, no user.
     if (!providerUser || !providerUser.id) {
       throw new Error('Invalid provider token');
     }
@@ -356,7 +356,7 @@ export class AuthService {
     };
     // Only a reset link resets. A session token carries the current
     // tokenVersion and no `expires`, so the session cookie or the app's token
-    // set a new password without the old one (E2E-11-72).
+    // set a new password without the old one.
     if (user.purpose !== 'reset' || !user.expires) {
       return false;
     }
@@ -412,7 +412,7 @@ export class AuthService {
       throw new Error(ACTIVATION_LINK_INVALID);
     }
     // Only an activation link activates: a session or reset token carries no
-    // `activated` and read as one (E2E-11-72).
+    // `activated` and read as one.
     if (user.purpose !== 'activate') {
       throw new Error(ACTIVATION_LINK_INVALID);
     }
@@ -468,7 +468,7 @@ export class AuthService {
   // anyone could start a sign-in with their own Google account, stop at the
   // callback and send the link on — the victim's browser finished it and was
   // signed in to the attacker's account, or registered an account the
-  // attacker can sign in to (E2E-02-28).
+  // attacker can sign in to.
   async oauthLink(provider: string, query?: any) {
     // Build the link before persisting the state. The old order wrote the Redis
     // key first, so every request that then failed — unknown provider, provider
@@ -560,8 +560,8 @@ export class AuthService {
     };
 
     // The session ends 30 days after signing in, refreshed or not: every
-    // refresh used to add a week, so a session in use never ended
-    // (E2E-11-80). A token from before `sat` counts from when it was issued.
+    // refresh used to add a week, so a session in use never ended. A token
+    // from before `sat` counts from when it was issued.
     const signedInAt = sat ?? iat ?? Math.floor(Date.now() / 1000);
     const left =
       signedInAt + SESSION_MAX_AGE_SECONDS - Math.floor(Date.now() / 1000);
@@ -577,7 +577,7 @@ export class AuthService {
 
   /**
    * End the session the caller holds, app or browser, for as long as its token
-   * could still be used. Browser tokens issued before E2E-11-74 have no id.
+   * could still be used. Older browser tokens have no id.
    */
   async endMobileSession(jwt: string | undefined): Promise<void> {
     if (!jwt) {
@@ -591,7 +591,7 @@ export class AuthService {
       if (sid) {
         // At least the app's week: refresh keeps the session id and extends
         // the token, so a newer token of this session can outlive the one
-        // signing out (Codex 26 X). A browser token lives longer and is never
+        // signing out. A browser token lives longer and is never
         // refreshed: its own expiry.
         const left = exp ? exp - Math.floor(Date.now() / 1000) : 0;
         await revokeMobileSession(
@@ -606,8 +606,8 @@ export class AuthService {
   }
 
   // The activation link used to be the session token itself, so once the
-  // account was activated the link signed in whoever held it for 30 days
-  // (E2E-02-27). Its own token, refused as a session by auth.middleware.
+  // account was activated the link signed in whoever held it for 30 days.
+  // Its own token, refused as a session by auth.middleware.
   private activationToken(user: Pick<User, 'id' | 'email'>) {
     return AuthChecker.signJWT({
       id: user.id,
@@ -630,9 +630,9 @@ export class AuthService {
     // column comment + auth.middleware).
     // `sid` lets signing out end this session on the server, not only by
     // deleting the cookie: a copied cookie kept working for the rest of its
-    // 30 days (E2E-11-74).
+    // 30 days.
     // `sat` (signed in at) carries into the app's token and its refreshes,
-    // which end 30 days from here like this one (E2E-11-80).
+    // which end 30 days from here like this one.
     return AuthChecker.signJWT({
       id: user.id,
       email: user.email,

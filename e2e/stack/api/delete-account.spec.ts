@@ -68,9 +68,9 @@ test('an organisation shared with another member survives, without the deleted u
   }
 });
 
-// E2E-09-66: a platform grant is the person's whole login. While another
-// organisation still uses the same Facebook login, deleting this account
-// must keep the grant (and must not call Facebook at all).
+// A platform grant is the person's whole login. While another organisation
+// still uses the same Facebook login, deleting this account must keep the grant
+// (and must not call Facebook at all).
 test('deleting the account keeps a Facebook grant another organisation still uses', async () => {
   const prisma = database();
   const leaver = await throwawayOrg(prisma, { tier: 'PRO', totalChannels: 5, channels: 0 });
@@ -107,11 +107,10 @@ test('deleting the account keeps a Facebook grant another organisation still use
   }
 });
 
-// E2E-05-93 (K. 2026-10-10: hand the organisation on): the owner deleting
-// their account left a team nobody could manage — no owner for members or
-// billing. The longest-standing admin (or, without one, member) takes over.
-// Upstream d6f881a89: members who are switched off do not count — an
-// organisation left with only them goes with the account.
+// The owner deleting their account left a team nobody could manage — no owner
+// for members or billing. The longest-standing admin (or, without one, member)
+// takes over. Upstream d6f881a89: members who are switched off do not count —
+// an organisation left with only them goes with the account.
 test('the owner leaving hands the organisation to the oldest admin', async () => {
   const prisma = database();
   const owner = await throwawayOrg(prisma, { tier: 'PRO', totalChannels: 5, channels: 0 });

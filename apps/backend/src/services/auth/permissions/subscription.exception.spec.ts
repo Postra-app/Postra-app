@@ -6,7 +6,7 @@ import {
   SubscriptionException,
 } from '@gitroom/nestjs-libraries/services/auth/permission.exception.class';
 
-// Regression guard for e2e/bugs.md E2E-02-02. getErrorMessage used to switch on
+// Regression guard. getErrorMessage used to switch on
 // four quota sections with no default, so a denial on ADMIN / AI / AUTOPOST /
 // TEAM_MEMBERS returned undefined — JSON.stringify dropped the key and the
 // client got `{statusCode: 402, url}` with nothing to show the user.

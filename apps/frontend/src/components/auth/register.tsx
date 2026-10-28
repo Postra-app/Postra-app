@@ -222,7 +222,7 @@ export function RegisterAfter({
         setLoading(false);
         // A status handled globally rejects instead of resolving (as in
         // login.tsx). The sign-up limit is per IP per day, so say so on the
-        // form; a 5xx already produced its own toast (E2E-02-43).
+        // form; a 5xx already produced its own toast.
         if (isFetchHandledError(e)) {
           if (e.status === 429) {
             form.setError('email', {

@@ -38,7 +38,7 @@ import { getAuth } from '@gitroom/nestjs-libraries/chat/async.storage';
  * The organisation of an agent run, as JSON. The chat sets `organization` on
  * the request context; a run through MCP (`ask_postra`) has it only as the
  * MCP auth info, or in the MCP request's scope; without it the run's usage
- * and prompt cache had no organisation (E2E-08-47).
+ * and prompt cache had no organisation.
  */
 export const organizationOfRun = (requestContext: {
   get(key: string): unknown;

@@ -46,7 +46,7 @@ export class AutopostController {
     @Body() body: AutopostDto
   ) {
     // The guard counted the feeds before this request; two at once both saw
-    // a free one and both were created (AI-6). Counted again, one at a time.
+    // a free one and both were created. Counted again, one at a time.
     const lock = `autopost-create:${org.id}`;
     if ((await ioRedis.set(lock, '1', 'EX', 15, 'NX')) !== 'OK') {
       throw new SubscriptionException({
@@ -92,7 +92,7 @@ export class AutopostController {
     @Body('active') active: boolean
   ) {
     // Switching a feed on needs a plan with Auto Post; a feed made on Pro
-    // could be restarted after a downgrade (BILL-7). Switching off is always
+    // could be restarted after a downgrade. Switching off is always
     // allowed, so a plan change never leaves a feed nobody can stop.
     if (active) {
       await this.requireAutopost(org, AuthorizationActions.Update);
@@ -104,9 +104,9 @@ export class AutopostController {
   }
 
   // Switching a feed on counts the running ones against the plan: the ones a
-  // downgrade switched off could all be switched on again (E2E-07-33). One at
+  // downgrade switched off could all be switched on again. One at
   // a time per organisation, so two at once cannot both see room for one, and
-  // the same for an edit that switches a feed on (Codex).
+  // the same for an edit that switches a feed on.
   private async withRoomToRun<T>(
     org: Organization,
     id: string,

@@ -6,8 +6,8 @@ import { quietSlot } from './ui-helpers';
 // "Add a set" opened the post editor with the channel list it had at that
 // moment. Clicked before /integrations/list answered (or with no channel at
 // all) the editor rendered nothing: a full-screen blank layer with no close
-// button and Escape switched off, stuck until a reload. Found on prod
-// 2026-10-06 while proving E2E-05-59. Nothing here saves a set.
+// button and Escape switched off, stuck until a reload. Nothing here saves a
+// set.
 test.use({ storageState: stateFile('a') });
 
 const openSetsTab = async (page: Page) => {
@@ -47,7 +47,7 @@ test('with no channel, "Add a set" says so instead of a blank editor', async ({ 
   await expect(page.getByRole('dialog', { name: 'Post editor' })).toHaveCount(0);
 });
 
-test('a set keeps each channel’s own text (E2E-05-92)', async ({ page }) => {
+test('a set keeps each channel’s own text', async ({ page }) => {
   // The editor opened every channel of a set with the first channel's text.
   const api = await signedIn('a');
   const tag = `[stack ui] set ${Date.now()}`;

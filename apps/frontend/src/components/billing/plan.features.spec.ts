@@ -28,7 +28,7 @@ describe('planFeatures', () => {
     const pro = texts('PRO');
     expect(pro).toContain(
       // Only platforms a customer can connect today, like the landing's
-      // "6 channels on 10 platforms" (K. 10-09: no "(soon)"; Pinterest 10-27).
+      // "6 channels on 10 platforms" (no "(soon)").
       'On Facebook, Instagram, TikTok, LinkedIn, Pinterest, YouTube, Threads, Bluesky, Mastodon, Telegram'
     );
     expect(pro).toContain('Blog to posts from 3 RSS feeds');

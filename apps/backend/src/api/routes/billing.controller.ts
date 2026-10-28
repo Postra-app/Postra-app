@@ -114,7 +114,7 @@ export class BillingController {
     try {
       const result = await this._stripeService.finishTrial(org.paymentId);
       // It charges the card: who ended the trial and when could not be told
-      // afterwards (E2E-07-41).
+      // afterwards.
       this._auditService.record({
         action: 'billing.finish-trial',
         organizationId: org.id,
@@ -200,7 +200,7 @@ export class BillingController {
     };
   }
 
-  // A lower plan waiting for the next billing period (E2E-07-44).
+  // A lower plan waiting for the next billing period.
   @Get('/pending-change')
   pendingChange(@GetOrgFromRequest() org: Organization) {
     return this._stripeService.pendingChange(org.id);
@@ -267,7 +267,7 @@ export class BillingController {
 
   // POST /billing/lifetime redeemed codes nothing in Postra issues, and about
   // 1 random string in 250 passed as one (AES-CBC without a MAC): a free plan
-  // for good (E2E-11-61). Plans without payment are an administrator's grant.
+  // for good. Plans without payment are an administrator's grant.
 
   // The admin-only charge, refund and cancel routes used to live here, reading
   // the organization from the session. That made them usable only from inside

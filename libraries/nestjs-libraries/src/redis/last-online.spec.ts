@@ -4,7 +4,7 @@ import {
 } from '@gitroom/nestjs-libraries/redis/auth-context.cache';
 import { ioRedis } from '@gitroom/nestjs-libraries/redis/redis.service';
 
-// E2E-09-03: DAU/WAU/MAU counted users whose lastOnline fell in a window, and
+// DAU/WAU/MAU counted users whose lastOnline fell in a window, and
 // nothing in the repo — or in upstream — ever wrote that column. It defaults to
 // now() at sign-up, so the three cards were counting registrations. Measured on
 // production: an evening of clicking as a signed-in admin left DAU at 0.

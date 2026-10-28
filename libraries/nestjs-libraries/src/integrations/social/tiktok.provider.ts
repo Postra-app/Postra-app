@@ -423,7 +423,7 @@ export class TiktokProvider extends SocialAbstract implements SocialProvider {
 
   // Through this.fetch, so an expired token (401 access_token_invalid — TikTok
   // tokens live 24 h) raises RefreshToken and the caller refreshes and retries,
-  // instead of the composer getting an empty privacy list (E2E-08-63).
+  // instead of the composer getting an empty privacy list.
   private async queryCreatorInfo(accessToken: string) {
     const body = await (
       await this.fetch(

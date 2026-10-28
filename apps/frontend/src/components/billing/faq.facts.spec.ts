@@ -1,7 +1,7 @@
 import { readFileSync } from 'fs';
 import { join } from 'path';
 
-// E2E-07-37: the Billing FAQ (shown on the paywall too) promised a "$2" hold
+// The Billing FAQ (shown on the paywall too) promised a "$2" hold
 // while Stripe holds £1, and named Reddit, Dribbble and Pinterest, which no
 // plan had then (Pinterest joined on 2026-10-27). The facts in the English text come from the code.
 
@@ -53,7 +53,7 @@ it('lists exactly the platforms a channel can be connected to', () => {
   }
 });
 
-// K. 2026-10-16: the trial note names every trial limit (pricing.ts
+// The trial note names every trial limit (pricing.ts
 // TRIAL_LIMITS); it used to name only channels and AI, so a Business trial met
 // a 402 at the 31st post or the second webhook without having been told.
 it('names every trial limit in the trial note, in English and Polish', () => {

@@ -101,7 +101,7 @@ const FormWrapper: FC<{ showCoupon?: boolean; autoApplyCoupon?: string }> = ({
   const [consent, setConsent] = useState(false);
 
   // A checkout Stripe could not open left the plan picker with no form and
-  // no word why (E2E-07-20).
+  // no word why.
   if (checkoutState.type === 'error') {
     return (
       <div className="rounded-[12px] border border-white/10 p-[16px] text-textColor/80">

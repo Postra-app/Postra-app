@@ -109,8 +109,8 @@ export class Post {
   date?: string;
 
   // When the editor read this channel: a post opens with its other channels
-  // read separately, and the newest of them hid an older read of another
-  // (Codex). Without it the request's expectedUpdatedAt applies.
+  // read separately, and the newest of them hid an older read of another.
+  // Without it the request's expectedUpdatedAt applies.
   @IsOptional()
   @IsDateString()
   expectedUpdatedAt?: string;
@@ -151,7 +151,7 @@ export class CreatePostDto {
   shortLink: boolean;
 
   // Days between repeats. Below one, the workflow clamped the wait to zero
-  // and each publication started the next at once, without end (E2E-05-43).
+  // and each publication started the next at once, without end.
   @IsOptional()
   @IsInt()
   @Min(1)

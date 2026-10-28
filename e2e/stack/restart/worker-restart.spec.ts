@@ -5,10 +5,10 @@ import { Connection, WorkflowClient } from '@temporalio/client';
 import { listPosts, signedIn } from '../helpers';
 import { USERS } from '../seed';
 
-// U13 — a restart must not delay a post by long nor publish it twice
-// (Plan/upstream_sync.md §0, e2e/bugs.md E2E-11-01). The orchestrator is killed
-// with SIGKILL, like a deploy or a watchdog restart would, and started again.
-// Slow (~8 min), so not part of the pull-request run: `pnpm e2e:stack:restart`.
+// A restart must not delay a post by long nor publish it twice. The
+// orchestrator is killed with SIGKILL, like a deploy or a watchdog restart
+// would, and started again. Slow (~8 min), so not part of the pull-request run:
+// `pnpm e2e:stack:restart`.
 
 const FAKE = 'http://localhost:58080';
 const CHANNEL = USERS.a.mastodon.id;

@@ -55,7 +55,7 @@ export class WebhooksRepository {
 
   // How many of the organisation's webhooks its plan delivers to. Checked
   // where they are delivered, not only when one is added: after a downgrade
-  // (even to FREE, 0) every webhook kept receiving (E2E-07-33). Without
+  // (even to FREE, 0) every webhook kept receiving. Without
   // billing there is no limit.
   async getDeliveryLimit(orgId: string) {
     if (!process.env.STRIPE_PUBLISHABLE_KEY) {
@@ -121,7 +121,7 @@ export class WebhooksRepository {
   async createWebhook(orgId: string, body: WebhooksDto) {
     // Only channels the org owns. An unknown or foreign id used to be dropped
     // in silence, and an empty list means "every channel": a webhook meant
-    // for one channel received all of them (POSTS-5).
+    // for one channel received all of them.
     const requested = [...new Set((body.integrations || []).map((i) => i.id))];
     const owned = requested.length
       ? await this._integration.model.integration.findMany({
@@ -140,7 +140,7 @@ export class WebhooksRepository {
 
     // The webhook and its channel filter in one write: a new webhook used to
     // exist without its filter for a moment, which reads as "all channels"
-    // to a publish happening right then (POSTS-4).
+    // to a publish happening right then.
     return this._transaction.model.$transaction(async (tx) => {
       if (!body.id) {
         const created = await tx.webhooks.create({

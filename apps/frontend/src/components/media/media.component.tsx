@@ -313,7 +313,7 @@ export const MediaBox: FC<{
     setMedia(selected);
     // closeModal, not modals.closeCurrent(): the library opened by
     // showMediaBox (profile picture, bot picture) is not in the modal stack
-    // and stayed open after a choice (Codex review 10-10). For the modal
+    // and stayed open after a choice. For the modal
     // callers it is the same close.
     closeModal();
   }, [selected, closeModal]);
@@ -738,7 +738,7 @@ export const MultiMediaComponent: FC<{
   description: string;
   mediaNotAvailable?: boolean;
   // A picker for pictures only (the pictures an AI video is made from): no
-  // AI Video in its toolbar (E2E-05-80).
+  // AI Video in its toolbar.
   imagesOnly?: boolean;
   dummy: boolean;
   allData: {

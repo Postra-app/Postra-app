@@ -54,7 +54,7 @@ test("a member never sees or rotates the organisation's API key", async () => {
   expect(ownerSelf.publicApi).toBeTruthy();
 });
 
-test('E2E-08-24: the organisation list every browser loads carries no API key or Stripe id', async () => {
+test('the organisation list every browser loads carries no API key or Stripe id', async () => {
   // /user/self hid the key from members; the organisation switcher's list
   // handed it (a SUPERADMIN credential for the public API and MCP) and the
   // Stripe customer id to everyone, members included.
@@ -85,7 +85,7 @@ test('a full Pro team: the owner still sees and manages it, but cannot invite', 
     data: { email: 'third@example.com', role: 'USER', sendEmail: false },
   });
   expect(invite.status()).toBe(402);
-  // E2E-07-38: about seats, not "not included in your plan".
+  // About seats, not "not included in your plan".
   expect((await invite.json()).message).toContain('seats');
   expect((await owner.get('/settings/team')).status()).toBe(200);
 });

@@ -770,7 +770,7 @@ html[dir='rtl'] [dir='ltr'] {
 }
 
 // A link with UTM parameters is one unbreakable word; without this it pushed
-// the whole composer sideways (E2E-05-09). The attribute is there for weight:
+// the whole composer sideways. The attribute is there for weight:
 // tiptap injects its own `.ProseMirror { overflow-wrap: break-word }` at runtime,
 // after this stylesheet, and a plain `.ProseMirror` rule lost to it on
 // production.

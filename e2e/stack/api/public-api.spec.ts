@@ -90,7 +90,7 @@ test('upload-from-url refuses addresses inside our network', async () => {
   }
 });
 
-// E2E-08-58: a file uploaded through the API kept only its random stored name,
+// A file uploaded through the API kept only its random stored name,
 // so the library search (by original name) never found it.
 test('a file uploaded through the API is found by its name in the library', async () => {
   const name = `stack-api-upload-${Date.now()}.png`;

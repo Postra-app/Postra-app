@@ -283,7 +283,7 @@ export class XProvider extends SocialAbstract implements SocialProvider {
 
   // The post's full like count. liking_users pages users 100 at a time, and
   // its result_count is the users on that page, so a threshold over 100
-  // never fired (E2E-05-91).
+  // never fired.
   private async likeCount(client: TwitterApi, id: string) {
     const tweet = await client.v2.singleTweet(id, {
       'tweet.fields': ['public_metrics'],

@@ -67,7 +67,7 @@ const ThirdPartyMediaLibraryBrowser: FC<{
         }),
       });
       // A 404 (the integration removed meanwhile) imported nothing under
-      // "imported successfully" (E2E-08-36).
+      // "imported successfully".
       if (!res.ok) {
         throw new Error(String(res.status));
       }

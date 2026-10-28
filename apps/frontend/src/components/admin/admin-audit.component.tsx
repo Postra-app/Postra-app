@@ -63,7 +63,7 @@ const person = (p: AuditPerson | null) => p?.email ?? p?.id ?? '-';
  * whoever the session was wearing, the target recorded beside them, `ip` and
  * `userAgent` filled in — and then nothing read it. "Who put this account on
  * Business, and when" still meant a psql session, which is the same as having
- * no answer when a customer is on the phone (E2E-09-34, 05-gaps §5).
+ * no answer when a customer is on the phone.
  */
 export const AdminAuditComponent = () => {
   const fetch = useFetch();

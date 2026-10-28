@@ -7,7 +7,7 @@ import { failBoot } from './boot.failed';
 describe('failBoot', () => {
   // A start that failed (the port taken by a leftover process, say) used to
   // be logged and left running: pm2 showed it online with nothing listening,
-  // the silent state of B0, until a watchdog replaced the container minutes
+  // the silent boot hang, until a watchdog replaced the container minutes
   // later. Exiting lets pm2 start it again at once.
   it('reports the error and exits with 1', async () => {
     const exit = jest.fn() as unknown as (code: number) => never;

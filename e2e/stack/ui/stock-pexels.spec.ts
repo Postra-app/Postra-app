@@ -57,9 +57,9 @@ test('Unsplash photos in the Studio credit the photographer and Unsplash, and im
   expect((await imported).status()).toBe(201);
 });
 
-// Prod 10-08 (e): switching to Unsplash starts a search; a new query typed
-// while it ran was dropped (`if (searching) return`) and the panel showed the
-// old query's photos. The newest query wins, and a late answer is ignored.
+// Switching to Unsplash starts a search; a new query typed while it ran was
+// dropped (`if (searching) return`) and the panel showed the old query's
+// photos. The newest query wins, and a late answer is ignored.
 test('a search typed while another is running shows its own photos', async ({ page }) => {
   test.setTimeout(60_000);
   const hit = (user: string) => ({

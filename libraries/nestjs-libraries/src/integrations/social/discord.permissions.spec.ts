@@ -6,7 +6,7 @@ import { DiscordProvider } from './discord.provider';
 
 // The bot is invited with a permission mask. Without View Channel, Attach
 // Files and Read Message History it only worked on servers that give them to
-// everyone: posts with media and post statistics failed elsewhere (Codex).
+// everyone: posts with media and post statistics failed elsewhere.
 const bits = async () => {
   const { url } = await new DiscordProvider().generateAuthUrl();
   return BigInt(new URL(url).searchParams.get('permissions') || '0');

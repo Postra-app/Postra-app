@@ -32,7 +32,7 @@ export class StripeEventStore {
    * A short lease while one delivery works on the event. The row used to be
    * the claim and was written first: a process killed mid-handler (a deploy,
    * a restart) left it behind, and every retry from Stripe answered
-   * "duplicate" for work that never finished (E2E-07-13). A lease expires on
+   * "duplicate" for work that never finished. A lease expires on
    * its own; the row now means "done".
    */
   async lease(id: string): Promise<boolean> {
@@ -48,7 +48,7 @@ export class StripeEventStore {
   /**
    * Different events of one customer, one at a time. An update that read the
    * subscription, then lost the race to a deletion, wrote the old plan back
-   * after it (BILL-2). The second event waits for the first (waitForCustomer)
+   * after it. The second event waits for the first (waitForCustomer)
    * and then reads the state the first one left.
    */
   async leaseCustomer(customerId: string, eventId: string): Promise<boolean> {
@@ -63,7 +63,7 @@ export class StripeEventStore {
    * Checkout sends invoice.payment_succeeded and customer.subscription.created
    * in the same second; the loser answered 409 at once and Stripe's retry came
    * minutes later, so a paying customer watched a spinner until the page gave
-   * up (18 X). One event takes a second or two, well inside Stripe's timeout.
+   * up. One event takes a second or two, well inside Stripe's timeout.
    */
   customerWaitMs = 10_000;
 

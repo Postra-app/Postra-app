@@ -265,7 +265,7 @@ export const dataUrlToBlob = async (dataUrl: string): Promise<Blob> => {
  * A saved template applied in another format: its coordinates belong to the
  * frame it was saved in, so an X post (1600×900) applied on IG Feed
  * (1080×1350) left everything near its right edge outside the export
- * (E2E-06-35). Move the layers onto the current frame the way switching
+ *. Move the layers onto the current frame the way switching
  * format does. Templates saved before the stamp existed stay as they are.
  */
 export const fitTemplateToPlatform = (

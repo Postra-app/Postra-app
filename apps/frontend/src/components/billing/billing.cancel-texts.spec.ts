@@ -1,7 +1,7 @@
 import { readFileSync } from 'fs';
 import { join } from 'path';
 
-// Texts approved by K. 2026-10-16 (upstream a36eada0a, 97d14d013):
+// Texts from upstream a36eada0a and 97d14d013:
 // - the cancel dialog paired "Yes, cancel" with the default "No, cancel!",
 //   two buttons that both read as cancelling;
 // - "may be removed" was wrong: reconcileTeamSeats disables members over the

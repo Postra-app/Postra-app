@@ -14,7 +14,7 @@ type Preview =
 
 // Opening an invitation link used to add the signed-in person at once — any
 // page could send them there and drag them into its organisation, and they
-// never saw which account joined (E2E-08-34). Now they are asked.
+// never saw which account joined. Now they are asked.
 export const JoinOrganization = () => {
   const fetch = useFetch();
   const t = useT();

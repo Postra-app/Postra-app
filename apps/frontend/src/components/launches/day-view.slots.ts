@@ -12,7 +12,7 @@ dayjs.extend(timezone);
 // The day view lays out one row per minute of the day, in the user's time
 // zone. Rows used to be minutes after UTC midnight laid on the selected day
 // as UTC, so away from UTC a post at 00:30 landed in a row of the next day
-// and was not shown (E2E-05-61).
+// and was not shown.
 
 export const minutesInZone = (utcDate: string | Date, tz: string) => {
   const local = dayjs.utc(utcDate).tz(tz);

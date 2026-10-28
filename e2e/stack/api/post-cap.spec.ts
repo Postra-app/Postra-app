@@ -94,7 +94,7 @@ test('drafts, deleted posts and earlier cycles do not count towards the 400', as
   await org.remove();
 });
 
-test('E2E-07-22: at the cap, the public API cannot turn a draft into a scheduled post', async () => {
+test('at the cap, the public API cannot turn a draft into a scheduled post', async () => {
   // Drafts are free; flipping one to "schedule" through PUT /posts/:id/status
   // skipped the monthly allowance and queued it anyway.
   const org = await throwawayOrg(prisma, { tier: 'STANDARD', totalChannels: 3, channels: 1 });
@@ -115,8 +115,8 @@ test('E2E-07-22: at the cap, the public API cannot turn a draft into a scheduled
   }
 });
 
-// BILL-4 / POSTS-12: the check was `count < limit`, so with one post left a
-// single save on several channels (or a thread) went through in full.
+// The check was `count < limit`, so with one post left a single save on several
+// channels (or a thread) went through in full.
 test('one post left: a save on two channels is refused, on one it goes through', async () => {
   const org = await throwawayOrg(prisma, { tier: 'STANDARD', totalChannels: 3, channels: 2 });
   const [first, second] = org.channelIds;

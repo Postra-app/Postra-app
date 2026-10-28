@@ -4,7 +4,7 @@ import type { Metadata } from 'next';
 
 // Sign-in, sign-up, reset and activation screens are not search results:
 // Google indexed /auth as a duplicate of /auth/login ("Duplicate without
-// user-selected canonical", Search Console 22 X). robots.txt leaves /auth
+// user-selected canonical" in Search Console). robots.txt leaves /auth
 // crawlable so this noindex is seen and the pages are dropped.
 export const metadata: Metadata = {
   robots: { index: false, follow: false },

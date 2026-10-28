@@ -9,7 +9,7 @@ jest.mock('nostr-tools', () => ({
 
 import { IntegrationService } from '@gitroom/nestjs-libraries/database/prisma/integrations/integration.service';
 
-// E2E-09-43: the failure branch inside the loop was a `return`, not a
+// The failure branch inside the loop was a `return`, not a
 // `continue`, so one expired channel anywhere in the list silently skipped the
 // refresh of every channel after it — and the command printed nothing on
 // success, so the operator assumed they had all been refreshed. This is the

@@ -1,6 +1,6 @@
 import { safeRedirect } from './google.provider';
 
-// E2E-03-02: the caller's redirect_uri went straight into Google's auth URL.
+// The caller's redirect_uri went straight into Google's auth URL.
 describe('Google sign-in redirect_uri', () => {
   beforeAll(() => {
     process.env.FRONTEND_URL = 'https://app.postra.pl';

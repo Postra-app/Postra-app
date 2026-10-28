@@ -1,5 +1,5 @@
 /**
- * Pexels — the second free stock library next to Pixabay (K. 2026-10-08).
+ * Pexels — the second free stock library next to Pixabay.
  * Free API (200 requests an hour, 20 000 a month); its guidelines ask for a
  * visible link to Pexels and, where possible, the photographer's credit, so
  * every hit carries both. Files are imported into the media library, never

@@ -159,7 +159,7 @@ const PostDesignEditor: FC<PostDesignEditorProps> = ({
   const draftDoneRef = useRef(false);
   // The design as it was when saved or exported. Work after that is new work:
   // the flag alone switched autosave off for the rest of the session, so a
-  // refresh lost everything made after one "Save to library" (E2E-06-22).
+  // refresh lost everything made after one "Save to library".
   const doneJsonRef = useRef<string | null>(null);
   /** Whether this editor ever held a design, so "empty" can be read correctly. */
   const hadContentRef = useRef(false);
@@ -285,7 +285,7 @@ const PostDesignEditor: FC<PostDesignEditorProps> = ({
       const liveJson = JSON.stringify(c.toJSON());
       const carousel = useCarouselStore.getState();
       const slides = draftSlides(liveJson, carousel);
-      // An empty slide on screen is not an empty carousel (E2E-06-23).
+      // An empty slide on screen is not an empty carousel.
       const hasContent =
         c.getObjects().length > 0 || !!slides?.some(jsonHasObjects);
       if (hasContent) hadContentRef.current = true;
@@ -589,7 +589,7 @@ const PostDesignEditor: FC<PostDesignEditorProps> = ({
       useCarouselStore.getState().commitSlideSwitch(currentJson);
       // History is one list for the whole canvas: an Undo after a switch
       // loaded the previous slide's state here, and the next switch saved it
-      // over this slide (E2E-06-23). Each slide starts its own history.
+      // over this slide. Each slide starts its own history.
       const startHistory = () => {
         useEditorStore.getState().resetHistory();
         saveStateRef.current?.();
@@ -863,7 +863,7 @@ const PostDesignEditor: FC<PostDesignEditorProps> = ({
       if (!uploaded.ok) throw new Error(String(uploaded.status));
       const data = await uploaded.json();
       // A refused design (over the size limit) used to end in "Saved" and a
-      // deleted draft, leaving only a flat JPEG (E2E-06-21).
+      // deleted draft, leaving only a flat JPEG.
       const savedCanvas = await fetch(`/media/${data.id}/canvas`, {
         method: 'PUT',
         body: JSON.stringify({ canvasJson }),

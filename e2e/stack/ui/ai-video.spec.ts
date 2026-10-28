@@ -2,9 +2,9 @@ import { expect, test } from '@playwright/test';
 import { openComposer, watchForErrors } from './ui-helpers';
 
 // AI Image and AI Video in the composer's toolbar. Below 1560 px wide (most
-// laptops) they were bare icons on divs: no words, no name for a screen
-// reader, no keyboard — K. could not find the video button on 2026-10-08.
-// The clip itself comes from the fake kie.ai (stack.env KIEAI_API_URL).
+// laptops) they were bare icons on divs: no words, no name for a screen reader,
+// no keyboard, and the video button was hard to find. The clip itself comes
+// from the fake kie.ai (stack.env KIEAI_API_URL).
 
 test.use({ viewport: { width: 1280, height: 800 } });
 // Both video tests spend credits of the same organisation and read the count.
@@ -24,7 +24,7 @@ test('AI Image and AI Video are labelled buttons on a laptop-width screen', asyn
   await page.getByRole('button', { name: 'AI Video', exact: true }).focus();
   await page.keyboard.press('Enter');
   await expect(page.getByText(/\d+ video credits left/)).toBeVisible();
-  // E2E-05-80: the picture picker of the video window offered AI Video too —
+  // The picture picker of the video window offered AI Video too —
   // a video cannot be one of the pictures the clip is made from.
   const pictures = page.locator('form').filter({ hasText: 'Images (max 3)' });
   await expect(pictures.getByRole('button', { name: 'AI Image', exact: true })).toBeVisible();
@@ -80,10 +80,10 @@ test('Billing shows the AI images and videos left this month', async ({ page }) 
   expect(problems).toEqual([]);
 });
 
-// 2026-10-10 (K. on prod): a clip took about 2 min 45 s. The browser gave up
-// after 2 min (the shared fetch timeout) and said "Could not generate the
-// video, please try again" while the clip was made, paid for and saved to the
-// library - trying again would have paid twice.
+// On production a clip took about 2 min 45 s. The browser gave up after 2 min
+// (the shared fetch timeout) and said "Could not generate the video, please try
+// again" while the clip was made, paid for and saved to the library - trying
+// again would have paid twice.
 test('a clip that takes longer than two minutes still arrives, without an error', async ({ page }) => {
   test.setTimeout(90_000);
   await page.clock.install();

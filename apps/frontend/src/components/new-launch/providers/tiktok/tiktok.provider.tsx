@@ -52,7 +52,7 @@ const TikTokSettings: FC<{
     avatarUrl?: string;
   } | null>(null);
   // The backend answers `false` when TikTok refused even after a token refresh;
-  // without this the selector said "Loading…" forever (E2E-08-63).
+  // without this the selector said "Loading…" forever.
   const [creatorInfoFailed, setCreatorInfoFailed] = useState(false);
 
   // Detected duration (seconds) of the attached video, used to enforce the

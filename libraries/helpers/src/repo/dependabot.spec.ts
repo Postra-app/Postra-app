@@ -87,8 +87,8 @@ describe('Dependabot groups', () => {
     expect(guard).toContain('dependabot.yml');
   });
 
-  // An ignore without update-types also stops security updates (Codex,
-  // 2026-10-17); naming the version-update types keeps them coming.
+  // An ignore without update-types also stops security updates; naming the
+  // version-update types keeps them coming.
   it('never ignores security updates', () => {
     const entries = config.split(/^\s*- dependency-name:/m).slice(1);
     expect(entries.length).toBeGreaterThan(0);
@@ -97,17 +97,17 @@ describe('Dependabot groups', () => {
     }
   });
 
-  // K. 2026-10-17: weekly runs gave too many bump PRs for no gain. Security
-  // updates are not version updates and still come at once.
+  // Weekly runs gave too many bump PRs for no gain. Security updates are not
+  // version updates and still come at once.
   it('runs version updates monthly', () => {
     const intervals = [...config.matchAll(/^\s*interval:\s*"(\w+)"/gm)].map((m) => m[1]);
     expect(intervals.length).toBeGreaterThan(0);
     expect(intervals.filter((i) => i !== 'monthly')).toEqual([]);
   });
 
-  // Majors one by one ran Dependabot past its 55-minute limit (E2E-01-28).
-  // They are ignored for version updates only, and a weekly workflow lists
-  // them in an issue, so they still have a guard.
+  // Majors one by one ran Dependabot past its 55-minute limit. They are ignored
+  // for version updates only, and a weekly workflow lists them in an issue, so
+  // they still have a guard.
   it('leaves majors to the weekly freshness issue', () => {
     expect(npm).toMatch(
       /ignore:\n\s+- dependency-name: "\*"\n\s+update-types: \["version-update:semver-major"\]/

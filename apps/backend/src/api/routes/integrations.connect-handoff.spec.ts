@@ -22,7 +22,7 @@ jest.mock('@gitroom/nestjs-libraries/redis/redis.service', () => ({
 import { NoAuthIntegrationsController } from './no.auth.integrations.controller';
 
 /**
- * ⛔ E2E-10-70 — the app could not connect a single channel.
+ * ⛔ The app could not connect a single channel.
  *
  * The OAuth provider redirects the *browser* to the callback page, and that
  * page POSTs `/integrations/social-connect/:provider`. On a phone the browser

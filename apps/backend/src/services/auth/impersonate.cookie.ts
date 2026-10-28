@@ -23,9 +23,10 @@ const baseOptions = () => ({
     : {}),
 });
 
-// An impersonation started before E2E-11-78 left a domain-wide copy, which
+// An impersonation started before cookies became host-only left a
+// domain-wide copy, which
 // the browser sends first: Stop cleared the host-only one and the next request
-// impersonated again (Codex 27 X). Both paths expire the old copy.
+// impersonated again. Both paths expire the old copy.
 export const setImpersonateCookie = (res: Response, id: string) => {
   expireDomainWideCookies(res, ['impersonate']);
   res.cookie('impersonate', id, {

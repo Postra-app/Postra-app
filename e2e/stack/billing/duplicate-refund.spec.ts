@@ -3,9 +3,9 @@ import { PrismaClient } from '@prisma/client';
 import Stripe from 'stripe';
 import { database, throwawayOrg } from '../helpers';
 
-// E2E-07-30 (upstream 28e71678 + 4913031d): a second live subscription for a
-// customer who already pays is cancelled by the webhook — and now its payment
-// is refunded too. Stripe TEST mode, webhooks through `stripe listen`.
+// Upstream 28e71678 + 4913031d: a second live subscription for a customer who
+// already pays is cancelled by the webhook — and now its payment is refunded
+// too. Stripe TEST mode, webhooks through `stripe listen`.
 
 const sk = process.env.STRIPE_SECRET_KEY || '';
 test.skip(!sk.startsWith('sk_test_'), 'needs Stripe test-mode keys');

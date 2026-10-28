@@ -104,7 +104,7 @@ export class OAuthAuthorizedController {
   constructor(private _oauthService: OAuthService) {}
 
   // An approved app acts as an admin of the organisation, so approving one is
-  // for admins, like seeing the API key (E2E-08-25).
+  // for admins, like seeing the API key.
   @Post('/authorize')
   @Throttle({ default: { ttl: 300_000, limit: 30 } })
   @CheckPolicies([AuthorizationActions.Create, Sections.ADMIN])

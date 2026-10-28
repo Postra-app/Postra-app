@@ -2,10 +2,10 @@ import { expect, test } from '@playwright/test';
 import { database, listPosts, signedIn, throwawayOrg } from '../helpers';
 import { USERS } from '../seed';
 
-// Post statistics (calendar → Post Statistics) for Mastodon and Bluesky,
-// which had none: Help said so, while the landing promised analytics for
-// every channel (K. 2026-10-07). The fake Mastodon also answers Bluesky's
-// public AppView (stack.env BLUESKY_APPVIEW_URL).
+// Post statistics (calendar → Post Statistics) for Mastodon and Bluesky, which
+// had none: Help said so, while the landing promised analytics for every
+// channel. The fake Mastodon also answers Bluesky's public AppView (stack.env
+// BLUESKY_APPVIEW_URL).
 
 const FAKE = 'http://localhost:58080';
 const prisma = database();
@@ -69,9 +69,9 @@ test('a published Bluesky post has likes, reposts, replies and quotes', async ()
   }
 });
 
-// K. 2026-10-07 (🆕 pkt 2b): a platform that gives apps no post statistics
-// (Telegram, Discord…) showed "No statistics available for this post", as if
-// they were still to come. The editor's API now says the platform has none.
+// A platform that gives apps no post statistics (Telegram, Discord…) showed "No
+// statistics available for this post", as if they were still to come. The
+// editor's API now says the platform has none.
 test('a post on a platform without post statistics says so', async () => {
   const org = await throwawayOrg(prisma, { tier: 'PRO', totalChannels: 5, channels: 1, provider: 'telegram' });
   try {
@@ -95,8 +95,8 @@ test('a post on a platform without post statistics says so', async () => {
   }
 });
 
-// 🆕 pkt 2a: a Discord post's reactions, read with the bot from the channel
-// in the post's link.
+// A Discord post's reactions, read with the bot from the channel in the post's
+// link.
 test('a published Discord post has its reactions', async () => {
   const org = await throwawayOrg(prisma, { tier: 'ULTIMATE', totalChannels: 5, channels: 1, provider: 'discord' });
   try {

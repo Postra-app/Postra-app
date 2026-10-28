@@ -1,7 +1,7 @@
 // k6: N customers at once, each in their own organisation (seed.mjs), doing
 // what a customer does all day — open the calendar, look at their channels,
 // find a free slot, save a draft — with a few seconds of thinking between.
-// Plan I3 (Plan/lunchdayfinal.md §12.2): 50 / 100 / 200 at once, on staging.
+// 50 / 100 / 200 at once, on staging.
 //
 //   k6 run -e BACKEND_URL=http://localhost:53000 -e VUS=50 e2e/load/customers.js
 //

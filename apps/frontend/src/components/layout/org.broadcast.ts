@@ -2,7 +2,7 @@ import { useEffect } from 'react';
 
 // The organisation lives in one cookie shared by every tab. Switching in one
 // tab left the others showing organisation A while their requests went to B:
-// a webhook created "in A" landed in B (E2E-08-35). A switch is announced to
+// a webhook created "in A" landed in B. A switch is announced to
 // the other tabs, which reload into the organisation the cookie now holds.
 const KEY = 'postra:org';
 

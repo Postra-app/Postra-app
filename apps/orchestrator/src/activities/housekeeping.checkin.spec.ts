@@ -1,6 +1,6 @@
 /**
  * The housekeeping run reports to Sentry's cron monitor "housekeeping"
- * (Postra-infra modules/sentry owns the monitor): one check-in opened as
+ * (the operator's monitoring owns the monitor): one check-in opened as
  * in_progress, closed with the same id as ok or error.
  */
 jest.mock('@sentry/nestjs', () => ({

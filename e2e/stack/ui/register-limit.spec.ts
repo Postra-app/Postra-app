@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test';
 
-// E2E-02-43: a sign-up over the per-IP daily limit printed
+// A sign-up over the per-IP daily limit printed
 // "Unexpected error: FetchHandledError: Request handled globally (status 429)"
 // under the e-mail field and left the button spinning.
 test.use({ storageState: { cookies: [], origins: [] } });

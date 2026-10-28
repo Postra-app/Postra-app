@@ -32,7 +32,7 @@ function makeService() {
   );
 }
 
-describe('mobile session (E2E-10-17)', () => {
+describe('mobile session', () => {
   const WEB_JWT = () =>
     AuthChecker.signJWT({ id: 'u1', email: 'a@b.c', tokenVersion: 3 });
 
@@ -53,7 +53,7 @@ describe('mobile session (E2E-10-17)', () => {
     expect(payload.exp - payload.iat).toBe(MOBILE_TOKEN_TTL_SECONDS);
   });
 
-  // E2E-11-74: the browser's session ended only when its cookie did, so a
+  // The browser's session ended only when its cookie did, so a
   // copied cookie kept working for the rest of 30 days after signing out.
   it('gives the browser a token with its own session id, living 30 days', async () => {
     const token = await (makeService() as any).jwt({ id: 'u1', email: 'a@b.c', tokenVersion: 3, suspendedAt: null });
@@ -112,7 +112,7 @@ describe('mobile session (E2E-10-17)', () => {
     await expect(isMobileSessionRevoked('seen')).resolves.toBe(true);
   });
 
-  // Codex 26 X: refresh keeps the session id and extends the token. Signing
+  // Refresh keeps the session id and extends the token. Signing
   // out with an older token of the session must still cover the newest one.
   it('signing out with an older token still covers the refreshed one', async () => {
     const service = makeService();
@@ -124,7 +124,7 @@ describe('mobile session (E2E-10-17)', () => {
     expect([...ttls.values()][0]).toBeGreaterThanOrEqual(MOBILE_TOKEN_TTL_SECONDS);
   });
 
-  // E2E-11-80: refresh kept the session id and handed out a fresh week every
+  // Refresh kept the session id and handed out a fresh week every
   // time, so a phone in use (or a stolen token, refreshed) never had to sign
   // in again. NIST SP 800-63B-4 asks for a definite overall timeout, no more
   // than 30 days at AAL1 - the browser's token already ends there.

@@ -15,7 +15,7 @@ jest.mock('@gitroom/nestjs-libraries/upload/upload.factory', () => ({
 import { ImagesSlides } from './images.slides';
 
 /**
- * AI-1 — an error inside `new Promise(async …)` rejected a promise nobody
+ * An error inside `new Promise(async …)` rejected a promise nobody
  * held: the outer one never settled, the request hung, the reserved credit
  * was never refunded and Node saw an unhandled rejection.
  */

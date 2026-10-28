@@ -756,7 +756,7 @@ export const ManageModal: FC<AddEditModalProps> = (props) => {
             // One request for every channel, each with the type it is saved
             // as, so a refusal on one channel leaves the others unsaved too.
             // The other channels keep their own tags unless the tags were
-            // changed here (they all got the open channel's, Codex).
+            // changed here (they all got the open channel's).
             const tagsOf = (p: any) =>
               (p?.posts?.[0]?.tags || []).map((t: any) => ({
                 label: t.tag.name,

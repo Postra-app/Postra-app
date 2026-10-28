@@ -1,6 +1,6 @@
 import { ShortLinkService } from './short.link.service';
 
-// E2E-05-50 (POSTS-11): a shortener that answered without a link (an error
+// A shortener that answered without a link (an error
 // body, a quota message) replaced the URL in the post with the word
 // "undefined", and the broken post was published.
 describe('shortening the links of a post', () => {

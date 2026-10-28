@@ -3,7 +3,7 @@ import { legacyCookieDomain } from '@gitroom/helpers/subdomain/subdomain.managem
 
 /**
  * Attributes of Postra's own cookies. Host-only - no Domain - so the browser
- * returns them to the app's host and nowhere else (E2E-11-78; OWASP Session
+ * returns them to the app's host and nowhere else (OWASP Session
  * Management: "the Domain attribute should not be set"). The flags wait for
  * HTTPS: NOT_SECURED is plain-http local development.
  */
@@ -20,7 +20,7 @@ const expired = () => ({ expires: new Date(0), maxAge: -1 });
 export const DOMAIN_WIDE_COOKIES = ['auth', 'showorg', 'impersonate'];
 
 /**
- * Expire the domain-wide copies a browser still holds from before E2E-11-78.
+ * Expire the domain-wide copies a browser still holds from before cookies became host-only.
  * Left alone, an older `auth` or `showorg` is sent first and wins over the
  * host-only one, and the old session token keeps reaching every subdomain.
  */

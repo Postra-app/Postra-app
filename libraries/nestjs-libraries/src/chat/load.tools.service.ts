@@ -171,8 +171,8 @@ ${brandKit}
       tools,
       // Bound the run. The fair use counts questions and is checked before a
       // question is taken, so a run that started is allowed to finish — a
-      // re-check mid-run cut off the answer to the last allowed question
-      // (Codex); AGENT_MAX_STEPS stops a loop.
+      // re-check mid-run cut off the answer to the last allowed question;
+      // AGENT_MAX_STEPS stops a loop.
       defaultOptions: ({ requestContext }) =>
         ({
           maxSteps: AGENT_MAX_STEPS,

@@ -33,7 +33,7 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
   const language = await requestLanguage();
   // Plausible (no cookies, no personal data): on only where the site's own
   // script id is set, e.g. pa-xxxx for app.postra.co.uk. It used to follow the
-  // Stripe key and report to the old .pl site (E2E-02-13).
+  // Stripe key and report to the old .pl site.
   const plausibleScript = process.env.PLAUSIBLE_SCRIPT_ID;
   return (
     // lang: screen readers pick their voice from it, and it was missing.

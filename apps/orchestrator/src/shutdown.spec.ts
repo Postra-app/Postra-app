@@ -17,7 +17,7 @@ const worker = (drainMs: number, state = 'RUNNING') => {
   return w;
 };
 
-describe('drainWorkers (E2E-11-76)', () => {
+describe('drainWorkers', () => {
   it('waits for every worker to finish what it holds', async () => {
     const fast = worker(10);
     const slow = worker(300);

@@ -1,5 +1,5 @@
 /**
- * E2E-05-10 — GET /posts/:id returned Post.error verbatim: kilobytes of
+ * GET /posts/:id returned Post.error verbatim: kilobytes of
  * Temporal JSON with stack traces and container paths. Shapes below are the
  * real rows from production posts cmuijpf77… (Mastodon) and cmuijpf4j… (Telegram).
  */

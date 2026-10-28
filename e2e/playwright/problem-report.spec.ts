@@ -2,7 +2,7 @@ import { expect, test } from '@playwright/test';
 import { MARKER } from './env';
 
 // "Report a problem" through the real Sentry widget, screenshot included
-// (E2E-07-10: every screenshot was dropped on the way to the mail). It files a
+// (every screenshot was dropped on the way to the mail). It files a
 // real report: one Sentry feedback event and one mail to the team. Manual:
 //   pnpm exec playwright test -c e2e/playwright --project setup --project problem-report
 

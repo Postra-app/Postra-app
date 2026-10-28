@@ -10,7 +10,7 @@ export interface StudioDraft {
   /**
    * A carousel keeps every slide, the one on screen included, and which one
    * that was. Only the canvas used to be saved, so a refresh brought back one
-   * slide of five (E2E-06-23).
+   * slide of five.
    */
   slides?: (string | null)[];
   slideIndex?: number;

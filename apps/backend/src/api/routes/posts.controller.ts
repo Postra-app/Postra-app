@@ -312,7 +312,7 @@ export class PostsController {
   }
 
   // Splits a long post into a thread with OpenAI: a plan with AI, like every
-  // other AI route (E2E-07-35; without it an organisation with no plan spent
+  // other AI route (without it an organisation with no plan spent
   // our key).
   @Post('/separate-posts')
   @Throttle({ default: { ttl: 300000, limit: 20 } })

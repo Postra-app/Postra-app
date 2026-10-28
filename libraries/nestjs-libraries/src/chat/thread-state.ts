@@ -5,8 +5,8 @@
  *
  * The runtime has no state client for a Mastra agent, so loadAgentState
  * answered "no messages" and the browser replaced the history it had just
- * loaded with an empty chat (K. 2026-10-08: a chat opened again showed only
- * the greeting). The messages come from the same Mastra memory as
+ * loaded with an empty chat (a chat opened again showed only the
+ * greeting). The messages come from the same Mastra memory as
  * GET /copilot/:thread/list.
  */
 export interface RecalledMessage {

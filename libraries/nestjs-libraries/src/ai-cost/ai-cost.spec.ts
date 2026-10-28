@@ -4,8 +4,7 @@ import {
   marginReport,
 } from '@gitroom/nestjs-libraries/ai-cost/ai-cost';
 
-// Prices from developers.openai.com/api/docs/pricing and the plan's analysis
-// (Plan/lunchdayfinal.md "💷 Analiza", 2026-10-08): pinned, so a change of
+// Prices from developers.openai.com/api/docs/pricing: pinned, so a change of
 // price is a deliberate change here.
 describe('AI cost', () => {
   it('prices the assistant model and the text models per 1M tokens', () => {

@@ -147,7 +147,7 @@ describe('POST /integrations/social-connect/instagram-standalone', () => {
     expect(integrations.createOrUpdateIntegration).toHaveBeenCalled();
   });
 
-  // Codex 27 X: the Page pick for the same account was between its check and
+  // The Page pick for the same account was between its check and
   // its write; the callback must not pass its own check in that window.
   it('⛔ waits out the same account being connected through a Page', async () => {
     const { outcome, integrations } = await connect(

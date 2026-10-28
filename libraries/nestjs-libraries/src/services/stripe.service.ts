@@ -19,7 +19,7 @@ import { isMissingCustomerError } from '@gitroom/nestjs-libraries/services/strip
 import { trialEmailKey } from '@gitroom/nestjs-libraries/services/trial-identity';
 
 // One Stripe account serves every B K Company business, so each Postra
-// invoice names the trading name itself (D20, decision K. 2026-10-03).
+// invoice names the trading name itself.
 export const POSTRA_INVOICE_SETTINGS = {
   footer: 'B K Company trading as Postra',
 };
@@ -47,12 +47,12 @@ export const isLiveSubscription = (s: { status: string }) =>
 const TIER_ORDER = ['FREE', 'STANDARD', 'TEAM', 'PRO', 'ULTIMATE'];
 
 // The schedule a subscription is attached to: a downgrade waiting for the
-// next billing period (E2E-07-44).
+// next billing period.
 const scheduleOf = (s: Stripe.Subscription) =>
   typeof s.schedule === 'string' ? s.schedule : s.schedule?.id ?? null;
 
 // A lower plan on a paid (not trialing) subscription starts with the next
-// billing period, as the subscription terms say (E2E-07-44). One rule for the
+// billing period, as the subscription terms say. One rule for the
 // quote and for the change itself.
 const waitsForRenewal = (
   live: Stripe.Subscription | undefined,
@@ -164,7 +164,7 @@ export class StripeService {
       // Only a declined card ends the attempt. Anything else — a Stripe
       // outage, a rate limit, a request Stripe refused — used to detach a good
       // card and cancel the subscription, then answer 200 so Stripe never
-      // retried (E2E-07-14). Thrown, the webhook answers 500 and Stripe
+      // retried. Thrown, the webhook answers 500 and Stripe
       // tries again.
       const stripeError = err as Stripe.errors.StripeError & {
         rawType?: string;
@@ -197,7 +197,7 @@ export class StripeService {
   // the payload can be stale: an update queued before a cancellation would
   // bring a cancelled plan back, an older update would restore an older tier.
   // The subscription as Stripe holds it now is the only state worth writing.
-  // Refund what the cancelled duplicate collected (E2E-07-30). Returns the
+  // Refund what the cancelled duplicate collected. Returns the
   // amount in pence, 0 when it was never paid, null when Stripe refused —
   // then the customer is told to contact us instead. Keyed per payment, so a
   // retried webhook cannot refund twice.
@@ -267,11 +267,11 @@ export class StripeService {
   // What a subscription starts its organisation's one trial with: the card's
   // fingerprint and the email of the person who checked out, each null when
   // missing; null when this is not that trial. A wallet such as Link has no
-  // card fingerprint, which is why trial checkouts take cards only (18 X: two
+  // card fingerprint, which is why trial checkouts take cards only (two
   // trials on one card, both through Link, passed the card check unseen).
   // Every trial is checked once, whatever the organisation's offer says now:
   // a checkout opened while the offer stood still carries the trial after the
-  // offer ends (Codex 10-18), so the offer cannot be what skips the check.
+  // offer ends, so the offer cannot be what skips the check.
   private async newTrial(subscription: Stripe.Subscription) {
     if (
       subscription.status !== 'trialing' ||
@@ -300,8 +300,8 @@ export class StripeService {
 
   // Another customer whose trial ran on this card or email: the mark on a
   // Stripe customer (lasting), or a reservation in Redis for the time Stripe's
-  // search index lags (~20 s on the sandbox, 10-17), so two trials started
-  // at once cannot both pass (Codex).
+  // search index lags (~20 s on the sandbox), so two trials started
+  // at once cannot both pass.
   private async trialMarkUsedBefore(
     mark: 'card' | 'email',
     value: string,
@@ -362,7 +362,7 @@ export class StripeService {
     // Told before the offer goes: a failure in between repeats the notice on
     // the retry rather than losing it. The offer goes before the cancel: the
     // page reloads its checkout once /billing/check sees the cancel, and a
-    // checkout loaded while the offer stood came with a trial again (18 X).
+    // checkout loaded while the offer stood came with a trial again.
     if (org?.allowTrial) {
       await this._notificationService.inAppNotification(
         org.id,
@@ -419,7 +419,7 @@ export class StripeService {
   ) {
     const current = await stripe.subscriptions.retrieve(event.data.object.id);
     // A retry after a rejection that failed part-way finishes it, also once
-    // the subscription is cancelled (Codex).
+    // the subscription is cancelled.
     const rejected = current.metadata?.trial_rejected;
     if (rejected === 'card' || rejected === 'email' || rejected === 'no_card') {
       await this.rejectRepeatTrial(current, rejected);
@@ -435,11 +435,11 @@ export class StripeService {
     // Stripe stopped charging: `unpaid` once every retry failed (when the
     // Dashboard keeps the subscription), `paused` when a trial ended without a
     // payment method. Stripe says to revoke access; both used to write the
-    // full plan with nothing paid (E2E-11-62). Paying again makes the
+    // full plan with nothing paid. Paying again makes the
     // subscription `active`, and that update writes the plan back.
     if (current.status === 'unpaid' || current.status === 'paused') {
       // The plan row is per customer: another live subscription keeps it, as
-      // in deleteSubscription below (Codex 26 X).
+      // in deleteSubscription below.
       const otherLive = (
         await stripe.subscriptions.list({
           customer: current.customer as string,
@@ -492,7 +492,7 @@ export class StripeService {
         // Refund first, then cancel: a crash in between leaves the duplicate
         // live, so the retried webhook comes back here and finishes. The
         // other order left a cancelled subscription that a retry skips, and
-        // the payment unrefunded (Codex review 10-06).
+        // the payment unrefunded.
         const refund = await this.refundDuplicate(current.id);
         await stripe.subscriptions.cancel(current.id);
         const org = await this._organizationService.getOrgByCustomerId(
@@ -526,7 +526,7 @@ export class StripeService {
       data: { ...event.data, object: current },
     } as typeof event;
 
-    // One free trial per card (K. 2026-10-16) and per email (K. 2026-10-18):
+    // One free trial per card and per email:
     // a new organisation used to mean a new trial. A card or email that
     // already had one cancels this trial before anything is charged, and the
     // next checkout comes without a trial.
@@ -546,7 +546,7 @@ export class StripeService {
         }
       }
       // Without a fingerprint the card cannot be marked, and a new email would
-      // start another trial on it: no fingerprint, no trial (K. 18 X).
+      // start another trial on it: no fingerprint, no trial.
       if (!trial.card) {
         await this.releaseTrialMarks(trial);
         await this.rejectRepeatTrial(current, 'no_card');
@@ -596,7 +596,7 @@ export class StripeService {
       current.cancel_at,
       undefined,
       undefined,
-      // Invoices run from here; so does the AI allowance month (E2E-07-40).
+      // Invoices run from here; so does the AI allowance month.
       current.billing_cycle_anchor
         ? new Date(current.billing_cycle_anchor * 1000)
         : undefined
@@ -692,7 +692,7 @@ export class StripeService {
     const users = await this._organizationService.getTeam(organization.id);
     // Two checkouts at once (the plan switched while the first one loads, two
     // tabs) each created a customer and the last write won: the other could
-    // still pay, and its webhook found no organisation (E2E-07-12). The
+    // still pay, and its webhook found no organisation. The
     // idempotency key has Stripe answer both with one customer — keyed on the
     // id this checkout replaces, so a dead customer still gets a new one — and
     // the id is written only over the one this checkout saw.
@@ -833,7 +833,7 @@ export class StripeService {
     // billing cycle left where it is — so "Pay today" is the amount charged.
     // This used to ask for billing_cycle_anchor 'now' together with a
     // proration_date, which Stripe rejects outright; the error was swallowed and
-    // every upgrade quoted £0 (P2b #4, 2026-10-02).
+    // every upgrade quoted £0.
     try {
       const price = await stripe.invoices.createPreview({
         customer,
@@ -851,7 +851,7 @@ export class StripeService {
       });
 
       // The confirmation before changing plan says what renews when, at
-      // what price (E2E-07-43).
+      // what price.
       const live = currentUserSubscription?.data?.[0];
       const periodEnd = live?.items?.data?.[0]?.current_period_end;
       const scheduled = waitsForRenewal(
@@ -862,7 +862,7 @@ export class StripeService {
       );
       // A lower plan starts at the current period's end, nothing today.
       // Otherwise the invoice's line for the new price says when it renews:
-      // from monthly to yearly Stripe starts a new cycle today (Codex).
+      // from monthly to yearly Stripe starts a new cycle today.
       const newCycleEnd = Math.max(
         0,
         ...(price?.lines?.data ?? [])
@@ -1315,7 +1315,7 @@ export class StripeService {
   }
 
   // What ending the trial now would charge, from Stripe's invoice preview:
-  // the price list is wrong for an older price or a discount (Codex).
+  // the price list is wrong for an older price or a discount.
   async finishTrialPreview(paymentId: string) {
     const trialing = (
       await stripe.subscriptions.list({ customer: paymentId, limit: 100 })
@@ -1499,7 +1499,7 @@ export class StripeService {
     const customer = await this.createOrGetCustomer(org!);
     // A checkout always starts a new subscription. An organisation that already
     // had one got a second on the same customer, and cancelling stopped only
-    // the first (BILL-1). Plan changes go through subscribe(), which updates it.
+    // the first. Plan changes go through subscribe(), which updates it.
     const live = (await this.listSubscriptions(customer, organizationId)).some(
       (subscription) =>
         // `incomplete` is a first payment that failed: trying again is fine.
@@ -1561,7 +1561,7 @@ export class StripeService {
 
   // Whether the trial the billing pages promise still stands for this person.
   // They read the organisation's offer, and an email that already had a trial
-  // was promised seven free days and charged at checkout (18 X). Organisations
+  // was promised seven free days and charged at checkout. Organisations
   // without a plan only; cached briefly, and a used email ends the offer.
   async trialOffered(
     organizationId: string,
@@ -1600,7 +1600,7 @@ export class StripeService {
     }
   }
 
-  // One trial per email (K. 2026-10-18): an email whose trial ran on another
+  // One trial per email: an email whose trial ran on another
   // Stripe customer checks out without one, and the organisation's offer ends,
   // so the billing page stops promising it. Stripe keeps the mark after the
   // account is deleted from Postra.
@@ -1705,7 +1705,7 @@ export class StripeService {
     // A lower plan starts with the next billing period, as the subscription
     // terms say: the plan paid for stays until then and nothing is credited.
     // Changing at once put the unused part on the Stripe balance, where it
-    // was lost on cancelling (E2E-07-44). A trial has nothing paid: at once.
+    // was lost on cancelling. A trial has nothing paid: at once.
     if (
       waitsForRenewal(
         live,
@@ -1734,7 +1734,7 @@ export class StripeService {
       });
 
       // A change during the trial keeps the subscription trialing: nothing is
-      // charged until the trial ends, so it is a success too (Codex, 24 X).
+      // charged until the trial ends, so it is a success too.
       if (updated.status === 'active' || updated.status === 'trialing') {
         return { id };
       }

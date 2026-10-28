@@ -35,7 +35,7 @@ const SaveSetModal: FC<{
   const [name, setName] = useState(initialValue);
   const t = useT();
   // Cancel closes this naming window only. It closed every modal, the
-  // composer included, and the unsaved post went with it (FE-C-7).
+  // composer included, and the unsaved post went with it.
   const { closeCurrent } = useModals();
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -157,7 +157,7 @@ export const Sets: FC = () => {
                           }),
                         });
                         // A refused save (the set deleted meanwhile, a 400)
-                        // closed the editor under "Set saved" (E2E-05-45).
+                        // closed the editor under "Set saved".
                         if (!res.ok) {
                           throw new Error(String(res.status));
                         }

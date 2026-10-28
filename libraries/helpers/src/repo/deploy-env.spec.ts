@@ -12,15 +12,15 @@ import { tmpdir } from 'os';
 import { join } from 'path';
 
 // A box deploy rebuilds /opt/postra/.env from SSM on the box. The file holds
-// decrypted secrets, so it must be root-only (E2E-11-10: production had 0644),
+// decrypted secrets, so it must be root-only (production had 0644),
 // and a failed or partial SSM read must not replace a working .env. This runs
 // the exact commands the deploys send through SSM, with a fake `aws`.
 
 const root = join(__dirname, '..', '..', '..', '..');
 
 // Production left the box for an auto scaling group on 2026-10-25 (its
-// instances build .env in Postra-infra modules/app_asg); staging still
-// deploys a box this way.
+// instances build .env from SSM at boot); staging still deploys a box this
+// way.
 const sources = [
   {
     name: 'scripts/deploy-staging.sh',

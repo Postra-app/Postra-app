@@ -27,7 +27,7 @@ export class PurgeOldRecords {
   @Command({
     command: 'purge-old-records',
     describe:
-      'Housekeeping. Drops Errors, AuditLog, AiUsage and handled Stripe event rows past their retention window, then removes stored objects behind media rows that were soft-deleted long enough ago and that nothing refers to any more. Three tables had no retention at all and the bucket kept every deleted upload (E2E-06-01). Push tokens of ended mobile sessions go too. Windows: --errors-days, --audit-days, --ai-usage-days, --stripe-events-days, --media-grace-days, --push-token-days. Dry-run unless --apply.',
+      'Housekeeping. Drops Errors, AuditLog, AiUsage and handled Stripe event rows past their retention window, then removes stored objects behind media rows that were soft-deleted long enough ago and that nothing refers to any more. Three tables had no retention at all and the bucket kept every deleted upload. Push tokens of ended mobile sessions go too. Windows: --errors-days, --audit-days, --ai-usage-days, --stripe-events-days, --media-grace-days, --push-token-days. Dry-run unless --apply.',
   })
   async run() {
     const apply = process.argv.includes('--apply');

@@ -7,7 +7,7 @@ import { isMissingCustomerError } from '@gitroom/nestjs-libraries/services/strip
 // object literals. A real rejection does not look like that: the SDK puts the
 // class name in `type` (`StripeInvalidRequestError`) and the API's type in
 // `rawType`. Ten tests passed against a shape that never reaches production,
-// and the fix they were guarding did nothing (E2E-07-02).
+// and the fix they were guarding did nothing.
 const raise = (raw: Record<string, unknown>) =>
   Stripe.errors.StripeError.generate(raw as any);
 

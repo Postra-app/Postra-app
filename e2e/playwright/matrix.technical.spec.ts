@@ -24,14 +24,14 @@ const stripTags = (html: string) => {
   return text;
 };
 
-// The per-provider publishing matrix (e2e/05-composer-publish.md §5.3) on the
+// The per-provider publishing matrix on the
 // technical channels only: Telegram, Discord, Mastodon, Bluesky. Manual, not
 // nightly — it publishes about 16 real posts:
 //
 //   MATRIX_MEDIA=<dir with postra-matrix-1..4.png and postra-matrix.mp4> \
 //   pnpm exec playwright test -c e2e/playwright --project setup --project publish-matrix
 //
-// The posts stay and read as Postra ads (Krzysztof, 2026-10-01). Postra's
+// The posts stay and read as Postra ads. Postra's
 // public profiles are never touched.
 
 const run = new Date().toISOString().slice(0, 16) + 'Z';

@@ -33,8 +33,7 @@ export interface PricingInnerInterface {
   // The assistant (chat and MCP ask_postra) has no visible limit: a monthly
   // fair use of questions per organisation stops a bot or a script, not a
   // person (~100 per working day). On gpt-5.6-luna a typical question costs
-  // ~$0.0025, the whole allowance ~$5.50 (Plan/lunchdayfinal.md, "💷
-  // Analiza", K. 2026-10-08). Enforced in copilot.controller and start.mcp
+  // ~$0.0025, the whole allowance ~$5.50. Enforced in copilot.controller and start.mcp
   // via SubscriptionService.checkCredits('ai_agent'), counted from AiUsage
   // (engine 'agent', unit 'messages').
   agent_messages: number;
@@ -46,8 +45,8 @@ export interface PricingInterface {
 // few more. Starter is the four platforms a small UK business actually runs on
 // (the personal LinkedIn profile included, because freelancers and B2B sellers
 // live there); its 3 slots still cap usage. Instagram comes both ways, through
-// a Facebook Page and without one (K. 2026-10-27): one platform, two logins.
-// Pinterest is there too (K. 2026-10-27): visual small businesses live on it
+// a Facebook Page and without one: one platform, two logins.
+// Pinterest is there too: visual small businesses live on it
 // and every rival offers it on its cheapest plan. Pro adds video and text-first
 // platforms and LinkedIn Pages (post as the company); X (our X API volume is
 // capped) and Discord stay Business-only, so Business is every platform.
@@ -92,7 +91,7 @@ export const pricing: PricingInterface = {
     generate_videos: 0,
     agent_messages: 0,
   },
-  // £19 from 2026-10-08 (was £12; K.): with 75 AI images, 15 AI videos and
+  // £19 (was £12): with 75 AI images, 15 AI videos and
   // 2 Auto Post feeds. Stripe prices are found or made by amount
   // (stripe.service), so a running £12 subscription keeps its price.
   STANDARD: {
@@ -203,7 +202,7 @@ export const postsCycleStart = (anchor: Date | string): Date => {
 // The billing month that holds `at` (now by default), as [start, end). Posts
 // count against the month they are published in: counting from the cycle's
 // start with no end let posts scheduled for later months eat this month's
-// allowance (E2E-07-34).
+// allowance.
 export const postsCycleWindow = (
   anchor: Date | string,
   at: Date | string = new Date()
@@ -211,7 +210,7 @@ export const postsCycleWindow = (
   // Both ends from the subscription date: adding a month to a start already
   // clipped at month end (31 Jan -> 28 Feb -> 28 Mar) left days in no month.
   // An invalid date, or one so far out that a month after it is not a date
-  // any more, kept the loops going forever and froze the process (Codex):
+  // any more, kept the loops going forever and froze the process:
   // such a date counts as now, and the corrections are bounded (diff is off
   // by one month at most).
   const sane = (d: dayjs.Dayjs) =>
@@ -231,8 +230,7 @@ export const postsCycleWindow = (
   };
 };
 
-// A trial shows AI video with one clip (~$0.33 at kie.ai), whatever the plan
-// (K. 2026-10-08).
+// A trial shows AI video with one clip (~$0.33 at kie.ai), whatever the plan.
 export const TRIAL_VIDEO_CLIPS = 1;
 
 // AI allowances follow the same rule as channels: a trial runs on Starter's
@@ -253,7 +251,7 @@ export const trialAiAllowance = (
   return Math.min(allowance, cap);
 };
 
-// What a 7-day trial may use whatever plan it runs on (K. 2026-10-16): the
+// What a 7-day trial may use whatever plan it runs on: the
 // plan's own limits apply only from the first payment, so a Business trial is
 // not 10 000 webhooks, 10 feeds and unlimited posts for free. Channels and AI
 // have their own trial caps above.
@@ -285,7 +283,7 @@ export const planLimits = (
 };
 
 // The monthly post allowance of an organisation: its month runs with Stripe's
-// invoices, as on the dashboard and in the public API (E2E-07-40), and a plan
+// invoices, as on the dashboard and in the public API, and a plan
 // Stripe does not bill counts from its creation.
 export const postAllowance = (
   subscription:

@@ -1,5 +1,5 @@
 /**
- * E2E-05-19 — plugs. POST /integrations/<another org's channel>/plugs created
+ * Plugs. POST /integrations/<another org's channel>/plugs created
  * a plug row on that channel under the caller's org: it never runs (publishing
  * loads plugs with the owner's org) but it takes the (plugFunction,
  * integrationId) key and the owner then gets a 500 setting that plug up.

@@ -61,7 +61,7 @@ export class RefreshIntegrationService {
 
     // Removed while the provider was answering: writing the new tokens back
     // went through an upsert that brought the channel back to life, tokens
-    // and all (INT-7).
+    // and all.
     if (
       !(await this._integrationService.getIntegrationById(
         integration.organizationId,
@@ -138,7 +138,7 @@ export class RefreshIntegrationService {
     }
 
     // A 503, a 429 or a dropped connection used to mark a healthy channel
-    // "reconnect needed" and disconnect it (INT-13). This attempt still
+    // "reconnect needed" and disconnect it. This attempt still
     // fails; the channel stays as it is for the next one.
     if (transient) {
       return false;

@@ -42,7 +42,7 @@ jest.mock('@gitroom/nestjs-libraries/track/track.service', () => ({
 
 import { StripeService } from '@gitroom/nestjs-libraries/services/stripe.service';
 
-// Upstream 3adec5ef5 / 96e037ee7 (24 X 2026): a plan change whose proration
+// Upstream 3adec5ef5 / 96e037ee7 (2026-10-24): a plan change whose proration
 // invoice is not paid at once does not throw. Stripe moves the subscription
 // to past_due, the API answered { id } and the page said "Subscription
 // updated successfully" to a customer whose card was declined or whose bank
@@ -122,7 +122,7 @@ describe('a plan change that is not paid at once', () => {
     expect(retrieveInvoice).not.toHaveBeenCalled();
   });
 
-  it('a change during the trial stays trialing and is a success (Codex, 24 X)', async () => {
+  it('a change during the trial stays trialing and is a success', async () => {
     updateSubscription.mockResolvedValue({
       status: 'trialing',
       latest_invoice: { id: 'in_0', status: 'paid' },

@@ -1,5 +1,5 @@
 /**
- * E2E-04-25 (INT-2): connecting a Telegram chat took its id or @username and
+ * Connecting a Telegram chat took its id or @username and
  * nothing else. The proof that the person connecting controls the chat —
  * posting "/connect <word>" in it — was checked only by the polling, so
  * anyone could connect a chat the shared bot was in by naming it.
@@ -76,7 +76,7 @@ describe('Connecting a Telegram chat', () => {
     expect(await provider.authenticate({ code: '-100123', codeVerifier: '' })).not.toHaveProperty('accessToken');
   });
 
-  // E2E-11-69: the browser sent its own offset, so another organisation's
+  // The browser sent its own offset, so another organisation's
   // wizard polling the shared bot confirmed this one's "/connect" away and
   // the wizard waited for ever.
   it('another organisation polling at the same time does not eat this one\'s /connect', async () => {
@@ -101,7 +101,7 @@ describe('Connecting a Telegram chat', () => {
     ).toHaveProperty('accessToken', '-100123');
   });
 
-  // Codex 26 X: the proof was spent before the organisation was compared, so
+  // The proof was spent before the organisation was compared, so
   // another organisation naming the chat made the rightful one post
   // "/connect" again.
   it('a refused attempt by another organisation leaves the proof for the one that earned it', async () => {

@@ -703,7 +703,7 @@ export class MediaController {
     }
     // The name becomes the file's path under the bucket URL, so it must be one
     // plain file name as Transloadit returns it: "../../evil.html" was stored
-    // as a media path (E2E-02-07).
+    // as a media path.
     if (!isSafeStoredName(name)) {
       throw new HttpException('Invalid file name', 400);
     }
@@ -736,7 +736,7 @@ export class MediaController {
     // own upload carry the AI label, never take it off something we generated.
     @Body('aiGenerated') aiGenerated: string = 'false'
   ) {
-    // No file field at all reached `file.originalname` as a 500 (API-13).
+    // No file field at all reached `file.originalname` as a 500.
     if (!file) {
       throw new BadRequestException('No file was sent');
     }
@@ -770,7 +770,7 @@ export class MediaController {
         ? handleS3Upload(endpoint, req, res)
         : handleR2Upload(endpoint, req, res);
 
-    // The upload belongs to the organisation that started it (E2E-11-70):
+    // The upload belongs to the organisation that started it:
     // the first call records it, every later call must come from it.
     if (endpoint === 'create-multipart-upload') {
       let created: any;
@@ -797,7 +797,7 @@ export class MediaController {
     }
     // complete-multipart-upload already wrote a response (e.g. a 400 when the
     // uploaded bytes failed the magic-byte check) — nothing left to save. The
-    // owner stays: a failed completion is retried (Codex 26 X).
+    // owner stays: a failed completion is retried.
     if (res.headersSent) {
       return;
     }

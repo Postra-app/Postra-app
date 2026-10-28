@@ -2,8 +2,8 @@
  * What state a channel is in, as one word.
  *
  * The panel could show `tokenExpiration`, `refreshNeeded` and `disabled` as
- * three raw columns and call the job done. That rebuilds the defect E2E-09-59
- * named: a dry run of `refresh` printed `3 channel(s) due` and it read as an
+ * three raw columns and call the job done. That rebuilds an old defect: a
+ * dry run of `refresh` printed `3 channel(s) due` and it read as an
  * incident, when YouTube holds a token for about an hour and TikTok for 23,
  * so both are due to be refreshed permanently. That is the resting state of a
  * healthy account. An operator handed the raw date makes the same wrong
@@ -70,7 +70,7 @@ const asTime = (value: Date | string | null | undefined): number | null => {
  *
  * A null `tokenExpiration` is `ok`, not unknown: facebook, instagram through
  * facebook, x and telegram all report `expiresIn: 0` at connect time and never
- * carry an expiry (measured, E2E-09-59).
+ * carry an expiry (measured).
  */
 export const channelState = (
   channel: ChannelStateInput,

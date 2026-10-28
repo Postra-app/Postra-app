@@ -68,7 +68,7 @@ const EmailNotificationsComponent = () => {
       setLocalSettings(newData);
 
       // Saves go out one after another, in the order clicked: two quick
-      // toggles could land in reverse, and the earlier one won (FE-S-7).
+      // toggles could land in reverse, and the earlier one won.
       const turn = saving.current;
       let release!: () => void;
       saving.current = new Promise<void>((r) => (release = r));

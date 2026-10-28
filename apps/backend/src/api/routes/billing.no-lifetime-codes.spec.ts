@@ -1,7 +1,7 @@
 import { existsSync, readFileSync } from 'fs';
 import { join } from 'path';
 
-// E2E-11-61: a lifetime code was any string that AES-CBC decrypted without a
+// A lifetime code was any string that AES-CBC decrypted without a
 // padding error. Without a MAC about 1 random code in 250 does (measured
 // 2026-10-26), and each one not used before gave Starter for good, the next
 // Pro. Nothing in Postra issues codes, so the route, its page and the code

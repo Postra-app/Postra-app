@@ -71,7 +71,7 @@ test.describe('channel count', () => {
     expect((await freed.api.post('/integrations/enable', { data: { id: freed.channelIds[0] } })).status()).toBeLessThan(300);
   });
 
-  // BILL-6: two channels switched on at once both saw the one free slot.
+  // Two channels switched on at once both saw the one free slot.
   test('one free slot, two channels switched on at once: only one is', async () => {
     const full = await org({ tier: 'STANDARD', totalChannels: 3, channels: 4, provider: 'linkedin' });
     await prisma.integration.updateMany({
@@ -126,7 +126,7 @@ test.describe('channel count', () => {
   });
 });
 
-// E2E-08-50: a platform still "Coming soon" in the app (LinkedIn Page) was
+// A platform still "Coming soon" in the app (LinkedIn Page) was
 // refused only by the UI. On Pro the API handed out its auth URL, through the
 // dashboard route and the public API, and the callback connected it. A page
 // connected before stays reconnectable.
@@ -253,9 +253,9 @@ test('a preview platform is "Coming soon" for customers and open to a super admi
   }
 });
 
-// IG standalone App Review (10-13): Meta's reviewer signs in as review@, which
-// must not be a super admin. Its organisation, named in PREVIEW_ORGANIZATIONS,
-// gets the preview platforms the way a super admin does; others do not.
+// Instagram App Review: Meta's reviewer signs in as review@, which must not be
+// a super admin. Its organisation, named in PREVIEW_ORGANIZATIONS, gets the
+// preview platforms the way a super admin does; others do not.
 test('a preview organisation connects a preview platform without being a super admin', async () => {
   const prisma = database();
   const reviewer = await throwawayOrg(prisma, {

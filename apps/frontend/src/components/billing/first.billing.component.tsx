@@ -119,11 +119,12 @@ export const FirstBillingComponent = () => {
   );
 
   // Free days are promised only when this checkout has them: an email that
-  // already had a trial is charged straight away (18 X).
+  // already had a trial is charged straight away.
   const trialOffered = !!user?.allowTrial && data?.trial === true;
 
   // Without a client secret there is no checkout to show: Stripe threw on the
-  // error body (409 for an organisation already subscribed, 18 X Sentry) and a
+  // error body (409 for an organisation already subscribed, seen in Sentry)
+  // and a
   // 5xx left the spinner turning for good.
   const checkoutError = error
     ? 'failed'

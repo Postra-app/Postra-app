@@ -39,7 +39,7 @@ export class SignatureRepository {
 
     // One write, serialised per organisation when it sets the default: two
     // signatures made default at once each switched the other off, and the
-    // org was left with none (AUTH-10).
+    // org was left with none.
     return this._transaction.model.$transaction(async (tx) => {
       if (values.autoAdd) {
         await tx.$queryRaw`SELECT "id" FROM "Organization" WHERE "id" = ${orgId} FOR UPDATE`;

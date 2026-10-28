@@ -10,7 +10,7 @@ import { LinkedinPageProvider } from './linkedin.page.provider';
 import { isTransientRefreshError } from '../refresh.integration.service';
 import { RefreshToken } from '../social.abstract';
 
-// E2E-04-26 (rest): LinkedIn answers an outage with an HTML page. The token
+// LinkedIn answers an outage with an HTML page. The token
 // refresh parsed it as JSON, the SyntaxError counted as a refused grant, and
 // the channel was marked "reconnect needed" for a provider hiccup.
 describe('LinkedIn token refresh during an outage', () => {
@@ -46,7 +46,7 @@ describe('LinkedIn token refresh during an outage', () => {
     expect(isTransientRefreshError(err)).toBe(false);
   });
 
-  it('a 403 on /v2/me (OIDC scopes only) does not fail a good refresh (Codex)', async () => {
+  it('a 403 on /v2/me (OIDC scopes only) does not fail a good refresh', async () => {
     global.fetch = jest.fn(async (url: string) => {
       if (url.includes('accessToken')) {
         return new Response('{"access_token":"new","refresh_token":"r2","expires_in":5184000}', { status: 200, headers: { 'Content-Type': 'application/json' } });

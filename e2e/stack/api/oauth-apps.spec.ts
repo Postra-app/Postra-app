@@ -97,7 +97,7 @@ test('register, approve, exchange, call the public API, revoke', async () => {
   }
 });
 
-test('E2E-08-25: a plain member cannot approve an app for the organisation', async () => {
+test('a plain member cannot approve an app for the organisation', async () => {
   // An approved app acts as an admin of the organisation (SUPERADMIN on the
   // public API and MCP), so approving one is for admins, like the API key.
   const prisma = database();
@@ -120,7 +120,7 @@ test('E2E-08-25: a plain member cannot approve an app for the organisation', asy
   }
 });
 
-test('E2E-08-25: a token stops working once whoever approved it leaves the team', async () => {
+test('a token stops working once whoever approved it leaves the team', async () => {
   const prisma = database();
   const owner = await throwawayOrg(prisma, { tier: 'PRO', totalChannels: 5, channels: 1 });
   const admin = await addMember(prisma, owner.orgId, 'ADMIN');
@@ -147,7 +147,7 @@ test('E2E-08-25: a token stops working once whoever approved it leaves the team'
   }
 });
 
-test("E2E-08-29: an app's picture must be the organisation's own media; approved apps show no secrets", async () => {
+test("an app's picture must be the organisation's own media; approved apps show no secrets", async () => {
   const prisma = database();
   const owner = await throwawayOrg(prisma, { tier: 'PRO', totalChannels: 5, channels: 1 });
   const other = await throwawayOrg(prisma, { tier: 'PRO', totalChannels: 5, channels: 1 });
@@ -186,9 +186,9 @@ test("E2E-08-29: an app's picture must be the organisation's own media; approved
   }
 });
 
-// API-6: two exchanges of one code both read it before either wrote: both got
-// a token, and the first one stopped working. API-9: two apps created at once
-// both saw "no app yet".
+// Two exchanges of one code both read it before either wrote: both got a token,
+// and the first one stopped working. Two apps created at once both saw "no app
+// yet".
 test('one code is one token, and one organisation gets one app, also at the same moment', async () => {
   const prisma = database();
   const owner = await throwawayOrg(prisma, { tier: 'PRO', totalChannels: 5, channels: 0 });
@@ -214,8 +214,8 @@ test('one code is one token, and one organisation gets one app, also at the same
   }
 });
 
-// E2E-08-44: /.well-known/oauth-authorization-server promised PKCE (S256)
-// and /oauth/token never looked at code_verifier. Vector: RFC 7636 App. B.
+// /.well-known/oauth-authorization-server promised PKCE (S256) and /oauth/token
+// never looked at code_verifier. Vector: RFC 7636 App. B.
 test('PKCE: a code asked for with a challenge is only good with its verifier', async () => {
   const verifier = 'dBjftJeZ4CVP-mB92K27uhbUJU1p1r_wW1gFWFOEjXk';
   const challenge = 'E9Melhoa2OwvFrEMTJguCHaoeK1t8URWbuGJSstw-cM';

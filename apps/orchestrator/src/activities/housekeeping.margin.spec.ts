@@ -18,7 +18,7 @@ jest.mock('@gitroom/nestjs-libraries/database/prisma/maintenance/maintenance.ser
 import { ioRedis } from '@gitroom/nestjs-libraries/redis/redis.service';
 import { HousekeepingActivity } from './housekeeping.activity';
 
-// Codex on -08-e: the "already mailed" mark was written before the mail went
+// The "already mailed" mark was written before the mail went
 // out, so a failed send lost the alert for the rest of the month.
 const report = {
   days: 30,

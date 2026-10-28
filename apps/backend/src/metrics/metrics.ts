@@ -16,7 +16,7 @@ export const httpRequestDuration = new Histogram({
 // Nest app (:3000), which sits behind the global Throttler (90 req/h → a 15s
 // scrape would 429) and Policies auth guard. Bound to 0.0.0.0 = reachable only
 // on the docker network, never published to host/ALB; Alloy scrapes
-// app:<port>/metrics. See Plan/observability.md 1.1 (single-container, opt-b).
+// app:<port>/metrics.
 export function startMetricsServer(
   port = Number(process.env.METRICS_PORT) || 9465
 ): http.Server {

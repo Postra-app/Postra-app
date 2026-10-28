@@ -1,6 +1,6 @@
 import { originalNameFromUrl } from '@gitroom/nestjs-libraries/upload/original.name';
 
-// E2E-08-58: files uploaded through the public API had no original name, so
+// Files uploaded through the public API had no original name, so
 // the library search (by original name) never found them.
 describe('originalNameFromUrl', () => {
   it('takes the last part of the path, decoded', () => {

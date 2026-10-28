@@ -1,5 +1,5 @@
 /**
- * E2E-05-08, E2E-05-12 — malformed input on /posts, /posts/valid and
+ * Malformed input on /posts, /posts/valid and
  * PUT /posts/:id/date surfaced as 500s (and Sentry issues) instead of 400/404.
  */
 jest.mock('isomorphic-dompurify', () => ({
@@ -72,7 +72,7 @@ describe('PostsService.changeDate - bad input', () => {
   });
 });
 
-describe('PostsService.createComment (E2E-05-16)', () => {
+describe('PostsService.createComment', () => {
   it('404s a post from another org instead of throwing a plain Error', async () => {
     const repository = { getPostById: jest.fn().mockResolvedValue(null), createComment: jest.fn() };
     const s = Object.create(PostsService.prototype) as PostsService;
@@ -84,7 +84,7 @@ describe('PostsService.createComment (E2E-05-16)', () => {
   });
 });
 
-describe('PostsService.updateReleaseId (E2E-05-20)', () => {
+describe('PostsService.updateReleaseId', () => {
   const svc = (updated: any) => {
     const repository = { updateReleaseId: jest.fn().mockResolvedValue(updated) };
     const s = Object.create(PostsService.prototype) as PostsService;

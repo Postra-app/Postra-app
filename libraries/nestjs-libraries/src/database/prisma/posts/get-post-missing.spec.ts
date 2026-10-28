@@ -26,7 +26,7 @@ import { NotFoundException } from '@nestjs/common';
  * Two of the four properties being read already used optional chaining, which
  * is how this survived — the hardening stopped halfway. Optional chaining on
  * the rest would have been worse than a 404: it answers with an empty post and
- * the composer renders a blank editor as though the post existed (E2E-05-02).
+ * the composer renders a blank editor as though the post existed.
  */
 /**
  * ⭐ And the same hole sat one function above, untouched: `getPostsByGroup`

@@ -158,7 +158,7 @@ export const AdminStatsComponent: FC = () => {
 
       <div className="flex flex-wrap gap-[12px] items-end bg-white/[0.03] border border-newTableBorder rounded-[8px] p-[12px]">
         {/* label/htmlFor pairs: these were bare divs, so both date fields
-            reached a screen reader with no name at all (E2E-09-13). */}
+            reached a screen reader with no name at all. */}
         <div className="flex flex-col gap-[6px]">
           <label htmlFor="admin-stats-from" className="text-[12px] opacity-70">
             From

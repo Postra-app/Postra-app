@@ -1,7 +1,7 @@
 import { expect, request, test } from '@playwright/test';
 import { BACKEND_URL, database, throwawayOrg } from '../helpers';
 
-// Cost routes carry their own @Throttle (Plan/lunchdayfinal.md §11.3 #12).
+// Cost routes carry their own @Throttle.
 // Buckets are per organisation and per route: one org hitting a limit must not
 // slow down another, and a public API key is limited as its organisation.
 
@@ -92,7 +92,7 @@ test('a mutation named like the metadata query is still limited', async () => {
   expect(statuses[30]).toBe(429);
 });
 
-// E2E-02-43: sign-ups are limited per IP per day; 3 cut off a household trying
+// Sign-ups are limited per IP per day; 3 cut off a household trying
 // again after a typo, so the limit is 4 (decision 2026-10-18). An empty body
 // fails validation after the guard: each call counts without creating a user.
 test('sign-ups: the 5th from one address in a day is 429, another address is not', async () => {

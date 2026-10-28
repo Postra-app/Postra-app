@@ -5,7 +5,7 @@ jest.mock('nostr-tools', () => ({ getPublicKey: jest.fn(), Relay: class {}, fina
 import { IntegrationRepository } from '@gitroom/nestjs-libraries/database/prisma/integrations/integration.repository';
 import { IntegrationService } from '@gitroom/nestjs-libraries/database/prisma/integrations/integration.service';
 
-// INT-9: a shared LinkedIn token refreshed in one organisation was written
+// A shared LinkedIn token refreshed in one organisation was written
 // into every channel with the same root account, other organisations included.
 it('a shared token is passed on only within the same organisation', async () => {
   const updateMany = jest.fn().mockResolvedValue({ count: 0 });
@@ -19,7 +19,7 @@ it('a shared token is passed on only within the same organisation', async () => 
   expect(updateMany.mock.calls[0][0].where).toMatchObject({ rootInternalId: 'user-u', organizationId: 'org-b', deletedAt: null });
 });
 
-// INT-14: a plug switched off (or its channel disabled) after the post went
+// A plug switched off (or its channel disabled) after the post went
 // out still ran its comment or repost.
 describe('a scheduled plug', () => {
   const run = async (plug: Record<string, unknown>) => {

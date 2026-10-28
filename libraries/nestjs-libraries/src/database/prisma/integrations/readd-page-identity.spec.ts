@@ -11,7 +11,7 @@ jest.mock('nostr-tools', () => ({
 
 import { IntegrationRepository } from '@gitroom/nestjs-libraries/database/prisma/integrations/integration.repository';
 
-// Upstream e3f6c4a3b (24 X 2026): a page picked again through a fresh login
+// Upstream e3f6c4a3b (2026-10-24): a page picked again through a fresh login
 // keeps the old row, and the old row kept the old login's refresh token,
 // root identity and expiry. Once the fresh access token expired, every
 // refresh ran as the old identity ("Channel not found" every hour for a

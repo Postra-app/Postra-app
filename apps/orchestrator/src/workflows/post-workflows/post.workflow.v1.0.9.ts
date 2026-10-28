@@ -105,7 +105,7 @@ const poke = defineSignal('poke');
 
 const iterate = Array.from({ length: 5 });
 
-// v1.0.9 (U13, restart-safe publishing): postSocial / postComment heartbeat
+// v1.0.9 (restart-safe publishing): postSocial / postComment heartbeat
 // and have a 3-minute heartbeatTimeout with no SDK retries; the workflow
 // retries a publish only when it is known not to have reached the platform
 // (publishRetry). A deploy or watchdog restart mid-publish now delays a post by
@@ -180,7 +180,7 @@ export async function postWorkflowV109({
 
   // The repeat interval counts from here, the moment the post is due. It was
   // taken before the wait above, so a post scheduled 10 days ahead with a
-  // 1-day interval had 10 days already "used up" and repeated at once (POSTS-3).
+  // 1-day interval had 10 days already "used up" and repeated at once.
   const startTime = new Date();
 
   const postsListBefore = await getPostsList(organizationId, postId);
@@ -300,7 +300,7 @@ export async function postWorkflowV109({
 
         // The platform has the post from here on. A failure to record it
         // again or to tell the user must not turn it into an error and stop
-        // its comments (POSTS-9); postSocial saved the release already.
+        // its comments; postSocial saved the release already.
         try {
           // mark post as successful
           await updatePost(
@@ -401,7 +401,7 @@ export async function postWorkflowV109({
         //
         // v1.0.8: until now only bad_body told the user anything; every other
         // failure turned the post red in silence — no bell, no email
-        // (E2E-05-17, a Telegram failure on production). Say so, and say to
+        // (a Telegram failure on production). Say so, and say to
         // check the channel before retrying, for the reason above.
         const reason =
           (err instanceof ActivityFailure && err.cause?.message) ||
@@ -545,7 +545,7 @@ export async function postWorkflowV109({
 
   // Every delay counts from here (just after the publish). Sleeping each one
   // in full added them up: a plug checking every 6 h ran at 6, 18 and 36 h
-  // instead of 6, 12 and 18 (APP-11). Behind a patch so workflows already
+  // instead of 6, 12 and 18. Behind a patch so workflows already
   // asleep in this loop replay as they were recorded.
   const fromPublish = patched('plug-delays-from-publish');
   const listStart = Date.now();

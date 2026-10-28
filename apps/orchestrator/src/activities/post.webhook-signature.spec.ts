@@ -9,7 +9,7 @@ import { createHmac } from 'crypto';
 import { PostActivity } from './post.activity';
 import { verifyWebhookSignature } from '@gitroom/nestjs-libraries/dtos/webhooks/webhook.signature';
 
-// E2E-08-49: deliveries carried no signature, so a receiver could not tell a
+// Deliveries carried no signature, so a receiver could not tell a
 // request from Postra from one anybody sent to its address.
 const post = [{ id: 'p1', content: 'Hello', integration: { id: 'i1', name: 'Channel' } }];
 const webhooks: { id: string; url: string; integrations: unknown[]; secret: string }[] = [

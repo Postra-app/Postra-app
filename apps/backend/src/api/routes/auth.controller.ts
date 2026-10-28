@@ -41,15 +41,15 @@ import { AuditService } from '@gitroom/nestjs-libraries/database/prisma/audit/au
 // which left an expired-token cookie sitting in the browser for 11 months after
 // the JWT it carried had died.
 const AUTH_COOKIE_MAX_AGE_MS = 1000 * 60 * 60 * 24 * 30;
-// Host-only, like every Postra cookie since E2E-11-78 (sessionCookieOptions).
+// Host-only, like every Postra cookie (sessionCookieOptions).
 const authCookieOptions = () => ({
   ...sessionCookieOptions(),
   expires: new Date(Date.now() + AUTH_COOKIE_MAX_AGE_MS),
 });
 
 // A new session replaces whatever the browser held, including the
-// domain-wide cookies from before E2E-11-78: an older `auth` is sent first
-// and would win over the one set here.
+// domain-wide cookies from before cookies became host-only: an older `auth`
+// is sent first and would win over the one set here.
 const setSessionCookie = (response: Response, jwt: string) => {
   expireDomainWideCookies(response);
   response.cookie('auth', jwt, authCookieOptions());
@@ -90,7 +90,7 @@ export class AuthController {
 
   @Post('/register')
   // 4 sign-ups per IP per day: 3 cut off a household or office trying again
-  // after a typo (E2E-02-43).
+  // after a typo.
   @Throttle({ default: { ttl: 86400000, limit: 4 } })
   async register(
     @Req() req: Request,
@@ -329,7 +329,7 @@ export class AuthController {
     }
 
     // The page posts on open, so someone else's activation link signed the
-    // browser out of its own account and into theirs (E2E-08-33). A browser
+    // browser out of its own account and into theirs. A browser
     // that is already signed in keeps its session; the account is activated.
     if (req.cookies?.auth || req.headers.auth) {
       return response.status(200).json({ can: true, kept: true });

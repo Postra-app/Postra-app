@@ -176,8 +176,8 @@ If the tools return errors, you would need to rerun it with the right parameters
         // through CheckPolicies; the agent creates posts directly, so it has
         // to ask the same question. Drafts do not count towards the cap.
         // Every post and comment of the batch counts: the check was one
-        // `count >= limit` for a batch of any size (AI-8).
-        // Each against the billing month it is published in (E2E-07-34).
+        // `count >= limit` for a batch of any size.
+        // Each against the billing month it is published in.
         const counted = inputData.socialPost
           .filter((p: { type: string }) => p.type !== 'draft')
           .flatMap(

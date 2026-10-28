@@ -7,7 +7,7 @@ import { AuthService } from '@gitroom/helpers/auth/auth.service';
 import { currentAuditActor } from '@gitroom/nestjs-libraries/database/prisma/audit/audit.actor';
 import { IMPERSONATE_MAX_AGE_MS } from '@gitroom/backend/services/auth/impersonate.cookie';
 
-// E2E-09-23: the impersonation branch set isSuperAdmin = true on the *target*,
+// The impersonation branch set isSuperAdmin = true on the *target*,
 // so every `user.isSuperAdmin` gate in the product kept opening while the
 // identity behind the request was the customer's. grant-admin, add-subscription
 // and the debug export all worked from inside such a session, and every audit
@@ -171,7 +171,7 @@ describe('a session that is impersonating', () => {
     expect(next).not.toHaveBeenCalled();
   });
 
-  // E2E-11-83: the customer's own "delete my account" ran as them - their
+  // The customer's own "delete my account" ran as them - their
   // organisations, channels, posts and media gone for good, and the
   // confirmation mail in their inbox - on an admin's click.
   it("cannot delete the account it is wearing", async () => {
@@ -189,7 +189,7 @@ describe('a session that is impersonating', () => {
     const res = response();
     await middleware.use(request('/posts') as any, res as any, jest.fn());
 
-    // The renewal, not the expiry of a domain-wide leftover (E2E-11-78).
+    // The renewal, not the expiry of a domain-wide leftover.
     const [name, value, options] = res.cookie.mock.calls.find(
       ([, v]: [string, string]) => v
     );
@@ -228,7 +228,7 @@ describe('an ordinary session', () => {
   });
 });
 
-// K25 (10-10): only the actions on the audit list were recorded, so an admin
+// Only the actions on the audit list were recorded, so an admin
 // impersonating a customer could delete a post or a webhook and the trail
 // showed just the start and the stop of the impersonation.
 describe('changes made while impersonating', () => {

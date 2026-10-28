@@ -4,11 +4,11 @@ import { database, throwawayOrg } from '../helpers';
 const prisma = database();
 test.afterAll(() => prisma.$disconnect());
 
-// E2E-02-17: deleting the account took the redeemed lifetime code with it
+// Deleting the account took the redeemed lifetime code with it
 // (UsedCodes cascaded from the organisation), so the same code could be
 // redeemed again by a new account. The record outlives the organisation; it
 // holds no personal data once the organisation is gone.
-test('E2E-02-17: a redeemed lifetime code stays used after the account is deleted', async () => {
+test('a redeemed lifetime code stays used after the account is deleted', async () => {
   const org = await throwawayOrg(prisma, { tier: 'ULTIMATE', totalChannels: 5, channels: 0 });
   const code = `stack-lifetime-${Date.now()}`;
   try {

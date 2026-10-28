@@ -40,7 +40,7 @@ const one = (r: Record<string, any>): CspViolation | undefined => {
   const file = withoutQuery(r['source-file'] || r.sourceFile);
   const rawLine = r['line-number'] ?? r.lineNumber;
   // Anything but a number is dropped: an object here threw on interpolation
-  // and the endpoint answered 500 (Codex).
+  // and the endpoint answered 500.
   const line = Number.isFinite(rawLine) ? rawLine : undefined;
   return {
     directive: directive.split(' ')[0].slice(0, 60),

@@ -395,7 +395,7 @@ export class YoutubeProvider extends SocialAbstract implements SocialProvider {
       // Only the token's own channels: `id: [data.id]` returned any public
       // channel, so a client could name channel C while the token belongs to
       // D, and videos.insert (which takes no channel id) uploaded to D under
-      // C's name (E2E-04-36).
+      // C's name.
       const response = await youtubeClient.channels.list({
         part: ['snippet', 'contentDetails', 'statistics'],
         mine: true,

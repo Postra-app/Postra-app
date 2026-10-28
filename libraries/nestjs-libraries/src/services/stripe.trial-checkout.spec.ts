@@ -23,7 +23,7 @@ jest.mock('@gitroom/nestjs-libraries/track/track.service', () => ({ TrackService
 import { StripeService } from '@gitroom/nestjs-libraries/services/stripe.service';
 import { trialEmailKey } from '@gitroom/nestjs-libraries/services/trial-identity';
 
-// 18 X: a test account got a second trial. Its checkout offered
+// A test account got a second trial. Its checkout offered
 // Link, which pays without a card fingerprint, so the one-trial-per-card check
 // never ran, and nothing remembered the email of the first trial.
 const body = { billing: 'STANDARD', period: 'MONTHLY' } as any;
@@ -78,7 +78,7 @@ describe.each([
     expect(organizationService.endTrialOffer).toHaveBeenCalledWith('org-1');
   });
 
-  // E2E-11-64: `utm` came from the request body into the return address as
+  // `utm` came from the request body into the return address as
   // it was, so `&check=` in it added a parameter of the caller's choosing.
   it('the utm value is one encoded parameter of the return address', async () => {
     searchCustomers.mockResolvedValue({ data: [] });
@@ -94,7 +94,7 @@ describe.each([
   });
 });
 
-// 18 X (second test): the page still promised "Pay NOTHING for the first
+// In a second test the page still promised "Pay NOTHING for the first
 // 7 days" from the organisation's offer, and the checkout charged £19 at once.
 describe('what the billing pages promise', () => {
   it('the embedded checkout says whether it has free days', async () => {

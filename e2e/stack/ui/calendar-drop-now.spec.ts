@@ -2,7 +2,7 @@ import { expect, test } from '@playwright/test';
 import { createDraft, signedIn, stateFile } from '../helpers';
 import { dragWithMouse, weekOf } from './ui-helpers';
 
-// E2E-05-99: the current hour's cell accepts a drop (it is not "before now"),
+// The current hour's cell accepts a drop (it is not "before now"),
 // and the post was then saved at the start of that hour: a time already gone,
 // which the scheduler publishes at once. The drop must never send a time in
 // the past; it goes to the next full hour instead.

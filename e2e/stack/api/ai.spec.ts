@@ -83,7 +83,7 @@ test('the post Creator (LangChain graph) streams a result and is metered', async
 
 test('a bad request never reaches OpenAI', async () => {
   // Counted by this test's own text: the fake's global request count moved
-  // whenever another AI spec ran in parallel (CI, 10-04).
+  // whenever another AI spec ran in parallel in CI.
   const marker = `stack-bad-request-${Date.now()}`;
   const seen = async (text: string) =>
     ((await (await owner.get(`${FAKE}/__seen?text=${encodeURIComponent(text)}`)).json()) as { count: number }).count;

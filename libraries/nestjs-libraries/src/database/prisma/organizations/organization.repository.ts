@@ -83,7 +83,7 @@ export class OrganizationRepository {
             totalChannels: true,
             isLifetime: true,
             // The credit cycle starts here; without it the public API and
-            // MCP counted from the time of the request (API-7).
+            // MCP counted from the time of the request.
             createdAt: true,
             periodAnchor: true,
             deletedAt: true,
@@ -132,7 +132,7 @@ export class OrganizationRepository {
                 subscriptionTier: true,
                 totalChannels: true,
                 isLifetime: true,
-                // The AI credit month (E2E-07-40); without them an
+                // The AI credit month; without them an
                 // impersonated session counted from the time of the request.
                 createdAt: true,
                 periodAnchor: true,
@@ -244,7 +244,7 @@ export class OrganizationRepository {
             totalChannels: true,
             isLifetime: true,
             createdAt: true,
-            // The AI credit month follows Stripe's billing anchor (E2E-07-40).
+            // The AI credit month follows Stripe's billing anchor.
             periodAnchor: true,
             deletedAt: true,
           },
@@ -340,8 +340,8 @@ export class OrganizationRepository {
       });
 
     // Seats are checked when an invite is sent, but sending one reserves
-    // nothing: a Pro owner could send several and every one of them got in
-    // (BILL-5). The plan's seats are counted again on joining.
+    // nothing: a Pro owner could send several and every one of them got in.
+    // The plan's seats are counted again on joining.
     const tier: keyof typeof pricing =
       checkForSubscription?.subscription?.subscriptionTier ||
       (process.env.STRIPE_PUBLISHABLE_KEY ? 'FREE' : 'ULTIMATE');
@@ -352,7 +352,7 @@ export class OrganizationRepository {
 
     // The spent mark above lives in one field of the user who used the
     // invite, so their next invite overwrote it and the first link worked
-    // again — for anyone, with the role it carried (E2E-02-31). One atomic
+    // again — for anyone, with the role it carried. One atomic
     // claim per invite, kept well past the link's one-hour life; two people
     // using one link at once cannot both get in either. Claimed only here, once
     // nothing else refuses the join, and released if the write fails.

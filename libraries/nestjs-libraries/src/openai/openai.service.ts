@@ -116,7 +116,7 @@ export class OpenaiService {
   // schema (strict) — and JSON.parse the content ourselves, preserving the
   // { choices: [{ message: { parsed } }] } shape so call sites stay unchanged.
   // Every caller names its own engine, so /admin/ai-usage splits the cost by
-  // the surface that spent it (E2E-06-05: all of it used to say 'creator').
+  // the surface that spent it (all of it used to say 'creator').
   private parseChat(engine: AiUsageEvent['engine'], body: any, orgId?: string | null) {
     return parseChat(openai, body, {
       organizationId: orgId ?? null,

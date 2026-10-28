@@ -46,7 +46,7 @@ jobs:
 
   # Lint and type-check gate. `pnpm build` is not a type gate (Next skips files
   # no route imports, Nest never compiles specs), and lint never ran in CI
-  # before this job (E2E-01-06).
+  # before this job.
   quality:
     runs-on: ubuntu-26.04
     timeout-minutes: 15
@@ -112,7 +112,7 @@ jobs:
 
       # Every port the stack listens on sits in Linux's ephemeral range
       # (32768-60999), so a stray outbound connection of the runner can take
-      # one first: 24 X the backend died with EADDRINUSE on 53000 and the
+      # one first: once the backend died with EADDRINUSE on 53000 and the
       # job waited 120 s for nothing. Reserved ports are never handed out as
       # ephemeral; the list is checked against the stack config by
       # libraries/helpers/src/repo/ci-workflows.spec.ts.
@@ -177,7 +177,7 @@ jobs:
         run: |
           # No install in this job: dlx, at the version package.json pins.
           # pnpm 10.34 skips build scripts in dlx too; without the engines'
-          # postinstall Prisma fetches them mid-command (ECONNRESET, 19 X).
+          # postinstall Prisma fetches them mid-command (ECONNRESET).
           pnpm dlx --allow-build=@prisma/engines "prisma@$(jq -r '.devDependencies.prisma' package.json)" migrate diff \
             --from-migrations ./libraries/nestjs-libraries/src/database/prisma/migrations \
             --to-schema-datamodel ./libraries/nestjs-libraries/src/database/prisma/schema.prisma \

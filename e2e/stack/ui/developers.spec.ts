@@ -29,7 +29,7 @@ test('Settings → Developers: API key, the SDK and MCP, and nothing that does n
   await expect(snippet).toContainText("new Postra('****");
 
   // The OAuth app's "Docs" button opened docs.postra.co.uk, which never
-  // existed, then a copy in this repository that fell behind (E2E-08-59);
+  // existed, then a copy in this repository that fell behind;
   // the guide is on the public docs.
   await page.getByRole('button', { name: 'Apps', exact: true }).click();
   await expect(page.getByRole('link', { name: 'Docs', exact: true })).toHaveAttribute(

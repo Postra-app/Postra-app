@@ -65,8 +65,7 @@ export class MobilePushService {
     type: 'success' | 'fail' | 'info' = 'info'
   ) {
     // Devices of people still in the organisation: a removed, disabled or
-    // suspended member's phone kept getting every publication and failure
-    // (E2E-02-30).
+    // suspended member's phone kept getting every publication and failure.
     const tokens = await this._pushToken.model.mobilePushToken.findMany({
       where: {
         organizationId,

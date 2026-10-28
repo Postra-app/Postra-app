@@ -2,7 +2,7 @@ name: Dependency freshness
 
 # Dependabot proposes minors and patches in groups (.github/dependabot.yml);
 # majors are left out, because checking ~100 of them one by one ran past its
-# 55-minute limit every week (E2E-01-28). This keeps one issue listing every
+# 55-minute limit every week. This keeps one issue listing every
 # direct dependency a major version behind, refreshed weekly, so no pin goes
 # stale without anyone seeing it.
 

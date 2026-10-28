@@ -34,7 +34,7 @@ export class OAuthService {
 
   async createApp(orgId: string, dto: CreateOAuthAppDto) {
     // One at a time per organisation: two requests at once both saw no app
-    // and both created one (API-9).
+    // and both created one.
     const lock = `oauth-app-create:${orgId}`;
     if ((await ioRedis.set(lock, '1', 'EX', 15, 'NX')) !== 'OK') {
       throw new HttpException(
@@ -78,7 +78,7 @@ export class OAuthService {
 
   // The picture is a media id from the client, and the app came back with the
   // whole media record attached: another organisation's id returned its
-  // files, Studio design and owner (E2E-08-29).
+  // files, Studio design and owner.
   private async refuseForeignPicture(orgId: string, pictureId?: string) {
     if (pictureId && !(await this._oauthRepository.ownsMedia(orgId, pictureId))) {
       throw new HttpException('Picture not found', HttpStatus.BAD_REQUEST);
@@ -284,8 +284,7 @@ export class OAuthService {
     // PKCE: a code asked for with a challenge is only good with its verifier,
     // and a verifier for a code asked for without one is refused too
     // (OAuth 2.1 §4.1.3), so a client never believes it is protected when it
-    // is not. The metadata used to promise S256 and nothing checked it
-    // (E2E-08-44).
+    // is not. The metadata used to promise S256 and nothing checked it.
     if (!pkceMatches(auth.codeChallenge, codeVerifier)) {
       throw new HttpException(
         {
@@ -320,7 +319,7 @@ export class OAuthService {
 
   // A token acts as an admin of its organisation, so it lives only while
   // whoever approved it is one. It used to outlive their removal from the
-  // team, a suspension and the app's deletion (E2E-08-25).
+  // team, a suspension and the app's deletion.
   async getOrgByOAuthToken(token: string) {
     const encrypted = AuthService.fixedEncryption(token);
     const authorization = await this._oauthRepository.findByAccessToken(

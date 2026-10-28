@@ -1,12 +1,12 @@
 import { expect, test } from '@playwright/test';
 import { watchForErrors } from './ui-helpers';
 
-// K. 2026-10-08: leaving a chat and coming back showed only the greeting.
-// The history is fetched from /copilot/<thread>/list, but CopilotKit also
-// asks the runtime for the thread (GraphQL loadAgentState) and replaces the
-// messages with what that returns — an empty list for a Mastra agent. Whoever
-// answers last wins; the route below makes loadAgentState answer last, every
-// time, the way production did.
+// Leaving a chat and coming back showed only the greeting. The history is
+// fetched from /copilot/<thread>/list, but CopilotKit also asks the runtime for
+// the thread (GraphQL loadAgentState) and replaces the messages with what that
+// returns — an empty list for a Mastra agent. Whoever answers last wins; the
+// route below makes loadAgentState answer last, every time, the way production
+// did.
 
 const ANSWER = 'Stack AI answer.';
 

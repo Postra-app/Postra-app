@@ -24,7 +24,7 @@ import { bustAuthContextCacheForUsers } from '@gitroom/nestjs-libraries/redis/au
 // The start of the current monthly period, counted from the subscription's
 // day of the month — the window AI credits are counted in.
 // From Stripe's billing anchor when Stripe bills the plan, so the month runs
-// with the invoices; from the subscription's creation otherwise (E2E-07-40).
+// with the invoices; from the subscription's creation otherwise.
 const currentPeriodStart = (subscription: {
   createdAt: Date;
   periodAnchor?: Date | null;
@@ -69,8 +69,7 @@ export class SubscriptionService {
   ): Promise<T> {
     const subscription =
       await this._subscriptionRepository.getSubscriptionByOrgId(orgId);
-    // The trial flag too: without it a trial was held to the full plan pool
-    // (E2E-07-21).
+    // The trial flag too: without it a trial was held to the full plan pool.
     const organization = await this._organizationService.getOrgById(orgId);
     return this.useCredit(
       { id: orgId, subscription, isTrailing: !!organization?.isTrailing } as any,
@@ -306,8 +305,8 @@ export class SubscriptionService {
     );
 
     // Every plan without Auto Post stops the feeds, not only FREE: a Pro org
-    // moving to Starter kept generating and publishing (BILL-7). A plan with
-    // fewer feeds keeps the oldest running ones (E2E-07-33). Webhooks over the
+    // moving to Starter kept generating and publishing. A plan with
+    // fewer feeds keeps the oldest running ones. Webhooks over the
     // new limit are paused where they are delivered (WebhooksService).
     await this._integrationService.changeActiveCron(
       organizationId,

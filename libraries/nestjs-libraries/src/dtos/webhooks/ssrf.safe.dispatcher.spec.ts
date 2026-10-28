@@ -30,7 +30,7 @@ afterAll(() => new Promise((resolve) => server.close(resolve)));
 
 const get = (url: string) => fetch(url, { dispatcher: ssrfSafeDispatcher });
 
-describe('ssrfSafeDispatcher (E2E-08-26)', () => {
+describe('ssrfSafeDispatcher', () => {
   it('lets an allowed host through', async () => {
     expect(await (await get(`http://[::1]:${port}/ok`)).text()).toBe('INTERNAL-SECRET');
   });

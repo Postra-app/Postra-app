@@ -2,9 +2,9 @@ import robots from './robots';
 
 // app.postra.co.uk is the product, not a site to index: the login page and
 // anything a crawler reaches must stay out of search results. Before this
-// file /robots.txt was the 404 page (measured 2026-10-22, E2E-11-45). The
+// file /robots.txt was the 404 page (measured 2026-10-22). The
 // sign-in screens are the one crawlable exception, so Googlebot can read
-// their noindex and drop /auth from the index (Search Console 22 X).
+// their noindex and drop /auth from the index.
 describe('robots.txt', () => {
   it('disallows everything for every crawler, except the noindexed sign-in screens', () => {
     const { rules } = robots();

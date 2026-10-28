@@ -27,7 +27,7 @@ const deprecated = Object.entries(outdated)
 
 // Packages dependabot.yml ignores outright, not only their majors: the ones we
 // cannot take yet (TypeScript, CopilotKit, @atproto/api, polotno). Their minors
-// no longer come as PRs (K. 2026-10-17), so this issue is where they show.
+// no longer come as PRs, so this issue is where they show.
 const config = readFileSync(new URL('../.github/dependabot.yml', import.meta.url), 'utf8');
 const npmEntry = config.split(/^\s*- package-ecosystem:/m)[1] || '';
 const ignored = [...npmEntry.matchAll(/^\s*- dependency-name: "([^"*]+)"\s*\n\s*update-types: \[[^\]]*semver-minor[^\]]*\]/gm)].map((m) => m[1]);
@@ -55,7 +55,7 @@ const pnpmBehind = pnpmLatest && pnpmLatest !== pnpmOurs;
 const lines = [
   `${rows.length} direct dependencies are a major version behind.`,
   '',
-  'Each one is its own change with its own proof (CI and the stack tests, a real run where the package talks to an outside service). Dependabot skips majors on purpose: one week of checking them one by one ran past its 55-minute limit (e2e/bugs.md E2E-01-28).',
+  'Each one is its own change with its own proof (CI and the stack tests, a real run where the package talks to an outside service). Dependabot skips majors on purpose: one week of checking them one by one ran past its 55-minute limit.',
   '',
   '| Package | Ours | Latest | Type | In |',
   '|---|---|---|---|---|',
@@ -67,7 +67,7 @@ const lines = [
 if (held.length) {
   lines.push(
     '',
-    `${held.length} held back on purpose (ignored in dependabot.yml, each with its reason in the launch plan):`,
+    `${held.length} held back on purpose (ignored in dependabot.yml):`,
     '',
     '| Package | Ours | Latest | In |',
     '|---|---|---|---|',

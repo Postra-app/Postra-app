@@ -165,7 +165,7 @@ export class IntegrationRepository {
     return findIt.length > 0;
   }
 
-  // An id that is not this org's channel threw P2025, a 500 (E2E-11-68).
+  // An id that is not this org's channel threw P2025, a 500.
   updateProviderSettings(org: string, id: string, settings: string) {
     return this._integration.model.integration
       .update({
@@ -456,7 +456,7 @@ export class IntegrationRepository {
         )?.rootInternalId || internalId;
 
       // This organisation only: the same account connected in another org
-      // had its tokens and state overwritten too (INT-9).
+      // had its tokens and state overwritten too.
       await this._integration.model.integration.updateMany({
         where: {
           id: {
@@ -846,7 +846,7 @@ export class IntegrationRepository {
   // channels and keep the ones the customer connected first (usually their
   // main ones). Without an order the database picked any N — a Business ->
   // Starter downgrade switched off Facebook, Instagram and LinkedIn and kept
-  // TikTok, Mastodon and Bluesky (P2b #5, 2026-10-02).
+  // TikTok, Mastodon and Bluesky.
   async disableIntegrations(org: string, totalChannels: number) {
     const getChannels = await this._integration.model.integration.findMany({
       where: {

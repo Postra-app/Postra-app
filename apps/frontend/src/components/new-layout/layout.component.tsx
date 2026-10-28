@@ -71,8 +71,8 @@ export const LayoutComponent = ({ children }: { children: ReactNode }) => {
   }, []);
   const { data: user, mutate } = useSWR('/user/self', load, {
     // Back in a tab left open while the plan changed in another one, the page
-    // asks again, so Add Channel and the limits follow the new plan (Kris
-    // Company, 2026-10-09: Starter on the server, every platform open here).
+    // asks again, so Add Channel and the limits follow the new plan (it was
+    // Starter on the server with every platform open here).
     // At most every 30 s (SwrProvider); unchanged data does not re-render.
     revalidateOnFocus: true,
     revalidateOnReconnect: false,
@@ -113,7 +113,7 @@ export const LayoutComponent = ({ children }: { children: ReactNode }) => {
               {user?.impersonate && <ImpersonationBanner email={user?.email} />}
               <div />
               {/* An invitation is answered before any paywall: joining a paid
-                  organisation is the way out of a free one (E2E-08-34). */}
+                  organisation is the way out of a free one. */}
               {user.tier === 'FREE' &&
               isGeneral &&
               billingEnabled &&

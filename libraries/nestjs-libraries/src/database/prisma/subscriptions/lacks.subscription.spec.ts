@@ -1,6 +1,6 @@
 import { lacksSubscription } from './lacks.subscription';
 
-// E2E-08-48: the public API and MCP let in any organisation with a
+// The public API and MCP let in any organisation with a
 // subscription row, whatever its plan's public_api flag said.
 describe('public API and MCP access', () => {
   const key = process.env.STRIPE_PUBLISHABLE_KEY;

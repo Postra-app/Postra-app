@@ -3,8 +3,8 @@ import { expect, test } from '@playwright/test';
 // Both tests change the same user's profile.
 test.describe.configure({ mode: 'serial' });
 
-// K21 (2026-10-10): the web app had no way to change your name, bio or
-// picture — the settings form loaded and saved them but showed no fields.
+// The web app had no way to change your name, bio or picture — the settings
+// form loaded and saved them but showed no fields.
 test('Global Settings change your name and bio, and they stay', async ({ page }) => {
   await page.goto('/settings');
   const card = page.getByText('Profile', { exact: true }).locator('xpath=ancestor::*[contains(@class,"p-[24px]")][1]');
@@ -26,9 +26,9 @@ test('Global Settings change your name and bio, and they stay', async ({ page })
   }
 });
 
-// Codex review 10-10: the media library hands back a list of chosen files,
-// and the card read an id and path from the list itself, so a chosen picture
-// never showed and saving sent an empty one.
+// The media library hands back a list of chosen files, and the card read an id
+// and path from the list itself, so a chosen picture never showed and saving
+// sent an empty one.
 test('a picture chosen from the library shows and is saved', async ({ page }) => {
   test.setTimeout(60_000);
   const PNG = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==', 'base64');
@@ -38,8 +38,8 @@ test('a picture chosen from the library shows and is saved', async ({ page }) =>
   expect(res.status(), await res.text()).toBe(201);
   const media: { id: string; path: string } = await res.json();
   // Other specs upload to this user's library in parallel, so the newest tile
-  // is not always ours (1 timeout in a full run, 18 X). A later upload here
-  // makes that the rule: the test must pick its own file.
+  // is not always ours (1 timeout in a full run). A later upload here makes
+  // that the rule: the test must pick its own file.
   const later = await page.request.post('/api/media/upload-simple', {
     multipart: { file: { name: `profile-later-${Date.now()}.png`, mimeType: 'image/png', buffer: PNG } },
   });

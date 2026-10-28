@@ -1,7 +1,7 @@
 import { withoutLongDashes, deepWithoutLongDashes } from './long.dashes';
 
-// K. 10-09: no long dashes in anything a customer reads — our texts and the
-// AI's suggestions alike. They become a plain hyphen.
+// No long dashes in anything a customer reads — our texts and the AI's
+// suggestions alike. They become a plain hyphen.
 describe('withoutLongDashes', () => {
   it.each([
     ['Create one in Studio — or pick a stock photo', 'Create one in Studio - or pick a stock photo'],

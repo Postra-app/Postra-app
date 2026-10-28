@@ -27,8 +27,8 @@ import {
 const MODEL_VISION = 'gpt-4.1-mini';
 const LIMIT_INPUT_PIXELS = 30_000_000;
 // The working and output size: the longest edge, same cap as the web uploader
-// (MAX_IMAGE_EDGE in new.uploader.tsx). Measured on the production t3.medium
-// (Plan/photo-retouch.md §13): the passes take 2.7 s per megapixel with
+// (MAX_IMAGE_EDGE in new.uploader.tsx). Measured on the production t3.medium:
+// the passes take 2.7 s per megapixel with
 // CLAHE and about 0.4 s per megapixel without it.
 const MAX_EDGE = 2048;
 // The uploader already caps images at 2048 px; this is the bytes cap for a

@@ -56,8 +56,7 @@ export const Prorate: FC<{
   const [price, setPrice] = useState<number | false>(0);
   const [loading, setLoading] = useState(false);
   // Only the answer for the last choice is shown: a monthly quote landing
-  // after the yearly one used to replace it next to the yearly offer
-  // (FE-B-4).
+  // after the yearly one used to replace it next to the yearly offer.
   const latest = useRef(0);
   const calculatePrice = useDebouncedCallback(async () => {
     const request = ++latest.current;
@@ -257,7 +256,7 @@ export const MainBillingComponent: FC<{
     period === 'MONTHLY' ? 'off' : 'on'
   );
 
-  // A lower plan waiting for the next billing period (E2E-07-44).
+  // A lower plan waiting for the next billing period.
   const loadPending = useCallback(
     async () => (await fetch('/billing/pending-change')).json(),
     [fetch]
@@ -268,8 +267,8 @@ export const MainBillingComponent: FC<{
     on?: string;
   }>(subscription?.id ? 'billing-pending-change' : null, loadPending);
   // The plan already waiting for the renewal: offering to buy it again read
-  // as "Purchase plan (Pay Today £0.00)" (18 X).
-  // The same plan on the other period is still a change to make (Codex).
+  // as "Purchase plan (Pay Today £0.00)".
+  // The same plan on the other period is still a change to make.
   const isPendingPlan = (name: string) =>
     !subscription?.cancelAt &&
     !!pending?.on &&
@@ -294,7 +293,7 @@ export const MainBillingComponent: FC<{
         quote = {};
       }
       // Without Stripe's quote the window would offer a free change that may
-      // charge the card: stop, and say so (Codex on the 10-09 branch).
+      // charge the card: stop, and say so.
       if (typeof quote.price !== 'number' || !quote.renewsOn) {
         toast.show(
           t('billing_action_failed', 'Something went wrong, please try again.'),
@@ -418,7 +417,7 @@ export const MainBillingComponent: FC<{
           if (reactivate) {
             // /billing/cancel toggles: a second press (Enter while the first
             // request runs) cancelled the subscription again under a
-            // "reactivated" message (E2E-07-16).
+            // "reactivated" message.
             if (reactivating.current) return;
             reactivating.current = true;
             setLoading(true);
@@ -570,7 +569,7 @@ export const MainBillingComponent: FC<{
           }
           // A paying account's change charges the card at once: ask first,
           // with a fresh quote — the "Pay today" next to the button is from
-          // when the page loaded (E2E-07-43: £50.00 shown, £49.68 charged).
+          // when the page loaded (£50.00 shown, £49.68 charged).
           if (
             subscription?.subscriptionTier &&
             !subscription?.isLifetime &&
@@ -656,8 +655,7 @@ export const MainBillingComponent: FC<{
               cancelAt: null,
             }));
             // Ask the server: the new plan brings its own limits (channels,
-            // seats), which a local `tier` swap left at the old values
-            // (E2E-07-19).
+            // seats), which a local `tier` swap left at the old values.
             mutate(
               '/user/self',
               {
@@ -867,7 +865,7 @@ export const MainBillingComponent: FC<{
         </div>
       )}
       {/* Not tied to a live subscription: when one ends its row goes, and
-          its invoices must stay reachable (Codex). Nothing shows without any. */}
+          its invoices must stay reachable. Nothing shows without any. */}
       <BillingHistory />
       {subscription?.cancelAt && isGeneral && (
         <div className="text-center">

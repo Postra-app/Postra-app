@@ -181,10 +181,10 @@ test('the public API keeps one date per request and the public preview has no ba
   }
 });
 
-// Codex: the editor saved the channels of one post in a request per type
-// (one kept as a draft, another scheduled), so a refusal on the second request
-// left the first one saved. One request now carries every channel, each with
-// the type it is saved as.
+// The editor saved the channels of one post in a request per type (one kept as
+// a draft, another scheduled), so a refusal on the second request left the
+// first one saved. One request now carries every channel, each with the type it
+// is saved as.
 const mixed = (api: APIRequestContext, type: string, posts: Record<string, unknown>[]) =>
   api.post('/posts', { data: { type, shortLink: false, date: inDays(2), tags: [], posts } });
 
@@ -254,8 +254,8 @@ test('a channel refused in a save leaves the other channels of it unsaved', asyn
   }
 });
 
-// Codex: one save gave every channel the request's tags, so saving the post
-// from one channel replaced the tags another channel had.
+// One save gave every channel the request's tags, so saving the post from one
+// channel replaced the tags another channel had.
 test('each channel of a save can keep tags of its own', async () => {
   const org = await throwawayOrg(prisma, { tier: 'PRO', totalChannels: 5, channels: 2 });
   try {
@@ -299,9 +299,9 @@ test('the other channels of a post open with their tags', async () => {
   }
 });
 
-// Codex: the editor sent one version for the whole save, the newest of its
-// reads; a post opens with its other channels read separately, so a newer
-// channel hid an older read of another and the save replaced newer work.
+// The editor sent one version for the whole save, the newest of its reads; a
+// post opens with its other channels read separately, so a newer channel hid an
+// older read of another and the save replaced newer work.
 test('each channel of a save is checked against the version it was read at', async () => {
   const org = await throwawayOrg(prisma, { tier: 'PRO', totalChannels: 5, channels: 2 });
   try {

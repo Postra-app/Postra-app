@@ -4,7 +4,7 @@ jest.mock('nostr-tools', () => ({ getPublicKey: jest.fn(), Relay: class {}, fina
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const { UsersController } = require('./users.controller');
 
-// 18 X: the billing pages promise a trial from /user/self's allowTrial. An
+// The billing pages promise a trial from /user/self's allowTrial. An
 // email that already had a trial was promised seven free days and charged.
 describe('/user/self allowTrial', () => {
   const self = async (org: object, offered: boolean) => {

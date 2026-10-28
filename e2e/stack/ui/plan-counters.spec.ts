@@ -1,9 +1,9 @@
 import { expect, test } from '@playwright/test';
 import { signedIn, stateFile } from '../helpers';
 
-// K. 10-09 on Kris Company: nine platform tiles in Add Channel read as nine
-// channels on Pro. The window says how many channels are used of the plan's
-// limit, and Teams says how many seats are used.
+// Nine platform tiles in Add Channel read as nine channels on Pro. The window
+// says how many channels are used of the plan's limit, and Teams says how many
+// seats are used.
 test('Add Channel says how many of the plan’s channels are used', async ({ page }) => {
   const api = await signedIn('a');
   const self = await (await api.get('/user/self')).json();

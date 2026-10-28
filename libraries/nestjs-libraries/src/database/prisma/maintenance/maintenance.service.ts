@@ -10,11 +10,11 @@ import dayjs from 'dayjs';
  * ceiling — a grep for a purge, a cron or a retention window across the whole
  * repository returns nothing — and the storage bucket keeps every object whose
  * media row was soft-deleted, which is every file a customer has ever removed
- * from their library (E2E-06-01, 05-gaps §5 #2).
+ * from their library.
  *
  * Deleting media is soft on purpose: a scheduled post can still be holding the
  * file, so `removeFile` at the point of deletion is the wrong answer and that
- * is why E2E-06-01 was not closed by adding one. What it needs is a sweeper
+ * is why adding one was not the fix. What it needs is a sweeper
  * that checks whether anything still refers to the object, which is what this
  * does, and which only makes sense as a periodic job.
  *
@@ -36,25 +36,25 @@ export interface RetentionWindows {
 
 export const DEFAULT_RETENTION: RetentionWindows = {
   // The privacy policy promises technical logs for up to 90 days, and the
-  // panel's widest named filter is 90 days too (decision 2026-10-04).
+  // panel's widest named filter is 90 days too.
   errorsDays: 90,
   // Accountability records outlive diagnostics: who granted what, to whom,
   // from which address. Kept over a year so a dispute a year old can be
   // answered, and within the policy's "up to 13 months": 400 days outlived
-  // the shortest 13 months by days (§62, 2026-10-27).
+  // the shortest 13 months by days.
   auditDays: 390,
   aiUsageDays: 390,
   // The webhook's record of handled events only has to outlive redeliveries:
   // Stripe retries for 3 days and the CLI resends up to 30 days after the
-  // event. Kept as long as technical logs; it grew without a limit (E2E-11-63).
+  // event. Kept as long as technical logs; it grew without a limit.
   stripeEventsDays: 90,
   // A soft-deleted file is recoverable until this passes. Long enough that
   // "I deleted it by mistake" is answerable, short enough to bound the bucket.
   mediaGraceDays: 30,
   // The policy keeps a push token "until you sign out". The app refreshes its
-  // token on every launch and a session ends 30 days after signing in
-  // (E2E-11-80), so an older token is a phone that has signed out without
-  // telling us: reinstalled, wiped or abandoned (E2E-11-86).
+  // token on every launch and a session ends 30 days after signing in,
+  // so an older token is a phone that has signed out without
+  // telling us: reinstalled, wiped or abandoned.
   pushTokenDays: 30,
 };
 
@@ -104,7 +104,7 @@ export class MaintenanceService {
    *
    * Mastra keeps threads, messages and working memory in its own tables, keyed
    * by the organisation id with no foreign key, so nothing cascaded when an
-   * account was deleted and its conversations stayed (E2E-11-89). Run daily,
+   * account was deleted and its conversations stayed. Run daily,
    * this keeps the policy's "deleted within 30 days of account deletion" for
    * them too. Returns the threads removed (or that would be).
    */
@@ -273,7 +273,7 @@ export class MaintenanceService {
 
     // A second look right before deleting: the first scan can be minutes old
     // on a big library, and a post or Studio project saved meanwhile with one
-    // of these URLs would have lost its picture (E2E-06-33, AI-5). Nothing
+    // of these URLs would have lost its picture. Nothing
     // reserves an object, so this narrows the window rather than closing it.
     if (apply && drop.size) {
       const now = await this.collectLiveReferences();

@@ -5,7 +5,7 @@ import { join } from 'path';
 // about the user carry an autocomplete token, so browsers and password
 // managers can fill them. Every password field had autoComplete="off", which
 // also stops password managers from offering the saved password
-// (2026-10-22, E2E-11-49). The HTML tokens: email, current-password,
+// (2026-10-22). The HTML tokens: email, current-password,
 // new-password, organization.
 const read = (f: string) => readFileSync(join(__dirname, f), 'utf8');
 

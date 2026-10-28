@@ -85,9 +85,9 @@ test("B cannot see, change or delete A's webhook", async () => {
   expect((await a.delete(`/webhooks/${id}`)).status()).toBe(200);
 });
 
-// POSTS-4/5: a channel filter that was not a list, or named a channel the
-// organisation does not have, was written as no filter at all — and no
-// filter means every channel.
+// A channel filter that was not a list, or named a channel the organisation
+// does not have, was written as no filter at all — and no filter means every
+// channel.
 test('a webhook with a broken channel filter is refused, not widened to every channel', async () => {
   const name = `stack-filter-${Date.now()}`;
   const shapes: unknown[] = [
@@ -106,7 +106,7 @@ test('a webhook with a broken channel filter is refused, not widened to every ch
   expect(names).not.toContain(name);
 });
 
-// E2E-08-49: deliveries are signed with a secret per webhook. Only admins
+// Deliveries are signed with a secret per webhook. Only admins
 // read or rotate it, the list every member loads leaves it out, and it is
 // stored encrypted.
 test('a webhook has a signing secret only admins see, kept encrypted, rotatable', async () => {

@@ -1,7 +1,7 @@
 import { expect, test } from '@playwright/test';
 import { channelOf, signedIn } from '../helpers';
 
-// E2E-08-49: the secret that signs a webhook's deliveries is in Settings →
+// The secret that signs a webhook's deliveries is in Settings →
 // Webhooks → Edit, shown only when asked for, and can be replaced.
 test('the signing secret of a webhook is revealed, copied and replaced in Settings', async ({ page }) => {
   const api = await signedIn('a');

@@ -2,10 +2,9 @@ import { APIRequestContext, expect, request, test } from '@playwright/test';
 import { BACKEND_URL, channelOf, database } from '../helpers';
 import { USERS } from '../seed';
 
-// The /public/v1 routes the launch plan names (e2e/13-launch-coverage-plan.md
-// §2 A3, G7) that public-api.spec.ts does not touch. Each with org A's key:
-// its own resources answer, org B's ids are 404 like ids that never existed,
-// nothing is a 500, and without a key everything is 401.
+// The /public/v1 routes that public-api.spec.ts does not touch. Each with org
+// A's key: its own resources answer, org B's ids are 404 like ids that never
+// existed, nothing is a 500, and without a key everything is 401.
 
 const UNKNOWN = '00000000-0000-4000-8000-000000000000';
 

@@ -152,7 +152,7 @@ export const AddEditModalInner: FC<AddEditModalProps> = (props) => {
 
 // A set's saved values as the values of the editor. A set is saved in the
 // post payload's shape, where attachments are `image`; reading `media`
-// dropped them on reopen (E2E-05-48).
+// dropped them on reopen.
 const setValues = (values: any[]) =>
   (values || []).map((p: any) => ({
     id: makeId(10),
@@ -281,7 +281,7 @@ export const AddEditModalInnerInner: FC<AddEditModalProps> = (props) => {
     );
 
     // A set keeps a text per channel; the first one is the global text, and
-    // a channel whose text differs gets its own (E2E-05-92).
+    // a channel whose text differs gets its own.
     for (const post of props.set?.posts?.slice(1) || []) {
       if (
         post?.integration?.id &&
