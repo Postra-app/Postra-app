@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { anonymous } from '../helpers';
+import { anonymous, signedIn } from '../helpers';
 
 // Browsers send Content-Security-Policy violation reports without a session,
 // in two formats. The endpoint always answers 204 and never errors, whatever
@@ -31,5 +31,20 @@ test('CSP reports are accepted in both formats, and junk does not break it', asy
     data: 'not json',
   });
   expect(junk.status()).toBe(204);
+  await api.dispose();
+});
+
+// Safari sends the report of a signed-in page with the session cookie and
+// `Origin: null`; the cross-site guard answered 403, an error in every
+// Safari console.
+test('a report from a signed-in Safari page is accepted too', async () => {
+  const api = await signedIn('a');
+  const res = await api.post('/public/csp-report', {
+    headers: { 'Content-Type': 'application/csp-report', Origin: 'null' },
+    data: JSON.stringify({
+      'csp-report': { 'document-uri': 'https://app.postra.co.uk/launches', 'effective-directive': 'script-src', 'blocked-uri': 'eval' },
+    }),
+  });
+  expect(res.status()).toBe(204);
   await api.dispose();
 });

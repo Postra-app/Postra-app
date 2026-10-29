@@ -1,6 +1,7 @@
 import type { NextFunction, Request, Response } from 'express';
 
 const SAFE_METHODS = new Set(['GET', 'HEAD', 'OPTIONS']);
+const CSP_REPORT_PATH = '/public/csp-report';
 
 /**
  * Cross-site request forgery, second layer. The session
@@ -19,6 +20,11 @@ export const sameOriginGuard =
   (allowedOrigins: string[]) =>
   (req: Request, res: Response, next: NextFunction) => {
     if (SAFE_METHODS.has(req.method)) {
+      return next();
+    }
+    // Browsers post CSP violation reports with the cookie and, in Safari,
+    // `Origin: null`. The route changes nothing and always answers 204.
+    if (req.path === CSP_REPORT_PATH) {
       return next();
     }
     if (!req.cookies?.auth || req.headers.auth) {
