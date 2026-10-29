@@ -38,6 +38,10 @@ const readByCode = (): Set<string> => {
       keys.add(m[1]);
     for (const m of text.matchAll(/\{([^{}]+)\}\s*=\s*process\.env/g))
       for (const k of m[1].matchAll(/\b([A-Z][A-Z0-9_]+)\b/g)) keys.add(k[1]);
+    // Helpers that take the environment as a parameter defaulting to it
+    // (`env: ... = process.env`, own.media.url.ts) read `env.X`.
+    if (/\benv\b[^=\n]*=\s*process\.env\b/.test(text))
+      for (const m of text.matchAll(/\benv\.([A-Z][A-Z0-9_]+)/g)) keys.add(m[1]);
   }
   return keys;
 };
