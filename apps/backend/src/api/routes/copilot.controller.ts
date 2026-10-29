@@ -25,6 +25,7 @@ import { BrandKitService } from '@gitroom/nestjs-libraries/database/prisma/brand
 import { MastraAgent } from '@ag-ui/mastra';
 import { MastraService } from '@gitroom/nestjs-libraries/chat/mastra.service';
 import {
+  agentRouteRequest,
   isAgentGeneration,
   takeAgentRunSlot,
 } from '@gitroom/nestjs-libraries/chat/agent-run-slot';
@@ -148,6 +149,22 @@ export class CopilotController {
       return;
     }
 
+    // Only our methods, and a thread of this organisation (agent-run-slot.ts).
+    const route = agentRouteRequest(req.body);
+    if (!route.allowed) {
+      res.status(404).json({ error: 'Not found' });
+      return;
+    }
+    const mastra = await this._mastraService.mastra();
+    if (route.threadId) {
+      const memory = await mastra.getAgent('postra').getMemory();
+      const thread = await memory?.getThreadById({ threadId: route.threadId });
+      if (thread && thread.resourceId !== organization.id) {
+        res.status(404).json({ error: 'Thread not found' });
+        return;
+      }
+    }
+
     // Monthly fair use (pricing.agent_messages, questions counted in
     // AiUsage). Like the image/video paths, only enforced with billing on —
     // without a publishable key the ledger is advisory. The chat UI checks the
@@ -184,7 +201,6 @@ export class CopilotController {
       recordAgentMessage(organization.id);
     }
 
-    const mastra = await this._mastraService.mastra();
     const requestContext = new RequestContext<ChannelsContext>();
     // The provider's `properties`, forwarded with every run.
     requestContext.set(

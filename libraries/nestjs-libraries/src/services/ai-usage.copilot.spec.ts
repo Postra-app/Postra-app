@@ -56,6 +56,29 @@ describe('meterCopilotAdapter', () => {
     ]);
   });
 
+  it('reads the usage of a LanguageModelV3, which CopilotKit 1.83 hands over', async () => {
+    const events: any[] = [];
+    setAiUsageSink((e) => events.push(e));
+    const model = {
+      specificationVersion: 'v3',
+      provider: 'openai.responses',
+      modelId: 'gpt-4.1',
+      supportedUrls: {},
+      doGenerate: async () => ({
+        usage: {
+          inputTokens: { total: 40, noCache: 30, cacheRead: 10, cacheWrite: 0 },
+          outputTokens: { total: 6, text: 6, reasoning: 0 },
+        },
+      }),
+      doStream: async () => ({ stream: finishOnly() }),
+    };
+    const adapter = meterCopilotAdapter({ getLanguageModel: () => model }, 'autocomplete');
+    await aiUsageOrgContext.run('org-1', () => adapter.getLanguageModel().doGenerate({}));
+    expect(events).toEqual([
+      expect.objectContaining({ inputAmount: 40, outputAmount: 6, cachedAmount: 10 }),
+    ]);
+  });
+
   it("wraps CopilotKit's own OpenAIAdapter", () => {
     const adapter = meterCopilotAdapter(
       // A client with a key, or the adapter builds one from OPENAI_API_KEY.

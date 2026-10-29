@@ -15,6 +15,7 @@ jest.mock('@gitroom/nestjs-libraries/redis/redis.service', () => ({
 
 import {
   AGENT_RUNS_PER_ORG,
+  agentRouteRequest,
   isAgentGeneration,
   takeAgentRunSlot,
 } from './agent-run-slot';
@@ -63,4 +64,17 @@ it('a refused attempt does not keep a slot left by a crashed process alive', asy
   (ioRedis.expire as jest.Mock).mockClear();
   expect(await takeAgentRunSlot('org-9')).toBeNull();
   expect(ioRedis.expire).not.toHaveBeenCalled();
+});
+
+it('the agent route answers its own methods only, and names the thread each one touches', () => {
+  expect(agentRouteRequest({ method: 'info' })).toEqual({ allowed: true });
+  expect(agentRouteRequest({ method: 'agent/run', params: { agentId: 'postra' }, body: { threadId: 't-1' } })).toEqual({ allowed: true, threadId: 't-1' });
+  expect(agentRouteRequest({ method: 'agent/connect', params: { agentId: 'postra' }, body: { threadId: 't-2' } })).toEqual({ allowed: true, threadId: 't-2' });
+  expect(agentRouteRequest({ method: 'agent/stop', params: { agentId: 'postra', threadId: 't-3' } })).toEqual({ allowed: true, threadId: 't-3' });
+  // The thread resource methods read the shared store directly.
+  for (const method of ['resource/request', 'threads/state', 'threads/messages', 'threads/events', 'threads/list']) {
+    expect(agentRouteRequest({ method, params: { threadId: 't-1' } }).allowed).toBe(false);
+  }
+  expect(agentRouteRequest({ query: 'mutation generateCopilotResponse { x }' }).allowed).toBe(false);
+  expect(agentRouteRequest(undefined).allowed).toBe(false);
 });
