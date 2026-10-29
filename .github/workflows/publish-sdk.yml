@@ -41,10 +41,6 @@ jobs:
           # No registry-url: it writes an .npmrc whose _authToken is
           # ${NODE_AUTH_TOKEN}, and there is no token here, only OIDC.
 
-      # Trusted publishing needs npm 11.5.1+; Node 22 ships npm 10.
-      - name: Update npm
-        run: npm install -g npm@^11.5.1
-
       - name: Tag matches the package version
         working-directory: apps/sdk
         run: |

@@ -11,7 +11,7 @@ import { ssrfSafeDispatcher } from '@gitroom/nestjs-libraries/dtos/webhooks/ssrf
 import { parseDataUrl } from '@gitroom/nestjs-libraries/upload/data.url';
 // Use undici's fetch (not Node's global fetch): the `dispatcher` option only
 // interoperates with an Agent from the same undici instance. Passing our
-// undici@8 Agent to Node 22's bundled-undici global fetch throws
+// undici@8 Agent to the global fetch of Node's own bundled undici throws
 // "invalid onRequestStart method", so every remote upload silently failed.
 import { fetch } from 'undici';
 import { fromBuffer } from '@gitroom/nestjs-libraries/upload/file.type';
