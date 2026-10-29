@@ -23,7 +23,7 @@ export function meterLanguageModel<
     doGenerate(options: any): PromiseLike<any>;
     doStream(options: any): PromiseLike<any>;
   }
->(model: T, engine: 'agent'): T {
+>(model: T, engine: 'agent' | 'autocomplete'): T {
   const record = (usage: any) => {
     recordAiUsage({
       organizationId:

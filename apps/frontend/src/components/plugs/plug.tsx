@@ -18,12 +18,7 @@ import {
   useFormContext,
 } from 'react-hook-form';
 import { Input } from '@gitroom/react/form/input';
-import dynamic from 'next/dynamic';
-const CopilotTextarea = dynamic(
-  () =>
-    import('@copilotkit/react-textarea').then((mod) => mod.CopilotTextarea),
-  { ssr: false }
-);
+import { GhostTextarea } from '@gitroom/frontend/components/ai/ghost.textarea';
 import clsx from 'clsx';
 import { string, object } from 'yup';
 import { yupResolver } from '@hookform/resolvers/yup';
@@ -48,7 +43,8 @@ export const TextArea: FC<{
   return (
     <>
       <textarea className="hidden" {...all}></textarea>
-      <CopilotTextarea
+      <GhostTextarea
+        surface="post"
         disableBranding={true}
         placeholder={props.placeHolder}
         value={value}
@@ -62,10 +58,6 @@ export const TextArea: FC<{
               value: e.target.value,
             },
           });
-        }}
-        autosuggestionsConfig={{
-          textareaPurpose: `Assist me in writing social media posts. Never use em dashes (—) or en dashes (–); use a comma, a full stop or a plain hyphen (-).`,
-          chatApiConfigs: {},
         }}
       />
       <div className="text-red-400 text-[12px]">

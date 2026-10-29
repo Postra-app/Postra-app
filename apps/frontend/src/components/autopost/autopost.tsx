@@ -23,11 +23,7 @@ import { useIntegrationList } from '@gitroom/frontend/components/launches/helper
 import { useToaster } from '@gitroom/react/toaster/toaster';
 import clsx from 'clsx';
 import { deleteDialog } from '@gitroom/react/helpers/delete.dialog';
-import dynamic from 'next/dynamic';
-const CopilotTextarea = dynamic(
-  () => import('@copilotkit/react-textarea').then((mod) => mod.CopilotTextarea),
-  { ssr: false }
-);
+import { GhostTextarea } from '@gitroom/frontend/components/ai/ghost.textarea';
 import { Slider } from '@gitroom/react/form/slider';
 import { useT } from '@gitroom/react/translation/get.transation.service.client';
 import Spinner from '@gitroom/frontend/components/layout/loading';
@@ -453,7 +449,8 @@ export const AddOrEditWebhook: FC<{
                 <div className={`text-[14px] mb-[6px]`}>
                   {t('post_content', 'Post content')}
                 </div>
-                <CopilotTextarea
+                <GhostTextarea
+                  surface="post"
                   disableBranding={true}
                   className={clsx(
                     '!min-h-40 !max-h-80 p-2 overflow-x-hidden scrollbar scrollbar-thumb-[#38bdf8] bg-white/[0.03] outline-none mb-[16px] border-white/10 border rounded-[16px]'
@@ -466,10 +463,6 @@ export const AddOrEditWebhook: FC<{
                     'write_your_post_placeholder',
                     'Write your post...'
                   )}
-                  autosuggestionsConfig={{
-                    textareaPurpose: `Assist me in writing a social media post. Never use em dashes (—) or en dashes (–); use a comma, a full stop or a plain hyphen (-).`,
-                    chatApiConfigs: {},
-                  }}
                 />
               </>
             )}

@@ -15,8 +15,8 @@ export interface AiUsageEvent {
     | 'studio'
     | 'whisper'
     | 'insert-graph'
-    // CopilotKit's ghost-text suggestions while typing (signature, AutoPost,
-    // Plugs) — /copilot/chat.
+    // Ghost-text suggestions while typing (signature, AutoPost, Plugs) -
+    // /copilot/autocomplete; also the CopilotKit runtime on /copilot/chat.
     | 'autocomplete'
     // Images and embeddings from the /media surfaces: the composer's AI
     // Image, Studio's AI tab and template search.

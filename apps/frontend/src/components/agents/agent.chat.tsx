@@ -8,12 +8,13 @@ import React, {
   useMemo,
   useState,
 } from 'react';
-import { CopilotChat, CopilotKitCSSProperties } from '@copilotkit/react-ui';
-import DOMPurify from 'dompurify';
 import {
+  CopilotChat,
+  CopilotKitCSSProperties,
   InputProps,
   UserMessageProps,
-} from '@copilotkit/react-ui/dist/components/chat/props';
+} from '@copilotkit/react-ui';
+import DOMPurify from 'dompurify';
 import { Input } from '@gitroom/frontend/components/agents/agent.input';
 import { useModals } from '@gitroom/frontend/components/layout/new-modal';
 import {
@@ -84,6 +85,7 @@ export const AgentChat: FC = () => {
       {...(params.id === 'new' ? {} : { threadId: params.id })}
       credentials="include"
       runtimeUrl={backendUrl + '/copilot/agent'}
+      useSingleEndpoint={true}
       showDevConsole={false}
       agent="postra"
       properties={{
@@ -152,7 +154,11 @@ const LoadMessages: FC<{ id: string }> = ({ id }) => {
     setMessages(
       data.messages.map((p: any) => {
         return new TextMessage({
-          content: p.content.content,
+          content:
+            p.content.content ||
+            (p.content.parts || [])
+              .map((part: any) => (part.type === 'text' ? part.text : ''))
+              .join(''),
           role: p.role,
         });
       })
@@ -174,7 +180,12 @@ const Message: FC<UserMessageProps> = (props) => {
   const convertContentToImagesAndVideo = useMemo(() => {
     // Sanitized at the end — message content echoes user input, and the
     // regex templating alone is not an XSS boundary.
-    const html = (props.message?.content || '')
+    const content = props.message?.content || '';
+    const text =
+      typeof content === 'string'
+        ? content
+        : content.map((p) => (p.type === 'text' ? p.text : '')).join('');
+    const html = text
       .replace(/Video: (http.*mp4\n)/g, (match, p1) => {
         return `<video controls class="h-[150px] w-[150px] rounded-[8px] mb-[10px]"><source src="${p1.trim()}" type="video/mp4">Your browser does not support the video tag.</video>`;
       })

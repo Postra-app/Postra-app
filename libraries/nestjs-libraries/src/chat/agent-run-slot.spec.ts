@@ -45,15 +45,14 @@ describe('agent runs in flight per organisation', () => {
   });
 });
 
-it('only a reply takes a slot, not the metadata the chat loads on every page', () => {
-  expect(
-    isAgentGeneration({
-      operationName: 'generateCopilotResponse',
-      query: 'mutation generateCopilotResponse($data: GenerateCopilotResponseInput!) { generateCopilotResponse(data: $data) { threadId } }',
-    })
-  ).toBe(true);
-  expect(isAgentGeneration({ operationName: 'availableAgents', query: 'query availableAgents { availableAgents { agents { name } } }' })).toBe(false);
-  expect(isAgentGeneration({ operationName: 'loadAgentState', query: 'query loadAgentState($data: LoadAgentStateInput!) { loadAgentState(data: $data) { state } }' })).toBe(false);
+it('only a reply or a suggestion takes a slot, not the metadata the chat loads on every page', () => {
+  expect(isAgentGeneration({ method: 'agent/run', params: { agentId: 'postra' }, body: {} })).toBe(true);
+  expect(isAgentGeneration({ method: 'agent/suggest', params: { agentId: 'postra' } })).toBe(true);
+  expect(isAgentGeneration({ method: 'info' })).toBe(false);
+  expect(isAgentGeneration({ method: 'agent/connect', params: { agentId: 'postra' } })).toBe(false);
+  expect(isAgentGeneration({ method: 'agent/stop', params: { agentId: 'postra' } })).toBe(false);
+  // The 1.10 GraphQL mutation is not an envelope the runtime answers any more.
+  expect(isAgentGeneration({ query: 'mutation generateCopilotResponse { generateCopilotResponse(data: {}) { threadId } }' })).toBe(false);
   expect(isAgentGeneration(undefined)).toBe(false);
 });
 

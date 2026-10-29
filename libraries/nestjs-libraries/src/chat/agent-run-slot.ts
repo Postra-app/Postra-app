@@ -10,11 +10,14 @@ export const AGENT_RUNS_PER_ORG = 2;
 // than any run (25 steps).
 const SLOT_TTL_SECONDS = 600;
 
-// CopilotKit 1.10 GraphQL: a reply is the generateCopilotResponse mutation;
-// availableAgents and loadAgentState read metadata and call no model.
+// CopilotKit's single-route envelope ({ method, params, body }): agent/run is
+// a reply and agent/suggest asks the model for suggestions; info and
+// agent/connect read metadata and call no model.
+const GENERATING_METHODS = ['agent/run', 'agent/suggest'];
+
 export const isAgentGeneration = (body: unknown) => {
-  const query = (body as { query?: unknown } | undefined)?.query;
-  return typeof query === 'string' && /\bgenerateCopilotResponse\b/.test(query);
+  const method = (body as { method?: unknown } | undefined)?.method;
+  return typeof method === 'string' && GENERATING_METHODS.includes(method);
 };
 
 export const takeAgentRunSlot = async (

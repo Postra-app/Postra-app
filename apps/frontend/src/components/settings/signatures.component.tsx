@@ -10,11 +10,7 @@ import { TopTitle } from '@gitroom/frontend/components/launches/helpers/top.titl
 import { array, boolean, object, string } from 'yup';
 import { FormProvider, useForm } from 'react-hook-form';
 import { yupResolver } from '@hookform/resolvers/yup';
-import dynamic from 'next/dynamic';
-const CopilotTextarea = dynamic(
-  () => import('@copilotkit/react-textarea').then((mod) => mod.CopilotTextarea),
-  { ssr: false }
-);
+import { GhostTextarea } from '@gitroom/frontend/components/ai/ghost.textarea';
 import { Select } from '@gitroom/react/form/select';
 import { useToaster } from '@gitroom/react/toaster/toaster';
 import { useT } from '@gitroom/react/translation/get.transation.service.client';
@@ -240,7 +236,8 @@ const AddOrRemoveSignature: FC<{
           </button>
 
           <div className="relative bg-customColor2">
-            <CopilotTextarea
+            <GhostTextarea
+              surface="signature"
               disableBranding={true}
               className={clsx(
                 // The modal and the editor share a background: without a border the
@@ -252,10 +249,6 @@ const AddOrRemoveSignature: FC<{
                 form.setValue('content', e.target.value);
               }}
               placeholder={t('write_your_signature', 'Write your signature...')}
-              autosuggestionsConfig={{
-                textareaPurpose: `Assist me in writing a social media signature. Never use em dashes (—) or en dashes (–); use a comma, a full stop or a plain hyphen (-).`,
-                chatApiConfigs: {},
-              }}
             />
           </div>
 
