@@ -11,12 +11,12 @@ import {
   Res,
   Query,
   Param,
+  Body,
 } from '@nestjs/common';
 import {
   CopilotRuntime,
   OpenAIAdapter,
   copilotRuntimeNodeHttpEndpoint,
-  copilotRuntimeNextJSAppRouterEndpoint,
 } from '@copilotkit/runtime';
 import { GetOrgFromRequest } from '@gitroom/nestjs-libraries/user/org.from.request';
 import { Organization } from '@prisma/client';
@@ -25,6 +25,7 @@ import { BrandKitService } from '@gitroom/nestjs-libraries/database/prisma/brand
 import { MastraAgent } from '@ag-ui/mastra';
 import { MastraService } from '@gitroom/nestjs-libraries/chat/mastra.service';
 import {
+  agentRouteRequest,
   isAgentGeneration,
   takeAgentRunSlot,
 } from '@gitroom/nestjs-libraries/chat/agent-run-slot';
@@ -33,10 +34,11 @@ import { PostsService } from '@gitroom/nestjs-libraries/database/prisma/posts/po
 import { Request, Response } from 'express';
 import { RequestContext } from '@mastra/core/di';
 import { recordAgentMessage } from '@gitroom/nestjs-libraries/services/ai-usage.record';
-import { threadStateClient } from '@gitroom/nestjs-libraries/chat/thread-state';
 import { AGENT_FAIR_USE_MESSAGES } from '@gitroom/nestjs-libraries/database/prisma/subscriptions/pricing';
 import { CheckPolicies } from '@gitroom/backend/services/auth/permissions/permissions.ability';
 import { AuthorizationActions, Sections } from '@gitroom/nestjs-libraries/services/auth/permission.exception.class';
+import { OpenaiService } from '@gitroom/nestjs-libraries/openai/openai.service';
+import { AutocompleteDto } from '@gitroom/nestjs-libraries/dtos/copilot/autocomplete.dto';
 
 export type ChannelsContext = {
   integrations: string;
@@ -45,6 +47,17 @@ export type ChannelsContext = {
   brandKit: string;
 };
 
+// The runtime answers with its own CORS headers; without these it allows any
+// origin. Same list as the app's CORS in main.ts.
+const copilotCors = () => ({
+  origin: [
+    process.env.FRONTEND_URL,
+    ...(process.env.NOT_SECURED ? ['http://localhost:6274'] : []),
+    ...(process.env.MAIN_URL ? [process.env.MAIN_URL] : []),
+  ].filter((o): o is string => !!o),
+  credentials: !process.env.NOT_SECURED,
+});
+
 @Controller('/copilot')
 export class CopilotController {
   constructor(
@@ -52,7 +65,8 @@ export class CopilotController {
     private _mastraService: MastraService,
     private _brandKitService: BrandKitService,
     private _pendingActionService: PendingActionService,
-    private _postsService: PostsService
+    private _postsService: PostsService,
+    private _openaiService: OpenaiService
   ) {}
   @Post('/chat')
   @Throttle({ default: { ttl: 300000, limit: 30 } })
@@ -72,6 +86,7 @@ export class CopilotController {
 
     const copilotRuntimeHandler = copilotRuntimeNodeHttpEndpoint({
       endpoint: '/copilot/chat',
+      cors: copilotCors(),
       runtime: new CopilotRuntime(),
       // Ghost-text suggestions; recorded in AiUsage like every other AI call
       // (the feature stays, metered).
@@ -79,12 +94,43 @@ export class CopilotController {
         new OpenAIAdapter({
           model: 'gpt-4.1',
         }),
-        organization.id,
         'autocomplete'
       ),
     });
 
-    return copilotRuntimeHandler(req, res);
+    // The metered model reads the organization from this scope.
+    return aiUsageOrgContext.run(organization.id, () =>
+      copilotRuntimeHandler(req, res)
+    );
+  }
+
+  // Ghost text in the signature, AutoPost and Plugs editors. CopilotKit's
+  // textarea stopped asking for suggestions itself (a stub since 1.60), so
+  // the editors call this with their own suggestion function. Best effort: an
+  // OpenAI failure is no suggestion, not an error in the editor.
+  @Post('/autocomplete')
+  @Throttle({ default: { ttl: 300000, limit: 30 } })
+  @CheckPolicies([AuthorizationActions.Create, Sections.AI])
+  async autocomplete(
+    @GetOrgFromRequest() organization: Organization,
+    @Body() body: AutocompleteDto
+  ) {
+    try {
+      return {
+        suggestion: await this._openaiService.autocomplete(
+          body.surface,
+          body.before,
+          body.after ?? '',
+          organization.id
+        ),
+      };
+    } catch (err) {
+      Logger.warn(
+        `Autocomplete failed: ${err instanceof Error ? err.message : String(err)}`,
+        'CopilotController'
+      );
+      return { suggestion: '' };
+    }
   }
 
   @Post('/agent')
@@ -101,6 +147,22 @@ export class CopilotController {
     ) {
       Logger.warn('OpenAI API key not set, chat functionality will not work');
       return;
+    }
+
+    // Only our methods, and a thread of this organisation (agent-run-slot.ts).
+    const route = agentRouteRequest(req.body);
+    if (!route.allowed) {
+      res.status(404).json({ error: 'Not found' });
+      return;
+    }
+    const mastra = await this._mastraService.mastra();
+    if (route.threadId) {
+      const memory = await mastra.getAgent('postra').getMemory();
+      const thread = await memory?.getThreadById({ threadId: route.threadId });
+      if (thread && thread.resourceId !== organization.id) {
+        res.status(404).json({ error: 'Thread not found' });
+        return;
+      }
     }
 
     // Monthly fair use (pricing.agent_messages, questions counted in
@@ -139,11 +201,11 @@ export class CopilotController {
       recordAgentMessage(organization.id);
     }
 
-    const mastra = await this._mastraService.mastra();
     const requestContext = new RequestContext<ChannelsContext>();
+    // The provider's `properties`, forwarded with every run.
     requestContext.set(
       'integrations',
-      req?.body?.variables?.properties?.integrations || []
+      req?.body?.body?.forwardedProps?.integrations || []
     );
 
     requestContext.set('organization', JSON.stringify(organization));
@@ -159,34 +221,22 @@ export class CopilotController {
       mastra,
       requestContext: requestContext as any,
     });
-    // Without a state client CopilotKit's loadAgentState answered "no
-    // messages" and the browser emptied a chat opened again.
-    const memory = await mastra.getAgent('postra').getMemory();
-    for (const agent of Object.values(agents)) {
-      Object.assign(agent, {
-        client: threadStateClient((threadId) =>
-          memory!.recall({ resourceId: organization.id, threadId })
-        ),
-      });
-    }
-
     const runtime = new CopilotRuntime({
       agents,
     });
 
-    const copilotRuntimeHandler = copilotRuntimeNextJSAppRouterEndpoint({
+    // The agents answer every run; no service adapter, so no unmetered
+    // default model behind them.
+    const copilotRuntimeHandler = copilotRuntimeNodeHttpEndpoint({
       endpoint: '/copilot/agent',
+      cors: copilotCors(),
       runtime,
-      // properties: req.body.variables.properties,
-      serviceAdapter: new OpenAIAdapter({
-        model: 'gpt-4.1',
-      }),
     });
 
     // ALS scope so the metered gpt-5.5 model (built once at boot) can attribute
     // its token usage to this request's organization.
     return aiUsageOrgContext.run(organization.id, () =>
-      copilotRuntimeHandler.handleRequest(req, res)
+      copilotRuntimeHandler(req, res)
     );
   }
 

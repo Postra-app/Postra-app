@@ -6,19 +6,22 @@ import React, {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
 } from 'react';
-import { CopilotChat, CopilotKitCSSProperties } from '@copilotkit/react-ui';
-import DOMPurify from 'dompurify';
 import {
+  CopilotChat,
+  CopilotKitCSSProperties,
   InputProps,
   UserMessageProps,
-} from '@copilotkit/react-ui/dist/components/chat/props';
+} from '@copilotkit/react-ui';
+import DOMPurify from 'dompurify';
 import { Input } from '@gitroom/frontend/components/agents/agent.input';
 import { useModals } from '@gitroom/frontend/components/layout/new-modal';
 import {
   CopilotKit,
   useCopilotAction,
+  useCopilotChatInternal,
   useCopilotMessagesContext,
 } from '@copilotkit/react-core';
 import {
@@ -47,6 +50,22 @@ import { AGENT_FAIR_USE_MESSAGES } from '@gitroom/nestjs-libraries/database/pris
 import { useT } from '@gitroom/react/translation/get.transation.service.client';
 import { hasExtension } from '@gitroom/helpers/utils/has.extension';
 import useSWR from 'swr';
+import { useToaster } from '@gitroom/react/toaster/toaster';
+
+// The runtime client reports a refused run as "HTTP 429: {"error": "..."}".
+// The server's own sentence is what the person should read (another chat is
+// still answering, the monthly limit); anything else gets a generic one.
+export const agentErrorMessage = (error: unknown): string | null => {
+  const text = error instanceof Error ? error.message : String(error ?? '');
+  const match = text.match(/HTTP (\d{3}): (\{[\s\S]*\})/);
+  if (!match) return null;
+  try {
+    const body = JSON.parse(match[2]);
+    return typeof body?.error === 'string' ? body.error : null;
+  } catch {
+    return null;
+  }
+};
 
 export const AgentChat: FC = () => {
   const { backendUrl } = useVariables();
@@ -54,7 +73,6 @@ export const AgentChat: FC = () => {
   const { properties } = useContext(PropertiesContext);
   const t = useT();
   const fetch = useFetch();
-
   // Same fair use the backend enforces with a 402 (pricing.agent_messages) —
   // checked up-front so the user gets a clear banner instead of a failed send.
   const { data: agentCredits } = useSWR('/copilot/credits?type=ai_agent', async (url: string) =>
@@ -84,6 +102,7 @@ export const AgentChat: FC = () => {
       {...(params.id === 'new' ? {} : { threadId: params.id })}
       credentials="include"
       runtimeUrl={backendUrl + '/copilot/agent'}
+      useSingleEndpoint={true}
       showDevConsole={false}
       agent="postra"
       properties={{
@@ -91,6 +110,7 @@ export const AgentChat: FC = () => {
       }}
     >
       <Hooks />
+      <RefusalToast />
       <LoadMessages id={params.id} />
       <div
         style={
@@ -143,6 +163,31 @@ export const AgentChat: FC = () => {
   );
 };
 
+// A run the server refused (429 another chat answering, 402 the monthly limit)
+// otherwise only reaches the console: the v1 provider's onError reports
+// GraphQL errors only. The agent itself tells us its run failed.
+const RefusalToast: FC = () => {
+  const { agent } = useCopilotChatInternal();
+  const toaster = useToaster();
+  const t = useT();
+
+  useEffect(() => {
+    if (!agent) return;
+    const subscription = agent.subscribe({
+      onRunFailed: ({ error }: { error?: unknown }) => {
+        toaster.show(
+          agentErrorMessage(error) ||
+            t('agent_error_generic', 'The AI assistant could not answer. Try again in a moment.'),
+          'warning'
+        );
+      },
+    });
+    return () => subscription.unsubscribe();
+  }, [agent, toaster, t]);
+
+  return null;
+};
+
 const LoadMessages: FC<{ id: string }> = ({ id }) => {
   const { setMessages } = useCopilotMessagesContext();
   const fetch = useFetch();
@@ -152,7 +197,11 @@ const LoadMessages: FC<{ id: string }> = ({ id }) => {
     setMessages(
       data.messages.map((p: any) => {
         return new TextMessage({
-          content: p.content.content,
+          content:
+            p.content.content ||
+            (p.content.parts || [])
+              .map((part: any) => (part.type === 'text' ? part.text : ''))
+              .join(''),
           role: p.role,
         });
       })
@@ -174,7 +223,12 @@ const Message: FC<UserMessageProps> = (props) => {
   const convertContentToImagesAndVideo = useMemo(() => {
     // Sanitized at the end — message content echoes user input, and the
     // regex templating alone is not an XSS boundary.
-    const html = (props.message?.content || '')
+    const content = props.message?.content || '';
+    const text =
+      typeof content === 'string'
+        ? content
+        : content.map((p) => (p.type === 'text' ? p.text : '')).join('');
+    const html = text
       .replace(/Video: (http.*mp4\n)/g, (match, p1) => {
         return `<video controls class="h-[150px] w-[150px] rounded-[8px] mb-[10px]"><source src="${p1.trim()}" type="video/mp4">Your browser does not support the video tag.</video>`;
       })

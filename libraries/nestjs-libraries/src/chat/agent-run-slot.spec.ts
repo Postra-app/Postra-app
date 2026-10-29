@@ -15,6 +15,7 @@ jest.mock('@gitroom/nestjs-libraries/redis/redis.service', () => ({
 
 import {
   AGENT_RUNS_PER_ORG,
+  agentRouteRequest,
   isAgentGeneration,
   takeAgentRunSlot,
 } from './agent-run-slot';
@@ -45,15 +46,14 @@ describe('agent runs in flight per organisation', () => {
   });
 });
 
-it('only a reply takes a slot, not the metadata the chat loads on every page', () => {
-  expect(
-    isAgentGeneration({
-      operationName: 'generateCopilotResponse',
-      query: 'mutation generateCopilotResponse($data: GenerateCopilotResponseInput!) { generateCopilotResponse(data: $data) { threadId } }',
-    })
-  ).toBe(true);
-  expect(isAgentGeneration({ operationName: 'availableAgents', query: 'query availableAgents { availableAgents { agents { name } } }' })).toBe(false);
-  expect(isAgentGeneration({ operationName: 'loadAgentState', query: 'query loadAgentState($data: LoadAgentStateInput!) { loadAgentState(data: $data) { state } }' })).toBe(false);
+it('only a reply or a suggestion takes a slot, not the metadata the chat loads on every page', () => {
+  expect(isAgentGeneration({ method: 'agent/run', params: { agentId: 'postra' }, body: {} })).toBe(true);
+  expect(isAgentGeneration({ method: 'agent/suggest', params: { agentId: 'postra' } })).toBe(true);
+  expect(isAgentGeneration({ method: 'info' })).toBe(false);
+  expect(isAgentGeneration({ method: 'agent/connect', params: { agentId: 'postra' } })).toBe(false);
+  expect(isAgentGeneration({ method: 'agent/stop', params: { agentId: 'postra' } })).toBe(false);
+  // The 1.10 GraphQL mutation is not an envelope the runtime answers any more.
+  expect(isAgentGeneration({ query: 'mutation generateCopilotResponse { generateCopilotResponse(data: {}) { threadId } }' })).toBe(false);
   expect(isAgentGeneration(undefined)).toBe(false);
 });
 
@@ -64,4 +64,17 @@ it('a refused attempt does not keep a slot left by a crashed process alive', asy
   (ioRedis.expire as jest.Mock).mockClear();
   expect(await takeAgentRunSlot('org-9')).toBeNull();
   expect(ioRedis.expire).not.toHaveBeenCalled();
+});
+
+it('the agent route answers its own methods only, and names the thread each one touches', () => {
+  expect(agentRouteRequest({ method: 'info' })).toEqual({ allowed: true });
+  expect(agentRouteRequest({ method: 'agent/run', params: { agentId: 'postra' }, body: { threadId: 't-1' } })).toEqual({ allowed: true, threadId: 't-1' });
+  expect(agentRouteRequest({ method: 'agent/connect', params: { agentId: 'postra' }, body: { threadId: 't-2' } })).toEqual({ allowed: true, threadId: 't-2' });
+  expect(agentRouteRequest({ method: 'agent/stop', params: { agentId: 'postra', threadId: 't-3' } })).toEqual({ allowed: true, threadId: 't-3' });
+  // The thread resource methods read the shared store directly.
+  for (const method of ['resource/request', 'threads/state', 'threads/messages', 'threads/events', 'threads/list']) {
+    expect(agentRouteRequest({ method, params: { threadId: 't-1' } }).allowed).toBe(false);
+  }
+  expect(agentRouteRequest({ query: 'mutation generateCopilotResponse { x }' }).allowed).toBe(false);
+  expect(agentRouteRequest(undefined).allowed).toBe(false);
 });

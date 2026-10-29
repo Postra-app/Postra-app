@@ -25,30 +25,21 @@ describe('clientIpFromForwardedFor', () => {
 // The page-load metadata query skips the AI limit; nothing that can reach a
 // model may pass for it.
 describe('isCopilotMetadataQuery', () => {
-  const query = 'query availableAgents {\n  availableAgents { agents { name id } }\n}';
-
-  it('is the availableAgents query CopilotKit sends on page load', () => {
-    expect(isCopilotMetadataQuery({ operationName: 'availableAgents', query })).toBe(true);
+  it('is the info request CopilotKit sends on page load', () => {
+    expect(isCopilotMetadataQuery({ method: 'info' })).toBe(true);
   });
 
-  it('is not a mutation, whatever its name', () => {
-    expect(
-      isCopilotMetadataQuery({
-        operationName: 'availableAgents',
-        query: 'mutation availableAgents { generateCopilotResponse(data: {}) { threadId } }',
-      })
-    ).toBe(false);
-    expect(
-      isCopilotMetadataQuery({
-        operationName: 'availableAgents',
-        query: `${query}\nmutation generateCopilotResponse { generateCopilotResponse(data: {}) { threadId } }`,
-      })
-    ).toBe(false);
+  it('is not a run, a suggestion or a connect, whatever else the body says', () => {
+    expect(isCopilotMetadataQuery({ method: 'agent/run', params: { agentId: 'default' } })).toBe(false);
+    expect(isCopilotMetadataQuery({ method: 'agent/suggest', operationName: 'availableAgents' })).toBe(false);
+    expect(isCopilotMetadataQuery({ method: 'agent/connect' })).toBe(false);
   });
 
-  it('is not any other operation, nor a body without a query', () => {
-    expect(isCopilotMetadataQuery({ operationName: 'generateCopilotResponse', query })).toBe(false);
-    expect(isCopilotMetadataQuery({ operationName: 'availableAgents' })).toBe(false);
+  it('is not the GraphQL body of CopilotKit 1.10, nor an empty body', () => {
+    expect(
+      isCopilotMetadataQuery({ operationName: 'availableAgents', query: 'query availableAgents { availableAgents { agents { name } } }' })
+    ).toBe(false);
     expect(isCopilotMetadataQuery(undefined)).toBe(false);
+    expect(isCopilotMetadataQuery(null)).toBe(false);
   });
 });

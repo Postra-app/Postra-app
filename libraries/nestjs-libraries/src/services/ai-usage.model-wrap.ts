@@ -14,6 +14,13 @@ export const aiUsageOrgContext = new AsyncLocalStorage<string>();
 // more than one `ai` major and importing the wrong one type-clashes with the
 // LanguageModelV2 that @ai-sdk/openai@2 returns. The interface is structural
 // and small, so delegating the five members is safer than the helper.
+// LanguageModelV2 reports plain numbers; V3 (the model CopilotKit's adapter
+// hands over) reports { total, ... } objects, which recorded NaN.
+const tokens = (value: unknown): number =>
+  typeof value === 'number'
+    ? value
+    : (value as { total?: number } | undefined)?.total ?? 0;
+
 export function meterLanguageModel<
   T extends {
     specificationVersion: string;
@@ -23,16 +30,16 @@ export function meterLanguageModel<
     doGenerate(options: any): PromiseLike<any>;
     doStream(options: any): PromiseLike<any>;
   }
->(model: T, engine: 'agent'): T {
+>(model: T, engine: 'agent' | 'autocomplete'): T {
   const record = (usage: any) => {
     recordAiUsage({
       organizationId:
         aiUsageOrgContext.getStore() ?? getAuth<{ id?: string }>()?.id ?? null,
       engine,
       model: model.modelId,
-      inputAmount: usage?.inputTokens ?? 0,
-      outputAmount: usage?.outputTokens ?? 0,
-      cachedAmount: usage?.cachedInputTokens ?? 0,
+      inputAmount: tokens(usage?.inputTokens),
+      outputAmount: tokens(usage?.outputTokens),
+      cachedAmount: usage?.cachedInputTokens ?? usage?.inputTokens?.cacheRead ?? 0,
     });
   };
 

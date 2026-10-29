@@ -57,15 +57,11 @@ test('the public API is limited per key: the 31st missing-content call is 429, a
 });
 
 // Every page load of the app asks the AI runtime which agents exist
-// (CopilotKit's `availableAgents`) on POST /copilot/chat. Counted toward the
+// (CopilotKit's `info`) on POST /copilot/chat. Counted toward the
 // 30-per-5-minutes AI limit, a team clicking around used up its organisation's
 // AI allowance in minutes, and every later page load and suggestion got 429.
-// The metadata query costs nothing; anything else on the route still counts.
-const AVAILABLE_AGENTS = {
-  operationName: 'availableAgents',
-  query: 'query availableAgents {\n  availableAgents {\n    agents {\n      name\n      id\n      description\n    }\n  }\n}',
-  variables: {},
-};
+// The metadata request costs nothing; anything else on the route still counts.
+const AVAILABLE_AGENTS = { method: 'info' };
 
 test('page loads asking which AI agents exist do not use up the AI limit', async () => {
   test.setTimeout(60_000);
@@ -76,13 +72,14 @@ test('page loads asking which AI agents exist do not use up the AI limit', async
   }
 });
 
-test('a mutation named like the metadata query is still limited', async () => {
+test('a run dressed up as the metadata request is still limited', async () => {
   test.setTimeout(60_000);
   const first = await org();
   const disguised = {
+    method: 'agent/run',
+    params: { agentId: 'default' },
     operationName: 'availableAgents',
-    query: 'mutation availableAgents { generateCopilotResponse(data: {}) { threadId } }',
-    variables: {},
+    body: {},
   };
   const statuses: number[] = [];
   for (let i = 0; i < 31; i++) {

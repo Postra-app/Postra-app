@@ -127,7 +127,7 @@ describe('every structured text call names the surface that spends it', () => {
     const calls = source.match(/this\.parseChat\([^{]*\{/g) ?? [];
     expect(calls.length).toBeGreaterThanOrEqual(8);
     for (const call of calls) {
-      expect(call).toMatch(/this\.parseChat\('(studio|composer|media|video|agent)', \{/);
+      expect(call).toMatch(/this\.parseChat\('(studio|composer|media|video|agent|autocomplete)', \{/);
     }
   });
 });

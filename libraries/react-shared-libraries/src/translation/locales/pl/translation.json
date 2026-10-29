@@ -1395,6 +1395,7 @@
   "layer_forward": "Przesuń do przodu",
   "layer_backward": "Przesuń do tyłu",
   "agent_limit_title": "Miesięczny limit asystenta AI wyczerpany",
+  "agent_error_generic": "Asystent AI nie mógł odpowiedzieć. Spróbuj ponownie za chwilę.",
   "video_generation_failed": "Nie udało się wygenerować wideo, spróbuj ponownie.",
   "output_voice": "Głos wypowiedzi",
   "add_pictures_cost": "Jeden kredyt obrazkowy na post - wątek kosztuje po jednym za każdą część.",

@@ -23,23 +23,14 @@ export const clientIpFromForwardedFor = (header?: string): string => {
 
 /**
  * CopilotKit asks the AI runtime which agents exist on every page load
- * (`availableAgents` on POST /copilot/chat). It reads metadata and calls no
- * model, but it counted toward the route's AI limit, so a team clicking
- * around used up its organisation's allowance in minutes. Only a document
- * without a mutation qualifies: GraphQL runs the operation named
- * `operationName`, and a mutation can carry any name.
+ * (`info` on POST /copilot/chat). It reads metadata and calls no model, but it
+ * counted toward the route's AI limit, so a team clicking around used up its
+ * organisation's allowance in minutes. The single-route envelope names one
+ * method, and only `info` qualifies; `agent/run` is a model call whatever
+ * else the body carries.
  */
-export const isCopilotMetadataQuery = (body: unknown): boolean => {
-  const { operationName, query } = (body || {}) as {
-    operationName?: unknown;
-    query?: unknown;
-  };
-  return (
-    operationName === 'availableAgents' &&
-    typeof query === 'string' &&
-    !/\b(mutation|subscription)\b/i.test(query)
-  );
-};
+export const isCopilotMetadataQuery = (body: unknown): boolean =>
+  (body as { method?: unknown } | null | undefined)?.method === 'info';
 
 @Injectable()
 export class ThrottlerBehindProxyGuard extends ThrottlerGuard {

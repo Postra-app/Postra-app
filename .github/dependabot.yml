@@ -17,11 +17,11 @@
 # few exact names. So the type groups exclude every pattern of the named
 # groups (repo/dependabot.spec.ts checks the lists stay in step).
 #
-# Packages we cannot take yet (TypeScript 5.9, CopilotKit 1.79, @atproto/api,
-# polotno) are ignored here, each with its reason in the launch plan. They
-# used to sit in a "held" group whose red PR came back every week (#371,
-# #386); the weekly freshness issue lists them instead (#334). Every ignore
-# names version-update types only, so security updates still come for them.
+# Packages we cannot take yet (TypeScript 5.9, @atproto/api 0.20, polotno) are
+# ignored here. They used to sit in a "held" group whose red PR came back
+# every week (#371, #386); the weekly freshness issue lists them instead
+# (#334). Every ignore names version-update types only, so security updates
+# still come for them.
 #
 # Monthly, not weekly: weekly gave too many bump PRs for no gain. Security
 # updates are not version updates: they still come as soon as GitHub has them.
@@ -37,16 +37,11 @@ updates:
         update-types: ["version-update:semver-major"]
       - dependency-name: "typescript"
         update-types: ["version-update:semver-major", "version-update:semver-minor", "version-update:semver-patch"]
-      - dependency-name: "@copilotkit/react-core"
-        update-types: ["version-update:semver-major", "version-update:semver-minor", "version-update:semver-patch"]
-      - dependency-name: "@copilotkit/react-textarea"
-        update-types: ["version-update:semver-major", "version-update:semver-minor", "version-update:semver-patch"]
-      - dependency-name: "@copilotkit/react-ui"
-        update-types: ["version-update:semver-major", "version-update:semver-minor", "version-update:semver-patch"]
-      - dependency-name: "@copilotkit/runtime"
-        update-types: ["version-update:semver-major", "version-update:semver-minor", "version-update:semver-patch"]
+      # From 0.20 @atproto/* require multiformats 13, which exports only for
+      # import: the CommonJS backend fails to load the Bluesky provider.
+      # Patches of 0.19 still come.
       - dependency-name: "@atproto/api"
-        update-types: ["version-update:semver-major", "version-update:semver-minor", "version-update:semver-patch"]
+        update-types: ["version-update:semver-major", "version-update:semver-minor"]
       - dependency-name: "polotno"
         update-types: ["version-update:semver-major", "version-update:semver-minor", "version-update:semver-patch"]
       # polotno pins mobx exactly; a newer mobx in the catalog puts a second
@@ -57,7 +52,7 @@ updates:
       ai:
         applies-to: version-updates
         update-types: ["minor", "patch"]
-        patterns: ["@ag-ui/*", "@langchain/*", "@mastra/*", "mastra", "openai", "@ai-sdk/*"]
+        patterns: ["@ag-ui/*", "@copilotkit/*", "@langchain/*", "@mastra/*", "mastra", "openai", "@ai-sdk/*"]
       temporal:
         applies-to: version-updates
         update-types: ["minor", "patch"]
@@ -70,12 +65,12 @@ updates:
         applies-to: version-updates
         dependency-type: "production"
         update-types: ["minor", "patch"]
-        exclude-patterns: ["@ag-ui/*", "@langchain/*", "@mastra/*", "mastra", "openai", "@ai-sdk/*", "@temporalio/*", "nestjs-temporal-core", "react", "react-dom", "next", "@types/react", "@types/react-dom", "eslint-config-next", "swr", "react-*"]
+        exclude-patterns: ["@ag-ui/*", "@copilotkit/*", "@langchain/*", "@mastra/*", "mastra", "openai", "@ai-sdk/*", "@temporalio/*", "nestjs-temporal-core", "react", "react-dom", "next", "@types/react", "@types/react-dom", "eslint-config-next", "swr", "react-*"]
       development:
         applies-to: version-updates
         dependency-type: "development"
         update-types: ["minor", "patch"]
-        exclude-patterns: ["@ag-ui/*", "@langchain/*", "@mastra/*", "mastra", "openai", "@ai-sdk/*", "@temporalio/*", "nestjs-temporal-core", "react", "react-dom", "next", "@types/react", "@types/react-dom", "eslint-config-next", "swr", "react-*"]
+        exclude-patterns: ["@ag-ui/*", "@copilotkit/*", "@langchain/*", "@mastra/*", "mastra", "openai", "@ai-sdk/*", "@temporalio/*", "nestjs-temporal-core", "react", "react-dom", "next", "@types/react", "@types/react-dom", "eslint-config-next", "swr", "react-*"]
   # The Node image of Dockerfile.dev. Its version has to equal volta.node in
   # package.json (ci-workflows.spec.ts). Node majors move by hand when they
   # reach LTS (Node 26: 2026-10-28), together with volta.node.

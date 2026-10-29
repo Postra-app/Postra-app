@@ -41,6 +41,11 @@ const openai = new OpenAI({
 // through this constant table, numbers get clamped, and free-text settings
 // (language, brand kit) travel in the user message inside a <settings> block
 // that the system prompt scopes to configuration only.
+const AUTOCOMPLETE_PURPOSES: Record<'signature' | 'post', string> = {
+  signature: 'the signature added under their social media posts',
+  post: 'a social media post',
+};
+
 const PLATFORM_PROMPT_LABELS: Record<string, string> = {
   'instagram-feed': 'Instagram feed',
   'instagram-square': 'Instagram square',
@@ -553,6 +558,42 @@ ${SETTINGS_BLOCK_RULE}`,
     }
 
     throw new Error('Failed to generate post design after 3 attempts');
+  }
+
+  /**
+   * Ghost text: the next few words after the cursor. The surface picks the
+   * purpose from a constant table, so nothing from the request reaches the
+   * system prompt; the text around the cursor goes in the user message.
+   */
+  async autocomplete(
+    surface: 'signature' | 'post',
+    before: string,
+    after: string,
+    orgId?: string
+  ): Promise<string> {
+    const Completion = z.object({ completion: z.string() });
+    const purpose = AUTOCOMPLETE_PURPOSES[surface];
+    const parsed = (
+      await this.parseChat('autocomplete', {
+        model: 'gpt-4.1',
+        temperature: 0,
+        // Room for one sentence inside the JSON; a cut-off answer parses to nothing.
+        max_tokens: 80,
+        messages: [
+          {
+            role: 'system',
+            content: `You suggest how to continue the text a user is typing in ${purpose}. Answer with the words that come right after the cursor: a few words, at most one sentence, in the language of the text. Start with a space if the text before the cursor ends with a word. Return an empty completion when nothing fits. Never repeat the text before or after the cursor. ${PUNCTUATION_RULE}`,
+          },
+          {
+            role: 'user',
+            content: `<TextBeforeCursor>${before.slice(-2_000)}</TextBeforeCursor>\n<TextAfterCursor>${after.slice(0, 500)}</TextAfterCursor>`,
+          },
+        ],
+        response_format: zodResponseFormat(Completion, 'completion'),
+      }, orgId)
+    ).choices[0].message.parsed;
+
+    return parsed?.completion ?? '';
   }
 
   async generateCaption(
