@@ -54,4 +54,12 @@ describe('sameOriginGuard', () => {
   it('does not invent a refusal when the browser sent no Origin', () => {
     expect(run(browser({ headers: {} })).next).toHaveBeenCalled();
   });
+
+  // Safari posts the violation reports of the page's policy with the session
+  // cookie and `Origin: null`; the 403 put an error in every Safari console
+  // once a library on every page probed eval. Reports carry no change.
+  it('lets the CSP report endpoint through, whatever the Origin', () => {
+    expect(run(browser({ path: '/public/csp-report', headers: { origin: 'null' } })).next).toHaveBeenCalled();
+    expect(run(browser({ path: '/public/csp-reports', headers: { origin: 'null' } })).next).not.toHaveBeenCalled();
+  });
 });
