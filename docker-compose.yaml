@@ -207,7 +207,7 @@ services:
     container_name: temporal
     ports:
       - '7233:7233'
-    image: temporalio/auto-setup:1.28.4
+    image: temporalio/auto-setup:1.29.3
     depends_on:
       - temporal-postgresql
       - temporal-elasticsearch
@@ -231,7 +231,7 @@ services:
 
   temporal-admin-tools:
     container_name: temporal-admin-tools
-    image: temporalio/admin-tools:1.28.4-tctl-1.18.4-cli-1.6.2
+    image: temporalio/admin-tools:1.29.7-tctl-1.18.4-cli-1.7.2
     environment:
       - TEMPORAL_ADDRESS=temporal:7233
       - TEMPORAL_CLI_ADDRESS=temporal:7233
