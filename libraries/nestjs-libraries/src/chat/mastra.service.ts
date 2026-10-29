@@ -4,6 +4,7 @@ import { pStore } from '@gitroom/nestjs-libraries/chat/mastra.store';
 import { Injectable, Logger } from '@nestjs/common';
 import { LoadToolsService } from '@gitroom/nestjs-libraries/chat/load.tools.service';
 import { PrismaService } from '@gitroom/nestjs-libraries/database/prisma/prisma.service';
+import { registerMastraColumnsGauge } from '@gitroom/nestjs-libraries/chat/mastra.columns.metric';
 
 // Mastra's Postgres observability store owns `mastra_ai_spans`, whose physical
 // column count creeps up over time. Postgres caps a table at 1600 columns and
@@ -27,7 +28,9 @@ export class MastraService {
   constructor(
     private _loadToolsService: LoadToolsService,
     private _prisma: PrismaService
-  ) {}
+  ) {
+    registerMastraColumnsGauge((sql) => this._prisma.$queryRawUnsafe(sql));
+  }
 
   async mastra() {
     if (!MastraService.mastra) {
