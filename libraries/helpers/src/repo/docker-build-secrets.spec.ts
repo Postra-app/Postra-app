@@ -1,4 +1,4 @@
-import { readFileSync } from 'fs';
+import { readdirSync, readFileSync } from 'fs';
 import { join } from 'path';
 
 // The Sentry token used to reach the image build as a build argument, and
@@ -24,5 +24,31 @@ describe('docker build secrets', () => {
     expect(dockerfile).toMatch(
       /RUN --mount=type=secret,id=sentry_auth_token,env=SENTRY_AUTH_TOKEN[\s\\]+NODE_OPTIONS=\S+ pnpm run build/
     );
+  });
+  it('passes no credential to docker build as a build argument', () => {
+    const dir = join(root, '.github', 'workflows');
+    const args = readdirSync(dir)
+      .filter((name) => /\.ya?ml$/.test(name))
+      .flatMap((name) =>
+        [
+          ...readFileSync(join(dir, name), 'utf8').matchAll(
+            /--build-arg\s+([A-Z0-9_]+)=/g
+          ),
+        ].map((m) => `${name}: ${m[1]}`)
+      );
+    expect(args.length).toBeGreaterThan(0);
+    expect(args.filter((arg) => sensitive.test(arg.split(': ')[1]))).toEqual(
+      []
+    );
+  });
+
+  // The released image is built from main only and carries a provenance
+  // attestation, which whoever deploys it checks before using it.
+  it('publishes the image from main with a provenance attestation', () => {
+    const image = readFileSync(join(root, '.github', 'workflows', 'image.yml'), 'utf8');
+    expect(image).toMatch(/^on:\n  push:\n    branches:\n      - main\n\n/m);
+    expect(image).toContain('--secret id=sentry_auth_token,env=SENTRY_AUTH_TOKEN');
+    expect(image).toContain('-t "${IMAGE}:sha-${GITHUB_SHA}"');
+    expect(image).toMatch(/uses: actions\/attest-build-provenance@v\d+\n\s+with:\n\s+subject-name: \$\{\{ env\.IMAGE \}\}\n\s+subject-digest: \$\{\{ steps\.push\.outputs\.digest \}\}\n\s+push-to-registry: true/);
   });
 });

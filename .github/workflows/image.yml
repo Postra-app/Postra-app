@@ -1,0 +1,65 @@
+name: Image
+
+# The production image of every commit on main, published to this
+# organisation's container registry as ghcr.io/postra-app/postra-app:sha-<commit>
+# together with a build provenance attestation (who built it, from which
+# commit and workflow). Releasing the image is this repository's job;
+# deploying it is not.
+
+on:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+  packages: write
+  id-token: write
+  attestations: write
+
+env:
+  IMAGE: ghcr.io/postra-app/postra-app
+
+jobs:
+  image:
+    runs-on: ubuntu-26.04
+    timeout-minutes: 60
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v7
+
+      - name: Log in to the container registry
+        run: echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u "${{ github.actor }}" --password-stdin
+
+      # Source maps go to Sentry during the build. The token is a BuildKit
+      # secret (Dockerfile.dev mounts it on the build step only); without it
+      # the build uploads nothing and still succeeds.
+      - name: Build Docker image
+        env:
+          SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
+        run: |
+          docker build \
+            -f Dockerfile.dev \
+            --build-arg NEXT_PUBLIC_VERSION="${GITHUB_SHA}" \
+            --build-arg SENTRY_ORG="${{ secrets.SENTRY_ORG }}" \
+            --build-arg SENTRY_PROJECT="${{ secrets.SENTRY_PROJECT }}" \
+            --secret id=sentry_auth_token,env=SENTRY_AUTH_TOKEN \
+            --label org.opencontainers.image.source="https://github.com/${GITHUB_REPOSITORY}" \
+            --label org.opencontainers.image.revision="${GITHUB_SHA}" \
+            -t "${IMAGE}:sha-${GITHUB_SHA}" \
+            .
+
+      - name: Push Docker image
+        id: push
+        run: |
+          docker push "${IMAGE}:sha-${GITHUB_SHA}"
+          DIGEST=$(docker inspect --format '{{index .RepoDigests 0}}' "${IMAGE}:sha-${GITHUB_SHA}" | cut -d@ -f2)
+          echo "digest=${DIGEST}" >> "$GITHUB_OUTPUT"
+          echo "${IMAGE}@${DIGEST}"
+
+      - name: Attest build provenance
+        uses: actions/attest-build-provenance@v4
+        with:
+          subject-name: ${{ env.IMAGE }}
+          subject-digest: ${{ steps.push.outputs.digest }}
+          push-to-registry: true
