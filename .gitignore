@@ -78,3 +78,6 @@ e2e/load/users.json
 
 # Stack billing secrets (e2e/stack/README.md)
 backend.env
+
+# Playwright sign-in state (a session cookie), wherever a run leaves it.
+.auth/

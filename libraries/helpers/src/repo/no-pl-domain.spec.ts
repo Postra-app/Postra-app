@@ -16,9 +16,6 @@ const allowed: { file: string; why: string }[] = [
   { file: 'libraries/nestjs-libraries/src/integrations/social/tiktok.provider.ts', why: 'TikTok redirect' },
   // The Polish text of a template, shown only with the Polish interface.
   { file: 'apps/frontend/src/components/design-editor/templates/built-in-templates.ts', why: 'Polish locale' },
-  // Staging is internal and still lives on staging.postra.pl.
-  { file: '.github/scripts/deploy-staging.sh', why: 'staging' },
-  { file: '.github/workflows/deploy.yml', why: 'staging' },
   // The repository README lists the Polish site beside the UK one.
   { file: 'README.md', why: 'Polish site' },
 ];

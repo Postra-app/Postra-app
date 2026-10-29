@@ -2,8 +2,8 @@ import { existsSync, mkdirSync, readFileSync } from 'node:fs';
 import { defineConfig } from '@playwright/test';
 
 // Tests against a whole Postra running locally on throwaway stores
-// (docker-compose.yml). Unlike e2e/playwright, which only ever drafts on
-// production, these may create, publish and delete anything. See README.md.
+// (docker-compose.yml). Unlike checks against production, which may only
+// ever draft, these may create, publish and delete anything. See README.md.
 
 const envKeys = (file: string) =>
   existsSync(file)

@@ -16,13 +16,6 @@ const dir = join(root, '.github', 'workflows');
 const workflows = readdirSync(dir)
   .filter((name) => /\.ya?ml$/.test(name))
   .map((name) => ({ name, text: readFileSync(join(dir, name), 'utf8') }));
-const scripts = [
-  ...workflows,
-  ...['deploy-staging.sh', 'asg-refresh.sh'].map((name) => ({
-    name: `scripts/${name}`,
-    text: readFileSync(join(root, '.github', 'scripts', name), 'utf8'),
-  })),
-];
 
 const labels = workflows.flatMap(({ name, text }) =>
   [...text.matchAll(/^\s*runs-on:\s*'?([^'\s]+)'?\s*$/gm)].map((m) => ({
@@ -40,7 +33,7 @@ describe('CI workflows', () => {
     expect(new Set(labels.map((l) => l.label)).size).toBe(1);
   });
 
-  it.each(scripts)(
+  it.each(workflows)(
     '$name installs Playwright at the root devDependency version',
     ({ text }) => {
       expect(text).not.toMatch(/@playwright\/test@\d/);
@@ -50,7 +43,7 @@ describe('CI workflows', () => {
   // Same for the Prisma CLI: `pnpm dlx prisma@6.5.0` in the scripts, the boot
   // migration and CI kept running 6.5 after @prisma/client moved to 6.19.
   it.each([
-    ...scripts,
+    ...workflows,
     {
       name: 'package.json scripts',
       text: JSON.stringify(
@@ -90,7 +83,7 @@ describe('CI workflows', () => {
   // The app lives on app.postra.co.uk since 2026-10-15. The deploy health
   // check and rollback still asked app-dev.postra.pl, which only answered
   // because the old name points at the same load balancer.
-  it.each(scripts)('$name checks the app on app.postra.co.uk', ({ text }) => {
+  it.each(workflows)('$name checks the app on app.postra.co.uk', ({ text }) => {
     expect(text).not.toMatch(/app(-dev)?\.postra\.pl/);
   });
 
@@ -110,62 +103,6 @@ describe('CI workflows', () => {
     expect(docker).toContain('var/docker/tools/package.json');
     expect(docker).not.toMatch(/install[^\n]*\b(pnpm|pm2)(@|\s|$)/);
     expect(docker).toMatch(/pnpm install --frozen-lockfile/);
-  });
-
-  // Production is the auto scaling group of the postra account since the move
-  // of 2026-10-25: one workflow named "Deploy", APP_IMAGE in SSM plus an
-  // instance refresh. The box deploy over SSM, its EC2_INSTANCE_ID fallback and
-  // the DEPLOY_TARGET switch are gone, so a missing repository variable can no
-  // longer send a deploy to a box that does not exist.
-  it('deploys to the auto scaling group of the postra account only', () => {
-    expect(workflows.map((w) => w.name)).not.toContain('deploy-dev.yml');
-    const deploy = workflows.find((w) => w.name === 'deploy.yml')!.text;
-    expect(deploy).toMatch(/^name: Deploy\n/);
-    expect(deploy).toMatch(/^concurrency:\n  group: deploy\n/m);
-    expect(deploy).toContain(
-      "SSM_PREFIX: ${{ vars.SSM_PREFIX || '/postra/prod' }}"
-    );
-    expect(deploy).not.toMatch(
-      /EC2_INSTANCE_ID|DEPLOY_TARGET|postra-dev-app|\/postra\/dev/
-    );
-    expect(deploy).not.toMatch(/^ {2}deploy-asg:/m);
-    expect(deploy).toMatch(
-      /^ {2}deploy:\n {4}needs: \[build, staging, replay\]\n {4}if: always\(\) && needs\.build\.result == 'success'/m
-    );
-    // Production's running workflows replay on the new image before it ships: a
-    // failed replay stops the deploy, a skipped one (variables unset) does not.
-    expect(deploy).toContain(
-      "(needs.replay.result == 'success' || needs.replay.result == 'skipped')"
-    );
-    expect(deploy).toContain('node /app/scripts/replay-histories.mjs /histories');
-    expect(deploy).toMatch(
-      /put-parameter --name "\$\{SSM_PREFIX\}\/APP_IMAGE"/
-    );
-    // The rollback target is the last image that passed the checks, written
-    // after the smoke, never the image a cancelled deploy left in APP_IMAGE.
-    const verified = deploy.indexOf(
-      'put-parameter --name "${SSM_PREFIX}/APP_IMAGE_VERIFIED"'
-    );
-    expect(verified).toBeGreaterThan(
-      deploy.indexOf('Smoke test (Playwright)', deploy.indexOf('\n  deploy:'))
-    );
-    expect(verified).toBeLessThan(
-      deploy.indexOf(
-        'Roll back to the previous image',
-        deploy.indexOf('\n  deploy:')
-      )
-    );
-    expect(deploy).toMatch(
-      /get-parameter --name "\$\{SSM_PREFIX\}\/APP_IMAGE_VERIFIED"/
-    );
-    expect(deploy).toContain('.github/scripts/asg-refresh.sh "${ASG_NAME}"');
-    // The same commit again skips the build: the tag is immutable.
-    expect(deploy).toMatch(
-      /ecr describe-images --repository-name "\$\{ECR_REPOSITORY\}" --image-ids "imageTag=\$\{IMAGE_TAG_SHA\}"/
-    );
-    expect(
-      deploy.match(/if: steps\.existing\.outputs\.exists != 'true'/g)
-    ).toHaveLength(2);
   });
 
   // pm2 kept every process's output in /www/.pm2/logs for ever and nginx wrote
