@@ -401,7 +401,9 @@
       "@opentelemetry/core@>=2.0.0 <2.8.0": "^2.8.0",
       "uuid@>=11.0.0 <11.1.1": "^11.1.1",
       "langsmith@>=0.4.0 <0.6.0": "^0.11.0",
-      "esbuild@>=0.27.3 <0.28.1": "^0.28.2"
+      "esbuild@>=0.27.3 <0.28.1": "^0.28.2",
+      "re2js@>=2.2.0 <2.8.7": "^2.8.7",
+      "@modelcontextprotocol/node@>=2.0.0 <2.1.0": "^2.1.0"
     },
     "onlyBuiltDependencies": [
       "bcrypt"
