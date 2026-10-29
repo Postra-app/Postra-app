@@ -29,6 +29,7 @@ import {
 } from '@gitroom/nestjs-libraries/services/auth/permission.exception.class';
 import { bustAuthContextCache } from '@gitroom/backend/services/auth/auth.middleware';
 import dayjs from 'dayjs';
+import { escapeHtml } from '@gitroom/helpers/utils/escape.html';
 
 // Billing mutations change what the org's card is charged — restrict to org
 // admins/owner (ADMIN section = ADMIN/SUPERADMIN role). A regular invited
@@ -232,7 +233,10 @@ export class BillingController {
         await this._notificationService.sendEmail(
           process.env.EMAIL_ADMIN_ADDRESS || process.env.EMAIL_FROM_ADDRESS,
           'Subscription Cancelled',
-          `Organization ${org.name} has cancelled their subscription because: ${body.feedback}`,
+          // Both are the customer's text: escaped, and the feedback capped.
+          `Organization ${escapeHtml(org.name)} has cancelled their subscription because: ${escapeHtml(
+            String(body?.feedback ?? '').slice(0, 2000)
+          )}`,
           user.email
         );
 

@@ -50,6 +50,7 @@ import { readResponseCapped } from '@gitroom/nestjs-libraries/media/fetch.media.
 // dispatcher below (throws "invalid onRequestStart method"); see design-render.
 import { fetch } from 'undici';
 import { fromBuffer } from '@gitroom/nestjs-libraries/upload/file.type';
+import { isOwnMediaUrl, ownMediaHosts } from '@gitroom/helpers/utils/own.media.url';
 
 const PUBLIC_API_ALLOWED_MIME = new Set<string>([
   'image/jpeg',
@@ -230,19 +231,16 @@ export class PublicIntegrationsController {
       post.type = body.type;
     }
 
+    // The same hosts as everywhere else (own.media.url.ts): an exact host of
+    // the comma-separated list, not a substring of the URL.
     if (
-      process.env.RESTRICT_UPLOAD_DOMAINS &&
       body.posts.some((p) =>
-        p.value.some((a) =>
-          a.image.some(
-            (i) => i.path.indexOf(process.env.RESTRICT_UPLOAD_DOMAINS) === -1
-          )
-        )
+        p.value.some((a) => (a.image || []).some((i) => !isOwnMediaUrl(i.path || '')))
       )
     ) {
       throw new HttpException(
         {
-          msg: `All media must be uploaded through our upload API route and contain the domain: ${process.env.RESTRICT_UPLOAD_DOMAINS}`,
+          msg: `All media must be uploaded through our upload API route and served from: ${ownMediaHosts().join(', ')}`,
         },
         400
       );

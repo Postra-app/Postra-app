@@ -9,7 +9,6 @@ export default {
   testPathIgnorePatterns: ['/node_modules/', '/\\.next/', '/dist/'],
   moduleFileExtensions: ['ts', 'tsx', 'js', 'jsx', 'json'],
   testEnvironment: 'node',
-  setupFiles: ['<rootDir>/jest.setup-dispose.js'],
   clearMocks: true,
   // Mirror the @gitroom/* path aliases from tsconfig.base.json so specs can
   // import source files that use them.
@@ -38,7 +37,7 @@ export default {
         tsconfig: { jsx: 'react-jsx', esModuleInterop: true },
       },
     ],
-    // file-type is ESM-only. Node 22 requires it as is; Jest 29 cannot, so
+    // file-type is ESM-only. Node requires it as is; Jest 29 cannot, so
     // it and its ESM dependencies are compiled to CommonJS for the tests.
     [`/node_modules/${ESM_PACKAGES}/.+\\.js$`]: [
       'ts-jest',

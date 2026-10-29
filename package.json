@@ -7,7 +7,7 @@
   "keywords": [],
   "author": "",
   "engines": {
-    "node": ">=22.23.4 <23.0.0"
+    "node": ">=26.13.0 <27.0.0"
   },
   "packageManager": "pnpm@10.34.7",
   "scripts": {
@@ -40,7 +40,6 @@
     "test": "jest --coverage --forceExit --reporters=default --reporters=jest-junit",
     "lint": "eslint apps libraries e2e",
     "typecheck": "node scripts/typecheck.mjs",
-    "e2e:smoke": "playwright test -c e2e/playwright",
     "e2e:stack": "docker compose -f e2e/stack/docker-compose.yml up -d --wait && dotenv -e e2e/stack/stack.env -- node scripts/db-migrate.mjs && playwright test -c e2e/stack",
     "e2e:stack:ui": "STACK_UI=1 pnpm e2e:stack",
     "e2e:stack:restart": "STACK_RESTART=1 pnpm e2e:stack --project restart",
@@ -312,7 +311,7 @@
     "vite-tsconfig-paths": "^5.1.4"
   },
   "volta": {
-    "node": "22.23.4"
+    "node": "26.13.0"
   },
   "jest-junit": {
     "outputDirectory": "./reports",
