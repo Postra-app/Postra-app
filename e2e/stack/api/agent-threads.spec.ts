@@ -1,12 +1,16 @@
 import { randomUUID } from 'node:crypto';
 import { APIRequestContext, expect, test } from '@playwright/test';
-import { signedIn } from '../helpers';
+import { database, throwawayOrg } from '../helpers';
 
 // CopilotKit's runtime keeps every chat's events in one store for the whole
 // process, keyed by thread id alone. Organisation B holding a thread id of A
 // must not be able to read that chat, continue it or stop it, nor reach the
 // store through the runtime's thread resource methods.
 
+// Throwaway organisations: the seeded ones run other agent specs in parallel,
+// and an organisation runs at most two agent replies at once.
+const prisma = database();
+const orgs: Awaited<ReturnType<typeof throwawayOrg>>[] = [];
 let a: APIRequestContext;
 let b: APIRequestContext;
 const threadId = randomUUID();
@@ -24,12 +28,14 @@ const runBody = (text: string) => ({
 
 test.describe.configure({ mode: 'serial' });
 test.beforeAll(async () => {
-  a = await signedIn('a');
-  b = await signedIn('b');
+  for (let i = 0; i < 2; i++) {
+    orgs.push(await throwawayOrg(prisma, { tier: 'PRO', totalChannels: 6, channels: 0 }));
+  }
+  [a, b] = orgs.map((o) => o.api);
 });
 test.afterAll(async () => {
-  await a.dispose();
-  await b.dispose();
+  for (const o of orgs) await o.remove();
+  await prisma.$disconnect();
 });
 
 test("organisation A's chat runs and is A's", async () => {

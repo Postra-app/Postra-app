@@ -20,6 +20,15 @@ test('a chat opened again shows its messages, and they stay', async ({ page }) =
     await route.continue();
   });
 
+  const connected = () =>
+    page.waitForResponse(
+      (r) => r.url().endsWith('/copilot/agent') && (r.request().postData() || '').includes('"agent/connect"')
+    );
+  // Only the chat itself: the thread list beside it shows titles, and other
+  // specs of the same organisation leave threads titled with the same answer.
+  const chat = page.locator('.copilotKitMessages');
+
+  const firstConnect = connected();
   await page.goto('/agents');
   await expect(page).toHaveURL(/\/agents\/[0-9a-f-]{36}$/);
   const chatUrl = page.url();
@@ -27,20 +36,23 @@ test('a chat opened again shows its messages, and they stay', async ({ page }) =
   const input = page.getByPlaceholder(/Write your (post|message)/);
   // The chat takes no message while it connects to the thread (held back
   // 1.5 s above), as for a person typing straight away.
+  await firstConnect;
   await expect(page.locator('[data-copilotkit-in-progress="false"]')).toBeVisible({ timeout: 15_000 });
   await input.fill(question);
   await input.press('Enter');
-  await expect(page.getByText(ANSWER).first()).toBeVisible({ timeout: 30_000 });
+  await expect(chat.getByText(ANSWER).first()).toBeVisible({ timeout: 30_000 });
 
   await page.goto('/agents');
   await expect(page).not.toHaveURL(chatUrl);
+  const reopened = connected();
   await page.goto(chatUrl);
 
-  await expect(page.getByText(question)).toBeVisible({ timeout: 15_000 });
-  await expect(page.getByText(ANSWER).first()).toBeVisible();
+  await expect(chat.getByText(question)).toBeVisible({ timeout: 15_000 });
+  await expect(chat.getByText(ANSWER).first()).toBeVisible();
   // Still there once every load has answered.
+  await reopened;
   await page.waitForTimeout(3_000);
-  await expect(page.getByText(question)).toBeVisible();
-  await expect(page.getByText(ANSWER).first()).toBeVisible();
+  await expect(chat.getByText(question)).toBeVisible();
+  await expect(chat.getByText(ANSWER).first()).toBeVisible();
   expect(problems).toEqual([]);
 });
