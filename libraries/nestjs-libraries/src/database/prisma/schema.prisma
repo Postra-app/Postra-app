@@ -13,7 +13,7 @@ model Organization {
   name                String
   description         String?
   // enc2:: ciphertext of the key, shown to admins; requests are matched on
-  // apiKeyHash (SHA-256 of the key), E2E-11-108.
+  // apiKeyHash (SHA-256 of the key).
   apiKey              String?
   apiKeyHash          String?              @unique
   paymentId           String?

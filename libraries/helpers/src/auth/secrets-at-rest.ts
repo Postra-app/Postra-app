@@ -8,10 +8,10 @@ import crypto from 'crypto';
 // key, OAuth client secrets, codes and tokens) are not stored reversibly at
 // all: lookupHash() below.
 //
-// Until 2026-10-30 everything went through AES-256-CBC with a fixed IV and a
+// Before this format everything went through AES-256-CBC with a fixed IV and a
 // key derived from JWT_SECRET (no salt, MD5): one value always gave the same
 // ciphertext, nothing detected tampering, and the JWT signing secret could
-// not change without losing every stored token (E2E-11-108). The legacy
+// not change without losing every stored token. The legacy
 // format is still read, and the backend rewrites it at start
 // (secrets-upgrade.service.ts).
 //

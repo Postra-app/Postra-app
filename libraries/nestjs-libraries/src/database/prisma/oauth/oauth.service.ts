@@ -22,7 +22,7 @@ export const pkceMatches = (challenge?: string | null, verifier?: string) => {
 };
 
 // Client secrets, codes and access tokens are only compared, so they are
-// stored as their SHA-256 (E2E-11-108). A row the backend's secrets upgrade
+// stored as their SHA-256. A row the backend's secrets upgrade
 // has not reached still holds the legacy deterministic ciphertext.
 export const storedForms = (value: string) => [
   AuthService.lookupHash(value),

@@ -118,7 +118,7 @@ export function hasSecrets(body: string | null | undefined): boolean {
 }
 
 // Integration tokens are stored encrypted, with one of these markers in front
-// (enc2:: since 2026-10-30, enc:: before). Redaction covers them anyway — an
+// (enc2:: now, enc:: before). Redaction covers them anyway — an
 // encrypted token is no use in a diagnosis either — but they are not a leak,
 // and counting them as one is how a clean-up report ends up claiming a
 // hundred leaks where there were fifty.

@@ -8,8 +8,8 @@ jest.mock('@gitroom/nestjs-libraries/redis/redis.service', () => ({
   ioRedis: {},
 }));
 
-// Client secrets, codes and tokens are stored as their SHA-256 since
-// 2026-10-30 (E2E-11-108); rows from before hold the legacy ciphertext until
+// Client secrets, codes and tokens are stored as their SHA-256; rows from
+// before hold the legacy ciphertext until
 // the backend's secrets upgrade rewrites them, possibly mid-exchange.
 describe('OAuth secrets in either stored form', () => {
   beforeEach(() => {

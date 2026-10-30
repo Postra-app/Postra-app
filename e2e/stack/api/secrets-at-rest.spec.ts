@@ -3,7 +3,7 @@ import { BACKEND_URL, database, throwawayOrg } from '../helpers';
 import { AuthService, encrypt_legacy_using_IV } from '@gitroom/helpers/auth/auth.service';
 import { SecretsUpgradeService } from '@gitroom/nestjs-libraries/database/prisma/secrets/secrets-upgrade.service';
 
-// Secrets at rest (E2E-11-108): rows written before 2026-10-30 hold the
+// Secrets at rest: rows written before the current format hold the
 // fixed-IV cipher under JWT_SECRET. They keep working until the backend's
 // upgrade rewrites them (enc2:: for what is read back, sha256: for what is
 // only compared), and the same API key, OAuth token and channel token work

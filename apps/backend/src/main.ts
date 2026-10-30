@@ -184,7 +184,7 @@ async function start() {
     startMetricsServer();
 
     // Secrets still in a legacy format (plaintext tokens, the fixed-IV
-    // cipher) are rewritten into the current one (E2E-11-108). Fire-and-forget
+    // cipher) are rewritten into the current one. Fire-and-forget
     // so it never delays or breaks boot; idempotent, so it runs every start.
     runSecretsUpgrade(app).catch((e) =>
       Logger.warn(

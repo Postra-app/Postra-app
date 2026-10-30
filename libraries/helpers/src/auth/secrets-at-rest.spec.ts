@@ -13,7 +13,7 @@ import {
 const KEY_A = 'a'.repeat(16) + 'A1b2C3d4E5f6G7h8I9j0';
 const KEY_B = 'b'.repeat(16) + 'Z9y8X7w6V5u4T3s2R1q0';
 
-describe('secrets at rest (E2E-11-108)', () => {
+describe('secrets at rest', () => {
   beforeEach(() => {
     process.env.JWT_SECRET = 'jwt-secret-for-tests';
     process.env.TOKEN_ENCRYPTION_KEYS = `k1:${KEY_A}`;

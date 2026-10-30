@@ -21,7 +21,7 @@ import { normalizeEmail } from '@gitroom/helpers/utils/email.normalize';
 export const organizationRegion = (region?: string) =>
   region === 'PL' ? 'PL' : 'UK';
 
-// The two stored columns of a new API key (E2E-11-108); the admin reads the
+// The two stored columns of a new API key; the admin reads the
 // key back through AuthService.apiKeyForDisplay.
 const storedApiKey = () => {
   const { apiKey, apiKeyHash } = AuthService.newApiKey();

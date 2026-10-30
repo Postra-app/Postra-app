@@ -8,7 +8,7 @@ import { PrismaService } from '@gitroom/nestjs-libraries/database/prisma/prisma.
 
 /**
  * Rewrites secrets stored in the legacy format (fixed-IV AES-CBC under
- * JWT_SECRET) into the current one (E2E-11-108, secrets-at-rest.ts): values
+ * JWT_SECRET) into the current one (secrets-at-rest.ts): values
  * the app reads back become enc2:: ciphertext under the key that encrypts
  * now (also after a rotation), values it only compares become their SHA-256.
  * Runs at every backend start, after listen: rows already in the current
