@@ -63,3 +63,29 @@ jobs:
           subject-name: ${{ env.IMAGE }}
           subject-digest: ${{ steps.push.outputs.digest }}
           push-to-registry: true
+
+  # Every commit on main adds an image; the registry keeps the newest 20
+  # (deploys copy the image to ECR, so older ones serve nothing here). A
+  # separate job: a failed prune leaves the image published.
+  prune:
+    needs: image
+    runs-on: ubuntu-26.04
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: package.json
+
+      - name: Delete images older than the newest 20
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PACKAGE_OWNER: ${{ github.repository_owner }}
+          PACKAGE_NAME: postra-app
+          KEEP: '20'
+        run: node scripts/prune-image-versions.mjs
