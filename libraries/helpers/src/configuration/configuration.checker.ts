@@ -26,6 +26,10 @@ export class ConfigurationChecker {
   check() {
     this.checkDatabaseServers();
     this.checkNonEmpty('JWT_SECRET');
+    this.checkNonEmpty(
+      'TOKEN_ENCRYPTION_KEYS',
+      'Secrets in the database are encrypted with a key derived from JWT_SECRET, which then cannot change.'
+    );
     this.checkIsValidUrl('MAIN_URL');
     this.checkIsValidUrl('FRONTEND_URL');
     this.checkIsValidUrl('NEXT_PUBLIC_BACKEND_URL');

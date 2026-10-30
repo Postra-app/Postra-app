@@ -16,11 +16,17 @@ import { makeId } from '@gitroom/nestjs-libraries/services/make.is';
 import { makeSecureId } from '@gitroom/nestjs-libraries/services/make.secure.id';
 import { normalizeEmail } from '@gitroom/helpers/utils/email.normalize';
 
-
 // Launch market is the UK: a sign-up without an explicit ?region=pl (straight
 // to /auth/register, the mobile app's link, Google) is a UK customer.
 export const organizationRegion = (region?: string) =>
   region === 'PL' ? 'PL' : 'UK';
+
+// The two stored columns of a new API key; the admin reads the
+// key back through AuthService.apiKeyForDisplay.
+const storedApiKey = () => {
+  const { apiKey, apiKeyHash } = AuthService.newApiKey();
+  return { apiKey, apiKeyHash };
+};
 
 @Injectable()
 export class OrganizationRepository {
@@ -32,15 +38,15 @@ export class OrganizationRepository {
     private _transaction: PrismaTransaction
   ) {}
 
-  createMaxUser(id: string, name: string, saasName: string, email: string) {
-    return this._organization.model.organization.create({
+  async createMaxUser(id: string, name: string, saasName: string, email: string) {
+    const org = await this._organization.model.organization.create({
       select: {
         id: true,
         apiKey: true,
       },
       data: {
         name: name ? `${name}###${id}` : `Unnamed User###${id}`,
-        apiKey: AuthService.fixedEncryption(makeSecureId(20)),
+        ...storedApiKey(),
         isTrailing: false,
         subscription: {
           create: {
@@ -69,12 +75,18 @@ export class OrganizationRepository {
         },
       },
     });
+    // The enterprise caller gets the key it will send, not the ciphertext.
+    return { ...org, apiKey: AuthService.apiKeyForDisplay(org.apiKey) };
   }
 
   async getOrgByApiKey(api: string) {
     const org = await this._organization.model.organization.findFirst({
       where: {
-        apiKey: api,
+        OR: [
+          { apiKeyHash: AuthService.lookupHash(api) },
+          // A row the secrets upgrade has not reached holds the key itself.
+          ...(api && !api.startsWith('enc2::') ? [{ apiKey: api, apiKeyHash: null }] : []),
+        ],
       },
       include: {
         subscription: {
@@ -214,7 +226,7 @@ export class OrganizationRepository {
         id: orgId,
       },
       data: {
-        apiKey: AuthService.fixedEncryption(makeSecureId(20)),
+        ...storedApiKey(),
       },
     });
   }
@@ -420,7 +432,7 @@ export class OrganizationRepository {
     return this._organization.model.organization.create({
       data: {
         name: body.company,
-        apiKey: AuthService.fixedEncryption(makeSecureId(20)),
+        ...storedApiKey(),
         allowTrial: true,
         isTrailing: true,
         region: organizationRegion(body.region),

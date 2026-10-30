@@ -12,6 +12,6 @@ it('the API key and OAuth token lookups load the subscription start', async () =
 
   const authFindFirst = jest.fn().mockResolvedValue(null);
   const oauth = new (OAuthRepository as any)(...Array.from({ length: 4 }, () => ({ model: { oAuthAuthorization: { findFirst: authFindFirst } } })));
-  await oauth.findByAccessToken('token');
+  await oauth.findByAccessToken(['token']);
   expect(authFindFirst.mock.calls[0][0].include.organization.include.subscription.select.createdAt).toBe(true);
 });

@@ -3,14 +3,17 @@ import { hashSync, compare } from 'bcrypt';
 import crypto from 'crypto';
 // @ts-ignore
 import EVP_BytesToKey from 'evp_bytestokey';
+import {
+  decryptSecret,
+  encryptSecret,
+  isSecretEncrypted,
+  LEGACY_TOKEN_MARKER,
+  lookupHash,
+} from './secrets-at-rest';
 const algorithm = 'aes-256-cbc';
-const { keyLength, ivLength } = crypto.getCipherInfo(algorithm);
 
-// Prefix that marks an integration token/refreshToken as encrypted-at-rest.
-// Real provider tokens never start with this, and the cipher output is hex,
-// so the marker can never collide — making encrypt/decrypt idempotent and
-// backward-compatible with legacy plaintext rows (which simply pass through).
-const INTEGRATION_TOKEN_MARKER = 'enc::';
+// The legacy scheme below (fixed IV, key from JWT_SECRET) is only read now:
+// secrets-at-rest.ts has the current one and why it replaced this.
 
 function deriveLegacyKeyIv(secret: string) {
   const { keyLength, ivLength } = crypto.getCipherInfo(algorithm); // 32, 16
@@ -84,30 +87,61 @@ export class AuthService {
     return verify(token, secret, { algorithms: [JWT_ALGORITHM] });
   }
 
-  static fixedEncryption(value: string) {
+  // A secret the app reads back later (third-party keys, custom instance
+  // details): enc2:: ciphertext, see secrets-at-rest.ts.
+  static encryptSecret(value: string) {
+    return encryptSecret(value);
+  }
+
+  // Reads the current format and the legacy one (bare hex, fixed IV) that
+  // stored values had until the backend's secrets upgrade rewrote them.
+  static decryptSecret(value: string) {
+    return isSecretEncrypted(value)
+      ? decryptSecret(value)
+      : decrypt_legacy_using_IV(value);
+  }
+
+  // What is stored for a secret Postra only compares: the organisation API
+  // key, OAuth client secrets, codes and access tokens.
+  static lookupHash(value: string) {
+    return lookupHash(value);
+  }
+
+  // The deterministic legacy ciphertext those secrets were stored as; a row
+  // the upgrade has not reached yet is still found by it.
+  static legacyLookup(value: string) {
     return encrypt_legacy_using_IV(value);
   }
 
-  static fixedDecryption(hash: string) {
-    return decrypt_legacy_using_IV(hash);
+  // A new organisation API key: what the admin sees and sends, and the two
+  // stored columns. 64 hex characters, the shape keys have always had.
+  static newApiKey() {
+    const key = crypto.randomBytes(32).toString('hex');
+    return { key, apiKey: encryptSecret(key), apiKeyHash: lookupHash(key) };
   }
 
-  // Encrypt a social integration token for storage at rest. Idempotent: an
-  // already-encrypted value (or empty/null) is returned unchanged, so it is
-  // safe to call on values that may already be encrypted.
+  // The key as the admin uses it. A row from before the upgrade holds the key
+  // itself: the legacy ciphertext of a random id was handed out as the key.
+  static apiKeyForDisplay(stored: string | null | undefined) {
+    if (!stored) {
+      return stored;
+    }
+    return isSecretEncrypted(stored) ? decryptSecret(stored) : stored;
+  }
+
+  // Encrypt a social integration token (or webhook secret) for storage at
+  // rest. Idempotent: a value already in the current format, or empty/null,
+  // is returned unchanged; a legacy enc:: value is re-encrypted.
   static encryptIntegrationToken(value: string): string;
   static encryptIntegrationToken(value: string | null): string | null;
   static encryptIntegrationToken(
     value: string | null | undefined
   ): string | null | undefined;
   static encryptIntegrationToken(value: string | null | undefined) {
-    if (typeof value !== 'string' || value === '') {
+    if (typeof value !== 'string' || value === '' || isSecretEncrypted(value)) {
       return value;
     }
-    if (value.startsWith(INTEGRATION_TOKEN_MARKER)) {
-      return value;
-    }
-    return INTEGRATION_TOKEN_MARKER + encrypt_legacy_using_IV(value);
+    return encryptSecret(AuthService.decryptIntegrationToken(value));
   }
 
   // Decrypt a stored integration token. Idempotent: a plaintext value (legacy
@@ -119,14 +153,15 @@ export class AuthService {
     value: string | null | undefined
   ): string | null | undefined;
   static decryptIntegrationToken(value: string | null | undefined) {
-    if (
-      typeof value !== 'string' ||
-      !value.startsWith(INTEGRATION_TOKEN_MARKER)
-    ) {
+    if (typeof value !== 'string') {
       return value;
     }
-    return decrypt_legacy_using_IV(
-      value.slice(INTEGRATION_TOKEN_MARKER.length)
-    );
+    if (isSecretEncrypted(value)) {
+      return decryptSecret(value);
+    }
+    if (value.startsWith(LEGACY_TOKEN_MARKER)) {
+      return decrypt_legacy_using_IV(value.slice(LEGACY_TOKEN_MARKER.length));
+    }
+    return value;
   }
 }

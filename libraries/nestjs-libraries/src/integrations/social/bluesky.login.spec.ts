@@ -25,7 +25,7 @@ describe('Bluesky login failures', () => {
 
   describe('when publishing (getAgent)', () => {
     const integration = {
-      customInstanceDetails: AuthService.fixedEncryption(
+      customInstanceDetails: AuthService.encryptSecret(
         JSON.stringify({ service: 'https://bsky.social', identifier: 'a.bsky.social', password: 'x' })
       ),
     } as any;

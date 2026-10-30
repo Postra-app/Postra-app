@@ -43,8 +43,7 @@ import { StripeErrorExceptionFilter } from '@gitroom/backend/api/routes/stripe.e
 import { HttpExceptionFilter } from '@gitroom/nestjs-libraries/services/exception.filter';
 import { ConfigurationChecker } from '@gitroom/helpers/configuration/configuration.checker';
 import { startMcp } from '@gitroom/nestjs-libraries/chat/start.mcp';
-import { IntegrationService } from '@gitroom/nestjs-libraries/database/prisma/integrations/integration.service';
-import { ioRedis } from '@gitroom/nestjs-libraries/redis/redis.service';
+import { SecretsUpgradeService } from '@gitroom/nestjs-libraries/database/prisma/secrets/secrets-upgrade.service';
 import { startMetricsServer } from './metrics/metrics';
 import { failBoot } from './boot.failed';
 import { assertNotSecuredOnlyOverHttp } from './not.secured.guard';
@@ -184,11 +183,12 @@ async function start() {
     // throttle/auth guards). Internal docker-net only; Alloy scrapes it.
     startMetricsServer();
 
-    // One-off: encrypt integration tokens still stored as plaintext (A1 backfill).
-    // Fire-and-forget so it never delays or breaks boot; guarded to run once.
-    runTokenBackfill(app).catch((e) =>
+    // Secrets still in a legacy format (plaintext tokens, the fixed-IV
+    // cipher) are rewritten into the current one. Fire-and-forget
+    // so it never delays or breaks boot; idempotent, so it runs every start.
+    runSecretsUpgrade(app).catch((e) =>
       Logger.warn(
-        `Token backfill failed: ${e instanceof Error ? e.message : e}`
+        `Secrets upgrade failed: ${e instanceof Error ? e.message : e}`
       )
     );
 
@@ -216,28 +216,10 @@ function checkConfiguration() {
   }
 }
 
-async function runTokenBackfill(app: Awaited<ReturnType<typeof NestFactory.create>>) {
-  // Encrypt any Integration tokens still stored as plaintext. Idempotent and
-  // guarded by a Redis flag so it runs once across restarts; wrapped so a
-  // failure (e.g. Redis blip) never affects backend boot.
-  try {
-    if (await ioRedis.get('token_encryption_backfill_v1')) {
-      return;
-    }
-    const result = await app
-      .get(IntegrationService)
-      .backfillTokenEncryption();
-    await ioRedis.set('token_encryption_backfill_v1', '1');
-    Logger.log(
-      `Token encryption backfill: ${result.updated}/${result.total} integrations encrypted`
-    );
-  } catch (e) {
-    Logger.warn(
-      `Token encryption backfill skipped: ${
-        e instanceof Error ? e.message : e
-      }`
-    );
-  }
+async function runSecretsUpgrade(app: Awaited<ReturnType<typeof NestFactory.create>>) {
+  const result = await app.get(SecretsUpgradeService).run();
+  // Counts only, never a value.
+  Logger.log(`Secrets upgrade: ${JSON.stringify(result)}`, 'SecretsUpgrade');
 }
 
 start().catch(failBoot);

@@ -191,10 +191,11 @@ export class OAuthRepository {
     });
   }
 
-  findByCode(encryptedCode: string) {
+  // Every form the code may be stored in (OAuthService.storedForms).
+  findByCode(storedCodes: string[]) {
     return this._oauthAuth.model.oAuthAuthorization.findFirst({
       where: {
-        authorizationCode: encryptedCode,
+        authorizationCode: { in: storedCodes },
         revokedAt: null,
       },
     });
@@ -203,22 +204,24 @@ export class OAuthRepository {
   /**
    * Spends the code in the same write that issues the token. Two exchanges of
    * one code both read it before either wrote, both answered with a token,
-   * and the first one stopped working. Returns 0 when it was spent.
+   * and the first one stopped working. Returns 0 when it was spent. Every
+   * stored form of the code counts: the backend's secrets upgrade may turn
+   * the legacy one into its hash between the read and this write.
    */
   async exchangeCodeForToken(
     id: string,
-    encryptedCode: string,
-    encryptedToken: string
+    storedCodes: string[],
+    storedToken: string
   ) {
     const { count } = await this._oauthAuth.model.oAuthAuthorization.updateMany({
       where: {
         id,
-        authorizationCode: encryptedCode,
+        authorizationCode: { in: storedCodes },
         revokedAt: null,
         codeExpiresAt: { gt: new Date() },
       },
       data: {
-        accessToken: encryptedToken,
+        accessToken: storedToken,
         authorizationCode: null,
         codeExpiresAt: null,
       },
@@ -226,10 +229,10 @@ export class OAuthRepository {
     return count;
   }
 
-  async findByAccessToken(encryptedToken: string) {
+  async findByAccessToken(storedTokens: string[]) {
     const authorization = await this._oauthAuth.model.oAuthAuthorization.findFirst({
       where: {
-        accessToken: encryptedToken,
+        accessToken: { in: storedTokens },
         revokedAt: null,
       },
       include: {
@@ -279,8 +282,7 @@ export class OAuthRepository {
         accessToken: { not: null },
       },
       // What the Approved Apps page shows, nothing more: the full rows carried
-      // the app's encrypted client secret and this grant's encrypted access
-      // token.
+      // the app's client secret hash and this grant's access token hash.
       select: {
         id: true,
         createdAt: true,

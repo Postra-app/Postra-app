@@ -21,7 +21,7 @@ jest.mock('@atproto/api', () => ({
   BlobRef: class {},
 }));
 jest.mock('@gitroom/helpers/auth/auth.service', () => ({
-  AuthService: { fixedDecryption: () => JSON.stringify({ service: 'https://bsky.social', identifier: 'a', password: 'b' }) },
+  AuthService: { decryptSecret: () => JSON.stringify({ service: 'https://bsky.social', identifier: 'a', password: 'b' }) },
 }));
 jest.mock('@gitroom/helpers/utils/timer', () => ({ timer: async () => undefined }));
 

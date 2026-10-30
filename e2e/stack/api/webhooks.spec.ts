@@ -125,7 +125,7 @@ test('a webhook has a signing secret only admins see, kept encrypted, rotatable'
     const { secret } = await read.json();
     expect(secret).toMatch(/^whsec_[A-Za-z0-9_-]{43}$/);
     const stored = await prisma.webhooks.findUniqueOrThrow({ where: { id } });
-    expect(stored.secret).toMatch(/^enc::/);
+    expect(stored.secret).toMatch(/^enc2::/);
     expect(stored.secret).not.toContain(secret);
 
     expect((await member.get(`/webhooks/${id}/secret`)).status()).toBe(403);

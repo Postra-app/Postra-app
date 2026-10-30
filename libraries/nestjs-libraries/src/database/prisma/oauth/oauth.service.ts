@@ -21,6 +21,14 @@ export const pkceMatches = (challenge?: string | null, verifier?: string) => {
   return expected.length === given.length && timingSafeEqual(expected, given);
 };
 
+// Client secrets, codes and access tokens are only compared, so they are
+// stored as their SHA-256. A row the backend's secrets upgrade
+// has not reached still holds the legacy deterministic ciphertext.
+export const storedForms = (value: string) => [
+  AuthService.lookupHash(value),
+  AuthService.legacyLookup(value),
+];
+
 @Injectable()
 export class OAuthService {
   constructor(private _oauthRepository: OAuthRepository) {}
@@ -62,7 +70,7 @@ export class OAuthService {
 
     const clientId = 'pca_' + makeSecureId(32);
     const clientSecret = 'pcs_' + makeSecureId(48);
-    const encryptedSecret = AuthService.fixedEncryption(clientSecret);
+    const storedSecret = AuthService.lookupHash(clientSecret);
 
     const app = await this._oauthRepository.createApp(orgId, {
       name: dto.name,
@@ -70,7 +78,7 @@ export class OAuthService {
       pictureId: dto.pictureId,
       redirectUrl: dto.redirectUrl,
       clientId,
-      clientSecret: encryptedSecret,
+      clientSecret: storedSecret,
     });
 
     return { ...app, clientSecret };
@@ -112,8 +120,10 @@ export class OAuthService {
     }
 
     const newSecret = 'pcs_' + makeSecureId(48);
-    const encrypted = AuthService.fixedEncryption(newSecret);
-    await this._oauthRepository.updateClientSecret(orgId, encrypted);
+    await this._oauthRepository.updateClientSecret(
+      orgId,
+      AuthService.lookupHash(newSecret)
+    );
     return { clientSecret: newSecret };
   }
 
@@ -148,7 +158,7 @@ export class OAuthService {
       name,
       redirectUris: dto.redirect_uris,
       clientId,
-      clientSecret: clientSecret ? AuthService.fixedEncryption(clientSecret) : null,
+      clientSecret: clientSecret ? AuthService.lookupHash(clientSecret) : null,
       tokenEndpointAuthMethod: method,
     });
     return {
@@ -206,14 +216,13 @@ export class OAuthService {
     redirectUri?: string
   ) {
     const code = makeSecureId(32);
-    const encryptedCode = AuthService.fixedEncryption(code);
     const codeExpiresAt = new Date(Date.now() + 10 * 60 * 1000);
 
     await this._oauthRepository.createAuthorization({
       oauthAppId,
       userId,
       organizationId,
-      authorizationCode: encryptedCode,
+      authorizationCode: AuthService.lookupHash(code),
       codeExpiresAt,
       codeChallenge: codeChallenge ?? null,
       redirectUri: redirectUri ?? null,
@@ -242,7 +251,9 @@ export class OAuthService {
     const publicClient = app.dynamic && !app.clientSecret;
     if (
       !publicClient &&
-      (!clientSecret || app.clientSecret !== AuthService.fixedEncryption(clientSecret))
+      (!clientSecret ||
+        !app.clientSecret ||
+        !storedForms(clientSecret).includes(app.clientSecret))
     ) {
       throw new HttpException(
         { error: 'invalid_client' },
@@ -250,8 +261,7 @@ export class OAuthService {
       );
     }
 
-    const encryptedCode = AuthService.fixedEncryption(code);
-    const auth = await this._oauthRepository.findByCode(encryptedCode);
+    const auth = await this._oauthRepository.findByCode(storedForms(code));
     if (!auth || auth.oauthAppId !== app.id) {
       throw new HttpException(
         { error: 'invalid_grant' },
@@ -296,11 +306,10 @@ export class OAuthService {
     }
 
     const token = 'pos_' + makeSecureId(40);
-    const encryptedToken = AuthService.fixedEncryption(token);
     const spent = await this._oauthRepository.exchangeCodeForToken(
       auth.id,
-      encryptedCode,
-      encryptedToken
+      storedForms(code),
+      AuthService.lookupHash(token)
     );
     if (!spent) {
       throw new HttpException(
@@ -321,9 +330,8 @@ export class OAuthService {
   // whoever approved it is one. It used to outlive their removal from the
   // team, a suspension and the app's deletion.
   async getOrgByOAuthToken(token: string) {
-    const encrypted = AuthService.fixedEncryption(token);
     const authorization = await this._oauthRepository.findByAccessToken(
-      encrypted
+      storedForms(token)
     );
     if (
       !authorization ||
