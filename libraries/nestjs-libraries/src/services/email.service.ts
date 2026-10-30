@@ -147,7 +147,10 @@ export class EmailService {
           modifiedHtml,
           process.env.EMAIL_FROM_NAME,
           process.env.EMAIL_FROM_ADDRESS,
-          replyTo
+          // The sender address usually has no mailbox: without a Reply-To,
+          // a customer answering a password reset or an invitation reaches
+          // nobody.
+          replyTo || process.env.EMAIL_REPLY_TO || undefined
         );
         return true;
       } catch (err) {
