@@ -36,7 +36,7 @@ export class SkoolProvider extends SocialAbstract implements SocialProvider {
     const stored = integration.customInstanceDetails!;
     try {
       // Current format: credentials stored as at-rest AES-encrypted JSON.
-      return JSON.parse(AuthService.fixedDecryption(stored)) as {
+      return JSON.parse(AuthService.decryptSecret(stored)) as {
         client_id: string;
         auth_token: string;
       };
@@ -120,7 +120,7 @@ export class SkoolProvider extends SocialAbstract implements SocialProvider {
       return {
         refreshToken: '',
         expiresIn: dayjs().add(100, 'year').unix() - dayjs().unix(),
-        accessToken: AuthService.fixedEncryption(JSON.stringify(cookies)),
+        accessToken: AuthService.encryptSecret(JSON.stringify(cookies)),
         id: data.id,
         name: data.first_name + ' ' + data.last_name,
         picture: data.metadata.picture_profile || '',

@@ -12,7 +12,10 @@ model Organization {
   id                  String               @id @default(uuid())
   name                String
   description         String?
+  // enc2:: ciphertext of the key, shown to admins; requests are matched on
+  // apiKeyHash (SHA-256 of the key), E2E-11-108.
   apiKey              String?
+  apiKeyHash          String?              @unique
   paymentId           String?
   streakSince         DateTime?
   createdAt           DateTime             @default(now())

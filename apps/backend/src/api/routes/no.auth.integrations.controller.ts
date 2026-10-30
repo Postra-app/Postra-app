@@ -607,13 +607,13 @@ export class NoAuthIntegrationsController {
           body.refresh,
           body.timezone,
           details
-            ? AuthService.fixedEncryption(details)
+            ? AuthService.encryptSecret(details)
             : integrationProvider.customFields
-            ? AuthService.fixedEncryption(
+            ? AuthService.encryptSecret(
                 Buffer.from(body.code, 'base64').toString()
               )
             : integrationProvider.isChromeExtension
-            ? AuthService.fixedEncryption(
+            ? AuthService.encryptSecret(
                 Buffer.from(body.code, 'base64').toString()
               )
             : undefined,
@@ -678,7 +678,7 @@ export class NoAuthIntegrationsController {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             params: AuthService.signJWT({
-              apiKey: org.apiKey,
+              apiKey: AuthService.apiKeyForDisplay(org.apiKey),
             }),
           }),
         });

@@ -88,7 +88,7 @@ export class ThirdPartyController {
     }
 
     const loadedData = await thirdPartyInstance?.instance?.sendData(
-      AuthService.fixedDecryption(thirdParty.apiKey),
+      AuthService.decryptSecret(thirdParty.apiKey),
       data
     );
 
@@ -133,7 +133,7 @@ export class ThirdPartyController {
     }
 
     return thirdPartyInstance.instance[safeName]!(
-      AuthService.fixedDecryption(thirdParty.apiKey),
+      AuthService.decryptSecret(thirdParty.apiKey),
       data
     );
   }
@@ -163,7 +163,7 @@ export class ThirdPartyController {
     }
 
     const downloadUrls = await thirdPartyInstance?.instance?.['importMedia']?.(
-      AuthService.fixedDecryption(thirdParty.apiKey),
+      AuthService.decryptSecret(thirdParty.apiKey),
       body.items
     );
 

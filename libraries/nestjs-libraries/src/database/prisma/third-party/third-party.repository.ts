@@ -56,7 +56,7 @@ export class ThirdPartyRepository {
         name: data.name,
         internalId: data.id,
         identifier,
-        apiKey: AuthService.fixedEncryption(apiKey),
+        apiKey: AuthService.encryptSecret(apiKey),
         deletedAt: null,
       },
       update: {
@@ -64,7 +64,7 @@ export class ThirdPartyRepository {
         name: data.name,
         internalId: data.id,
         identifier,
-        apiKey: AuthService.fixedEncryption(apiKey),
+        apiKey: AuthService.encryptSecret(apiKey),
         deletedAt: null,
       },
     });

@@ -1,3 +1,4 @@
+import { SecretsUpgradeService } from '@gitroom/nestjs-libraries/database/prisma/secrets/secrets-upgrade.service';
 import { MaintenanceService } from '@gitroom/nestjs-libraries/database/prisma/maintenance/maintenance.service';
 import { Global, Module } from '@nestjs/common';
 import { PrismaRepository, PrismaService, PrismaTransaction } from './prisma.service';
@@ -117,6 +118,7 @@ import { AiUsageService } from '@gitroom/nestjs-libraries/database/prisma/ai-usa
     MobilePushService,
     AuditService,
     AiUsageService,
+    SecretsUpgradeService,
   ],
   get exports() {
     return this.providers;

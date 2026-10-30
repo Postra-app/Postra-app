@@ -300,7 +300,7 @@ export class BlueskyProvider extends SocialAbstract implements SocialProvider {
 
   private async getAgent(integration: Integration) {
     const body = JSON.parse(
-      AuthService.fixedDecryption(integration.customInstanceDetails!)
+      AuthService.decryptSecret(integration.customInstanceDetails!)
     );
     const agent = new BskyAgent({
       service: body.service,
@@ -538,7 +538,7 @@ export class BlueskyProvider extends SocialAbstract implements SocialProvider {
     fields: { likesAmount: string }
   ) {
     const body = JSON.parse(
-      AuthService.fixedDecryption(integration.customInstanceDetails!)
+      AuthService.decryptSecret(integration.customInstanceDetails!)
     );
     const agent = new BskyAgent({
       service: body.service,
@@ -600,7 +600,7 @@ export class BlueskyProvider extends SocialAbstract implements SocialProvider {
     fields: { likesAmount: string; post: string }
   ) {
     const body = JSON.parse(
-      AuthService.fixedDecryption(integration.customInstanceDetails!)
+      AuthService.decryptSecret(integration.customInstanceDetails!)
     );
     const agent = new BskyAgent({
       service: body.service,
@@ -656,7 +656,7 @@ export class BlueskyProvider extends SocialAbstract implements SocialProvider {
     integration: Integration
   ) {
     const body = JSON.parse(
-      AuthService.fixedDecryption(integration.customInstanceDetails!)
+      AuthService.decryptSecret(integration.customInstanceDetails!)
     );
 
     const agent = new BskyAgent({

@@ -18,6 +18,7 @@ import { SubscriptionService } from '@gitroom/nestjs-libraries/database/prisma/s
 import { GetOrgFromRequest } from '@gitroom/nestjs-libraries/user/org.from.request';
 import { Response, Request } from 'express';
 import { AuthService } from '@gitroom/backend/services/auth/auth.service';
+import { AuthService as AuthChecker } from '@gitroom/helpers/auth/auth.service';
 import { OrganizationService } from '@gitroom/nestjs-libraries/database/prisma/organizations/organization.service';
 import { CheckPolicies } from '@gitroom/backend/services/auth/permissions/permissions.ability';
 import {
@@ -138,7 +139,7 @@ export class UsersController {
           : organization?.allowTrial,
       streakSince: organization?.streakSince || null,
       // @ts-ignore
-      publicApi: organization?.users[0]?.role === 'SUPERADMIN' || organization?.users[0]?.role === 'ADMIN' ? organization?.apiKey : '',
+      publicApi: organization?.users[0]?.role === 'SUPERADMIN' || organization?.users[0]?.role === 'ADMIN' ? AuthChecker.apiKeyForDisplay(organization?.apiKey) : '',
     };
   }
 
@@ -295,7 +296,7 @@ export class UsersController {
     @GetOrgFromRequest() organization: Organization,
     @GetUserFromRequest() user: User
   ) {
-    const result = await this._orgService.updateApiKey(organization.id);
+    await this._orgService.updateApiKey(organization.id);
     this._auditService.record({
       action: 'security.apikey.rotate',
       userId: user.id,
@@ -304,7 +305,9 @@ export class UsersController {
     // The old key lives in the 30s auth-context cache — drop it so the
     // rotation takes effect immediately.
     await bustAuthContextCache(user.id);
-    return result;
+    // The page reads the new key from /user/self; the whole organisation row
+    // came back here, its stored key hash and Stripe customer id with it.
+    return { success: true };
   }
 
   @Get('/subscription')

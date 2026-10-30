@@ -163,6 +163,7 @@ export const throwawayOrg = async (
   return {
     api,
     orgId: org.id,
+    userId: user.id,
     channelIds,
     remove: async () => {
       await api.dispose();
