@@ -1,3 +1,8 @@
+import {
+  LEGACY_TOKEN_MARKER,
+  SECRET_MARKER,
+} from '@gitroom/helpers/auth/secrets-at-rest';
+
 /**
  * Strip credential material out of anything on its way to storage, a screen or
  * a clipboard.
@@ -112,11 +117,12 @@ export function hasSecrets(body: string | null | undefined): boolean {
   }
 }
 
-// Integration tokens are stored encrypted, with this marker in front. Redaction
-// covers them anyway — an encrypted token is no use in a diagnosis either — but
-// they are not a leak, and counting them as one is how a clean-up report ends
-// up claiming a hundred leaks where there were fifty.
-const INTEGRATION_TOKEN_MARKER = 'enc::';
+// Integration tokens are stored encrypted, with one of these markers in front
+// (enc2:: since 2026-10-30, enc:: before). Redaction covers them anyway — an
+// encrypted token is no use in a diagnosis either — but they are not a leak,
+// and counting them as one is how a clean-up report ends up claiming a
+// hundred leaks where there were fifty.
+const ENCRYPTED_MARKERS = [SECRET_MARKER, LEGACY_TOKEN_MARKER];
 
 export interface SecretCensus {
   /** Secret-named fields holding a value that is not encrypted at rest. */
@@ -155,7 +161,7 @@ export function censusSecrets(body: string | null | undefined): SecretCensus {
       if (typeof value === 'string') {
         // An empty string is a field somebody cleared, not a credential.
         if (value.length) {
-          if (value.startsWith(INTEGRATION_TOKEN_MARKER)) {
+          if (ENCRYPTED_MARKERS.some((marker) => value.startsWith(marker))) {
             census.encrypted++;
           } else {
             census.plaintext++;

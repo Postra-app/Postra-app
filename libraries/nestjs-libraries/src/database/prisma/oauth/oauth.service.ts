@@ -308,7 +308,7 @@ export class OAuthService {
     const token = 'pos_' + makeSecureId(40);
     const spent = await this._oauthRepository.exchangeCodeForToken(
       auth.id,
-      auth.authorizationCode!,
+      storedForms(code),
       AuthService.lookupHash(token)
     );
     if (!spent) {

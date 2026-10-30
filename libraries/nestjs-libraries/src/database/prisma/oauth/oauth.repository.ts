@@ -204,17 +204,19 @@ export class OAuthRepository {
   /**
    * Spends the code in the same write that issues the token. Two exchanges of
    * one code both read it before either wrote, both answered with a token,
-   * and the first one stopped working. Returns 0 when it was spent.
+   * and the first one stopped working. Returns 0 when it was spent. Every
+   * stored form of the code counts: the backend's secrets upgrade may turn
+   * the legacy one into its hash between the read and this write.
    */
   async exchangeCodeForToken(
     id: string,
-    storedCode: string,
+    storedCodes: string[],
     storedToken: string
   ) {
     const { count } = await this._oauthAuth.model.oAuthAuthorization.updateMany({
       where: {
         id,
-        authorizationCode: storedCode,
+        authorizationCode: { in: storedCodes },
         revokedAt: null,
         codeExpiresAt: { gt: new Date() },
       },

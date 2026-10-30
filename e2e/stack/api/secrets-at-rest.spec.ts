@@ -1,6 +1,6 @@
 import { expect, request, test } from '@playwright/test';
 import { BACKEND_URL, database, throwawayOrg } from '../helpers';
-import { encrypt_legacy_using_IV } from '@gitroom/helpers/auth/auth.service';
+import { AuthService, encrypt_legacy_using_IV } from '@gitroom/helpers/auth/auth.service';
 import { SecretsUpgradeService } from '@gitroom/nestjs-libraries/database/prisma/secrets/secrets-upgrade.service';
 
 // Secrets at rest (E2E-11-108): rows written before 2026-10-30 hold the
@@ -18,7 +18,7 @@ const publicApi = (token: string) =>
 
 test('legacy secrets work before and after the upgrade, and are stored in the new form', async () => {
   const prisma = database();
-  const owner = await throwawayOrg(prisma, { tier: 'PRO', totalChannels: 5, channels: 1 });
+  const owner = await throwawayOrg(prisma, { tier: 'PRO', totalChannels: 5, channels: 2 });
   try {
     // As production stored them: the API key handed out was the legacy
     // ciphertext itself; channel tokens enc:: + that cipher; OAuth secrets,
@@ -35,6 +35,16 @@ test('legacy secrets work before and after the upgrade, and are stored in the ne
         token: 'enc::' + encrypt_legacy_using_IV('channel-token'),
         refreshToken: 'enc::' + encrypt_legacy_using_IV('channel-refresh'),
         customInstanceDetails: encrypt_legacy_using_IV('{"service":"https://bsky.social"}'),
+      },
+    });
+    // A Skool account connected before the at-rest format: its cookies in a
+    // signed JWT, which SkoolProvider still reads.
+    const skoolId = owner.channelIds[1];
+    await prisma.integration.update({
+      where: { id: skoolId },
+      data: {
+        token: 'enc::' + encrypt_legacy_using_IV('skool-token'),
+        customInstanceDetails: AuthService.signJWT({ client_id: 'c-1', auth_token: 't-1' }),
       },
     });
     const app = await prisma.oAuthApp.create({
@@ -72,6 +82,12 @@ test('legacy secrets work before and after the upgrade, and are stored in the ne
     expect(channel.token).toMatch(/^enc2::k1:/);
     expect(channel.refreshToken).toMatch(/^enc2::k1:/);
     expect(channel.customInstanceDetails).toMatch(/^enc2::k1:/);
+    const skool = await prisma.integration.findUniqueOrThrow({ where: { id: skoolId } });
+    expect(skool.token).toMatch(/^enc2::k1:/);
+    expect(JSON.parse(AuthService.decryptSecret(skool.customInstanceDetails!))).toEqual({
+      client_id: 'c-1',
+      auth_token: 't-1',
+    });
     const grant = await prisma.oAuthAuthorization.findFirstOrThrow({ where: { oauthAppId: app.id } });
     expect(grant.accessToken).toMatch(/^sha256:/);
     expect((await prisma.oAuthApp.findUniqueOrThrow({ where: { id: app.id } })).clientSecret).toMatch(

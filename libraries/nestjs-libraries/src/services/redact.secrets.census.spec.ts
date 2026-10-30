@@ -22,6 +22,14 @@ describe('censusSecrets', () => {
     expect(censusSecrets(body)).toEqual({ plaintext: 0, encrypted: 2 });
   });
 
+  // The current format (E2E-11-108) is just as sealed.
+  it('does not count a token in the current format as a leak', () => {
+    const body = JSON.stringify({
+      integration: { token: 'enc2::k1:AbCd', refreshToken: 'enc2::jwt:EfGh' },
+    });
+    expect(censusSecrets(body)).toEqual({ plaintext: 0, encrypted: 2 });
+  });
+
   it('reports a row holding one of each', () => {
     const body = JSON.stringify({
       posts: [

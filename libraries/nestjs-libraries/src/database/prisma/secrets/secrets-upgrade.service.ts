@@ -69,6 +69,17 @@ export class SecretsUpgradeService {
     let failed = 0;
     for (const row of rows) {
       try {
+        // A field this cannot read stays as it is, without holding the
+        // tokens back; the row is counted as failed.
+        let detailsUnread = false;
+        let customInstanceDetails = row.customInstanceDetails;
+        if (customInstanceDetails) {
+          try {
+            customInstanceDetails = reencryptDetails(customInstanceDetails);
+          } catch {
+            detailsUnread = true;
+          }
+        }
         const { count } = await this._prisma.integration.updateMany({
           where: {
             id: row.id,
@@ -79,12 +90,11 @@ export class SecretsUpgradeService {
           data: {
             token: reencryptToken(row.token)!,
             refreshToken: reencryptToken(row.refreshToken),
-            customInstanceDetails: row.customInstanceDetails
-              ? reencrypt(row.customInstanceDetails)
-              : row.customInstanceDetails,
+            customInstanceDetails,
           },
         });
         updated += count;
+        failed += detailsUnread ? 1 : 0;
       } catch {
         // Unreadable under the configured keys: left as it is, counted.
         failed++;
@@ -254,6 +264,25 @@ const reencrypt = (stored: string) =>
   stored.startsWith(currentSecretPrefix())
     ? stored
     : AuthService.encryptSecret(AuthService.decryptSecret(stored));
+
+// Custom instance details: as reencrypt, plus the signed JWT that Skool
+// accounts connected before the at-rest format kept their cookies in
+// (SkoolProvider.getCookies still reads it); its claims become the JSON the
+// current format holds.
+const reencryptDetails = (stored: string) => {
+  try {
+    return reencrypt(stored);
+  } catch (e) {
+    const claims = AuthService.verifyJWT(stored);
+    if (!claims || typeof claims !== 'object') {
+      throw e;
+    }
+    const details: Record<string, unknown> = { ...claims };
+    delete details.iat;
+    delete details.exp;
+    return AuthService.encryptSecret(JSON.stringify(details));
+  }
+};
 
 // A token or webhook secret: legacy enc::, plaintext, or under an old key.
 const reencryptToken = (stored: string | null) =>
