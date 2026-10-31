@@ -54,3 +54,27 @@ test('the price is what Stripe will charge for this subscription, not today’s 
   await expect(page.getByText('End your trial now and pay £12 for Starter (monthly)?')).toBeVisible({ timeout: 20_000 });
   await expect(page.getByRole('button', { name: 'End trial and pay £12 now' })).toBeVisible();
 });
+
+// A failed request left the dialog spinning for good, and after a payment the
+// open app kept the trial's limits until a reload.
+test('a failed end-of-trial request says so instead of spinning', async ({ page }) => {
+  await routes(page, { finish: true });
+  await page.route('**/api/billing/finish-trial', (route) => route.abort());
+  await page.goto('/billing?finishTrial=true');
+  await page.getByRole('button', { name: 'End trial and pay £29 now' }).click();
+  await expect(page.getByText('We could not take the first payment yet. Your bank may need you to confirm it.')).toBeVisible();
+});
+
+test('after the trial is paid the app loads the new limits', async ({ page }) => {
+  await routes(page, { finish: true });
+  let selfLoads = 0;
+  page.on('request', (r) => {
+    if (r.method() === 'GET' && new URL(r.url()).pathname === '/api/user/self') selfLoads++;
+  });
+  await page.goto('/billing?finishTrial=true');
+  await page.getByRole('button', { name: 'End trial and pay £29 now' }).waitFor();
+  const before = selfLoads;
+  await page.getByRole('button', { name: 'End trial and pay £29 now' }).click();
+  await expect(page.getByText('Your trial has ended and the payment has been charged.')).toBeVisible();
+  await expect.poll(() => selfLoads).toBeGreaterThan(before);
+});

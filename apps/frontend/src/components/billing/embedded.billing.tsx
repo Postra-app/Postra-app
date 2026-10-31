@@ -6,8 +6,8 @@ import { FC, useEffect, useState } from 'react';
 import {
   PaymentElement,
   BillingAddressElement,
-  CheckoutProvider,
-  useCheckout,
+  CheckoutElementsProvider,
+  useCheckoutElements,
 } from '@stripe/react-stripe-js/checkout';
 import { modeEmitter } from '@gitroom/frontend/components/layout/mode.component';
 import useCookie from 'react-use-cookie';
@@ -55,7 +55,7 @@ export const EmbeddedBilling: FC<{
 
   return (
     <div className="flex flex-col w-full pt-[48px] billing-form flex-1 tablet:pt-0">
-      <CheckoutProvider
+      <CheckoutElementsProvider
         stripe={stripe}
         options={{
           clientSecret: secret,
@@ -85,7 +85,7 @@ export const EmbeddedBilling: FC<{
           showCoupon={showCoupon}
           autoApplyCoupon={autoApplyCoupon}
         />
-      </CheckoutProvider>
+      </CheckoutElementsProvider>
     </div>
   );
 };
@@ -94,7 +94,7 @@ const FormWrapper: FC<{ showCoupon?: boolean; autoApplyCoupon?: string }> = ({
   showCoupon = false,
   autoApplyCoupon,
 }) => {
-  const checkoutState = useCheckout();
+  const checkoutState = useCheckoutElements();
   const toaster = useToaster();
   const t = useT();
   const [loading, setLoading] = useState(false);
@@ -165,7 +165,7 @@ const StripeInputs: FC<{
   consent: boolean;
   setConsent: (v: boolean) => void;
 }> = ({ showCoupon, autoApplyCoupon, loading, consent, setConsent }) => {
-  const checkout = useCheckout();
+  const checkout = useCheckoutElements();
   const t = useT();
   const [ready, setReady] = useState(false);
   return (
@@ -226,7 +226,7 @@ const StripeInputs: FC<{
 };
 
 const PriceBreakdown: FC = () => {
-  const checkoutState = useCheckout();
+  const checkoutState = useCheckoutElements();
   const t = useT();
 
   if (checkoutState.type !== 'success') {
@@ -469,7 +469,7 @@ const AppliedCouponDisplay: FC<{
 export const CouponInput: FC<{ autoApplyCoupon?: string }> = ({
   autoApplyCoupon,
 }) => {
-  const checkoutState = useCheckout();
+  const checkoutState = useCheckoutElements();
   const t = useT();
   const toaster = useToaster();
   const [couponCode, setCouponCode] = useState('');
@@ -674,7 +674,7 @@ const SubmitBar: FC<{ loading: boolean; consent: boolean }> = ({
   loading,
   consent,
 }) => {
-  const checkout = useCheckout();
+  const checkout = useCheckoutElements();
   const t = useT();
   if (checkout.type === 'loading' || checkout.type === 'error') {
     return null;

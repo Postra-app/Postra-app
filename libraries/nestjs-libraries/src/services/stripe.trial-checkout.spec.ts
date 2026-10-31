@@ -60,7 +60,9 @@ describe.each([
     await checkout(service);
 
     const params = createSession.mock.calls[0][0];
-    expect(params.payment_method_types).toEqual(['card']);
+    // API 2026-10-28.endive rejects payment_method_types on a Checkout Session.
+    expect(params.allowed_payment_method_types).toEqual(['card']);
+    expect(params).not.toHaveProperty('payment_method_types');
     expect(params.subscription_data.trial_period_days).toBe(7);
     expect(organizationService.endTrialOffer).not.toHaveBeenCalled();
   });
@@ -74,7 +76,8 @@ describe.each([
     expect(searchCustomers).toHaveBeenCalledWith(expect.objectContaining({ query: `metadata['trial_email']:'${trialEmailKey(mail)}'` }));
     const params = createSession.mock.calls[0][0];
     expect(params.subscription_data.trial_period_days).toBeUndefined();
-    expect(params.payment_method_types).toBeUndefined();
+    expect(params.allowed_payment_method_types).toBeUndefined();
+    expect(params).not.toHaveProperty('payment_method_types');
     expect(organizationService.endTrialOffer).toHaveBeenCalledWith('org-1');
   });
 
@@ -126,4 +129,16 @@ describe('what the billing pages promise', () => {
     expect(await service.trialOffered('org-c', 'cus_new', mail, false)).toBe(false);
     expect(searchCustomers).not.toHaveBeenCalled();
   });
+});
+
+// API 2026-10-28.endive renamed ui_mode 'custom' to 'elements' and rejects the
+// old value, which the SDK types still accept as a plain string.
+it('the embedded checkout opens in elements mode', async () => {
+  searchCustomers.mockResolvedValue({ data: [] });
+  createSession.mockClear();
+  const { service } = build();
+
+  await service.embedded('track', 'org-1', 'user-1', body, true);
+
+  expect(createSession.mock.calls[0][0].ui_mode).toBe('elements');
 });

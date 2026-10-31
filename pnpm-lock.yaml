@@ -243,11 +243,11 @@ importers:
         specifier: 10.76.2
         version: 10.76.2(react@19.3.1)
       '@stripe/react-stripe-js':
-        specifier: ^5.6.1
-        version: 5.6.1(@stripe/stripe-js@8.11.0)(react-dom@19.3.1(react@19.3.1))(react@19.3.1)
+        specifier: 7.0.1
+        version: 7.0.1(@stripe/stripe-js@10.2.0)(react-dom@19.3.1(react@19.3.1))(react@19.3.1)
       '@stripe/stripe-js':
-        specifier: ^8.11.0
-        version: 8.11.0
+        specifier: 10.2.0
+        version: 10.2.0
       '@swc/helpers':
         specifier: 0.5.23
         version: 0.5.23
@@ -642,8 +642,8 @@ importers:
         specifier: ^1.6.9
         version: 1.6.9
       stripe:
-        specifier: ^20.4.1
-        version: 20.4.1(@types/node@22.20.5)
+        specifier: 23.1.0
+        version: 23.1.0(@types/node@22.20.5)
       striptags:
         specifier: ^3.2.0
         version: 3.2.0
@@ -6770,6 +6770,7 @@ packages:
   '@smithy/core@3.36.0':
     resolution: {integrity: sha512-3hJiwG1F5t1SoXqp/yOCmYXziyx7ZVqF63S5W6YU201e/qwVaHPex+E/3vvyY9a3ORq/b+BydeNZpP2saQ9X2g==}
     engines: {node: '>=18.0.0'}
+    deprecated: Deprecated due to a bug in custom logger data redaction. See https://github.com/aws/aws-sdk-js-v3/issues/8393.
 
   '@smithy/credential-provider-imds@4.5.2':
     resolution: {integrity: sha512-A9uSdn72ozbRUSit0eib0TW7nXuNPlaeM0zcGkJ+nE6tFcSDbnmtwoxbTCFBukVQcszDAyvsd7+rTduPTXpygg==}
@@ -6874,6 +6875,7 @@ packages:
   '@smithy/smithy-client@4.12.2':
     resolution: {integrity: sha512-HezY3UuG0k4T+4xhFKctLXCA5N2oN+Rtv+mmL8Gt7YmsUY2yhmcLyW75qrSzldfj75IsCW/4UhY3s20KcFnZqA==}
     engines: {node: '>=18.0.0'}
+    deprecated: Deprecated due to a bug in custom logger data redaction. See https://github.com/aws/aws-sdk-js-v3/issues/8393.
 
   '@smithy/types@4.19.0':
     resolution: {integrity: sha512-r7jh49VJxGerfAcTQA6gXcKc+98zOp/tqRwzYjgOE+iSQsP6cEU1hq2QzbuipmP68QtYdY9wKEhiCQZIzHgZ4Q==}
@@ -7021,15 +7023,15 @@ packages:
   '@standard-schema/utils@0.3.0':
     resolution: {integrity: sha512-e7Mew686owMaPJVNNLs55PUvgz371nKgwsc4vxE49zsODpJEnxgxRo2y/OKrqueavXgZNMDVj3DdHFlaSAeU8g==}
 
-  '@stripe/react-stripe-js@5.6.1':
-    resolution: {integrity: sha512-5xBrjkGmFvKvpMod6VvpOaFaa67eRbmieKeFTePZyOr/sUXzm7A3YY91l330pS0usUst5PxTZDUZHWfOc0v1GA==}
+  '@stripe/react-stripe-js@7.0.1':
+    resolution: {integrity: sha512-yDVPIS/RcmYqtX0xuNjAlHd/d9B9twmWwzn4GrZcfrlg737yPC/rfnOs2vCwAs40zrZ2qz4VL1r5b1t0gFRjQQ==}
     peerDependencies:
-      '@stripe/stripe-js': '>=8.0.0 <9.0.0'
+      '@stripe/stripe-js': '>=10.0.0 <11.0.0'
       react: 19.3.1
       react-dom: 19.3.1
 
-  '@stripe/stripe-js@8.11.0':
-    resolution: {integrity: sha512-3fVF4z3efsgwgyj64nFK+6F4/vMw0mUXD2TBbOfftJtKVNx4JNv3CSfe1fY4DCtCk0JFp8/YPNcRkzgV0HJ8cg==}
+  '@stripe/stripe-js@10.2.0':
+    resolution: {integrity: sha512-C0F6LKxvsa9ONtxfJ4JG/vo8XjramVyy7tOZNZvoaZkw0M82OTm9LD3Ifcvw0QMDI7qPA14h+IP3qagkuC3b2Q==}
     engines: {node: '>=12.16'}
 
   '@supercharge/request-ip@1.2.0':
@@ -15056,11 +15058,11 @@ packages:
     resolution: {integrity: sha512-1tB5mhVo7U+ETBKNf92xT4hrQa3pm0MZ0PQvuDnWgAAGHDsfp4lPSpiS6psrSiet87wyGPh9ft6wmhOMQ0hDiw==}
     engines: {node: '>=14.16'}
 
-  stripe@20.4.1:
-    resolution: {integrity: sha512-axCguHItc8Sxt0HC6aSkdVRPffjYPV7EQqZRb2GkIa8FzWDycE7nHJM19C6xAIynH1Qp1/BHiopSi96jGBxT0w==}
-    engines: {node: '>=16'}
+  stripe@23.1.0:
+    resolution: {integrity: sha512-fVUfMSfTPoukfoV//MUKAx2+YxyKmYaYtnAL9VkfnHfaPNQylFdWZMD+zgUFerI8rjbaiER8Vzj2XEUQ2AhAsQ==}
+    engines: {node: '>=20'}
     peerDependencies:
-      '@types/node': '>=16'
+      '@types/node': '>=20'
     peerDependenciesMeta:
       '@types/node':
         optional: true
@@ -23270,14 +23272,14 @@ snapshots:
 
   '@standard-schema/utils@0.3.0': {}
 
-  '@stripe/react-stripe-js@5.6.1(@stripe/stripe-js@8.11.0)(react-dom@19.3.1(react@19.3.1))(react@19.3.1)':
+  '@stripe/react-stripe-js@7.0.1(@stripe/stripe-js@10.2.0)(react-dom@19.3.1(react@19.3.1))(react@19.3.1)':
     dependencies:
-      '@stripe/stripe-js': 8.11.0
+      '@stripe/stripe-js': 10.2.0
       prop-types: 15.8.1
       react: 19.3.1
       react-dom: 19.3.1(react@19.3.1)
 
-  '@stripe/stripe-js@8.11.0': {}
+  '@stripe/stripe-js@10.2.0': {}
 
   '@supercharge/request-ip@1.2.0': {}
 
@@ -33177,7 +33179,7 @@ snapshots:
 
   strip-json-comments@5.0.3: {}
 
-  stripe@20.4.1(@types/node@22.20.5):
+  stripe@23.1.0(@types/node@22.20.5):
     optionalDependencies:
       '@types/node': 22.20.5
 

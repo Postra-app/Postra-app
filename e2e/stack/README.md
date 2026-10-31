@@ -70,3 +70,8 @@ Writing tests:
 
   `STRIPE_SIGNING_KEY` comes from `stripe listen --api-key … --print-secret`.
   The spec skips itself without an `sk_test_` key. Keep `backend.env` out of git.
+  With `STACK_UI=1` as well, `billing/embedded-checkout.spec.ts` pays for a
+  Starter trial through the paywall in a browser, with the real Stripe.js and
+  a test card: the one check that the checkout form opens and confirms on the
+  API version the SDK pins. `api/stripe-errors.spec.ts` needs the placeholder
+  key and skips itself when the sandbox key is set.

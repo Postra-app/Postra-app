@@ -73,8 +73,23 @@ export class StripeService {
     private _trackService: TrackService,
     private _notificationService: NotificationService
   ) {}
+  // While the webhook endpoint moves to a new API version, the old and the new
+  // endpoint both deliver, each signing with its own secret: the signing key
+  // then holds both, comma-separated, until the old endpoint is deleted.
   validateRequest(rawBody: Buffer, signature: string, endpointSecret: string) {
-    return stripe.webhooks.constructEvent(rawBody, signature, endpointSecret);
+    const secrets = (endpointSecret || '')
+      .split(',')
+      .map((secret) => secret.trim())
+      .filter(Boolean);
+    let failure: unknown = new Error('No Stripe webhook signing secret is set');
+    for (const secret of secrets) {
+      try {
+        return stripe.webhooks.constructEvent(rawBody, signature, secret);
+      } catch (err) {
+        failure = err;
+      }
+    }
+    throw failure;
   }
 
   async checkValidCard(
@@ -1217,7 +1232,7 @@ export class StripeService {
 
     const isUtm = body.utm ? `&utm_source=${encodeURIComponent(body.utm)}` : '';
     const { client_secret } = await stripe.checkout.sessions.create({
-      ui_mode: 'custom',
+      ui_mode: 'elements',
       customer,
       return_url:
         process.env['FRONTEND_URL'] +
@@ -1225,7 +1240,7 @@ export class StripeService {
       mode: 'subscription',
       // A trial is kept to one per card by the card's fingerprint, which a
       // wallet such as Link or Revolut Pay does not have.
-      ...(allowTrial ? { payment_method_types: ['card' as const] } : {}),
+      ...(allowTrial ? { allowed_payment_method_types: ['card' as const] } : {}),
       subscription_data: {
         ...(allowTrial ? { trial_period_days: 7 } : {}),
         metadata: {
@@ -1291,7 +1306,7 @@ export class StripeService {
       mode: 'subscription',
       // A trial is kept to one per card by the card's fingerprint, which a
       // wallet such as Link or Revolut Pay does not have.
-      ...(allowTrial ? { payment_method_types: ['card' as const] } : {}),
+      ...(allowTrial ? { allowed_payment_method_types: ['card' as const] } : {}),
       subscription_data: {
         ...(allowTrial ? { trial_period_days: 7 } : {}),
         metadata: {
