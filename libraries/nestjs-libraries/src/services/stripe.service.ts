@@ -73,8 +73,23 @@ export class StripeService {
     private _trackService: TrackService,
     private _notificationService: NotificationService
   ) {}
+  // While the webhook endpoint moves to a new API version, the old and the new
+  // endpoint both deliver, each signing with its own secret: the signing key
+  // then holds both, comma-separated, until the old endpoint is deleted.
   validateRequest(rawBody: Buffer, signature: string, endpointSecret: string) {
-    return stripe.webhooks.constructEvent(rawBody, signature, endpointSecret);
+    const secrets = (endpointSecret || '')
+      .split(',')
+      .map((secret) => secret.trim())
+      .filter(Boolean);
+    let failure: unknown = new Error('No Stripe webhook signing secret is set');
+    for (const secret of secrets) {
+      try {
+        return stripe.webhooks.constructEvent(rawBody, signature, secret);
+      } catch (err) {
+        failure = err;
+      }
+    }
+    throw failure;
   }
 
   async checkValidCard(
