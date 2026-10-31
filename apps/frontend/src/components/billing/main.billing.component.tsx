@@ -413,12 +413,14 @@ export const MainBillingComponent: FC<{
   const moveToCheckout = useCallback(
     (billing: 'STANDARD' | 'PRO' | 'FREE', reactivate = false) =>
       async () => {
+        // /billing/cancel toggles: a second press (Enter while the first
+        // request runs) cancelled the subscription again under a
+        // "reactivated" message. Checked before the try: returning inside it
+        // ran the finally below, which released the first press's guard, so
+        // a third press went through.
+        if (reactivate && reactivating.current) return;
         try {
           if (reactivate) {
-            // /billing/cancel toggles: a second press (Enter while the first
-            // request runs) cancelled the subscription again under a
-            // "reactivated" message.
-            if (reactivating.current) return;
             reactivating.current = true;
             setLoading(true);
             const reactivateResponse = await fetch('/billing/cancel', {
@@ -680,7 +682,8 @@ export const MainBillingComponent: FC<{
             'warning'
           );
         } finally {
-          reactivating.current = false;
+          // Only the press that took the guard gives it back.
+          if (reactivate) reactivating.current = false;
           setLoading(false);
           // An upgrade or cancelling drops a waiting downgrade.
           refreshPending();
