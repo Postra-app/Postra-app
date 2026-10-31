@@ -1217,7 +1217,7 @@ export class StripeService {
 
     const isUtm = body.utm ? `&utm_source=${encodeURIComponent(body.utm)}` : '';
     const { client_secret } = await stripe.checkout.sessions.create({
-      ui_mode: 'custom',
+      ui_mode: 'elements',
       customer,
       return_url:
         process.env['FRONTEND_URL'] +
@@ -1225,7 +1225,7 @@ export class StripeService {
       mode: 'subscription',
       // A trial is kept to one per card by the card's fingerprint, which a
       // wallet such as Link or Revolut Pay does not have.
-      ...(allowTrial ? { payment_method_types: ['card' as const] } : {}),
+      ...(allowTrial ? { allowed_payment_method_types: ['card' as const] } : {}),
       subscription_data: {
         ...(allowTrial ? { trial_period_days: 7 } : {}),
         metadata: {
@@ -1291,7 +1291,7 @@ export class StripeService {
       mode: 'subscription',
       // A trial is kept to one per card by the card's fingerprint, which a
       // wallet such as Link or Revolut Pay does not have.
-      ...(allowTrial ? { payment_method_types: ['card' as const] } : {}),
+      ...(allowTrial ? { allowed_payment_method_types: ['card' as const] } : {}),
       subscription_data: {
         ...(allowTrial ? { trial_period_days: 7 } : {}),
         metadata: {
