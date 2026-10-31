@@ -3,26 +3,27 @@ import { database, throwawayOrg } from '../helpers';
 
 // Found in Sentry: the paid-but-not-yet-confirmed organisation reloaded the
 // paywall, `/billing/embedded` answered 409 and the page still handed the error
-// body to Stripe. `initCheckout()` threw "Missing value for initCheckout():
+// body to Stripe. `initCheckout()` (since Stripe.js Dahlia
+// `initCheckoutElementsSdk()`) threw "Missing value for initCheckout():
 // options.clientSecret" and no form appeared. Any answer without a client
 // secret (409, 429, 500) now shows a message instead.
 test.use({ storageState: { cookies: [], origins: [] } });
 
-// Stands in for js.stripe.com: like the real one, initCheckout() throws
+// Stands in for js.stripe.com: like the real one, initCheckoutElementsSdk() throws
 // without a client secret, and a real secret loads a form that never resolves.
 const fakeStripe = `
 window.Stripe = function () {
   return {
     _registerWrapper: function () {},
     registerAppInfo: function () {},
-    // what CheckoutProvider checks before it accepts the instance
+    // what CheckoutElementsProvider checks before it accepts the instance
     elements: function () {},
     createToken: function () {},
     createPaymentMethod: function () {},
     confirmCardPayment: function () {},
-    initCheckout: function (options) {
+    initCheckoutElementsSdk: function (options) {
       if (!options || !options.clientSecret) {
-        throw new Error('IntegrationError: Missing value for initCheckout(): options.clientSecret');
+        throw new Error('IntegrationError: Missing value for initCheckoutElementsSdk(): options.clientSecret');
       }
       return { loadActions: function () { return new Promise(function () {}); }, on: function () {} };
     },

@@ -3,6 +3,7 @@ import { PrismaClient } from '@prisma/client';
 import Stripe from 'stripe';
 import { Connection, WorkflowClient } from '@temporalio/client';
 import { database, throwawayOrg } from '../helpers';
+import { pricing } from '../../../libraries/nestjs-libraries/src/database/prisma/subscriptions/pricing';
 
 // Billing steps that need a signed-in customer: the app's own billing endpoints
 // against Stripe TEST mode, the webhook delivered by `stripe listen`, state
@@ -28,7 +29,13 @@ test.afterAll(async () => {
 });
 test.describe.configure({ mode: 'serial', timeout: 5 * 60_000 });
 
-const PRICE = { STANDARD: 1200, PRO: 2900, ULTIMATE: 7900 } as const;
+// What customers pay (pricing.ts), in pence: Starter was still £12 here
+// after the plan went to £19.
+const PRICE = {
+  STANDARD: pricing.STANDARD.month_price * 100,
+  PRO: pricing.PRO.month_price * 100,
+  ULTIMATE: pricing.ULTIMATE.month_price * 100,
+} as const;
 type Tier = keyof typeof PRICE;
 const CHANNELS = { STANDARD: 3, PRO: 6, ULTIMATE: 12 } as const;
 

@@ -5,6 +5,9 @@ import { signedIn } from '../helpers';
 // Stripe call does) reached the browser as Stripe's 401 and its message —
 // and the app treats 401 as an ended session, signing the customer out on
 // the paywall. It is our failure: 502, nothing of Stripe's, session intact.
+// With the sandbox keys of `pnpm e2e:stack:billing` Stripe answers, so there
+// is no failure to show.
+test.skip(!!process.env.STRIPE_SECRET_KEY, 'needs the placeholder Stripe key');
 test('a Stripe failure on our side is a 502 that keeps the session', async () => {
   const b = await signedIn('b');
   const res = await b.post('/billing/embedded', { data: { period: 'MONTHLY', billing: 'PRO' } });
