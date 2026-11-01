@@ -1389,6 +1389,7 @@
   "layer_backward": "Send backward",
   "agent_limit_title": "Monthly AI assistant limit reached",
   "agent_error_generic": "The AI assistant could not answer. Try again in a moment.",
+  "ai_unavailable": "AI is unavailable right now. Please try again in a few minutes.",
   "video_generation_failed": "Could not generate the video, please try again.",
   "output_voice": "Output voice",
   "add_pictures_cost": "One image credit per post - a thread costs one per part.",
