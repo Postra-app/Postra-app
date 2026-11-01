@@ -107,6 +107,9 @@ export const Input = ({
           onChange={(event) => {
             onChange(event.target.value);
             setText(event.target.value);
+            // Only what was in the box at Enter may go out by itself: an
+            // edit after it cancels the waiting send.
+            setQueued(false);
           }}
           onCompositionStart={() => setIsComposing(true)}
           onCompositionEnd={() => setIsComposing(false)}

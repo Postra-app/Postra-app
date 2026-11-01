@@ -73,3 +73,54 @@ test('a message sent before the chat is ready goes out once it is', async ({
     await prisma.$disconnect();
   }
 });
+
+// Enter while the chat connects, then an edit: the edited text was sent by
+// itself once the chat was ready, a command the person never confirmed.
+test('an edit after Enter cancels the waiting send', async ({ page, context }) => {
+  test.setTimeout(60_000);
+  const prisma = database();
+  const org = await throwawayOrg(prisma, {
+    tier: 'PRO',
+    totalChannels: 5,
+    channels: 0,
+  });
+  await context.clearCookies();
+  await context.addCookies((await org.api.storageState()).cookies);
+  try {
+    let release!: () => void;
+    const held = new Promise<void>((resolve) => (release = resolve));
+    await page.route('**/api/copilot/agent', async (route) => {
+      if ((route.request().postData() || '').includes('"info"')) {
+        await held;
+      }
+      await route.continue();
+    });
+    const runs: string[] = [];
+    page.on('request', (r) => {
+      if (
+        r.url().endsWith('/copilot/agent') &&
+        (r.postData() || '').includes('"agent/run"')
+      ) {
+        runs.push(r.url());
+      }
+    });
+
+    await page.goto('/agents');
+    const input = page.getByPlaceholder(/Write your (post|message)/);
+    await expect(input).toBeVisible();
+    await input.fill('Delete all my');
+    await input.press('Enter');
+    await input.pressSequentially(' drafts');
+
+    release();
+    await expect(page.locator('[data-copilotkit-ready="true"]')).toBeVisible({
+      timeout: 20_000,
+    });
+    await page.waitForTimeout(2_000);
+    expect(runs).toHaveLength(0);
+    await expect(input).toHaveValue('Delete all my drafts');
+  } finally {
+    await org.remove();
+    await prisma.$disconnect();
+  }
+});
