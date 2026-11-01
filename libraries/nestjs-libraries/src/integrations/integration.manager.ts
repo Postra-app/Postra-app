@@ -101,6 +101,13 @@ const enabledProviders = new Set([
   // Pinterest: Standard access approved on 2026-10-27 (app 1622258), so any
   // Pinterest account can authorise and pins are public. Offered from Starter.
   'pinterest',
+  // WordPress: the customer's own site through an application password, no
+  // platform review. Proven on a real site from production (post with a
+  // featured image, live link). Business only.
+  'wordpress',
+  // Slack: our app is publicly distributed (no Slack review needed outside
+  // the Marketplace), so any workspace can install it. Business only.
+  'slack',
 ]);
 
 // Platforms on their way in: still waiting for the platform's review, or for
@@ -108,8 +115,10 @@ const enabledProviders = new Set([
 // not at all, when also in hiddenProviders); a super admin can connect them
 // on production to test them and to record the review video. Move one to
 // enabledProviders once it is approved and proven.
-const previewProviders = new Set([
-  'wordpress',
+const previewProviders = new Set<string>([
+  // Google Business Profile: its API needs Google's approval, and the
+  // request needs a video of the integration working on production.
+  'gmb',
 ]);
 
 // Organisations that get the preview platforms the way a super admin does,

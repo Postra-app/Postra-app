@@ -42,7 +42,7 @@ const useFaqList = () => {
         'faq_postra_gitroom_allows_you_to_schedule_posts',
         `Postra allows you to schedule your posts between different channels.
 A channel is a publishing platform where you can schedule your posts.
-For example, you can schedule your posts on X, Facebook, Instagram, TikTok, YouTube, LinkedIn, Pinterest, Threads, Bluesky, Mastodon, Telegram and Discord.`
+For example, you can schedule your posts on X, Facebook, Instagram, TikTok, YouTube, LinkedIn, Pinterest, Threads, Bluesky, Mastodon, Telegram, Discord, Slack and WordPress.`
       ),
     },
     {

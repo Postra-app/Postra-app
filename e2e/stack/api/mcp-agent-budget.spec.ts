@@ -72,6 +72,41 @@ test('the agent asked through MCP is metered to the organisation', async () => {
   }
 });
 
+// Mastra's ask_<agent> answered with the whole run: every step, the model
+// request with our instructions and tool schemas, the provider's response
+// headers and cookies (~390,000 characters for one short reply on prod), more
+// than an assistant accepts from a tool. The client gets the reply only.
+test('ask_postra answers with the agent reply only, not the whole run', async () => {
+  test.setTimeout(90_000);
+  const org = await throwawayOrg(prisma, { tier: 'PRO', totalChannels: 5, channels: 0 });
+  const { apiKey } = await prisma.organization.findUniqueOrThrow({ where: { id: org.orgId } });
+  const api = await pwRequest.newContext({ baseURL: BACKEND_URL });
+  try {
+    const ask = await mcpSession(api, apiKey!);
+    const res = await ask(`Say hello (mcp-reply-only-${Date.now()})`);
+    expect(res.status(), await res.text()).toBe(200);
+    const answer = parse(await res.text());
+    expect(answer.result?.isError).toBeFalsy();
+    const content = answer.result?.content;
+    expect(content).toHaveLength(1);
+    const reply = JSON.parse(content[0].text);
+    expect(Object.keys(reply)).toEqual(['text']);
+    expect(typeof reply.text).toBe('string');
+    expect(reply.text.length).toBeGreaterThan(0);
+    const raw = JSON.stringify(answer);
+    for (const leak of ['"steps"', '"request"', '"headers"', 'prompt_cache_key', 'set-cookie']) {
+      expect(raw).not.toContain(leak);
+    }
+    if (answer.result?.structuredContent) {
+      expect(Object.keys(answer.result.structuredContent)).toEqual(['text']);
+    }
+  } finally {
+    await prisma.aiUsage.deleteMany({ where: { organizationId: org.orgId } });
+    await api.dispose();
+    await org.remove();
+  }
+});
+
 test('an organisation past its agent allowance gets no agent run through MCP', async () => {
   test.setTimeout(90_000);
   const org = await throwawayOrg(prisma, { tier: 'PRO', totalChannels: 5, channels: 0 });

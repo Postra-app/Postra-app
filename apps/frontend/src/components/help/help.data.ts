@@ -324,6 +324,48 @@ export const CHANNEL_GUIDES: ChannelGuide[] = [
       'First comments and threads are not available on Pinterest.',
     ],
   },
+  {
+    identifier: 'slack',
+    name: 'Slack',
+    connectType: 'oauth',
+    steps: [
+      'Click "Add Channel", pick Slack, choose your workspace at the top right of the Slack page and click "Allow".',
+      'Back in Postra the workspace appears in your channel list. In the post composer, pick the Slack channel in the Slack settings tab.',
+    ],
+    gotchas: [
+      'You may need to be a Slack admin, or ask one, to add apps to the workspace.',
+      'Public channels work straight away. For a private channel, invite the app first: type /invite @Postra in that channel.',
+      'Each Slack workspace is one channel in Postra; you pick the Slack channel per post.',
+    ],
+    composer: [
+      'Settings tab: the Slack channel to post in (required).',
+      'Message limit: 3,000 characters, with images shown under the text.',
+      '"Add comment / post" adds replies in the message thread.',
+    ],
+  },
+  {
+    identifier: 'wordpress',
+    name: 'WordPress',
+    connectType: 'credentials',
+    steps: [
+      'In your WordPress admin open Users → Profile, scroll to Application Passwords, type a name (for example "Postra") and click "Add Application Password". Copy the password it shows: WordPress shows it only once.',
+      'In Postra, click "Add Channel" and pick WordPress - a form appears with three fields: Domain URL, Username and Password.',
+      'Domain URL: the address of your site, e.g. https://www.yourblog.co.uk.',
+      'Username: your WordPress username (the one you log in with, not your display name).',
+      'Password: paste the application password from step 1 and click Connect.',
+    ],
+    gotchas: [
+      'Use an application password, not your normal WordPress password. You can revoke it any time under Users → Profile without changing your login.',
+      'The site must be public and on HTTPS, and the user needs a role that can publish posts (Author, Editor or Administrator).',
+      'If you revoke or replace the application password, Postra asks you to reconnect the channel: connect it again with a new one.',
+      'Some security plugins and hosts switch off the WordPress REST API or application passwords. If connecting fails, check those settings first.',
+    ],
+    composer: [
+      'Settings tab: a title (required) and the type of content to publish (for example Posts or Pages).',
+      'Optional featured image: it is uploaded to your Media Library and set on the post.',
+      'The post is published straight away on your site, and Postra keeps the link to it.',
+    ],
+  },
 ];
 
 export const APP_TABS: AppTabGuide[] = [
@@ -342,7 +384,7 @@ export const APP_TABS: AppTabGuide[] = [
   {
     id: 'analytics',
     name: 'Analytics',
-    description: 'Follower growth and post performance for Facebook, Instagram, Threads, X, YouTube and TikTok; post statistics (likes, reposts, replies) for Bluesky and Mastodon, and reactions for Discord. Telegram and personal LinkedIn profiles have no analytics.',
+    description: 'Follower growth and post performance for Facebook, Instagram, Threads, X, YouTube and Pinterest; post statistics (likes, reposts, replies) for Bluesky and Mastodon, and reactions for Discord. TikTok, Telegram, Slack, WordPress and personal LinkedIn profiles have no analytics in Postra.',
   },
   {
     id: 'studio',

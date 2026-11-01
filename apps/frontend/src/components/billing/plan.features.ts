@@ -25,6 +25,8 @@ export const PLATFORM_NAMES: Record<string, string> = {
   telegram: 'Telegram',
   x: 'X',
   discord: 'Discord',
+  slack: 'Slack',
+  wordpress: 'WordPress',
 };
 
 // Platforms a plan includes but the picker still shows as "Soon" (kept out of

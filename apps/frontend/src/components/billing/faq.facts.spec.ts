@@ -27,6 +27,8 @@ const NAMES: Record<string, string> = {
   telegram: 'Telegram',
   discord: 'Discord',
   pinterest: 'Pinterest',
+  slack: 'Slack',
+  wordpress: 'WordPress',
 };
 
 it('names the card hold Stripe actually places', () => {
