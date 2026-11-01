@@ -11,7 +11,7 @@ test('a plug that could not be saved says so and stays open', async ({ page }) =
   );
   await page.goto('/plugs');
   await page.getByText('Auto Repost Posts').first().click();
-  await page.getByPlaceholder('Amount of likes').fill('10');
+  await page.getByPlaceholder('Number of likes').fill('10');
   await page.getByRole('button', { name: 'Activate' }).click();
   await expect(page.getByText('Could not save the plug', { exact: false })).toBeVisible();
   await expect(page.getByText('Plugin updated')).toHaveCount(0);
