@@ -11,6 +11,7 @@ import { OAuthService } from '@gitroom/nestjs-libraries/database/prisma/oauth/oa
 import { runWithContext } from './async.storage';
 import { ioRedis } from '@gitroom/nestjs-libraries/redis/redis.service';
 import { createOAuthMiddleware } from './oauth-middleware';
+import { askAgentTool } from './ask.agent.tool';
 import { publicBackendUrl } from './public-backend-url';
 import { SubscriptionService } from '@gitroom/nestjs-libraries/database/prisma/subscriptions/subscription.service';
 const fixAcceptHeader = (req: Request) => {
@@ -133,11 +134,12 @@ export const startMcp = async (app: INestApplication) => {
   const agent = mastra.getAgent('postra');
   const tools = await agent.listTools();
 
+  // `ask_postra` is ours, not Mastra's `agents: { postra }`: that one answers
+  // with the whole agent run (askAgentTool explains).
   const serverConfig = {
     name: 'Postra MCP',
     version: '1.0.0',
-    tools,
-    agents: { postra: agent },
+    tools: { ...tools, ask_postra: askAgentTool('postra', agent) },
   };
 
   const server = new MCPServer(serverConfig);

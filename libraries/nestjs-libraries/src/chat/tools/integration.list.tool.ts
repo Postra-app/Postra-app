@@ -42,18 +42,21 @@ export class IntegrationListTool implements AgentToolInterface {
           (context?.requestContext as any)?.get('organization') as string
         ).id;
 
+        // Only channels a post can go to: a disabled one publishes nothing,
+        // and the output schema drops "disabled", so listed it looked usable.
         return {
           output: (
             await this._integrationService.getIntegrationsList(organizationId)
-          ).map((p) => ({
-            name: p.customName || p.name,
-            id: p.id,
-            disabled: p.disabled,
-            picture: p.picture || '/no-picture.jpg',
-            platform: p.providerIdentifier,
-            display: p.profile,
-            type: p.type,
-          })),
+          )
+            .filter((p) => !p.disabled)
+            .map((p) => ({
+              name: p.customName || p.name,
+              id: p.id,
+              picture: p.picture || '/no-picture.jpg',
+              platform: p.providerIdentifier,
+              display: p.profile,
+              type: p.type,
+            })),
         };
       },
     });
