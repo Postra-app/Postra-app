@@ -96,7 +96,10 @@ export class AuthMiddleware implements NestMiddleware {
       const orgHeader = req.headers.showorg;
       const orgCookie = req.cookies.showorg;
 
-      if (!payload?.id) {
+      // A non-string id (an object such as { not: '' }) is a Prisma filter:
+      // the user lookup below is findFirst and would match the first user
+      // (upstream a5affe62c, "jwt bypass"). Only a string id is a session.
+      if (!payload?.id || typeof payload.id !== 'string') {
         throw new HttpForbiddenException();
       }
 

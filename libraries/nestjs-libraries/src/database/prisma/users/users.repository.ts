@@ -56,6 +56,11 @@ export class UsersRepository {
   }
 
   getUserById(id: string) {
+    // findFirst with an object id (a filter such as { not: '' }) returns the
+    // first user; ids are strings, nothing else is looked up.
+    if (typeof id !== 'string' || !id) {
+      return Promise.resolve(null);
+    }
     return this._user.model.user.findFirst({
       where: {
         id,
