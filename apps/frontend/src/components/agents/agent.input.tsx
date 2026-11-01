@@ -1,4 +1,4 @@
-import React, { useMemo, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   useCopilotChatInternal,
   useCopilotContext,
@@ -11,6 +11,7 @@ const MAX_NEWLINES = 6;
 export const Input = ({
   inProgress,
   onSend,
+  chatReady = false,
   isVisible = false,
   onStop,
   onUpload,
@@ -42,13 +43,37 @@ export const Input = ({
   };
 
   const [text, setText] = useState('');
+  // An open interrupt waits for its own answer, not a new message.
+  const { interrupt, isAvailable } = useCopilotChatInternal();
+  // A message sent before the chat had connected to its thread was lost
+  // without a word (no run reached the server) and the box was cleared anyway.
+  // Keep it and send it once the chat is connected. Should connecting never
+  // finish, send after 15 s as before rather than leave the box stuck.
+  const [queued, setQueued] = useState(false);
+  const [waitedLong, setWaitedLong] = useState(false);
+  useEffect(() => {
+    const timer = setTimeout(() => setWaitedLong(true), 15_000);
+    return () => clearTimeout(timer);
+  }, []);
+  const ready = chatReady && (isAvailable || waitedLong);
   const send = () => {
     if (inProgress) return;
+    if (!ready) {
+      setQueued(true);
+      return;
+    }
+    setQueued(false);
     onSend(text);
     setText('');
 
     textareaRef.current?.focus();
   };
+
+  useEffect(() => {
+    if (queued && ready && !inProgress && text.trim()) {
+      send();
+    }
+  }, [queued, ready, inProgress]);
 
   const isInProgress = inProgress;
   const buttonIcon =
@@ -56,8 +81,6 @@ export const Input = ({
       ? context.icons.stopIcon
       : context.icons.sendIcon;
 
-  // An open interrupt waits for its own answer, not a new message.
-  const { interrupt } = useCopilotChatInternal();
   const canSend = useMemo(() => {
     return !isInProgress && text.trim().length > 0 && !interrupt;
   }, [interrupt, isInProgress, text]);
@@ -84,6 +107,9 @@ export const Input = ({
           onChange={(event) => {
             onChange(event.target.value);
             setText(event.target.value);
+            // Only what was in the box at Enter may go out by itself: an
+            // edit after it cancels the waiting send.
+            setQueued(false);
           }}
           onCompositionStart={() => setIsComposing(true)}
           onCompositionEnd={() => setIsComposing(false)}
@@ -108,6 +134,7 @@ export const Input = ({
             disabled={sendDisabled}
             onClick={isInProgress && !hideStopButton ? onStop : send}
             data-copilotkit-in-progress={inProgress}
+            data-copilotkit-ready={ready}
             data-test-id={
               inProgress
                 ? 'copilot-chat-request-in-progress'
