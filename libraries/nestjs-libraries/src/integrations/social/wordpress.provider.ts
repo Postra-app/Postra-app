@@ -55,14 +55,26 @@ export class WordpressProvider
     };
   }
   override handleErrors(
-    body: string
+    body: string,
+    status?: number
   ):
     | { type: 'refresh-token' | 'bad-body' | 'retry'; value: string }
     | undefined {
+    // WordPress answers 401 (rest_cannot_create, rest_not_logged_in) when it
+    // did not take the application password at all: revoked, replaced or
+    // mistyped. That is a reconnect, not a permissions problem; only a 403
+    // means the user signed in but may not publish.
+    if (status === 401) {
+      return {
+        type: 'refresh-token',
+        value:
+          'WordPress did not accept the application password. Reconnect the channel with a new application password.',
+      };
+    }
     if (body.indexOf('rest_cannot_create') > -1) {
       return {
         type: 'bad-body',
-        value: 'The connect user has insufficient permissions to create posts',
+        value: 'The connected WordPress user is not allowed to publish posts',
       };
     }
     return undefined;
