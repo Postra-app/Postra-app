@@ -25,6 +25,7 @@ export const PLATFORM_NAMES: Record<string, string> = {
   telegram: 'Telegram',
   x: 'X',
   discord: 'Discord',
+  slack: 'Slack',
   wordpress: 'WordPress',
 };
 

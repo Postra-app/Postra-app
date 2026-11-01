@@ -105,6 +105,9 @@ const enabledProviders = new Set([
   // platform review. Proven on a real site from production (post with a
   // featured image, live link). Business only.
   'wordpress',
+  // Slack: our app is publicly distributed (no Slack review needed outside
+  // the Marketplace), so any workspace can install it. Business only.
+  'slack',
 ]);
 
 // Platforms on their way in: still waiting for the platform's review, or for

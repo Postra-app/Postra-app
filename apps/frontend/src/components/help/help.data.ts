@@ -325,6 +325,25 @@ export const CHANNEL_GUIDES: ChannelGuide[] = [
     ],
   },
   {
+    identifier: 'slack',
+    name: 'Slack',
+    connectType: 'oauth',
+    steps: [
+      'Click "Add Channel", pick Slack, choose your workspace at the top right of the Slack page and click "Allow".',
+      'Back in Postra the workspace appears in your channel list. In the post composer, pick the Slack channel in the Slack settings tab.',
+    ],
+    gotchas: [
+      'You may need to be a Slack admin, or ask one, to add apps to the workspace.',
+      'Public channels work straight away. For a private channel, invite the app first: type /invite @Postra in that channel.',
+      'Each Slack workspace is one channel in Postra; you pick the Slack channel per post.',
+    ],
+    composer: [
+      'Settings tab: the Slack channel to post in (required).',
+      'Message limit: 3,000 characters, with images shown under the text.',
+      '"Add comment / post" adds replies in the message thread.',
+    ],
+  },
+  {
     identifier: 'wordpress',
     name: 'WordPress',
     connectType: 'credentials',

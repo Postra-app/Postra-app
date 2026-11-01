@@ -49,8 +49,8 @@ export interface PricingInterface {
 // Pinterest is there too: visual small businesses live on it
 // and every rival offers it on its cheapest plan. Pro adds video and text-first
 // platforms and LinkedIn Pages (post as the company); X (our X API volume is
-// capped), Discord and WordPress stay Business-only, so Business is every
-// platform.
+// capped), Discord, Slack and WordPress stay Business-only, so Business is
+// every platform.
 const STARTER_PROVIDERS = [
   'facebook',
   'instagram',
@@ -68,7 +68,13 @@ const PRO_PROVIDERS = [
   'mastodon',
   'telegram',
 ];
-const BUSINESS_PROVIDERS = [...PRO_PROVIDERS, 'x', 'discord', 'wordpress'];
+const BUSINESS_PROVIDERS = [
+  ...PRO_PROVIDERS,
+  'x',
+  'discord',
+  'slack',
+  'wordpress',
+];
 
 // Assistant questions a month, every paid plan (see agent_messages).
 export const AGENT_FAIR_USE_MESSAGES = 2200;
@@ -157,7 +163,7 @@ export const pricing: PricingInterface = {
     year_price: 790,
     // A slot for every platform in BUSINESS_PROVIDERS (both Instagram logins
     // count as one): keep in sync when enabling a new channel globally.
-    channel: 14,
+    channel: 15,
     allowedProviders: BUSINESS_PROVIDERS,
     posts_per_month: 1000000,
     image_generation_count: 600,
