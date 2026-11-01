@@ -101,6 +101,10 @@ const enabledProviders = new Set([
   // Pinterest: Standard access approved on 2026-10-27 (app 1622258), so any
   // Pinterest account can authorise and pins are public. Offered from Starter.
   'pinterest',
+  // WordPress: the customer's own site through an application password, no
+  // platform review. Proven on a real site from production (post with a
+  // featured image, live link). Business only.
+  'wordpress',
 ]);
 
 // Platforms on their way in: still waiting for the platform's review, or for
@@ -108,9 +112,7 @@ const enabledProviders = new Set([
 // not at all, when also in hiddenProviders); a super admin can connect them
 // on production to test them and to record the review video. Move one to
 // enabledProviders once it is approved and proven.
-const previewProviders = new Set([
-  'wordpress',
-]);
+const previewProviders = new Set<string>([]);
 
 // Organisations that get the preview platforms the way a super admin does,
 // by id in PREVIEW_ORGANIZATIONS (comma-separated; SSM /postra/prod/). It is
