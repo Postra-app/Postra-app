@@ -15,7 +15,10 @@ import dayjs from 'dayjs';
 import { Integration } from '@prisma/client';
 import { Plug } from '@gitroom/helpers/decorators/plug.decorator';
 import { timer } from '@gitroom/helpers/utils/timer';
-import { percentageChangeFromSeries } from '@gitroom/nestjs-libraries/integrations/social/analytics.utils';
+import {
+  percentageChangeFromSeries,
+  weightedAverage,
+} from '@gitroom/nestjs-libraries/integrations/social/analytics.utils';
 import { Rules } from '@gitroom/nestjs-libraries/chat/rules.description.decorator';
 
 @Rules(
@@ -354,6 +357,7 @@ export class LinkedinPageProvider
       )
     ).json();
 
+    const engagementDays: Array<{ rate: number; weight: number }> = [];
     const analytics = [...elements2, ...elements, ...elements3].reduce(
       (all, current) => {
         if (
@@ -393,9 +397,17 @@ export class LinkedinPageProvider
             date: dayjs(current.timeRange.start).format('YYYY-MM-DD'),
           });
 
+          // A fraction of the day's impressions; the card shows percent.
           all['Engagement'].push({
-            total: current?.totalShareStatistics.engagement,
+            total:
+              Math.round(
+                (Number(current?.totalShareStatistics.engagement) || 0) * 10000
+              ) / 100,
             date: dayjs(current.timeRange.start).format('YYYY-MM-DD'),
+          });
+          engagementDays.push({
+            rate: current?.totalShareStatistics.engagement,
+            weight: current?.totalShareStatistics.impressionCount,
           });
 
           all['Comments'].push({
@@ -425,6 +437,15 @@ export class LinkedinPageProvider
       percentageChange: percentageChangeFromSeries(
         analytics[key as 'Page Views']
       ),
+      // Engagement is a rate: the period's value is the days weighted by
+      // their impressions, not their sum ("1.42" on the card).
+      ...(key === 'Engagement'
+        ? {
+            average: true,
+            unit: 'percent' as const,
+            summary: weightedAverage(engagementDays, 100),
+          }
+        : {}),
     }));
   }
 
@@ -473,6 +494,7 @@ export class LinkedinPageProvider
     }
 
     // Process share statistics into time series data
+    const postEngagementDays: Array<{ rate: number; weight: number }> = [];
     const analytics = (shareElements || []).reduce(
       (all, current) => {
         if (typeof current?.totalShareStatistics !== 'undefined') {
@@ -509,8 +531,15 @@ export class LinkedinPageProvider
           });
 
           all['Engagement'].push({
-            total: current.totalShareStatistics.engagement || 0,
+            total:
+              Math.round(
+                (Number(current.totalShareStatistics.engagement) || 0) * 10000
+              ) / 100,
             date: dateStr,
+          });
+          postEngagementDays.push({
+            rate: current.totalShareStatistics.engagement,
+            weight: current.totalShareStatistics.impressionCount,
           });
         }
         return all;
@@ -549,6 +578,13 @@ export class LinkedinPageProvider
         label,
         data,
         percentageChange: 0,
+        ...(label === 'Engagement'
+          ? {
+              average: true,
+              unit: 'percent' as const,
+              summary: weightedAverage(postEngagementDays, 100),
+            }
+          : {}),
       }));
 
     return result as any;

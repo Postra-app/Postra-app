@@ -456,12 +456,15 @@ export class PinterestProvider
     ).json();
     const daily_metrics: any[] = body?.all?.daily_metrics || [];
 
-    return daily_metrics.reduce(
+    const result = daily_metrics.reduce(
       (acc: any, item: any) => {
         if (typeof item.metrics.PIN_CLICK_RATE !== 'undefined') {
+          // A fraction (0.25 = 25 %); the card shows percent.
           acc[0].data.push({
             date: item.date,
-            total: item.metrics.PIN_CLICK_RATE,
+            total:
+              Math.round((Number(item.metrics.PIN_CLICK_RATE) || 0) * 10000) /
+              100,
           });
 
           acc[1].data.push({
@@ -495,6 +498,26 @@ export class PinterestProvider
         { label: 'Saves', data: [] as any[] },
       ]
     );
+
+    // The period's click rate is its clicks over its impressions: the sum of
+    // the daily rates read "1" for 1 click on 4 impressions.
+    const impressions = result[1].data.reduce(
+      (sum: number, d: any) => sum + (Number(d.total) || 0),
+      0
+    );
+    const clicks = result[2].data.reduce(
+      (sum: number, d: any) => sum + (Number(d.total) || 0),
+      0
+    );
+    result[0] = {
+      ...result[0],
+      average: true,
+      unit: 'percent',
+      summary: impressions
+        ? Math.round((clicks / impressions) * 10000) / 100
+        : 0,
+    };
+    return result;
   }
 
   async postAnalytics(

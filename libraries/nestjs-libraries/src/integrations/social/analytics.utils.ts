@@ -23,3 +23,20 @@ export function percentageChangeFromSeries(
   }
   return Math.round(((second - first) / first) * 1000) / 10;
 }
+
+// A rate or an average over a period: the days weighted by what each day's
+// value is taken over (impressions, views), not the plain sum or mean of the
+// daily values. `scale` 100 turns a fraction into percent. Two decimals.
+export const weightedAverage = (
+  days: Array<{ rate: number; weight: number }>,
+  scale = 1
+): number => {
+  const weight = days.reduce((sum, d) => sum + (Number(d.weight) || 0), 0);
+  if (!weight) return 0;
+  const value =
+    days.reduce(
+      (sum, d) => sum + (Number(d.rate) || 0) * (Number(d.weight) || 0),
+      0
+    ) / weight;
+  return Math.round(value * scale * 100) / 100;
+};

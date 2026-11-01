@@ -70,6 +70,14 @@ export interface AnalyticsData {
   label: string;
   data: Array<{ total: string; date: string }>;
   percentageChange: number;
+  // A rate or an average: the card shows the mean of the days (or `summary`)
+  // and the trend in percentage points, not a sum.
+  average?: boolean;
+  // The value for the whole period when it is not the sum (or the mean) of
+  // the days: a click rate is clicks / impressions over the period.
+  summary?: number;
+  // How the card shows the value; a count when absent.
+  unit?: 'percent' | 'seconds';
 }
 
 
