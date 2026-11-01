@@ -5,6 +5,10 @@ import {
 import { OpenaiService } from '@gitroom/nestjs-libraries/openai/openai.service';
 import { timer } from '@gitroom/helpers/utils/timer';
 
+// HeyGen renders in minutes; past this a request stops waiting instead of
+// holding a backend worker for ever.
+export const HEYGEN_MAX_WAIT_MS = 20 * 60 * 1000;
+
 @ThirdParty({
   identifier: 'heygen',
   title: 'HeyGen',
@@ -167,7 +171,8 @@ export class HeygenProvider extends ThirdPartyAbstract<{
       })
     ).json();
 
-    while (true) {
+    const started = Date.now();
+    while (Date.now() - started < HEYGEN_MAX_WAIT_MS) {
       const {
         data: { status, video_url },
       } = await (
@@ -191,5 +196,6 @@ export class HeygenProvider extends ThirdPartyAbstract<{
 
       await timer(3000);
     }
+    throw new Error('HeyGen did not finish the video in time');
   }
 }
