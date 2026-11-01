@@ -115,7 +115,11 @@ const enabledProviders = new Set([
 // not at all, when also in hiddenProviders); a super admin can connect them
 // on production to test them and to record the review video. Move one to
 // enabledProviders once it is approved and proven.
-const previewProviders = new Set<string>([]);
+const previewProviders = new Set<string>([
+  // Google Business Profile: its API needs Google's approval, and the
+  // request needs a video of the integration working on production.
+  'gmb',
+]);
 
 // Organisations that get the preview platforms the way a super admin does,
 // by id in PREVIEW_ORGANIZATIONS (comma-separated; SSM /postra/prod/). It is

@@ -189,9 +189,13 @@ test('a preview platform is "Coming soon" for customers and open to a super admi
   const adminUser = (await prisma.userOrganization.findFirstOrThrow({ where: { organizationId: admin.orgId } })).userId;
   await prisma.user.update({ where: { id: adminUser }, data: { isSuperAdmin: true } });
   try {
-    // Refused: 402 because Starter lacks it, before "Coming soon" (403).
+    // Refused: 402 because no plan has it, before "Coming soon" (403).
+    const gmb = await customer.api.get(connect('gmb'));
+    expect([402, 403], await gmb.text()).toContain(gmb.status());
+    // WordPress left the preview on 2026-11-01: Business only, so Starter
+    // gets the plan's 402, not "Coming soon".
     const wordpress = await customer.api.get(connect('wordpress'));
-    expect([402, 403], await wordpress.text()).toContain(wordpress.status());
+    expect(wordpress.status(), await wordpress.text()).toBe(402);
 
     // Pinterest left the preview on 2026-10-27 (Standard access approved):
     // a customer on Starter connects it like the other Starter platforms.
@@ -218,32 +222,31 @@ test('a preview platform is "Coming soon" for customers and open to a super admi
     ).toMatchObject({ enabled: true, name: 'Instagram\n(with Facebook Page)' });
     expect((await customer.api.get(connect('instagram-standalone'))).status()).toBe(200);
 
-    // Starter lacks WordPress: the preview pass skips the plan gate too.
-    const preview = await admin.api.get(connect('wordpress'));
+    // No plan has Google Business Profile: the preview pass skips the plan
+    // gate too.
+    const preview = await admin.api.get(connect('gmb'));
     expect(preview.status(), await preview.text()).toBe(200);
     // Not through an invite link, which connects someone else's account.
-    expect((await admin.api.get(`${connect('wordpress')}?invite=true`)).status()).toBe(402);
+    expect((await admin.api.get(`${connect('gmb')}?invite=true`)).status()).toBe(402);
     // Not for a platform outside the preview list.
     expect((await admin.api.get(connect('linkedin-page'))).status()).toBe(402);
 
     // A link minted for another platform (Pinterest, no preview pass) does
-    // not open WordPress at the callback.
+    // not open Google Business Profile at the callback.
     const minted = await admin.api.get(connect('pinterest'));
     const state = new URL((await minted.json()).url).searchParams.get('state');
-    const other = await admin.api.post('/integrations/social-connect/wordpress', {
+    const other = await admin.api.post('/integrations/social-connect/gmb', {
       data: { state, code: 'x', timezone: '0' },
     });
     expect(other.status(), await other.text()).toBe(403);
 
-    // The pass for WordPress gets past "Coming soon" and the plan; the made-up
-    // blog then fails the sign-in, which is the next check, not a 402/403.
-    const wp = await admin.api.get(connect('wordpress'));
-    const wpState = (await wp.json()).url;
-    const code = Buffer.from(
-      JSON.stringify({ domain: 'https://example.invalid', username: 'u', password: 'p' })
-    ).toString('base64');
-    const finish = await admin.api.post('/integrations/social-connect/wordpress', {
-      data: { state: wpState, code, timezone: '0' },
+    // The pass for Google Business Profile gets past "Coming soon" and the
+    // plan; the made-up code then fails the sign-in, which is the next check,
+    // not a 402/403.
+    const own = await admin.api.get(connect('gmb'));
+    const ownState = new URL((await own.json()).url).searchParams.get('state');
+    const finish = await admin.api.post('/integrations/social-connect/gmb', {
+      data: { state: ownState, code: 'x', timezone: '0' },
     });
     expect([402, 403], await finish.text()).not.toContain(finish.status());
   } finally {
@@ -270,17 +273,17 @@ test('a preview organisation connects a preview platform without being a super a
     expect(self).toMatchObject({ previewChannels: true, isSuperAdmin: false });
     expect((await (await customer.api.get('/user/self')).json()).previewChannels).toBe(false);
 
-    for (const platform of ['pinterest', 'wordpress']) {
+    for (const platform of ['pinterest', 'gmb']) {
       const res = await reviewer.api.get(connect(platform));
       expect(res.status(), `${platform}: ${await res.text()}`).toBe(200);
     }
-    const refused = await customer.api.get(connect('wordpress'));
+    const refused = await customer.api.get(connect('gmb'));
     expect([402, 403], await refused.text()).toContain(refused.status());
 
     // Still only the preview list, and not through an invite link.
     expect((await reviewer.api.get(connect('linkedin-page'))).status()).toBe(402);
     expect(
-      (await reviewer.api.get(`${connect('wordpress')}?invite=true`)).status()
+      (await reviewer.api.get(`${connect('gmb')}?invite=true`)).status()
     ).not.toBe(200);
   } finally {
     await reviewer.remove();
