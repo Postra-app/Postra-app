@@ -478,12 +478,17 @@ export class IntegrationService {
     integration: Integration,
     err = ''
   ) {
+    // A provider's reason often ends with its own full stop, and the
+    // sentence below adds one.
+    const reason = (err || '').trim().replace(/\.+$/, '');
     await this._notificationService.inAppNotification(
       orgId,
       // The reason only in the message: a long one (the Google Workspace
       // advice) made the e-mail subject a paragraph (upstream #1884).
       `Could not refresh your ${integration.providerIdentifier} channel`,
-      `Could not refresh your ${integration.providerIdentifier} channel ${err}. Please go back to the system and connect it again ${process.env.FRONTEND_URL}/launches`,
+      `Could not refresh your ${integration.providerIdentifier} channel${
+        reason ? ` ${reason}` : ''
+      }. Please go back to the system and connect it again ${process.env.FRONTEND_URL}/launches`,
       true,
       false,
       'info'
