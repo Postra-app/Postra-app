@@ -40,3 +40,18 @@ export const weightedAverage = (
     ) / weight;
   return Math.round(value * scale * 100) / 100;
 };
+
+// The trend of a rate, in percentage points: the weighted rate of the second
+// half of the window minus that of the first (equal halves, as
+// percentageChangeFromSeries). One decimal; 0 without two halves.
+export const ratePointChange = (
+  days: Array<{ rate: number; weight: number }>,
+  scale = 1
+): number => {
+  if (days.length < 2) return 0;
+  const half = Math.floor(days.length / 2);
+  const change =
+    weightedAverage(days.slice(days.length - half), scale) -
+    weightedAverage(days.slice(0, half), scale);
+  return Math.round(change * 10) / 10;
+};

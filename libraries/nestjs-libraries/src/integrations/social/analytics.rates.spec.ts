@@ -6,7 +6,7 @@ jest.mock('isomorphic-dompurify', () => ({
 import 'reflect-metadata';
 import { PinterestProvider } from './pinterest.provider';
 import { LinkedinPageProvider } from './linkedin.page.provider';
-import { weightedAverage } from './analytics.utils';
+import { ratePointChange, weightedAverage } from './analytics.utils';
 
 // Rates are not counts. On prod (31 X) Pinterest "Pin click rate" read "1"
 // for 1 click on 4 impressions and LinkedIn Page "Engagement" read "1.42":
@@ -111,5 +111,21 @@ describe('analytics rates', () => {
     });
     expect(engagement.data.map((d) => d.total)).toEqual([2, 1]);
     expect(result.find((r) => r.label === 'Clicks')!.unit).toBeUndefined();
+    // The card shows a rate's trend in percentage points (Codex): 2 % on the
+    // first day and 1 % on the second is -1 pp, not a relative -50.
+    expect(engagement.percentageChange).toBe(-1);
+  });
+
+  it('a rate trend is the difference of the two halves, weighted', () => {
+    expect(
+      ratePointChange(
+        [
+          { rate: 0.01, weight: 100 },
+          { rate: 0.02, weight: 100 },
+        ],
+        100
+      )
+    ).toBe(1);
+    expect(ratePointChange([{ rate: 0.01, weight: 100 }], 100)).toBe(0);
   });
 });

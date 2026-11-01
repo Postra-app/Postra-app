@@ -17,6 +17,7 @@ import { Plug } from '@gitroom/helpers/decorators/plug.decorator';
 import { timer } from '@gitroom/helpers/utils/timer';
 import {
   percentageChangeFromSeries,
+  ratePointChange,
   weightedAverage,
 } from '@gitroom/nestjs-libraries/integrations/social/analytics.utils';
 import { Rules } from '@gitroom/nestjs-libraries/chat/rules.description.decorator';
@@ -444,6 +445,8 @@ export class LinkedinPageProvider
             average: true,
             unit: 'percent' as const,
             summary: weightedAverage(engagementDays, 100),
+            // The card shows a rate's trend in percentage points.
+            percentageChange: ratePointChange(engagementDays, 100),
           }
         : {}),
     }));
