@@ -262,7 +262,10 @@ export class PostsController {
   @Post('/generator')
   @Throttle({ default: { ttl: 300000, limit: 10 } })
   @UseGuards(AccountAgeGuard)
-  @CheckPolicies([AuthorizationActions.Create, Sections.POSTS_PER_MONTH])
+  @CheckPolicies(
+    [AuthorizationActions.Create, Sections.POSTS_PER_MONTH],
+    [AuthorizationActions.Create, Sections.AI]
+  )
   async generatePosts(
     @GetOrgFromRequest() org: Organization,
     @Body() body: GeneratorDto,

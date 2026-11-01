@@ -10,6 +10,11 @@ import {
   Post,
 } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
+import { CheckPolicies } from '@gitroom/backend/services/auth/permissions/permissions.ability';
+import {
+  AuthorizationActions,
+  Sections,
+} from '@gitroom/nestjs-libraries/services/auth/permission.exception.class';
 import { ThirdPartyManager } from '@gitroom/nestjs-libraries/3rdparties/thirdparty.manager';
 import { GetOrgFromRequest } from '@gitroom/nestjs-libraries/user/org.from.request';
 import { Organization } from '@prisma/client';
@@ -65,6 +70,7 @@ export class ThirdPartyController {
 
   @Post('/:id/submit')
   @Throttle({ default: { ttl: 300_000, limit: 10 } })
+  @CheckPolicies([AuthorizationActions.Create, Sections.AI])
   async generate(
     @GetOrgFromRequest() organization: Organization,
     @Param('id') id: string,
@@ -98,6 +104,8 @@ export class ThirdPartyController {
 
   @Post('/function/:id/:functionName')
   @Throttle({ default: { ttl: 300_000, limit: 120 } })
+  // HeyGen voice scripts run on our OpenAI key, like every AI route.
+  @CheckPolicies([AuthorizationActions.Create, Sections.AI])
   async callFunction(
     @GetOrgFromRequest() organization: Organization,
     @Param('id') id: string,
