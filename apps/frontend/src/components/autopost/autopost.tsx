@@ -46,8 +46,8 @@ export const Autopost: FC = () => {
     (data?: any) => () => {
       modal.openModal({
         title: data
-          ? t('edit_autopost', 'Edit Autopost')
-          : t('add_autopost_title', 'Add Autopost'),
+          ? t('edit_autopost', 'Edit Auto Post feed')
+          : t('add_autopost_title', 'Add Auto Post feed'),
         withCloseButton: true,
         children: <AddOrEditWebhook data={data} reload={mutate} />,
       });
@@ -92,11 +92,11 @@ export const Autopost: FC = () => {
   );
   return (
     <div className="flex flex-col">
-      <h3 className="text-[20px]">{t('autopost', 'Autopost')}</h3>
+      <h3 className="text-[20px]">{t('autopost', 'Auto Post')}</h3>
       <div className="text-newTextColor/55 mt-[4px]">
         {t(
           'autopost_can_automatically_posts_your_rss_new_items_to_social_media',
-          'Autopost automatically publishes new RSS items to your social media'
+          'Auto Post publishes new items from your RSS feeds to your social media'
         )}
       </div>
       <div className="my-[16px] mt-[16px] bg-white/[0.03] border-white/10 items-center border rounded-[16px] p-[24px] flex gap-[24px]">
@@ -180,7 +180,7 @@ export const Autopost: FC = () => {
                 disabled={access.atLimit}
                 className={clsx((data?.length || 0) > 0 && 'my-[16px]')}
               >
-                {t('add_an_autopost', 'Add an autopost')}
+                {t('add_an_autopost', 'Add an Auto Post feed')}
               </Button>
               <span className="text-newTextColor/55 text-[13px]">
                 {t(
@@ -352,8 +352,8 @@ export const AddOrEditWebhook: FC<{
       }
       toast.show(
         data?.id
-          ? t('autopost_updated_successfully', 'Autopost updated successfully')
-          : t('autopost_added_successfully', 'Autopost added successfully'),
+          ? t('autopost_updated_successfully', 'Auto Post feed updated')
+          : t('autopost_added_successfully', 'Auto Post feed added'),
         'success'
       );
       modal.closeAll();

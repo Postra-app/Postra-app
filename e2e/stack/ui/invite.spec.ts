@@ -59,3 +59,21 @@ test('"Continue" works before the page has hydrated', async ({ page }) => {
   await page.waitForURL(/localhost:58080\/oauth\/authorize/);
   expect(new URL(page.url()).searchParams.get('state')).toBeTruthy();
 });
+
+// The page capitalised the identifier: "invited you to connect Linkedin",
+// "Tiktok", "Youtube". It names the platform as the platform does.
+test('the invite page names the platform properly', async ({ page }) => {
+  const a = await signedIn('a');
+  for (const [id, name] of [
+    ['linkedin', 'LinkedIn'],
+    ['youtube', 'YouTube'],
+  ]) {
+    const res = await a.get(`/integrations/social/${id}?invite=true`);
+    expect(res.ok()).toBeTruthy();
+    const { url } = await res.json();
+    await page.goto(new URL(url).pathname);
+    await expect(
+      page.getByRole('heading', { name: `${USERS.a.org} invited you to connect ${name}` })
+    ).toBeVisible();
+  }
+});

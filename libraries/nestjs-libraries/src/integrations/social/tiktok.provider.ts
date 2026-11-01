@@ -53,7 +53,7 @@ export const tiktokRedirectUri = () => {
 export class TiktokProvider extends SocialAbstract implements SocialProvider {
   private readonly _logger = new Logger(TiktokProvider.name);
   identifier = 'tiktok';
-  name = 'Tiktok';
+  name = 'TikTok';
   isBetweenSteps = false;
   convertToJPEG = true;
   scopes = [

@@ -5,11 +5,14 @@ import { useFetch } from '@gitroom/helpers/utils/custom.fetch';
 import { ChartSocial } from '@gitroom/frontend/components/analytics/chart-social';
 import { LoadingComponent } from '@gitroom/frontend/components/layout/loading';
 import { useT } from '@gitroom/react/translation/get.transation.service.client';
+import { analyticsTotal } from '@gitroom/frontend/components/platform-analytics/analytics.total';
 
 interface AnalyticsDataItem {
   label: string;
   data: Array<{ total: number; date: string }>;
   average?: boolean;
+  summary?: number;
+  unit?: 'percent' | 'seconds';
   percentageChange?: number;
 }
 
@@ -240,17 +243,7 @@ export const RenderAnalytics: FC<{
 
   const t = useT();
 
-  const totals = useMemo(() => {
-    return data?.map((p: AnalyticsDataItem) => {
-      const value =
-        (p?.data.reduce((acc: number, curr: { total: number }) => acc + curr.total, 0) || 0) /
-        (p.average ? p.data.length : 1);
-      if (p.average) {
-        return value.toFixed(2) + '%';
-      }
-      return new Intl.NumberFormat().format(Math.round(value));
-    });
-  }, [data]);
+  const totals = useMemo(() => data?.map(analyticsTotal), [data]);
 
   if (loading) {
     return (

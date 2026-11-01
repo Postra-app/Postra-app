@@ -46,7 +46,7 @@ test('Auto Post on Starter shows how many feeds are left, and no form past the l
     await context.addCookies((await starter.api.storageState()).cookies);
     await page.goto('/autopost');
     await expect(page.getByText('2 of 2 RSS feeds used')).toBeVisible({ timeout: 20_000 });
-    await expect(page.getByRole('button', { name: 'Add an autopost' })).toBeDisabled();
+    await expect(page.getByRole('button', { name: 'Add an Auto Post feed' })).toBeDisabled();
   } finally {
     await starter.remove();
     await prisma.$disconnect();

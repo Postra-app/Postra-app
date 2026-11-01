@@ -20,6 +20,7 @@ import {
   ValidityMedia,
 } from '@gitroom/nestjs-libraries/integrations/social.abstract';
 import * as process from 'node:process';
+import { weightedAverage } from '@gitroom/nestjs-libraries/integrations/social/analytics.utils';
 import dayjs from 'dayjs';
 import { GaxiosResponse } from 'gaxios/build/src/common';
 import Schema$Video = youtube_v3.Schema$Video;
@@ -526,27 +527,45 @@ export class YoutubeProvider extends SocialAbstract implements SocialProvider {
     // the other networks — instead of the misleading "needs to be refreshed"
     // empty-state. `data` is always an array so the frontend's .reduce can't
     // throw on an undefined value.
-    const panels: { label: string; key: string; average?: boolean }[] = [
+    const panels: {
+      label: string;
+      key: string;
+      average?: boolean;
+      unit?: 'percent' | 'seconds';
+    }[] = [
       { label: 'Estimated Minutes Watched', key: 'estimatedMinutesWatched' },
+      // Seconds, not a percentage: the card read "95.00%" for 95 seconds.
       {
         label: 'Average View Duration',
         key: 'averageViewDuration',
         average: true,
+        unit: 'seconds',
       },
       {
         label: 'Average View Percentage',
         key: 'averageViewPercentage',
         average: true,
+        unit: 'percent',
       },
       { label: 'Subscribers Gained', key: 'subscribersGained' },
       { label: 'Subscribers Lost', key: 'subscribersLost' },
       { label: 'Likes', key: 'likes' },
     ];
     const build = (rows: any[]): AnalyticsData[] =>
-      panels.map(({ label, key, average }) => ({
+      panels.map(({ label, key, average, unit }) => ({
         label,
         percentageChange: 0,
-        ...(average ? { average: true } : {}),
+        // An average over the period is the days weighted by their views:
+        // a day with one view counted as much as a day with a thousand.
+        ...(average
+          ? {
+              average: true,
+              unit,
+              summary: weightedAverage(
+                rows.map((p: any) => ({ rate: p[key], weight: p.views })),
+              ),
+            }
+          : {}),
         data: rows.map((p: any) => ({ total: p[key], date: p.day })),
       }));
 

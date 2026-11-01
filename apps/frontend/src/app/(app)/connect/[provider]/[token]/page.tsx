@@ -1,8 +1,8 @@
 import { Metadata } from 'next';
 import { internalFetch } from '@gitroom/helpers/utils/internal.fetch';
-import { capitalize } from 'lodash';
 import { getT } from '@gitroom/react/translation/get.translation.service.backend';
 import { ConnectInviteClient } from '@gitroom/frontend/components/launches/connect.invite.client';
+import { platformName } from '@gitroom/frontend/components/launches/platform.name';
 
 // The invite token lives in Redis for an hour — nothing here can be cached.
 export const dynamic = 'force-dynamic';
@@ -47,7 +47,7 @@ export default async function ConnectInvitePage(props: {
   const { provider, token } = await props.params;
   const t = await getT();
   const invite = await loadInvite(token);
-  const providerName = capitalize(provider.split('-')[0]);
+  const providerName = platformName(provider);
 
   return (
     <div className="bg-primary min-h-screen flex items-center justify-center p-[20px]">

@@ -32,3 +32,36 @@ describe('YouTube post analytics', () => {
     ).resolves.toEqual([]);
   });
 });
+
+// "Average View Duration" is seconds and read "95.00%"; both averages were a
+// plain mean of the days, a day with one view counting like a busy one.
+describe('YouTube channel analytics averages', () => {
+  afterEach(() => jest.restoreAllMocks());
+
+  it('weights the averages by views and gives their units', async () => {
+    jest.spyOn(google, 'youtubeAnalytics').mockReturnValue({
+      reports: {
+        query: jest.fn().mockResolvedValue({
+          data: {
+            columnHeaders: [
+              { name: 'day' },
+              { name: 'views' },
+              { name: 'averageViewDuration' },
+              { name: 'averageViewPercentage' },
+            ],
+            rows: [
+              ['2026-10-30', 1, 10, 10],
+              ['2026-10-31', 3, 130, 50],
+            ],
+          },
+        }),
+      },
+    } as any);
+    const result = await new YoutubeProvider().analytics('ch', 'token', 7);
+    const duration = result.find((r) => r.label === 'Average View Duration')!;
+    const percentage = result.find((r) => r.label === 'Average View Percentage')!;
+    expect(duration).toMatchObject({ average: true, unit: 'seconds', summary: 100 });
+    expect(percentage).toMatchObject({ average: true, unit: 'percent', summary: 40 });
+    expect(result.find((r) => r.label === 'Likes')!.unit).toBeUndefined();
+  });
+});

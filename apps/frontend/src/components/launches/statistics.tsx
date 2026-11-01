@@ -2,6 +2,7 @@ import React, { FC, Fragment, useCallback, useMemo, useState } from 'react';
 import useSWR, { useSWRConfig } from 'swr';
 import { useFetch } from '@gitroom/helpers/utils/custom.fetch';
 import { useT } from '@gitroom/react/translation/get.transation.service.client';
+import { analyticsTotal } from '@gitroom/frontend/components/platform-analytics/analytics.total';
 import dynamic from 'next/dynamic';
 const ChartSocial = dynamic(
   () =>
@@ -19,6 +20,8 @@ interface AnalyticsData {
   data: Array<{ total: number; date: string }>;
   percentageChange: number;
   average?: boolean;
+  summary?: number;
+  unit?: 'percent' | 'seconds';
 }
 
 export const StatisticsModal: FC<{
@@ -69,15 +72,7 @@ export const StatisticsModal: FC<{
 
   const totals = useMemo(() => {
     if (!analyticsData || !Array.isArray(analyticsData)) return [];
-    return analyticsData.map((p: AnalyticsData) => {
-      const value =
-        (p?.data?.reduce((acc: number, curr: any) => acc + Number(curr.total), 0) || 0) /
-        (p.average ? p.data.length : 1);
-      if (p.average) {
-        return value.toFixed(2) + '%';
-      }
-      return Math.round(value);
-    });
+    return analyticsData.map(analyticsTotal);
   }, [analyticsData]);
 
   const isLoading = isLoadingStatistics || isLoadingAnalytics;
