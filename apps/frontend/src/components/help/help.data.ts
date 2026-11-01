@@ -384,7 +384,7 @@ export const APP_TABS: AppTabGuide[] = [
   {
     id: 'analytics',
     name: 'Analytics',
-    description: 'Follower growth and post performance for Facebook, Instagram, Threads, X, YouTube and TikTok; post statistics (likes, reposts, replies) for Bluesky and Mastodon, and reactions for Discord. Telegram and personal LinkedIn profiles have no analytics.',
+    description: 'Follower growth and post performance for Facebook, Instagram, Threads, X, YouTube and Pinterest; post statistics (likes, reposts, replies) for Bluesky and Mastodon, and reactions for Discord. TikTok, Telegram, Slack, WordPress and personal LinkedIn profiles have no analytics in Postra.',
   },
   {
     id: 'studio',
