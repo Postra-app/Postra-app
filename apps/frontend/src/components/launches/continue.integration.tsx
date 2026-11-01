@@ -1,6 +1,7 @@
 'use client';
 
 import { FC, useCallback, useEffect, useMemo, useState } from 'react';
+import { platformName } from '@gitroom/frontend/components/launches/platform.name';
 import { isNavigableUrl } from '@gitroom/frontend/components/layout/safe.url';
 import { HttpStatusCode } from 'axios';
 import { useRouter } from 'next/navigation';
@@ -424,17 +425,7 @@ export const ContinueIntegration: FC<{
     );
   }, [provider]);
 
-  const providerDisplayName = useMemo(() => {
-    const names: Record<string, string> = {
-      facebook: 'Facebook',
-      instagram: 'Instagram',
-      'instagram-standalone': 'Instagram',
-      'linkedin-page': 'LinkedIn',
-      youtube: 'YouTube',
-      gmb: 'Google Business',
-    };
-    return names[provider] || provider;
-  }, [provider]);
+  const providerDisplayName = useMemo(() => platformName(provider), [provider]);
 
   // Success state for non-logged users without returnURL
   if (successState) {

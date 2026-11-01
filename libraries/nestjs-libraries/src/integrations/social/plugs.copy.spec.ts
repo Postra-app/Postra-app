@@ -44,3 +44,11 @@ describe('plug copy', () => {
     }
   );
 });
+
+describe('platform names', () => {
+  // The Add Channel tile read "Tiktok".
+  it('TikTok is spelt as TikTok spells it', async () => {
+    const { TiktokProvider } = await import('./tiktok.provider');
+    expect(new TiktokProvider().name).toBe('TikTok');
+  });
+});
