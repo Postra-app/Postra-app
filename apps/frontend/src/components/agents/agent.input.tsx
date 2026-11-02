@@ -56,9 +56,12 @@ export const Input = ({
     return () => clearTimeout(timer);
   }, []);
   const ready = chatReady && (isAvailable || waitedLong);
+  // Connecting to the thread marks the agent as running too, so Enter in
+  // that moment (straight after the page opens) was ignored and the text
+  // never went out. A message sent while the chat is busy waits its turn.
   const send = () => {
-    if (inProgress) return;
-    if (!ready) {
+    if (!text.trim() || interrupt) return;
+    if (inProgress || !ready) {
       setQueued(true);
       return;
     }
@@ -116,9 +119,7 @@ export const Input = ({
           onKeyDown={(event) => {
             if (event.key === 'Enter' && !event.shiftKey && !isComposing) {
               event.preventDefault();
-              if (canSend) {
-                send();
-              }
+              send();
             }
           }}
         />
