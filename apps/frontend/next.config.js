@@ -1,5 +1,6 @@
 // @ts-check
-import { withSentryConfig } from '@sentry/nextjs';
+// Sentry 11 serves the build wrapper from its own entry point.
+import { withSentryConfig } from '@sentry/nextjs/config';
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {

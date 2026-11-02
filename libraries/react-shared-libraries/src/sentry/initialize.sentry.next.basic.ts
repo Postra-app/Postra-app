@@ -1,5 +1,6 @@
 import * as Sentry from '@sentry/nextjs';
 import { NETWORK_FAILURE_PATTERNS } from '@gitroom/helpers/utils/fetch.errors';
+import { SENTRY_DATA_COLLECTION } from '@gitroom/helpers/utils/sentry.data.collection';
 
 export const initializeSentryBasic = (environment: string, dsn: string, extension: any) => {
   if (!dsn) {
@@ -25,6 +26,11 @@ export const initializeSentryBasic = (environment: string, dsn: string, extensio
           component: 'nextjs',
           replaysEnabled: 'true',
         },
+        // Streamed spans (Sentry 11) do not carry the tags above.
+        attributes: {
+          service: 'frontend',
+          component: 'nextjs',
+        },
         contexts: {
           app: {
             name: 'Postra Frontend',
@@ -32,9 +38,9 @@ export const initializeSentryBasic = (environment: string, dsn: string, extensio
           },
         },
       },
-      integrations: [
-        Sentry.consoleLoggingIntegration({ levels: ['warn', 'error'] }),
-      ],
+      // No consoleLoggingIntegration: without `enableLogs` Sentry 10 sent
+      // nothing through it, and Sentry 11 would start sending every browser
+      // and server console warning, a quota cost nobody asked for.
       // The browser's harmless ResizeObserver notice arrives in bursts (ten
       // at once when the channel sidebar reflows) and is never actionable.
       // MetaMask's injected script fails on pages that never asked for a
@@ -51,8 +57,9 @@ export const initializeSentryBasic = (environment: string, dsn: string, extensio
       release: process.env.NEXT_PUBLIC_VERSION || undefined,
       spotlight: process.env.SENTRY_SPOTLIGHT === '1',
       dsn,
-      // GDPR: never attach IP address / user identifiers by default.
-      sendDefaultPii: false,
+      // GDPR: never attach IP address / user identifiers (Sentry 11 collects
+      // them unless told otherwise; see sentry.data.collection.ts).
+      dataCollection: SENTRY_DATA_COLLECTION,
       ...extension,
       debug: environment === 'development',
       tracesSampleRate,

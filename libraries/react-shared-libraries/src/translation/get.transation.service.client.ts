@@ -3,7 +3,7 @@
 import i18next from './i18next';
 import { useContext, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { UseTranslationOptions } from 'react-i18next/index';
+import type { UseTranslationOptions } from 'react-i18next';
 import { LanguageContext } from './language.context';
 
 export function useT(ns?: string, options?: UseTranslationOptions<any>) {

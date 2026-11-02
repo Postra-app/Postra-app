@@ -2,6 +2,10 @@
   "extends": "../../tsconfig.base.json",
   "compilerOptions": {
     "jsx": "preserve",
+    // Next.js's own setting: packages are resolved through their "exports"
+    // as the bundler does (Sentry 11 serves withSentryConfig only there).
+    "module": "esnext",
+    "moduleResolution": "bundler",
     "allowJs": true,
     "esModuleInterop": true,
     "allowSyntheticDefaultImports": true,
