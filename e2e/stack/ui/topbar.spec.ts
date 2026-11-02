@@ -50,9 +50,17 @@ test('the language dialog opens and a language is picked from the keyboard', asy
   await page.keyboard.press('Enter');
   await expect(dialog).toBeHidden();
   await expect.poll(async () => (await page.context().cookies()).find((c) => c.name === 'i18next')?.value).toBe('pl');
+  // The Polish catalogue loads after the choice and the header re-renders in
+  // Polish. Under a full parallel run the click below once landed mid-swap
+  // and the dialog it opened was gone (2 XI): wait for the switch first.
+  const polish = page.getByRole('button', { name: 'Zmień język' });
+  await expect(polish).toBeVisible();
   // Back to English for the rest of this browser context.
-  await page.getByRole('button', { name: /Change Language|Zmień język/ }).click();
-  await page.getByRole('dialog').getByRole('button', { name: 'English' }).click();
+  await expect(async () => {
+    await polish.click();
+    await page.getByRole('dialog').getByRole('button', { name: 'English' }).click({ timeout: 3_000 });
+  }).toPass({ timeout: 20_000 });
+  await expect(page.getByRole('button', { name: 'Change Language' })).toBeVisible();
 });
 
 test('the notifications open from the keyboard', async ({ page }) => {
