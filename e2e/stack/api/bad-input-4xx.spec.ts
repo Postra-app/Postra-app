@@ -35,7 +35,7 @@ test('malformed requests are 4xx, not 500', async () => {
   }
 });
 
-// §60 C2: the Stripe webhook is public; a request without Stripe's signature
+// The Stripe webhook is public; a request without Stripe's signature
 // is refused as a bad request and changes nothing.
 test('the Stripe webhook refuses an unsigned or wrongly signed event', async () => {
   const api = await anonymous();

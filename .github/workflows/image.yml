@@ -69,19 +69,23 @@ jobs:
       # node_modules), as code-scanning alerts in the Security tab. Reported,
       # not blocking: a CVE published overnight must not stop a deploy; the
       # alerts are read with Dependabot's. Only ones with a fix available.
-      # Pinned to a commit: a third-party action given write access to
-      # security events.
+      # Trivy runs from its image (third-party actions are not on this
+      # repository's allow-list); the version is in .github/tools, where
+      # Dependabot watches it.
       - name: Scan the image
-        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
-        with:
-          image-ref: ${{ env.IMAGE }}:sha-${{ github.sha }}
-          format: sarif
-          output: trivy-image.sarif
-          severity: CRITICAL,HIGH
-          ignore-unfixed: true
-          exit-code: '0'
+        continue-on-error: true
+        run: |
+          TRIVY=$(sed -n 's/^FROM //p' .github/tools/trivy.Dockerfile)
+          docker run --rm \
+            -v /var/run/docker.sock:/var/run/docker.sock \
+            -v "${PWD}:/out" \
+            "${TRIVY}" image \
+            --format sarif --output /out/trivy-image.sarif \
+            --severity CRITICAL,HIGH --ignore-unfixed --exit-code 0 \
+            "${IMAGE}:sha-${GITHUB_SHA}"
 
       - name: Upload the image scan
+        continue-on-error: true
         uses: github/codeql-action/upload-sarif@v4
         with:
           sarif_file: trivy-image.sarif

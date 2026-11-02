@@ -3,7 +3,7 @@ import { ValidationPipe } from '@nestjs/common';
 import { UserDetailDto } from '@gitroom/nestjs-libraries/dtos/users/user.details.dto';
 import { validationPipeOptions } from './validation.pipe.options';
 
-// §60 C2 (contract tests): the global pipe strips what a DTO does not declare,
+// The global pipe strips what a DTO does not declare,
 // nested objects included, so a spread of the body cannot write a field the
 // client chose (mass assignment). Nothing tested the pipe itself.
 describe('global ValidationPipe', () => {

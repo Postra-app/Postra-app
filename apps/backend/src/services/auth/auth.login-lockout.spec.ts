@@ -20,7 +20,7 @@ const { AuthService: AuthChecker } = require('@gitroom/helpers/auth/auth.service
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const { Provider } = require('@prisma/client');
 
-// §60 C2 (contract tests): the per-address lockout that stops password
+// The per-address lockout that stops password
 // guessing spread over many IPs (the route's own throttle is per IP) had no
 // test. Ten wrong passwords lock the address for the window, the right
 // password included; a success clears the count.

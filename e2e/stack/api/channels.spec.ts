@@ -195,7 +195,7 @@ test('pending Facebook and Instagram channels of one Meta account live side by s
 });
 
 // Moltbook is hidden from the picker, yet its registration route registered
-// agents on moltbook.com through our server for anyone signed in (§60 G9).
+// agents on moltbook.com through our server for anyone signed in.
 test('the hidden Moltbook provider has no routes', async () => {
   const a = await signedIn('a');
   expect((await a.post('/integrations/moltbook/register', { data: { name: 'x', description: 'y' } })).status()).toBe(404);

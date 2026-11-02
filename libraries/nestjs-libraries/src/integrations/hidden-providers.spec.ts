@@ -8,7 +8,7 @@ const controller = readFileSync(
   'utf8'
 );
 
-// §60 G9: Moltbook was out of the picker but its routes still did its work.
+// Moltbook was out of the picker but its routes still did its work.
 describe('hidden providers', () => {
   it('Moltbook is hidden', () => {
     expect(manager).toMatch(/hiddenProviders = new Set\(\[[^\]]*'moltbook'/);
