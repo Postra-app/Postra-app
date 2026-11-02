@@ -177,7 +177,7 @@ export interface SocialProvider
   dto?: any;
   maxLength: (additionalSettings?: any) => number;
   checkValidity(
-    posts: Array<{ path: string; thumbnail?: string }[]>,
+    posts: Array<{ path: string; thumbnail?: string; alt?: string }[]>,
     settings: any,
     additionalSettings: any[]
   ): Promise<string | true>;

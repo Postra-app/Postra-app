@@ -7,6 +7,7 @@ import sharp from 'sharp';
 export type ValidityMedia = {
   path: string;
   thumbnail?: string;
+  alt?: string;
 };
 
 // Temporal serializes the whole ApplicationFailure (message + details) into the
