@@ -16,6 +16,7 @@ permissions:
   packages: write
   id-token: write
   attestations: write
+  security-events: write
 
 env:
   IMAGE: ghcr.io/postra-app/postra-app
@@ -63,6 +64,28 @@ jobs:
           subject-name: ${{ env.IMAGE }}
           subject-digest: ${{ steps.push.outputs.digest }}
           push-to-registry: true
+
+      # Known vulnerabilities in the published image (OS packages and
+      # node_modules), as code-scanning alerts in the Security tab. Reported,
+      # not blocking: a CVE published overnight must not stop a deploy; the
+      # alerts are read with Dependabot's. Only ones with a fix available.
+      # Pinned to a commit: a third-party action given write access to
+      # security events.
+      - name: Scan the image
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          image-ref: ${{ env.IMAGE }}:sha-${{ github.sha }}
+          format: sarif
+          output: trivy-image.sarif
+          severity: CRITICAL,HIGH
+          ignore-unfixed: true
+          exit-code: '0'
+
+      - name: Upload the image scan
+        uses: github/codeql-action/upload-sarif@v4
+        with:
+          sarif_file: trivy-image.sarif
+          category: image
 
   # Every commit on main adds an image; the registry keeps the newest 20
   # (deploys copy the image to ECR, so older ones serve nothing here). A
