@@ -11,6 +11,7 @@ import {
   marginSettings,
   UsageRow,
 } from '@gitroom/nestjs-libraries/ai-cost/ai-cost';
+import { registerAiCostGauge } from '@gitroom/nestjs-libraries/ai-cost/ai-cost.metric';
 
 @Injectable()
 export class AiUsageService {
@@ -32,6 +33,23 @@ export class AiUsageService {
         })
         .catch(() => {});
     });
+    // Early warning before the provider's hard limit: the Grafana rule
+    // "AI cost over the last 24 hours" reads this gauge (ai-cost.metric.ts).
+    registerAiCostGauge(async (since) =>
+      (
+        await this._prisma.aiUsage.groupBy({
+          by: ['model', 'unit'],
+          where: { createdAt: { gte: since } },
+          _sum: { inputAmount: true, cachedAmount: true, outputAmount: true },
+        })
+      ).map((r) => ({
+        model: r.model,
+        unit: r.unit,
+        inputAmount: r._sum.inputAmount,
+        cachedAmount: r._sum.cachedAmount,
+        outputAmount: r._sum.outputAmount,
+      }))
+    );
   }
 
   // Questions asked to the assistant since `from` — the unit of its monthly
