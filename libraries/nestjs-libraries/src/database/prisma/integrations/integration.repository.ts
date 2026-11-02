@@ -539,16 +539,21 @@ export class IntegrationRepository {
       },
     });
   }
-  refreshNeeded(org: string, id: string) {
-    return this._integration.model.integration.update({
+  // True only for the call that flips the flag, so the channel's later failed
+  // refreshes (hourly analytics on an expired token, parallel attempts) do not
+  // tell the customer again until they reconnect (upstream 5a5e50f4e).
+  async refreshNeeded(org: string, id: string) {
+    const { count } = await this._integration.model.integration.updateMany({
       where: {
         id,
         organizationId: org,
+        refreshNeeded: false,
       },
       data: {
         refreshNeeded: true,
       },
     });
+    return count === 1;
   }
 
   updateNameAndUrl(id: string, name: string, url: string) {

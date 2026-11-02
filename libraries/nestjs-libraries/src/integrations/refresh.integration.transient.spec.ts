@@ -26,7 +26,7 @@ const integration = {
 
 const setup = (failure: unknown) => {
   const integrations = {
-    refreshNeeded: jest.fn(),
+    refreshNeeded: jest.fn().mockResolvedValue(true),
     informAboutRefreshError: jest.fn(),
     disconnectChannel: jest.fn(),
     createOrUpdateIntegration: jest.fn(),
@@ -81,4 +81,18 @@ it('a channel removed during the refresh is not written back', async () => {
   );
   expect(await service.refresh(integration)).toBe(false);
   expect(integrations.createOrUpdateIntegration).not.toHaveBeenCalled();
+});
+
+// Upstream 5a5e50f4e: every failed refresh of an already flagged channel sent
+// the "Could not refresh" notice and e-mail again (hourly analytics polling an
+// expired token = an e-mail an hour) until the customer reconnected.
+it('tells the customer once: a channel already flagged is not notified again', async () => {
+  const { service, integrations } = setup(
+    Object.assign(new Error('invalid_grant'), { status: 400 })
+  );
+  integrations.refreshNeeded.mockResolvedValueOnce(true).mockResolvedValueOnce(false);
+  await service.refresh(integration);
+  await service.refresh(integration);
+  expect(integrations.refreshNeeded).toHaveBeenCalledTimes(2);
+  expect(integrations.disconnectChannel).toHaveBeenCalledTimes(1);
 });
