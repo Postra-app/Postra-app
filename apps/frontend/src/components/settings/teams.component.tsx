@@ -342,7 +342,7 @@ export const TeamsComponent = () => {
                 {nameOf(p.user.email)}
               </div>
               <div className="flex-1">
-                {/* The owner changes a member's role here (E2E-11-85);
+                {/* The owner changes a member's role here;
                     ownership itself moves with "Make owner". */}
                 {isOwner && p.role !== 'SUPERADMIN' ? (
                   <select

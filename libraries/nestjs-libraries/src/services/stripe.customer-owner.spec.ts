@@ -51,7 +51,7 @@ import { StripeService } from '@gitroom/nestjs-libraries/services/stripe.service
 // invoices and receipts go to that address. It took the first member the
 // team query returned, in no set order, so a member or an admin could get
 // the owner's invoices; with ownership now handed over in Settings, the
-// first member is often the former owner (E2E-11-85).
+// first member is often the former owner.
 
 const team = (users: Array<{ role: string; email: string; disabled?: boolean }>) => ({
   users: users.map((u) => ({ role: u.role, disabled: !!u.disabled, user: { email: u.email } })),

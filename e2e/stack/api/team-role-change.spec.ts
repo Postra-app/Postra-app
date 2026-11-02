@@ -1,7 +1,7 @@
 import { expect, test } from '@playwright/test';
 import { addMember, database, throwawayOrg } from '../helpers';
 
-// E2E-11-85: roles were fixed at invitation. Making a member an admin meant
+// Roles were fixed at invitation. Making a member an admin meant
 // removing and inviting them again, and an owner could never hand the
 // organisation over, while the error for removing the last owner told them
 // to "make someone else the owner first". The owner now changes roles in
