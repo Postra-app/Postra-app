@@ -13,6 +13,7 @@ import { buildBrandAgentPrompt } from '@gitroom/nestjs-libraries/openai/brand-pr
 import { languageRule } from '@gitroom/nestjs-libraries/openai/language-rule';
 import {
   AGENT_MAX_STEPS,
+  agentRunDeadline,
   organizationOfRun,
   agentModelId,
   agentProviderOptions,
@@ -172,10 +173,11 @@ ${brandKit}
       // Bound the run. The fair use counts questions and is checked before a
       // question is taken, so a run that started is allowed to finish — a
       // re-check mid-run cut off the answer to the last allowed question;
-      // AGENT_MAX_STEPS stops a loop.
+      // AGENT_MAX_STEPS stops a loop, AGENT_MAX_RUN_MS a slow one.
       defaultOptions: ({ requestContext }) =>
         ({
           maxSteps: AGENT_MAX_STEPS,
+          stopWhen: agentRunDeadline(),
           providerOptions: agentProviderOptions(
             organizationIdFromContext(
               organizationOfRun(requestContext as never)

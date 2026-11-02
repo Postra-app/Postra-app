@@ -7,7 +7,7 @@ import { ioRedis } from '@gitroom/nestjs-libraries/redis/redis.service';
 // every few steps stops each of them.
 export const AGENT_RUNS_PER_ORG = 2;
 // A crashed process never releases its slot; the key expires instead. Longer
-// than any run (25 steps).
+// than any run (25 steps, 120 s: agent-budget.ts).
 const SLOT_TTL_SECONDS = 600;
 
 // CopilotKit's single-route envelope ({ method, params, body }): agent/run is
