@@ -396,18 +396,21 @@ export class UsersService {
     media: { path: string; thumbnail: string | null }[],
     otherFiles: string[] = []
   ) {
-    const fromMedia = new Set(
-      media.flatMap((m) => [m.path, m.thumbnail]).filter(Boolean) as string[]
-    );
-    // Media rows belong to one organisation; the rest is matched by URL, so
-    // a file somebody else still shows is left alone.
-    const others: string[] = [];
-    for (const path of otherFiles) {
-      if (!fromMedia.has(path) && !(await this.isStillUsed(path))) {
-        others.push(path);
+    // Every file is checked against what is left after the delete, the
+    // media rows' own included: a thumbnail is any URL the client set
+    // (POST /media/information), so it can name a file another organisation
+    // still uses, and deleting this account removed that file from the
+    // bucket. A file somebody else still shows is left alone.
+    const candidates = new Set([
+      ...(media.flatMap((m) => [m.path, m.thumbnail]).filter(Boolean) as string[]),
+      ...otherFiles,
+    ]);
+    const paths: string[] = [];
+    for (const path of candidates) {
+      if (!(await this.isStillUsed(path))) {
+        paths.push(path);
       }
     }
-    const paths = [...fromMedia, ...others];
 
     if (!paths.length) {
       return;

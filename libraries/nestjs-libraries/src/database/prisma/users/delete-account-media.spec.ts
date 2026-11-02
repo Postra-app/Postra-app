@@ -273,3 +273,18 @@ describe('the owner leaving an organisation that stays', () => {
     expect(tx.userOrganization.update).not.toHaveBeenCalled();
   });
 });
+
+// A thumbnail is any URL the client set; one naming another organisation's
+// file deleted that file from the bucket with this account.
+describe('a thumbnail pointing at another organisation\'s file', () => {
+  it('is left in place while another media row still uses it', async () => {
+    removeFile.mockClear();
+    const theirs = 'https://cdn.example/2026/10/theirs.png';
+    const { service } = build(
+      [{ path: 'https://cdn.example/2026/11/mine.mp4', thumbnail: theirs }],
+      { stillUsed: [theirs] }
+    );
+    await service.deleteAccount('user-1');
+    expect(removeFile.mock.calls.map((c) => c[0])).toEqual(['https://cdn.example/2026/11/mine.mp4']);
+  });
+});

@@ -468,13 +468,15 @@ export class InstagramProvider
   // there marks a live post as failed; ask Instagram first and take the media
   // it created. Any other outcome keeps the original error. Feed posts only:
   // the /media edge does not list stories, so its newest item would be some
-  // other post.
+  // other post. The media is matched by its caption among the newest few:
+  // the newest alone may be a post published in between.
   async publishContainer(
     type: string,
     igId: string,
     creationId: string,
     accessToken: string,
-    checkToken: string
+    checkToken: string,
+    caption = ''
   ): Promise<string> {
     try {
       const { id } = await (
@@ -494,7 +496,8 @@ export class InstagramProvider
         type,
         igId,
         creationId,
-        checkToken
+        checkToken,
+        caption
       );
       if (!mediaId) {
         throw err;
@@ -507,12 +510,13 @@ export class InstagramProvider
     type: string,
     igId: string,
     creationId: string,
-    checkToken: string
+    checkToken: string,
+    caption: string
   ): Promise<string> {
     try {
       const { status_code } = await (
         await this.fetch(
-          `https://${type}/v20.0/${creationId}?fields=status_code&access_token=${checkToken}`,
+          `https://${type}/${META_GRAPH_API_VERSION}/${creationId}?fields=status_code&access_token=${checkToken}`,
           undefined,
           '',
           0,
@@ -523,7 +527,7 @@ export class InstagramProvider
         status_code === 'PUBLISHED'
           ? await (
               await this.fetch(
-                `https://${type}/v20.0/${igId}/media?fields=id&limit=1&access_token=${checkToken}`,
+                `https://${type}/${META_GRAPH_API_VERSION}/${igId}/media?fields=id,caption&limit=5&access_token=${checkToken}`,
                 undefined,
                 '',
                 0,
@@ -531,7 +535,12 @@ export class InstagramProvider
               )
             ).json()
           : { data: [] };
-      const mediaId = data?.[0]?.id || '';
+      const wanted = caption.trim();
+      const matches = (data || []).filter(
+        (m: { caption?: string }) => (m.caption || '').trim() === wanted
+      );
+      // Exactly one: two posts with the same caption cannot be told apart.
+      const mediaId = matches.length === 1 ? matches[0].id : '';
       this._logger.warn(
         `Instagram blocked media_publish for container ${creationId}: status ${status_code}, media ${mediaId || 'none'}`
       );
@@ -984,7 +993,8 @@ export class InstagramProvider
             id,
             medias[0],
             accessToken,
-            userToken || accessToken
+            userToken || accessToken,
+            firstPost.message
           );
 
       const { permalink } = await (
@@ -1047,7 +1057,8 @@ export class InstagramProvider
         id,
         containerId,
         accessToken,
-        userToken || accessToken
+        userToken || accessToken,
+        firstPost?.message || ''
       );
 
       const { permalink } = await (

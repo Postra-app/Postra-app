@@ -1,6 +1,7 @@
 jest.mock('isomorphic-dompurify', () => ({ __esModule: true, default: { sanitize: (v: string) => v } }));
 
 import { BadBody } from '@gitroom/nestjs-libraries/integrations/social.abstract';
+import { META_GRAPH_API_VERSION } from '@gitroom/nestjs-libraries/integrations/social/meta.graph.version';
 import {
   IG_BLOCKED,
   InstagramProvider,
@@ -27,17 +28,47 @@ describe('InstagramProvider.publishContainer', () => {
   };
 
   const publish = (p: InstagramProvider) =>
-    p.publishContainer('graph.facebook.com', 'ig-1', 'container-9', 'page-token', 'user-token');
+    p.publishContainer('graph.facebook.com', 'ig-1', 'container-9', 'page-token', 'user-token', 'Hello Bristol');
 
   it('returns the media Instagram created when it published despite the error', async () => {
     const { p, calls } = provider({
       media_publish: () => blocked(),
       'container-9?fields=status_code': () => ({ status_code: 'PUBLISHED' }),
-      'ig-1/media?fields=id': () => ({ data: [{ id: 'media-42' }] }),
+      'ig-1/media?fields=id,caption': () => ({ data: [{ id: 'media-42', caption: 'Hello Bristol' }] }),
     });
 
     await expect(publish(p)).resolves.toBe('media-42');
     expect(calls.filter((u) => u.includes('user-token'))).toHaveLength(2);
+    // The app's Graph version, not an expired one.
+    expect(calls.slice(1).every((u) => u.includes(`/${META_GRAPH_API_VERSION}/`))).toBe(true);
+  });
+
+  it('takes the media with this caption, not a post published in between', async () => {
+    const { p } = provider({
+      media_publish: () => blocked(),
+      'container-9?fields=status_code': () => ({ status_code: 'PUBLISHED' }),
+      'ig-1/media?fields=id,caption': () => ({
+        data: [
+          { id: 'someone-else', caption: 'Posted from the phone' },
+          { id: 'media-42', caption: ' Hello Bristol ' },
+        ],
+      }),
+    });
+    await expect(publish(p)).resolves.toBe('media-42');
+  });
+
+  it('keeps the error when no media, or more than one, has the caption', async () => {
+    for (const data of [
+      [{ id: 'x', caption: 'Something else' }],
+      [{ id: 'a', caption: 'Hello Bristol' }, { id: 'b', caption: 'Hello Bristol' }],
+    ]) {
+      const { p } = provider({
+        media_publish: () => blocked(),
+        'container-9?fields=status_code': () => ({ status_code: 'PUBLISHED' }),
+        'ig-1/media?fields=id,caption': () => ({ data }),
+      });
+      await expect(publish(p)).rejects.toThrow(IG_BLOCKED);
+    }
   });
 
   it('keeps the error when the container was not published', async () => {
