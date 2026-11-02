@@ -155,3 +155,54 @@ test('ownership never goes to a turned-off seat or a suspended account', async (
     await prisma.$disconnect();
   }
 });
+
+// Codex 2 XI: the checks ran before the writes, outside any lock. "Make
+// owner" for B and "make B a user" sent at once (two tabs) could both pass,
+// and the second write demoted the new owner: no owner left. Two co-owners
+// removing each other at once did the same. Every attempt here must leave
+// exactly one way out: at least one active owner.
+test('concurrent role changes and removals never leave the organisation without an owner', async () => {
+  test.setTimeout(120_000);
+  const prisma = database();
+  const orgs: Awaited<ReturnType<typeof throwawayOrg>>[] = [];
+  const members: Awaited<ReturnType<typeof addMember>>[] = [];
+  try {
+    for (let i = 0; i < 8; i++) {
+      const org = await throwawayOrg(prisma, { tier: 'ULTIMATE', totalChannels: 5, channels: 0 });
+      const b = await addMember(prisma, org.orgId, 'ADMIN');
+      orgs.push(org);
+      members.push(b);
+      await Promise.all([
+        org.api.post(`/settings/transfer-ownership/${b.userId}`),
+        org.api.put(`/settings/team/${b.userId}/role`, { data: { role: 'USER' } }),
+      ]);
+      const owners = await prisma.userOrganization.count({
+        where: { organizationId: org.orgId, role: 'SUPERADMIN', disabled: false },
+      });
+      expect(owners, `attempt ${i}`).toBeGreaterThanOrEqual(1);
+    }
+    for (let i = 0; i < 8; i++) {
+      // Two co-owners remove each other at the same moment.
+      const org = await throwawayOrg(prisma, { tier: 'ULTIMATE', totalChannels: 5, channels: 0 });
+      const c = await addMember(prisma, org.orgId, 'ADMIN');
+      await prisma.userOrganization.update({
+        where: { userId_organizationId: { userId: c.userId, organizationId: org.orgId } },
+        data: { role: 'SUPERADMIN' },
+      });
+      orgs.push(org);
+      members.push(c);
+      await Promise.all([
+        org.api.delete(`/settings/team/${c.userId}`),
+        c.api.delete(`/settings/team/${org.userId}`),
+      ]);
+      const owners = await prisma.userOrganization.count({
+        where: { organizationId: org.orgId, role: 'SUPERADMIN', disabled: false },
+      });
+      expect(owners, `removal attempt ${i}`).toBeGreaterThanOrEqual(1);
+    }
+  } finally {
+    for (const m of members) await m.remove();
+    for (const o of orgs) await o.remove();
+    await prisma.$disconnect();
+  }
+});

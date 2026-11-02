@@ -139,59 +139,58 @@ export class OrganizationService {
     return { url };
   }
 
-  async deleteTeamMember(org: Organization, userId: string) {
-    const userOrgs = await this._organizationRepository.getOrgsByUserId(userId);
-    const findOrgToDelete = userOrgs.find((orgUser) => orgUser.id === org.id);
-    if (!findOrgToDelete) {
-      throw new NotFoundException('User is not part of this organization');
+  // Removing a member, changing a role and handing ownership over read the
+  // current roles and write under the organisation's lock (repository): a
+  // check made earlier let concurrent requests leave it without an owner.
+  async deleteTeamMember(org: Organization, myId: string, userId: string) {
+    const result = await this._organizationRepository.removeMember(org.id, myId, userId);
+    // Narrowed by key: this repo builds without strictNullChecks.
+    if (!('reason' in result)) return result;
+    switch (result.reason) {
+      case 'not-member':
+        throw new NotFoundException('User is not part of this organization');
+      case 'forbidden':
+        throw new ForbiddenException('You do not have permission to delete this user');
+      case 'last-owner':
+        throw new BadRequestException(
+          'The organisation needs an owner. Make someone else the owner first: Settings, Team, Make owner.'
+        );
     }
-
-    // @ts-ignore
-    const myRole = org.users[0].role;
-    const userRole = findOrgToDelete.users[0].role;
-    const myLevel = myRole === 'USER' ? 0 : myRole === 'ADMIN' ? 1 : 2;
-    const userLevel = userRole === 'USER' ? 0 : userRole === 'ADMIN' ? 1 : 2;
-
-    if (myLevel < userLevel) {
-      throw new ForbiddenException('You do not have permission to delete this user');
-    }
-
-    // The owner removing themselves left the team with nobody who can manage
-    // members or billing.
-    if (
-      userRole === 'SUPERADMIN' &&
-      (await this._organizationRepository.countOwners(org.id)) <= 1
-    ) {
-      throw new BadRequestException(
-        'The organisation needs an owner. Make someone else the owner first: Settings, Team, Make owner.'
-      );
-    }
-
-    return this._organizationRepository.deleteTeamMember(org.id, userId);
   }
 
   // Roles were fixed at invitation: making a member an admin (or back) meant
   // removing and inviting them again, and the owner could never hand the
   // organisation over. Only the owner changes roles, never their own: they
   // hand ownership over instead.
-  private async memberForRoleChange(
+  private async roleChange(
     org: Organization,
     myId: string,
     userId: string,
+    role: 'USER' | 'ADMIN' | 'OWNER',
     action: string
   ) {
-    // @ts-ignore
-    if (org.users?.[0]?.role !== Role.SUPERADMIN) {
-      throw new ForbiddenException(`Only the owner can ${action}.`);
+    const result = await this._organizationRepository.changeMemberRole(
+      org.id,
+      myId,
+      userId,
+      role
+    );
+    // Narrowed by key: this repo builds without strictNullChecks.
+    if (!('reason' in result)) return result;
+    switch (result.reason) {
+      case 'not-owner':
+        throw new ForbiddenException(`Only the owner can ${action}.`);
+      case 'self':
+        throw new BadRequestException('You cannot change your own role.');
+      case 'not-member':
+        throw new NotFoundException('User is not part of this organization');
+      case 'already-owner':
+        throw new BadRequestException('This member is already an owner.');
+      case 'unavailable':
+        throw new BadRequestException(
+          'This member cannot become the owner while their seat is turned off or their account is suspended.'
+        );
     }
-    if (userId === myId) {
-      throw new BadRequestException('You cannot change your own role.');
-    }
-    const member = await this._organizationRepository.getMember(org.id, userId);
-    if (!member) {
-      throw new NotFoundException('User is not part of this organization');
-    }
-    return member;
   }
 
   async changeTeamMemberRole(
@@ -200,38 +199,19 @@ export class OrganizationService {
     userId: string,
     role: 'USER' | 'ADMIN'
   ) {
-    const member = await this.memberForRoleChange(
-      org,
-      myId,
-      userId,
-      'change roles'
-    );
-    if (member.role !== role) {
-      await this._organizationRepository.setMemberRole(org.id, userId, role);
-    }
-    return { from: member.role, to: role };
+    const { from } = await this.roleChange(org, myId, userId, role, 'change roles');
+    return { from, to: role };
   }
 
   async transferOwnership(org: Organization, myId: string, userId: string) {
-    const member = await this.memberForRoleChange(
+    const { from } = await this.roleChange(
       org,
       myId,
       userId,
+      'OWNER',
       'hand over the organisation'
     );
-    if (member.role === Role.SUPERADMIN) {
-      throw new BadRequestException('This member is already an owner.');
-    }
-    // A seat turned off by a downgrade cannot use the organisation, and a
-    // suspended account cannot sign in: either would leave it with no owner
-    // who can act.
-    if (member.disabled || member.user.suspendedAt) {
-      throw new BadRequestException(
-        'This member cannot become the owner while their seat is turned off or their account is suspended.'
-      );
-    }
-    await this._organizationRepository.transferOwnership(org.id, myId, userId);
-    return { from: member.role };
+    return { from };
   }
 
   async disableOrEnableNonSuperAdminUsers(orgId: string, disable: boolean) {

@@ -53,9 +53,10 @@ export class SettingsController {
   @CheckPolicies([AuthorizationActions.Create, Sections.ADMIN])
   async deleteTeamMember(
     @GetOrgFromRequest() org: Organization,
+    @GetUserFromRequest() user: User,
     @Param('id') id: string
   ) {
-    const result = await this._organizationService.deleteTeamMember(org, id);
+    const result = await this._organizationService.deleteTeamMember(org, user.id, id);
     // The removed member's org list lives in the 30s auth-context cache — drop
     // it so they lose access to this org immediately, not up to 30s later.
     await bustAuthContextCache(id);

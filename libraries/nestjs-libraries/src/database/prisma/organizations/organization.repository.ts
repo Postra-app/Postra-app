@@ -568,22 +568,6 @@ export class OrganizationRepository {
     });
   }
 
-  async deleteTeamMember(orgId: string, userId: string) {
-    // Apps they approved for this organisation leave with them.
-    await this._oauthAuth.model.oAuthAuthorization.updateMany({
-      where: { organizationId: orgId, userId, revokedAt: null },
-      data: { revokedAt: new Date() },
-    });
-    return this._userOrg.model.userOrganization.delete({
-      where: {
-        userId_organizationId: {
-          userId,
-          organizationId: orgId,
-        },
-      },
-    });
-  }
-
   disableOrEnableNonSuperAdminUsers(orgId: string, disable: boolean) {
     return this._userOrg.model.userOrganization.updateMany({
       where: {
@@ -614,49 +598,95 @@ export class OrganizationRepository {
     return rows.map((r) => r.userId);
   }
 
-  // One membership with what a role change has to check: the role, whether
-  // the seat is turned off (plan downgrade) and whether the account is
-  // suspended.
-  getMember(orgId: string, userId: string) {
-    return this._userOrg.model.userOrganization.findUnique({
-      where: { userId_organizationId: { userId, organizationId: orgId } },
-      select: {
-        role: true,
-        disabled: true,
-        user: { select: { suspendedAt: true } },
-      },
-    });
-  }
-
-  setMemberRole(orgId: string, userId: string, role: Role) {
-    return this._userOrg.model.userOrganization.update({
-      where: { userId_organizationId: { userId, organizationId: orgId } },
-      data: { role },
-    });
-  }
-
-  // Both rows in one transaction: the organisation never has no owner, and
-  // a failed second write leaves the first one undone.
-  transferOwnership(orgId: string, fromUserId: string, toUserId: string) {
+  // Role changes, the hand-over and removals read the current roles and write
+  // under the organisation's lock, in one transaction (Codex 2 XI). Checked
+  // first and written later, "Make owner" and "make them a user" sent at once
+  // both passed and the second demoted the new owner; two co-owners removing
+  // each other both passed too: no owner left. The caller's role is read here
+  // as well, not taken from the 30 s auth cache, so a former owner's open tab
+  // cannot act as the owner.
+  private lockedTeamChange<T>(
+    orgId: string,
+    actorId: string,
+    targetId: string,
+    change: (
+      tx: Parameters<Parameters<PrismaTransaction['model']['$transaction']>[0]>[0],
+      actor: { role: Role } | null,
+      target: { role: Role; disabled: boolean; user: { suspendedAt: Date | null } } | null
+    ) => Promise<T>
+  ) {
     return this._transaction.model.$transaction(async (tx) => {
-      await tx.userOrganization.update({
-        where: {
-          userId_organizationId: { userId: toUserId, organizationId: orgId },
-        },
-        data: { role: Role.SUPERADMIN },
-      });
-      await tx.userOrganization.update({
-        where: {
-          userId_organizationId: { userId: fromUserId, organizationId: orgId },
-        },
-        data: { role: Role.ADMIN },
-      });
+      await tx.$queryRaw`SELECT "id" FROM "Organization" WHERE "id" = ${orgId} FOR UPDATE`;
+      const membership = (userId: string) =>
+        tx.userOrganization.findUnique({
+          where: { userId_organizationId: { userId, organizationId: orgId } },
+          select: { role: true, disabled: true, user: { select: { suspendedAt: true } } },
+        });
+      return change(tx, await membership(actorId), await membership(targetId));
     });
   }
 
-  countOwners(orgId: string) {
-    return this._userOrg.model.userOrganization.count({
-      where: { organizationId: orgId, role: 'SUPERADMIN', disabled: false },
+  changeMemberRole(
+    orgId: string,
+    actorId: string,
+    targetId: string,
+    role: 'USER' | 'ADMIN' | 'OWNER'
+  ): Promise<
+    | { ok: true; from: Role }
+    | { ok: false; reason: 'not-owner' | 'self' | 'not-member' | 'already-owner' | 'unavailable' }
+  > {
+    return this.lockedTeamChange(orgId, actorId, targetId, async (tx, actor, target) => {
+      if (actor?.role !== Role.SUPERADMIN) return { ok: false, reason: 'not-owner' } as const;
+      if (actorId === targetId) return { ok: false, reason: 'self' } as const;
+      if (!target) return { ok: false, reason: 'not-member' } as const;
+      const where = (userId: string) => ({
+        userId_organizationId: { userId, organizationId: orgId },
+      });
+      if (role === 'OWNER') {
+        if (target.role === Role.SUPERADMIN) return { ok: false, reason: 'already-owner' } as const;
+        // A turned-off seat cannot use the organisation and a suspended
+        // account cannot sign in: either would leave no owner who can act.
+        if (target.disabled || target.user.suspendedAt) {
+          return { ok: false, reason: 'unavailable' } as const;
+        }
+        await tx.userOrganization.update({ where: where(targetId), data: { role: Role.SUPERADMIN } });
+        await tx.userOrganization.update({ where: where(actorId), data: { role: Role.ADMIN } });
+      } else if (target.role !== role) {
+        await tx.userOrganization.update({ where: where(targetId), data: { role } });
+      }
+      return { ok: true, from: target.role } as const;
+    });
+  }
+
+  removeMember(
+    orgId: string,
+    actorId: string,
+    targetId: string
+  ): Promise<{ ok: true } | { ok: false; reason: 'not-member' | 'forbidden' | 'last-owner' }> {
+    const level = (role?: Role) =>
+      role === Role.SUPERADMIN ? 2 : role === Role.ADMIN ? 1 : 0;
+    return this.lockedTeamChange(orgId, actorId, targetId, async (tx, actor, target) => {
+      if (!target) return { ok: false, reason: 'not-member' } as const;
+      if (!actor || level(actor.role) < level(target.role)) {
+        return { ok: false, reason: 'forbidden' } as const;
+      }
+      if (target.role === Role.SUPERADMIN) {
+        const owners = await tx.userOrganization.count({
+          where: { organizationId: orgId, role: Role.SUPERADMIN, disabled: false },
+        });
+        // The owner removing themselves (or the last other owner) left the
+        // team with nobody who can manage members or billing.
+        if (owners <= 1) return { ok: false, reason: 'last-owner' } as const;
+      }
+      // Apps they approved for this organisation leave with them.
+      await tx.oAuthAuthorization.updateMany({
+        where: { organizationId: orgId, userId: targetId, revokedAt: null },
+        data: { revokedAt: new Date() },
+      });
+      await tx.userOrganization.delete({
+        where: { userId_organizationId: { userId: targetId, organizationId: orgId } },
+      });
+      return { ok: true } as const;
     });
   }
 
