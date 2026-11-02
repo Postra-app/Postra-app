@@ -144,9 +144,9 @@ describe('Dependabot groups', () => {
   });
 
   // server and admin-tools share a version: admin-tools migrates the schema
-  // the server is about to run on. (The self-host file still runs auto-setup
-  // with Elasticsearch visibility: moving it needs a visibility migration.)
-  it.each(['docker-compose.dev.yaml'])(
+  // the server is about to run on. The self-host file ran auto-setup, which
+  // ended at 1.29, so Dependabot could not take it to the production version.
+  it.each(['docker-compose.dev.yaml', 'docker-compose.yaml'])(
     'keeps Temporal server and admin-tools on one version in %s',
     (file) => {
       const compose = readFileSync(join(root, file), 'utf8');

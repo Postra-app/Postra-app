@@ -187,8 +187,15 @@ services:
       - temporal-network
     expose:
       - 9200
+    # Elasticsearch keeps its data in /usr/share/elasticsearch/data; the
+    # volume used to sit on another path, so every recreate of the container
+    # lost the visibility index.
     volumes:
-      - /var/lib/elasticsearch/data
+      - temporal-es-data:/usr/share/elasticsearch/data
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fs http://localhost:9200/_cluster/health?wait_for_status=yellow"]
+      interval: 5s
+      retries: 60
 
   temporal-postgresql:
     container_name: temporal-postgresql
@@ -202,45 +209,93 @@ services:
       - 5432
     volumes:
       - /var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U temporal"]
+      interval: 2s
+      retries: 30
+
+  # temporalio/server only runs the server (auto-setup ended at 1.29), so
+  # the schema is created or upgraded first with admin-tools of the same
+  # version: the SQL store in Postgres and the visibility index in
+  # Elasticsearch, under the names auto-setup used. Each step leaves an
+  # up-to-date store alone, so an existing install keeps its workflows.
+  temporal-schema:
+    container_name: temporal-schema
+    image: temporalio/admin-tools:1.32.1
+    depends_on:
+      temporal-postgresql:
+        condition: service_healthy
+      temporal-elasticsearch:
+        condition: service_healthy
+    environment:
+      - SQL_PLUGIN=postgres12
+      - SQL_HOST=temporal-postgresql
+      - SQL_PORT=5432
+      - SQL_USER=temporal
+      - SQL_PASSWORD=temporal
+      - ES_SERVER=http://temporal-elasticsearch:9200
+      - ES_VIS_INDEX=temporal_visibility_v1_dev
+    entrypoint: ["/bin/sh", "-ec"]
+    command:
+      - |
+        temporal-sql-tool --db temporal create
+        temporal-sql-tool --db temporal setup-schema -v 0.0
+        temporal-sql-tool --db temporal update-schema -d /etc/temporal/schema/postgresql/v12/temporal/versioned
+        temporal-elasticsearch-tool setup-schema
+        temporal-elasticsearch-tool create-index --index "$$ES_VIS_INDEX"
+        temporal-elasticsearch-tool update-schema --index "$$ES_VIS_INDEX"
+    networks:
+      - temporal-network
 
   temporal:
     container_name: temporal
     ports:
       - '7233:7233'
-    image: temporalio/auto-setup:1.28.4
+    image: temporalio/server:1.32.1
     depends_on:
-      - temporal-postgresql
-      - temporal-elasticsearch
+      temporal-schema:
+        condition: service_completed_successfully
     environment:
       - DB=postgres12
       - DB_PORT=5432
       - POSTGRES_USER=temporal
       - POSTGRES_PWD=temporal
       - POSTGRES_SEEDS=temporal-postgresql
+      - BIND_ON_IP=0.0.0.0
       - DYNAMIC_CONFIG_FILE_PATH=config/dynamicconfig/development-sql.yaml
       - ENABLE_ES=true
       - ES_SEEDS=temporal-elasticsearch
       - ES_VERSION=v7
-      - TEMPORAL_NAMESPACE=default
+      - ES_VIS_INDEX=temporal_visibility_v1_dev
     networks:
       - temporal-network
     volumes:
       - ./dynamicconfig:/etc/temporal/config/dynamicconfig
+    healthcheck:
+      test: ["CMD", "nc", "-z", "localhost", "7233"]
+      interval: 2s
+      retries: 60
     labels:
       kompose.volume.type: configMap
 
+  # The Temporal CLI; it registers the default namespace on start.
   temporal-admin-tools:
     container_name: temporal-admin-tools
-    image: temporalio/admin-tools:1.28.4-tctl-1.18.4-cli-1.6.2
+    image: temporalio/admin-tools:1.32.1
     environment:
       - TEMPORAL_ADDRESS=temporal:7233
-      - TEMPORAL_CLI_ADDRESS=temporal:7233
+    entrypoint: ["/bin/sh", "-ec"]
+    command:
+      - |
+        until temporal operator cluster health >/dev/null 2>&1; do sleep 1; done
+        temporal operator namespace describe -n default >/dev/null 2>&1 ||
+          temporal operator namespace create -n default --retention 168h
+        exec sleep infinity
     networks:
       - temporal-network
-    stdin_open: true
     depends_on:
-      - temporal
-    tty: true
+      temporal:
+        condition: service_healthy
 
   temporal-ui:
     container_name: temporal-ui
@@ -255,6 +310,9 @@ services:
 
 volumes:
   postgres-volume:
+    external: false
+
+  temporal-es-data:
     external: false
 
   postra-redis-data:
