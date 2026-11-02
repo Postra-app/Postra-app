@@ -130,3 +130,6 @@ describe('mail footer', () => {
     expect(await send()).toContain('notification preferences');
   });
 });
+
+// A module, so its require() bindings do not collide with other specs.
+export {};

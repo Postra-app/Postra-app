@@ -1,3 +1,5 @@
+// A module, so its require() bindings do not collide with other specs.
+export {};
 jest.mock('isomorphic-dompurify', () => ({ __esModule: true, default: { sanitize: (v: string) => v } }));
 jest.mock('nostr-tools', () => ({ getPublicKey: jest.fn(), Relay: class {}, finalizeEvent: jest.fn(), SimplePool: class {} }));
 const counters = new Map<string, number>();

@@ -49,3 +49,6 @@ describe('activation link', () => {
     await expect(service.activate(code, '')).resolves.toBe(false);
   });
 });
+
+// A module, so its require() bindings do not collide with other specs.
+export {};
