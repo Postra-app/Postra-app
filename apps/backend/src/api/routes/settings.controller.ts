@@ -6,6 +6,7 @@ import { Organization, User } from '@prisma/client';
 import { GetUserFromRequest } from '@gitroom/nestjs-libraries/user/user.from.request';
 import { AuditService } from '@gitroom/nestjs-libraries/database/prisma/audit/audit.service';
 import { ChangeTeamRoleDto } from '@gitroom/nestjs-libraries/dtos/settings/change.team.role.dto';
+import { StripeService } from '@gitroom/nestjs-libraries/services/stripe.service';
 import { CheckPolicies } from '@gitroom/backend/services/auth/permissions/permissions.ability';
 import { OrganizationService } from '@gitroom/nestjs-libraries/database/prisma/organizations/organization.service';
 import { AddTeamMemberDto } from '@gitroom/nestjs-libraries/dtos/settings/add.team.member.dto';
@@ -19,7 +20,8 @@ import { bustAuthContextCache } from '@gitroom/backend/services/auth/auth.middle
 export class SettingsController {
   constructor(
     private _organizationService: OrganizationService,
-    private _auditService: AuditService
+    private _auditService: AuditService,
+    private _stripeService: StripeService
   ) {}
 
   // Only inviting takes a seat, so only inviting checks for a free one. With
@@ -115,6 +117,7 @@ export class SettingsController {
       organizationId: org.id,
       metadata: { targetUserId: id, targetRoleBefore: change.from },
     });
+    await this._stripeService.followNewOwner(org.id);
     return { ok: true };
   }
 

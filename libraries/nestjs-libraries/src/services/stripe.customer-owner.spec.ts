@@ -57,12 +57,13 @@ const team = (users: Array<{ role: string; email: string; disabled?: boolean }>)
   users: users.map((u) => ({ role: u.role, disabled: !!u.disabled, user: { email: u.email } })),
 });
 
-const build = (users: Parameters<typeof team>[0]) => {
+const build = (users: Parameters<typeof team>[0], paymentId: string | null = null) => {
   const subscriptionService = {
     assignCustomerId: jest.fn().mockResolvedValue(true),
   };
   const organizationService = {
     getTeam: jest.fn().mockResolvedValue(team(users)),
+    getOrgById: jest.fn().mockResolvedValue({ id: 'org-1', paymentId }),
   };
   const service = new StripeService(
     subscriptionService as any,
@@ -99,5 +100,32 @@ describe('a new Stripe customer', () => {
     ]);
     await service.createOrGetCustomer(org);
     expect(createCustomer.mock.calls[0][0].email).toBe('admin@example.com');
+  });
+});
+
+// Decision K. 2 XI: after Make owner, invoices go to the new owner.
+describe('handing the organisation over', () => {
+  it("moves the Stripe customer's email to the new owner", async () => {
+    const service = build(
+      [
+        { role: 'ADMIN', email: 'former-owner@example.com' },
+        { role: 'SUPERADMIN', email: 'new-owner@example.com' },
+      ],
+      'cus_live'
+    );
+    await service.followNewOwner('org-1');
+    expect(updateCustomer).toHaveBeenCalledWith('cus_live', {
+      email: 'new-owner@example.com',
+    });
+  });
+
+  it('leaves Stripe alone without a customer, and never throws', async () => {
+    const none = build([{ role: 'SUPERADMIN', email: 'o@example.com' }], null);
+    await none.followNewOwner('org-1');
+    expect(updateCustomer).not.toHaveBeenCalled();
+
+    updateCustomer.mockRejectedValueOnce(new Error('Stripe is down'));
+    const down = build([{ role: 'SUPERADMIN', email: 'o@example.com' }], 'cus_live');
+    await expect(down.followNewOwner('org-1')).resolves.toBeUndefined();
   });
 });

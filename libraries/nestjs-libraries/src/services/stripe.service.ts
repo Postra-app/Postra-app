@@ -1134,6 +1134,36 @@ export class StripeService {
     };
   }
 
+  // Invoices and receipts go to the customer's email. When the owner hands
+  // the organisation over, they follow the new owner (decision K. 2 XI);
+  // they kept going to the former owner, who may leave the team. Never fails
+  // the hand-over itself: it is done by the time this runs.
+  async followNewOwner(organizationId: string) {
+    const customer = await this.getCustomerByOrganizationId(organizationId);
+    if (!customer || !customer.startsWith('cus_')) {
+      return;
+    }
+    const team = await this._organizationService.getTeam(organizationId);
+    const owner = team?.users.find(
+      (u) => u.role === 'SUPERADMIN' && !u.disabled
+    );
+    if (!owner || owner.user.email.indexOf('@') === -1) {
+      return;
+    }
+    try {
+      await stripe.customers.update(customer, { email: owner.user.email });
+    } catch (err) {
+      if (isMissingCustomerError(err)) {
+        return;
+      }
+      this._logger.warn(
+        `[stripe] organization ${organizationId}: could not move the billing email to the new owner: ${
+          err instanceof Error ? err.message : err
+        }`
+      );
+    }
+  }
+
   async getCustomerByOrganizationId(organizationId: string) {
     const org = (await this._organizationService.getOrgById(organizationId))!;
     return org.paymentId;
