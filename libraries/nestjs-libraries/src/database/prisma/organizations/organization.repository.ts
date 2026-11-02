@@ -525,6 +525,9 @@ export class OrganizationRepository {
         users: {
           select: {
             role: true,
+            // The seat counter and the role controls read it: a seat turned
+            // off by a downgrade is not used and cannot take ownership.
+            disabled: true,
             user: {
               select: {
                 email: true,
@@ -609,6 +612,46 @@ export class OrganizationRepository {
       select: { userId: true },
     });
     return rows.map((r) => r.userId);
+  }
+
+  // One membership with what a role change has to check: the role, whether
+  // the seat is turned off (plan downgrade) and whether the account is
+  // suspended.
+  getMember(orgId: string, userId: string) {
+    return this._userOrg.model.userOrganization.findUnique({
+      where: { userId_organizationId: { userId, organizationId: orgId } },
+      select: {
+        role: true,
+        disabled: true,
+        user: { select: { suspendedAt: true } },
+      },
+    });
+  }
+
+  setMemberRole(orgId: string, userId: string, role: Role) {
+    return this._userOrg.model.userOrganization.update({
+      where: { userId_organizationId: { userId, organizationId: orgId } },
+      data: { role },
+    });
+  }
+
+  // Both rows in one transaction: the organisation never has no owner, and
+  // a failed second write leaves the first one undone.
+  transferOwnership(orgId: string, fromUserId: string, toUserId: string) {
+    return this._transaction.model.$transaction(async (tx) => {
+      await tx.userOrganization.update({
+        where: {
+          userId_organizationId: { userId: toUserId, organizationId: orgId },
+        },
+        data: { role: Role.SUPERADMIN },
+      });
+      await tx.userOrganization.update({
+        where: {
+          userId_organizationId: { userId: fromUserId, organizationId: orgId },
+        },
+        data: { role: Role.ADMIN },
+      });
+    });
   }
 
   countOwners(orgId: string) {

@@ -163,11 +163,75 @@ export class OrganizationService {
       (await this._organizationRepository.countOwners(org.id)) <= 1
     ) {
       throw new BadRequestException(
-        'The organisation needs an owner. Make someone else the owner first.'
+        'The organisation needs an owner. Make someone else the owner first: Settings, Team, Make owner.'
       );
     }
 
     return this._organizationRepository.deleteTeamMember(org.id, userId);
+  }
+
+  // Roles were fixed at invitation: making a member an admin (or back) meant
+  // removing and inviting them again, and the owner could never hand the
+  // organisation over. Only the owner changes roles, never their own: they
+  // hand ownership over instead.
+  private async memberForRoleChange(
+    org: Organization,
+    myId: string,
+    userId: string,
+    action: string
+  ) {
+    // @ts-ignore
+    if (org.users?.[0]?.role !== Role.SUPERADMIN) {
+      throw new ForbiddenException(`Only the owner can ${action}.`);
+    }
+    if (userId === myId) {
+      throw new BadRequestException('You cannot change your own role.');
+    }
+    const member = await this._organizationRepository.getMember(org.id, userId);
+    if (!member) {
+      throw new NotFoundException('User is not part of this organization');
+    }
+    return member;
+  }
+
+  async changeTeamMemberRole(
+    org: Organization,
+    myId: string,
+    userId: string,
+    role: 'USER' | 'ADMIN'
+  ) {
+    const member = await this.memberForRoleChange(
+      org,
+      myId,
+      userId,
+      'change roles'
+    );
+    if (member.role !== role) {
+      await this._organizationRepository.setMemberRole(org.id, userId, role);
+    }
+    return { from: member.role, to: role };
+  }
+
+  async transferOwnership(org: Organization, myId: string, userId: string) {
+    const member = await this.memberForRoleChange(
+      org,
+      myId,
+      userId,
+      'hand over the organisation'
+    );
+    if (member.role === Role.SUPERADMIN) {
+      throw new BadRequestException('This member is already an owner.');
+    }
+    // A seat turned off by a downgrade cannot use the organisation, and a
+    // suspended account cannot sign in: either would leave it with no owner
+    // who can act.
+    if (member.disabled || member.user.suspendedAt) {
+      throw new BadRequestException(
+        'This member cannot become the owner while their seat is turned off or their account is suspended.'
+      );
+    }
+    await this._organizationRepository.transferOwnership(org.id, myId, userId);
+    return { from: member.role };
   }
 
   async disableOrEnableNonSuperAdminUsers(orgId: string, disable: boolean) {

@@ -705,6 +705,12 @@ export class StripeService {
     }
 
     const users = await this._organizationService.getTeam(organization.id);
+    // Invoices go to this address: the owner's, not whichever member the
+    // team query happened to list first (an owner can hand the organisation
+    // over, so that is often the former owner).
+    const billingUser =
+      users.users.find((u) => u.role === 'SUPERADMIN' && !u.disabled) ??
+      users.users[0];
     // Two checkouts at once (the plan switched while the first one loads, two
     // tabs) each created a customer and the last write won: the other could
     // still pay, and its webhook found no organisation. The
@@ -715,9 +721,9 @@ export class StripeService {
     const customer = await stripe.customers.create(
       {
         email:
-          users.users[0].user.email.indexOf('@') > -1
-            ? users.users[0].user.email
-            : `${users.users[0].user.email}@postra.co.uk`,
+          billingUser.user.email.indexOf('@') > -1
+            ? billingUser.user.email
+            : `${billingUser.user.email}@postra.co.uk`,
         name: organization.name,
         invoice_settings: POSTRA_INVOICE_SETTINGS,
       },
