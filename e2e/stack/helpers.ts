@@ -214,6 +214,7 @@ export const addMember = async (
   return {
     api,
     userId: user.id,
+    email,
     remove: async () => {
       await api.dispose();
       await prisma.user.deleteMany({ where: { id: user.id } });

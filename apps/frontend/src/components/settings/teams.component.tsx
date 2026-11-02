@@ -4,11 +4,14 @@ import { Button } from '@gitroom/frontend/components/ui/button';
 import { Card } from '@gitroom/frontend/components/ui/card';
 import { useFetch } from '@gitroom/helpers/utils/custom.fetch';
 import { readResponseError } from '@gitroom/helpers/utils/response.error';
-import useSWR from 'swr';
+import useSWR, { useSWRConfig } from 'swr';
 import React, { useCallback, useMemo } from 'react';
 import { useUser } from '@gitroom/frontend/components/layout/user.context';
 import { capitalize } from 'lodash';
-import { useModals } from '@gitroom/frontend/components/layout/new-modal';
+import {
+  areYouSure,
+  useModals,
+} from '@gitroom/frontend/components/layout/new-modal';
 import { Input } from '@gitroom/react/form/input';
 import { useForm, FormProvider, useWatch } from 'react-hook-form';
 import { Select } from '@gitroom/react/form/select';
@@ -148,6 +151,7 @@ export const TeamsComponent = () => {
     return (await (await fetch('/settings/team')).json()).users as Array<{
       id: string;
       role: 'SUPERADMIN' | 'ADMIN' | 'USER';
+      disabled?: boolean;
       user: {
         email: string;
         id: string;
@@ -170,8 +174,100 @@ export const TeamsComponent = () => {
     revalidateOnFocus: true,
     revalidateOnMount: true,
   });
+  const { mutate: mutateGlobal } = useSWRConfig();
+  const isOwner = user?.role === 'SUPERADMIN';
+  const nameOf = (email: string) =>
+    capitalize(email.split('@')[0]).split('.')[0];
+
+  // An admin sees the organisation's API key (Settings, Developers), and
+  // removing them or making them a plain member leaves that key working. It is
+  // not rotated by itself: that would silently break the organisation's
+  // integrations (n8n, Zapier, MCP with the key). Offer it instead.
+  const offerKeyRotation = useCallback(async () => {
+    const rotate = await areYouSure({
+      title: t('rotate_api_key', 'Rotate API Key?'),
+      description: t(
+        'team_rotate_api_key_hint',
+        'This person could see your API key. Rotate it in Settings → Developers.'
+      ),
+      approveLabel: t('rotate', 'Rotate'),
+      cancelLabel: t('not_now', 'Not now'),
+    });
+    if (!rotate) return;
+    const response = await fetch('/user/api-key/rotate', { method: 'POST' });
+    if (!response.ok) {
+      toast.show(
+        `${t('api_key_rotate_failed', 'Could not rotate the API key')}: ${await readResponseError(response)}`,
+        'warning'
+      );
+      return;
+    }
+    await mutateGlobal('/user/self');
+    toast.show(t('api_key_rotated', 'API Key rotated successfully'), 'success');
+  }, [t, fetch, mutateGlobal, toast]);
+
+  const changeRole = useCallback(
+    (member: { role: string; user: { id: string } }, role: 'USER' | 'ADMIN') =>
+      async () => {
+        const response = await fetch(`/settings/team/${member.user.id}/role`, {
+          method: 'PUT',
+          body: JSON.stringify({ role }),
+        });
+        if (!response.ok) {
+          toast.show(
+            `${t('team_role_change_failed', 'Could not change the role')}: ${await readResponseError(response)}`,
+            'warning'
+          );
+          return;
+        }
+        await mutate();
+        toast.show(t('team_role_changed', 'Role changed'), 'success');
+        if (member.role === 'ADMIN' && role === 'USER') {
+          await offerKeyRotation();
+        }
+      },
+    [t, fetch, mutate, offerKeyRotation, toast]
+  );
+
+  const makeOwner = useCallback(
+    (member: { user: { id: string; email: string } }) => async () => {
+      if (
+        !(await areYouSure({
+          title: t('team_make_owner_title', 'Make {{name}} the owner?', {
+            name: nameOf(member.user.email),
+          }),
+          description: t(
+            'team_make_owner_description',
+            'They will manage the team, billing and the organisation. You stay on as an admin.'
+          ),
+          approveLabel: t('team_make_owner', 'Make owner'),
+          cancelLabel: t('cancel', 'Cancel'),
+        }))
+      ) {
+        return;
+      }
+      const response = await fetch(
+        `/settings/transfer-ownership/${member.user.id}`,
+        { method: 'POST' }
+      );
+      if (!response.ok) {
+        toast.show(
+          `${t('team_make_owner_failed', 'Could not make them the owner')}: ${await readResponseError(response)}`,
+          'warning'
+        );
+        return;
+      }
+      // My own role changed: the page reads it from /user/self.
+      await mutateGlobal('/user/self');
+      await mutate();
+      toast.show(t('team_owner_changed', 'Ownership handed over'), 'success');
+    },
+    [t, fetch, mutate, mutateGlobal, toast]
+  );
+
   const remove = useCallback(
     (toRemove: {
+        role: string;
         user: {
           id: string;
         };
@@ -199,6 +295,9 @@ export const TeamsComponent = () => {
             return;
           }
           await mutate();
+          if (toRemove.role !== 'USER') {
+            await offerKeyRotation();
+          }
         } catch (e) {
           console.error('[Postra:teams] remove failed', e);
           toast.show(
@@ -207,7 +306,7 @@ export const TeamsComponent = () => {
           );
         }
       },
-    [t]
+    [t, fetch, mutate, offerKeyRotation, toast]
   );
 
   return (
@@ -240,17 +339,44 @@ export const TeamsComponent = () => {
             (data || []).map((p) => (
             <div key={p.user.id} className="flex items-center">
               <div className="flex-1">
-                {capitalize(p.user.email.split('@')[0]).split('.')[0]}
+                {nameOf(p.user.email)}
               </div>
               <div className="flex-1">
-                {p.role === 'USER'
-                  ? t('user', 'User')
-                  : p.role === 'ADMIN'
-                  ? t('admin', 'Admin')
-                  : t('super_admin', 'Super Admin')}
+                {/* The owner changes a member's role here (E2E-11-85);
+                    ownership itself moves with "Make owner". */}
+                {isOwner && p.role !== 'SUPERADMIN' ? (
+                  <select
+                    aria-label={t('team_role_of', 'Role of {{name}}', {
+                      name: p.user.email,
+                    })}
+                    className="bg-transparent border border-newTableBorder rounded-[6px] px-[8px] py-[4px] text-[14px]"
+                    value={p.role}
+                    onChange={(e) =>
+                      changeRole(p, e.target.value as 'USER' | 'ADMIN')()
+                    }
+                  >
+                    <option value="USER">{t('user', 'User')}</option>
+                    <option value="ADMIN">{t('admin', 'Admin')}</option>
+                  </select>
+                ) : p.role === 'USER' ? (
+                  t('user', 'User')
+                ) : p.role === 'ADMIN' ? (
+                  t('admin', 'Admin')
+                ) : (
+                  t('super_admin', 'Super Admin')
+                )}
               </div>
               {+myLevel > +getLevel(p.role) ? (
-                <div className="flex-1 flex justify-end">
+                <div className="flex-1 flex justify-end gap-[8px]">
+                  {isOwner && !p.disabled && (
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      onClick={makeOwner(p)}
+                    >
+                      {t('team_make_owner', 'Make owner')}
+                    </Button>
+                  )}
                   <Button
                     variant="danger"
                     size="sm"

@@ -1665,5 +1665,19 @@
   "help_photos_about_limits_title": "Koszt i limity",
   "help_photos_about_limits": "W każdym planie, bez zużywania kredytu na obrazy AI. Do 10 zdjęć w paczce i 60 zdjęć na pięć minut. Zdjęcia JPEG, PNG i WebP do 30 megapikseli; wynik to JPEG do 2048 pikseli na dłuższym boku, czyli w takim rozmiarze, jaki mają zdjęcia wgrane z przeglądarki. Jeśli AI jest przez chwilę niedostępne, podstawy i tak zostaną poprawione, a zdjęcie o tym powie.",
   "help_photos_steps_title": "Jak z tego korzystać, krok po kroku",
-  "help_photos_about_title": "Warto wiedzieć"
+  "help_photos_about_title": "Warto wiedzieć",
+  "team_rotate_api_key_hint": "Ta osoba widziała Twój klucz API. Zmień go w Ustawienia → Developers.",
+  "not_now": "Nie teraz",
+  "api_key_rotate_failed": "Nie udało się zmienić klucza API",
+  "team_role_change_failed": "Nie udało się zmienić roli",
+  "team_role_changed": "Rola zmieniona",
+  "team_make_owner_title": "Przekazać własność osobie {{name}}?",
+  "team_make_owner_description": "Ta osoba będzie zarządzać zespołem, płatnościami i organizacją. Ty zostajesz administratorem.",
+  "team_make_owner": "Przekaż własność",
+  "team_make_owner_failed": "Nie udało się przekazać własności",
+  "team_owner_changed": "Własność przekazana",
+  "team_role_of": "Rola: {{name}}",
+  "rotate_api_key": "Zmienić klucz API?",
+  "rotate": "Zmień",
+  "api_key_rotated": "Klucz API zmieniony"
 }

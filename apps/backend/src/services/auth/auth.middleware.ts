@@ -28,12 +28,14 @@ import { clientIpFromForwardedFor } from '@gitroom/nestjs-libraries/throttler/th
  * impersonated session means the action lands under the customer's name. The
  * one exception is `/user/impersonate`, which is how the session gets out.
  * Deleting the account is the customer's own decision and cannot be undone
- *; an organisation that has to go goes through the admin panel.
+ *; an organisation that has to go goes through the admin panel. Handing the
+ * organisation to someone else is the owner's decision too.
  */
 const FORBIDDEN_WHILE_IMPERSONATING = [
   '/admin',
   '/billing/add-subscription',
   '/user/delete',
+  '/settings/transfer-ownership',
 ];
 
 /**
@@ -96,7 +98,10 @@ export class AuthMiddleware implements NestMiddleware {
       const orgHeader = req.headers.showorg;
       const orgCookie = req.cookies.showorg;
 
-      if (!payload?.id) {
+      // A non-string id (an object such as { not: '' }) is a Prisma filter:
+      // the user lookup below is findFirst and would match the first user
+      // (upstream a5affe62c, "jwt bypass"). Only a string id is a session.
+      if (!payload?.id || typeof payload.id !== 'string') {
         throw new HttpForbiddenException();
       }
 

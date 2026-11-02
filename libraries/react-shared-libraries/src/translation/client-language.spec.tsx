@@ -1,5 +1,5 @@
 // jest-environment-jsdom bundles jsdom 20, which crashes loading the optional
-// native `canvas` module; the repo's own jsdom 22 does not, so set it up here.
+// native `canvas` module; the repo's own jsdom (a dependency: Auto Post uses it) does not, so set it up here.
 import { JSDOM } from 'jsdom';
 const dom = new JSDOM('<!doctype html><html><body></body></html>', {
   url: 'https://app.postra.co.uk/auth/login',

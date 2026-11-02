@@ -1,6 +1,3 @@
-const ESM_PACKAGES =
-  '(file-type|strtok3|token-types|peek-readable|uint8array-extras|@tokenizer/inflate|@borewit/text-codec)';
-
 export default {
   roots: ['<rootDir>/apps', '<rootDir>/libraries'],
   testMatch: ['**/?(*.)+(spec|test).[tj]s?(x)'],
@@ -15,8 +12,6 @@ export default {
   // import source files that use them.
   moduleNameMapper: {
     '\\.(css|scss|sass)$': '<rootDir>/jest.style-stub.js',
-    // Jest 29 cannot load jsdom 30 (jest.isomorphic-dompurify.js says why).
-    '^isomorphic-dompurify$': '<rootDir>/jest.isomorphic-dompurify.js',
     '^@gitroom/backend/(.*)$': '<rootDir>/apps/backend/src/$1',
     '^@gitroom/frontend/(.*)$': '<rootDir>/apps/frontend/src/$1',
     '^@gitroom/helpers/(.*)$': '<rootDir>/libraries/helpers/src/$1',
@@ -38,14 +33,12 @@ export default {
         tsconfig: { jsx: 'react-jsx', esModuleInterop: true },
       },
     ],
-    // file-type is ESM-only. Node requires it as is; Jest 29 cannot, so
-    // it and its ESM dependencies are compiled to CommonJS for the tests.
-    [`/node_modules/${ESM_PACKAGES}/.+\\.js$`]: [
-      'ts-jest',
-      { isolatedModules: true, tsconfig: { allowJs: true, esModuleInterop: true } },
-    ],
   },
-  transformIgnorePatterns: [`/node_modules/(?!${ESM_PACKAGES}/)`],
+  // ES-module-only packages (file-type, jsdom 30 and their dependencies) load
+  // as they do in production, through require(esm): `pnpm test` runs Jest
+  // with --experimental-vm-modules on Node 26. They used to be compiled to
+  // CommonJS here, one package at a time, which jsdom 30's twenty did not
+  // survive.
   // Coverage from source only. Restricting to {ts,tsx} already skips compiled
   // .js output, and the explicit negations + ignore patterns keep the reporter
   // away from .next (its sectioned source maps crash the reporter and time the

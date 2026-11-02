@@ -139,35 +139,79 @@ export class OrganizationService {
     return { url };
   }
 
-  async deleteTeamMember(org: Organization, userId: string) {
-    const userOrgs = await this._organizationRepository.getOrgsByUserId(userId);
-    const findOrgToDelete = userOrgs.find((orgUser) => orgUser.id === org.id);
-    if (!findOrgToDelete) {
-      throw new NotFoundException('User is not part of this organization');
+  // Removing a member, changing a role and handing ownership over read the
+  // current roles and write under the organisation's lock (repository): a
+  // check made earlier let concurrent requests leave it without an owner.
+  async deleteTeamMember(org: Organization, myId: string, userId: string) {
+    const result = await this._organizationRepository.removeMember(org.id, myId, userId);
+    // Narrowed by key: this repo builds without strictNullChecks.
+    if (!('reason' in result)) return result;
+    switch (result.reason) {
+      case 'not-member':
+        throw new NotFoundException('User is not part of this organization');
+      case 'forbidden':
+        throw new ForbiddenException('You do not have permission to delete this user');
+      case 'last-owner':
+        throw new BadRequestException(
+          'The organisation needs an owner. Make someone else the owner first: Settings, Team, Make owner.'
+        );
     }
+  }
 
-    // @ts-ignore
-    const myRole = org.users[0].role;
-    const userRole = findOrgToDelete.users[0].role;
-    const myLevel = myRole === 'USER' ? 0 : myRole === 'ADMIN' ? 1 : 2;
-    const userLevel = userRole === 'USER' ? 0 : userRole === 'ADMIN' ? 1 : 2;
-
-    if (myLevel < userLevel) {
-      throw new ForbiddenException('You do not have permission to delete this user');
+  // Roles were fixed at invitation: making a member an admin (or back) meant
+  // removing and inviting them again, and the owner could never hand the
+  // organisation over. Only the owner changes roles, never their own: they
+  // hand ownership over instead.
+  private async roleChange(
+    org: Organization,
+    myId: string,
+    userId: string,
+    role: 'USER' | 'ADMIN' | 'OWNER',
+    action: string
+  ) {
+    const result = await this._organizationRepository.changeMemberRole(
+      org.id,
+      myId,
+      userId,
+      role
+    );
+    // Narrowed by key: this repo builds without strictNullChecks.
+    if (!('reason' in result)) return result;
+    switch (result.reason) {
+      case 'not-owner':
+        throw new ForbiddenException(`Only the owner can ${action}.`);
+      case 'self':
+        throw new BadRequestException('You cannot change your own role.');
+      case 'not-member':
+        throw new NotFoundException('User is not part of this organization');
+      case 'already-owner':
+        throw new BadRequestException('This member is already an owner.');
+      case 'unavailable':
+        throw new BadRequestException(
+          'This member cannot become the owner while their seat is turned off or their account is suspended.'
+        );
     }
+  }
 
-    // The owner removing themselves left the team with nobody who can manage
-    // members or billing.
-    if (
-      userRole === 'SUPERADMIN' &&
-      (await this._organizationRepository.countOwners(org.id)) <= 1
-    ) {
-      throw new BadRequestException(
-        'The organisation needs an owner. Make someone else the owner first.'
-      );
-    }
+  async changeTeamMemberRole(
+    org: Organization,
+    myId: string,
+    userId: string,
+    role: 'USER' | 'ADMIN'
+  ) {
+    const { from } = await this.roleChange(org, myId, userId, role, 'change roles');
+    return { from, to: role };
+  }
 
-    return this._organizationRepository.deleteTeamMember(org.id, userId);
+  async transferOwnership(org: Organization, myId: string, userId: string) {
+    const { from } = await this.roleChange(
+      org,
+      myId,
+      userId,
+      'OWNER',
+      'hand over the organisation'
+    );
+    return { from };
   }
 
   async disableOrEnableNonSuperAdminUsers(orgId: string, disable: boolean) {

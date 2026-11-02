@@ -181,6 +181,17 @@ const RefusalToast: FC = () => {
           'warning'
         );
       },
+      // The model failed mid-run (OpenAI down): the stream answers 200 and
+      // carries RUN_ERROR, which onRunFailed never sees, so the question was
+      // left with no reply and no word why. The provider's text is not for
+      // the person ("AI_APICallError: …"); the sentence every other AI
+      // feature shows in an outage is.
+      onRunErrorEvent: () => {
+        toaster.show(
+          t('ai_unavailable', 'AI is unavailable right now. Please try again in a few minutes.'),
+          'warning'
+        );
+      },
     });
     return () => subscription.unsubscribe();
   }, [agent, toaster, t]);

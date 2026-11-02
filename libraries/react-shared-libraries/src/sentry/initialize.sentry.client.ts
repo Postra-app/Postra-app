@@ -77,6 +77,9 @@ export const initializeSentryClient = (
     replaysSessionSampleRate: 0,
     replaysOnErrorSampleRate: 1.0,
 
-    profilesSampleRate: environment === 'development' ? 1.0 : 0.1,
+    // Sentry 11 removed profilesSampleRate: a sampled session is profiled
+    // while a trace runs, the backend's setting.
+    profileSessionSampleRate: environment === 'development' ? 1.0 : 0.1,
+    profileLifecycle: 'trace',
   });
 };

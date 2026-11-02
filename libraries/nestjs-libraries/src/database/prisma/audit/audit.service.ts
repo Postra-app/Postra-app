@@ -31,7 +31,10 @@ export type AuditAction =
   | 'admin.export-user'
   | 'admin.delete-organization'
   | 'admin.retention.purge'
-  | 'security.apikey.rotate';
+  | 'security.apikey.rotate'
+  | 'team.member.remove'
+  | 'team.role.change'
+  | 'team.owner.transfer';
 
 export interface AuditEntry {
   action: AuditAction;

@@ -2,6 +2,17 @@ import { createTool } from '@mastra/core/tools';
 import { RequestContext } from '@mastra/core/request-context';
 import { z } from 'zod';
 
+const AI_UNAVAILABLE =
+  'AI is unavailable right now. Please try again in a few minutes.';
+
+// AI SDK provider errors (`AI_APICallError`, `AI_RetryError` after its
+// retries) from a 5xx, a 429 or no connection.
+const isModelOutage = (error: unknown): boolean => {
+  const e = error as { name?: string; statusCode?: number } | undefined;
+  if (!e?.name?.startsWith('AI_')) return false;
+  return !e.statusCode || e.statusCode >= 500 || e.statusCode === 429;
+};
+
 type AskableAgent = {
   name: string;
   getDescription(): string;
@@ -35,11 +46,21 @@ export const askAgentTool = (key: string, agent: AskableAgent) =>
       Object.entries(context?.mcp?.extra ?? {}).forEach(([name, value]) =>
         requestContext.set(name, value)
       );
-      const { text } = await agent.generate(message, {
-        requestContext,
-        tracingContext: context?.tracingContext,
-        abortSignal: context?.abortSignal,
-      });
-      return { text };
+      try {
+        const { text } = await agent.generate(message, {
+          requestContext,
+          tracingContext: context?.tracingContext,
+          abortSignal: context?.abortSignal,
+        });
+        return { text };
+      } catch (error) {
+        // The model provider failing (OpenAI down, rate limited) reached the
+        // MCP client as "AI_APICallError: The server had an error", and
+        // Claude or ChatGPT read that out. The outage sentence instead.
+        if (isModelOutage(error)) {
+          throw new Error(AI_UNAVAILABLE);
+        }
+        throw error;
+      }
     },
   });
