@@ -467,6 +467,17 @@ export class DiscordProvider extends SocialAbstract implements SocialProvider {
   ):
     | { type: 'refresh-token' | 'bad-body' | 'retry'; value: string }
     | undefined {
+    // Every bot-token call answers this when Postra's bot token is revoked or
+    // stale. The generic 401 rule asked the customer to reconnect, which
+    // cannot help: the token is ours, not theirs (upstream 19996da7c).
+    if (body.includes('401: Unauthorized')) {
+      return {
+        type: 'bad-body',
+        value:
+          "Discord rejected Postra's bot. Reconnecting the channel will not help; please contact support",
+      };
+    }
+
     if (body.includes('50001')) {
       return {
         type: 'bad-body',
