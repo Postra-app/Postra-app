@@ -145,18 +145,28 @@ export class RefreshIntegrationService {
     }
 
     if (!refresh || !refresh.accessToken) {
-      await this._integrationService.refreshNeeded(
+      // A provider that returns no token without throwing left no trace.
+      if (!refreshError) {
+        console.error(
+          `[refresh] ${integration.providerIdentifier} ${integration.id} failed: no access token returned`
+        );
+      }
+
+      const flagged = await this._integrationService.refreshNeeded(
         integration.organizationId,
         integration.id
       );
 
       // disconnectChannel tells the customer; telling them here as well sent
-      // the same notice twice (upstream 49aa92ac).
-      await this._integrationService.disconnectChannel(
-        integration.organizationId,
-        integration,
-        socialProvider.refreshErrorMessage?.(refreshError) || cause
-      );
+      // the same notice twice (upstream 49aa92ac). Only the attempt that
+      // flagged the channel tells them (upstream 5a5e50f4e).
+      if (flagged) {
+        await this._integrationService.disconnectChannel(
+          integration.organizationId,
+          integration,
+          socialProvider.refreshErrorMessage?.(refreshError) || cause
+        );
+      }
 
       return false;
     }

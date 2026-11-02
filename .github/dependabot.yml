@@ -108,6 +108,11 @@ updates:
     groups:
       compose:
         patterns: ["*"]
+  # The scanner versions the workflows run from images (.github/tools).
+  - package-ecosystem: "docker"
+    directory: "/.github/tools"
+    schedule:
+      interval: "monthly"
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:

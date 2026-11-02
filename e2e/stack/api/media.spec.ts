@@ -108,6 +108,15 @@ test('save-media refuses a name that is a path', async () => {
   await api.dispose();
 });
 
+// Only an upload through the bucket gives a name to save; the stack (like
+// production) has none, and the path was stored as "undefined/<name>"
+// (upstream 12db9bd2f).
+test('save-media refuses a plain name when there is no bucket to point at', async () => {
+  const api = await signedIn('a');
+  expect((await api.post('/media/save-media', { data: { name: 'photo.png' } })).status()).toBe(400);
+  await api.dispose();
+});
+
 // The nightly sweep removes the files of media deleted from the library. A post
 // saved with such a file in the moment between the sweep's last look and the
 // removal lost its picture. A picture deleted from the library cannot be added

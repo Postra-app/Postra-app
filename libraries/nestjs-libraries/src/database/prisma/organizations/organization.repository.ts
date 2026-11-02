@@ -18,6 +18,34 @@ import { normalizeEmail } from '@gitroom/helpers/utils/email.normalize';
 
 // Launch market is the UK: a sign-up without an explicit ?region=pl (straight
 // to /auth/register, the mobile app's link, Google) is a UK customer.
+// The streak workflow wakes exactly a day after the last post and asks for a
+// newer one. Only PUBLISHED counted, so a post scheduled exactly a day after
+// the previous one was still publishing at that instant and a daily cadence
+// lost its streak every day; a recurring post is one row that keeps its first
+// publishDate, so it never counted past the first time (upstream acf6c2430).
+// Counts posts due within the next few minutes and a recurring post's latest
+// occurrence on its grid; never a time in the future.
+export const STREAK_LOOKAHEAD_MS = 5 * 60_000;
+
+export const lastStreakPostAt = (
+  posts: Date[],
+  recurring: Array<{ publishDate: Date; intervalInDays: number }>,
+  now: number
+): number | null => {
+  const until = now + STREAK_LOOKAHEAD_MS;
+  const dates = [
+    ...posts.map((d) => d.getTime()),
+    ...recurring
+      .filter((p) => p.intervalInDays > 0)
+      .map((p) => {
+        const first = p.publishDate.getTime();
+        const every = p.intervalInDays * 86_400_000;
+        return first + Math.floor((until - first) / every) * every;
+      }),
+  ];
+  return dates.length ? Math.min(Math.max(...dates), now) : null;
+};
+
 export const organizationRegion = (region?: string) =>
   region === 'PL' ? 'PL' : 'UK';
 
@@ -501,19 +529,49 @@ export class OrganizationRepository {
   // The newest published post, never in the future: the streak workflow sleeps
   // until a day after it. Deleted posts do not keep a streak alive.
   async getLastPublishDate(organizationId: string) {
-    const org = await this._organization.model.organization.findUnique({
-      where: { id: organizationId },
-      select: {
-        post: {
-          where: { state: 'PUBLISHED', deletedAt: null },
-          orderBy: { publishDate: 'desc' },
-          take: 1,
-          select: { publishDate: true },
+    const now = Date.now();
+    const until = new Date(now + STREAK_LOOKAHEAD_MS);
+    const [org, recurring] = await Promise.all([
+      this._organization.model.organization.findUnique({
+        where: { id: organizationId },
+        select: {
+          post: {
+            where: {
+              deletedAt: null,
+              parentPostId: null,
+              intervalInDays: null,
+              OR: [
+                { state: 'PUBLISHED' },
+                { state: 'QUEUE', publishDate: { lte: until } },
+              ],
+            },
+            orderBy: { publishDate: 'desc' },
+            take: 1,
+            select: { publishDate: true },
+          },
         },
-      },
-    });
-    const publishDate = org?.post?.[0]?.publishDate;
-    return publishDate ? Math.min(publishDate.getTime(), Date.now()) : null;
+      }),
+      this._organization.model.organization.findUnique({
+        where: { id: organizationId },
+        select: {
+          post: {
+            where: {
+              deletedAt: null,
+              parentPostId: null,
+              intervalInDays: { not: null },
+              state: { in: ['PUBLISHED', 'QUEUE'] },
+              publishDate: { lte: until },
+            },
+            select: { publishDate: true, intervalInDays: true },
+          },
+        },
+      }),
+    ]);
+    return lastStreakPostAt(
+      (org?.post || []).map((p) => p.publishDate),
+      (recurring?.post || []) as Array<{ publishDate: Date; intervalInDays: number }>,
+      now
+    );
   }
 
   async getTeam(orgId: string) {

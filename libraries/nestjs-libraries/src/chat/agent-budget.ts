@@ -6,6 +6,26 @@
 export const AGENT_MAX_STEPS = 25;
 
 /**
+ * Wall-clock ceiling of one run. Steps bound the count, not the time: a run
+ * kept its slot (agent-run-slot.ts) and the process kept working for as long
+ * as the steps took, and the chat ends a slow run only when the browser
+ * closes the connection. Checked between steps (Mastra `stopWhen`, next to
+ * `maxSteps`), so the step in flight finishes and the run ends with what it
+ * has; a normal answer takes a few seconds to well under a minute.
+ */
+export const AGENT_MAX_RUN_MS = 120_000;
+
+// A stop condition for one run: true once the run is older than the ceiling.
+// Built when the run's options are resolved, which is when the run starts.
+export const agentRunDeadline = (
+  now: () => number = Date.now,
+  limitMs = AGENT_MAX_RUN_MS
+) => {
+  const end = now() + limitMs;
+  return () => now() >= end;
+};
+
+/**
  * The OpenAI model behind the assistant (chat and MCP `ask_postra`).
  * AGENT_MODEL overrides it, so another model can be tried on a stack or on
  * production without a release.

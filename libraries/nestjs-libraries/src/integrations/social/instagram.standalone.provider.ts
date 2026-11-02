@@ -12,7 +12,10 @@ import {
   ValidityMedia,
 } from '@gitroom/nestjs-libraries/integrations/social.abstract';
 import { InstagramDto } from '@gitroom/nestjs-libraries/dtos/posts/providers-settings/instagram.dto';
-import { InstagramProvider } from '@gitroom/nestjs-libraries/integrations/social/instagram.provider';
+import {
+  IG_ALT_TEXT_MAX,
+  InstagramProvider,
+} from '@gitroom/nestjs-libraries/integrations/social/instagram.provider';
 import { Integration } from '@prisma/client';
 import { Rules } from '@gitroom/nestjs-libraries/chat/rules.description.decorator';
 
@@ -60,6 +63,9 @@ export class InstagramStandaloneProvider
       if (!hasVideo) {
         return 'Trial Reels must be a video';
       }
+    }
+    if (firstPost.some((f) => (f?.alt?.length ?? 0) > IG_ALT_TEXT_MAX)) {
+      return `Instagram alt text can be up to ${IG_ALT_TEXT_MAX} characters`;
     }
     return true;
   }

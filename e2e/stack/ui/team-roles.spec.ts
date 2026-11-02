@@ -1,7 +1,7 @@
 import { expect, test } from '@playwright/test';
 import { addMember, database, throwawayOrg } from '../helpers';
 
-// E2E-11-85 in the browser: Settings → Teams lets the owner change a member's
+// In the browser: Settings → Teams lets the owner change a member's
 // role and hand the organisation over. Taking an admin's role or seat away
 // offers to rotate the API key they could see (never by itself: that would
 // break the organisation's integrations). Its own organisation: roles change.

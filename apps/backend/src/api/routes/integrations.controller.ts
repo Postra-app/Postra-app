@@ -17,6 +17,7 @@ import {
 import { ioRedis } from '@gitroom/nestjs-libraries/redis/redis.service';
 import {
   IntegrationManager,
+  isHiddenProvider,
   isPreviewOrganization,
 } from '@gitroom/nestjs-libraries/integrations/integration.manager';
 import { IntegrationService } from '@gitroom/nestjs-libraries/database/prisma/integrations/integration.service';
@@ -700,6 +701,11 @@ export class IntegrationsController {
   @Post('/moltbook/register')
   @Throttle({ default: { ttl: 300_000, limit: 10 } })
   async moltbookRegister(@Body() body: { name: string; description: string }) {
+    // Postra does not offer Moltbook (hidden in the picker); this registered
+    // agents on moltbook.com through our server for anyone signed in.
+    if (isHiddenProvider('moltbook')) {
+      throw new NotFoundException();
+    }
     try {
       const provider = new MoltbookProvider();
       const result = await provider.registerAgent(body.name, body.description);
@@ -716,6 +722,9 @@ export class IntegrationsController {
   @Get('/moltbook/status')
   @Throttle({ default: { ttl: 300_000, limit: 60 } })
   async moltbookStatus(@Query('apiKey') apiKey: string) {
+    if (isHiddenProvider('moltbook')) {
+      throw new NotFoundException();
+    }
     try {
       const provider = new MoltbookProvider();
       const result = await provider.checkAgentStatus(apiKey);

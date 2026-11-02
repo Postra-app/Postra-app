@@ -140,6 +140,12 @@ const hiddenProviders = new Set([
   'moltbook',
 ]);
 
+// Also closes a hidden provider's own routes (Moltbook's agent registration):
+// out of the picker but still callable, they did the provider's work for
+// anyone signed in.
+export const isHiddenProvider = (identifier: string) =>
+  hiddenProviders.has(identifier);
+
 @Injectable()
 export class IntegrationManager {
   async getAllIntegrations() {

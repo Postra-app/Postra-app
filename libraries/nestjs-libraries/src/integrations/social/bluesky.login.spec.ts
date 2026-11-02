@@ -5,7 +5,12 @@ process.env.JWT_SECRET = process.env.JWT_SECRET || 'stack-test-secret';
 import { BskyAgent } from '@atproto/api';
 import { AuthService } from '@gitroom/helpers/auth/auth.service';
 import { RefreshToken } from '@gitroom/nestjs-libraries/integrations/social.abstract';
-import { BlueskyProvider, loginRefusedCredentials } from './bluesky.provider';
+import {
+  blueskyConnectError,
+  blueskyLoginIdentifier,
+  BlueskyProvider,
+  loginRefusedCredentials,
+} from './bluesky.provider';
 
 // A Bluesky outage (502 from its load balancer) flagged channels "reconnect
 // needed" and failed every following post; only a refusal of the
@@ -65,5 +70,34 @@ describe('Bluesky connect with a service URL', () => {
       expect(result).not.toHaveProperty('accessToken');
     }
     expect(login).not.toHaveBeenCalled();
+  });
+});
+
+// Upstream 1e63edd83, 717a1b354: a handle typed with "@" connected nowhere
+// ("Invalid credentials"), and after a few tries Bluesky's rate limit read as
+// wrong credentials too.
+describe('Bluesky login identifier and connect errors', () => {
+  it('drops a leading "@" and spaces from the handle', () => {
+    expect(blueskyLoginIdentifier('  @krisrz.bsky.social ')).toBe('krisrz.bsky.social');
+    expect(blueskyLoginIdentifier('me@example.com')).toBe('me@example.com');
+    expect(blueskyLoginIdentifier(undefined)).toBe('');
+  });
+
+  it('logs in with the normalised handle when publishing, though the stored one has "@"', async () => {
+    const login = jest.spyOn(BskyAgent.prototype, 'login').mockResolvedValueOnce({} as any);
+    const integration = {
+      customInstanceDetails: AuthService.encryptSecret(
+        JSON.stringify({ service: 'https://bsky.social', identifier: '@a.bsky.social', password: 'x' })
+      ),
+    } as any;
+    await (new BlueskyProvider() as any).getAgent(integration);
+    expect(login).toHaveBeenCalledWith({ identifier: 'a.bsky.social', password: 'x' });
+    login.mockRestore();
+  });
+
+  it('says why connecting failed when Bluesky says', () => {
+    expect(blueskyConnectError({ error: 'RateLimitExceeded' })).toMatch(/temporarily refusing logins/);
+    expect(blueskyConnectError({ error: 'XRPCNotSupported' })).toMatch(/Service URL/);
+    expect(blueskyConnectError({ error: 'AuthenticationRequired' })).toBe('Invalid credentials');
   });
 });

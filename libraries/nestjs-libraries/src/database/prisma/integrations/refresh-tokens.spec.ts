@@ -81,6 +81,15 @@ describe('refreshTokens', () => {
     expect(repository.refreshNeeded).toHaveBeenCalledWith('org-1', 'a');
   });
 
+  it('tells the customer only when this run flagged the channel', async () => {
+    const { service, repository } = build([channel('a'), channel('b')], ['a', 'b']);
+    repository.refreshNeeded.mockResolvedValueOnce(true).mockResolvedValueOnce(false);
+    await service.refreshTokens(true);
+
+    expect((service as any).informAboutRefreshError).toHaveBeenCalledTimes(1);
+    expect((service as any).informAboutRefreshError.mock.calls[0][1].id).toBe('a');
+  });
+
   it('reports every failure, not only the first', async () => {
     const { service } = build(
       [channel('a'), channel('b'), channel('c')],

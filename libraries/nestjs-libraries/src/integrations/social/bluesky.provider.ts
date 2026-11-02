@@ -166,6 +166,28 @@ async function uploadVideo(
 }
 
 // A 4xx other than 429 from Bluesky's login: the credentials are refused.
+// The connect form keeps whatever the customer typed, and Bluesky reads a
+// handle with a leading "@" as an e-mail address and refuses it
+// (InvalidEmail). Normalised on every login, not only at connect: the stored
+// value is used again to publish, repost, plug and mention (upstream
+// 1e63edd83, 717a1b354).
+export const blueskyLoginIdentifier = (identifier: unknown) =>
+  String(identifier ?? '').trim().replace(/^@/, '');
+
+// What connect answers instead of a blanket "Invalid credentials": after a
+// few refused attempts Bluesky rate-limits the account, and every retry with
+// a corrected handle still read as wrong credentials (upstream 1e63edd83).
+export const blueskyConnectError = (err: unknown) => {
+  switch ((err as { error?: unknown })?.error) {
+    case 'RateLimitExceeded':
+      return 'Bluesky is temporarily refusing logins for this account. Please try again later';
+    case 'XRPCNotSupported':
+      return 'Could not reach a Bluesky server at the Service URL';
+    default:
+      return 'Invalid credentials';
+  }
+};
+
 export const loginRefusedCredentials = (err: unknown) => {
   const status = (err as { status?: unknown })?.status;
   return typeof status === 'number' && status >= 400 && status < 500 && status !== 429;
@@ -275,7 +297,7 @@ export class BlueskyProvider extends SocialAbstract implements SocialProvider {
       const {
         data: { accessJwt, refreshJwt, handle, did },
       } = await agent.login({
-        identifier: body.identifier,
+        identifier: blueskyLoginIdentifier(body.identifier),
         password: body.password,
       });
 
@@ -294,7 +316,7 @@ export class BlueskyProvider extends SocialAbstract implements SocialProvider {
       };
     } catch (e) {
       logger.warn(`Bluesky login failed: ${(e as Error)?.message ?? e}`);
-      return 'Invalid credentials';
+      return blueskyConnectError(e);
     }
   }
 
@@ -308,7 +330,7 @@ export class BlueskyProvider extends SocialAbstract implements SocialProvider {
 
     try {
       await agent.login({
-        identifier: body.identifier,
+        identifier: blueskyLoginIdentifier(body.identifier),
         password: body.password,
       });
     } catch (err) {
@@ -545,7 +567,7 @@ export class BlueskyProvider extends SocialAbstract implements SocialProvider {
     });
 
     await agent.login({
-      identifier: body.identifier,
+      identifier: blueskyLoginIdentifier(body.identifier),
       password: body.password,
     });
 
@@ -607,7 +629,7 @@ export class BlueskyProvider extends SocialAbstract implements SocialProvider {
     });
 
     await agent.login({
-      identifier: body.identifier,
+      identifier: blueskyLoginIdentifier(body.identifier),
       password: body.password,
     });
 
@@ -664,7 +686,7 @@ export class BlueskyProvider extends SocialAbstract implements SocialProvider {
     });
 
     await agent.login({
-      identifier: body.identifier,
+      identifier: blueskyLoginIdentifier(body.identifier),
       password: body.password,
     });
 

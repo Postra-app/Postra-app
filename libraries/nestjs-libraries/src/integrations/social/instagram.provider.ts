@@ -27,6 +27,13 @@ import { percentageChangeFromSeries } from '@gitroom/nestjs-libraries/integratio
 import { UploadFactory } from '@gitroom/nestjs-libraries/upload/upload.factory';
 import { toInstagramSafeAspect } from '@gitroom/nestjs-libraries/integrations/social/instagram.aspect';
 
+// What a 2207051 ("action is blocked") answer shows the customer; also the
+// sign publishContainer looks for.
+export const IG_BLOCKED = 'Instagram blocked your request';
+
+// Instagram's limit for alt_text on an image container (upstream 63ae45050).
+export const IG_ALT_TEXT_MAX = 1000;
+
 @Rules(
   "Instagram should have at least one attachment, if it's a story, it can have only one picture"
 )
@@ -86,6 +93,9 @@ export class InstagramProvider
       if (!hasVideo) {
         return 'Trial Reels must be a video';
       }
+    }
+    if (firstPost.some((f) => (f?.alt?.length ?? 0) > IG_ALT_TEXT_MAX)) {
+      return `Instagram alt text can be up to ${IG_ALT_TEXT_MAX} characters`;
     }
     return true;
   }
@@ -378,7 +388,7 @@ export class InstagramProvider
     if (body.indexOf('2207051') > -1) {
       return {
         type: 'bad-body' as const,
-        value: 'Instagram blocked your request',
+        value: IG_BLOCKED,
       };
     }
 
@@ -451,6 +461,96 @@ export class InstagramProvider
     }
 
     return undefined;
+  }
+
+  // Instagram sometimes answers media_publish with 2207051 ("action is
+  // blocked") and still publishes the container (upstream ae0a642b0). Failing
+  // there marks a live post as failed; ask Instagram first and take the media
+  // it created. Any other outcome keeps the original error. Feed posts only:
+  // the /media edge does not list stories, so its newest item would be some
+  // other post. The media is matched by its caption among the newest few:
+  // the newest alone may be a post published in between.
+  async publishContainer(
+    type: string,
+    igId: string,
+    creationId: string,
+    accessToken: string,
+    checkToken: string,
+    caption = ''
+  ): Promise<string> {
+    try {
+      const { id } = await (
+        await this.fetch(
+          `https://${type}/v20.0/${igId}/media_publish?creation_id=${creationId}&access_token=${accessToken}&field=id`,
+          {
+            method: 'POST',
+          }
+        )
+      ).json();
+      return id;
+    } catch (err) {
+      if (!(err instanceof BadBody) || err.message !== IG_BLOCKED) {
+        throw err;
+      }
+      const mediaId = await this.publishedMediaId(
+        type,
+        igId,
+        creationId,
+        checkToken,
+        caption
+      );
+      if (!mediaId) {
+        throw err;
+      }
+      return mediaId;
+    }
+  }
+
+  private async publishedMediaId(
+    type: string,
+    igId: string,
+    creationId: string,
+    checkToken: string,
+    caption: string
+  ): Promise<string> {
+    try {
+      const { status_code } = await (
+        await this.fetch(
+          `https://${type}/${META_GRAPH_API_VERSION}/${creationId}?fields=status_code&access_token=${checkToken}`,
+          undefined,
+          '',
+          0,
+          true
+        )
+      ).json();
+      const { data } =
+        status_code === 'PUBLISHED'
+          ? await (
+              await this.fetch(
+                `https://${type}/${META_GRAPH_API_VERSION}/${igId}/media?fields=id,caption&limit=5&access_token=${checkToken}`,
+                undefined,
+                '',
+                0,
+                true
+              )
+            ).json()
+          : { data: [] };
+      const wanted = caption.trim();
+      const matches = (data || []).filter(
+        (m: { caption?: string }) => (m.caption || '').trim() === wanted
+      );
+      // Exactly one: two posts with the same caption cannot be told apart.
+      const mediaId = matches.length === 1 ? matches[0].id : '';
+      this._logger.warn(
+        `Instagram blocked media_publish for container ${creationId}: status ${status_code}, media ${mediaId || 'none'}`
+      );
+      return mediaId;
+    } catch (e) {
+      this._logger.error(
+        `Instagram blocked media_publish for container ${creationId}: status probe failed`
+      );
+      return '';
+    }
   }
 
   // A container Instagram could not process (ERROR) or that ran out of time
@@ -785,6 +885,13 @@ export class InstagramProvider
           ? `image_url=${m.path}&media_type=STORIES`
           : `image_url=${m.path}`;
 
+        // Alt text from the composer's media settings; Instagram takes it on
+        // images only (single or carousel item), not on videos or stories.
+        const altText =
+          m.alt && !isStory && !hasExtension(m.path, 'mp4')
+            ? `&alt_text=${encodeURIComponent(m.alt)}`
+            : ``;
+
         const trialParams = isTrialReel
           ? `&trial_params=${encodeURIComponent(
               JSON.stringify({
@@ -799,7 +906,7 @@ export class InstagramProvider
 
         const { id: photoId } = await (
           await this.fetch(
-            `https://${type}/v20.0/${id}/media?${mediaType}${isCarousel}${itemCollaborators}${trialParams}&access_token=${accessToken}${caption}`,
+            `https://${type}/v20.0/${id}/media?${mediaType}${altText}${isCarousel}${itemCollaborators}${trialParams}&access_token=${accessToken}${caption}`,
             {
               method: 'POST',
             }
@@ -870,14 +977,25 @@ export class InstagramProvider
         },
       ];
     } else if (medias.length === 1) {
-      const { id: mediaId } = await (
-        await this.fetch(
-          `https://${type}/v20.0/${id}/media_publish?creation_id=${medias[0]}&access_token=${accessToken}&field=id`,
-          {
-            method: 'POST',
-          }
-        )
-      ).json();
+      const mediaId = isStory
+        ? (
+            await (
+              await this.fetch(
+                `https://${type}/v20.0/${id}/media_publish?creation_id=${medias[0]}&access_token=${accessToken}&field=id`,
+                {
+                  method: 'POST',
+                }
+              )
+            ).json()
+          ).id
+        : await this.publishContainer(
+            type,
+            id,
+            medias[0],
+            accessToken,
+            userToken || accessToken,
+            firstPost.message
+          );
 
       const { permalink } = await (
         await this.fetch(
@@ -934,14 +1052,14 @@ export class InstagramProvider
         status = status_code;
       }
 
-      const { id: mediaId, ...all4 } = await (
-        await this.fetch(
-          `https://${type}/v20.0/${id}/media_publish?creation_id=${containerId}&access_token=${accessToken}&field=id`,
-          {
-            method: 'POST',
-          }
-        )
-      ).json();
+      const mediaId = await this.publishContainer(
+        type,
+        id,
+        containerId,
+        accessToken,
+        userToken || accessToken,
+        firstPost?.message || ''
+      );
 
       const { permalink } = await (
         await this.fetch(

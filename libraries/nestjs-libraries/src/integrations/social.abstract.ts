@@ -7,6 +7,7 @@ import sharp from 'sharp';
 export type ValidityMedia = {
   path: string;
   thumbnail?: string;
+  alt?: string;
 };
 
 // Temporal serializes the whole ApplicationFailure (message + details) into the
@@ -197,6 +198,16 @@ export abstract class SocialAbstract {
     try {
       value = await func();
     } catch (err) {
+      // Already classified by the provider (a curated BadBody, a refresh, or
+      // media still processing on a post that may be live): keep it instead of
+      // re-wrapping it as 'Unknown Error' (upstream 0c9d39400).
+      if (
+        err instanceof BadBody ||
+        err instanceof RefreshToken ||
+        err instanceof ProcessingTimeout
+      ) {
+        throw err;
+      }
       const handle = this.handleErrors(safeStringify(err), 200);
       console.error(
         `[social:${this.identifier}] provider call threw handled=${
