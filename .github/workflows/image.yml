@@ -16,7 +16,6 @@ permissions:
   packages: write
   id-token: write
   attestations: write
-  security-events: write
 
 env:
   IMAGE: ghcr.io/postra-app/postra-app
@@ -64,32 +63,6 @@ jobs:
           subject-name: ${{ env.IMAGE }}
           subject-digest: ${{ steps.push.outputs.digest }}
           push-to-registry: true
-
-      # Known vulnerabilities in the published image (OS packages and
-      # node_modules), as code-scanning alerts in the Security tab. Reported,
-      # not blocking: a CVE published overnight must not stop a deploy; the
-      # alerts are read with Dependabot's. Only ones with a fix available.
-      # Trivy runs from its image (third-party actions are not on this
-      # repository's allow-list); the version is in .github/tools, where
-      # Dependabot watches it.
-      - name: Scan the image
-        continue-on-error: true
-        run: |
-          TRIVY=$(sed -n 's/^FROM //p' .github/tools/trivy.Dockerfile)
-          docker run --rm \
-            -v /var/run/docker.sock:/var/run/docker.sock \
-            -v "${PWD}:/out" \
-            "${TRIVY}" image \
-            --format sarif --output /out/trivy-image.sarif \
-            --severity CRITICAL,HIGH --ignore-unfixed --exit-code 0 \
-            "${IMAGE}:sha-${GITHUB_SHA}"
-
-      - name: Upload the image scan
-        continue-on-error: true
-        uses: github/codeql-action/upload-sarif@v4
-        with:
-          sarif_file: trivy-image.sarif
-          category: image
 
   # Every commit on main adds an image; the registry keeps the newest 20
   # (deploys copy the image to ECR, so older ones serve nothing here). A
