@@ -1,5 +1,5 @@
 import { expect, request as pwRequest, test } from '@playwright/test';
-import { BACKEND_URL, database, throwawayOrg } from '../helpers';
+import { anonymous, BACKEND_URL, database, throwawayOrg } from '../helpers';
 
 // Inputs a client gets wrong answered 500 (and a Sentry issue) instead of
 // telling the client what was wrong. One of them, /billing/lifetime, is gone.
@@ -33,4 +33,17 @@ test('malformed requests are 4xx, not 500', async () => {
     await org.remove();
     await prisma.$disconnect();
   }
+});
+
+// §60 C2: the Stripe webhook is public; a request without Stripe's signature
+// is refused as a bad request and changes nothing.
+test('the Stripe webhook refuses an unsigned or wrongly signed event', async () => {
+  const api = await anonymous();
+  const event = { id: 'evt_forged', type: 'customer.subscription.deleted', data: { object: { metadata: { service: 'gitroom' } } } };
+  for (const headers of [{}, { 'stripe-signature': 't=1,v1=deadbeef' }]) {
+    const res = await api.post('/stripe', { data: event, headers });
+    expect(res.status()).toBe(400);
+    expect(await res.text()).toMatch(/Invalid Stripe signature/);
+  }
+  await api.dispose();
 });
