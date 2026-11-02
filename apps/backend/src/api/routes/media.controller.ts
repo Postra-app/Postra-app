@@ -707,6 +707,12 @@ export class MediaController {
     if (!isSafeStoredName(name)) {
       throw new HttpException('Invalid file name', 400);
     }
+    // Only an upload through the bucket (Transloadit) gives a name to save;
+    // without the bucket the stored path was "undefined/<name>" (upstream
+    // 12db9bd2f).
+    if (!process.env.CLOUDFLARE_BUCKET_URL) {
+      throw new HttpException('Invalid file name', 400);
+    }
     return this._mediaService.saveFile(
       org.id,
       name,
