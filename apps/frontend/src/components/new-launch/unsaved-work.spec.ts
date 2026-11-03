@@ -1,5 +1,5 @@
 import dayjs from 'dayjs';
-import { composerWork, ComposerWork } from './unsaved-work';
+import { composerWork, ComposerWork, stableJson } from './unsaved-work';
 
 const opened = (): ComposerWork => ({
   global: [{ content: '<p></p><p>Thanks, the team</p>', delay: 0, media: [] }],
@@ -47,5 +47,31 @@ describe('composer work (what closing would lose)', () => {
     const two = opened();
     two.selectedIntegrations = [{ integration: { id: 'b' } }, { integration: { id: 'a' } }];
     expect(composerWork(one)).toBe(composerWork(two));
+  });
+
+  // The text alone hid changes the post publishes with.
+  it('changes when paragraphs are merged or a paragraph is made bold', () => {
+    const split = opened();
+    split.global[0].content = '<p>First</p><p>Second</p>';
+    const merged = opened();
+    merged.global[0].content = '<p>First Second</p>';
+    expect(composerWork(merged)).not.toBe(composerWork(split));
+
+    const bold = opened();
+    bold.global[0].content = '<p></p><p><strong>Thanks, the team</strong></p>';
+    expect(composerWork(bold)).not.toBe(composerWork(opened()));
+  });
+
+  it('ignores attributes the editor adds to the same paragraphs', () => {
+    const later = opened();
+    later.global[0].content = '<p dir="auto"></p><p dir="auto">Thanks, the team</p>';
+    expect(composerWork(later)).toBe(composerWork(opened()));
+  });
+});
+
+describe('stableJson (channel settings)', () => {
+  it('does not depend on key order, and sees a changed value', () => {
+    expect(stableJson({ a: 1, b: { c: 2, d: 3 } })).toBe(stableJson({ b: { d: 3, c: 2 }, a: 1 }));
+    expect(stableJson({ visibility: 'public' })).not.toBe(stableJson({ visibility: 'unlisted' }));
   });
 });

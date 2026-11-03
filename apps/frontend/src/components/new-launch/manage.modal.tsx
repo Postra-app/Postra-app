@@ -204,12 +204,19 @@ export const ManageModal: FC<AddEditModalProps> = (props) => {
     openedWith.current = composerWork(useLaunchStore.getState());
   }
   const saved = useRef(false);
-  const hasUnsavedWork = useCallback(
-    () =>
-      !saved.current &&
-      composerWork(useLaunchStore.getState()) !== openedWith.current,
-    []
-  );
+  const hasUnsavedWork = useCallback(() => {
+    if (saved.current) {
+      return false;
+    }
+    const state = useLaunchStore.getState();
+    return (
+      composerWork(state) !== openedWith.current ||
+      // Each channel's settings form knows what it opened with.
+      state.selectedIntegrations.some((p) =>
+        p.ref?.current?.settingsChanged?.()
+      )
+    );
+  }, []);
 
   useEffect(() => {
     if (dummy) {

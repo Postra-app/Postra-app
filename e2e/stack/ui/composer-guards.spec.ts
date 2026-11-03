@@ -1,6 +1,7 @@
 import { expect, test } from '@playwright/test';
 import { listPosts, signedIn, stateFile } from '../helpers';
-import { openComposer } from './ui-helpers';
+import { USERS } from '../seed';
+import { openComposer, quietSlot, weekOf } from './ui-helpers';
 
 // What the composer asks before it loses work or publishes by surprise.
 test.use({ storageState: stateFile('a') });
@@ -104,4 +105,53 @@ test('"Post now" in the passed-date question publishes it as a post now', async 
       { timeout: 90_000, intervals: [1_000, 2_000] }
     )
     .toBe(true);
+});
+
+// An existing post: closing it untouched needs no question, but a change to
+// a channel setting alone (Mastodon's visibility here, a YouTube title or a
+// Pinterest board elsewhere) is work the close would lose.
+const SLOT = quietSlot(4);
+
+const openMastodonDraft = async (page: import('@playwright/test').Page, content: string) => {
+  const api = await signedIn('a');
+  const created = await api.post('/posts', {
+    data: {
+      type: 'draft',
+      shortLink: false,
+      date: SLOT.toISOString(),
+      tags: [],
+      posts: [
+        {
+          integration: { id: USERS.a.mastodon.id },
+          value: [{ content, image: [] }],
+          settings: { __type: 'mastodon', visibility: 'public' },
+        },
+      ],
+    },
+  });
+  expect(created.status(), await created.text()).toBe(201);
+  await api.dispose();
+  await page.goto(weekOf(SLOT));
+  await page
+    .getByRole('button', { name: `Open post: ${USERS.a.mastodon.name}` })
+    .filter({ hasText: content })
+    .click();
+  const editor = page.getByRole('dialog', { name: 'Post editor' });
+  await expect(editor).toBeVisible();
+  return editor;
+};
+
+test('an existing post opened and closed untouched does not ask', async ({ page }) => {
+  const editor = await openMastodonDraft(page, `[stack ui] untouched ${Date.now()}`);
+  await editor.getByRole('button', { name: 'Close', exact: true }).click();
+  await expect(editor).toHaveCount(0);
+  await expect(page.getByRole('button', { name: 'Yes, close it!' })).toHaveCount(0);
+});
+
+test('a changed channel setting alone still asks before closing', async ({ page }) => {
+  const editor = await openMastodonDraft(page, `[stack ui] setting ${Date.now()}`);
+  await page.getByText(`${USERS.a.mastodon.name} Settings`).click();
+  await page.getByLabel('Who can see this post?').selectOption('unlisted');
+  await editor.getByRole('button', { name: 'Close', exact: true }).click();
+  await expect(page.getByRole('button', { name: 'Yes, close it!' })).toBeVisible();
 });
