@@ -5,9 +5,7 @@ import { join } from 'path';
 // This repository is public because the AGPL requires the source of the
 // running program, and it holds that and nothing more: the program's code,
 // its tests and its CI. Instructions for AI agents, operator notes, plans,
-// tracker IDs, the names of private repositories, people and AWS account IDs
-// live elsewhere. A public file once carried the launch date and who decides
-// what; this keeps the next one out.
+// tracker IDs and infrastructure details live elsewhere.
 
 const root = join(__dirname, '..', '..', '..', '..');
 const tracked = execSync('git ls-files -z', { cwd: root, encoding: 'utf8' })
@@ -23,12 +21,13 @@ const exempt = (file: string) =>
   file === 'libraries/helpers/src/repo/public-repo-minimum.spec.ts' ||
   (file.startsWith(MIGRATIONS) && file.slice(MIGRATIONS.length, MIGRATIONS.length + 8) < RULE_SINCE);
 
+// Shapes only. The names of what is private (repositories, people,
+// accounts) cannot be listed in a public file without publishing them, so
+// those are checked against this repository from outside it.
 const FORBIDDEN: Array<[string, RegExp]> = [
   ['a tracker ID', new RegExp('E2E' + '-\\d{2}-\\d+')],
   ['a path into the plans', new RegExp('\\b' + 'Plan' + '/[A-Za-z]')],
-  ['a private repository', new RegExp('Postra-(infra|mobile)|postra' + '-status')],
   ['an ARN with an account ID', new RegExp('arn:aws:[a-z0-9-]+:[a-z0-9-]*:\\d{12}:')],
-  ['a person', new RegExp('Krzys' + 'ztof')],
 ];
 
 describe('the public repository', () => {
@@ -39,7 +38,7 @@ describe('the public repository', () => {
     expect(agentFiles).toEqual([]);
   });
 
-  it('names no plans, tracker IDs, private repositories, people or AWS accounts', () => {
+  it('points at no plans or tracker IDs and carries no ARNs', () => {
     const hits: string[] = [];
     for (const file of tracked) {
       if (exempt(file)) continue;
