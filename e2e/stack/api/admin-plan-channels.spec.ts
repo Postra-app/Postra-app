@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { database, throwawayOrg } from '../helpers';
+import { database, throwawayOrg, makeAdministrator } from '../helpers';
 
 // A plan changed by an admin (a comp, or a revoke back to FREE) left the
 // channels the new plan does not include switched on; only a Stripe change
@@ -15,7 +15,7 @@ test('an admin plan change switches off the channels the new plan does not have'
   const target = await throwawayOrg(prisma, { tier: 'ULTIMATE', totalChannels: 10, channels: 0 });
   try {
     const staffUser = await prisma.userOrganization.findFirstOrThrow({ where: { organizationId: staff.orgId } });
-    await prisma.user.update({ where: { id: staffUser.userId }, data: { isSuperAdmin: true } });
+    await makeAdministrator(prisma, { api: staff.api, userId: staffUser.userId });
     await expect.poll(async () => (await staff.api.get('/admin/stats')).status(), { timeout: 60_000 }).toBe(200);
 
     // Oldest first, so the Starter cap of 3 is not what switches them off.

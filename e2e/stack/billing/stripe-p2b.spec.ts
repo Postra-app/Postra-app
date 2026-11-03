@@ -2,7 +2,7 @@ import { APIRequestContext, expect, test } from '@playwright/test';
 import { PrismaClient } from '@prisma/client';
 import Stripe from 'stripe';
 import { Connection, WorkflowClient } from '@temporalio/client';
-import { database, throwawayOrg } from '../helpers';
+import { database, throwawayOrg, makeAdministrator } from '../helpers';
 import { pricing } from '../../../libraries/nestjs-libraries/src/database/prisma/subscriptions/pricing';
 
 // Billing steps that need a signed-in customer: the app's own billing endpoints
@@ -271,7 +271,7 @@ test('a superadmin refunds a paid charge; another customer\'s charge is refused'
   const staff = await throwawayOrg(prisma, { tier: 'STANDARD', totalChannels: 3, channels: 0 });
   cleanup.push(() => staff.remove());
   const staffUser = await prisma.userOrganization.findFirstOrThrow({ where: { organizationId: staff.orgId } });
-  await prisma.user.update({ where: { id: staffUser.userId }, data: { isSuperAdmin: true } });
+  await makeAdministrator(prisma, { api: staff.api, userId: staffUser.userId });
   // The auth context is cached for a short while; wait for the flag to land.
   await expect.poll(async () => (await staff.api.get('/admin/stats')).status(), { timeout: 60_000 }).toBe(200);
 

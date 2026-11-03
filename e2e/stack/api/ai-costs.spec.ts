@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { database, throwawayOrg } from '../helpers';
+import { database, throwawayOrg, makeAdministrator } from '../helpers';
 
 // The margin guard: what AI cost each paying organisation in the last 30 days
 // against its plan price. Admins only.
@@ -14,7 +14,7 @@ test('the AI cost report shows an organisation past 70% of its plan price, for a
     expect((await heavy.api.get('/admin/ai-costs')).status()).toBe(403);
 
     const adminUser = await prisma.userOrganization.findFirstOrThrow({ where: { organizationId: admin.orgId } });
-    await prisma.user.update({ where: { id: adminUser.userId }, data: { isSuperAdmin: true } });
+    await makeAdministrator(prisma, { api: admin.api, userId: adminUser.userId });
     // 60 clips at $0.325 = $19.50 — over 70% of Starter's £19.
     await prisma.aiUsage.create({
       data: { organizationId: heavy.orgId, engine: 'video', model: 'veo3_fast', unit: 'videos', inputAmount: 60 },

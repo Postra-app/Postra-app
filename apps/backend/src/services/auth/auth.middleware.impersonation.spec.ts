@@ -68,7 +68,8 @@ const build = (target: any) => {
 const request = (path: string) => ({
   headers: { 'user-agent': 'Chrome/140', 'x-forwarded-for': '203.0.113.7' },
   cookies: {
-    auth: AuthService.signJWT({ ...admin, password: undefined }),
+    // An administrator who has done the second step (admin-mfa.ts).
+    auth: AuthService.signJWT({ ...admin, password: undefined, mfa: Math.floor(Date.now() / 1000) }),
     impersonate: 'uo-1',
   },
   path,

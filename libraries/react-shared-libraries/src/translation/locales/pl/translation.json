@@ -1679,5 +1679,20 @@
   "team_role_of": "Rola: {{name}}",
   "rotate_api_key": "Zmienić klucz API?",
   "rotate": "Zmień",
-  "api_key_rotated": "Klucz API zmieniony"
+  "api_key_rotated": "Klucz API zmieniony",
+  "two_factor_locked": "Za dużo błędnych kodów. Spróbuj ponownie za 15 minut.",
+  "two_factor_wrong": "Ten kod jest nieprawidłowy.",
+  "two_factor_title": "Weryfikacja dwuetapowa",
+  "two_factor_backup_intro": "Aplikacja uwierzytelniająca jest włączona. Zapisz te kody zapasowe w bezpiecznym miejscu, z dala od telefonu. Każdy działa raz, jeśli zgubisz telefon. Widać je tylko teraz.",
+  "two_factor_saved_codes": "Mam je zapisane, otwórz panel administratora",
+  "two_factor_setup_intro": "Panel administratora wymaga, oprócz hasła, kodu z aplikacji uwierzytelniającej (Google Authenticator, 1Password, Authy lub podobnej). Skonfiguruj ją raz; potem wpisujesz kod na początku każdej sesji administratora.",
+  "two_factor_setup": "Skonfiguruj aplikację uwierzytelniającą",
+  "two_factor_scan": "Zeskanuj ten kod aplikacją uwierzytelniającą, a potem wpisz sześciocyfrowy kod, który pokaże.",
+  "two_factor_qr_alt": "Kod QR dla aplikacji uwierzytelniającej",
+  "two_factor_manual": "Nie możesz zeskanować? Wpisz w aplikacji ten klucz:",
+  "two_factor_enter": "Wpisz sześciocyfrowy kod z aplikacji uwierzytelniającej albo jeden z kodów zapasowych.",
+  "two_factor_code": "Kod uwierzytelniający",
+  "two_factor_verify": "Zweryfikuj",
+  "two_factor_turn_on": "Włącz",
+  "two_factor_backup_left": "Pozostałe kody zapasowe:"
 }

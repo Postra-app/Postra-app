@@ -2,6 +2,7 @@ import { APIRequestContext, expect, request as pwRequest } from '@playwright/tes
 import { PrismaClient } from '@prisma/client';
 import { hashSync } from 'bcrypt';
 import { UserKey, USERS } from './seed';
+import { totpCode, totpStep } from '../../libraries/helpers/src/auth/totp';
 
 export const BACKEND_URL = 'http://localhost:53000';
 
@@ -164,6 +165,8 @@ export const throwawayOrg = async (
     api,
     orgId: org.id,
     userId: user.id,
+    email,
+    password,
     channelIds,
     remove: async () => {
       await api.dispose();
@@ -220,4 +223,35 @@ export const addMember = async (
       await prisma.user.deleteMany({ where: { id: user.id } });
     },
   };
+};
+
+// A Postra administrator (User.isSuperAdmin) whose session has done the second
+// step: the flag alone no longer opens /admin or impersonation without an
+// authenticator code in the session (backend admin-mfa.ts). Sets up the
+// authenticator through the real API and keeps the reissued session cookie in
+// `who.api`. Returns the secret and the backup codes.
+export const makeAdministrator = async (
+  prisma: PrismaClient,
+  who: { api: APIRequestContext; userId: string }
+) => {
+  await prisma.user.update({ where: { id: who.userId }, data: { isSuperAdmin: true } });
+  // The auth context is cached for a short while; setup answers 403 until the
+  // flag lands.
+  let setup: Awaited<ReturnType<APIRequestContext['post']>> | undefined;
+  await expect
+    .poll(
+      async () => {
+        setup = await who.api.post('/two-factor/setup');
+        return setup.status();
+      },
+      { timeout: 60_000 }
+    )
+    .toBe(201);
+  const { secret } = await setup!.json();
+  const enabled = await who.api.post('/two-factor/enable', {
+    data: { code: totpCode(secret, totpStep()) },
+  });
+  expect(enabled.status(), await enabled.text()).toBe(201);
+  const { backupCodes } = await enabled.json();
+  return { secret, backupCodes: backupCodes as string[] };
 };

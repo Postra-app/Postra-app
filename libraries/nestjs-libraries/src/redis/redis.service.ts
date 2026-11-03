@@ -70,6 +70,30 @@ class MockRedis {
     return removed;
   }
 
+  // Failure counters (sign-in lockout, an administrator's second step) count
+  // with INCR and keep the key's expiry, as Redis does.
+  async incr(key: string) {
+    const entry = this.live(key);
+    const value = Number(entry?.value ?? 0) + 1;
+    this.data.set(key, {
+      value: String(value),
+      expiresAt: entry?.expiresAt ?? null,
+    });
+    return value;
+  }
+
+  // Seconds left; -1 without an expiry, -2 for no key.
+  async ttl(key: string) {
+    const entry = this.live(key);
+    if (!entry) {
+      return -2;
+    }
+    if (entry.expiresAt === null) {
+      return -1;
+    }
+    return Math.ceil((entry.expiresAt - Date.now()) / 1000);
+  }
+
   // Add other Redis methods as needed for your tests
 }
 

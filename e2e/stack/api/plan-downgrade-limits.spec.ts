@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { database, throwawayOrg } from '../helpers';
+import { database, throwawayOrg, makeAdministrator } from '../helpers';
 
 // A plan change trimmed channels and seats, but not Auto Post feeds or
 // webhooks. Business -> Pro left all ten feeds running (Pro allows 3) and any
@@ -17,7 +17,7 @@ test('a downgrade keeps the oldest feeds and webhooks within the new plan, and t
   const target = await throwawayOrg(prisma, { tier: 'ULTIMATE', totalChannels: 10, channels: 0 });
   try {
     const staffUser = await prisma.userOrganization.findFirstOrThrow({ where: { organizationId: staff.orgId } });
-    await prisma.user.update({ where: { id: staffUser.userId }, data: { isSuperAdmin: true } });
+    await makeAdministrator(prisma, { api: staff.api, userId: staffUser.userId });
     await expect.poll(async () => (await staff.api.get('/admin/stats')).status(), { timeout: 60_000 }).toBe(200);
 
     const day = (n: number) => new Date(Date.now() - (10 - n) * 86_400_000);

@@ -35,6 +35,18 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
   // Impersonation forces isSuperAdmin=true on the session so the admin can
   // un-impersonate, but the panel itself must reflect the real user's view —
   // block it while impersonating (the global "Stop" banner stays available).
+  // The edge (proxy.ts) sends an administrator without the second step to
+  // /two-factor; this is the fallback when that check could not run.
+  if ((user as any)?.adminMfaPending && !user?.impersonate) {
+    return (
+      <div className="flex-1 flex items-center justify-center">
+        <Link className="text-[#38bdf8] underline" href="/two-factor">
+          {t('two_factor_title', 'Two-step verification')}
+        </Link>
+      </div>
+    );
+  }
+
   if (!user?.isSuperAdmin || user?.impersonate) {
     return (
       <div className="flex-1 flex items-center justify-center text-newTextColor/60">

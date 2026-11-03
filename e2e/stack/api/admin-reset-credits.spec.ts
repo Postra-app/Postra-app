@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { database, throwawayOrg } from '../helpers';
+import { database, throwawayOrg, makeAdministrator } from '../helpers';
 
 // Support: a customer whose AI images or videos were used up by a failed or
 // unfair run gets the month's allowance back from /admin (idea from upstream
@@ -23,7 +23,7 @@ test('a super admin resets one kind of AI credits for this billing period', asyn
     expect(refused.status()).toBe(403);
 
     const staffUser = await prisma.userOrganization.findFirstOrThrow({ where: { organizationId: staff.orgId } });
-    await prisma.user.update({ where: { id: staffUser.userId }, data: { isSuperAdmin: true } });
+    await makeAdministrator(prisma, { api: staff.api, userId: staffUser.userId });
     await expect.poll(async () => (await staff.api.get('/admin/stats')).status(), { timeout: 60_000 }).toBe(200);
 
     const subscription = await prisma.subscription.findFirstOrThrow({ where: { organizationId: target.orgId } });

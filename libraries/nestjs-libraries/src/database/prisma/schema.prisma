@@ -150,6 +150,7 @@ model User {
   sendSuccessEmails     Boolean              @default(false)
   sendFailureEmails     Boolean              @default(true)
   oauthAuthorizations   OAuthAuthorization[]
+  totp                  UserTotp?
 
   @@unique([email, providerName])
   @@unique([emailNormalized, providerName])
@@ -158,6 +159,25 @@ model User {
   @@index([account])
   @@index([lastOnline])
   @@index([pictureId])
+}
+
+// The authenticator app of a Postra administrator (User.isSuperAdmin). A
+// table of its own so that nothing here travels with the User row, which the
+// auth middleware caches and /user/self returns.
+model UserTotp {
+  userId      String    @id
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  // enc2:: ciphertext of the base32 secret (AuthService.encryptSecret).
+  secret      String
+  // Null between "show the QR code" and the first good code: until then
+  // setting it up again replaces the secret, afterwards it cannot.
+  enabledAt   DateTime?
+  // The time step of the last accepted code: a code works once.
+  lastStep    Int?
+  // lookupHash of each unused backup code; a used one is removed.
+  backupCodes String[]  @default([])
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
 }
 
 model UsedCodes {

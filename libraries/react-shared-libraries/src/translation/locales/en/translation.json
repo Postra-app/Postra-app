@@ -1921,5 +1921,20 @@
   "team_make_owner": "Make owner",
   "team_make_owner_failed": "Could not make them the owner",
   "team_owner_changed": "Ownership handed over",
-  "team_role_of": "Role of {{name}}"
+  "team_role_of": "Role of {{name}}",
+  "two_factor_locked": "Too many wrong codes. Try again in 15 minutes.",
+  "two_factor_wrong": "That code is not right.",
+  "two_factor_title": "Two-step verification",
+  "two_factor_backup_intro": "Your authenticator is on. Keep these backup codes somewhere safe, away from your phone. Each one works once if you lose the phone. They are shown only now.",
+  "two_factor_saved_codes": "I have saved them, open the admin panel",
+  "two_factor_setup_intro": "The admin panel needs a code from an authenticator app (Google Authenticator, 1Password, Authy or similar) on top of your password. Set it up once; after that you type a code at the start of each admin session.",
+  "two_factor_setup": "Set up the authenticator",
+  "two_factor_scan": "Scan this code with your authenticator app, then type the six-digit code it shows.",
+  "two_factor_qr_alt": "QR code for the authenticator app",
+  "two_factor_manual": "Cannot scan? Enter this key in the app:",
+  "two_factor_enter": "Type the six-digit code from your authenticator app, or one of your backup codes.",
+  "two_factor_code": "Authentication code",
+  "two_factor_verify": "Verify",
+  "two_factor_turn_on": "Turn on",
+  "two_factor_backup_left": "Backup codes left:"
 }
