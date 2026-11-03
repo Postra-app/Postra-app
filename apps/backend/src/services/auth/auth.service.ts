@@ -543,6 +543,43 @@ export class AuthService {
   }
 
   /**
+   * The same browser session after its administrator typed a good
+   * authenticator code (admin-mfa.controller.ts). Same session id, sign-in
+   * time and expiry, so signing out and the 30 days work as before; `mfa` is
+   * when the code was checked, which auth.middleware asks for before it lets
+   * the administrator flag through. The app's token never carries it
+   * (mobileJwt copies named claims only): the panel is a web tool.
+   */
+  adminMfaJwt(currentJwt: string): string {
+    const { id, email, tokenVersion, sid, sat, iat, exp } =
+      AuthChecker.verifyJWT(currentJwt) as {
+        id: string;
+        email: string;
+        tokenVersion: number;
+        sid?: string;
+        sat?: number;
+        iat?: number;
+        exp?: number;
+      };
+    const now = Math.floor(Date.now() / 1000);
+    const left = exp ? exp - now : SESSION_MAX_AGE_SECONDS;
+    if (left <= 0) {
+      throw new HttpForbiddenException();
+    }
+    return AuthChecker.signJWT(
+      {
+        id,
+        email,
+        tokenVersion,
+        sid: sid ?? randomUUID(),
+        sat: sat ?? iat ?? now,
+        mfa: now,
+      },
+      { expiresIn: left }
+    );
+  }
+
+  /**
    * Extend a mobile session without starting a new one. The session id is kept
    * so that signing out still ends every token the app has been handed, however
    * many times it refreshed.

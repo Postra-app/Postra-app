@@ -1,6 +1,6 @@
 import { expect, request as pwRequest, test } from '@playwright/test';
 import { PrismaClient } from '@prisma/client';
-import { BACKEND_URL, database, throwawayOrg } from '../helpers';
+import { BACKEND_URL, database, throwawayOrg, makeAdministrator } from '../helpers';
 
 // Suspending an account from the admin panel (P7, before opening sign-ups):
 // every session ends at once, signing in is refused with a plain reason, and
@@ -28,7 +28,7 @@ test('a suspended user is signed out everywhere and cannot sign in until it is l
   const target = await throwawayOrg(prisma, { tier: 'STANDARD', totalChannels: 3, channels: 0 });
   try {
     const staffUser = await prisma.userOrganization.findFirstOrThrow({ where: { organizationId: staff.orgId } });
-    await prisma.user.update({ where: { id: staffUser.userId }, data: { isSuperAdmin: true } });
+    await makeAdministrator(prisma, { api: staff.api, userId: staffUser.userId });
     await expect.poll(async () => (await staff.api.get('/admin/stats')).status(), { timeout: 60_000 }).toBe(200);
     const targetUser = await prisma.user.findFirstOrThrow({
       where: { organizations: { some: { organizationId: target.orgId } } },

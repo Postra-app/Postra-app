@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test';
 import { PrismaClient } from '@prisma/client';
-import { database, throwawayOrg } from '../helpers';
+import { database, throwawayOrg, makeAdministrator } from '../helpers';
 
 // A subject access request answered from the admin panel (UK GDPR art. 15,
 // P8): the person's data as a JSON download, with no secret in it, audited.
@@ -34,7 +34,7 @@ test('an administrator exports one person: their data, no secrets, an audit row'
     // Not for a customer, not even about themselves.
     expect((await target.api.get(`/admin/users/${targetUser.id}/export`)).status()).toBe(403);
 
-    await prisma.user.update({ where: { id: staffUser.userId }, data: { isSuperAdmin: true } });
+    await makeAdministrator(prisma, { api: staff.api, userId: staffUser.userId });
     await expect.poll(async () => (await staff.api.get('/admin/stats')).status(), { timeout: 60_000 }).toBe(200);
 
     expect((await staff.api.get('/admin/users/00000000-0000-4000-8000-000000000000/export')).status()).toBe(404);

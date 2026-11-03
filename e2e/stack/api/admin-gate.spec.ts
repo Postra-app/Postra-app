@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { anonymous, signedIn } from '../helpers';
+import { anonymous, signedIn, makeAdministrator } from '../helpers';
 
 // The Postra admin panel is for Postra staff (User.isSuperAdmin), not for the
 // owner of an organisation — the seeded users are owners. Every admin route
@@ -66,7 +66,7 @@ test('a change made while impersonating is audited with the real admin', async (
   try {
     const adminUser = (await prisma.userOrganization.findFirstOrThrow({ where: { organizationId: admin.orgId } })).userId;
     const membership = await prisma.userOrganization.findFirstOrThrow({ where: { organizationId: target.orgId } });
-    await prisma.user.update({ where: { id: adminUser }, data: { isSuperAdmin: true } });
+    await makeAdministrator(prisma, { api: admin.api, userId: adminUser });
 
     const res = await admin.api.delete(`/posts/${UNKNOWN}`, { headers: { impersonate: membership.id } });
     expect(res.status()).toBeLessThan(500);

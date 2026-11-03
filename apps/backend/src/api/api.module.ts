@@ -38,6 +38,8 @@ import { ApprovedAppsController } from '@gitroom/backend/api/routes/approved-app
 import { OAuthController, OAuthAuthorizedController } from '@gitroom/backend/api/routes/oauth.controller';
 import { AnnouncementsController } from '@gitroom/backend/api/routes/announcements.controller';
 import { AdminController } from '@gitroom/backend/api/routes/admin.controller';
+import { AdminMfaController } from '@gitroom/backend/api/routes/admin-mfa.controller';
+import { AdminMfaService } from '@gitroom/backend/services/auth/admin-mfa.service';
 import { AuthProviderManager } from '@gitroom/backend/services/auth/providers/providers.manager';
 import { GithubProvider } from '@gitroom/backend/services/auth/providers/github.provider';
 import { GoogleProvider } from '@gitroom/backend/services/auth/providers/google.provider';
@@ -66,6 +68,7 @@ const authenticatedController = [
   OAuthAuthorizedController,
   AnnouncementsController,
   AdminController,
+  AdminMfaController,
 ];
 @Module({
   imports: [UploadModule],
@@ -82,6 +85,7 @@ const authenticatedController = [
   ],
   providers: [
     AuthService,
+    AdminMfaService,
     StripeService,
     OpenaiService,
     StudioAiService,

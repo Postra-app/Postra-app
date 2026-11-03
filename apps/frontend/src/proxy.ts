@@ -172,6 +172,14 @@ export async function proxy(request: NextRequest) {
       const self = await internalFetch('/user/self');
       if (self.ok) {
         const me = await self.json();
+        // An administrator without the second step in this session types
+        // the authenticator code first, then comes back here.
+        if (me?.adminMfaPending && !me?.impersonate) {
+          const back = `${nextUrl.pathname}${nextUrl.search}`;
+          return NextResponse.redirect(
+            new URL(`/two-factor?next=${encodeURIComponent(back)}`, nextUrl.href)
+          );
+        }
         if (!me?.isSuperAdmin || me?.impersonate) {
           // Same landing page the root redirect uses, so this does not become
           // a second opinion about where "home" is.

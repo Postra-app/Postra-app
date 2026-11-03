@@ -20,6 +20,7 @@ import {
 import { setImpersonateCookie } from '@gitroom/backend/services/auth/impersonate.cookie';
 import { isMobileSessionRevoked } from '@gitroom/nestjs-libraries/redis/mobile-session';
 import { clientIpFromForwardedFor } from '@gitroom/nestjs-libraries/throttler/throttler.provider';
+import { adminMfaFresh } from '@gitroom/backend/services/auth/admin-mfa';
 
 /**
  * Routes a session wearing someone else's identity may not reach.
@@ -179,8 +180,14 @@ export class AuthMiddleware implements NestMiddleware {
         throw new HttpForbiddenException();
       }
 
+      // Administrator powers need the second factor in this session
+      // (admin-mfa.ts). Without it the request carries a copy of the user with
+      // the flag down; the cached row below keeps the real value.
+      const adminElevated = !!user.isSuperAdmin && adminMfaFresh(payload as any);
+      const adminMfaPending = !!user.isSuperAdmin && !adminElevated;
+
       const impersonate = req.cookies.impersonate || req.headers.impersonate;
-      if (user?.isSuperAdmin && impersonate) {
+      if (adminElevated && impersonate) {
         const loadImpersonate = await this._organizationService.getUserOrg(
           impersonate
         );
@@ -278,7 +285,9 @@ export class AuthMiddleware implements NestMiddleware {
 
       // eslint-disable-next-line @typescript-eslint/ban-ts-comment
       // @ts-expect-error
-      req.user = user;
+      req.user = adminMfaPending
+        ? { ...user, isSuperAdmin: false, adminMfaPending: true }
+        : user;
 
       // eslint-disable-next-line @typescript-eslint/ban-ts-comment
       // @ts-expect-error

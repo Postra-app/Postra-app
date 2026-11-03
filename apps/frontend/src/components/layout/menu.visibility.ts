@@ -24,6 +24,9 @@ export interface MenuEntry {
 
 export interface MenuViewer {
   isSuperAdmin?: boolean;
+  // An administrator whose session has not done the second step yet: the
+  // entry stays, and /admin sends them to /two-factor first.
+  adminMfaPending?: boolean;
   impersonate?: boolean;
   isLifetime?: boolean;
   role?: string;
@@ -40,7 +43,10 @@ export const canSeeMenuEntry = (
 
   // Impersonation leaves the admin able to step back out, but the point of it
   // is to see the app as the customer does — so the admin-only entries go.
-  if (entry.superAdminOnly && (!viewer?.isSuperAdmin || viewer?.impersonate)) {
+  if (
+    entry.superAdminOnly &&
+    ((!viewer?.isSuperAdmin && !viewer?.adminMfaPending) || viewer?.impersonate)
+  ) {
     return false;
   }
 

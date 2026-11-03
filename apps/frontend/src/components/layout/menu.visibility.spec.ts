@@ -27,6 +27,12 @@ describe('the admin entry', () => {
     ).toBe(false);
   });
 
+  it('is shown to an administrator still to type the authenticator code', () => {
+    expect(
+      canSeeMenuEntry(admin, { isSuperAdmin: false, adminMfaPending: true }, true)
+    ).toBe(true);
+  });
+
   it('is hidden from a session with no user at all', () => {
     expect(canSeeMenuEntry(admin, undefined, true)).toBe(false);
   });

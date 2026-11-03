@@ -1,5 +1,5 @@
 import { expect, request, test } from '@playwright/test';
-import { BACKEND_URL, database, signedIn, throwawayOrg } from '../helpers';
+import { BACKEND_URL, database, signedIn, throwawayOrg, makeAdministrator } from '../helpers';
 
 // What a plan pays for (pricing.ts allowedProviders). Organisation A is on
 // Pro, B on Starter; billing is on in the stack like in production.
@@ -187,7 +187,7 @@ test('a preview platform is "Coming soon" for customers and open to a super admi
   const admin = await throwawayOrg(prisma, { tier: 'STANDARD', totalChannels: 5, channels: 0 });
   // Before admin's first request: the auth middleware caches the user.
   const adminUser = (await prisma.userOrganization.findFirstOrThrow({ where: { organizationId: admin.orgId } })).userId;
-  await prisma.user.update({ where: { id: adminUser }, data: { isSuperAdmin: true } });
+  await makeAdministrator(prisma, { api: admin.api, userId: adminUser });
   try {
     // Refused: 402 because no plan has it, before "Coming soon" (403).
     const gmb = await customer.api.get(connect('gmb'));
