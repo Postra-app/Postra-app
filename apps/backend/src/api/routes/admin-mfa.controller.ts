@@ -20,6 +20,15 @@ import {
 } from '@gitroom/backend/services/auth/admin-mfa.service';
 import { setSessionCookie } from '@gitroom/backend/services/auth/session.cookie';
 
+// A code is a short string. Anything else in the body (an object with a
+// broken toString, an array) is a bad request, not a 500.
+export const codeOf = (code: unknown): string => {
+  if (typeof code !== 'string' || code.length > 64) {
+    throw new HttpException('Type the code from your authenticator app', 400);
+  }
+  return code;
+};
+
 // The second step of an administrator's sign-in (admin-mfa.ts). Every route
 // is for Postra administrators only and needs a session (auth.middleware
 // runs in front of this controller). Not under /admin: that prefix is closed
@@ -48,12 +57,12 @@ export class AdminMfaController {
   @Throttle({ default: { ttl: 900000, limit: 10 } })
   async enable(
     @GetUserFromRequest() user: AdminMfaUser,
-    @Body('code') code: string,
+    @Body('code') code: unknown,
     @Req() req: Request,
     @Res({ passthrough: true }) res: Response
   ) {
     this.assertAdministrator(user);
-    const { backupCodes } = await this._adminMfa.enable(user, code);
+    const { backupCodes } = await this._adminMfa.enable(user, codeOf(code));
     this.elevate(req, res);
     return { verified: true, backupCodes };
   }
@@ -62,12 +71,12 @@ export class AdminMfaController {
   @Throttle({ default: { ttl: 900000, limit: 10 } })
   async verify(
     @GetUserFromRequest() user: AdminMfaUser,
-    @Body('code') code: string,
+    @Body('code') code: unknown,
     @Req() req: Request,
     @Res({ passthrough: true }) res: Response
   ) {
     this.assertAdministrator(user);
-    const { backupCodesLeft } = await this._adminMfa.verify(user, code);
+    const { backupCodesLeft } = await this._adminMfa.verify(user, codeOf(code));
     this.elevate(req, res);
     return { verified: true, backupCodesLeft };
   }

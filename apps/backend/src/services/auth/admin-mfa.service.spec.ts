@@ -25,19 +25,15 @@ const fakeDb = () => {
       const r = rows.get(where.userId);
       return r ? { ...r, backupCodes: [...r.backupCodes] } : null;
     }),
-    upsert: jest.fn(async ({ where, create, update }: any) => {
-      const r = rows.get(where.userId);
-      rows.set(
-        where.userId,
-        r
-          ? { ...r, ...update }
-          : { enabledAt: null, lastStep: null, backupCodes: [], ...create }
-      );
+    create: jest.fn(async ({ data }: any) => {
+      if (rows.has(data.userId)) throw new Error('Unique constraint failed');
+      rows.set(data.userId, { enabledAt: null, lastStep: null, backupCodes: [], ...data });
     }),
     updateMany: jest.fn(async ({ where, data }: any) => {
       const r = rows.get(where.userId);
       if (!r) return { count: 0 };
       if ('enabledAt' in where && r.enabledAt !== where.enabledAt) return { count: 0 };
+      if ('secret' in where && r.secret !== where.secret) return { count: 0 };
       if (where.OR && !(r.lastStep === null || r.lastStep < where.OR[1].lastStep.lt)) {
         return { count: 0 };
       }
@@ -109,6 +105,39 @@ describe('setting up the authenticator', () => {
     const { service } = await enrolled();
     await expect(service.setup(admin)).rejects.toMatchObject({ status: 409 });
     await expect(service.enable(admin, '123456')).rejects.toMatchObject({ status: 409 });
+  });
+
+  it('a /setup that lands after an /enable cannot replace the authenticator just turned on', async () => {
+    const { service, db } = build();
+    const { secret } = await service.setup(admin);
+    // /setup read "not on" before the /enable below wrote; its write comes last.
+    let release!: () => void;
+    const gate = new Promise<void>((r) => (release = r));
+    db.userTotp.findUnique.mockImplementationOnce(async () => {
+      await gate;
+      return null;
+    });
+    const late = service.setup(admin);
+    await service.enable(admin, totpCode(secret, totpStep()));
+    const on = { ...db.rows.get(admin.id)! };
+    release();
+    await expect(late).rejects.toMatchObject({ status: 409 });
+    expect(db.rows.get(admin.id)).toEqual(on);
+  });
+
+  it('an /enable whose secret was replaced in between does not turn the new one on', async () => {
+    const { service, db } = build();
+    const first = await service.setup(admin);
+    const code = totpCode(first.secret, totpStep());
+    // /enable read the first secret; a second /setup replaces it before the write.
+    const realFind = db.userTotp.findUnique.getMockImplementation()!;
+    db.userTotp.findUnique.mockImplementationOnce(async (args: any) => {
+      const row = await realFind(args);
+      await service.setup(admin);
+      return row;
+    });
+    await expect(service.enable(admin, code)).rejects.toMatchObject({ status: 409 });
+    expect(db.rows.get(admin.id)!.enabledAt).toBeNull();
   });
 
   it('does not turn on with a wrong code', async () => {

@@ -64,7 +64,16 @@ describe('totp', () => {
 
   it('refuses anything that is not six digits', () => {
     const secret = generateTotpSecret();
-    for (const bad of ['', '12345', '1234567', 'abcdef', '12 34a6', undefined as any]) {
+    for (const bad of [
+      '',
+      '12345',
+      '1234567',
+      'abcdef',
+      '12 34a6',
+      undefined as any,
+      { toString: null } as any,
+      ['123456'] as any,
+    ]) {
       expect(verifyTotp(secret, bad)).toBeNull();
     }
     const code = totpCode(secret, totpStep());
@@ -84,6 +93,7 @@ describe('totp', () => {
     expect(new Set(codes).size).toBe(10);
     for (const code of codes) {
       expect(code).toMatch(/^[a-hjkmnp-z2-9]{5}-[a-hjkmnp-z2-9]{5}$/);
+      expect(normalizeBackupCode({ toString: null } as any)).toBe('');
       expect(normalizeBackupCode(` ${code.toUpperCase().replace('-', ' ')} `)).toBe(
         code.replace('-', '')
       );

@@ -74,11 +74,22 @@ export class AdminMfaService {
     }
     const secret = generateTotpSecret();
     const encrypted = AuthChecker.encryptSecret(secret);
-    await this._totp.model.userTotp.upsert({
-      where: { userId: user.id },
-      create: { userId: user.id, secret: encrypted },
-      update: { secret: encrypted, lastStep: null, backupCodes: [] },
+    // Replace only a secret that is still not on: a /setup racing an
+    // /enable must not swap the authenticator that was just turned on.
+    const replaced = await this._totp.model.userTotp.updateMany({
+      where: { userId: user.id, enabledAt: null },
+      data: { secret: encrypted, lastStep: null, backupCodes: [] },
     });
+    if (replaced.count === 0) {
+      try {
+        await this._totp.model.userTotp.create({
+          data: { userId: user.id, secret: encrypted },
+        });
+      } catch {
+        // The row exists and is on (or another /setup created it first).
+        throw new HttpException('The authenticator is already set up', 409);
+      }
+    }
     this._audit.record({ action: 'admin.mfa.setup', userId: user.id });
 
     const uri = otpauthUri(ISSUER, user.email, secret);
@@ -111,8 +122,10 @@ export class AdminMfaService {
       await this.failed(user.id, 'enable');
     }
     const backupCodes = generateBackupCodes();
+    // The secret the code was checked against, still not on: a /setup in
+    // between replaced it, and this code proves nothing about the new one.
     const updated = await this._totp.model.userTotp.updateMany({
-      where: { userId: user.id, enabledAt: null },
+      where: { userId: user.id, enabledAt: null, secret: row.secret },
       data: {
         enabledAt: new Date(),
         lastStep: step,

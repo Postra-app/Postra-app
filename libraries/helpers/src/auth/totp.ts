@@ -93,7 +93,10 @@ export function verifyTotp(
   code: string,
   options: { nowMs?: number; lastStep?: number | null } = {}
 ): number | null {
-  const digits = String(code ?? '').replace(/\s/g, '');
+  if (typeof code !== 'string') {
+    return null;
+  }
+  const digits = code.replace(/\s/g, '');
   if (!/^\d{6}$/.test(digits)) {
     return null;
   }
@@ -142,7 +145,10 @@ export function generateBackupCodes(count: number = BACKUP_CODE_COUNT) {
 
 // What is typed back: case, spaces and the dash do not matter.
 export function normalizeBackupCode(code: string) {
-  return String(code ?? '')
+  if (typeof code !== 'string') {
+    return '';
+  }
+  return code
     .toLowerCase()
     .replace(/[^a-z0-9]/g, '');
 }
