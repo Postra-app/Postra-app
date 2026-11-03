@@ -4,7 +4,7 @@ import { crx, ManifestV3Export } from '@crxjs/vite-plugin';
 import baseConfig, { baseManifest, baseBuildOptions } from './vite.config.base';
 import hotReloadExtension from 'hot-reload-extension-vite';
 
-const outDir = resolve(__dirname, 'dist');
+const outDir = resolve(import.meta.dirname, 'dist');
 const isDev = process.env.NODE_ENV === 'development';
 
 export default mergeConfig(

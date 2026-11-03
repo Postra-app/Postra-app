@@ -2,7 +2,6 @@ import react from '@vitejs/plugin-react';
 import { resolve } from 'path';
 import { ManifestV3Export } from '@crxjs/vite-plugin';
 import { defineConfig, BuildOptions } from 'vite';
-import tsconfigPaths from 'vite-tsconfig-paths';
 import { stripDevIcons, crxI18n } from './custom-vite-plugins';
 import manifest from './manifest.json';
 import devManifest from './manifest.dev.json';
@@ -41,11 +40,12 @@ export const baseBuildOptions: BuildOptions = {
 
 export default defineConfig({
   envPrefix: ['NEXT_PUBLIC_', 'FRONTEND_URL', 'NEXT_PUBLIC_BACKEND_URL'],
+  // tsconfig paths natively (Vite 8), without the vite-tsconfig-paths plugin.
+  resolve: { tsconfigPaths: true },
   plugins: [
-    tsconfigPaths(),
     react(),
     stripDevIcons(isDev),
     crxI18n({ localize, src: './src/locales' }),
   ],
-  publicDir: resolve(__dirname, 'public'),
+  publicDir: resolve(import.meta.dirname, 'public'),
 });

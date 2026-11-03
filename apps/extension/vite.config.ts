@@ -3,10 +3,10 @@ import { defineConfig } from 'vite';
 
 export default defineConfig({
   build: {
-    outDir: resolve(__dirname, 'dist'),
+    outDir: resolve(import.meta.dirname, 'dist'),
     emptyOutDir: true,
     lib: {
-      entry: resolve(__dirname, 'src/background.ts'),
+      entry: resolve(import.meta.dirname, 'src/background.ts'),
       formats: ['es'],
       fileName: () => 'background.js',
     },
@@ -19,5 +19,5 @@ export default defineConfig({
     minify: false,
     sourcemap: process.env.NODE_ENV === 'development',
   },
-  publicDir: resolve(__dirname, 'public'),
+  publicDir: resolve(import.meta.dirname, 'public'),
 });
