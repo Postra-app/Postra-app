@@ -27,7 +27,12 @@ import { deleteDialog } from '@gitroom/react/helpers/delete.dialog';
 import { useFetch } from '@gitroom/helpers/utils/custom.fetch';
 import { readResponseError } from '@gitroom/helpers/utils/response.error';
 import { makeId } from '@gitroom/nestjs-libraries/services/make.is';
-import { useModals } from '@gitroom/frontend/components/layout/new-modal';
+import {
+  areYouSure,
+  useModals,
+} from '@gitroom/frontend/components/layout/new-modal';
+import { composerWork } from '@gitroom/frontend/components/new-launch/unsaved-work';
+import { isUSCitizen } from '@gitroom/frontend/components/launches/helpers/isuscitizen.utils';
 import { capitalize } from 'lodash';
 import { SelectCustomer } from '@gitroom/frontend/components/launches/select.customer';
 import { DummyCodeComponent } from '@gitroom/frontend/components/new-launch/dummy.code.component';
@@ -191,8 +196,48 @@ export const ManageModal: FC<AddEditModalProps> = (props) => {
     [integrations]
   );
 
+  // What the composer opened with: the store is filled before this renders
+  // (AddEditModalInnerInner waits for the values). Closing or leaving asks
+  // only when something differs from it.
+  const openedWith = useRef<string | undefined>(undefined);
+  if (openedWith.current === undefined) {
+    openedWith.current = composerWork(useLaunchStore.getState());
+  }
+  const saved = useRef(false);
+  const hasUnsavedWork = useCallback(
+    () =>
+      !saved.current &&
+      composerWork(useLaunchStore.getState()) !== openedWith.current,
+    []
+  );
+
+  useEffect(() => {
+    if (dummy) {
+      return;
+    }
+    const onBeforeUnload = (event: BeforeUnloadEvent) => {
+      if (!hasUnsavedWork()) {
+        return;
+      }
+      event.preventDefault();
+      // Browsers that predate preventDefault() here want a returnValue.
+      event.returnValue = '';
+    };
+    window.addEventListener('beforeunload', onBeforeUnload);
+    return () => window.removeEventListener('beforeunload', onBeforeUnload);
+  }, [dummy, hasUnsavedWork]);
+
   const askClose = useCallback(async () => {
     if (!activateExitButton || dummy) {
+      return;
+    }
+
+    if (!hasUnsavedWork()) {
+      if (customClose) {
+        customClose();
+        return;
+      }
+      modal.closeAll();
       return;
     }
 
@@ -211,7 +256,7 @@ export const ManageModal: FC<AddEditModalProps> = (props) => {
       }
       modal.closeAll();
     }
-  }, [activateExitButton, dummy]);
+  }, [activateExitButton, dummy, hasUnsavedWork, customClose]);
 
   const deletePost = useCallback(async () => {
     setLoading(true);
@@ -323,6 +368,37 @@ export const ManageModal: FC<AddEditModalProps> = (props) => {
             dayjs().isAfter(dateOf(p.integration).utc()))
       );
       const others = existing.filter((p) => p !== channel);
+
+      // A date that has passed makes "Add to calendar" publish at once (the
+      // workflow does not wait for a time behind it), while the customer
+      // thinks the post is scheduled. Published channels have
+      // their own question below.
+      if (
+        type === 'schedule' &&
+        !dummy &&
+        !addEditSets &&
+        !published.includes(channel) &&
+        dayjs().isAfter(pickerDate)
+      ) {
+        const postNow = await areYouSure({
+          title: t('publish_date_passed_title', 'This date has passed'),
+          description: t(
+            'publish_date_passed',
+            'The publish date {{date}} is in the past, so the post would go out right away. Post it now, or pick a new date?',
+            {
+              date: pickerDate.format(
+                isUSCitizen() ? 'MM/DD/YYYY hh:mm A' : 'DD/MM/YYYY HH:mm'
+              ),
+            }
+          ),
+          approveLabel: t('post_now', 'Post now'),
+          cancelLabel: t('change_the_date', 'Change the date'),
+        });
+        if (!postNow) {
+          return;
+        }
+        type = 'now';
+      }
 
       // Another channel whose date already passed would go out right away; it
       // only gets its details saved.
@@ -465,18 +541,28 @@ export const ManageModal: FC<AddEditModalProps> = (props) => {
         const whatToDo = await new Promise((resolve) => {
           modal.openModal({
             id: 'republish-post',
-            title: 'What do you want to do?',
+            title: t('what_do_you_want_to_do', 'What do you want to do?'),
             onClose: () => resolve(undefined),
             children: (
               <div className="flex flex-col">
                 <div className="text-[20px] mb-[20px]">
-                  This post was already published. Publishing it again sends
-                  it to {channels || 'its channel'}
-                  {type === 'now' ? ' right now' : ''}.
+                  {type === 'now'
+                    ? t(
+                        'republish_sends_again_now',
+                        'This post was already published. Publishing it again sends it to {{channels}} right now.',
+                        { channels: channels || t('its_channel', 'its channel') }
+                      )
+                    : t(
+                        'republish_sends_again',
+                        'This post was already published. Publishing it again sends it to {{channels}}.',
+                        { channels: channels || t('its_channel', 'its channel') }
+                      )}
                   {recurring && (
                     <div className="mt-[10px] text-[16px]">
-                      It repeats: your changes apply to every repeat from now
-                      on.
+                      {t(
+                        'republish_repeats',
+                        'It repeats: your changes apply to every repeat from now on.'
+                      )}
                     </div>
                   )}
                 </div>
@@ -490,7 +576,10 @@ export const ManageModal: FC<AddEditModalProps> = (props) => {
                         resolve('update');
                       }}
                     >
-                      Just update the post details
+                      {t(
+                        'just_update_post_details',
+                        'Just update the post details'
+                      )}
                     </Button>
                   </div>
                   <div className="flex-1 flex">
@@ -502,7 +591,7 @@ export const ManageModal: FC<AddEditModalProps> = (props) => {
                         resolve('republish');
                       }}
                     >
-                      Republish the post
+                      {t('republish_the_post', 'Republish the post')}
                     </Button>
                   </div>
                 </div>
@@ -840,6 +929,8 @@ export const ManageModal: FC<AddEditModalProps> = (props) => {
                 : t('updated_successfully', 'Updated successfully')
             );
           }
+          // Saved: closing or leaving loses nothing any more.
+          saved.current = true;
           if (customClose) {
             setTimeout(() => {
               customClose();

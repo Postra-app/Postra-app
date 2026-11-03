@@ -1694,5 +1694,15 @@
   "two_factor_code": "Kod uwierzytelniający",
   "two_factor_verify": "Zweryfikuj",
   "two_factor_turn_on": "Włącz",
-  "two_factor_backup_left": "Pozostałe kody zapasowe:"
+  "two_factor_backup_left": "Pozostałe kody zapasowe:",
+  "publish_date_passed_title": "Ta data już minęła",
+  "publish_date_passed": "Data publikacji {{date}} jest w przeszłości, więc post wyszedłby od razu. Opublikować go teraz czy wybrać nową datę?",
+  "change_the_date": "Zmień datę",
+  "republish_sends_again_now": "Ten post został już opublikowany. Ponowna publikacja wyśle go teraz na: {{channels}}.",
+  "republish_sends_again": "Ten post został już opublikowany. Ponowna publikacja wyśle go na: {{channels}}.",
+  "its_channel": "jego kanał",
+  "republish_repeats": "Post się powtarza: zmiany obejmą każde kolejne powtórzenie.",
+  "just_update_post_details": "Tylko zaktualizuj szczegóły posta",
+  "republish_the_post": "Opublikuj ponownie",
+  "what_do_you_want_to_do": "Co chcesz zrobić?"
 }

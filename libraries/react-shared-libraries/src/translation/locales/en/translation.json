@@ -1936,5 +1936,13 @@
   "two_factor_code": "Authentication code",
   "two_factor_verify": "Verify",
   "two_factor_turn_on": "Turn on",
-  "two_factor_backup_left": "Backup codes left:"
+  "two_factor_backup_left": "Backup codes left:",
+  "publish_date_passed_title": "This date has passed",
+  "publish_date_passed": "The publish date {{date}} is in the past, so the post would go out right away. Post it now, or pick a new date?",
+  "change_the_date": "Change the date",
+  "republish_sends_again_now": "This post was already published. Publishing it again sends it to {{channels}} right now.",
+  "republish_sends_again": "This post was already published. Publishing it again sends it to {{channels}}.",
+  "its_channel": "its channel",
+  "republish_repeats": "It repeats: your changes apply to every repeat from now on.",
+  "republish_the_post": "Republish the post"
 }
