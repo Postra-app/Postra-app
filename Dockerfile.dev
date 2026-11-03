@@ -116,5 +116,14 @@ RUN pm2 install "pm2-logrotate@$(node -p "require('/tmp/tools/package.json').dep
  && pm2 set pm2-logrotate:compress true \
  && pm2 kill
 
+# npm came with the Node image and is needed only for the two installs above.
+# Nothing in the running container calls it (pnpm runs the apps and the
+# migrations, pm2 starts its module without it), and the copy bundled with
+# Node carries its own undici and brace-expansion with known
+# vulnerabilities. Removed from the final image.
+USER root
+RUN rm -rf /usr/local/lib/node_modules/npm /usr/local/bin/npm /usr/local/bin/npx
+USER www
+
 # The script, not a `sh -c` chain, is PID 1: it is what takes `docker stop`.
 CMD ["sh", "/app/var/docker/start.sh"]
