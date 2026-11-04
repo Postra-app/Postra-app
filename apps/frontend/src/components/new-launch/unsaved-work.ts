@@ -27,17 +27,28 @@ export interface ComposerWork {
   channelDates: Record<string, dayjs.Dayjs>;
 }
 
+// One pass can rebuild a tag from nested markup (<scr<script>ipt>), so the
+// stripping repeats until nothing changes. A typed "<" is &lt; in the
+// editor's HTML, so a bracket left after that is markup too.
+const withoutTags = (html: string) => {
+  let previous: string;
+  let current = html;
+  do {
+    previous = current;
+    current = current.replace(/<[^>]*>/g, '');
+  } while (current !== previous);
+  return current.replace(/[<>]/g, '');
+};
+
 const text = (html?: string) =>
-  (html || '')
-    .replace(/<br\s*\/?>/gi, '\n')
-    .replace(/<\/(p|h[1-6]|li|blockquote|div)>/gi, '\n')
-    .replace(/<\/?(strong|b)\b[^>]*>/gi, '**')
-    .replace(/<\/?(em|i)\b[^>]*>/gi, '_')
-    .replace(/<\/?u\b[^>]*>/gi, '__')
-    .replace(/<[^>]*>/g, '')
-    // A typed "<" is &lt; in the editor's HTML, so any bracket still here is
-    // what nested tags left behind; one pass of the line above can rebuild a tag.
-    .replace(/[<>]/g, '')
+  withoutTags(
+    (html || '')
+      .replace(/<br\s*\/?>/gi, '\n')
+      .replace(/<\/(p|h[1-6]|li|blockquote|div)>/gi, '\n')
+      .replace(/<\/?(strong|b)\b[^>]*>/gi, '**')
+      .replace(/<\/?(em|i)\b[^>]*>/gi, '_')
+      .replace(/<\/?u\b[^>]*>/gi, '__')
+  )
     .replace(/&nbsp;/g, ' ')
     .split('\n')
     .map((line) => line.replace(/\s+/g, ' ').trim())
