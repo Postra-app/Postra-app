@@ -115,7 +115,7 @@ export async function proxy(request: NextRequest) {
   // While sign-ups are closed, /auth/register goes to the login page, except
   // on the way back from Google (or another provider): that page is where an
   // existing account is signed in, and sending it to /auth/login dropped the
-  // code, so people who sign in with Google could not get in (3 XI 2026).
+  // code, and people who sign in with Google could not get in.
   // A new account is still refused there and by the backend.
   if (
     nextUrl.pathname.startsWith('/auth/register') &&

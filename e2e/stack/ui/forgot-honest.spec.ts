@@ -1,9 +1,17 @@
-import { expect, test } from '@playwright/test';
+import { expect, test, type Page } from '@playwright/test';
 
-// 3 XI 2026: someone typed an address with no Postra account and was told
-// "we have sent you an email". The form now says what happened. The
-// answers are mocked here; the backend's three outcomes have their own
-// Jest test (auth.activation-mail.spec.ts).
+// The forgot-password form says what happened instead of always "we have
+// sent you an email". The answers are mocked here; the backend's outcomes
+// have their own Jest test (auth.activation-mail.spec.ts).
+
+// Signed out: a signed-in visit to /auth/* goes to the calendar.
+test.use({ storageState: { cookies: [], origins: [] } });
+
+// Only the form's POST to the API; the page itself must load.
+const mockForgot = (page: Page, body: object) =>
+  page.route('**/api/auth/forgot', (route) =>
+    route.request().method() === 'POST' ? route.fulfill(answer(body)) : route.continue()
+  );
 const answer = (body: object) => ({
   status: 201,
   contentType: 'application/json',
@@ -12,9 +20,7 @@ const answer = (body: object) => ({
 
 test.describe('forgot password says what happened', () => {
   test('no account with this address', async ({ page }) => {
-    await page.route('**/auth/forgot', (route) =>
-      route.fulfill(answer({ forgot: false, reason: 'no_account' }))
-    );
+    await mockForgot(page, { forgot: false, reason: 'no_account' });
     await page.goto('/auth/forgot');
     await page.getByPlaceholder('Email Address').fill('nobody@example.com');
     await page.getByRole('button', { name: 'Send Password Reset Email' }).click();
@@ -25,9 +31,7 @@ test.describe('forgot password says what happened', () => {
   });
 
   test('an account that signs in with Google', async ({ page }) => {
-    await page.route('**/auth/forgot', (route) =>
-      route.fulfill(answer({ forgot: false, reason: 'provider', provider: 'GOOGLE' }))
-    );
+    await mockForgot(page, { forgot: false, reason: 'provider', provider: 'GOOGLE' });
     await page.goto('/auth/forgot');
     await page.getByPlaceholder('Email Address').fill('someone@gmail.com');
     await page.getByRole('button', { name: 'Send Password Reset Email' }).click();
@@ -38,9 +42,7 @@ test.describe('forgot password says what happened', () => {
   });
 
   test('a mail that could not be sent is an error, not "sent"', async ({ page }) => {
-    await page.route('**/auth/forgot', (route) =>
-      route.fulfill(answer({ forgot: false, reason: 'send_failed' }))
-    );
+    await mockForgot(page, { forgot: false, reason: 'send_failed' });
     await page.goto('/auth/forgot');
     await page.getByPlaceholder('Email Address').fill('someone@example.com');
     await page.getByRole('button', { name: 'Send Password Reset Email' }).click();
@@ -49,7 +51,7 @@ test.describe('forgot password says what happened', () => {
   });
 
   test('sent says sent', async ({ page }) => {
-    await page.route('**/auth/forgot', (route) => route.fulfill(answer({ forgot: true })));
+    await mockForgot(page, { forgot: true });
     await page.goto('/auth/forgot');
     await page.getByPlaceholder('Email Address').fill('someone@example.com');
     await page.getByRole('button', { name: 'Send Password Reset Email' }).click();

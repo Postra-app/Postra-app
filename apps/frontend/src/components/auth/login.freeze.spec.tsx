@@ -18,9 +18,8 @@ jest.mock('@gitroom/helpers/utils/custom.fetch', () => ({
 import { renderToStaticMarkup } from 'react-dom/server';
 import { Login } from './login';
 
-// 3 XI 2026: closing sign-ups hid "Continue with Google", and people whose
-// account signs in with Google had no way in, though the backend
-// lets an existing account through.
+// While sign-ups are closed, an existing account that signs in with Google
+// still needs the button: the backend lets it through.
 describe('login while sign-ups are closed', () => {
   it('still offers Google, and no sign-up link', () => {
     const html = renderToStaticMarkup(<Login />);

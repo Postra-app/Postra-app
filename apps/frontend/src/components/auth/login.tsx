@@ -121,10 +121,9 @@ export function Login() {
               )}
             </p>
           </div>
-          {/* Shown while sign-ups are closed too: closing them hid the
-              button, and people whose account signs in with Google had no
-              way in (3 XI 2026). A new Google user is told sign-ups are
-              closed on the next page. */}
+          {/* Shown while sign-ups are closed too: an existing account that
+              signs in with Google has no other way in. A new Google user is
+              told sign-ups are closed on the next page. */}
           <div className="mb-[12px] mt-[28px] text-[12px] font-[600] uppercase tracking-[0.08em] text-textColor/55">
             {t('continue_with', 'Continue With')}
           </div>

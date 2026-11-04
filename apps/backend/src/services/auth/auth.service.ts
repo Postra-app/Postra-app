@@ -345,9 +345,8 @@ export class AuthService {
     );
 
     // Awaited, so a mail that could not be sent is an error on the form, not
-    // a silent "sent". (It was not awaited to keep answers equally fast,
-    // 2.2.3; with the reasons above in the answer that no longer hides
-    // anything.)
+    // a silent "sent". Equal answer times would hide nothing now that the
+    // answer names its reason.
     const reset = authEmails.resetPassword[lang];
     const sent = await this._emailService
       .sendEmailSync(

@@ -69,9 +69,8 @@ describe('proxy - cookies stay on the app host', () => {
   });
 });
 
-// 3 XI 2026: with sign-ups closed, every /auth/register went to /auth/login,
-// the way back from Google included, so an existing Google account lost its
-// code and could not sign in. Only the plain page is redirected now.
+// With sign-ups closed only the plain sign-up page goes to login; the way
+// back from Google keeps its code, so an existing Google account signs in.
 describe('proxy - sign-ups closed', () => {
   const before = process.env.DISABLE_REGISTRATION;
   beforeEach(() => {

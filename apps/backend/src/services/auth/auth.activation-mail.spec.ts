@@ -17,10 +17,9 @@ describe('activation mail', () => {
   });
 });
 
-// "Forgot password" says what happened (3 XI 2026: an address with no
-// account was told "we have sent you an email"). This replaces 2.2.3's
-// "answer without waiting for the mail": registration already tells which
-// addresses have accounts, so equal timing hid nothing.
+// "Forgot password" says what happened instead of always "we have sent you
+// an email". It no longer answers before the mail is sent: registration
+// already tells which addresses have accounts, so equal timing hid nothing.
 describe('forgot password', () => {
   // eslint-disable-next-line @typescript-eslint/no-require-imports
   const { AuthService } = require('./auth.service');
