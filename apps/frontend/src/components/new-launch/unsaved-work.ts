@@ -35,6 +35,9 @@ const text = (html?: string) =>
     .replace(/<\/?(em|i)\b[^>]*>/gi, '_')
     .replace(/<\/?u\b[^>]*>/gi, '__')
     .replace(/<[^>]*>/g, '')
+    // A typed "<" is &lt; in the editor's HTML, so any bracket still here is
+    // what nested tags left behind; one pass of the line above can rebuild a tag.
+    .replace(/[<>]/g, '')
     .replace(/&nbsp;/g, ' ')
     .split('\n')
     .map((line) => line.replace(/\s+/g, ' ').trim())

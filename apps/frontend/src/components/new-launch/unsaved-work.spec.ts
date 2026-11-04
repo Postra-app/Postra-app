@@ -67,6 +67,15 @@ describe('composer work (what closing would lose)', () => {
     later.global[0].content = '<p dir="auto"></p><p dir="auto">Thanks, the team</p>';
     expect(composerWork(later)).toBe(composerWork(opened()));
   });
+
+  // Nested tags left a whole tag behind after one pass (CodeQL
+  // js/incomplete-multi-character-sanitization). The editor writes a typed
+  // "<" as &lt;, so a bare angle bracket here is only ever left-over markup.
+  it('leaves no markup behind from nested tags', () => {
+    const nested = opened();
+    nested.global[0].content = '<p>Hi <scr<script>ipt>there</p>';
+    expect(composerWork(nested)).not.toMatch(/[<>]/);
+  });
 });
 
 describe('stableJson (channel settings)', () => {
