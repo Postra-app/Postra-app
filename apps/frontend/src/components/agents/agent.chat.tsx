@@ -44,6 +44,7 @@ const AddEditModal = dynamic(
   { ssr: false }
 );
 import dayjs from 'dayjs';
+import { fromUtc } from '@gitroom/frontend/components/layout/set.timezone';
 import { makeId } from '@gitroom/nestjs-libraries/services/make.is';
 import { ExistingDataContextProvider } from '@gitroom/frontend/components/launches/helpers/use.existing.data';
 import { AGENT_FAIR_USE_MESSAGES } from '@gitroom/nestjs-libraries/database/prisma/subscriptions/pricing';
@@ -586,7 +587,7 @@ const OpenModal: FC<{
               }}
             >
               <AddEditModal
-                date={dayjs.utc(integration.date)}
+                date={fromUtc(integration.date)}
                 allIntegrations={properties}
                 integrations={properties.filter(
                   (p) => p.id === integration.integrationId

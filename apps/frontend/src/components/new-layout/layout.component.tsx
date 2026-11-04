@@ -57,6 +57,7 @@ import {
 import { AgentHistoryMobile } from '@gitroom/frontend/components/agents/agent.history.mobile';
 import { TrialTracker } from '@gitroom/frontend/components/layout/gtm.component';
 import { ImpersonationBanner } from '@gitroom/frontend/components/new-layout/impersonation-banner';
+import { accountTimezoneLoaded } from '@gitroom/frontend/components/layout/set.timezone';
 
 export const LayoutComponent = ({ children }: { children: ReactNode }) => {
   const fetch = useFetch();
@@ -75,6 +76,14 @@ export const LayoutComponent = ({ children }: { children: ReactNode }) => {
     // Starter on the server with every platform open here).
     // At most every 30 s (SwrProvider); unchanged data does not re-render.
     revalidateOnFocus: true,
+    // Set before anything renders a date in the user's timezone. Changed
+    // since this page loaded (another tab, another device): reload, the
+    // dates on screen were drawn on the old clock.
+    onSuccess: (data) => {
+      if (accountTimezoneLoaded(data?.timezoneName)) {
+        window.location.reload();
+      }
+    },
     revalidateOnReconnect: false,
     revalidateIfStale: false,
     refreshWhenOffline: false,

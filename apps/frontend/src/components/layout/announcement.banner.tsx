@@ -9,6 +9,7 @@ import { useT } from '@gitroom/react/translation/get.transation.service.client';
 import { Button } from '@gitroom/frontend/components/ui/button';
 import { deleteDialog } from '@gitroom/react/helpers/delete.dialog';
 import { useToaster } from '@gitroom/react/toaster/toaster';
+import { getTimezone } from '@gitroom/frontend/components/layout/set.timezone';
 
 type AnnouncementColor = 'INFO' | 'WARNING' | 'ERROR';
 
@@ -76,7 +77,9 @@ const AnnouncementDetailModal: FC<{
   return (
     <div className="flex flex-col gap-[16px] min-w-[500px]">
       <div className="text-newTextColor/60 text-[13px]">
-        {new Date(announcement.createdAt).toLocaleDateString()}
+        {new Date(announcement.createdAt).toLocaleDateString(undefined, {
+          timeZone: getTimezone(),
+        })}
       </div>
       <div className="whitespace-pre-wrap text-newTextColor">
         {announcement.description}

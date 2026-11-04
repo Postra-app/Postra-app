@@ -5,7 +5,11 @@ import { useClickOutside } from '@mantine/hooks';
 import { Button } from '@gitroom/frontend/components/ui/button';
 import { isUSCitizen } from './isuscitizen.utils';
 import { useT } from '@gitroom/react/translation/get.transation.service.client';
-import { newDayjs } from '@gitroom/frontend/components/layout/set.timezone';
+import {
+  newDayjs,
+  toPickerDay,
+  toPickerTime,
+} from '@gitroom/frontend/components/layout/set.timezone';
 import { CalendarIcon } from '@gitroom/frontend/components/ui/icons';
 export const DatePicker: FC<{
   date: dayjs.Dayjs;
@@ -34,13 +38,15 @@ export const DatePicker: FC<{
     document.addEventListener('keydown', onKey, true);
     return () => document.removeEventListener('keydown', onKey, true);
   }, [open]);
+  // The pickers give machine-local dates, so their wall clock is read with
+  // plain dayjs and then placed in the user's timezone.
   const changeDate = useCallback(
     (type: 'date' | 'time') => (day: Date) => {
       onChange(
         newDayjs(
           type === 'time'
-            ? date.format('YYYY-MM-DD') + ' ' + newDayjs(day).format('HH:mm:ss')
-            : newDayjs(day).format('YYYY-MM-DD') + ' ' + date.format('HH:mm:ss')
+            ? date.format('YYYY-MM-DD') + ' ' + dayjs(day).format('HH:mm:ss')
+            : dayjs(day).format('YYYY-MM-DD') + ' ' + date.format('HH:mm:ss')
         )
       );
     },
@@ -76,7 +82,7 @@ export const DatePicker: FC<{
         >
           <Calendar
             onChange={changeDate('date')}
-            value={date.toDate()}
+            value={toPickerDay(date)}
             dayClassName={(date, modifiers) => {
               if (modifiers.weekend) {
                 return '!text-customColor28';
@@ -105,7 +111,7 @@ export const DatePicker: FC<{
               input:
                 'bg-sixth h-[40px] border border-tableBorder text-textColor rounded-[4px] outline-none',
             }}
-            defaultValue={date.toDate()}
+            defaultValue={toPickerTime(date)}
           />
           <Button className="mt-[12px]" onClick={changeShow}>
             {t('close', 'Close')}

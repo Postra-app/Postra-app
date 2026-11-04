@@ -40,7 +40,7 @@ const AddEditModal = dynamic(
     ),
   { ssr: false }
 );
-import dayjs from 'dayjs';
+import { fromUtc } from '@gitroom/frontend/components/layout/set.timezone';
 import { ModalWrapperComponent } from '@gitroom/frontend/components/new-launch/modal.wrapper.component';
 import copy from 'copy-to-clipboard';
 import { Input } from '@gitroom/react/form/input';
@@ -365,7 +365,7 @@ export const Menu: FC<{
             integrations={integrations}
             selectedChannels={[integration.id]}
             // focusedChannel={integration.id}
-            date={dayjs.utc(date).local()}
+            date={fromUtc(date)}
           />
         ),
         size: '80%',

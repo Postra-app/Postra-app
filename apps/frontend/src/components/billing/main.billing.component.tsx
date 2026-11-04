@@ -17,7 +17,6 @@ import { useDebouncedCallback } from 'use-debounce';
 import ReactLoading from '@gitroom/frontend/components/layout/loading';
 import { deleteDialog } from '@gitroom/react/helpers/delete.dialog';
 import { useToaster } from '@gitroom/react/toaster/toaster';
-import dayjs from 'dayjs';
 import {
   pricing,
   planLabel,
@@ -38,7 +37,10 @@ import { useTrack } from '@gitroom/react/helpers/use.track';
 import { TrackEnum } from '@gitroom/nestjs-libraries/user/track.enum';
 import { useT } from '@gitroom/react/translation/get.transation.service.client';
 import { FinishTrial } from '@gitroom/frontend/components/billing/finish.trial';
-import { newDayjs } from '@gitroom/frontend/components/layout/set.timezone';
+import {
+  fromUtc,
+  newDayjs,
+} from '@gitroom/frontend/components/layout/set.timezone';
 import { useDubClickId } from '@gitroom/frontend/components/layout/dubAnalytics';
 import { LogoutComponent } from '@gitroom/frontend/components/layout/logout.component';
 import { TrialLimitsNote } from '@gitroom/frontend/components/billing/trial.limits.note';
@@ -313,7 +315,7 @@ export const MainBillingComponent: FC<{
                 ? 'From {{date}}: £{{price}} a year.'
                 : 'From {{date}}: £{{price}} a month.',
               {
-                date: dayjs(quote.renewsOn).format('D MMMM'),
+                date: newDayjs(quote.renewsOn).format('D MMMM'),
                 price: quote.renewalPrice,
               }
             )
@@ -321,7 +323,7 @@ export const MainBillingComponent: FC<{
       const upgrade = (quote.price || 0) > 0;
       // A lower plan on a paid plan waits for the renewal; the server says
       // which, by the same rule as the change itself.
-      const on = dayjs(quote.renewsOn).format('D MMMM');
+      const on = newDayjs(quote.renewsOn).format('D MMMM');
       if (quote.scheduled) {
         return areYouSure({
           title: t('plan_change_title', 'Change your plan'),
@@ -799,14 +801,13 @@ export const MainBillingComponent: FC<{
                       ? t('current_plan', 'Current plan')
                       : isPendingPlan(name)
                       ? t('plan_starts_on', 'Starts on {{date}}', {
-                          date: dayjs(pending!.on).format('D MMMM'),
+                          date: newDayjs(pending!.on).format('D MMMM'),
                         })
                       : name.toUpperCase() === 'FREE'
                       ? subscription?.cancelAt
-                        ? `${t('downgrade_on', 'Plan change')} ${dayjs
-                            .utc(subscription?.cancelAt)
-                            .local()
-                            .format('D MMM, YYYY')}`
+                        ? `${t('downgrade_on', 'Plan change')} ${fromUtc(subscription?.cancelAt).format(
+                            'D MMM, YYYY'
+                          )}`
                         : t('cancel_subscription', 'Cancel Subscription')
                       : // @ts-expect-error user.tier is typed as PricingInnerInterface, compared to a string literal
                       (user?.tier === 'FREE' ||
@@ -826,7 +827,7 @@ export const MainBillingComponent: FC<{
                         'Changes to {{plan}} on {{date}}',
                         {
                           plan: planLabel(pending.billing),
-                          date: dayjs(pending.on).format('D MMMM'),
+                          date: newDayjs(pending.on).format('D MMMM'),
                         }
                       )}
                     </div>
@@ -876,7 +877,7 @@ export const MainBillingComponent: FC<{
             'your_subscription_will_be_canceled_at',
             'Your subscription will be canceled at'
           )}{' '}
-          {newDayjs(subscription.cancelAt).local().format('D MMM, YYYY')}
+          {fromUtc(subscription.cancelAt).format('D MMM, YYYY')}
           <br />
           {t(
             'you_will_never_be_charged_again',

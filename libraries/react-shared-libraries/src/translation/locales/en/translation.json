@@ -1948,5 +1948,8 @@
   "republish_sends_again": "This post was already published. Publishing it again sends it to {{channels}}.",
   "its_channel": "its channel",
   "republish_repeats": "It repeats: your changes apply to every repeat from now on.",
-  "republish_the_post": "Republish the post"
+  "republish_the_post": "Republish the post",
+  "timezone": "Timezone",
+  "automatic_timezone": "Automatic ({{timezone}})",
+  "could_not_save_timezone": "Could not save the timezone"
 }

@@ -17,7 +17,7 @@ import {
   CalendarWeekProvider,
   useCalendar,
 } from '@gitroom/frontend/components/launches/calendar.context';
-import dayjs from 'dayjs';
+import { fromUtc } from '@gitroom/frontend/components/layout/set.timezone';
 import { Select } from '@gitroom/react/form/select';
 import { useT } from '@gitroom/react/translation/get.transation.service.client';
 import dynamic from 'next/dynamic';
@@ -188,7 +188,7 @@ const FirstStep: FC = (props) => {
                 ...p,
               }))}
               mutate={reloadCalendarView}
-              date={dayjs.utc(load.date).local()}
+              date={fromUtc(load.date)}
               reopenModal={() => ({})}
               onlyValues={messages}
             />

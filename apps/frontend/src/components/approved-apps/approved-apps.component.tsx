@@ -8,6 +8,7 @@ import { Card } from '@gitroom/frontend/components/ui/card';
 import { useToaster } from '@gitroom/react/toaster/toaster';
 import { deleteDialog } from '@gitroom/react/helpers/delete.dialog';
 import { useT } from '@gitroom/react/translation/get.transation.service.client';
+import { getTimezone } from '@gitroom/frontend/components/layout/set.timezone';
 
 const useApprovedApps = () => {
   const fetch = useFetch();
@@ -112,7 +113,9 @@ export const ApprovedAppsComponent: FC = () => {
                     )}
                     <div className="text-newTextColor/55 text-[12px]">
                       {t('authorized_on', 'Authorized on')}{' '}
-                      {new Date(app.createdAt).toLocaleDateString()}
+                      {new Date(app.createdAt).toLocaleDateString(undefined, {
+                        timeZone: getTimezone(),
+                      })}
                     </div>
                   </div>
                 </div>
