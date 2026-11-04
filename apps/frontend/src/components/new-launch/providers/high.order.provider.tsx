@@ -5,6 +5,7 @@ import React, {
   forwardRef,
   useCallback,
   useEffect,
+  useRef,
   useImperativeHandle,
   useMemo,
 } from 'react';
@@ -23,6 +24,7 @@ import { InternalChannels } from '@gitroom/frontend/components/launches/internal
 import { createPortal } from 'react-dom';
 import clsx from 'clsx';
 import SafeImage from '@gitroom/react/helpers/safe.image';
+import { stableJson } from '@gitroom/frontend/components/new-launch/unsaved-work';
 
 class Empty {
   @IsOptional()
@@ -189,6 +191,13 @@ export const withProvider = function <T extends object>(params: {
       reValidateMode: 'onChange',
     });
 
+    // The settings this channel opened with: closing the composer asks when
+    // they changed, even with the text untouched (a YouTube title, a board).
+    const openedSettings = useRef<string | undefined>(undefined);
+    useEffect(() => {
+      openedSettings.current = stableJson(form.getValues());
+    }, []);
+
     useImperativeHandle(
       ref,
       () => ({
@@ -223,6 +232,10 @@ export const withProvider = function <T extends object>(params: {
         trigger: () => {
           return form.trigger();
         },
+        // Not read yet counts as changed: asking once too often loses nothing.
+        settingsChanged: () =>
+          openedSettings.current === undefined ||
+          stableJson(form.getValues()) !== openedSettings.current,
         // A save that failed on this channel brings it into view, with its
         // settings showing what is wrong. They sat on the object isValid()
         // returns, where the editor's focus() never looked, so a failed save
