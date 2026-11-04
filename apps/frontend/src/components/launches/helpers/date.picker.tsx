@@ -7,7 +7,8 @@ import { isUSCitizen } from './isuscitizen.utils';
 import { useT } from '@gitroom/react/translation/get.transation.service.client';
 import {
   newDayjs,
-  toPickerDate,
+  toPickerDay,
+  toPickerTime,
 } from '@gitroom/frontend/components/layout/set.timezone';
 import { CalendarIcon } from '@gitroom/frontend/components/ui/icons';
 export const DatePicker: FC<{
@@ -81,7 +82,7 @@ export const DatePicker: FC<{
         >
           <Calendar
             onChange={changeDate('date')}
-            value={toPickerDate(date)}
+            value={toPickerDay(date)}
             dayClassName={(date, modifiers) => {
               if (modifiers.weekend) {
                 return '!text-customColor28';
@@ -110,7 +111,7 @@ export const DatePicker: FC<{
               input:
                 'bg-sixth h-[40px] border border-tableBorder text-textColor rounded-[4px] outline-none',
             }}
-            defaultValue={toPickerDate(date)}
+            defaultValue={toPickerTime(date)}
           />
           <Button className="mt-[12px]" onClick={changeShow}>
             {t('close', 'Close')}

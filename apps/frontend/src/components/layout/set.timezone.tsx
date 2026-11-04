@@ -339,14 +339,26 @@ export const fromUtc = (config?: ConfigType) =>
     ? zoned(dayjs.utc(config).valueOf(), userTimezone)
     : dayjs.utc(config).local();
 
-// Mantine's pickers only take native dates in the machine's timezone, so they
-// get the wall clock as one
-export const toPickerDate = (date: Dayjs) =>
-  new Date(
-    date.year(),
-    date.month(),
-    date.date(),
-    date.hour(),
-    date.minute(),
-    date.second()
-  );
+// Mantine's pickers only take native dates in the machine's timezone. Built
+// from the account's wall clock as it is, a time in the hour the machine
+// skips at its own clock change (01:30 on the last Sunday of March in
+// London) would come back an hour later. So the day goes as noon of that day
+// and the time on a day no timezone changes its clock (1 January).
+export const toPickerDay = (date: Dayjs) =>
+  new Date(date.year(), date.month(), date.date(), 12);
+
+export const toPickerTime = (date: Dayjs) =>
+  new Date(2000, 0, 1, date.hour(), date.minute(), date.second());
+
+// The account's timezone as this page loaded it. Another one arriving later
+// (changed in another tab or on another device) means everything already on
+// screen was drawn on the old clock, so the caller reloads the page, as a
+// change in Settings does.
+let loadedTimezone: string | null | undefined;
+export const accountTimezoneLoaded = (timezone?: string | null) => {
+  const next = timezone || null;
+  const changed = loadedTimezone !== undefined && loadedTimezone !== next;
+  loadedTimezone = next;
+  setUserTimezone(next);
+  return changed;
+};
