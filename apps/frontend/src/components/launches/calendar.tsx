@@ -74,6 +74,7 @@ import copy from 'copy-to-clipboard';
 import { readResponseError } from '@gitroom/helpers/utils/response.error';
 import { stripHtmlValidation } from '@gitroom/helpers/utils/strip.html.validation';
 import {
+  fromUtc,
   getTimezone,
   newDayjs,
 } from '@gitroom/frontend/components/layout/set.timezone';
@@ -227,7 +228,7 @@ const usePostActions = (onMutate?: () => void) => {
       const date = !isDuplicate
         ? null
         : (await (await fetch('/posts/find-slot')).json()).date;
-      const publishDate = dayjs.utc(date || data.posts[0].publishDate).local();
+      const publishDate = fromUtc(date || data.posts[0].publishDate);
       const ExistingData = !isDuplicate
         ? ExistingDataContextProvider
         : Fragment;
@@ -599,9 +600,8 @@ export const MonthView = () => {
   const calendarDays = useMemo(() => {
     const monthStart = newDayjs(startDate);
     const currentMonth = monthStart.month();
-    const currentYear = monthStart.year();
 
-    const startOfMonth = newDayjs(new Date(currentYear, currentMonth, 1));
+    const startOfMonth = monthStart.startOf('month');
 
     // Calculate the day offset for Monday (isoWeekday() returns 1 for Monday)
     const startDayOfWeek = startOfMonth.isoWeekday(); // 1 for Monday, 7 for Sunday
@@ -679,7 +679,7 @@ export const ListView = () => {
   const groupedPosts = useMemo(() => {
     const groups: { [key: string]: any[] } = {};
     listPosts.forEach((post) => {
-      const dateKey = newDayjs(post.publishDate).local().format('YYYY-MM-DD');
+      const dateKey = fromUtc(post.publishDate).format('YYYY-MM-DD');
       if (!groups[dateKey]) {
         groups[dateKey] = [];
       }
@@ -720,7 +720,7 @@ export const ListView = () => {
                   key={post.id}
                   display="day"
                   isBeforeNow={false}
-                  date={newDayjs(post.publishDate)}
+                  date={fromUtc(post.publishDate)}
                   state={post.state}
                   statistics={openStatistics(post.id)}
                   missingRelease={openMissingRelease(post.id)}
@@ -768,6 +768,7 @@ export const CalendarColumn: FC<{
   const {
     integrations,
     posts,
+    postDates,
     changeDate,
     startMove,
     revertDate,
@@ -784,19 +785,20 @@ export const CalendarColumn: FC<{
   const { editPost, deletePost, copyDebugJson, openStatistics, openMissingRelease } =
     usePostActions();
   const postList = useMemo(() => {
-    return posts.filter((post) => {
-      const pList = dayjs.utc(post.publishDate).local();
-      const check =
-        display === 'day'
-          ? pList.format('YYYY-MM-DD HH:mm') ===
-            getDate.format('YYYY-MM-DD HH:mm')
-          : display === 'week'
-          ? pList.isSameOrAfter(getDate.startOf('hour')) &&
-            pList.isBefore(getDate.endOf('hour'))
-          : pList.format('DD/MM/YYYY') === getDate.format('DD/MM/YYYY');
-      return check;
-    });
-  }, [posts, display, getDate]);
+    if (display === 'week') {
+      const start = getDate.startOf('hour').valueOf();
+      const end = getDate.endOf('hour').valueOf();
+      return posts.filter((post) => {
+        const time = postDates.get(post).valueOf();
+        return time >= start && time < end;
+      });
+    }
+    const format = display === 'day' ? 'YYYY-MM-DD HH:mm' : 'DD/MM/YYYY';
+    const cell = getDate.format(format);
+    return posts.filter(
+      (post) => postDates.get(post).format(format) === cell
+    );
+  }, [posts, postDates, display, getDate]);
   const [showAll, setShowAll] = useState(false);
   const showAllFunc = useCallback(() => {
     setShowAll(true);
@@ -898,7 +900,7 @@ export const CalendarColumn: FC<{
           getDate,
           post?.publishDate,
           !!randomHour,
-          dayjs()
+          newDayjs()
         );
 
         const move = startMove(item.id);
@@ -1519,9 +1521,7 @@ const CalendarItem: FC<{
         </div>
         {showTime && (
           <div className="text-textColor/50 text-[12px] whitespace-nowrap flex items-center">
-            {newDayjs(post.publishDate)
-              .local()
-              .format(isUSCitizen() ? 'hh:mm A' : 'HH:mm')}
+            {fromUtc(post.publishDate).format(isUSCitizen() ? 'hh:mm A' : 'HH:mm')}
           </div>
         )}
       </div>

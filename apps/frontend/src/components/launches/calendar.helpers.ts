@@ -1,4 +1,5 @@
 import dayjs from 'dayjs';
+import { fromUtc } from '@gitroom/frontend/components/layout/set.timezone';
 
 // Pure pieces of the calendar's date arithmetic, so they can be tested
 // without a browser.
@@ -18,7 +19,7 @@ export const dropTarget = (
 ) => {
   let target = cell;
   if (wholeDay && ownPublishDate) {
-    const own = dayjs.utc(ownPublishDate).local();
+    const own = fromUtc(ownPublishDate);
     target = cell.startOf('day').hour(own.hour()).minute(own.minute()).second(0);
   }
   return target.isBefore(now) ? nextFullHour(now) : target;

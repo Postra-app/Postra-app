@@ -34,6 +34,7 @@ import { EmailNotificationsDto } from '@gitroom/nestjs-libraries/dtos/users/emai
 import { problemReportHtml } from '@gitroom/backend/api/routes/problem.report';
 import { decodeScreenshot, screenshotLink, storeScreenshot } from '@gitroom/backend/api/routes/problem.report.screenshot';
 import { ProblemReportDto } from '@gitroom/nestjs-libraries/dtos/users/problem.report.dto';
+import { TimezoneDto } from '@gitroom/nestjs-libraries/dtos/users/timezone.dto';
 import { HttpForbiddenException } from '@gitroom/nestjs-libraries/services/exception.filter';
 import { RealIP } from 'nestjs-real-ip';
 import { UserAgent } from '@gitroom/nestjs-libraries/user/user.agent';
@@ -288,6 +289,18 @@ export class UsersController {
     @Body() body: EmailNotificationsDto
   ) {
     return this._userService.updateEmailNotifications(user.id, body);
+  }
+
+  @Post('/timezone')
+  async updateTimezone(
+    @GetUserFromRequest() user: User,
+    @Body() body: TimezoneDto
+  ) {
+    await this._userService.updateTimezone(user.id, body);
+    // /user/self reads the user through the auth cache; without this the
+    // page reloaded after saving still drew the calendar in the old timezone.
+    await bustAuthContextCache(user.id);
+    return { timezoneName: body.timezoneName || null };
   }
 
   @Post('/api-key/rotate')

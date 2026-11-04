@@ -4,6 +4,7 @@ import { Provider } from '@prisma/client';
 import { AuthService } from '@gitroom/helpers/auth/auth.service';
 import { UserDetailDto } from '@gitroom/nestjs-libraries/dtos/users/user.details.dto';
 import { EmailNotificationsDto } from '@gitroom/nestjs-libraries/dtos/users/email-notifications.dto';
+import { TimezoneDto } from '@gitroom/nestjs-libraries/dtos/users/timezone.dto';
 
 @Injectable()
 export class UsersRepository {
@@ -227,6 +228,20 @@ export class UsersRepository {
       data: {
         sendSuccessEmails: body.sendSuccessEmails,
         sendFailureEmails: body.sendFailureEmails,
+      },
+    });
+  }
+
+  async updateTimezone(userId: string, body: TimezoneDto) {
+    await this._user.model.user.update({
+      where: {
+        id: userId,
+      },
+      data: {
+        timezoneName: body.timezoneName || null,
+      },
+      select: {
+        id: true,
       },
     });
   }

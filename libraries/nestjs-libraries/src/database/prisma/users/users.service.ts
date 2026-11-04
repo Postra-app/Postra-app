@@ -3,6 +3,7 @@ import { UsersRepository } from '@gitroom/nestjs-libraries/database/prisma/users
 import { Provider } from '@prisma/client';
 import { UserDetailDto } from '@gitroom/nestjs-libraries/dtos/users/user.details.dto';
 import { EmailNotificationsDto } from '@gitroom/nestjs-libraries/dtos/users/email-notifications.dto';
+import { TimezoneDto } from '@gitroom/nestjs-libraries/dtos/users/timezone.dto';
 import { OrganizationRepository } from '@gitroom/nestjs-libraries/database/prisma/organizations/organization.repository';
 import { PrismaService } from '@gitroom/nestjs-libraries/database/prisma/prisma.service';
 import { UploadFactory } from '@gitroom/nestjs-libraries/upload/upload.factory';
@@ -209,6 +210,7 @@ export class UsersService {
         lastName: true,
         bio: true,
         timezone: true,
+        timezoneName: true,
         providerName: true,
         createdAt: true,
         activated: true,
@@ -431,6 +433,10 @@ export class UsersService {
         `deleteAccount: ${failed}/${paths.length} stored file(s) could not be removed`
       );
     }
+  }
+
+  updateTimezone(userId: string, body: TimezoneDto) {
+    return this._usersRepository.updateTimezone(userId, body);
   }
 }
 

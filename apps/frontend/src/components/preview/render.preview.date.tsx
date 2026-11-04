@@ -1,10 +1,8 @@
 'use client';
 
 import { FC } from 'react';
-import dayjs from 'dayjs';
-import utc from 'dayjs/plugin/utc';
-dayjs.extend(utc);
+import { fromUtc } from '@gitroom/frontend/components/layout/set.timezone';
 
 export const RenderPreviewDate: FC<{ date: string }> = ({ date }) => {
-  return <>{dayjs.utc(date).local().format('MMMM D, YYYY h:mm A')}</>;
+  return <>{fromUtc(date).format('MMMM D, YYYY h:mm A')}</>;
 };

@@ -162,7 +162,7 @@
     "cookie-parser": "^1.4.7",
     "copy-to-clipboard": "^3.3.3",
     "crypto-hash": "^3.1.0",
-    "dayjs": "^1.11.23",
+    "dayjs": "1.11.23",
     "dotenv": "^16.6.1",
     "dotenv-cli": "^8.0.0",
     "emoji-picker-react": "^4.22.3",

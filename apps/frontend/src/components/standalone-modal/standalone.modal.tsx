@@ -4,7 +4,6 @@ import 'reflect-metadata';
 import { FC, useCallback } from 'react';
 import useSWR from 'swr';
 import { useFetch } from '@gitroom/helpers/utils/custom.fetch';
-import dayjs from 'dayjs';
 import { useParams } from 'next/navigation';
 import dynamic from 'next/dynamic';
 // Composer pulls ~13 @tiptap packages + Uppy + CopilotPopup — load it only
@@ -16,7 +15,10 @@ const AddEditModal = dynamic(
     ),
   { ssr: false }
 );
-import { newDayjs } from '@gitroom/frontend/components/layout/set.timezone';
+import {
+  fromUtc,
+  newDayjs,
+} from '@gitroom/frontend/components/layout/set.timezone';
 export const StandaloneModal: FC = () => {
   const fetch = useFetch();
   const params = useParams<{ platform: string }>();
@@ -66,7 +68,7 @@ export const StandaloneModal: FC = () => {
       integrations={integrations}
       reopenModal={() => {}}
       allIntegrations={integrations}
-      date={dayjs.utc(data).local()}
+      date={fromUtc(data)}
     />
   );
 };

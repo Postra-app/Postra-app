@@ -1708,5 +1708,8 @@
   "republish_repeats": "Post się powtarza: zmiany obejmą każde kolejne powtórzenie.",
   "just_update_post_details": "Tylko zaktualizuj szczegóły posta",
   "republish_the_post": "Opublikuj ponownie",
-  "what_do_you_want_to_do": "Co chcesz zrobić?"
+  "what_do_you_want_to_do": "Co chcesz zrobić?",
+  "timezone": "Strefa czasowa",
+  "automatic_timezone": "Automatycznie ({{timezone}})",
+  "could_not_save_timezone": "Nie udało się zapisać strefy czasowej"
 }
