@@ -68,3 +68,28 @@ describe('proxy - cookies stay on the app host', () => {
     expect(org).not.toMatch(/domain=/i);
   });
 });
+
+// 3 XI 2026: with sign-ups closed, every /auth/register went to /auth/login,
+// the way back from Google included, so an existing Google account lost its
+// code and could not sign in. Only the plain page is redirected now.
+describe('proxy - sign-ups closed', () => {
+  const before = process.env.DISABLE_REGISTRATION;
+  beforeEach(() => {
+    process.env.DISABLE_REGISTRATION = 'true';
+  });
+  afterAll(() => {
+    process.env.DISABLE_REGISTRATION = before;
+  });
+
+  it('still sends the sign-up page to login', async () => {
+    const res = await signedOut('/auth/register');
+    expect(new URL(res.headers.get('location')!).pathname).toBe('/auth/login');
+  });
+
+  it('lets the way back from Google through, code and all', async () => {
+    const res = await signedOut(
+      '/auth/register?provider=google&code=4%2Fabc&state=s1'
+    );
+    expect(res.headers.get('location')).toBeNull();
+  });
+});

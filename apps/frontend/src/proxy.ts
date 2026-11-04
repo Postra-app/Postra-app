@@ -112,9 +112,15 @@ export async function proxy(request: NextRequest) {
     return response;
   }
 
+  // While sign-ups are closed, /auth/register goes to the login page, except
+  // on the way back from Google (or another provider): that page is where an
+  // existing account is signed in, and sending it to /auth/login dropped the
+  // code, so people who sign in with Google could not get in (3 XI 2026).
+  // A new account is still refused there and by the backend.
   if (
     nextUrl.pathname.startsWith('/auth/register') &&
-    process.env.DISABLE_REGISTRATION === 'true'
+    process.env.DISABLE_REGISTRATION === 'true' &&
+    !(nextUrl.searchParams.get('provider') && nextUrl.searchParams.get('code'))
   ) {
     return NextResponse.redirect(new URL('/auth/login', nextUrl.href));
   }
@@ -177,7 +183,10 @@ export async function proxy(request: NextRequest) {
         if (me?.adminMfaPending && !me?.impersonate) {
           const back = `${nextUrl.pathname}${nextUrl.search}`;
           return NextResponse.redirect(
-            new URL(`/two-factor?next=${encodeURIComponent(back)}`, nextUrl.href)
+            new URL(
+              `/two-factor?next=${encodeURIComponent(back)}`,
+              nextUrl.href
+            )
           );
         }
         if (!me?.isSuperAdmin || me?.impersonate) {

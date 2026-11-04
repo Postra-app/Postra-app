@@ -54,6 +54,12 @@ export const sendActivationMail = async (
   await emails.sendEmailSync(to, subject, html, undefined, footer);
 };
 
+/** What "forgot password" did, for the form to say it. */
+export type ForgotResult =
+  | { forgot: true }
+  | { forgot: false; reason: 'no_account' | 'send_failed' }
+  | { forgot: false; reason: 'provider'; provider: string };
+
 export const ACTIVATION_LINK_INVALID =
   'This activation link is invalid or has expired.';
 
@@ -308,10 +314,18 @@ export class AuthService {
     }
   }
 
-  async forgot(email: string, lang: EmailLang = 'en') {
+  // The form says what happened. It used to answer "we have sent you an
+  // email" to every address, so someone with no account, or one who signs
+  // in with Google, waited for a mail that never came. Hiding which
+  // addresses have accounts protected nothing: registration already answers
+  // "Email already exists", and the endpoint is rate limited (3 per 15 min).
+  async forgot(email: string, lang: EmailLang = 'en'): Promise<ForgotResult> {
     const user = await this._userService.getUserByEmail(email);
-    if (!user || user.providerName !== Provider.LOCAL) {
-      return false;
+    if (!user) {
+      return { forgot: false, reason: 'no_account' };
+    }
+    if (user.providerName !== Provider.LOCAL) {
+      return { forgot: false, reason: 'provider', provider: user.providerName };
     }
 
     // `tokenVersion` makes the link single-use without storing anything:
@@ -330,11 +344,12 @@ export class AuthService {
       { expiresIn: '20m' }
     );
 
-    // Not awaited: waiting for the mail made a known address answer
-    // measurably slower than an unknown one, which told anyone timing the
-    // form which addresses have accounts (2.2.3).
+    // Awaited, so a mail that could not be sent is an error on the form, not
+    // a silent "sent". (It was not awaited to keep answers equally fast,
+    // 2.2.3; with the reasons above in the answer that no longer hides
+    // anything.)
     const reset = authEmails.resetPassword[lang];
-    this._emailService
+    const sent = await this._emailService
       .sendEmailSync(
         user.email,
         reset.subject,
@@ -342,9 +357,11 @@ export class AuthService {
         undefined,
         authEmailFooter[lang]
       )
-      .catch((err) =>
-        new Logger('AuthService').error(`reset mail not sent: ${err?.message}`)
-      );
+      .catch((err) => {
+        new Logger('AuthService').error(`reset mail not sent: ${err?.message}`);
+        return false;
+      });
+    return sent ? { forgot: true } : { forgot: false, reason: 'send_failed' };
   }
 
   async forgotReturn(body: ForgotReturnPasswordDto) {

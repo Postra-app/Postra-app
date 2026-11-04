@@ -234,14 +234,9 @@ export class AuthController {
   @Throttle({ default: { ttl: 900000, limit: 3 } })
   async forgot(@Req() req: Request, @Body() body: ForgotPasswordDto) {
     try {
-      await this._authService.forgot(body.email, pickEmailLang(req));
-      return {
-        forgot: true,
-      };
+      return await this._authService.forgot(body.email, pickEmailLang(req));
     } catch (e) {
-      return {
-        forgot: false,
-      };
+      return { forgot: false, reason: 'send_failed' };
     }
   }
 

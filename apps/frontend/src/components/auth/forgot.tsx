@@ -10,13 +10,28 @@ import { useMemo, useState } from 'react';
 import { classValidatorResolver } from '@hookform/resolvers/class-validator';
 import { ForgotPasswordDto } from '@gitroom/nestjs-libraries/dtos/auth/forgot.password.dto';
 import { useT } from '@gitroom/react/translation/get.transation.service.client';
+import { useVariables } from '@gitroom/react/helpers/variable.context';
 type Inputs = {
   email: string;
 };
+// The provider an account signs in with, as the login page names it.
+const providerName = (provider?: string) =>
+  provider === 'GOOGLE'
+    ? 'Google'
+    : provider === 'GITHUB'
+    ? 'GitHub'
+    : provider
+    ? provider.charAt(0) + provider.slice(1).toLowerCase()
+    : 'Google';
 export function Forgot() {
   const t = useT();
   const [loading, setLoading] = useState(false);
   const [state, setState] = useState(false);
+  const [problem, setProblem] = useState<{
+    reason: 'no_account' | 'provider';
+    provider?: string;
+  } | null>(null);
+  const { disableRegistration } = useVariables();
   const resolver = useMemo(() => {
     return classValidatorResolver(ForgotPasswordDto);
   }, []);
@@ -26,6 +41,7 @@ export function Forgot() {
   const fetchData = useFetch();
   const onSubmit: SubmitHandler<Inputs> = async (data) => {
     setLoading(true);
+    setProblem(null);
     try {
       const response = await fetchData('/auth/forgot', {
         method: 'POST',
@@ -50,7 +66,27 @@ export function Forgot() {
         });
         return;
       }
-      setState(true);
+      // The answer says what happened: sent, no account, an account that
+      // signs in with Google (or another provider), or a mail that failed.
+      const result = (await response.json().catch(() => ({}))) as {
+        forgot?: boolean;
+        reason?: string;
+        provider?: string;
+      };
+      if (result.forgot) {
+        setState(true);
+        return;
+      }
+      if (result.reason === 'no_account' || result.reason === 'provider') {
+        setProblem({ reason: result.reason, provider: result.provider });
+        return;
+      }
+      form.setError('email', {
+        message: t(
+          'forgot_password_failed',
+          'Could not send the reset email. Please try again.'
+        ),
+      });
     } catch (e) {
       console.error('[Postra:auth] forgot-password failed', e);
       form.setError('email', {
@@ -90,6 +126,46 @@ export function Forgot() {
                   placeholder={t('email_address', 'Email Address')}
                 />
               </div>
+              {problem && (
+                <div
+                  data-testid="forgot-problem"
+                  className="mt-4 rounded-[16px] border border-white/8 bg-white/[0.03] p-[16px] text-start text-[14px] text-textColor/78"
+                >
+                  {problem.reason === 'no_account' ? (
+                    <>
+                      {t(
+                        'forgot_no_account',
+                        'There is no Postra account with this email address.'
+                      )}
+                      {!disableRegistration && (
+                        <>
+                          {' '}
+                          <Link
+                            href="/auth/register"
+                            className="underline underline-offset-4 hover:text-[#38bdf8]"
+                          >
+                            {t('forgot_create_account', 'Create an account')}
+                          </Link>
+                        </>
+                      )}
+                    </>
+                  ) : (
+                    <>
+                      {t(
+                        'forgot_provider_account',
+                        'This account signs in with {{provider}}, so it has no Postra password. Go back and use Continue with {{provider}}.',
+                        { provider: providerName(problem.provider) }
+                      )}{' '}
+                      <Link
+                        href="/auth/login"
+                        className="underline underline-offset-4 hover:text-[#38bdf8]"
+                      >
+                        {t('go_back_to_login', 'Go back to login')}
+                      </Link>
+                    </>
+                  )}
+                </div>
+              )}
               <div className="text-center mt-6">
                 <div className="w-full flex">
                   <Button
