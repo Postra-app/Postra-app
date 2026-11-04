@@ -68,3 +68,27 @@ describe('proxy - cookies stay on the app host', () => {
     expect(org).not.toMatch(/domain=/i);
   });
 });
+
+// With sign-ups closed only the plain sign-up page goes to login; the way
+// back from Google keeps its code, so an existing Google account signs in.
+describe('proxy - sign-ups closed', () => {
+  const before = process.env.DISABLE_REGISTRATION;
+  beforeEach(() => {
+    process.env.DISABLE_REGISTRATION = 'true';
+  });
+  afterAll(() => {
+    process.env.DISABLE_REGISTRATION = before;
+  });
+
+  it('still sends the sign-up page to login', async () => {
+    const res = await signedOut('/auth/register');
+    expect(new URL(res.headers.get('location')!).pathname).toBe('/auth/login');
+  });
+
+  it('lets the way back from Google through, code and all', async () => {
+    const res = await signedOut(
+      '/auth/register?provider=google&code=4%2Fabc&state=s1'
+    );
+    expect(res.headers.get('location')).toBeNull();
+  });
+});

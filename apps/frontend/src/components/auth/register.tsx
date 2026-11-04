@@ -1,6 +1,11 @@
 'use client';
 
-import { FormProvider, Resolver, SubmitHandler, useForm } from 'react-hook-form';
+import {
+  FormProvider,
+  Resolver,
+  SubmitHandler,
+  useForm,
+} from 'react-hook-form';
 import { useFetch } from '@gitroom/helpers/utils/custom.fetch';
 import { isFetchHandledError } from '@gitroom/helpers/utils/fetch.errors';
 import Link from 'next/link';
@@ -53,21 +58,37 @@ export function Register() {
   const [code, setCode] = useState(getQuery?.get('code') || '');
   const [state] = useState(getQuery?.get('state') || '');
   const [show, setShow] = useState(false);
+  const [failed, setFailed] = useState('');
+  const t = useT();
   useEffect(() => {
     if (provider && code) {
       load();
     }
   }, []);
   const load = useCallback(async () => {
-    const { token, login } = await (
-      await fetch(`/auth/oauth/${provider?.toUpperCase() || 'LOCAL'}/exists`, {
+    const response = await fetch(
+      `/auth/oauth/${provider?.toUpperCase() || 'LOCAL'}/exists`,
+      {
         method: 'POST',
         body: JSON.stringify({
           code,
           state,
         }),
-      })
-    ).json();
+      }
+    ).catch(() => null);
+    // A spent state or a refused code answers 400 in plain text; reading it
+    // as JSON threw and left the spinner up for good.
+    if (!response?.ok) {
+      setFailed(
+        (await response?.text().catch(() => '')) ||
+          t(
+            'provider_sign_in_failed',
+            'Sign-in with this provider failed. Please try again.'
+          )
+      );
+      return;
+    }
+    const { token, login } = await response.json();
     // Existing account — the backend already set the auth cookie.
     if (login) {
       window.location.href = '/';
@@ -77,12 +98,36 @@ export function Register() {
       setCode(token);
       setShow(true);
     }
-  }, [provider, code, state]);
+  }, [provider, code, state, t]);
   // Defence in depth: proxy.ts already 302s /auth/register to /auth/login while
   // DISABLE_REGISTRATION is on, and the backend refuses the POST. This covers the
   // page being reached without the middleware (and makes the closure legible).
+  // Coming back from Google, an existing account is signed in by load() above
+  // first; only a new one is told sign-ups are closed.
+  if (failed) {
+    return (
+      <div
+        className="flex flex-1 flex-col"
+        data-testid="provider-sign-in-failed"
+      >
+        <p className="text-[15px] text-textColor/78">{failed}</p>
+        <p className="mt-[24px] text-sm text-textColor/66">
+          <Link
+            href="/auth/login"
+            className="underline underline-offset-4 cursor-pointer text-textColor hover:text-[#38bdf8]"
+          >
+            {t('sign_in', 'Sign In')}
+          </Link>
+        </p>
+      </div>
+    );
+  }
   if (disableRegistration) {
-    return <RegistrationClosed />;
+    return provider && code && !show ? (
+      <LoadingComponent />
+    ) : (
+      <RegistrationClosed />
+    );
   }
   if (!code && !provider) {
     return <RegisterAfter token="" provider="LOCAL" />;
@@ -157,7 +202,9 @@ export function RegisterAfter({
   const resolver = useMemo(() => {
     // The DTO class validates the same fields; since @hookform/resolvers 5 the
     // resolver is typed by that class, which is wider than the form's own type.
-    return classValidatorResolver(CreateOrgUserDto) as unknown as Resolver<Inputs>;
+    return classValidatorResolver(
+      CreateOrgUserDto
+    ) as unknown as Resolver<Inputs>;
   }, []);
   const form = useForm<Inputs>({
     resolver,

@@ -17,25 +17,46 @@ describe('activation mail', () => {
   });
 });
 
-// 2.2.3: "forgot password" must not wait for the mail, or a known address
-// answers slower than an unknown one.
+// "Forgot password" says what happened instead of always "we have sent you
+// an email". It no longer answers before the mail is sent: registration
+// already tells which addresses have accounts, so equal timing hid nothing.
 describe('forgot password', () => {
   // eslint-disable-next-line @typescript-eslint/no-require-imports
   const { AuthService } = require('./auth.service');
-  it('answers without waiting for the mail', async () => {
+  const make = (user: unknown, sendEmailSync = jest.fn().mockResolvedValue(true)) => {
     const service = Object.create(AuthService.prototype);
-    const never = new Promise(() => undefined);
     Object.assign(service, {
-      _userService: { getUserByEmail: async () => ({ id: 'u1', email: 'a@b.co', providerName: 'LOCAL', tokenVersion: 1 }) },
-      _emailService: { sendEmailSync: jest.fn(() => never) },
+      _userService: { getUserByEmail: async () => user },
+      _emailService: { sendEmailSync },
     });
     process.env.JWT_SECRET = process.env.JWT_SECRET || 'test-secret';
-    const done = await Promise.race([
-      service.forgot('a@b.co').then(() => 'answered'),
-      new Promise((r) => setTimeout(() => r('waited for the mail'), 500)),
-    ]);
-    expect(done).toBe('answered');
-    expect(service._emailService.sendEmailSync).toHaveBeenCalledTimes(1);
+    return { service, sendEmailSync };
+  };
+  const local = { id: 'u1', email: 'a@b.co', providerName: 'LOCAL', tokenVersion: 1 };
+
+  it('says there is no account, and sends nothing', async () => {
+    const { service, sendEmailSync } = make(null);
+    expect(await service.forgot('nobody@b.co')).toEqual({ forgot: false, reason: 'no_account' });
+    expect(sendEmailSync).not.toHaveBeenCalled();
+  });
+
+  it('names the provider an account signs in with, and sends nothing', async () => {
+    const { service, sendEmailSync } = make({ ...local, providerName: 'GOOGLE' });
+    expect(await service.forgot('a@b.co')).toEqual({ forgot: false, reason: 'provider', provider: 'GOOGLE' });
+    expect(sendEmailSync).not.toHaveBeenCalled();
+  });
+
+  it('says sent only once the mail went out', async () => {
+    const { service, sendEmailSync } = make(local);
+    expect(await service.forgot('a@b.co')).toEqual({ forgot: true });
+    expect(sendEmailSync).toHaveBeenCalledTimes(1);
+  });
+
+  it('says the mail failed when it could not be sent', async () => {
+    const { service } = make(local, jest.fn().mockResolvedValue(false));
+    expect(await service.forgot('a@b.co')).toEqual({ forgot: false, reason: 'send_failed' });
+    const { service: throwing } = make(local, jest.fn().mockRejectedValue(new Error('SMTP down')));
+    expect(await throwing.forgot('a@b.co')).toEqual({ forgot: false, reason: 'send_failed' });
   });
 });
 

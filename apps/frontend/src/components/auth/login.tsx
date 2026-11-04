@@ -1,6 +1,11 @@
 'use client';
 
-import { useForm, SubmitHandler, FormProvider, Resolver } from 'react-hook-form';
+import {
+  useForm,
+  SubmitHandler,
+  FormProvider,
+  Resolver,
+} from 'react-hook-form';
 import { useFetch } from '@gitroom/helpers/utils/custom.fetch';
 import { isFetchHandledError } from '@gitroom/helpers/utils/fetch.errors';
 import Link from 'next/link';
@@ -116,39 +121,34 @@ export function Login() {
               )}
             </p>
           </div>
-          {!disableRegistration && (
-            <div className="mb-[12px] mt-[28px] text-[12px] font-[600] uppercase tracking-[0.08em] text-textColor/55">
-              {t('continue_with', 'Continue With')}
-            </div>
-          )}
-          <div
-            className={`flex flex-col${
-              disableRegistration ? ' mt-[28px]' : ''
-            }`}
-          >
-            {!disableRegistration && (
-              <>
-                {isGeneral && genericOauth ? (
-                  <OauthProvider />
-                ) : !isGeneral ? (
-                  <GithubProvider />
-                ) : (
-                  <div className="gap-[8px] flex">
-                    <GoogleProvider />
-                  </div>
-                )}
-                <div className="h-[20px] mb-[24px] mt-[24px] relative">
-                  <div className="absolute top-[50%] h-[1px] w-full -translate-y-[50%] bg-white/10" />
-                  <div
-                    className={`absolute z-[1] justify-center items-center w-full start-0 -top-[4px] flex`}
-                  >
-                    <div className="rounded-full border border-white/8 bg-[rgba(15,23,42,0.92)] px-[16px] py-[4px] text-[11px] font-[700] uppercase tracking-[0.08em] text-textColor/52">
-                      {t('or', 'OR')}
-                    </div>
+          {/* Shown while sign-ups are closed too: an existing account that
+              signs in with Google has no other way in. A new Google user is
+              told sign-ups are closed on the next page. */}
+          <div className="mb-[12px] mt-[28px] text-[12px] font-[600] uppercase tracking-[0.08em] text-textColor/55">
+            {t('continue_with', 'Continue With')}
+          </div>
+          <div className="flex flex-col">
+            <>
+              {isGeneral && genericOauth ? (
+                <OauthProvider />
+              ) : !isGeneral ? (
+                <GithubProvider />
+              ) : (
+                <div className="gap-[8px] flex">
+                  <GoogleProvider />
+                </div>
+              )}
+              <div className="h-[20px] mb-[24px] mt-[24px] relative">
+                <div className="absolute top-[50%] h-[1px] w-full -translate-y-[50%] bg-white/10" />
+                <div
+                  className={`absolute z-[1] justify-center items-center w-full start-0 -top-[4px] flex`}
+                >
+                  <div className="rounded-full border border-white/8 bg-[rgba(15,23,42,0.92)] px-[16px] py-[4px] text-[11px] font-[700] uppercase tracking-[0.08em] text-textColor/52">
+                    {t('or', 'OR')}
                   </div>
                 </div>
-              </>
-            )}
+              </div>
+            </>
             <div className="flex flex-col gap-[12px]">
               <div className="text-textColor">
                 <Input

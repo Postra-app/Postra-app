@@ -93,7 +93,7 @@ services:
   # an up-to-date database alone. Visibility stays in SQL, like production.
   temporal-schema:
     container_name: temporal-schema
-    image: temporalio/admin-tools:1.32.1
+    image: temporalio/admin-tools:1.32.2
     profiles: [temporal]
     depends_on:
       temporal-postgresql:
@@ -117,7 +117,7 @@ services:
 
   temporal:
     container_name: temporal
-    image: temporalio/server:1.32.1
+    image: temporalio/server:1.32.2
     profiles: [temporal]
     ports:
       - "7233:7233"
@@ -146,7 +146,7 @@ services:
   # The Temporal CLI; it registers the default namespace on start.
   temporal-admin-tools:
     container_name: temporal-admin-tools
-    image: temporalio/admin-tools:1.32.1
+    image: temporalio/admin-tools:1.32.2
     profiles: [temporal]
     environment:
       - TEMPORAL_ADDRESS=temporal:7233
@@ -165,7 +165,7 @@ services:
 
   temporal-ui:
     container_name: temporal-ui
-    image: temporalio/ui:2.57.0
+    image: temporalio/ui:2.58.0
     profiles: [temporal]
     environment:
       - TEMPORAL_ADDRESS=temporal:7233
