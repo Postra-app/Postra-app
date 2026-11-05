@@ -404,7 +404,8 @@
       "re2js@>=2.2.0 <2.8.7": "^2.8.7",
       "@modelcontextprotocol/node@>=2.0.0 <2.1.0": "^2.1.0",
       "@graphql-tools/utils@<12.0.2": "^12.0.2",
-      "graphql-scalars@<2.0.1": "^2.0.1"
+      "graphql-scalars@<2.0.1": "^2.0.1",
+      "katex@<0.18.2": "^0.18.2"
     },
     "onlyBuiltDependencies": [
       "bcrypt"
