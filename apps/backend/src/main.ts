@@ -112,8 +112,19 @@ async function start() {
     })
   );
 
+  // The AI runtime validates a whole agent/run body with zod, which keeps an
+  // issue object per failing array element: 8 MB of `[1,1,...]` cost the
+  // process over a GB, 20 MB ran it out of memory. Chat bodies are text and
+  // image URLs, so 2 MB is far above a real conversation and far below that.
+  // Wrapped, like the parser below: Nest skips its own global JSON parser
+  // when it finds a layer named jsonParser on the stack.
+  const copilotJson = json({ limit: '2mb' });
+  app.use('/copilot/{*splat}', (req: any, res: any, next: any) =>
+    copilotJson(req, res, next)
+  );
+
   app.use(
-    ['/copilot/{*splat}', '/posts', '/media/{*splat}', '/user/problem-report'],
+    ['/posts', '/media/{*splat}', '/user/problem-report'],
     (req: any, res: any, next: any) => {
       // Studio routes under /media (refine-design, :id/canvas, :id/design-spec)
       // carry canvas screenshots and JSON that exceed Express's default ~100kb
