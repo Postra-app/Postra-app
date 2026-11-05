@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import { connection } from 'next/server';
 
 // Global 404 for URLs that match no route. Because the app uses multiple root
 // layouts (route groups), this convention (gated by experimental.globalNotFound
@@ -10,7 +11,10 @@ export const metadata: Metadata = {
   description: 'The page you are looking for does not exist.',
 };
 
-export default function GlobalNotFound() {
+// Rendered per request, not at build time: a static page cannot carry the
+// request's nonce (csp.ts), so its Next.js scripts would break the policy.
+export default async function GlobalNotFound() {
+  await connection();
   return (
     <html lang="en">
       <body

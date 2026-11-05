@@ -90,7 +90,7 @@ overrides:
   body-parser@<1.20.9: ^1.20.9
   body-parser@>=2.0.0 <2.4.0: ^2.4.0
   follow-redirects@<1.16.2: ^1.16.2
-  '@hono/node-server@<1.19.15': ^1.19.15
+  '@hono/node-server@<2.1.3': ^2.1.3
   '@babel/core@>=7.0.0 <7.29.6': ^7.29.7
   '@tootallnate/once@<2.0.1': ^2.0.1
   postcss-selector-parser@>=6.1.0 <6.1.3: ^6.1.3
@@ -100,11 +100,14 @@ overrides:
   fast-copy@>=4.0.0 <4.1.0: ^4.1.0
   prismjs@<1.30.0: ^1.30.0
   '@opentelemetry/core@>=2.0.0 <2.8.0': ^2.8.0
-  uuid@>=11.0.0 <11.1.1: ^11.1.1
+  uuid@<11.1.1: ^11.1.1
   langsmith@>=0.4.0 <0.6.0: ^0.11.0
   esbuild@>=0.27.3 <0.28.1: ^0.28.2
   re2js@>=2.2.0 <2.8.7: ^2.8.7
   '@modelcontextprotocol/node@>=2.0.0 <2.1.0': ^2.1.0
+  '@graphql-tools/utils@<12.0.2': ^12.0.2
+  graphql-scalars@<2.0.1: ^2.0.1
+  katex@<0.18.2: ^0.18.2
 
 importers:
 
@@ -505,7 +508,7 @@ importers:
         version: 4.18.1
       mastra:
         specifier: ^1.34.1
-        version: 1.34.2(@hono/node-server@1.19.17(hono@4.13.12))(@mastra/core@1.78.0(@bufbuild/protobuf@2.16.0)(@grpc/grpc-js@1.14.6)(ai@6.0.317(zod@4.6.7))(bufferutil@4.1.0)(express@5.2.1)(quansync@0.2.11)(rxjs@7.8.2)(utf-8-validate@5.0.10)(zod-to-json-schema@3.25.2(zod@4.6.7))(zod@4.6.7))(bufferutil@4.1.0)(rxjs@7.8.2)(typescript@5.5.4)(utf-8-validate@5.0.10)(zod@4.6.7)
+        version: 1.34.2(@hono/node-server@2.1.6(hono@4.13.12))(@mastra/core@1.78.0(@bufbuild/protobuf@2.16.0)(@grpc/grpc-js@1.14.6)(ai@6.0.317(zod@4.6.7))(bufferutil@4.1.0)(express@5.2.1)(quansync@0.2.11)(rxjs@7.8.2)(utf-8-validate@5.0.10)(zod-to-json-schema@3.25.2(zod@4.6.7))(zod@4.6.7))(bufferutil@4.1.0)(rxjs@7.8.2)(typescript@5.5.4)(utf-8-validate@5.0.10)(zod@4.6.7)
       md5:
         specifier: ^2.3.0
         version: 2.3.0
@@ -2958,14 +2961,8 @@ packages:
     peerDependencies:
       graphql: ^14.0.0 || ^15.0.0 || ^16.0.0 || ^17.0.0
 
-  '@graphql-tools/utils@10.11.0':
-    resolution: {integrity: sha512-iBFR9GXIs0gCD+yc3hoNswViL1O5josI33dUqiNStFI/MHLCEPduasceAcazRH77YONKNiviHBV8f7OgcT4o2Q==}
-    engines: {node: '>=16.0.0'}
-    peerDependencies:
-      graphql: ^14.0.0 || ^15.0.0 || ^16.0.0 || ^17.0.0
-
-  '@graphql-tools/utils@11.0.0':
-    resolution: {integrity: sha512-bM1HeZdXA2C3LSIeLOnH/bcqSgbQgKEDrjxODjqi3y58xai2TkNrtYcQSoWzGbt9VMN1dORGjR7Vem8SPnUFQA==}
+  '@graphql-tools/utils@12.1.0':
+    resolution: {integrity: sha512-+mOuIX7u83/BHG0L9JviMzKid1j35cxOWhLoox47TXHAJ6Tnn30RgrmEQPmk1FhmaQbhJEcwYBDVyieUvZopJw==}
     engines: {node: '>=16.0.0'}
     peerDependencies:
       graphql: ^14.0.0 || ^15.0.0 || ^16.0.0 || ^17.0.0
@@ -3010,9 +3007,9 @@ packages:
       react: 19.3.1
       react-dom: 19.3.1
 
-  '@hono/node-server@1.19.17':
-    resolution: {integrity: sha512-dSneS5qhiauZWGDCeK4o695Xd9nUNjviSZCMQrj10eetr8Uln1ucn6bbphOM6UynAMMtNIzZNSpL9vnASJwrPQ==}
-    engines: {node: '>=18.14.1'}
+  '@hono/node-server@2.1.6':
+    resolution: {integrity: sha512-p/KH9MnfNcsm3sR6x4lNgm5j+QN4Et8srKredl9DZfXiyZ1UQ3aQ2YVpFLbqktYN5JI+DB+VZFKM2PqE5hLKjQ==}
+    engines: {node: '>=20'}
     peerDependencies:
       hono: ^4.12.25
 
@@ -3020,7 +3017,7 @@ packages:
     resolution: {integrity: sha512-vo/MwCnpJAVHBkGzWjCJ28wF45fYHAfbPZcH2rodZODHtch2GHA94KtMfusmVycTUtsLAsaNsHhtY6P8X3RQsA==}
     engines: {node: '>=18.14.1'}
     peerDependencies:
-      '@hono/node-server': ^1.19.15
+      '@hono/node-server': ^2.1.3
       hono: ^4.12.25
 
   '@hono/standard-validator@0.4.0':
@@ -8595,6 +8592,10 @@ packages:
     resolution: {integrity: sha512-Nst5JdK47VIl9UcGwtv2Rcgyn5lWtZ0/mhRQ4G8NN2isxpq2TO30iqHzmwoJycjWuyUfg3GFXqP/gFHXeV57IA==}
     engines: {node: '>=16.0.0'}
 
+  '@whatwg-node/promise-helpers@2.0.1':
+    resolution: {integrity: sha512-ziVgm01A9irPLVBaUFei64qp771BrDXldbv5pY6kgFgNtA+7zq8ux6nj/6w8bELGH/+Ttnc76ox04HIjU8nqvg==}
+    engines: {node: '>=22.15.0'}
+
   '@whatwg-node/server@0.10.18':
     resolution: {integrity: sha512-kMwLlxUbduttIgaPdSkmEarFpP+mSY8FEm+QWMBRJwxOHWkri+cxd8KZHO9EMrB9vgUuz+5WEaCawaL5wGVoXg==}
     engines: {node: '>=18.0.0'}
@@ -9463,6 +9464,10 @@ packages:
   commander@14.0.3:
     resolution: {integrity: sha512-H+y0Jo/T1RZ9qPP4Eh1pkcQcLRglraJaSLoyOtHxu6AapkjWVCy2Sit1QQ4x3Dng8qDlSsZEet7g5Pq06MvTgw==}
     engines: {node: '>=20'}
+
+  commander@15.0.0:
+    resolution: {integrity: sha512-z67u4ZhzCL/Tydu1lJARtEZYWbWaN7oYLHbsuzocr6y4N6WZAagG3RQ4FW61V1/0+jImpj293XfrcYnd1qxtPg==}
+    engines: {node: '>=22.12.0'}
 
   commander@2.20.3:
     resolution: {integrity: sha512-GpVkmM8vF2vQUkj2LvZmD35JxeJOLCwJ9cUkugyk2nuhbv3+mJvpLYYt+0+USMxE+oj+ey/lJEnhZw75x/OMcQ==}
@@ -11040,11 +11045,11 @@ packages:
     peerDependencies:
       graphql: ^14.6.0 || ^15.0.0 || ^16.0.0
 
-  graphql-scalars@1.25.0:
-    resolution: {integrity: sha512-b0xyXZeRFkne4Eq7NAnL400gStGqG/Sx9VqX0A05nHyEbv57UJnWKsjNnrpVqv5e/8N1MUxkt0wwcRXbiyKcFg==}
+  graphql-scalars@2.0.1:
+    resolution: {integrity: sha512-/BkY0J5/1L9e+mTfCTzmpV78mNh95ZpiJWfAkaIYHE5B7hrvgRpB5//rXVTFD1aaKGcRUCHj/vpNcgtrenwZNA==}
     engines: {node: '>=10'}
     peerDependencies:
-      graphql: ^0.8.0 || ^0.9.0 || ^0.10.0 || ^0.11.0 || ^0.12.0 || ^0.13.0 || ^14.0.0 || ^15.0.0 || ^16.0.0
+      graphql: ^16.0.0 || ^17.0.0
 
   graphql-yoga@5.18.0:
     resolution: {integrity: sha512-xFt1DVXS1BZ3AvjnawAGc5OYieSe56WuQuyk3iEpBwJ3QDZJWQGLmU9z/L5NUZ+pUcyprsz/bOwkYIV96fXt/g==}
@@ -12024,8 +12029,8 @@ packages:
   jws@4.0.1:
     resolution: {integrity: sha512-EKI/M/yqPncGUUh44xz0PxSidXFr/+r0pA70+gIYhjv+et7yxM+s29Y+VGDkovRofQem0fs7Uvf4+YmAdyRduA==}
 
-  katex@0.16.47:
-    resolution: {integrity: sha512-Eeo8Ys1doU1z+x8AZsPpQu+p/QcZBI5PeOo7QGQdy2x2m0MU/hYagBbGOmXwr5KVbEfVuWv9LpnQWeehogurjg==}
+  katex@0.18.10:
+    resolution: {integrity: sha512-/B6p9eY9DX7aHBfpkHdpirDTZ5QH9xTwL9y837PWuzuv41O5jFdqNQwVQEQsimY0/iVNkwBY4+4hMfhQ7d4Dbw==}
     hasBin: true
 
   keyv@4.5.4:
@@ -15637,7 +15642,7 @@ packages:
     peerDependencies:
       class-validator: '>=0.14.0'
       graphql: ^16.8.1
-      graphql-scalars: ^1.22.4
+      graphql-scalars: ^2.0.1
     peerDependenciesMeta:
       class-validator:
         optional: true
@@ -15951,27 +15956,12 @@ packages:
   util-deprecate@1.0.2:
     resolution: {integrity: sha512-EPD5q1uXyFxJpCrLnCc1nHnq3gOa6DZBocAIiI2TaSCA7VCJ1UJDMagCzIkXNsUYfD1daK//LTEQ8xiIbrHtcw==}
 
-  uuid@10.0.0:
-    resolution: {integrity: sha512-8XkAphELsDnEGrDxUOHB3RGvXz6TeuYSGEZBOjtTtPm2lwhGBjLgOzLHB63IUWfBpNucQjND6d3AOudO+H3RWQ==}
-    deprecated: uuid@10 and below is no longer supported.  For ESM codebases, update to uuid@latest.  For CommonJS codebases, use uuid@11 (but be aware this version will likely be deprecated in 2028).
-    hasBin: true
-
   uuid@11.1.1:
     resolution: {integrity: sha512-vIYxrBCC/N/K+Js3qSN88go7kIfNPssr/hHCesKCQNAjmgvYS2oqr69kIufEG+O4+PfezOH4EbIeHCfFov8ZgQ==}
     hasBin: true
 
   uuid@14.0.2:
     resolution: {integrity: sha512-xZe/16rV4aa+HGSOCiY2YeLT1OybRLrrkL/Rqaq7p7GMVXjFh+6wN4oMYgjFmnSnhY8t6Xpdl2l9qmnHYuMHwQ==}
-    hasBin: true
-
-  uuid@8.3.2:
-    resolution: {integrity: sha512-+NYs2QeMWy+GWFOEm9xnn6HCDp0l7QBD7ml8zLUmJ+93Q5NF0NocErnwkTkXVFNiX3/fpC6afS8Dhb/gz7R7eg==}
-    deprecated: uuid@10 and below is no longer supported.  For ESM codebases, update to uuid@latest.  For CommonJS codebases, use uuid@11 (but be aware this version will likely be deprecated in 2028).
-    hasBin: true
-
-  uuid@9.0.1:
-    resolution: {integrity: sha512-b+1eJOlsR9K8HJpow9Ok3fiWOWSIcIzXodvv0rQjVoOVNpWMpxf1wZNpt4y9h10odCNrqnYp1OBzRktckBe3sA==}
-    deprecated: uuid@10 and below is no longer supported.  For ESM codebases, update to uuid@latest.  For CommonJS codebases, use uuid@11 (but be aware this version will likely be deprecated in 2028).
     hasBin: true
 
   uvu@0.5.6:
@@ -18688,7 +18678,7 @@ snapshots:
       '@tanstack/react-virtual': 3.14.13(react-dom@19.3.1(react@19.3.1))(react@19.3.1)
       class-variance-authority: 0.7.1
       clsx: 2.1.1
-      katex: 0.16.47
+      katex: 0.18.10
       lit: 3.3.3
       lucide-react: 0.525.0(react@19.3.1)
       react: 19.3.1
@@ -18817,7 +18807,7 @@ snapshots:
       '@copilotkit/license-verifier': 0.5.0
       '@copilotkit/shared': 1.83.0(@ag-ui/core@1.0.2(zod@4.6.7))
       '@graphql-yoga/plugin-defer-stream': 3.18.0(graphql-yoga@5.18.0(graphql@16.13.1))(graphql@16.13.1)
-      '@hono/node-server': 1.19.17(hono@4.13.12)
+      '@hono/node-server': 2.1.6(hono@4.13.12)
       '@langchain/core': 1.2.18(@opentelemetry/api@1.9.1)(@opentelemetry/exporter-trace-otlp-proto@0.203.0(@opentelemetry/api@1.9.1))(@opentelemetry/sdk-trace-base@2.11.0(@opentelemetry/api@1.9.1))(openai@6.49.0(@aws-sdk/credential-provider-node@3.972.86)(@smithy/signature-v4@5.7.4)(ws@8.22.0(bufferutil@4.1.0)(utf-8-validate@5.0.10))(zod@4.6.7))(ws@8.22.0(bufferutil@4.1.0)(utf-8-validate@5.0.10))
       '@modelcontextprotocol/sdk': 1.32.1(@cfworker/json-schema@4.1.1)(zod@3.25.76)
       '@remix-run/node-fetch-server': 0.13.3
@@ -18829,7 +18819,7 @@ snapshots:
       class-validator: 0.14.4
       cors: 2.8.6
       graphql: 16.13.1
-      graphql-scalars: 1.25.0(graphql@16.13.1)
+      graphql-scalars: 2.0.1(graphql@16.13.1)
       graphql-yoga: 5.18.0(graphql@16.13.1)
       hono: 4.13.12
       openai: 6.49.0(@aws-sdk/credential-provider-node@3.972.86)(@smithy/signature-v4@5.7.4)(ws@8.22.0(bufferutil@4.1.0)(utf-8-validate@5.0.10))(zod@4.6.7)
@@ -18839,7 +18829,7 @@ snapshots:
       pino-pretty: 11.3.0
       reflect-metadata: 0.2.2
       rxjs: 7.8.1
-      type-graphql: 2.0.0-rc.1(class-validator@0.14.4)(graphql-scalars@1.25.0(graphql@16.13.1))(graphql@16.13.1)
+      type-graphql: 2.0.0-rc.1(class-validator@0.14.4)(graphql-scalars@2.0.1(graphql@16.13.1))(graphql@16.13.1)
       uuid: 11.1.1
       ws: 8.22.0(bufferutil@4.1.0)(utf-8-validate@5.0.10)
       yauzl: 2.10.0
@@ -19363,7 +19353,7 @@ snapshots:
 
   '@graphql-tools/executor@1.5.1(graphql@16.13.1)':
     dependencies:
-      '@graphql-tools/utils': 11.0.0(graphql@16.13.1)
+      '@graphql-tools/utils': 12.1.0(graphql@16.13.1)
       '@graphql-typed-document-node/core': 3.2.0(graphql@16.13.1)
       '@repeaterjs/repeater': 3.0.6
       '@whatwg-node/disposablestack': 0.0.6
@@ -19373,29 +19363,21 @@ snapshots:
 
   '@graphql-tools/merge@9.1.7(graphql@16.13.1)':
     dependencies:
-      '@graphql-tools/utils': 11.0.0(graphql@16.13.1)
+      '@graphql-tools/utils': 12.1.0(graphql@16.13.1)
       graphql: 16.13.1
       tslib: 2.8.1
 
   '@graphql-tools/schema@10.0.31(graphql@16.13.1)':
     dependencies:
       '@graphql-tools/merge': 9.1.7(graphql@16.13.1)
-      '@graphql-tools/utils': 11.0.0(graphql@16.13.1)
+      '@graphql-tools/utils': 12.1.0(graphql@16.13.1)
       graphql: 16.13.1
       tslib: 2.8.1
 
-  '@graphql-tools/utils@10.11.0(graphql@16.13.1)':
+  '@graphql-tools/utils@12.1.0(graphql@16.13.1)':
     dependencies:
       '@graphql-typed-document-node/core': 3.2.0(graphql@16.13.1)
-      '@whatwg-node/promise-helpers': 1.3.2
-      cross-inspect: 1.0.1
-      graphql: 16.13.1
-      tslib: 2.8.1
-
-  '@graphql-tools/utils@11.0.0(graphql@16.13.1)':
-    dependencies:
-      '@graphql-typed-document-node/core': 3.2.0(graphql@16.13.1)
-      '@whatwg-node/promise-helpers': 1.3.2
+      '@whatwg-node/promise-helpers': 2.0.1
       cross-inspect: 1.0.1
       graphql: 16.13.1
       tslib: 2.8.1
@@ -19410,7 +19392,7 @@ snapshots:
 
   '@graphql-yoga/plugin-defer-stream@3.18.0(graphql-yoga@5.18.0(graphql@16.13.1))(graphql@16.13.1)':
     dependencies:
-      '@graphql-tools/utils': 10.11.0(graphql@16.13.1)
+      '@graphql-tools/utils': 12.1.0(graphql@16.13.1)
       graphql: 16.13.1
       graphql-yoga: 5.18.0(graphql@16.13.1)
 
@@ -19448,13 +19430,13 @@ snapshots:
       react-dom: 19.3.1(react@19.3.1)
       use-sync-external-store: 1.6.0(react@19.3.1)
 
-  '@hono/node-server@1.19.17(hono@4.13.12)':
+  '@hono/node-server@2.1.6(hono@4.13.12)':
     dependencies:
       hono: 4.13.12
 
-  '@hono/node-ws@1.3.1(@hono/node-server@1.19.17(hono@4.13.12))(bufferutil@4.1.0)(hono@4.13.12)(utf-8-validate@5.0.10)':
+  '@hono/node-ws@1.3.1(@hono/node-server@2.1.6(hono@4.13.12))(bufferutil@4.1.0)(hono@4.13.12)(utf-8-validate@5.0.10)':
     dependencies:
-      '@hono/node-server': 1.19.17(hono@4.13.12)
+      '@hono/node-server': 2.1.6(hono@4.13.12)
       hono: 4.13.12
       ws: 8.22.0(bufferutil@4.1.0)(utf-8-validate@5.0.10)
     transitivePeerDependencies:
@@ -20174,7 +20156,7 @@ snapshots:
       js-yaml: 4.3.2
       jsonpointer: 5.0.1
       openapi-types: 12.1.3
-      uuid: 10.0.0
+      uuid: 11.1.1
       yaml: 2.8.3
       zod: 4.6.7
     optionalDependencies:
@@ -20259,7 +20241,7 @@ snapshots:
   '@langchain/google-common@0.1.8(@langchain/core@1.2.18(@opentelemetry/api@1.9.1)(@opentelemetry/exporter-trace-otlp-proto@0.203.0(@opentelemetry/api@1.9.1))(@opentelemetry/sdk-trace-base@2.11.0(@opentelemetry/api@1.9.1))(openai@6.49.0(@aws-sdk/credential-provider-node@3.972.86)(@smithy/signature-v4@5.7.4)(ws@8.22.0(bufferutil@4.1.0)(utf-8-validate@5.0.10))(zod@4.6.7))(ws@8.22.0(bufferutil@4.1.0)(utf-8-validate@5.0.10)))(zod@4.6.7)':
     dependencies:
       '@langchain/core': 1.2.18(@opentelemetry/api@1.9.1)(@opentelemetry/exporter-trace-otlp-proto@0.203.0(@opentelemetry/api@1.9.1))(@opentelemetry/sdk-trace-base@2.11.0(@opentelemetry/api@1.9.1))(openai@6.49.0(@aws-sdk/credential-provider-node@3.972.86)(@smithy/signature-v4@5.7.4)(ws@8.22.0(bufferutil@4.1.0)(utf-8-validate@5.0.10))(zod@4.6.7))(ws@8.22.0(bufferutil@4.1.0)(utf-8-validate@5.0.10))
-      uuid: 10.0.0
+      uuid: 11.1.1
       zod-to-json-schema: 3.25.2(zod@4.6.7)
     transitivePeerDependencies:
       - zod
@@ -20481,12 +20463,12 @@ snapshots:
       - zod-openapi
       - zod-to-json-schema
 
-  '@mastra/deployer@1.78.0(@hono/node-server@1.19.17(hono@4.13.12))(@mastra/core@1.78.0(@bufbuild/protobuf@2.16.0)(@grpc/grpc-js@1.14.6)(ai@6.0.317(zod@4.6.7))(bufferutil@4.1.0)(express@5.2.1)(quansync@0.2.11)(rxjs@7.8.2)(utf-8-validate@5.0.10)(zod-to-json-schema@3.25.2(zod@4.6.7))(zod@4.6.7))(bufferutil@4.1.0)(typescript@5.5.4)(utf-8-validate@5.0.10)(zod@4.6.7)':
+  '@mastra/deployer@1.78.0(@hono/node-server@2.1.6(hono@4.13.12))(@mastra/core@1.78.0(@bufbuild/protobuf@2.16.0)(@grpc/grpc-js@1.14.6)(ai@6.0.317(zod@4.6.7))(bufferutil@4.1.0)(express@5.2.1)(quansync@0.2.11)(rxjs@7.8.2)(utf-8-validate@5.0.10)(zod-to-json-schema@3.25.2(zod@4.6.7))(zod@4.6.7))(bufferutil@4.1.0)(typescript@5.5.4)(utf-8-validate@5.0.10)(zod@4.6.7)':
     dependencies:
       '@babel/core': 8.0.7
       '@babel/preset-typescript': 8.0.7(@babel/core@8.0.7)
       '@babel/traverse': 8.0.7
-      '@hono/node-ws': 1.3.1(@hono/node-server@1.19.17(hono@4.13.12))(bufferutil@4.1.0)(hono@4.13.12)(utf-8-validate@5.0.10)
+      '@hono/node-ws': 1.3.1(@hono/node-server@2.1.6(hono@4.13.12))(bufferutil@4.1.0)(hono@4.13.12)(utf-8-validate@5.0.10)
       '@mastra/core': 1.78.0(@bufbuild/protobuf@2.16.0)(@grpc/grpc-js@1.14.6)(ai@6.0.317(zod@4.6.7))(bufferutil@4.1.0)(express@5.2.1)(quansync@0.2.11)(rxjs@7.8.2)(utf-8-validate@5.0.10)(zod-to-json-schema@3.25.2(zod@4.6.7))(zod@4.6.7)
       '@mastra/server': 1.78.0(@mastra/core@1.78.0(@bufbuild/protobuf@2.16.0)(@grpc/grpc-js@1.14.6)(ai@6.0.317(zod@4.6.7))(bufferutil@4.1.0)(express@5.2.1)(quansync@0.2.11)(rxjs@7.8.2)(utf-8-validate@5.0.10)(zod-to-json-schema@3.25.2(zod@4.6.7))(zod@4.6.7))(zod@4.6.7)
       '@optimize-lodash/rollup-plugin': 5.1.0(rollup@4.64.0)
@@ -20624,13 +20606,13 @@ snapshots:
 
   '@modelcontextprotocol/node@2.1.2(@modelcontextprotocol/server@2.3.1)':
     dependencies:
-      '@hono/node-server': 1.19.17(hono@4.13.12)
+      '@hono/node-server': 2.1.6(hono@4.13.12)
       '@modelcontextprotocol/server': 2.3.1
       hono: 4.13.12
 
   '@modelcontextprotocol/sdk@1.32.1(@cfworker/json-schema@4.1.1)(zod@3.25.76)':
     dependencies:
-      '@hono/node-server': 1.19.17(hono@4.13.12)
+      '@hono/node-server': 2.1.6(hono@4.13.12)
       ajv: 8.18.0
       ajv-formats: 3.0.1(ajv@8.18.0)
       content-type: 1.0.5
@@ -20654,7 +20636,7 @@ snapshots:
 
   '@modelcontextprotocol/sdk@1.32.1(@cfworker/json-schema@4.1.1)(zod@4.6.7)':
     dependencies:
-      '@hono/node-server': 1.19.17(hono@4.13.12)
+      '@hono/node-server': 2.1.6(hono@4.13.12)
       ajv: 8.18.0
       ajv-formats: 3.0.1(ajv@8.18.0)
       content-type: 1.0.5
@@ -25025,6 +25007,10 @@ snapshots:
     dependencies:
       tslib: 2.8.1
 
+  '@whatwg-node/promise-helpers@2.0.1':
+    dependencies:
+      tslib: 2.8.1
+
   '@whatwg-node/server@0.10.18':
     dependencies:
       '@envelop/instrumentation': 1.0.0
@@ -26100,6 +26086,8 @@ snapshots:
     optional: true
 
   commander@14.0.3: {}
+
+  commander@15.0.0: {}
 
   commander@2.20.3: {}
 
@@ -27746,7 +27734,7 @@ snapshots:
       https-proxy-agent: 7.0.6
       is-stream: 2.0.1
       node-fetch: 2.7.0
-      uuid: 9.0.1
+      uuid: 11.1.1
     transitivePeerDependencies:
       - encoding
       - supports-color
@@ -27961,7 +27949,7 @@ snapshots:
       google-auth-library: 9.15.1
       qs: 6.16.1
       url-template: 2.0.8
-      uuid: 9.0.1
+      uuid: 11.1.1
     transitivePeerDependencies:
       - encoding
       - supports-color
@@ -28016,7 +28004,7 @@ snapshots:
       graphql: 16.13.1
       lodash.get: 4.4.2
 
-  graphql-scalars@1.25.0(graphql@16.13.1):
+  graphql-scalars@2.0.1(graphql@16.13.1):
     dependencies:
       graphql: 16.13.1
       tslib: 2.8.1
@@ -28027,7 +28015,7 @@ snapshots:
       '@envelop/instrumentation': 1.0.0
       '@graphql-tools/executor': 1.5.1(graphql@16.13.1)
       '@graphql-tools/schema': 10.0.31(graphql@16.13.1)
-      '@graphql-tools/utils': 10.11.0(graphql@16.13.1)
+      '@graphql-tools/utils': 12.1.0(graphql@16.13.1)
       '@graphql-yoga/logger': 2.0.1
       '@graphql-yoga/subscription': 5.0.5
       '@whatwg-node/fetch': 0.10.13
@@ -29362,9 +29350,9 @@ snapshots:
       jwa: 2.0.1
       safe-buffer: 5.2.1
 
-  katex@0.16.47:
+  katex@0.18.10:
     dependencies:
-      commander: 8.3.0
+      commander: 15.0.0
 
   keyv@4.5.4:
     dependencies:
@@ -29730,14 +29718,14 @@ snapshots:
 
   marked@16.4.2: {}
 
-  mastra@1.34.2(@hono/node-server@1.19.17(hono@4.13.12))(@mastra/core@1.78.0(@bufbuild/protobuf@2.16.0)(@grpc/grpc-js@1.14.6)(ai@6.0.317(zod@4.6.7))(bufferutil@4.1.0)(express@5.2.1)(quansync@0.2.11)(rxjs@7.8.2)(utf-8-validate@5.0.10)(zod-to-json-schema@3.25.2(zod@4.6.7))(zod@4.6.7))(bufferutil@4.1.0)(rxjs@7.8.2)(typescript@5.5.4)(utf-8-validate@5.0.10)(zod@4.6.7):
+  mastra@1.34.2(@hono/node-server@2.1.6(hono@4.13.12))(@mastra/core@1.78.0(@bufbuild/protobuf@2.16.0)(@grpc/grpc-js@1.14.6)(ai@6.0.317(zod@4.6.7))(bufferutil@4.1.0)(express@5.2.1)(quansync@0.2.11)(rxjs@7.8.2)(utf-8-validate@5.0.10)(zod-to-json-schema@3.25.2(zod@4.6.7))(zod@4.6.7))(bufferutil@4.1.0)(rxjs@7.8.2)(typescript@5.5.4)(utf-8-validate@5.0.10)(zod@4.6.7):
     dependencies:
       '@babel/parser': 8.0.7
       '@babel/types': 8.0.6
       '@clack/prompts': 1.8.1
       '@expo/devcert': 1.2.1
       '@mastra/core': 1.78.0(@bufbuild/protobuf@2.16.0)(@grpc/grpc-js@1.14.6)(ai@6.0.317(zod@4.6.7))(bufferutil@4.1.0)(express@5.2.1)(quansync@0.2.11)(rxjs@7.8.2)(utf-8-validate@5.0.10)(zod-to-json-schema@3.25.2(zod@4.6.7))(zod@4.6.7)
-      '@mastra/deployer': 1.78.0(@hono/node-server@1.19.17(hono@4.13.12))(@mastra/core@1.78.0(@bufbuild/protobuf@2.16.0)(@grpc/grpc-js@1.14.6)(ai@6.0.317(zod@4.6.7))(bufferutil@4.1.0)(express@5.2.1)(quansync@0.2.11)(rxjs@7.8.2)(utf-8-validate@5.0.10)(zod-to-json-schema@3.25.2(zod@4.6.7))(zod@4.6.7))(bufferutil@4.1.0)(typescript@5.5.4)(utf-8-validate@5.0.10)(zod@4.6.7)
+      '@mastra/deployer': 1.78.0(@hono/node-server@2.1.6(hono@4.13.12))(@mastra/core@1.78.0(@bufbuild/protobuf@2.16.0)(@grpc/grpc-js@1.14.6)(ai@6.0.317(zod@4.6.7))(bufferutil@4.1.0)(express@5.2.1)(quansync@0.2.11)(rxjs@7.8.2)(utf-8-validate@5.0.10)(zod-to-json-schema@3.25.2(zod@4.6.7))(zod@4.6.7))(bufferutil@4.1.0)(typescript@5.5.4)(utf-8-validate@5.0.10)(zod@4.6.7)
       '@mastra/loggers': 1.3.8(@mastra/core@1.78.0(@bufbuild/protobuf@2.16.0)(@grpc/grpc-js@1.14.6)(ai@6.0.317(zod@4.6.7))(bufferutil@4.1.0)(express@5.2.1)(quansync@0.2.11)(rxjs@7.8.2)(utf-8-validate@5.0.10)(zod-to-json-schema@3.25.2(zod@4.6.7))(zod@4.6.7))
       archiver: 8.0.0
       commander: 14.0.3
@@ -30052,7 +30040,7 @@ snapshots:
       dompurify: 3.4.17
       es-toolkit: 1.53.0
       fastdom: 1.0.12
-      katex: 0.16.47
+      katex: 0.18.10
       khroma: 2.1.0
       marked: 16.4.2
       roughjs: 4.6.6
@@ -30192,7 +30180,7 @@ snapshots:
     dependencies:
       '@types/katex': 0.16.8
       devlop: 1.1.0
-      katex: 0.16.47
+      katex: 0.18.10
       micromark-factory-space: 2.0.1
       micromark-util-character: 2.1.1
       micromark-util-symbol: 2.0.1
@@ -32162,7 +32150,7 @@ snapshots:
       '@types/katex': 0.16.8
       hast-util-from-html-isomorphic: 2.0.0
       hast-util-to-text: 4.0.3
-      katex: 0.16.47
+      katex: 0.18.10
       unist-util-visit-parents: 6.0.2
       vfile: 6.0.3
 
@@ -32870,7 +32858,7 @@ snapshots:
       hast: 1.0.0
       hast-util-to-jsx-runtime: 2.3.6
       html-url-attributes: 3.0.1
-      katex: 0.16.47
+      katex: 0.18.10
       lucide-react: 0.542.0(react@19.3.1)
       marked: 16.4.2
       mermaid: 11.17.2
@@ -33400,7 +33388,7 @@ snapshots:
       lodash: 4.18.1
       p-map: 4.0.0
       tus-js-client: 2.3.2
-      uuid: 8.3.2
+      uuid: 11.1.1
     transitivePeerDependencies:
       - supports-color
 
@@ -33587,14 +33575,14 @@ snapshots:
 
   type-fest@4.41.0: {}
 
-  type-graphql@2.0.0-rc.1(class-validator@0.14.4)(graphql-scalars@1.25.0(graphql@16.13.1))(graphql@16.13.1):
+  type-graphql@2.0.0-rc.1(class-validator@0.14.4)(graphql-scalars@2.0.1(graphql@16.13.1))(graphql@16.13.1):
     dependencies:
       '@graphql-yoga/subscription': 5.0.5
       '@types/node': 22.20.5
       '@types/semver': 7.7.1
       graphql: 16.13.1
       graphql-query-complexity: 0.12.0(graphql@16.13.1)
-      graphql-scalars: 1.25.0(graphql@16.13.1)
+      graphql-scalars: 2.0.1(graphql@16.13.1)
       semver: 7.8.5
       tslib: 2.8.1
     optionalDependencies:
@@ -33950,15 +33938,9 @@ snapshots:
 
   util-deprecate@1.0.2: {}
 
-  uuid@10.0.0: {}
-
   uuid@11.1.1: {}
 
   uuid@14.0.2: {}
-
-  uuid@8.3.2: {}
-
-  uuid@9.0.1: {}
 
   uvu@0.5.6:
     dependencies:

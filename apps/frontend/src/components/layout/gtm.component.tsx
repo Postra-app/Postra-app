@@ -33,17 +33,18 @@ export const TrialTracker: FC = () => {
   return null;
 };
 
-export const GoogleTagManagerComponent: FC<{ gtmId?: string }> = ({
-  gtmId,
-}) => {
+export const GoogleTagManagerComponent: FC<{
+  gtmId?: string;
+  nonce?: string;
+}> = ({ gtmId, nonce }) => {
   if (!gtmId) {
     return null;
   }
   return (
     <>
-      <Script src="/g.js" strategy="afterInteractive" />
+      <Script src="/g.js" nonce={nonce} strategy="afterInteractive" />
 
-      <Script id="google-ads-gtag" strategy="afterInteractive">
+      <Script id="google-ads-gtag" nonce={nonce} strategy="afterInteractive">
         {`
     window.dataLayer = window.dataLayer || [];
     function gtag(){dataLayer.push(arguments);}
