@@ -105,12 +105,15 @@ export class PublicIntegrationsController {
     // Storage renames the file; the name it came with is what the library
     // search looks at.
     const originalName = originalNameOfFile(file.originalname);
+    await this._mediaService.assertStorage(org.id, file.size);
     const getFile = await this.storage.uploadFile(file);
     return this._mediaService.saveFile(
       org.id,
       getFile.originalname,
       getFile.path,
-      originalName
+      originalName,
+      false,
+      file.size
     );
   }
 
@@ -142,6 +145,7 @@ export class PublicIntegrationsController {
     const mimetype = detected.mime;
     const ext = detected.ext;
 
+    await this._mediaService.assertStorage(org.id, buffer.length);
     const getFile = await this.storage.uploadFile({
       buffer,
       mimetype,
@@ -159,7 +163,9 @@ export class PublicIntegrationsController {
       org.id,
       getFile.originalname,
       getFile.path,
-      originalNameFromUrl(body.url, ext)
+      originalNameFromUrl(body.url, ext),
+      false,
+      buffer.length
     );
   }
 

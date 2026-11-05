@@ -357,6 +357,7 @@ describe('planLimits', () => {
       team_members: 1,
       webhooks: 1,
       autoPostLimit: 1,
+      media_storage_gb: 2,
     });
   });
 
@@ -380,6 +381,18 @@ describe('planLimits', () => {
       webhooks: 0,
       autoPostLimit: 0,
     });
+  });
+
+  // Krzysztof, 2026-11-05: media storage per plan, 2 GB while trialing.
+  it('media storage: Starter 10 GB, Pro 25 GB, Business 100 GB, trial and no plan 2 GB', () => {
+    expect(planLimits('STANDARD').media_storage_gb).toBe(10);
+    expect(planLimits('PRO').media_storage_gb).toBe(25);
+    expect(planLimits('ULTIMATE').media_storage_gb).toBe(100);
+    expect(planLimits('TEAM').media_storage_gb).toBe(25);
+    expect(planLimits('FREE').media_storage_gb).toBe(2);
+    for (const tier of ['STANDARD', 'PRO', 'ULTIMATE']) {
+      expect(planLimits(tier, true).media_storage_gb).toBe(2);
+    }
   });
 
   it('gives a paying plan its full limits', () => {

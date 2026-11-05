@@ -242,6 +242,12 @@ export class MediaController {
   // they silently return "media not found" (empty body → Stock search failed).
   // Declared below /:id until 2026-10-01, so it never ran: every composer open
   // got /:id's empty answer instead of the options.
+  // How much of the plan's media storage the library uses (Media page, app).
+  @Get('/storage')
+  storageQuota(@GetOrgFromRequest() org: Organization) {
+    return this._mediaService.storageQuota(org.id);
+  }
+
   @Get('/video-options')
   getVideos() {
     return this._mediaService.getVideoOptions();
@@ -681,12 +687,15 @@ export class MediaController {
     @UploadedFile() file: Express.Multer.File
   ) {
     const originalName = file?.originalname || '';
+    await this._mediaService.assertStorage(org.id, file?.size || 0);
     const uploadedFile = await this.storage.uploadFile(file);
     return this._mediaService.saveFile(
       org.id,
       uploadedFile.originalname,
       uploadedFile.path,
-      originalName
+      originalName,
+      false,
+      file?.size
     );
   }
 
@@ -747,6 +756,9 @@ export class MediaController {
       throw new BadRequestException('No file was sent');
     }
     const originalName = file.originalname;
+    if (preventSave !== 'true') {
+      await this._mediaService.assertStorage(org.id, file.size);
+    }
     const getFile = await this.storage.uploadFile(file);
 
     if (preventSave === 'true') {
@@ -759,7 +771,8 @@ export class MediaController {
       getFile.originalname,
       getFile.path,
       originalName,
-      aiGenerated === 'true'
+      aiGenerated === 'true',
+      file.size
     );
   }
 
@@ -779,6 +792,12 @@ export class MediaController {
     // The upload belongs to the organisation that started it:
     // the first call records it, every later call must come from it.
     if (endpoint === 'create-multipart-upload') {
+      // The declared size is the client's word; the real one is checked again
+      // when the parts are put together.
+      await this._mediaService.assertStorage(
+        org.id,
+        Number(req.body?.file?.size) || 0
+      );
       let created: any;
       const send = res.json.bind(res);
       res.json = ((body: any) => {
@@ -812,13 +831,25 @@ export class MediaController {
     // @ts-ignore
     const name = upload.Location.split('/').pop();
     const originalName = req.body?.file?.name;
+    // @ts-ignore set by the S3 uploader from the assembled object
+    const size = Number(upload.size) || 0;
+
+    try {
+      await this._mediaService.assertStorage(org.id, size);
+    } catch (e) {
+      // @ts-ignore
+      await this.storage.removeFile(upload.Location).catch(() => undefined);
+      throw e;
+    }
 
     const saveFile = await this._mediaService.saveFile(
       org.id,
       name,
       // @ts-ignore
       upload.Location,
-      originalName || undefined
+      originalName || undefined,
+      false,
+      size
     );
 
     res.status(200).json({ ...upload, saved: saveFile });

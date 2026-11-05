@@ -44,15 +44,24 @@ const run = async (key: string, head: Buffer, total: number) => {
 describe('S3 multipart complete', () => {
   afterEach(() => jest.restoreAllMocks());
 
-  it('keeps a video within the limit and returns its CDN address', async () => {
+  it('keeps a video within the limit and returns its CDN address and real size', async () => {
     const { out, res, deleted } = await run('2026/10/04/a.mp4', MP4_HEAD, 200 * 1024 * 1024);
     expect(res.status).not.toHaveBeenCalled();
     expect(deleted).toBe(false);
     expect((out as any).Location).toBe('https://cdn.test/2026/10/04/a.mp4');
+    // The media storage counts the assembled size, not the declared one.
+    expect((out as any).size).toBe(200 * 1024 * 1024);
   });
 
-  it('deletes a video assembled past 4 GB whatever size was declared', async () => {
-    const { res, deleted } = await run('2026/10/04/b.mp4', MP4_HEAD, 5 * 1024 ** 3);
+  it('keeps a video of exactly 1 GB', async () => {
+    const { res, deleted } = await run('2026/10/04/e.mp4', MP4_HEAD, 1024 ** 3);
+    expect(res.status).not.toHaveBeenCalled();
+    expect(deleted).toBe(false);
+  });
+
+  // 2026-11-05: 1 GB, as upload-simple and the web and phone uploaders (was 4 GB).
+  it('deletes a video assembled past 1 GB whatever size was declared', async () => {
+    const { res, deleted } = await run('2026/10/04/b.mp4', MP4_HEAD, 1024 ** 3 + 1);
     expect(res.status).toHaveBeenCalledWith(400);
     expect(res.json.mock.calls[0][0].message).toMatch(/exceeds the maximum allowed size/);
     expect(deleted).toBe(true);
@@ -62,5 +71,18 @@ describe('S3 multipart complete', () => {
     const { res, deleted } = await run('2026/10/04/c.jpg', JPEG_HEAD, 11 * 1024 * 1024);
     expect(res.status).toHaveBeenCalledWith(400);
     expect(deleted).toBe(true);
+  });
+});
+
+describe('S3 multipart create', () => {
+  afterEach(() => jest.restoreAllMocks());
+
+  it('refuses a video declared past 1 GB before S3 is asked', async () => {
+    const send = jest.spyOn(S3Client.prototype, 'send').mockResolvedValue({} as never);
+    const res: any = { status: jest.fn().mockReturnThis(), json: jest.fn().mockReturnThis() };
+    const req: any = { body: { file: { name: 'long.mp4', type: 'video/mp4', size: 1024 ** 3 + 1 } } };
+    await handleS3Upload('create-multipart-upload', req, res);
+    expect(res.status).toHaveBeenCalledWith(400);
+    expect(send).not.toHaveBeenCalled();
   });
 });

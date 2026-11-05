@@ -26,7 +26,8 @@ const response = () => {
 // the first call returned. Another organisation holding that pair could list,
 // sign parts into, abort or complete the upload.
 describe('multipart upload steps', () => {
-  const controller = new MediaController({} as any, {} as any, {} as any);
+  const media = { assertStorage: jest.fn(async () => undefined), saveFile: jest.fn(async () => ({ id: 'm1' })) };
+  const controller = new MediaController(media as any, {} as any, {} as any);
   beforeEach(() => {
     store.clear();
     s3.mockReset();
@@ -88,5 +89,67 @@ describe('multipart upload steps', () => {
     const retried = response();
     await controller.uploadFile({ id: 'org-a' } as any, { body: { uploadId: 'up-3', key: '2026/10/26/c.mp4' } } as any, retried, 'list-parts');
     expect(retried.status).toHaveBeenCalledWith(200);
+  });
+});
+
+// The plan's media storage (Krzysztof, 2026-11-05): a file that does not fit
+// is refused before any part is sent, and again on the real assembled size.
+describe('multipart upload and the media storage', () => {
+  const full = Object.assign(new Error('Your media library is full'), { status: 402 });
+  beforeEach(() => {
+    store.clear();
+    s3.mockReset();
+    process.env.STORAGE_PROVIDER = 's3';
+  });
+
+  it('a start that would not fit is refused before S3 is asked', async () => {
+    const media = { assertStorage: jest.fn(async () => { throw full; }) };
+    const controller = new MediaController(media as any, {} as any, {} as any);
+    await expect(
+      controller.uploadFile({ id: 'org-a' } as any, { body: { file: { name: 'a.mp4', size: 900_000_000 } } } as any, response(), 'create-multipart-upload')
+    ).rejects.toBe(full);
+    expect(media.assertStorage).toHaveBeenCalledWith('org-a', 900_000_000);
+    expect(s3).not.toHaveBeenCalled();
+  });
+
+  it('completion checks the assembled size, removes a file that does not fit and saves nothing', async () => {
+    const media = {
+      assertStorage: jest.fn(async (_o: string, bytes: number) => {
+        if (bytes > 1000) throw full;
+      }),
+      saveFile: jest.fn(),
+    };
+    const controller = new MediaController(media as any, {} as any, {} as any);
+    const removeFile = jest.fn(async () => undefined);
+    (controller as any).storage = { removeFile };
+    s3.mockImplementation(async (_e: string, _req: any, res: any) =>
+      res.status(200).json({ uploadId: 'up-9', key: '2026/11/05/z.mp4' })
+    );
+    // Declared small...
+    await controller.uploadFile({ id: 'org-a' } as any, { body: { file: { name: 'z.mp4', size: 10 } } } as any, response(), 'create-multipart-upload');
+    s3.mockReset();
+    // ...assembled big.
+    s3.mockImplementation(async () => ({ Location: 'https://cdn.test/2026/11/05/z.mp4', size: 5000 }));
+    await expect(
+      controller.uploadFile({ id: 'org-a' } as any, { body: { uploadId: 'up-9', key: '2026/11/05/z.mp4', file: { name: 'z.mp4' } } } as any, response(), 'complete-multipart-upload')
+    ).rejects.toBe(full);
+    expect(media.assertStorage).toHaveBeenLastCalledWith('org-a', 5000);
+    expect(removeFile).toHaveBeenCalledWith('https://cdn.test/2026/11/05/z.mp4');
+    expect(media.saveFile).not.toHaveBeenCalled();
+  });
+
+  it('a completion that fits is saved with its real size', async () => {
+    const media = { assertStorage: jest.fn(async () => undefined), saveFile: jest.fn(async () => ({ id: 'm1' })) };
+    const controller = new MediaController(media as any, {} as any, {} as any);
+    s3.mockImplementation(async (_e: string, _req: any, res: any) =>
+      res.status(200).json({ uploadId: 'up-8', key: '2026/11/05/y.mp4' })
+    );
+    await controller.uploadFile({ id: 'org-a' } as any, { body: { file: { name: 'y.mp4', size: 10 } } } as any, response(), 'create-multipart-upload');
+    s3.mockReset();
+    s3.mockImplementation(async () => ({ Location: 'https://cdn.test/2026/11/05/y.mp4', size: 4242 }));
+    const res = response();
+    await controller.uploadFile({ id: 'org-a' } as any, { body: { uploadId: 'up-8', key: '2026/11/05/y.mp4', file: { name: 'clip.mp4' } } } as any, res, 'complete-multipart-upload');
+    expect(media.saveFile).toHaveBeenCalledWith('org-a', 'y.mp4', 'https://cdn.test/2026/11/05/y.mp4', 'clip.mp4', false, 4242);
+    expect(res.status).toHaveBeenCalledWith(200);
   });
 });

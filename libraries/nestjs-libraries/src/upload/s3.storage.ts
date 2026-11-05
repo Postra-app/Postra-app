@@ -2,6 +2,7 @@ import {
   S3Client,
   PutObjectCommand,
   DeleteObjectCommand,
+  HeadObjectCommand,
 } from '@aws-sdk/client-s3';
 import 'multer';
 import { makeId } from '@gitroom/nestjs-libraries/services/make.is';
@@ -131,6 +132,22 @@ export class S3Storage implements IUploadProvider {
       encoding: '7bit',
       stream: file.buffer as any,
     };
+  }
+
+  async sizeOf(filePath: string): Promise<number | null> {
+    // Only our own bucket, behind our own CDN address.
+    if (!this._cdnUrl || !filePath?.startsWith(this._cdnUrl + '/')) {
+      return null;
+    }
+    try {
+      const key = new URL(filePath).pathname.replace(/^\//, '');
+      const head = await this._client.send(
+        new HeadObjectCommand({ Bucket: this._bucketName, Key: key })
+      );
+      return Number(head.ContentLength) || null;
+    } catch {
+      return null;
+    }
   }
 
   async removeFile(filePath: string): Promise<void> {

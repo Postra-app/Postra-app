@@ -37,6 +37,10 @@ export interface PricingInnerInterface {
   // via SubscriptionService.checkCredits('ai_agent'), counted from AiUsage
   // (engine 'agent', unit 'messages').
   agent_messages: number;
+  // Space for the media library (every file uploaded or made in Postra),
+  // in GB. Krzysztof, 2026-11-05: a library cannot grow without end on a
+  // £19 plan; files deleted from the library stop counting at once.
+  media_storage_gb: number;
 }
 export interface PricingInterface {
   [key: string]: PricingInnerInterface;
@@ -97,6 +101,7 @@ export const pricing: PricingInterface = {
     autoPostLimit: 0,
     generate_videos: 0,
     agent_messages: 0,
+    media_storage_gb: 2,
   },
   // £19 (was £12): with 75 AI images, 15 AI videos and
   // 2 Auto Post feeds. Stripe prices are found or made by amount
@@ -118,6 +123,7 @@ export const pricing: PricingInterface = {
     autoPostLimit: 2,
     generate_videos: 15,
     agent_messages: AGENT_FAIR_USE_MESSAGES,
+    media_storage_gb: 10,
   },
   // Legacy, not purchasable (removed from BillingSubscribeDto). Kept so any
   // existing/grandfathered TEAM subscription still resolves.
@@ -138,6 +144,7 @@ export const pricing: PricingInterface = {
     autoPostLimit: 5,
     generate_videos: 10,
     agent_messages: AGENT_FAIR_USE_MESSAGES,
+    media_storage_gb: 25,
   },
   PRO: {
     current: 'PRO',
@@ -156,6 +163,7 @@ export const pricing: PricingInterface = {
     autoPostLimit: 3,
     generate_videos: 30,
     agent_messages: AGENT_FAIR_USE_MESSAGES,
+    media_storage_gb: 25,
   },
   ULTIMATE: {
     current: 'ULTIMATE',
@@ -176,6 +184,7 @@ export const pricing: PricingInterface = {
     autoPostLimit: 10,
     generate_videos: 60,
     agent_messages: AGENT_FAIR_USE_MESSAGES,
+    media_storage_gb: 100,
   },
 };
 
@@ -266,6 +275,7 @@ export const TRIAL_LIMITS = {
   team_members: 1,
   webhooks: 1,
   autoPostLimit: 1,
+  media_storage_gb: 2,
 } as const;
 
 // A plan's limits as the organisation may use them now: the plan itself, or
@@ -285,6 +295,7 @@ export const planLimits = (
     team_members: Math.min(plan.team_members, TRIAL_LIMITS.team_members),
     webhooks: Math.min(plan.webhooks, TRIAL_LIMITS.webhooks),
     autoPostLimit: Math.min(plan.autoPostLimit, TRIAL_LIMITS.autoPostLimit),
+    media_storage_gb: Math.min(plan.media_storage_gb, TRIAL_LIMITS.media_storage_gb),
   };
 };
 

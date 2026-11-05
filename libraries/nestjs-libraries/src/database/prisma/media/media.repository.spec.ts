@@ -154,3 +154,30 @@ describe('updating media that is not this organisation’s', () => {
     await expect(repository.setTemplateFlag('org-a', 'm-a', true)).rejects.toThrow('connection lost');
   });
 });
+
+// Krzysztof, 2026-11-05: the plan's media storage counts the library's bytes.
+describe('media storage', () => {
+  it('saveFile records the size it is given, 0 when it has none', async () => {
+    const { repository, calls } = makeRepo();
+    await repository.saveFile('org-1', 'a.mp4', '2026/11/05/a.mp4', 'clip.mp4', false, 734_003_200);
+    await repository.saveFile('org-1', 'b.jpg', '2026/11/05/b.jpg');
+    expect(calls.create[0].data.fileSize).toBe(734_003_200);
+    expect(calls.create[1].data.fileSize).toBe(0);
+  });
+
+  it('storageUsed sums the live library of one organisation as a bigint', async () => {
+    const queries: { sql: string; values: unknown[] }[] = [];
+    const model = {
+      $queryRaw: (strings: TemplateStringsArray, ...values: unknown[]) => {
+        queries.push({ sql: strings.join('?'), values });
+        // Past 2 GB, where a 32-bit sum would overflow.
+        return Promise.resolve([{ used: BigInt(12 * 1024 ** 3) }]);
+      },
+    };
+    const repository = new MediaRepository({ model } as any);
+    expect(await repository.storageUsed('org-1')).toBe(12 * 1024 ** 3);
+    expect(queries[0].sql).toMatch(/SUM\("fileSize"\)/);
+    expect(queries[0].sql).toMatch(/"deletedAt" IS NULL/);
+    expect(queries[0].values).toEqual(['org-1']);
+  });
+});

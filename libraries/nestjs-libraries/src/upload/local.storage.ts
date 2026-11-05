@@ -1,5 +1,5 @@
 import { IUploadProvider } from './upload.interface';
-import { mkdirSync, unlink, writeFileSync } from 'fs';
+import { mkdirSync, statSync, unlink, writeFileSync } from 'fs';
 import { resolve, sep } from 'path';
 import { isSafePublicHttpsUrl } from '@gitroom/nestjs-libraries/dtos/webhooks/webhook.url.validator';
 import { ssrfSafeDispatcher } from '@gitroom/nestjs-libraries/dtos/webhooks/ssrf.safe.dispatcher';
@@ -119,6 +119,25 @@ export class LocalStorage implements IUploadProvider {
   // anything; and a stored path is only ever deleted inside the upload
   // directory: resolve() collapses `..` before the comparison (upstream
   // 12db9bd2f).
+  async sizeOf(filePath: string): Promise<number | null> {
+    const publicPrefix = process.env.FRONTEND_URL + '/uploads';
+    if (!filePath?.startsWith(publicPrefix)) {
+      return null;
+    }
+    const base = resolve(String(this.uploadDirectory));
+    const localPath = resolve(
+      this.uploadDirectory + filePath.slice(publicPrefix.length)
+    );
+    if (!localPath.startsWith(base + sep)) {
+      return null;
+    }
+    try {
+      return statSync(localPath).size;
+    } catch {
+      return null;
+    }
+  }
+
   async removeFile(filePath: string): Promise<void> {
     const publicPrefix = process.env.FRONTEND_URL + '/uploads';
     const base = resolve(String(this.uploadDirectory));

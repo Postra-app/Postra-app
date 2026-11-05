@@ -38,9 +38,11 @@ const ALLOWED_EXT_TO_MIME: Record<string, string> = {
 // Size limits. The size declared at create time is only the client's word:
 // S3 never sees it, and each presigned part accepts up to 5 GB, so the real
 // size of the assembled object is checked again on complete (with the magic
-// bytes). Generous enough for long-form video (YouTube, Reels).
+// bytes). 1 GB for video, as on upload-simple and in the web and phone
+// uploaders (Krzysztof, 2026-11-05: 4 GB was more than any client sends and
+// more than one file should take of a plan's media storage).
 const MAX_IMAGE_BYTES = 10 * 1024 * 1024; // 10 MB
-const MAX_VIDEO_BYTES = 4 * 1024 * 1024 * 1024; // 4 GB
+const MAX_VIDEO_BYTES = 1024 * 1024 * 1024; // 1 GB
 
 function normalizeExtension(filename: string): string | null {
   const ext = path.extname(filename || '').toLowerCase();
@@ -233,7 +235,8 @@ export async function completeMultipartUpload(req: Request, res: Response) {
     }
 
     response.Location = `${CDN_URL}/${key}`;
-    return response;
+    // For the media storage count (media.controller).
+    return Object.assign(response, { size: total });
   } catch (err) {
     logger.error(`completeMultipartUpload failed: ${(err as Error)?.message ?? err}`);
     return res.status(500).json({ error: 'Upload failed' });
