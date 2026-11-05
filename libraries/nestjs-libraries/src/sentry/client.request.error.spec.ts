@@ -20,7 +20,7 @@ const rawBodyError = async (body: Buffer, limit: number): Promise<unknown> => {
 const event = { type: undefined } as ErrorEvent;
 
 describe('isClientRequestError', () => {
-  it('drops the 413 of a body over the limit (POSTRA-1K, POST /copilot/agent)', async () => {
+  it('drops the 413 of a body over the limit (a 3 MB POST to /copilot/agent)', async () => {
     const error = await rawBodyError(Buffer.alloc(3 * 1024 * 1024), 2 * 1024 * 1024);
     expect(error).toMatchObject({ status: 413, type: 'entity.too.large' });
     expect(isClientRequestError(error)).toBe(true);

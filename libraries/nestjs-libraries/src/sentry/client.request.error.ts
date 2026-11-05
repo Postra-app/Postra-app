@@ -20,7 +20,7 @@ const CLIENT_REQUEST_ERROR_TYPES = new Set([
  *
  * SentryGlobalFilter skips Nest's HttpException, but body-parser throws
  * http-errors instead, so a 3 MB POST to /copilot/agent reached Sentry as
- * an unhandled PayloadTooLargeError (POSTRA-1K) although the client got its
+ * an unhandled PayloadTooLargeError although the client got its
  * 413. Anyone can send those, as many as they like, and each would spend the
  * Sentry quota on noise.
  *
