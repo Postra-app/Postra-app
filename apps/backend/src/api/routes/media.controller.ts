@@ -18,6 +18,7 @@ import {
   UsePipes,
 } from '@nestjs/common';
 import { AccountAgeGuard } from '@gitroom/backend/services/auth/account-age.guard';
+import { UploadSlotsGuard } from '@gitroom/backend/services/auth/upload-slots.guard';
 import { CheckPolicies } from '@gitroom/backend/services/auth/permissions/permissions.ability';
 import {
   AuthorizationActions,
@@ -681,6 +682,7 @@ export class MediaController {
 
   @Post('/upload-server')
   @Throttle({ default: { ttl: 300000, limit: 60 } })
+  @UseGuards(UploadSlotsGuard)
   @UseInterceptors(FileInterceptor('file'))
   @UsePipes(new CustomFileValidationPipe())
   async uploadServer(
@@ -741,6 +743,7 @@ export class MediaController {
 
   @Post('/upload-simple')
   @Throttle({ default: { ttl: 300000, limit: 60 } })
+  @UseGuards(UploadSlotsGuard)
   @UseInterceptors(FileInterceptor('file'))
   @UsePipes(new CustomFileValidationPipe())
   async uploadSimple(
