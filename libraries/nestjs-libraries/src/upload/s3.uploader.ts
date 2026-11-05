@@ -111,8 +111,12 @@ export async function createMultipartUpload(req: Request, res: Response) {
   }
   const safeContentType = ALLOWED_EXT_TO_MIME[safeExt];
 
+  // A size is required: the parts are signed against it (multipart.owner.ts).
   const declaredSize = Number(file?.size);
-  if (Number.isFinite(declaredSize) && declaredSize > maxBytesForMime(safeContentType)) {
+  if (!Number.isFinite(declaredSize) || declaredSize <= 0) {
+    return res.status(400).json({ message: 'File size is missing.' });
+  }
+  if (declaredSize > maxBytesForMime(safeContentType)) {
     return res.status(400).json({
       message: `File size exceeds the maximum allowed size of ${maxBytesForMime(
         safeContentType
@@ -151,6 +155,7 @@ export async function prepareUploadParts(req: Request, res: Response) {
         Key: partData.key,
         PartNumber: part.number,
         UploadId: partData.uploadId,
+        ContentLength: Number(part.size),
       });
       response.presignedUrls[part.number] = await getSignedUrl(S3, command, {
         expiresIn: 3600,
@@ -264,11 +269,14 @@ export async function signPart(req: Request, res: Response) {
   const { key, uploadId } = req.body;
   const partNumber = parseInt(req.body.partNumber);
 
+  // Signed for its exact length: S3 refuses a body of any other size. The
+  // controller has checked it against the declared file (reservePart).
   const command = new UploadPartCommand({
     Bucket: S3_BUCKET,
     Key: key,
     PartNumber: partNumber,
     UploadId: uploadId,
+    ContentLength: Number(req.body.size),
   });
   const url = await getSignedUrl(S3, command, { expiresIn: 3600 });
 

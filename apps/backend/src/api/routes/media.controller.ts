@@ -33,6 +33,7 @@ import {
   forgetUpload,
   ownsUpload,
   recordUploadOwner,
+  reservePart,
   uploadPairOf,
 } from '@gitroom/nestjs-libraries/upload/multipart.owner';
 import handleS3Upload from '@gitroom/nestjs-libraries/upload/s3.uploader';
@@ -807,13 +808,37 @@ export class MediaController {
       await handle();
       res.json = send;
       if (created?.uploadId && created?.key) {
-        await recordUploadOwner(org.id, created.uploadId, created.key);
+        await recordUploadOwner(
+          org.id,
+          created.uploadId,
+          created.key,
+          Number(req.body?.file?.size) || 0
+        );
       }
       return res.json(created);
     }
     const pair = uploadPairOf(endpoint, req.body);
     if (!(await ownsUpload(org.id, pair.uploadId, pair.key))) {
       return res.status(404).json({ message: 'Upload not found' });
+    }
+    // Every part is signed for its exact size, within the declared file.
+    if (endpoint === 'sign-part' || endpoint === 'prepare-upload-parts') {
+      const parts =
+        endpoint === 'sign-part'
+          ? [{ number: req.body?.partNumber, size: req.body?.size }]
+          : Array.isArray(req.body?.partData?.parts)
+          ? req.body.partData.parts
+          : [];
+      if (!parts.length) {
+        return res.status(400).json({ message: 'No part to sign' });
+      }
+      for (const part of parts) {
+        if (!(await reservePart(pair.uploadId, part?.number, part?.size))) {
+          return res
+            .status(400)
+            .json({ message: 'The part does not fit in the declared file size.' });
+        }
+      }
     }
 
     const upload = await handle();

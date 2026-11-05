@@ -86,3 +86,28 @@ describe('S3 multipart create', () => {
     expect(send).not.toHaveBeenCalled();
   });
 });
+
+describe('S3 multipart signing (2026-11-05)', () => {
+  afterEach(() => jest.restoreAllMocks());
+  const res = () => ({ status: jest.fn().mockReturnThis(), json: jest.fn().mockReturnThis() } as any);
+
+  it('refuses to start without a declared size', async () => {
+    const send = jest.spyOn(S3Client.prototype, 'send').mockResolvedValue({} as never);
+    const r = res();
+    await handleS3Upload('create-multipart-upload', { body: { file: { name: 'a.mp4' } } } as any, r);
+    expect(r.status).toHaveBeenCalledWith(400);
+    expect(send).not.toHaveBeenCalled();
+  });
+
+  it('signs a part for its exact length, so S3 refuses any other body', async () => {
+    const r = res();
+    await handleS3Upload(
+      'sign-part',
+      { body: { key: '2026/11/05/a.mp4', uploadId: 'u1', partNumber: 2, size: 10485760 } } as any,
+      r
+    );
+    const url = new URL(r.json.mock.calls[0][0].url);
+    expect(url.searchParams.get('X-Amz-SignedHeaders')).toContain('content-length');
+    expect(url.searchParams.get('partNumber')).toBe('2');
+  });
+});

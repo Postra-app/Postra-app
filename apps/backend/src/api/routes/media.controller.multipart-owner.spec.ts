@@ -2,11 +2,15 @@ jest.mock('isomorphic-dompurify', () => ({ __esModule: true, default: { sanitize
 jest.mock('nostr-tools', () => ({ getPublicKey: jest.fn(), Relay: class {}, finalizeEvent: jest.fn(), SimplePool: class {} }));
 
 const store = new Map<string, string>();
+const hashes = new Map<string, Record<string, string>>();
 jest.mock('@gitroom/nestjs-libraries/redis/redis.service', () => ({
   ioRedis: {
     set: jest.fn(async (k: string, v: string) => { store.set(k, v); return 'OK'; }),
     get: jest.fn(async (k: string) => store.get(k) ?? null),
-    del: jest.fn(async (k: string) => store.delete(k)),
+    del: jest.fn(async (...keys: string[]) => { keys.forEach((k) => { store.delete(k); hashes.delete(k); }); return keys.length; }),
+    hgetall: jest.fn(async (k: string) => ({ ...(hashes.get(k) || {}) })),
+    hset: jest.fn(async (k: string, f: string, v: string) => { hashes.set(k, { ...(hashes.get(k) || {}), [f]: v }); return 1; }),
+    expire: jest.fn(async () => 1),
   },
 }));
 const s3 = jest.fn();
@@ -151,5 +155,38 @@ describe('multipart upload and the media storage', () => {
     await controller.uploadFile({ id: 'org-a' } as any, { body: { uploadId: 'up-8', key: '2026/11/05/y.mp4', file: { name: 'clip.mp4' } } } as any, res, 'complete-multipart-upload');
     expect(media.saveFile).toHaveBeenCalledWith('org-a', 'y.mp4', 'https://cdn.test/2026/11/05/y.mp4', 'clip.mp4', false, 4242);
     expect(res.status).toHaveBeenCalledWith(200);
+  });
+});
+
+describe('sign-part goes only within the declared size', () => {
+  const media = { assertStorage: jest.fn(async () => undefined) };
+  const controller = new MediaController(media as any, {} as any, {} as any);
+  beforeEach(() => {
+    store.clear();
+    hashes.clear();
+    s3.mockReset();
+    process.env.STORAGE_PROVIDER = 's3';
+  });
+
+  it('a part past the declared 10 bytes is refused before anything is signed', async () => {
+    s3.mockImplementation(async (_e: string, _req: any, res: any) =>
+      res.status(200).json({ uploadId: 'up-7', key: '2026/11/05/x.mp4' })
+    );
+    await controller.uploadFile({ id: 'org-a' } as any, { body: { file: { name: 'x.mp4', size: 10 } } } as any, response(), 'create-multipart-upload');
+    s3.mockReset();
+    s3.mockImplementation(async (_e: string, _req: any, res: any) => res.status(200).json({ url: 'signed' }));
+
+    const ok = response();
+    await controller.uploadFile({ id: 'org-a' } as any, { body: { uploadId: 'up-7', key: '2026/11/05/x.mp4', partNumber: 1, size: 10 } } as any, ok, 'sign-part');
+    expect(ok.status).toHaveBeenCalledWith(200);
+
+    const big = response();
+    await controller.uploadFile({ id: 'org-a' } as any, { body: { uploadId: 'up-7', key: '2026/11/05/x.mp4', partNumber: 2, size: 5 * 1024 ** 3 } } as any, big, 'sign-part');
+    expect(big.status).toHaveBeenCalledWith(400);
+
+    const noSize = response();
+    await controller.uploadFile({ id: 'org-a' } as any, { body: { uploadId: 'up-7', key: '2026/11/05/x.mp4', partNumber: 2 } } as any, noSize, 'sign-part');
+    expect(noSize.status).toHaveBeenCalledWith(400);
+    expect(s3).toHaveBeenCalledTimes(1);
   });
 });
