@@ -23,6 +23,7 @@ describe('CSP reports', () => {
         blocked: 'https://evil.example/x.js',
         page: '/launches',
         source: 'https://app.postra.pl/_next/static/chunks/a.js:3',
+        mode: 'report',
       },
     ]);
   });
@@ -42,7 +43,33 @@ describe('CSP reports', () => {
         { type: 'deprecation', body: {} },
       ])
     ).toEqual([
-      { directive: 'img-src', blocked: 'https://cdn.example/a.png', page: '/media', source: '' },
+      { directive: 'img-src', blocked: 'https://cdn.example/a.png', page: '/media', source: '', mode: 'report' },
+    ]);
+  });
+
+  // The nonce policy runs report-only beside the enforced one: its lines must
+  // stand apart, or the days without a report before enforcing it cannot be
+  // counted. A report without disposition (older browsers) is the enforced one.
+  it('tells report-only violations from enforced ones', () => {
+    const report = (disposition?: string) => ({
+      'csp-report': {
+        'document-uri': 'https://app.postra.co.uk/launches',
+        'effective-directive': 'script-src-elem',
+        'blocked-uri': 'inline',
+        ...(disposition ? { disposition } : {}),
+      },
+    });
+    expect(cspViolations(report('report'))[0].mode).toBe('report');
+    expect(cspViolations(report('enforce'))[0].mode).toBe('enforce');
+    expect(cspViolations(report())[0].mode).toBe('enforce');
+
+    const lines: string[] = [];
+    const log = new CspReportLog((line) => lines.push(line));
+    log.add(cspViolations(report('report'))[0]);
+    log.add(cspViolations(report('enforce'))[0]);
+    expect(lines).toEqual([
+      '[csp-report-only] script-src-elem blocked=inline page=/launches',
+      '[csp] script-src-elem blocked=inline page=/launches',
     ]);
   });
 
@@ -55,7 +82,7 @@ describe('CSP reports', () => {
   it('logs each kind once, and stays bounded', () => {
     const lines: string[] = [];
     const log = new CspReportLog((line) => lines.push(line), 2);
-    const v = { directive: 'img-src', blocked: 'https://a.example/x.png', page: '/', source: '' };
+    const v = { directive: 'img-src', blocked: 'https://a.example/x.png', page: '/', source: '', mode: 'enforce' as const };
     log.add(v);
     log.add(v);
     log.add({ ...v, page: '/media' });

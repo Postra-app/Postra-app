@@ -2,11 +2,16 @@
 // 2026-10-15; before that report-only, what it would have blocked). Two formats reach us: `report-uri` posts one
 // `{"csp-report": {...}}` as application/csp-report, the Reporting API posts
 // a list of `{type: "csp-violation", body: {...}}` as application/reports+json.
+//
+// mode: the enforced policy (nginx) blocked it, or the report-only nonce
+// policy (apps/frontend/src/csp.ts) would have. Browsers that send no
+// disposition only know the enforced header.
 export type CspViolation = {
   directive: string;
   blocked: string;
   page: string;
   source: string;
+  mode: 'enforce' | 'report';
 };
 
 // Origin and path only: a page or resource URL can carry a token in its
@@ -47,6 +52,7 @@ const one = (r: Record<string, any>): CspViolation | undefined => {
     blocked: withoutQuery(r['blocked-uri'] || r.blockedURL),
     page: pathOf(r['document-uri'] || r.documentURL),
     source: file ? `${file}${line ? `:${line}` : ''}` : '',
+    mode: r.disposition === 'report' ? 'report' : 'enforce',
   };
 };
 
@@ -77,7 +83,7 @@ export class CspReportLog {
   ) {}
 
   add(v: CspViolation) {
-    const key = `${v.directive}|${v.blocked}|${v.page}`;
+    const key = `${v.mode}|${v.directive}|${v.blocked}|${v.page}`;
     if (this.seen.has(key)) {
       return;
     }
@@ -86,7 +92,7 @@ export class CspReportLog {
     }
     this.seen.add(key);
     this.write(
-      `[csp] ${v.directive} blocked=${v.blocked || '-'} page=${v.page || '-'}${
+      `[${v.mode === 'report' ? 'csp-report-only' : 'csp'}] ${v.directive} blocked=${v.blocked || '-'} page=${v.page || '-'}${
         v.source ? ` source=${v.source}` : ''
       }`
     );

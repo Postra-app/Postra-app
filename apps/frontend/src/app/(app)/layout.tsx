@@ -24,6 +24,8 @@ import { GoogleTagManagerComponent } from '@gitroom/frontend/components/layout/g
 import { requestLanguage } from '@gitroom/frontend/components/layout/request.language';
 import { HtmlComponent } from '@gitroom/frontend/components/layout/html.component';
 import Script from 'next/script';
+import { headers } from 'next/headers';
+import { NONCE_HEADER } from '@gitroom/frontend/csp';
 import { ChangeDirClient } from '@gitroom/frontend/components/new-layout/change.dir.client';
 import { GlobalErrorLogger } from '@gitroom/frontend/components/layout/global-error-logger.client';
 import { SwrProvider } from '@gitroom/frontend/components/layout/swr.provider';
@@ -35,6 +37,9 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
   // script id is set, e.g. pa-xxxx for app.postra.co.uk. It used to follow the
   // Stripe key and report to the old .pl site.
   const plausibleScript = process.env.PLAUSIBLE_SCRIPT_ID;
+  // The page's nonce (proxy.ts, csp.ts): every <Script> carries it, so the
+  // nonce policy lets them run.
+  const nonce = (await headers()).get(NONCE_HEADER) ?? undefined;
   return (
     // lang: screen readers pick their voice from it, and it was missing.
     <html lang={language}>
@@ -42,6 +47,7 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
         <link rel="icon" href="/postra-icon.webp" type="image/webp" />
         {!!process.env.DATAFAST_WEBSITE_ID && (
           <Script
+            nonce={nonce}
             data-website-id={process.env.DATAFAST_WEBSITE_ID}
             data-domain="postra.co.uk"
             src="https://datafa.st/js/script.js"
@@ -51,10 +57,11 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
         {!!plausibleScript && (
           <>
             <Script
+              nonce={nonce}
               src={`https://plausible.io/js/${plausibleScript}.js`}
               strategy="afterInteractive"
             />
-            <Script id="plausible-init" strategy="afterInteractive">
+            <Script id="plausible-init" nonce={nonce} strategy="afterInteractive">
               {`window.plausible=window.plausible||function(){(plausible.q=plausible.q||[]).push(arguments)},plausible.init=plausible.init||function(i){plausible.o=i||{}};plausible.init()`}
             </Script>
           </>
@@ -109,8 +116,11 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
             <GlobalErrorLogger />
             <HtmlComponent />
             <DubAnalytics />
-            <FacebookComponent />
-            <GoogleTagManagerComponent gtmId={process.env.NEXT_PUBLIC_GTM_ID} />
+            <FacebookComponent nonce={nonce} />
+            <GoogleTagManagerComponent
+              gtmId={process.env.NEXT_PUBLIC_GTM_ID}
+              nonce={nonce}
+            />
             <LayoutContext>
               <UtmSaver />
               <ConnectionStatus />
