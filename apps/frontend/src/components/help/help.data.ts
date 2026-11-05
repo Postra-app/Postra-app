@@ -423,7 +423,7 @@ export const APP_TABS: AppTabGuide[] = [
   },
 ];
 
-// The phone app (App Store, Google Play). Facts come from the Postra-mobile
+// The phone app (App Store, Google Play). Facts come from the mobile app's
 // code; keep in sync when a release adds or moves a feature.
 export const MOBILE_APP = {
   intro:
