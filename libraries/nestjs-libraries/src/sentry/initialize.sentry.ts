@@ -2,6 +2,7 @@ import * as Sentry from '@sentry/nestjs';
 import { nodeProfilingIntegration } from '@sentry/profiling-node';
 import { capitalize } from 'lodash';
 import { isClientAbort } from './client.abort';
+import { isClientRequestError } from './client.request.error';
 import { SENTRY_DATA_COLLECTION } from '@gitroom/helpers/utils/sentry.data.collection';
 
 // Sentry 11 names spans differently: a database span by its SQL summary
@@ -60,8 +61,11 @@ export const initializeSentry = (appName: string, allowLogs = false) => {
           recordOutputs: false,
         }),
       ],
-      // A client hanging up mid-upload is not a server error (see isClientAbort).
-      beforeSend: (event) => (isClientAbort(event) ? null : event),
+      // A client hanging up mid-upload, or sending a body body-parser
+      // refuses, is not a server error (see isClientAbort and
+      // isClientRequestError).
+      beforeSend: (event, hint) =>
+        isClientAbort(event) || isClientRequestError(hint?.originalException) ? null : event,
       tracesSampleRate,
       // Noise that fills traces and the free quota without telling anything
       // (upstream 2ffd05fc4): Prisma's internal steps, transaction
