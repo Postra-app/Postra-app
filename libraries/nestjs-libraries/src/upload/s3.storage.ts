@@ -16,6 +16,7 @@ import { parseDataUrl } from '@gitroom/nestjs-libraries/upload/data.url';
 // "invalid onRequestStart method", so every remote upload silently failed.
 import { fetch } from 'undici';
 import { fromBuffer } from '@gitroom/nestjs-libraries/upload/file.type';
+import { ownMediaHosts } from '@gitroom/helpers/utils/own.media.url';
 
 const ALLOWED_MIME_TYPES = new Set<string>([
   'image/jpeg',
@@ -135,12 +136,23 @@ export class S3Storage implements IUploadProvider {
   }
 
   async sizeOf(filePath: string): Promise<number | null> {
-    // Only our own bucket, behind our own CDN address.
-    if (!this._cdnUrl || !filePath?.startsWith(this._cdnUrl + '/')) {
+    // Only our own bucket: the CDN address of today, or any other name the
+    // app accepts as its own media host (the bucket was served under an
+    // earlier CDN name, and older library rows keep that address).
+    let url: URL;
+    try {
+      url = new URL(filePath);
+    } catch {
+      return null;
+    }
+    const own =
+      (!!this._cdnUrl && filePath.startsWith(this._cdnUrl + '/')) ||
+      ownMediaHosts().includes(url.host.toLowerCase());
+    if (!own) {
       return null;
     }
     try {
-      const key = new URL(filePath).pathname.replace(/^\//, '');
+      const key = url.pathname.replace(/^\//, '');
       const head = await this._client.send(
         new HeadObjectCommand({ Bucket: this._bucketName, Key: key })
       );
