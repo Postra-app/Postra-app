@@ -1,4 +1,7 @@
 process.env.S3_BUCKET = 'bucket';
+// Presigning happens locally but needs some credentials; CI has none.
+process.env.AWS_ACCESS_KEY_ID = process.env.AWS_ACCESS_KEY_ID || 'AKIDTEST';
+process.env.AWS_SECRET_ACCESS_KEY = process.env.AWS_SECRET_ACCESS_KEY || 'test-secret';
 process.env.NEXT_PUBLIC_UPLOAD_STATIC_DIRECTORY = 'https://cdn.test';
 
 import {
