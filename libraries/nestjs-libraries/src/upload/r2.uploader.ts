@@ -237,7 +237,11 @@ export async function completeMultipartUpload(req: Request, res: Response) {
       process.env.CLOUDFLARE_BUCKET_URL +
       '/' +
       response?.Location?.split('/').at(-1);
-    return response;
+    // "bytes 0-4100/<total>" on the ranged read: the assembled size, for the
+    // media storage count (media.controller), as on S3.
+    const total =
+      Number(head.ContentRange?.split('/')[1]) || Number(head.ContentLength) || 0;
+    return Object.assign(response, { size: total });
   } catch (err) {
     logger.error(`completeMultipartUpload failed: ${(err as Error)?.message ?? err}`);
     return res.status(500).json({ error: 'Upload failed' });
@@ -273,6 +277,8 @@ export async function signPart(req: Request, res: Response) {
     PartNumber: partNumber,
     UploadId: uploadId,
     Expires: 3600,
+    // Signed for its exact length, within the declared file (reservePart).
+    ContentLength: Number(req.body.size),
   };
 
   const command = new UploadPartCommand({ ...params });

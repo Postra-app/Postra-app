@@ -7,7 +7,7 @@ import {
   uploadSlotsInUse,
 } from './upload-slots.guard';
 
-// 2026-11-05: buffered uploads (up to 220 MB in memory each) are limited so
+// Buffered uploads (up to 220 MB in memory each) are limited so
 // a few accounts cannot take the instance down with parallel large bodies.
 const call = (org: string, length?: number) => {
   const res: any = Object.assign(new EventEmitter(), { setHeader: jest.fn() });

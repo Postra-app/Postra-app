@@ -1,4 +1,4 @@
-import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
+import { S3Client, PutObjectCommand, HeadObjectCommand } from '@aws-sdk/client-s3';
 import 'multer';
 import { makeId } from '@gitroom/nestjs-libraries/services/make.is';
 import mime from 'mime-types';
@@ -153,6 +153,24 @@ class CloudflareStorage implements IUploadProvider {
     } catch (err) {
       console.error('Error uploading file to Cloudflare R2:', err);
       throw err;
+    }
+  }
+
+  // Bytes of a stored file, for the media storage count.
+  async sizeOf(filePath: string): Promise<number | null> {
+    if (!this._uploadUrl || !filePath?.startsWith(this._uploadUrl + '/')) {
+      return null;
+    }
+    try {
+      const head = await this._client.send(
+        new HeadObjectCommand({
+          Bucket: this._bucketName,
+          Key: filePath.slice(this._uploadUrl.length + 1),
+        })
+      );
+      return Number(head.ContentLength) || null;
+    } catch {
+      return null;
     }
   }
 

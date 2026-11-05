@@ -38,7 +38,7 @@ export interface PricingInnerInterface {
   // (engine 'agent', unit 'messages').
   agent_messages: number;
   // Space for the media library (every file uploaded or made in Postra),
-  // in GB. Krzysztof, 2026-11-05: a library cannot grow without end on a
+  // in GB. A library cannot grow without end on a
   // £19 plan; files deleted from the library stop counting at once.
   media_storage_gb: number;
 }

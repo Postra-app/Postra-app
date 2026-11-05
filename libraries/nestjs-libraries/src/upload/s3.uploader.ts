@@ -39,7 +39,7 @@ const ALLOWED_EXT_TO_MIME: Record<string, string> = {
 // S3 never sees it, and each presigned part accepts up to 5 GB, so the real
 // size of the assembled object is checked again on complete (with the magic
 // bytes). 1 GB for video, as on upload-simple and in the web and phone
-// uploaders (Krzysztof, 2026-11-05: 4 GB was more than any client sends and
+// uploaders (4 GB was more than any client sends and
 // more than one file should take of a plan's media storage).
 const MAX_IMAGE_BYTES = 10 * 1024 * 1024; // 10 MB
 const MAX_VIDEO_BYTES = 1024 * 1024 * 1024; // 1 GB

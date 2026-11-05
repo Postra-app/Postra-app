@@ -9,8 +9,7 @@ import {
 // upload-simple (and the other routes that take the file in the request)
 // hold the whole body in memory: multer's memory storage, up to the 220 MB
 // nginx lets through for Studio's video exports. A few accounts sending
-// several such bodies at once could take the 4 GB app instance down
-// (Krzysztof, 2026-11-05: "users will try to bring the app down"). A guard
+// several such bodies at once could take the app instance down. A guard
 // runs before the file interceptor, so a refused request is never read.
 //
 // Small bodies (a photo, a design export) pass freely; a large one needs a

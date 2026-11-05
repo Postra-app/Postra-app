@@ -155,7 +155,7 @@ describe('updating media that is not this organisation’s', () => {
   });
 });
 
-// Krzysztof, 2026-11-05: the plan's media storage counts the library's bytes.
+// The plan's media storage counts the library's bytes.
 describe('media storage', () => {
   it('saveFile records the size it is given, 0 when it has none', async () => {
     const { repository, calls } = makeRepo();

@@ -383,7 +383,7 @@ describe('planLimits', () => {
     });
   });
 
-  // Krzysztof, 2026-11-05: media storage per plan, 2 GB while trialing.
+  // Media storage per plan, 2 GB while trialing.
   it('media storage: Starter 10 GB, Pro 25 GB, Business 100 GB, trial and no plan 2 GB', () => {
     expect(planLimits('STANDARD').media_storage_gb).toBe(10);
     expect(planLimits('PRO').media_storage_gb).toBe(25);

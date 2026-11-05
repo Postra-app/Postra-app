@@ -20,7 +20,7 @@ describe('Help text matches the app', () => {
   });
 });
 
-// Krzysztof, 2026-11-05: the customer has to learn the media storage and the
+// The customer has to learn the media storage and the
 // phone's limits from Help, not from a refused upload.
 describe('Help tells the limits', () => {
   it('Media names the storage of every plan and the trial', () => {

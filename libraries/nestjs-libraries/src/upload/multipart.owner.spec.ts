@@ -46,7 +46,7 @@ describe('multipart upload owner', () => {
   });
 });
 
-// 2026-11-05: a client that skips our apps could declare 10 MB and then
+// A client that skips our apps could declare 10 MB and then
 // put 5 GB into each of hundreds of parts. Parts are signed for their exact
 // size and only while they fit in the declared file.
 describe('multipart parts fit the declared size', () => {
@@ -66,6 +66,29 @@ describe('multipart parts fit the declared size', () => {
     await recordUploadOwner('org-a', 'up-2', 'k.mp4', 10 * MB);
     expect(await reservePart('up-2', 1, 10 * MB)).toBe(true);
     expect(await reservePart('up-2', 1, 10 * MB)).toBe(true);
+  });
+
+  it('a part signed again smaller keeps its larger size: the first URL is still valid', async () => {
+    await recordUploadOwner('org-a', 'up-6', 'k.mp4', 10 * MB);
+    expect(await reservePart('up-6', 1, 10 * MB)).toBe(true);
+    expect(await reservePart('up-6', 1, 1)).toBe(true);
+    expect(await reservePart('up-6', 2, 1)).toBe(false);
+  });
+
+  it('with a Redis server the check and the write are one script (no race between two parts)', async () => {
+    const { ioRedis } = jest.requireMock('@gitroom/nestjs-libraries/redis/redis.service');
+    ioRedis.eval = jest.fn(async () => 1);
+    try {
+      expect(await reservePart('up-7', 3, 5 * MB)).toBe(true);
+      const [script, keys, sizeKey, partsKey, part, bytes] = ioRedis.eval.mock.calls[0];
+      expect(script).toMatch(/HGETALL/);
+      expect(script).toMatch(/math\.max/);
+      expect([keys, sizeKey, partsKey, part, bytes]).toEqual([2, 'multipart-size:up-7', 'multipart-parts:up-7', '3', String(5 * MB)]);
+      ioRedis.eval = jest.fn(async () => 0);
+      expect(await reservePart('up-7', 4, 5 * MB)).toBe(false);
+    } finally {
+      delete ioRedis.eval;
+    }
   });
 
   it('refuses a part with no size, a nonsense size or number, or an upload with no declared size', async () => {

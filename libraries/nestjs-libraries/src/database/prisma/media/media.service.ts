@@ -148,6 +148,9 @@ export class MediaService {
     // everything else keeps the square default.
     orientation: ImageOrientation = 'square'
   ) {
+    // A full library stops here, before any credit or model time is spent
+    // on a file that could not be kept.
+    await this.assertStorage(org.id, 0);
     const brandKit = await this._brandKitService.getNormalized(org.id);
     const brand = buildBrandContext(brandKit, {
       palette: true,
@@ -175,6 +178,9 @@ export class MediaService {
   }
 
   async generatePostDesign(org: Organization, dto: GeneratePostDesignDto) {
+    // A full library stops here, before any credit or model time is spent
+    // on a file that could not be kept.
+    await this.assertStorage(org.id, 0);
     const total = await this._subscriptionService.checkCredits(org);
     if (process.env.STRIPE_PUBLISHABLE_KEY && total.credits <= 0) {
       throw new HttpException(
@@ -252,6 +258,9 @@ export class MediaService {
     org: Organization,
     dto: { prompt: string; platform: string; language?: string }
   ) {
+    // A full library stops here, before any credit or model time is spent
+    // on a file that could not be kept.
+    await this.assertStorage(org.id, 0);
     const designPlatform =
       DESIGN_PLATFORM_BY_SOCIAL[dto.platform.toLowerCase()] ?? 'instagram-feed';
 
@@ -303,6 +312,9 @@ export class MediaService {
   }
 
   async generatePostCarousel(org: Organization, dto: GeneratePostCarouselDto) {
+    // A full library stops here, before any credit or model time is spent
+    // on a file that could not be kept.
+    await this.assertStorage(org.id, 0);
     const total = await this._subscriptionService.checkCredits(org);
     if (process.env.STRIPE_PUBLISHABLE_KEY && total.credits <= 0) {
       throw new HttpException(
@@ -585,7 +597,12 @@ export class MediaService {
     );
   }
 
-  // The plan's media storage (Krzysztof, 2026-11-05): bytes the library holds
+  // Bytes of a stored file (0 when the storage cannot tell).
+  storedSize(filePath: string): Promise<number> {
+    return sizeToRecord(undefined, this.storage, filePath);
+  }
+
+  // The plan's media storage: bytes the library holds
   // and the plan's limit, null while billing is off (self-hosted, local).
   async storageQuota(orgId: string): Promise<{ used: number; limit: number | null }> {
     const used = await this._mediaRepository.storageUsed(orgId);
@@ -668,6 +685,9 @@ export class MediaService {
   }
 
   async generateVideo(org: Organization, body: VideoDto) {
+    // A full library stops here, before any credit or model time is spent
+    // on a file that could not be kept.
+    await this.assertStorage(org.id, 0);
     // One clip, one payment: a double click, a retry after the browser gave
     // up, or the assistant calling the tool twice used to pay kie.ai again
     // for the same video. The same request from the same organization is
@@ -826,6 +846,9 @@ export class MediaService {
    * in the TikTok/YouTube sense, the pixels are the customer's photo.
    */
   async retouch(org: Organization, id: string, level: RetouchLevel) {
+    // A full library stops here, before any credit or model time is spent
+    // on a file that could not be kept.
+    await this.assertStorage(org.id, 0);
     const media = await this.getMediaByIdOrg(org.id, id);
     if (!media?.path || media.deletedAt) {
       throw new HttpException('Media not found', 404);

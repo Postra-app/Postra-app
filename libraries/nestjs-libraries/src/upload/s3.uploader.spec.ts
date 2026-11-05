@@ -59,7 +59,7 @@ describe('S3 multipart complete', () => {
     expect(deleted).toBe(false);
   });
 
-  // 2026-11-05: 1 GB, as upload-simple and the web and phone uploaders (was 4 GB).
+  // 1 GB, as upload-simple and the web and phone uploaders (was 4 GB).
   it('deletes a video assembled past 1 GB whatever size was declared', async () => {
     const { res, deleted } = await run('2026/10/04/b.mp4', MP4_HEAD, 1024 ** 3 + 1);
     expect(res.status).toHaveBeenCalledWith(400);
@@ -87,7 +87,7 @@ describe('S3 multipart create', () => {
   });
 });
 
-describe('S3 multipart signing (2026-11-05)', () => {
+describe('S3 multipart signing', () => {
   afterEach(() => jest.restoreAllMocks());
   const res = () => ({ status: jest.fn().mockReturnThis(), json: jest.fn().mockReturnThis() } as any);
 

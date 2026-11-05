@@ -7,7 +7,7 @@ import {
   storageLimit,
 } from './media.storage';
 
-// Krzysztof, 2026-11-05: media storage per plan. Starter 10 GB, Pro 25 GB,
+// Media storage per plan. Starter 10 GB, Pro 25 GB,
 // Business 100 GB, a trial (and no plan) 2 GB; off while billing is off.
 describe('storageLimit', () => {
   it('follows the plan, and a trial is held to 2 GB whatever it runs on', () => {

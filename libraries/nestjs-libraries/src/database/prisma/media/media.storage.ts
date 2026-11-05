@@ -2,7 +2,7 @@ import { HttpException } from '@nestjs/common';
 import { planLimits } from '@gitroom/nestjs-libraries/database/prisma/subscriptions/pricing';
 import { IUploadProvider } from '@gitroom/nestjs-libraries/upload/upload.interface';
 
-// The plan's media storage (Krzysztof, 2026-11-05): a media library cannot
+// The plan's media storage: a media library cannot
 // grow without end on a £19 plan. The limits per plan are in pricing.ts
 // (`media_storage_gb`); this file holds the rules, MediaService the wiring.
 

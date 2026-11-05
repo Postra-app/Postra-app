@@ -16,8 +16,8 @@ export const formatBytes = (bytes: number): string => {
 };
 
 /**
- * How much of the plan's media storage the library uses (Krzysztof,
- * 2026-11-05: the customer must see the limit before it stops an upload).
+ * How much of the plan's media storage the library uses: the customer
+ * must see the limit before it stops an upload.
  * Nothing while billing is off: there is no limit then. `version` changes
  * whenever the library does, so the bar follows uploads and deletes.
  */

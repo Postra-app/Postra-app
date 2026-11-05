@@ -96,7 +96,7 @@ describe('multipart upload steps', () => {
   });
 });
 
-// The plan's media storage (Krzysztof, 2026-11-05): a file that does not fit
+// The plan's media storage: a file that does not fit
 // is refused before any part is sent, and again on the real assembled size.
 describe('multipart upload and the media storage', () => {
   const full = Object.assign(new Error('Your media library is full'), { status: 402 });
@@ -140,6 +140,25 @@ describe('multipart upload and the media storage', () => {
     expect(media.assertStorage).toHaveBeenLastCalledWith('org-a', 5000);
     expect(removeFile).toHaveBeenCalledWith('https://cdn.test/2026/11/05/z.mp4');
     expect(media.saveFile).not.toHaveBeenCalled();
+  });
+
+  it('an uploader that gives no size: the size is read from the storage, not taken as 0', async () => {
+    const media = {
+      assertStorage: jest.fn(async () => undefined),
+      saveFile: jest.fn(async () => ({ id: 'm2' })),
+      storedSize: jest.fn(async () => 7777),
+    };
+    const controller = new MediaController(media as any, {} as any, {} as any);
+    s3.mockImplementation(async (_e: string, _req: any, res: any) =>
+      res.status(200).json({ uploadId: 'up-r2', key: 'r2.mp4' })
+    );
+    await controller.uploadFile({ id: 'org-a' } as any, { body: { file: { name: 'r2.mp4', size: 10 } } } as any, response(), 'create-multipart-upload');
+    s3.mockReset();
+    s3.mockImplementation(async () => ({ Location: 'https://r2.test/r2.mp4' }));
+    await controller.uploadFile({ id: 'org-a' } as any, { body: { uploadId: 'up-r2', key: 'r2.mp4', file: { name: 'r2.mp4' } } } as any, response(), 'complete-multipart-upload');
+    expect(media.storedSize).toHaveBeenCalledWith('https://r2.test/r2.mp4');
+    expect(media.assertStorage).toHaveBeenLastCalledWith('org-a', 7777);
+    expect(media.saveFile).toHaveBeenCalledWith('org-a', 'r2.mp4', 'https://r2.test/r2.mp4', 'r2.mp4', false, 7777);
   });
 
   it('a completion that fits is saved with its real size', async () => {

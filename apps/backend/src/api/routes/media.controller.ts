@@ -859,8 +859,11 @@ export class MediaController {
     // @ts-ignore
     const name = upload.Location.split('/').pop();
     const originalName = req.body?.file?.name;
-    // @ts-ignore set by the S3 uploader from the assembled object
-    const size = Number(upload.size) || 0;
+    // Set by the uploader from the assembled object; a provider that does not
+    // say is asked through the storage, so the file is never counted as 0.
+    const size =
+      // @ts-ignore
+      Number(upload.size) || (await this._mediaService.storedSize(upload.Location));
 
     try {
       await this._mediaService.assertStorage(org.id, size);

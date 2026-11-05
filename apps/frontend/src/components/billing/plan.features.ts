@@ -106,7 +106,7 @@ export const planFeatures = (tier: string): PlanFeature[] => {
     });
   }
   list.push({ key: 'billing_plan_studio', text: 'Studio image editor' });
-  // Krzysztof, 2026-11-05: the media library's space, said before purchase.
+  // The media library's space, said before purchase.
   list.push({
     key: 'billing_plan_storage',
     text: '{{count}} GB media storage',
