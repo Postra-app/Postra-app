@@ -402,7 +402,7 @@ export const APP_TABS: AppTabGuide[] = [
     id: 'media',
     name: 'Media',
     description:
-      "Every image and video you've uploaded, ready to reuse in any post.",
+      "Every image and video you've uploaded or made in Postra, ready to reuse in any post. Pictures can be up to 30 MB (GIFs 10 MB) and videos (MP4) up to 1 GB. The library has a storage limit set by your plan: 10 GB on Starter, 25 GB on Pro and 100 GB on Business (2 GB during the free trial). The bar at the top of Media shows how much you use. Deleting a file frees its space at once.",
   },
   {
     id: 'plugs',
@@ -422,6 +422,32 @@ export const APP_TABS: AppTabGuide[] = [
       'Workspace configuration - see "Settings explained" below for each section.',
   },
 ];
+
+// The phone app (App Store, Google Play). Facts come from the Postra-mobile
+// code; keep in sync when a release adds or moves a feature.
+export const MOBILE_APP = {
+  intro:
+    'Postra for iPhone and Android covers the everyday basics, so you can post without a computer. Sign in with your Postra email and password: Google sign-in is on the web only for now.',
+  canDo: [
+    'Calendar: see your scheduled, draft and published posts.',
+    'New post: write the text, add a photo or video, pick your channels, then post now, schedule it or save a draft. A first comment is available on the channels that support it.',
+    'Media: your media library, the same one as on the web. Add photos and videos from your phone, or start a post from a file.',
+    'Channels: connect and reconnect most channels. Bluesky and the other channels that ask for a password or a bot are connected on the web.',
+    'Settings: language, sign out and deleting your account.',
+  ],
+  webOnly: [
+    'Studio, Auto Post, Analytics and the Agent.',
+    'Billing, plans and team members.',
+    'Posting to YouTube, Pinterest, Discord, Slack and WordPress: they need settings the app does not have yet (a title, a board, a server channel).',
+    'Videos longer than 10 minutes or larger than 1 GB.',
+  ],
+  limits: [
+    'Videos from the phone can be up to 10 minutes and 1 GB. An iPhone video is converted to MP4 (up to 1080p) before it is sent, as the platforms ask for MP4.',
+    'Photos are resized to 2048 px on the longest side before upload, the same as on the web. Photos can be up to 30 MB before resizing, GIFs up to 10 MB.',
+    'TikTok sets a maximum video length for each account. The app shows it and stops a post with a longer video before it is sent.',
+    'Large uploads show their progress and can be stopped with Cancel upload. Files you add count towards your plan\'s media storage, as on the web.',
+  ],
+};
 
 export interface StudioToolGuide {
   name: string;
@@ -655,6 +681,11 @@ export const SETTINGS_SECTIONS: SettingsSectionGuide[] = [
 
 export const FAQ_ITEMS: FaqItem[] = [
   {
+    question: 'How much storage do I get for my media?',
+    answer:
+      'Your media library can hold 10 GB on Starter, 25 GB on Pro and 100 GB on Business, and 2 GB during the free trial. That is room for thousands of photos or dozens of long videos. Media shows how much you use. When the library is full, new uploads stop with a message: delete files you no longer need (the space is free again at once) or upgrade your plan. Posts that already use a file are not affected when you delete it.',
+  },
+  {
     question: "Why can't I add more channels?",
     answer:
       'Each plan includes a fixed number of channels (3, 6 or 12, depending on the plan; trials are capped at 3). Upgrade in Billing to unlock more. A channel waiting to be reconnected keeps its slot; disabling or deleting a channel frees it.',
@@ -667,7 +698,7 @@ export const FAQ_ITEMS: FaqItem[] = [
   {
     question: 'How does the trial work?',
     answer:
-      "Paid plans start with a 7-day free trial. During the trial you can connect up to 3 channels, schedule up to 30 posts, add 1 webhook and 1 Auto Post feed, and use Starter's AI allowance with one AI video. The trial is for one person; team invites open with your plan. Cancel any time in Billing before the trial ends and you won't be charged.",
+      "Paid plans start with a 7-day free trial. During the trial you can connect up to 3 channels, schedule up to 30 posts, add 1 webhook and 1 Auto Post feed, use Starter's AI allowance with one AI video, and keep up to 2 GB of photos and videos. The trial is for one person; team invites open with your plan. Cancel any time in Billing before the trial ends and you won't be charged.",
   },
   {
     question: 'How do AI videos work?',

@@ -7,6 +7,7 @@ import {
   CHANNEL_GUIDES,
   ChannelConnectType,
   FAQ_ITEMS,
+  MOBILE_APP,
   SETTINGS_SECTIONS,
   STUDIO_GRAPHICS_TOOLS,
   STUDIO_VIDEO_TOOLS,
@@ -72,6 +73,7 @@ export const HelpComponent = () => {
     { id: 'getting-started', label: t('help_getting_started', 'Getting started') },
     { id: 'channels', label: t('help_connecting_channels', 'Connecting channels') },
     { id: 'tabs', label: t('help_app_tabs', 'App tabs') },
+    { id: 'mobile-app', label: t('help_mobile_app', 'Mobile app') },
     { id: 'studio', label: t('help_studio_graphics', 'Studio - Graphics') },
     { id: 'studio-video', label: t('help_studio_video', 'Studio - Video') },
     { id: 'settings', label: t('help_settings_explained', 'Settings explained') },
@@ -336,6 +338,29 @@ export const HelpComponent = () => {
               </div>
             ))}
           </div>
+        </Section>
+
+        <Section id="mobile-app" title={t('help_mobile_app', 'Mobile app')} guide="mobile-app">
+          <div className="text-[14px] text-newTextColor/70">{MOBILE_APP.intro}</div>
+          {(
+            [
+              ['help_mobile_can', 'On your phone', MOBILE_APP.canDo],
+              ['help_mobile_web_only', 'On the web only', MOBILE_APP.webOnly],
+              ['help_mobile_limits', 'Limits on the phone', MOBILE_APP.limits],
+            ] as const
+          ).map(([key, title, items]) => (
+            <div
+              key={key}
+              className="flex flex-col gap-[8px] rounded-[12px] border border-white/10 bg-white/[0.02] p-[16px]"
+            >
+              <div className="text-[16px] font-[600]">{t(key, title)}</div>
+              <ul className="list-disc ps-[20px] flex flex-col gap-[4px] text-[14px] text-newTextColor/70">
+                {items.map((item) => (
+                  <li key={item}>{item}</li>
+                ))}
+              </ul>
+            </div>
+          ))}
         </Section>
 
         <Section

@@ -61,6 +61,7 @@ import { useLaunchStore } from '@gitroom/frontend/components/new-launch/store';
 import { useShallow } from 'zustand/react/shallow';
 import { LoadingComponent } from '@gitroom/frontend/components/layout/loading';
 import { useDebounce } from 'use-debounce';
+import { MediaStorageBar } from '@gitroom/frontend/components/media/media.storage.bar';
 const Polonto = dynamic(
   () => import('@gitroom/frontend/components/launches/polonto')
 );
@@ -510,6 +511,9 @@ export const MediaBox: FC<{
             {btn}
             <ThirdPartyMediaLibrary onImported={() => mutate()} />
           </div>
+        </div>
+        <div className="mt-[12px]">
+          <MediaStorageBar version={data} />
         </div>
         <div className="w-full pointer-events-none relative mt-[5px] mb-[5px]">
           <div className="w-full h-[46px] overflow-hidden absolute left-0 bg-white/[0.03] uppyChange">

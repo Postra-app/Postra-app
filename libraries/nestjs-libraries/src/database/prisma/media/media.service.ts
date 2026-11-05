@@ -48,6 +48,11 @@ import {
 } from '@gitroom/nestjs-libraries/services/ai-usage.record';
 import { MediaType } from '@gitroom/helpers/utils/media.type';
 import {
+  sizeToRecord,
+  storageFullError,
+  storageLimit,
+} from '@gitroom/nestjs-libraries/database/prisma/media/media.storage';
+import {
   ImageOrientation,
   orientationForSize,
 } from '@gitroom/nestjs-libraries/openai/image-orientation';
@@ -143,6 +148,9 @@ export class MediaService {
     // everything else keeps the square default.
     orientation: ImageOrientation = 'square'
   ) {
+    // A full library stops here, before any credit or model time is spent
+    // on a file that could not be kept.
+    await this.assertStorage(org.id, 0);
     const brandKit = await this._brandKitService.getNormalized(org.id);
     const brand = buildBrandContext(brandKit, {
       palette: true,
@@ -170,6 +178,9 @@ export class MediaService {
   }
 
   async generatePostDesign(org: Organization, dto: GeneratePostDesignDto) {
+    // A full library stops here, before any credit or model time is spent
+    // on a file that could not be kept.
+    await this.assertStorage(org.id, 0);
     const total = await this._subscriptionService.checkCredits(org);
     if (process.env.STRIPE_PUBLISHABLE_KEY && total.credits <= 0) {
       throw new HttpException(
@@ -247,6 +258,9 @@ export class MediaService {
     org: Organization,
     dto: { prompt: string; platform: string; language?: string }
   ) {
+    // A full library stops here, before any credit or model time is spent
+    // on a file that could not be kept.
+    await this.assertStorage(org.id, 0);
     const designPlatform =
       DESIGN_PLATFORM_BY_SOCIAL[dto.platform.toLowerCase()] ?? 'instagram-feed';
 
@@ -275,7 +289,7 @@ export class MediaService {
     const uploaded = await this.storage.uploadSimple(
       'data:image/png;base64,' + png.toString('base64')
     );
-    const media = await this._mediaRepository.saveFile(
+    const media = await this.saveFile(
       org.id,
       uploaded.split('/').pop() as string,
       uploaded,
@@ -298,6 +312,9 @@ export class MediaService {
   }
 
   async generatePostCarousel(org: Organization, dto: GeneratePostCarouselDto) {
+    // A full library stops here, before any credit or model time is spent
+    // on a file that could not be kept.
+    await this.assertStorage(org.id, 0);
     const total = await this._subscriptionService.checkCredits(org);
     if (process.env.STRIPE_PUBLISHABLE_KEY && total.credits <= 0) {
       throw new HttpException(
@@ -476,12 +493,15 @@ export class MediaService {
       mimetype: 'video/mp4',
       size: buffer.length,
     } as unknown as Express.Multer.File;
+    await this.assertStorage(org, buffer.length);
     const uploaded = await this.storage.uploadFile(fakeFile);
-    return this._mediaRepository.saveFile(
+    return this.saveFile(
       org,
       uploaded.originalname,
       uploaded.path,
-      `pixabay-${sourceId ?? 'unknown'}`
+      `pixabay-${sourceId ?? 'unknown'}`,
+      false,
+      buffer.length
     );
   }
 
@@ -510,12 +530,15 @@ export class MediaService {
       mimetype: isPng ? 'image/png' : 'image/jpeg',
       size: buffer.length,
     } as unknown as Express.Multer.File;
+    await this.assertStorage(org, buffer.length);
     const uploaded = await this.storage.uploadFile(fakeFile);
-    return this._mediaRepository.saveFile(
+    return this.saveFile(
       org,
       uploaded.originalname,
       uploaded.path,
-      `pixabay-${sourceId ?? 'unknown'}`
+      `pixabay-${sourceId ?? 'unknown'}`,
+      false,
+      buffer.length
     );
   }
 
@@ -542,29 +565,88 @@ export class MediaService {
     if (!detected || !allowed) {
       throw new HttpException(`That file is not a supported ${kind}`, 422);
     }
+    await this.assertStorage(org, buffer.length);
     const uploaded = await this.storage.uploadFile({
       buffer,
       originalname: `${name}.${detected.ext}`,
       mimetype: detected.mime,
       size: buffer.length,
     } as unknown as Express.Multer.File);
-    return this._mediaRepository.saveFile(org, uploaded.originalname, uploaded.path, name);
+    return this.saveFile(org, uploaded.originalname, uploaded.path, name, false, buffer.length);
   }
 
-  saveFile(
+  // Every file that enters the library comes through here, so this is where
+  // its size is recorded for the plan's media storage. A caller that holds
+  // the bytes passes their length; otherwise the storage is asked.
+  async saveFile(
     org: string,
     fileName: string,
     filePath: string,
     originalName?: string,
-    aiGenerated = false
+    aiGenerated = false,
+    fileSize?: number
   ) {
+    const size = await sizeToRecord(fileSize, this.storage, filePath);
     return this._mediaRepository.saveFile(
       org,
       fileName,
       filePath,
       originalName,
-      aiGenerated
+      aiGenerated,
+      size
     );
+  }
+
+  // Bytes of a stored file (0 when the storage cannot tell).
+  storedSize(filePath: string): Promise<number> {
+    return sizeToRecord(undefined, this.storage, filePath);
+  }
+
+  // The plan's media storage: bytes the library holds
+  // and the plan's limit, null while billing is off (self-hosted, local).
+  async storageQuota(orgId: string): Promise<{ used: number; limit: number | null }> {
+    const used = await this._mediaRepository.storageUsed(orgId);
+    if (!process.env.STRIPE_PUBLISHABLE_KEY) {
+      return { used, limit: null };
+    }
+    const [subscription, trialing] = await Promise.all([
+      this._subscriptionService.getSubscriptionByOrganizationId(orgId),
+      this._subscriptionService.isTrailing(orgId),
+    ]);
+    return { used, limit: storageLimit(subscription?.subscriptionTier, trialing) };
+  }
+
+  // Refuses a new file that would not fit (media.storage.ts).
+  async assertStorage(orgId: string, incomingBytes: number) {
+    const { used, limit } = await this.storageQuota(orgId);
+    const refusal = storageFullError(used, limit, incomingBytes);
+    if (refusal) {
+      throw refusal;
+    }
+  }
+
+  // One-off: sizes for rows saved before the size was recorded. Read from
+  // the storage; a file that is gone stays at 0. Dry run unless `apply`.
+  async backfillFileSize(apply: boolean) {
+    let afterId: string | undefined;
+    let checked = 0;
+    let found = 0;
+    let bytes = 0;
+    for (;;) {
+      const rows = await this._mediaRepository.mediaWithoutSize(200, afterId);
+      if (!rows.length) break;
+      for (const row of rows) {
+        checked++;
+        const size = await sizeToRecord(undefined, this.storage, row.path);
+        if (size > 0) {
+          found++;
+          bytes += size;
+          if (apply) await this._mediaRepository.setFileSize(row.id, size);
+        }
+      }
+      afterId = rows[rows.length - 1].id;
+    }
+    return { checked, found, bytes, applied: apply };
   }
 
   backfillMediaType(apply: boolean) {
@@ -603,6 +685,9 @@ export class MediaService {
   }
 
   async generateVideo(org: Organization, body: VideoDto) {
+    // A full library stops here, before any credit or model time is spent
+    // on a file that could not be kept.
+    await this.assertStorage(org.id, 0);
     // One clip, one payment: a double click, a retry after the browser gave
     // up, or the assistant calling the tool twice used to pay kie.ai again
     // for the same video. The same request from the same organization is
@@ -761,6 +846,9 @@ export class MediaService {
    * in the TikTok/YouTube sense, the pixels are the customer's photo.
    */
   async retouch(org: Organization, id: string, level: RetouchLevel) {
+    // A full library stops here, before any credit or model time is spent
+    // on a file that could not be kept.
+    await this.assertStorage(org.id, 0);
     const media = await this.getMediaByIdOrg(org.id, id);
     if (!media?.path || media.deletedAt) {
       throw new HttpException('Media not found', 404);
@@ -811,14 +899,15 @@ export class MediaService {
     const base = (from.originalName || from.name || 'photo')
       .replace(/\.[a-z0-9]+$/i, '')
       .replace(/ \(retouched.*\)$/i, '');
-    const saved = await this._mediaRepository.saveFile(
+    const saved = await this.saveFile(
       org.id,
       fileName,
       uploaded,
       `${base} (retouched, ${level === 'bw' ? 'black and white' : level}).jpg`,
       // the pixels are still the source's: a photo stays a photo, an image a
       // model made stays marked for TikTok and YouTube
-      from.aiGenerated
+      from.aiGenerated,
+      result.buffer.length
     );
     await this._mediaRepository.attachRetouch(org.id, saved.id, {
       spec: result.spec,

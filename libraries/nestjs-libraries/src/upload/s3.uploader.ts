@@ -38,9 +38,11 @@ const ALLOWED_EXT_TO_MIME: Record<string, string> = {
 // Size limits. The size declared at create time is only the client's word:
 // S3 never sees it, and each presigned part accepts up to 5 GB, so the real
 // size of the assembled object is checked again on complete (with the magic
-// bytes). Generous enough for long-form video (YouTube, Reels).
+// bytes). 1 GB for video, as on upload-simple and in the web and phone
+// uploaders (4 GB was more than any client sends and
+// more than one file should take of a plan's media storage).
 const MAX_IMAGE_BYTES = 10 * 1024 * 1024; // 10 MB
-const MAX_VIDEO_BYTES = 4 * 1024 * 1024 * 1024; // 4 GB
+const MAX_VIDEO_BYTES = 1024 * 1024 * 1024; // 1 GB
 
 function normalizeExtension(filename: string): string | null {
   const ext = path.extname(filename || '').toLowerCase();
@@ -109,8 +111,12 @@ export async function createMultipartUpload(req: Request, res: Response) {
   }
   const safeContentType = ALLOWED_EXT_TO_MIME[safeExt];
 
+  // A size is required: the parts are signed against it (multipart.owner.ts).
   const declaredSize = Number(file?.size);
-  if (Number.isFinite(declaredSize) && declaredSize > maxBytesForMime(safeContentType)) {
+  if (!Number.isFinite(declaredSize) || declaredSize <= 0) {
+    return res.status(400).json({ message: 'File size is missing.' });
+  }
+  if (declaredSize > maxBytesForMime(safeContentType)) {
     return res.status(400).json({
       message: `File size exceeds the maximum allowed size of ${maxBytesForMime(
         safeContentType
@@ -149,6 +155,7 @@ export async function prepareUploadParts(req: Request, res: Response) {
         Key: partData.key,
         PartNumber: part.number,
         UploadId: partData.uploadId,
+        ContentLength: Number(part.size),
       });
       response.presignedUrls[part.number] = await getSignedUrl(S3, command, {
         expiresIn: 3600,
@@ -233,7 +240,8 @@ export async function completeMultipartUpload(req: Request, res: Response) {
     }
 
     response.Location = `${CDN_URL}/${key}`;
-    return response;
+    // For the media storage count (media.controller).
+    return Object.assign(response, { size: total });
   } catch (err) {
     logger.error(`completeMultipartUpload failed: ${(err as Error)?.message ?? err}`);
     return res.status(500).json({ error: 'Upload failed' });
@@ -261,11 +269,14 @@ export async function signPart(req: Request, res: Response) {
   const { key, uploadId } = req.body;
   const partNumber = parseInt(req.body.partNumber);
 
+  // Signed for its exact length: S3 refuses a body of any other size. The
+  // controller has checked it against the declared file (reservePart).
   const command = new UploadPartCommand({
     Bucket: S3_BUCKET,
     Key: key,
     PartNumber: partNumber,
     UploadId: uploadId,
+    ContentLength: Number(req.body.size),
   });
   const url = await getSignedUrl(S3, command, { expiresIn: 3600 });
 

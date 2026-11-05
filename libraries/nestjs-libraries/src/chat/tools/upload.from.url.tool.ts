@@ -102,6 +102,14 @@ so the attachment passes the upload-domain validation. Returns the hosted media 
           return { errors: 'Unsupported file type.' };
         }
 
+        // The plan's media storage: told to the assistant as an error, like
+        // the other refusals here, instead of a thrown 402.
+        try {
+          await this._mediaService.assertStorage(org.id, buffer.length);
+        } catch (err: any) {
+          return { errors: err?.getResponse?.()?.message || 'Your media library is full.' };
+        }
+
         const getFile = await this.storage.uploadFile({
           buffer,
           mimetype: detected.mime,
@@ -118,7 +126,10 @@ so the attachment passes the upload-domain validation. Returns the hosted media 
         return this._mediaService.saveFile(
           org.id,
           getFile.originalname,
-          getFile.path
+          getFile.path,
+          undefined,
+          false,
+          buffer.length
         );
       },
     });

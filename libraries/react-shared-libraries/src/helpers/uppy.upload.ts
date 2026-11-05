@@ -95,10 +95,15 @@ export const getUppyUploadPlugin = (
               file,
               ...props,
             }),
+          // The server signs each part for its exact length (S3 then refuses
+          // any other) and only within the size declared at the start.
           signPart: (file: any, props: any) =>
             fetchUploadApiEndpoint(fetch, 'sign-part', {
               file,
-              ...props,
+              uploadId: props.uploadId,
+              key: props.key,
+              partNumber: props.partNumber,
+              size: props.body?.size,
             }),
           abortMultipartUpload: (file: any, props: any) =>
             fetchUploadApiEndpoint(fetch, 'abort-multipart-upload', {

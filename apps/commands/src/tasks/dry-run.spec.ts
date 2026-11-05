@@ -36,6 +36,7 @@ jest.mock(
 
 import { BackfillGrantedScopes } from './backfill.granted.scopes';
 import { BackfillMediaType } from './backfill.media.type';
+import { BackfillMediaSize } from './backfill.media.size';
 import { EncryptTokens } from './encrypt.tokens';
 import { GrandfatherSubscriptions } from './grandfather.subscriptions';
 import { GrantLifetime } from './grant.lifetime';
@@ -84,6 +85,7 @@ const commands: [
 ][] = [
   ['backfill-granted-scopes', (s) => new BackfillGrantedScopes(s), []],
   ['backfill-media-type', (s) => new BackfillMediaType(s), []],
+  ['backfill-media-size', (s) => new BackfillMediaSize(s), []],
   [
     'encrypt-tokens',
     (s) => {

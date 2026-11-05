@@ -1,4 +1,7 @@
-import { PrismaRepository } from '@gitroom/nestjs-libraries/database/prisma/prisma.service';
+import {
+  PrismaRepository,
+  PrismaService,
+} from '@gitroom/nestjs-libraries/database/prisma/prisma.service';
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { SaveMediaInformationDto } from '@gitroom/nestjs-libraries/dtos/media/save.media.information.dto';
@@ -30,7 +33,9 @@ export class MediaRepository {
     // True when the bytes came from an image model. Recorded at creation
     // because nothing downstream can tell afterwards — our renderers strip the
     // C2PA marker the model embeds.
-    aiGenerated = false
+    aiGenerated = false,
+    // Bytes stored, for the plan's media storage (0 = not known).
+    fileSize = 0
   ) {
     return this._media.model.media.create({
       data: {
@@ -43,6 +48,7 @@ export class MediaRepository {
         path: filePath,
         originalName: originalName || null,
         aiGenerated,
+        fileSize: Math.max(0, Math.round(fileSize || 0)),
         // Every caller lands here with a stored path, and storage keeps the
         // extension it validated, so this is the one place that can record the
         // type. Before this the column defaulted to `image` for everything,
@@ -59,6 +65,39 @@ export class MediaRepository {
         aiGenerated: true,
         type: true,
       },
+    });
+  }
+
+  // Bytes the organisation's library holds now. A file deleted from the
+  // library stops counting at once: the customer freed the space, and the
+  // stored copy goes in the daily sweep 30 days later.
+  //
+  // Raw SQL, not `aggregate`: the column is a 32-bit Int, and a sum past
+  // 2 GB (every plan allows more) has to come back as a bigint.
+  async storageUsed(org: string): Promise<number> {
+    const rows = await (
+      this._media.model as unknown as Pick<PrismaService, '$queryRaw'>
+    ).$queryRaw<{ used: bigint | number | null }[]>`
+      SELECT COALESCE(SUM("fileSize"), 0)::bigint AS used
+      FROM "Media"
+      WHERE "organizationId" = ${org} AND "deletedAt" IS NULL`;
+    return Number(rows?.[0]?.used ?? 0);
+  }
+
+  // Rows saved before the size was recorded (the column defaulted to 0).
+  mediaWithoutSize(take: number, afterId?: string) {
+    return this._media.model.media.findMany({
+      where: { fileSize: 0, ...(afterId ? { id: { gt: afterId } } : {}) },
+      select: { id: true, path: true },
+      orderBy: { id: 'asc' },
+      take,
+    });
+  }
+
+  setFileSize(id: string, fileSize: number) {
+    return this._media.model.media.update({
+      where: { id },
+      data: { fileSize },
     });
   }
 

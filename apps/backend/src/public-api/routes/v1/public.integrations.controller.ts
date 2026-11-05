@@ -13,6 +13,7 @@ import {
   UseInterceptors,
   UsePipes,
   NotFoundException,
+  UseGuards,
 } from '@nestjs/common';
 import { pricing } from '@gitroom/nestjs-libraries/database/prisma/subscriptions/pricing';
 import { CustomFileValidationPipe } from '@gitroom/nestjs-libraries/upload/custom.upload.validation';
@@ -25,6 +26,7 @@ import { CheckPolicies } from '@gitroom/backend/services/auth/permissions/permis
 import { PostsService } from '@gitroom/nestjs-libraries/database/prisma/posts/posts.service';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { UploadFactory } from '@gitroom/nestjs-libraries/upload/upload.factory';
+import { UploadSlotsGuard } from '@gitroom/backend/services/auth/upload-slots.guard';
 import { MediaService } from '@gitroom/nestjs-libraries/database/prisma/media/media.service';
 import { GetPostsDto } from '@gitroom/nestjs-libraries/dtos/posts/get.posts.dto';
 import { GetMediaDto } from '@gitroom/nestjs-libraries/dtos/media/get.media.dto';
@@ -91,6 +93,7 @@ export class PublicIntegrationsController {
 
   @Post('/upload')
   @Throttle({ default: { ttl: 300000, limit: 30 } })
+  @UseGuards(UploadSlotsGuard)
   @UseInterceptors(FileInterceptor('file'))
   @UsePipes(new CustomFileValidationPipe())
   async uploadSimple(
@@ -105,12 +108,15 @@ export class PublicIntegrationsController {
     // Storage renames the file; the name it came with is what the library
     // search looks at.
     const originalName = originalNameOfFile(file.originalname);
+    await this._mediaService.assertStorage(org.id, file.size);
     const getFile = await this.storage.uploadFile(file);
     return this._mediaService.saveFile(
       org.id,
       getFile.originalname,
       getFile.path,
-      originalName
+      originalName,
+      false,
+      file.size
     );
   }
 
@@ -142,6 +148,7 @@ export class PublicIntegrationsController {
     const mimetype = detected.mime;
     const ext = detected.ext;
 
+    await this._mediaService.assertStorage(org.id, buffer.length);
     const getFile = await this.storage.uploadFile({
       buffer,
       mimetype,
@@ -159,7 +166,9 @@ export class PublicIntegrationsController {
       org.id,
       getFile.originalname,
       getFile.path,
-      originalNameFromUrl(body.url, ext)
+      originalNameFromUrl(body.url, ext),
+      false,
+      buffer.length
     );
   }
 

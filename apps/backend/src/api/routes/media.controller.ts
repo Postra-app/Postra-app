@@ -18,6 +18,7 @@ import {
   UsePipes,
 } from '@nestjs/common';
 import { AccountAgeGuard } from '@gitroom/backend/services/auth/account-age.guard';
+import { UploadSlotsGuard } from '@gitroom/backend/services/auth/upload-slots.guard';
 import { CheckPolicies } from '@gitroom/backend/services/auth/permissions/permissions.ability';
 import {
   AuthorizationActions,
@@ -33,6 +34,7 @@ import {
   forgetUpload,
   ownsUpload,
   recordUploadOwner,
+  reservePart,
   uploadPairOf,
 } from '@gitroom/nestjs-libraries/upload/multipart.owner';
 import handleS3Upload from '@gitroom/nestjs-libraries/upload/s3.uploader';
@@ -242,6 +244,12 @@ export class MediaController {
   // they silently return "media not found" (empty body → Stock search failed).
   // Declared below /:id until 2026-10-01, so it never ran: every composer open
   // got /:id's empty answer instead of the options.
+  // How much of the plan's media storage the library uses (Media page, app).
+  @Get('/storage')
+  storageQuota(@GetOrgFromRequest() org: Organization) {
+    return this._mediaService.storageQuota(org.id);
+  }
+
   @Get('/video-options')
   getVideos() {
     return this._mediaService.getVideoOptions();
@@ -674,6 +682,7 @@ export class MediaController {
 
   @Post('/upload-server')
   @Throttle({ default: { ttl: 300000, limit: 60 } })
+  @UseGuards(UploadSlotsGuard)
   @UseInterceptors(FileInterceptor('file'))
   @UsePipes(new CustomFileValidationPipe())
   async uploadServer(
@@ -681,12 +690,15 @@ export class MediaController {
     @UploadedFile() file: Express.Multer.File
   ) {
     const originalName = file?.originalname || '';
+    await this._mediaService.assertStorage(org.id, file?.size || 0);
     const uploadedFile = await this.storage.uploadFile(file);
     return this._mediaService.saveFile(
       org.id,
       uploadedFile.originalname,
       uploadedFile.path,
-      originalName
+      originalName,
+      false,
+      file?.size
     );
   }
 
@@ -731,6 +743,7 @@ export class MediaController {
 
   @Post('/upload-simple')
   @Throttle({ default: { ttl: 300000, limit: 60 } })
+  @UseGuards(UploadSlotsGuard)
   @UseInterceptors(FileInterceptor('file'))
   @UsePipes(new CustomFileValidationPipe())
   async uploadSimple(
@@ -747,6 +760,9 @@ export class MediaController {
       throw new BadRequestException('No file was sent');
     }
     const originalName = file.originalname;
+    if (preventSave !== 'true') {
+      await this._mediaService.assertStorage(org.id, file.size);
+    }
     const getFile = await this.storage.uploadFile(file);
 
     if (preventSave === 'true') {
@@ -759,7 +775,8 @@ export class MediaController {
       getFile.originalname,
       getFile.path,
       originalName,
-      aiGenerated === 'true'
+      aiGenerated === 'true',
+      file.size
     );
   }
 
@@ -779,6 +796,12 @@ export class MediaController {
     // The upload belongs to the organisation that started it:
     // the first call records it, every later call must come from it.
     if (endpoint === 'create-multipart-upload') {
+      // The declared size is the client's word; the real one is checked again
+      // when the parts are put together.
+      await this._mediaService.assertStorage(
+        org.id,
+        Number(req.body?.file?.size) || 0
+      );
       let created: any;
       const send = res.json.bind(res);
       res.json = ((body: any) => {
@@ -788,13 +811,37 @@ export class MediaController {
       await handle();
       res.json = send;
       if (created?.uploadId && created?.key) {
-        await recordUploadOwner(org.id, created.uploadId, created.key);
+        await recordUploadOwner(
+          org.id,
+          created.uploadId,
+          created.key,
+          Number(req.body?.file?.size) || 0
+        );
       }
       return res.json(created);
     }
     const pair = uploadPairOf(endpoint, req.body);
     if (!(await ownsUpload(org.id, pair.uploadId, pair.key))) {
       return res.status(404).json({ message: 'Upload not found' });
+    }
+    // Every part is signed for its exact size, within the declared file.
+    if (endpoint === 'sign-part' || endpoint === 'prepare-upload-parts') {
+      const parts =
+        endpoint === 'sign-part'
+          ? [{ number: req.body?.partNumber, size: req.body?.size }]
+          : Array.isArray(req.body?.partData?.parts)
+          ? req.body.partData.parts
+          : [];
+      if (!parts.length) {
+        return res.status(400).json({ message: 'No part to sign' });
+      }
+      for (const part of parts) {
+        if (!(await reservePart(pair.uploadId, part?.number, part?.size))) {
+          return res
+            .status(400)
+            .json({ message: 'The part does not fit in the declared file size.' });
+        }
+      }
     }
 
     const upload = await handle();
@@ -812,13 +859,28 @@ export class MediaController {
     // @ts-ignore
     const name = upload.Location.split('/').pop();
     const originalName = req.body?.file?.name;
+    // Set by the uploader from the assembled object; a provider that does not
+    // say is asked through the storage, so the file is never counted as 0.
+    const size =
+      // @ts-ignore
+      Number(upload.size) || (await this._mediaService.storedSize(upload.Location));
+
+    try {
+      await this._mediaService.assertStorage(org.id, size);
+    } catch (e) {
+      // @ts-ignore
+      await this.storage.removeFile(upload.Location).catch(() => undefined);
+      throw e;
+    }
 
     const saveFile = await this._mediaService.saveFile(
       org.id,
       name,
       // @ts-ignore
       upload.Location,
-      originalName || undefined
+      originalName || undefined,
+      false,
+      size
     );
 
     res.status(200).json({ ...upload, saved: saveFile });
