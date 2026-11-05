@@ -1,4 +1,9 @@
-FROM node:26.13.0-bookworm-slim
+# Debian 13 (trixie), the current Debian stable. The system packages below,
+# ffmpeg above all (it decodes videos users upload, for captions), come from
+# this release: on Debian 12 the image carried ffmpeg 5.1 with 1 critical and
+# 27 high CVEs in the registry scan. image-contents.spec.ts pins the release,
+# and the weekly runner-freshness workflow says when Debian stable moves on.
+FROM node:26.13.0-trixie-slim
 ARG NEXT_PUBLIC_VERSION
 ENV NEXT_PUBLIC_VERSION=$NEXT_PUBLIC_VERSION
 # Source map upload is a build-time step: without the org, the project and a

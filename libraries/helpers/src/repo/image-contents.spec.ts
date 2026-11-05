@@ -40,6 +40,16 @@ describe('the production image', () => {
     expect(removal!.index).toBeLessThan(cmd!.index);
   });
 
+  it('builds on the current Debian stable (trixie), not Debian 12', () => {
+    // Every system package (ffmpeg, glibc, libtiff, sqlite) comes from the
+    // base image's Debian release. Node images name it in the tag:
+    // node:<version>-<codename>-slim. The weekly runner-freshness workflow
+    // opens an issue when Debian stable is newer than this.
+    const from = instructions.filter(({ line }) => line.startsWith('FROM '));
+    expect(from).toHaveLength(1);
+    expect(from[0].line).toMatch(/^FROM node:\d+\.\d+\.\d+-trixie-slim$/);
+  });
+
   it('carries no esbuild older than 0.27 (an old Go standard library)', () => {
     const versions = [...lockfile.matchAll(/^ {2}esbuild@(\d+\.\d+\.\d+):$/gm)].map((m) => m[1]);
     expect(versions.length).toBeGreaterThan(0);

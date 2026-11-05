@@ -5,6 +5,11 @@ name: Runner freshness
 # week whether GitHub offers a newer one and opens an issue when it does.
 # Moving is then a PR: change every runs-on, and let CI show whether Playwright already ships browsers
 # for the new image (1.58 had none for 26.04).
+#
+# The production image pins its Debian release the same way (Dockerfile.dev,
+# node:<version>-<codename>-slim; image-contents.spec.ts). Dependabot moves
+# the Node version but never the codename, so the second step compares it
+# with Debian stable and opens an issue when Debian has moved on.
 
 on:
   schedule:
@@ -51,3 +56,30 @@ jobs:
           Check in https://github.com/actions/runner-images that the image is GA, not beta. Then, in one PR per repo:
           - every \`runs-on\` in this repo;
           - Playwright (root \`package.json\`) to a version that ships browsers for the new image — CI on the PR shows it (\`stack-e2e\`, then the deploy smoke and the nightly canary)."
+
+      - name: Compare the image's Debian release with Debian stable
+        # Runs even when the runner check above failed: they are independent.
+        if: ${{ !cancelled() }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          STABLE=$(curl -fsS https://deb.debian.org/debian/dists/stable/Release | sed -n 's/^Codename: //p')
+          OURS=$(sed -n -E 's/^FROM node:[0-9.]+-([a-z]+)-slim$/\1/p' Dockerfile.dev)
+          echo "Debian stable: ${STABLE}"
+          echo "Ours: ${OURS}"
+          if [ -z "$STABLE" ] || [ -z "$OURS" ]; then
+            echo "::error::Could not read the Debian stable codename or the FROM line of Dockerfile.dev"
+            exit 1
+          fi
+          if [ "$OURS" = "$STABLE" ]; then
+            exit 0
+          fi
+          TITLE="Production image: move to Debian ${STABLE}"
+          if [ -n "$(gh issue list --state open --limit 500 --json number,title \
+            --jq ".[] | select(.title == \"${TITLE}\") | .number")" ]; then
+            echo "Issue already open"
+            exit 0
+          fi
+          gh issue create --title "$TITLE" --body "Debian stable is \`${STABLE}\`; \`Dockerfile.dev\` builds on \`${OURS}\`.
+
+          In one PR: \`FROM node:<same version>-${STABLE}-slim\` once Docker Hub has that tag, the codename in \`image-contents.spec.ts\`, and the apt package names the image installs. Before merging, run ffmpeg in the new image on a real video (audio extraction to MP3 and burnt-in subtitles with libx264, as \`captions.service.ts\` does), and check the registry scan of the new image."
