@@ -1,0 +1,37 @@
+name: Cache cleanup
+
+# A cache is readable only from the ref that wrote it and from refs below it
+# (main, for everything). The pnpm cache of every pull request
+# (refs/pull/N/merge) and of every pushed branch is dead once the pull
+# request is closed or the branch deleted, but it stays until GitHub evicts
+# by age, and above the repository's cache limit GitHub evicts the oldest
+# first, main's own pnpm and CodeQL caches included. This deletes a ref's
+# caches as soon as nothing can read them.
+#
+# No checkout and no code from the pull request runs here. A pull request
+# from a fork gets a read-only token, so its caches stay until eviction.
+
+on:
+  pull_request:
+    types: [closed]
+  delete:
+
+permissions:
+  actions: write
+
+jobs:
+  cleanup:
+    if: github.event_name == 'pull_request' || github.event.ref_type == 'branch'
+    runs-on: ubuntu-26.04
+    steps:
+      - name: Delete the caches of the closed pull request or deleted branch
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          REF: ${{ github.event_name == 'pull_request' && format('refs/pull/{0}/merge', github.event.pull_request.number) || format('refs/heads/{0}', github.event.ref) }}
+        run: |
+          ids=$(gh api --paginate "repos/$REPO/actions/caches?ref=$REF&per_page=100" -q '.actions_caches[].id')
+          for id in $ids; do
+            gh api -X DELETE "repos/$REPO/actions/caches/$id" --silent
+          done
+          echo "Deleted $(echo $ids | wc -w) caches of $REF"
