@@ -82,6 +82,17 @@ class MockRedis {
     return value;
   }
 
+  // Slot counters (upload-slots.guard.ts) give back with DECR.
+  async decr(key: string) {
+    const entry = this.live(key);
+    const value = Number(entry?.value ?? 0) - 1;
+    this.data.set(key, {
+      value: String(value),
+      expiresAt: entry?.expiresAt ?? null,
+    });
+    return value;
+  }
+
   // Seconds left; -1 without an expiry, -2 for no key.
   async ttl(key: string) {
     const entry = this.live(key);

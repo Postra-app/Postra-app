@@ -29,6 +29,8 @@ export const registerMastraColumnsGauge = (query: Query) => {
   new Gauge({
     name: MASTRA_COLUMNS_METRIC,
     help: 'Physical columns (dropped included) of the widest mastra_* table; Postgres stops at 1600',
+    // The same table seen by every backend worker: merged, not summed.
+    aggregator: 'max',
     async collect() {
       try {
         const [widest] = await query(MASTRA_COLUMNS_SQL);

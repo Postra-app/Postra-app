@@ -180,4 +180,16 @@ describe('CI workflows', () => {
     const image = docker.match(/^FROM node:(\S+)/m)?.[1] ?? '';
     expect(image.startsWith(`${pkg.volta.node}-`)).toBe(true);
   });
+
+  // Caches of closed pull requests and deleted branches cannot be read by
+  // anything, yet they pushed main's own caches out of the repository's
+  // cache limit.
+  it('deletes the caches of a closed pull request or deleted branch, without running its code', () => {
+    const text = readFileSync(join(dir, 'cache-cleanup.yml'), 'utf8');
+    expect(text).toMatch(/pull_request:\s*\n\s*types: \[closed\]/);
+    expect(text).toMatch(/^\s*delete:\s*$/m);
+    expect(text).toMatch(/refs\/pull\/\{0\}\/merge/);
+    expect(text).toMatch(/permissions:\s*\n\s*actions: write\s*\n\s*\n/);
+    expect(text).not.toMatch(/actions\/checkout|pull_request_target/);
+  });
 });

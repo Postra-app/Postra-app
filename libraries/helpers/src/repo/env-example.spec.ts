@@ -19,6 +19,8 @@ const internal = new Set([
   'TZ',
   'CI',
   'JEST_WORKER_ID',
+  // pm2's number of a cluster worker (metrics.ts).
+  'NODE_APP_INSTANCE',
 ]);
 // Read by tools rather than by the code in apps/ and libraries/.
 const tooling = new Set(['NX_ADD_PLUGINS']);
