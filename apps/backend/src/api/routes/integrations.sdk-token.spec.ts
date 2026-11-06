@@ -209,3 +209,42 @@ describe('ConnectIntegrationDto', () => {
     ).toEqual(['sdkToken']);
   });
 });
+
+describe('connect outcome in the logs', () => {
+  beforeAll(() => (process.env.JWT_SECRET = 'test-secret'));
+
+  it('logs the refusal with its status and message, never the token', async () => {
+    const { Logger } = jest.requireActual('@nestjs/common');
+    const warn = jest.spyOn(Logger, 'warn').mockImplementation(() => undefined);
+    const threads = { authenticate: jest.fn() };
+    const { controller } = setup(threads);
+
+    await run(controller, 'threads', { sdkToken: 'EAAB-secret-token' });
+
+    const line = warn.mock.calls.map((c) => String(c[0])).join('\n');
+    expect(line).toContain(
+      '[connect] threads via sdk: refused 400 This platform cannot be connected with app sign-in'
+    );
+    expect(line).not.toContain('EAAB-secret-token');
+    expect(line).not.toContain('st-1');
+    warn.mockRestore();
+  });
+
+  it('logs a connection that went through', async () => {
+    const { Logger } = jest.requireActual('@nestjs/common');
+    const log = jest.spyOn(Logger, 'log').mockImplementation(() => undefined);
+    const facebook = {
+      isBetweenSteps: true,
+      authenticate: jest.fn(),
+      authenticateSdkToken: jest.fn(async () => details),
+      pages: jest.fn(async () => []),
+    };
+    const { controller } = setup(facebook);
+
+    await run(controller, 'facebook', { sdkToken: 'EAAB-token' });
+    expect(log.mock.calls.map((c) => String(c[0]))).toContain(
+      '[connect] facebook via sdk: connected'
+    );
+    log.mockRestore();
+  });
+});

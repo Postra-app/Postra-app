@@ -211,6 +211,35 @@ export class NoAuthIntegrationsController {
     @Body() body: ConnectIntegrationDto,
     @Req() req: Request
   ) {
+    // One line per outcome, so a refused connection can be explained from the
+    // logs: the status and our own message, never the code, token or state.
+    const via = body?.sdkToken ? 'sdk' : 'code';
+    const name = /^[a-z0-9-]{1,40}$/.test(integration) ? integration : 'invalid';
+    try {
+      const result = await this.finishSocialConnect(integration, body, req);
+      Logger.log(`[connect] ${name} via ${via}: connected`);
+      return result;
+    } catch (err) {
+      const status =
+        err instanceof HttpException
+          ? err.getStatus()
+          : err instanceof NotEnoughScopes
+          ? 409
+          : 500;
+      const reason =
+        err instanceof HttpException || err instanceof NotEnoughScopes
+          ? String((err as { message?: string }).message).slice(0, 160)
+          : (err as Error)?.constructor?.name || 'Error';
+      Logger.warn(`[connect] ${name} via ${via}: refused ${status} ${reason}`);
+      throw err;
+    }
+  }
+
+  private async finishSocialConnect(
+    integration: string,
+    body: ConnectIntegrationDto,
+    req: Request
+  ) {
     if (
       !this._integrationManager
         .getAllowedSocialsIntegrations()
