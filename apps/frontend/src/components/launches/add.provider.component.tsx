@@ -742,6 +742,9 @@ export const AddProviderComponent: FC<{
             modal.openModal({
               title: t(checklist.title.key, checklist.title.text),
               withCloseButton: true,
+              // The card is w-fit: without a cap the intro paragraph stretched
+              // it across the whole window, corners cut at the screen edge.
+              maxSize: 720,
               onClose: () => resolve(false),
               // `close` closes this checklist. modal.closeCurrent() closed the
               // modal this hook runs in — the channel picker — so "show me how"
