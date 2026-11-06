@@ -22,6 +22,9 @@ export const registerAiCostGauge = (load: Load, now: () => number = Date.now) =>
   new Gauge({
     name: AI_COST_METRIC,
     help: 'AI cost in USD over the last 24 hours, from AiUsage rows priced by ai-cost.ts',
+    // Every backend worker measures the same rows; /metrics merges the
+    // workers (backend metrics.ts), and a sum would double the cost.
+    aggregator: 'max',
     async collect() {
       const at = now();
       if (at - measuredAt < AI_COST_REFRESH_MS) {
