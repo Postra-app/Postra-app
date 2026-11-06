@@ -16,16 +16,16 @@ ARG SENTRY_ORG
 ARG SENTRY_PROJECT
 ENV SENTRY_ORG=$SENTRY_ORG
 ENV SENTRY_PROJECT=$SENTRY_PROJECT
-# `procps` is not optional. pm2 starts every app as `pm2 start pnpm -- start`,
-# so the process pm2 owns is a pnpm wrapper and the real Node server is its
-# child. On restart pm2 signals the wrapper and relies on its tree-kill to
-# reach the child — and that tree-kill shells out to `ps --ppid <pid>`, which
-# the slim base image does not ship. Without `ps` the walk finds no children,
-# the wrapper dies, and the Node process is orphaned with its full heap still
-# resident: ~450 MB for the backend, ~1.4 GB for the orchestrator, on a 3.7 GB
-# box. Two such orphans from one `pm2 restart` pushed the instance from a 78%
-# steady state to 87% and tripped postra-dev-ec2-memory (2026-09-13).
-# It also restores `ps` inside the container for diagnosing exactly this.
+# `procps` is not optional. pm2 stops an app by walking its process tree,
+# and that tree-kill shells out to `ps --ppid <pid>`, which the slim base
+# image does not ship. When every app ran as `pm2 start pnpm -- start`, the
+# walk found no children without `ps`, the pnpm wrapper died, and the Node
+# server under it was orphaned with its full heap still resident: ~450 MB for
+# the backend, ~1.4 GB for the orchestrator, on a 3.7 GB box. Two such orphans
+# from one `pm2 restart` pushed the instance from a 78% steady state to 87%
+# and tripped postra-dev-ec2-memory (2026-09-13). pm2 now owns the Node
+# servers themselves (ecosystem.config.cjs), but the walk still has to reach
+# whatever they start (ffmpeg), and `ps` is what diagnosing it needs.
 RUN apt-get update && apt-get install -y --no-install-recommends \
     g++ \
     make \
@@ -63,8 +63,8 @@ RUN node -e "const fs=require('fs'),{X509Certificate}=require('crypto');for(cons
 
 RUN addgroup --system www \
  && adduser --system --ingroup www --home /www --shell /usr/sbin/nologin www \
- && mkdir -p /www /var/cache/nginx /var/log/nginx /uploads \
- && chown -R www:www /www /var/lib/nginx /var/log/nginx /var/cache/nginx /uploads
+ && mkdir -p /www /app /var/cache/nginx /var/log/nginx /uploads \
+ && chown -R www:www /www /app /var/lib/nginx /var/log/nginx /var/cache/nginx /uploads
 
 
 # pnpm and pm2 at the exact versions in var/docker/tools/package.json, which
@@ -77,8 +77,15 @@ RUN npm --no-update-notifier --no-fund --global install $(node -p "Object.entrie
 
 WORKDIR /app
 
-COPY . /app
 COPY var/docker/nginx.conf /etc/nginx/nginx.conf
+
+# The app is copied as, installed and built by the user it runs as. It used
+# to be built as root and handed over with `chown -R www:www /app` at the
+# end, which wrote every file of /app (node_modules and builds) into the
+# image a second time: a slow step of its own, and twice the layers to
+# export, push and pull.
+COPY --chown=www:www . /app
+USER www
 
 RUN pnpm install --frozen-lockfile
 
@@ -86,6 +93,9 @@ RUN pnpm install --frozen-lockfile
 # renderer (sharp/librsvg, DESIGN_TEXT_FONT = 'Geist, sans-serif') draws post
 # text in Geist instead of a fallback sans. The `geist` npm package (a frontend
 # dep) ships the .ttf files; copy from wherever pnpm resolved them.
+# As root: it installs a package and writes the system font directory, not
+# /app.
+USER root
 RUN apt-get update && apt-get install -y --no-install-recommends fontconfig \
  && mkdir -p /usr/share/fonts/truetype/geist \
  && for d in $(find /app -type d -path '*/geist/dist/fonts/geist-sans'); do \
@@ -94,6 +104,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends fontconfig \
  && fc-cache -f \
  && fc-list | grep -i geist || echo "WARN: Geist not registered in fontconfig" \
  && rm -rf /var/lib/apt/lists/*
+USER www
 
 RUN --mount=type=secret,id=sentry_auth_token,env=SENTRY_AUTH_TOKEN \
     NODE_OPTIONS="--max-old-space-size=4096" pnpm run build
@@ -104,10 +115,6 @@ RUN --mount=type=secret,id=sentry_auth_token,env=SENTRY_AUTH_TOKEN \
 # Run on prod with:
 #   docker compose exec -T app node /app/apps/commands/dist/apps/commands/src/main.js <command>
 RUN NODE_OPTIONS="--max-old-space-size=4096" pnpm run commands:build:development
-
-RUN chown -R www:www /app
-
-USER www
 
 # pm2 writes each process's stdout and stderr to /www/.pm2/logs and never
 # rotates them: the backend's log grew for as long as the container lived,
