@@ -1,3 +1,4 @@
+import { exchangeMetaUserToken, verifyMetaSdkToken } from '@gitroom/nestjs-libraries/integrations/social/meta.sdk.token';
 import { META_GRAPH_API_VERSION } from '@gitroom/nestjs-libraries/integrations/social/meta.graph.version';
 import {
   AnalyticsData,
@@ -9,6 +10,7 @@ import {
 import { makeSecureId } from '@gitroom/nestjs-libraries/services/make.secure.id';
 import dayjs from 'dayjs';
 import {
+  NotEnoughScopes,
   ProcessingTimeout,
   SocialAbstract,
   ValidityMedia,
@@ -384,16 +386,27 @@ export class FacebookProvider extends SocialAbstract implements SocialProvider {
       )
     ).json();
 
-    const { access_token } = await (
-      await fetch(
-        `https://graph.facebook.com/${META_GRAPH_API_VERSION}/oauth/access_token` +
-          '?grant_type=fb_exchange_token' +
-          `&client_id=${process.env.FACEBOOK_APP_ID}` +
-          `&client_secret=${process.env.FACEBOOK_APP_SECRET}` +
-          `&fb_exchange_token=${getAccessToken.access_token}&fields=access_token,expires_in`
-      )
-    ).json();
+    return this.userTokenDetails(
+      await exchangeMetaUserToken(getAccessToken.access_token)
+    );
+  }
 
+  // The Facebook Login SDK in the mobile app signs the user in through the
+  // installed Facebook app and hands us its user token instead of a code.
+  async authenticateSdkToken(token: string) {
+    const userId = await verifyMetaSdkToken(token);
+    const details = await this.userTokenDetails(
+      await exchangeMetaUserToken(token)
+    );
+    if (String(details.id) !== userId) {
+      throw new NotEnoughScopes(
+        'This Facebook sign-in was not issued for Postra. Please try again.'
+      );
+    }
+    return details;
+  }
+
+  private async userTokenDetails(access_token: string) {
     const { data } = await (
       await fetch(
         `https://graph.facebook.com/${META_GRAPH_API_VERSION}/me/permissions?access_token=${access_token}`

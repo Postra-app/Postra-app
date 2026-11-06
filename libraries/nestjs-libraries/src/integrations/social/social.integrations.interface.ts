@@ -17,6 +17,11 @@ export interface IAuthenticator {
     clientInformation?: ClientInformation
   ): Promise<AuthTokenDetails | string>;
   refreshToken(refreshToken: string): Promise<AuthTokenDetails>;
+  // Connect with a user token the platform's own mobile SDK handed to the
+  // app (it switches to the platform's installed app, which is already signed
+  // in), instead of an OAuth code. The provider must prove the token was
+  // issued for our app before it uses it.
+  authenticateSdkToken?(token: string): Promise<AuthTokenDetails>;
   reConnect?(
     id: string,
     requiredId: string,

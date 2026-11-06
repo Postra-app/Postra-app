@@ -222,6 +222,14 @@ export class NoAuthIntegrationsController {
     const integrationProvider =
       this._integrationManager.getSocialIntegration(integration);
 
+    // A token from the platform's mobile SDK replaces the code only where the
+    // provider knows how to verify one; the state and every check below stay.
+    if (body.sdkToken && !integrationProvider.authenticateSdkToken) {
+      throw new BadRequestException(
+        'This platform cannot be connected with app sign-in'
+      );
+    }
+
     const getCodeVerifier = integrationProvider.customFields
       ? 'none'
       : await ioRedis.get(`login:${body.state}`);
@@ -370,15 +378,17 @@ export class NoAuthIntegrationsController {
       // eslint-disable-next-line no-async-promise-executor
     } = await new Promise<AuthTokenDetails>(async (res) => {
       try {
-        const auth = await integrationProvider.authenticate(
-          {
-            code: body.code,
-            codeVerifier: getCodeVerifier,
-            refresh: body.refresh,
-            organizationId: organization,
-          },
-          details ? JSON.parse(details) : undefined
-        );
+        const auth = body.sdkToken
+          ? await integrationProvider.authenticateSdkToken!(body.sdkToken)
+          : await integrationProvider.authenticate(
+              {
+                code: body.code,
+                codeVerifier: getCodeVerifier,
+                refresh: body.refresh,
+                organizationId: organization,
+              },
+              details ? JSON.parse(details) : undefined
+            );
 
         if (typeof auth === 'string') {
           return res({
