@@ -315,7 +315,7 @@ export class TiktokProvider extends SocialAbstract implements SocialProvider {
       refresh_token: refreshToken,
     };
 
-    const { access_token, refresh_token, ...all } = await (
+    const tokens: any = await (
       await fetch('https://open.tiktokapis.com/v2/oauth/token/', {
         headers: {
           'Content-Type': 'application/x-www-form-urlencoded',
@@ -323,13 +323,24 @@ export class TiktokProvider extends SocialAbstract implements SocialProvider {
         method: 'POST',
         body: new URLSearchParams(value).toString(),
       })
-    ).json();
+    )
+      .json()
+      .catch(() => ({}));
+    const { access_token, refresh_token } = tokens;
 
-    const {
-      data: {
-        user: { avatar_url, display_name, open_id, username },
-      },
-    } = await (
+    // A refused refresh (revoked, expired, already used) answers with an
+    // error and no tokens. Reading the user below then failed with a
+    // TypeError, so the log said nothing about why. Name TikTok's error
+    // instead; the caller marks the channel for reconnecting either way.
+    if (!access_token) {
+      throw new Error(
+        `TikTok refused the refresh token (${
+          String(tokens?.error || 'no access_token').slice(0, 60)
+        })`
+      );
+    }
+
+    const info: any = await (
       await fetch(
         'https://open.tiktokapis.com/v2/user/info/?fields=open_id,avatar_url,display_name,union_id,username',
         {
@@ -339,7 +350,18 @@ export class TiktokProvider extends SocialAbstract implements SocialProvider {
           },
         }
       )
-    ).json();
+    )
+      .json()
+      .catch(() => ({}));
+    const user = info?.data?.user;
+    if (!user?.open_id) {
+      throw new Error(
+        `TikTok did not return the account after a refresh (${String(
+          info?.error?.code || 'no user'
+        ).slice(0, 60)})`
+      );
+    }
+    const { avatar_url, display_name, open_id, username } = user;
 
     return {
       refreshToken: refresh_token,
