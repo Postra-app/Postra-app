@@ -57,10 +57,10 @@ export const BotPicture: FC<{
         // Picture" over a form with just a nickname field.
         title={
           props.canChangeProfilePicture && props.canChangeNickName
-            ? t('change_bot_picture_and_nickname_title', 'Change Bot Picture and Nickname')
+            ? t('change_bot_picture_and_nickname_title', 'Change bot picture and nickname')
             : props.canChangeNickName
-            ? t('change_bot_nickname_title', 'Change Bot Nickname')
-            : t('change_bot_picture_title', 'Change Bot Picture')
+            ? t('change_bot_nickname_title', 'Change bot nickname')
+            : t('change_bot_picture_title', 'Change bot picture')
         }
       />
       <button

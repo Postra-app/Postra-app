@@ -684,13 +684,12 @@ export const Menu: FC<{
                 </svg>
               </div>
               <div className="text-[14px] font-[500]">
-                {t('change_bot', 'Change bot')}{' '}
-                {[
-                  canChangeProfilePicture && t('picture', 'Picture'),
-                  canChangeNickName && t('label_nickname', 'Nickname'),
-                ]
-                  .filter((f) => f)
-                  .join(' / ')}
+                {/* The same words as the dialog it opens (bot.picture.tsx). */}
+                {canChangeProfilePicture && canChangeNickName
+                  ? t('change_bot_picture_and_nickname_title', 'Change bot picture and nickname')
+                  : canChangeNickName
+                  ? t('change_bot_nickname_title', 'Change bot nickname')
+                  : t('change_bot_picture_title', 'Change bot picture')}
               </div>
             </div>
           )}
