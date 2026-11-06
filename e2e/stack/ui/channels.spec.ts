@@ -57,7 +57,7 @@ test("the channel menu opens from the keyboard and its items are readable", asyn
   const trigger = page.getByRole('button', { name: 'Channel options' }).first();
   await trigger.focus();
   await page.keyboard.press('Enter');
-  const item = page.getByText('Edit Time Slots', { exact: true });
+  const item = page.getByText('Edit time slots', { exact: true });
   await expect(item).toBeVisible();
   const color = await item.evaluate((el) => getComputedStyle(el).color);
   expect(color).not.toBe('rgb(69, 69, 69)');
@@ -106,7 +106,7 @@ test('removing a time slot removes that slot, not its neighbour', async ({ page 
 
   await page.goto('/launches');
   await page.getByRole('button', { name: 'Channel options' }).first().click();
-  await page.getByText('Edit Time Slots', { exact: true }).click();
+  await page.getByText('Edit time slots', { exact: true }).click();
   // 05:00 in London (04:00 UTC) sits mid-list on screen but is stored last:
   // the old bin removed the slot at its on-screen position in the stored
   // array — a different slot.
@@ -130,9 +130,9 @@ test('the bot dialog says what it changes and is a single card', async ({ page }
     .locator('xpath=ancestor::*[.//*[@aria-label="Channel options"]][1]')
     .getByRole('button', { name: 'Channel options' })
     .click();
-  await page.getByText('Change Bot Nickname', { exact: true }).click();
-  await expect(page.getByText('Change Bot Nickname', { exact: true }).last()).toBeVisible();
-  await expect(page.getByText('Change Bot Picture', { exact: true })).toHaveCount(0);
+  await page.getByText('Change bot nickname', { exact: true }).click();
+  await expect(page.getByText('Change bot nickname', { exact: true }).last()).toBeVisible();
+  await expect(page.getByText('Change bot picture', { exact: true })).toHaveCount(0);
   await expect(page.locator('.animate-modalIn')).toHaveCount(0);
 });
 
@@ -166,7 +166,7 @@ test.describe('posting times in London', () => {
         .locator('xpath=ancestor::*[.//*[@aria-label="Channel options"]][1]')
         .getByRole('button', { name: 'Channel options' })
         .click();
-      await page.getByText('Edit Time Slots', { exact: true }).click();
+      await page.getByText('Edit time slots', { exact: true }).click();
       await page.getByRole('combobox').nth(0).selectOption('09');
       await page.getByRole('button', { name: 'Add', exact: true }).click();
       await expect(page.getByRole('button', { name: 'Remove 09:00' })).toBeVisible();
@@ -188,12 +188,12 @@ test.describe('posting times in London', () => {
 test.describe('Bluesky channel of organisation B', () => {
   test.use({ storageState: stateFile('b') });
 
-  test('"Update Credentials" opens a window with that title', async ({ page }) => {
+  test('"Update credentials" opens a window with that title', async ({ page }) => {
     // The window was titled "Custom URL".
     await page.goto('/launches');
     await page.getByRole('button', { name: 'Channel options' }).first().click();
-    await page.getByText('Update Credentials', { exact: true }).click();
-    await expect(page.getByRole('dialog').getByText('Update Credentials', { exact: true })).toBeVisible();
+    await page.getByText('Update credentials', { exact: true }).click();
+    await expect(page.getByRole('dialog').getByText('Update credentials', { exact: true })).toBeVisible();
     await expect(page.getByRole('dialog').getByText('Custom URL', { exact: true })).toHaveCount(0);
   });
 });
