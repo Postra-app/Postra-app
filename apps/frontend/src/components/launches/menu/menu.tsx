@@ -407,7 +407,7 @@ export const Menu: FC<{
       (integration) => integration.id === id
     );
     modal.openModal({
-      title: t('additional_settings', 'Additional Settings'),
+      title: t('additional_settings', 'Additional settings'),
       children: (
         <SettingsModal
           // @ts-expect-error findIntegration (Integrations) doesn't match the prop's expanded shape
@@ -482,7 +482,7 @@ export const Menu: FC<{
   }, [id, t]);
   const updateCredentials = useCallback(() => {
     modal.openModal({
-      title: t('update_credentials', 'Update Credentials'),
+      title: t('update_credentials', 'Update credentials'),
       withCloseButton: false,
       classNames: {
         modal: 'md',
@@ -588,7 +588,7 @@ export const Menu: FC<{
                 />
               </svg>
               </div>
-            <div className="text-[14px] font-[500]">{t('copy_id', 'Copy Channel ID')}</div>
+            <div className="text-[14px] font-[500]">{t('copy_id', 'Copy channel ID')}</div>
           </div>
           {canDisable &&
             findIntegration?.refreshNeeded &&
@@ -636,7 +636,7 @@ export const Menu: FC<{
                 </svg>
               </div>
               <div className="text-[14px] font-[500]">
-                {t('update_credentials', 'Update Credentials')}
+                {t('update_credentials', 'Update credentials')}
               </div>
             </div>
           )}
@@ -660,7 +660,7 @@ export const Menu: FC<{
                 </svg>
               </div>
               <div className="text-[14px] font-[500]">
-                {t('additional_settings', 'Additional Settings')}
+                {t('additional_settings', 'Additional settings')}
               </div>
             </div>
           )}
@@ -684,7 +684,7 @@ export const Menu: FC<{
                 </svg>
               </div>
               <div className="text-[14px] font-[500]">
-                {t('change_bot', 'Change Bot')}{' '}
+                {t('change_bot', 'Change bot')}{' '}
                 {[
                   canChangeProfilePicture && t('picture', 'Picture'),
                   canChangeNickName && t('label_nickname', 'Nickname'),
@@ -788,7 +788,7 @@ export const Menu: FC<{
               </svg>
               </div>
             <div className="text-[14px] font-[500]">
-              {t('edit_time_slots', 'Edit Time Slots')}
+              {t('edit_time_slots', 'Edit time slots')}
             </div>
           </div>
           {canEnable && canManage && (
@@ -811,7 +811,7 @@ export const Menu: FC<{
                 </svg>
               </div>
               <div className="text-[14px] font-[500]">
-                {t('enable_channel', 'Enable Channel')}
+                {t('enable_channel', 'Enable channel')}
               </div>
             </div>
           )}
@@ -836,7 +836,7 @@ export const Menu: FC<{
                 </svg>
               </div>
               <div className="text-[14px] font-[500]">
-                {t('disable_channel', 'Disable Channel')}
+                {t('disable_channel', 'Disable channel')}
               </div>
             </div>
           )}
