@@ -30,6 +30,8 @@ export const UNREADABLE =
   'This image could not be read. Try a PNG, JPEG or WebP photo.';
 export const TOO_SMALL =
   'This image is too small to cut out. Use one at least 256 pixels on each side.';
+export const TOO_NARROW =
+  'This image is too long and narrow to cut out. Crop it closer to a square and try again.';
 
 const kieUrl = (path: string) =>
   `${(process.env.KIEAI_API_URL || 'https://api.kie.ai').replace(/\/+$/, '')}${path}`;
@@ -70,15 +72,36 @@ export const prepareInput = async (bytes: Buffer): Promise<Buffer> => {
     MAX_SIDE / Math.max(width, height),
     Math.sqrt(MAX_PIXELS / (width * height))
   );
-  const resized = () => {
-    const p = sharp(bytes, { limitInputPixels: 60_000_000 }).rotate();
-    return scale < 1 ? p.resize(Math.floor(width * scale), Math.floor(height * scale)) : p;
+  // A long, narrow picture brought down to 4096 px can end up under 256 px on
+  // its short side, which the model refuses as well.
+  if (Math.floor(Math.min(width, height) * scale) < MIN_SIDE) {
+    throw new HttpException(TOO_NARROW, 422);
+  }
+  // Smaller steps until the file fits kie.ai's 5 MB: first the picture as
+  // PNG, then as JPEG (the model looks at the picture, not its
+  // transparency), then the JPEG at a smaller size, never under 256 px.
+  const encode = (factor: number, jpeg: boolean) => {
+    const w = Math.floor(width * scale * factor);
+    const h = Math.floor(height * scale * factor);
+    const p = sharp(bytes, { limitInputPixels: 60_000_000 })
+      .rotate()
+      .resize(w, h);
+    return jpeg
+      ? p.flatten({ background: '#ffffff' }).jpeg({ quality: 90 }).toBuffer()
+      : p.png().toBuffer();
   };
-  const png = await resized().png().toBuffer();
-  if (png.length <= MAX_INPUT_BYTES) return png;
-  // The model looks at the picture, not at its transparency: a JPEG carries
-  // the same picture in far fewer bytes.
-  return resized().flatten({ background: '#ffffff' }).jpeg({ quality: 92 }).toBuffer();
+  try {
+    const png = await encode(1, false);
+    if (png.length <= MAX_INPUT_BYTES) return png;
+    for (let factor = 1; Math.min(width, height) * scale * factor >= MIN_SIDE; factor *= 0.8) {
+      const jpeg = await encode(factor, true);
+      if (jpeg.length <= MAX_INPUT_BYTES) return jpeg;
+    }
+  } catch {
+    // Pixels that do not decode, behind a header that did.
+    throw new HttpException(UNREADABLE, 422);
+  }
+  throw new HttpException(UNREADABLE, 422);
 };
 
 /** Where the finished cut-out is: `resultJson.resultUrls`, as documented. */

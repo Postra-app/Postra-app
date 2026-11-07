@@ -3,11 +3,13 @@ jest.mock('@gitroom/nestjs-libraries/services/ai-usage.record', () => ({ recordA
 
 import { HttpException, Logger } from '@nestjs/common';
 import sharp from 'sharp';
+import { randomBytes } from 'crypto';
 import {
   KIE_BACKGROUND_MODEL,
   prepareInput,
   removeBackground,
   resultUrlOf,
+  TOO_NARROW,
   TOO_SMALL,
   UNAVAILABLE,
   UNREADABLE,
@@ -129,6 +131,28 @@ describe('prepareInput (kie.ai limits)', () => {
 
   it('refuses a picture under 256 px a side', async () => {
     await expect(prepareInput(await image(300, 200))).rejects.toThrow(TOO_SMALL);
+  });
+
+  it('refuses a long, narrow picture that would end under 256 px', async () => {
+    await expect(prepareInput(await image(6000, 300))).rejects.toThrow(TOO_NARROW);
+  });
+
+  it('keeps a picture that cannot be squeezed into PNG under 5 MB within 5 MB', async () => {
+    // Noise does not compress: 4000 x 4000 random pixels stay over 5 MB even as JPEG.
+    const noise = randomBytes(4000 * 4000 * 3);
+    const big = await sharp(noise, { raw: { width: 4000, height: 4000, channels: 3 } }).png().toBuffer();
+    const out = await prepareInput(big);
+    expect(out.length).toBeLessThanOrEqual(5 * 1024 * 1024);
+    const meta = await sharp(out).metadata();
+    expect(Math.min(meta.width!, meta.height!)).toBeGreaterThanOrEqual(256);
+  });
+
+  it('answers 422, not 500, for pixels that do not decode behind a valid header', async () => {
+    const good = await sharp({ create: { width: 800, height: 600, channels: 3, background: '#888' } })
+      .jpeg()
+      .toBuffer();
+    const broken = Buffer.concat([good.subarray(0, 600), Buffer.alloc(2000, 0xff)]);
+    await expect(prepareInput(broken)).rejects.toThrow(UNREADABLE);
   });
 
   it('refuses bytes that are not a picture', async () => {
