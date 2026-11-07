@@ -16,6 +16,7 @@ import { EmptyState } from '@gitroom/frontend/components/ui/empty-state';
 import { Skeleton } from '@gitroom/frontend/components/ui/skeleton';
 import { StudioIcon } from '@gitroom/frontend/components/studio/studio-icons';
 import useSWR from 'swr';
+import { useSelectAllOnFocus } from '@gitroom/frontend/components/ui/use-select-all-on-focus';
 
 type StockSource = 'pixabay' | 'pexels' | 'unsplash';
 
@@ -78,6 +79,7 @@ export const StockImagesPanel: FC<Props> = ({ canvas, defaultQuery }) => {
   const [searching, setSearching] = useState(false);
   const [searched, setSearched] = useState(false);
   const [importingId, setImportingId] = useState<number | string | null>(null);
+  const selectAll = useSelectAllOnFocus();
 
   // The newest search wins: one typed while another runs (switching the
   // source starts one) used to be dropped, and the late answer of the older
@@ -270,7 +272,8 @@ export const StockImagesPanel: FC<Props> = ({ canvas, defaultQuery }) => {
           onKeyDown={(e) => e.key === 'Enter' && search()}
           // The panel opens on a starter search; clicking in and typing
           // made "businesstulips" and an empty result.
-          onFocus={(e) => e.currentTarget.select()}
+          {...selectAll}
+          aria-label={t('image_stock_search', 'Search photos')}
           placeholder={t('image_stock_search_ph', 'e.g. coffee, office, summer')}
           className="flex-1 min-w-0 text-xs px-2 py-1.5 rounded bg-newColColor border border-newBorder text-textColor placeholder-textColor/60 focus:outline-none focus:border-forth"
         />

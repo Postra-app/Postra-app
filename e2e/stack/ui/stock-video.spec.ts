@@ -38,8 +38,9 @@ test('a B-roll search typed while another is running shows its own clips', async
 
 // The search box opens on a starter phrase that is real text, not a
 // placeholder. A click and a typed word searched for "nature timelapsecoffee";
-// the phrase is selected on focus, as in the photo panel.
-test('typing into the B-roll search replaces the starter phrase', async ({ page }) => {
+// the phrase is selected on focus, as in the photo panel. Safari dropped that
+// selection on the mouseup of the same click, so it runs in WebKit too.
+test('typing into the B-roll search replaces the starter phrase', { tag: '@safari' }, async ({ page }) => {
   test.setTimeout(60_000);
   const asked: string[] = [];
   await page.route('**/api/media/pixabay-videos?*', async (route) => {
@@ -55,4 +56,37 @@ test('typing into the B-roll search replaces the starter phrase', async ({ page 
   await expect(box).toHaveValue('coffee');
   await page.keyboard.press('Enter');
   await expect.poll(() => asked.at(-1)).toBe('coffee');
+});
+
+// Two columns across the full Studio width made every clip about 600 px wide:
+// one row filled the panel and its Import buttons were cut in half, with the
+// rest of the results out of sight.
+test('B-roll shows a row of clips with whole Import buttons', { tag: '@safari' }, async ({ page }) => {
+  test.setTimeout(60_000);
+  await page.setViewportSize({ width: 1440, height: 900 });
+  const hits = Array.from({ length: 8 }, (_, i) => ({
+    id: i + 1,
+    duration: 8,
+    pageURL: 'https://pixabay.com/videos/x/',
+    tags: `clip ${i + 1}`,
+    user: `Maker${i + 1}`,
+    user_id: i + 1,
+    videos: {},
+  }));
+  await page.route('**/api/media/pixabay-videos?*', (route) => route.fulfill({ json: { hits } }));
+  await page.goto('/studio?mode=video');
+  await page.getByRole('button', { name: /Stock B-roll/ }).first().click();
+  const imports = page.getByRole('button', { name: 'Import', exact: true });
+  await expect(imports).toHaveCount(8, { timeout: 30_000 });
+  const first = await imports.first().boundingBox();
+  const fourth = await imports.nth(3).boundingBox();
+  // Four clips side by side on a laptop-width screen.
+  expect(Math.abs((fourth?.y ?? 0) - (first?.y ?? -1))).toBeLessThan(2);
+  // And the first Import button is whole inside the scrolling list.
+  const inView = await imports.first().evaluate((b) => {
+    const box = b.closest('.overflow-y-auto')!.getBoundingClientRect();
+    const r = b.getBoundingClientRect();
+    return r.top >= box.top && r.bottom <= box.bottom;
+  });
+  expect(inView).toBe(true);
 });
