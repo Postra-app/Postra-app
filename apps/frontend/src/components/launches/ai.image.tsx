@@ -9,6 +9,7 @@ import { useModals } from '@gitroom/frontend/components/layout/new-modal';
 import { useToaster } from '@gitroom/react/toaster/toaster';
 import useSWR from 'swr';
 import { useAiError } from '@gitroom/frontend/components/ai/use-ai-error';
+import { isFetchHandledError } from '@gitroom/helpers/utils/fetch.errors';
 const list = [
   'Realistic',
   'Cartoon',
@@ -93,6 +94,9 @@ ${style}
       }
       onChange(image);
     } catch (e) {
+      // Already reported by the shared fetch (a 403 names the reason): a
+      // second "try again" under it contradicted it.
+      if (isFetchHandledError(e)) return;
       console.error('[Postra:ai-image] generate failed', e);
       toaster.show(
         t(

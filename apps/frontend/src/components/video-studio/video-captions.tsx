@@ -19,6 +19,7 @@ import {
   drawBrandText,
 } from './text-overlay';
 import { useBrandKit } from './use-brand-kit';
+import { isFetchHandledError } from '@gitroom/helpers/utils/fetch.errors';
 
 interface VideoCaptionsProps {
   mediaId: string | null;
@@ -102,9 +103,11 @@ export const VideoCaptions: FC<VideoCaptionsProps> = ({ mediaId, source, onCapti
       }
       const data = await res.json();
       setSrt(data?.srt ?? '');
-    } catch {
-      // A 402/406 is handled globally and rejects with a marker; anything else
-      // reaching here would otherwise surface as an unhandled rejection.
+    } catch (err) {
+      // A 402/403/406/429/5xx is reported globally and rejects with a marker;
+      // anything else reaching here would otherwise surface as an unhandled
+      // rejection.
+      if (isFetchHandledError(err)) return;
       toaster.show(t('video_captions_failed', 'Caption generation failed.'), 'warning');
     } finally {
       setIsGenerating(false);

@@ -1,6 +1,6 @@
 import { APIRequestContext, expect, test } from '@playwright/test';
 import { PrismaClient } from '@prisma/client';
-import { signedIn } from '../helpers';
+import { signedIn, throwawayOrg } from '../helpers';
 import { USERS } from '../seed';
 
 // The composer's AI on the real app code, with fake-openai.mjs standing in for
@@ -99,12 +99,35 @@ test('a bad request never reaches OpenAI', async () => {
   expect(await seen(short)).toBe(0);
 });
 
-test('a brand-new account waits an hour for AI', async () => {
+test('a brand-new account on a trial waits an hour for AI', async () => {
+  // Nobody has paid for a trial yet: the hour is what stops a fresh signup
+  // spending AI straight away.
+  const trial = await throwawayOrg(prisma, {
+    tier: 'PRO',
+    totalChannels: 6,
+    channels: 0,
+    isTrailing: true,
+  });
+  try {
+    await prisma.user.update({ where: { id: trial.userId }, data: { createdAt: new Date() } });
+    const res = await trial.api.post('/media/ai-edit', {
+      data: { text: TEXT, action: 'shorten' },
+    });
+    expect(res.status()).toBe(403);
+    expect((await res.json()).message).toMatch(
+      /^AI tools unlock one hour after signup, in \d+ minutes?\. /
+    );
+  } finally {
+    await trial.remove();
+  }
+});
+
+test('a brand-new member of a paying organisation does not wait', async () => {
+  // The organisation has paid; the hour only held up its new people.
   const member = await signedIn('member');
   const res = await member.post('/media/ai-edit', {
     data: { text: TEXT, action: 'shorten' },
   });
-  expect(res.status()).toBe(403);
-  expect((await res.json()).message).toMatch(/minutes after signup/);
+  expect(res.status(), await res.text()).toBe(201);
   await member.dispose();
 });
