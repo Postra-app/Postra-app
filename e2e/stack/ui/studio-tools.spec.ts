@@ -528,3 +528,28 @@ test('AI Refine: one Ctrl+Z undoes the whole refinement', { tag: '@safari' }, as
   await expect.poll(() => s.layers()).toBe(2);
   await s.clean();
 });
+
+// A camera photo (tens of MB) was uploaded as it was and refused by the
+// upload limit; the image was then pointed at "undefined". Studio brings it
+// down to 2048 px first, like the composer does.
+test('Images: a 20+ MB camera photo goes onto the canvas at 2048 px', { tag: '@safari' }, async ({ page }) => {
+  test.setTimeout(120_000);
+  const s = await studio(page);
+  const w = 6000;
+  const h = 4000;
+  const noise = Buffer.alloc(w * h * 3);
+  for (let i = 0; i < noise.length; i += 1) noise[i] = (i * 2654435761) >>> 24;
+  const big = await sharp(noise, { raw: { width: w, height: h, channels: 3 } }).jpeg({ quality: 95 }).toBuffer();
+  expect(big.length).toBeGreaterThan(10 * 1024 * 1024);
+  await s.open('Images');
+  const uploaded = page.waitForResponse(
+    (r) => r.url().includes('/media/upload-simple') && r.request().method() === 'POST'
+  );
+  await page.locator('input[type="file"]').first().setInputFiles({ name: 'DSC_0001.JPG', mimeType: 'image/jpeg', buffer: big });
+  const res = await uploaded;
+  expect(res.status()).toBe(201);
+  const stored = await sharp(await (await page.request.get((await res.json()).path)).body()).metadata();
+  expect([stored.width, stored.height]).toEqual([2048, 1365]);
+  await expect.poll(() => s.layers(), { timeout: 15_000 }).toBe(1);
+  await s.clean();
+});
