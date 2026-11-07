@@ -6,6 +6,7 @@ import { StudioIcon } from '@gitroom/frontend/components/studio/studio-icons';
 import { useToaster } from '@gitroom/react/toaster/toaster';
 import { useT } from '@gitroom/react/translation/get.transation.service.client';
 import { Button } from '@gitroom/frontend/components/ui/button';
+import { useSelectAllOnFocus } from '@gitroom/frontend/components/ui/use-select-all-on-focus';
 
 interface PixabayVideoSize {
   url: string;
@@ -58,6 +59,7 @@ export const VideoStock: FC<VideoStockProps> = ({ onImported }) => {
   const [importingId, setImportingId] = useState<number | null>(null);
   const [notConfigured, setNotConfigured] = useState(false);
   const [previewId, setPreviewId] = useState<number | null>(null);
+  const selectAll = useSelectAllOnFocus();
 
   // The images panel got this in D-01 and the video one did not, so B-roll
   // still opened on "No results. Type a phrase and press Search." with the
@@ -183,7 +185,7 @@ export const VideoStock: FC<VideoStockProps> = ({ onImported }) => {
           onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
           // The starting phrase is real text, not a placeholder: a click and
           // a typed word used to search for "nature timelapsecoffee".
-          onFocus={(e) => e.currentTarget.select()}
+          {...selectAll}
           aria-label={t('video_stock_search', 'Search')}
           placeholder={t('video_stock_search_ph', 'e.g. nature timelapse, city street, ocean')}
           className="flex-1 text-xs px-2 py-1 rounded bg-newColColor border border-newBorder text-textColor focus:outline-none focus:border-forth"
@@ -196,9 +198,12 @@ export const VideoStock: FC<VideoStockProps> = ({ onImported }) => {
           {t('video_stock_search', 'Search')}
         </Button>
       </div>
-      <div className="grid grid-cols-2 gap-2 max-h-[400px] overflow-y-auto">
+      {/* As many columns as fit: two across the full Studio width made each
+          clip 600 px wide, so one row filled the 400 px box and cut its
+          Import buttons in half. */}
+      <div className="grid grid-cols-[repeat(auto-fill,minmax(200px,1fr))] gap-2 max-h-[60vh] overflow-y-auto">
         {hits.length === 0 && !isSearching && (
-          <div className="col-span-2 text-xs text-textColor/65 text-center py-4">
+          <div className="col-span-full text-xs text-textColor/65 text-center py-4">
             {t('video_stock_no_results', 'No results. Type a phrase and press Search.')}
           </div>
         )}

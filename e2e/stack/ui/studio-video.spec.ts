@@ -116,7 +116,7 @@ test('a browser without WebCodecs is told so on the Studio page, without a dead 
 // Photos → video could only add photos from disk, and the header's "From
 // library" (it loads a video for Trim) opened an empty list of videos there,
 // with the photos sitting in Media.
-test('Photos → video takes photos from the library', async ({ page }) => {
+test('Photos → video takes photos from the library', { tag: '@safari' }, async ({ page }) => {
   test.setTimeout(60_000);
   const original = `slideshow-${Date.now()}.png`;
   const PNG = Buffer.from(

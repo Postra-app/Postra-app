@@ -119,6 +119,24 @@ export default defineConfig({
               trace: 'retain-on-failure' as const,
             },
           },
+          // Safari's engine, for the tests tagged @safari: flows where WebKit
+          // behaves differently from Chromium (focus and selection, media,
+          // WebCodecs). Same server, same signed-in user.
+          {
+            name: 'ui-safari',
+            testMatch: /ui\/.*\.spec\.ts/,
+            grep: /@safari/,
+            use: {
+              baseURL: 'http://localhost:54000',
+              browserName: 'webkit' as const,
+              viewport: { width: 1440, height: 900 },
+              locale: 'en-GB',
+              timezoneId: 'Europe/London',
+              storageState: `${__dirname}/.auth/a.json`,
+              screenshot: 'only-on-failure' as const,
+              trace: 'retain-on-failure' as const,
+            },
+          },
         ]
       : []),
   ],

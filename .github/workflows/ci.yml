@@ -107,8 +107,8 @@ jobs:
         env:
           NODE_OPTIONS: '--max-old-space-size=4096'
 
-      - name: Install Chromium
-        run: pnpm exec playwright install --with-deps chromium
+      - name: Install Chromium and WebKit
+        run: pnpm exec playwright install --with-deps chromium webkit
 
       # Every port the stack listens on sits in Linux's ephemeral range
       # (32768-60999), so a stray outbound connection of the runner can take

@@ -104,3 +104,26 @@ test('a search typed while another is running shows its own photos', async ({ pa
   await expect(page.getByRole('link', { name: 'NewLens' })).toBeVisible();
   await expect(page.getByRole('link', { name: 'OldLens' })).toHaveCount(0);
 });
+
+// The panel opens on a starter search ("business"). A click and a typed word
+// searched for "businesscoffee": in Safari the mouseup of the click dropped the
+// selection made on focus.
+test('typing into the photo search replaces the starter phrase', { tag: '@safari' }, async ({ page }) => {
+  test.setTimeout(60_000);
+  const asked: string[] = [];
+  await page.route('**/api/media/pixabay-images?*', async (route) => {
+    asked.push(new URL(route.request().url()).searchParams.get('q') || '');
+    await route.fulfill({ json: { hits: [] } });
+  });
+  await page.goto('/studio');
+  await expect(page.locator('canvas').first()).toBeVisible({ timeout: 30_000 });
+  await page.getByRole('button', { name: /Blank canvas/ }).click();
+  await page.getByRole('button', { name: 'Stock photos', exact: true }).click();
+  const box = page.getByRole('textbox', { name: 'Search photos' });
+  await expect(box).toHaveValue('business', { timeout: 30_000 });
+  await box.click();
+  await page.keyboard.type('coffee');
+  await expect(box).toHaveValue('coffee');
+  await page.keyboard.press('Enter');
+  await expect.poll(() => asked.at(-1)).toBe('coffee');
+});
