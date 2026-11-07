@@ -360,9 +360,10 @@ export const EditorWrapper: FC<{
           'bg-newSettings rounded-[12px]'
       )}
     >
-      {/* Comments written on the global tab are dropped at publish time by any
-          channel that can't take them. Name those channels here, split by
-          why: the publish workflow reports it too, but by then the post is out. */}
+      {/* Comments written on the global tab are not sent to a platform with
+          no comment API (valuesForChannel); a channel without the grant still
+          gets them and the publish workflow reports the failure. Name both
+          here, split by why. */}
       {current === 'global' &&
         items.length > 1 &&
         (

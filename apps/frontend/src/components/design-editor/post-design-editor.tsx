@@ -14,7 +14,7 @@ import { EditorToolbar } from './toolbar/editor-toolbar';
 import { FormatBar } from './toolbar/format-bar';
 import { CarouselStrip } from './carousel-strip';
 import { WelcomeModal } from './welcome-modal';
-import { repositionObjectFromTo } from './utils/multi-format-renderer';
+import { dataUrlToBlob, repositionObjectFromTo } from './utils/multi-format-renderer';
 import {
   installStudioFabricMetadata,
   wireStudioIds,
@@ -712,7 +712,7 @@ const PostDesignEditor: FC<PostDesignEditorProps> = ({
   const renderSlideToBlob = useCallback(
     async (canvasJson: string, width: number, height: number): Promise<Blob> => {
       const dataUrl = await renderJsonToDataUrl(canvasJson, width, height, 'jpeg');
-      return (await window.fetch(dataUrl)).blob();
+      return dataUrlToBlob(dataUrl);
     },
     [renderJsonToDataUrl]
   );
@@ -804,7 +804,7 @@ const PostDesignEditor: FC<PostDesignEditorProps> = ({
         JSON.stringify(fabricRef.current.toJSON()),
         useEditorStore.getState().platform
       );
-      const blob = await (await window.fetch(dataUrl)).blob();
+      const blob = dataUrlToBlob(dataUrl);
       const formData = new FormData();
       formData.append('file', blob, 'design.jpg');
       markAiGenerated(formData, canvasJson);
@@ -855,7 +855,7 @@ const PostDesignEditor: FC<PostDesignEditorProps> = ({
         JSON.stringify(fabricRef.current.toJSON()),
         useEditorStore.getState().platform
       );
-      const blob = await (await window.fetch(dataUrl)).blob();
+      const blob = dataUrlToBlob(dataUrl);
       const formData = new FormData();
       formData.append('file', blob, asTemplate ? 'template.jpg' : 'design.jpg');
       markAiGenerated(formData, canvasJson);

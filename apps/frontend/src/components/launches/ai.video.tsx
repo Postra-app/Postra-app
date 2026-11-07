@@ -14,6 +14,7 @@ import { useToaster } from '@gitroom/react/toaster/toaster';
 import { useModals } from '@gitroom/frontend/components/layout/new-modal';
 import { createPortal } from 'react-dom';
 import { useAiError } from '@gitroom/frontend/components/ai/use-ai-error';
+import { isFetchHandledError } from '@gitroom/helpers/utils/fetch.errors';
 
 // The server polls the video model for up to ten minutes.
 const VIDEO_WAIT_MS = 11 * 60 * 1000;
@@ -123,6 +124,8 @@ export const Modal: FC<{
         'success'
       );
     } catch (e) {
+      // Already reported by the shared fetch; a second toast contradicted it.
+      if (isFetchHandledError(e)) return;
       console.error('[Postra:ai-video] generate failed', e);
       if ((e as Error)?.name === 'TimeoutError') {
         toaster.show(

@@ -15,6 +15,7 @@ import {
   diffSimilarity,
   diffWords,
 } from '@gitroom/frontend/components/new-launch/ai-word-diff';
+import { isFetchHandledError } from '@gitroom/helpers/utils/fetch.errors';
 
 interface Props {
   content: string;
@@ -173,7 +174,7 @@ export const AiAssistRibbon: FC<Props> = ({ content, platform, onReplace }) => {
             : 'new'
         );
       } catch (err) {
-        if ((err as { name?: string })?.name !== 'AbortError') {
+        if ((err as { name?: string })?.name !== 'AbortError' && !isFetchHandledError(err)) {
           toaster.show(
             t(
               'ai_edit_failed',
@@ -225,7 +226,8 @@ export const AiAssistRibbon: FC<Props> = ({ content, platform, onReplace }) => {
       const list = data?.hashtags ?? [];
       setTags(list);
       setPicked(new Set(list));
-    } catch {
+    } catch (err) {
+      if (isFetchHandledError(err)) return;
       toaster.show(
         t(
           'ai_hashtags_failed',

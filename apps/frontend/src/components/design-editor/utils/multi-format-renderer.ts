@@ -256,9 +256,26 @@ export const renderAllFormats = async (
   return results;
 };
 
-export const dataUrlToBlob = async (dataUrl: string): Promise<Blob> => {
-  const res = await window.fetch(dataUrl);
-  return res.blob();
+/**
+ * Decodes the data: URL in place. Fetching it is what the browser forbids:
+ * production's Content-Security-Policy has no data: in connect-src, so
+ * `fetch(dataUrl)` failed every export there.
+ */
+export const dataUrlToBlob = (dataUrl: string): Blob => {
+  const comma = dataUrl.indexOf(',');
+  if (!dataUrl.startsWith('data:') || comma < 0) {
+    throw new Error('not a data: URL');
+  }
+  const meta = dataUrl.slice(5, comma);
+  const payload = dataUrl.slice(comma + 1);
+  const type = meta.split(';')[0] || 'text/plain';
+  if (!/;base64$/i.test(meta)) {
+    return new Blob([decodeURIComponent(payload)], { type });
+  }
+  const binary = atob(payload);
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i += 1) bytes[i] = binary.charCodeAt(i);
+  return new Blob([bytes], { type });
 };
 
 /**

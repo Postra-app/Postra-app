@@ -296,7 +296,8 @@ export class BillingController {
     await this._subscriptionService.addSubscription(
       org.id,
       user.id,
-      body.subscription
+      body.subscription,
+      (customer) => this._stripeService.hasOpenSubscription(customer)
     );
   }
 

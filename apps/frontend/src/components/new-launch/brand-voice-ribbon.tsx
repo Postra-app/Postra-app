@@ -6,6 +6,7 @@ import { useFetch } from '@gitroom/helpers/utils/custom.fetch';
 import { useToaster } from '@gitroom/react/toaster/toaster';
 import { useT } from '@gitroom/react/translation/get.transation.service.client';
 import { useAiError } from '@gitroom/frontend/components/ai/use-ai-error';
+import { isFetchHandledError } from '@gitroom/helpers/utils/fetch.errors';
 
 interface Props {
   content: string;
@@ -71,7 +72,7 @@ export const BrandVoiceRibbon: FC<Props> = ({ content }) => {
       const data = (await res.json()) as VoiceResult;
       setResult(data);
     } catch (err) {
-      if ((err as { name?: string })?.name !== 'AbortError') {
+      if ((err as { name?: string })?.name !== 'AbortError' && !isFetchHandledError(err)) {
         toaster.show(
           t('voice_failed', 'Could not check the tone - try again later.'),
           'warning'

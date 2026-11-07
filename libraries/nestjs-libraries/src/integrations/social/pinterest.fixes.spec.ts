@@ -7,6 +7,7 @@ jest.mock('@gitroom/nestjs-libraries/media/fetch.media.buffer', () => ({ fetchMe
 import { validate } from 'class-validator';
 import { plainToInstance } from 'class-transformer';
 import { PinterestProvider, pinterestApi } from './pinterest.provider';
+import { RefreshToken } from '@gitroom/nestjs-libraries/integrations/social.abstract';
 import { PinterestSettingsDto } from '@gitroom/nestjs-libraries/dtos/posts/providers-settings/pinterest.dto';
 
 // Pinterest fixes from upstream (002a341b, 538f3e6f, 8f92a37e, cd899eaa).
@@ -143,6 +144,32 @@ describe('Pinterest API base', () => {
     expect(String(fetchSpy.mock.calls[1][0])).toBe(
       'https://api.pinterest.com/v5/boards?page_size=250&bookmark=b1'
     );
+  });
+
+  // An error answer has no items: it read as an account without boards
+  // ("No boards found") and left nothing in the logs.
+  it('a refused board list is logged with Pinterest\'s code and not passed off as no boards', async () => {
+    delete process.env.PINTEREST_API_BASE;
+    const log = jest.spyOn(console, 'error').mockImplementation(() => undefined);
+    jest.spyOn(global, 'fetch' as any).mockResolvedValue({
+      ok: false,
+      status: 403,
+      json: async () => ({ code: 29, message: 'You are not permitted to access that resource.' }),
+    } as any);
+    await expect(new PinterestProvider().boards('secret-token')).rejects.toThrow('Pinterest boards 403');
+    const line = String(log.mock.calls[0]?.[0]);
+    expect(line).toContain('[pinterest] boards 403 code=29');
+    expect(line).not.toContain('secret-token');
+  });
+
+  it('an expired token on the board list asks for a refresh', async () => {
+    jest.spyOn(console, 'error').mockImplementation(() => undefined);
+    jest.spyOn(global, 'fetch' as any).mockResolvedValue({
+      ok: false,
+      status: 401,
+      json: async () => ({ code: 2, message: 'Authentication failed.' }),
+    } as any);
+    await expect(new PinterestProvider().boards('t')).rejects.toBeInstanceOf(RefreshToken);
   });
 
   it('account analytics without data (an error body, or the sandbox) is empty, not a crash', async () => {

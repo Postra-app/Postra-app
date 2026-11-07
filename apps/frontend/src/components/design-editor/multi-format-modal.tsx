@@ -98,7 +98,7 @@ export const MultiFormatModal: FC<MultiFormatModalProps> = ({
       const zip = new JSZip();
       await Promise.all(
         renders.map(async (r) => {
-          const blob = await dataUrlToBlob(r.dataUrl);
+          const blob = dataUrlToBlob(r.dataUrl);
           zip.file(`${r.platform.key}.png`, blob);
         })
       );
@@ -128,7 +128,7 @@ export const MultiFormatModal: FC<MultiFormatModalProps> = ({
       for (let i = 0; i < renders.length; i += 1) {
         const r = renders[i];
         // eslint-disable-next-line no-await-in-loop
-        const blob = await dataUrlToBlob(r.uploadDataUrl);
+        const blob = dataUrlToBlob(r.uploadDataUrl);
         const formData = new FormData();
         formData.append('file', blob, `${r.platform.key}.jpg`);
         markAiGenerated(formData, r.canvasJson);

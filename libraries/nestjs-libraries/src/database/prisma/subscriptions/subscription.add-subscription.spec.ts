@@ -67,15 +67,54 @@ describe('addSubscription never touches the org handle on Stripe', () => {
     expect(call[0]).toBe(false); // isTrailing
   });
 
-  it('refuses an org that pays through Stripe, and writes nothing', async () => {
+  it('refuses an org whose Stripe customer has an open subscription, and writes nothing', async () => {
     const { service, repository, auditService } = build('cus_U9EdTfSreZXTPu');
+    const open = jest.fn().mockResolvedValue(true);
+
+    await expect(
+      service.addSubscription('org-1', 'user-1', 'PRO', open)
+    ).rejects.toThrow(/Stripe subscription/i);
+
+    expect(open).toHaveBeenCalledWith('cus_U9EdTfSreZXTPu');
+    expect(repository.createOrUpdateSubscription).not.toHaveBeenCalled();
+    expect(auditService.record).not.toHaveBeenCalled();
+  });
+
+  it('refuses any Stripe customer when nobody can ask Stripe', async () => {
+    const { service, repository } = build('cus_U9EdTfSreZXTPu');
 
     await expect(
       service.addSubscription('org-1', 'user-1', 'PRO')
-    ).rejects.toThrow(/live Stripe customer/i);
-
+    ).rejects.toThrow(/Stripe subscription/i);
     expect(repository.createOrUpdateSubscription).not.toHaveBeenCalled();
-    expect(auditService.record).not.toHaveBeenCalled();
+  });
+
+  // The plan page creates a Stripe customer for every new account as soon as
+  // it opens, so a customer with no subscription was the normal case for an
+  // influencer, and every one of them was refused.
+  it('comps an org whose Stripe customer never subscribed', async () => {
+    const { service, repository, auditService } = build('cus_U9EdTfSreZXTPu');
+    const open = jest.fn().mockResolvedValue(false);
+
+    await service.addSubscription('org-1', 'user-1', 'PRO', open);
+
+    const call = repository.createOrUpdateSubscription.mock.calls[0];
+    expect(call[2]).toBe(''); // addressed by org, the customer id untouched
+    expect(call[4]).toBe('PRO');
+    expect(call[8]).toEqual({ id: 'org-1' });
+    expect(auditService.record).toHaveBeenCalledWith(
+      expect.objectContaining({
+        action: 'subscription.comp',
+        metadata: { tier: 'PRO', stripeCustomerWithoutSubscription: true },
+      })
+    );
+  });
+
+  it('does not ask Stripe about an org without a customer', async () => {
+    const { service } = build(null);
+    const open = jest.fn();
+    await service.addSubscription('org-1', 'user-1', 'PRO', open);
+    expect(open).not.toHaveBeenCalled();
   });
 
   it('records who comped which org, on which tier', async () => {
@@ -195,5 +234,60 @@ describe('tier change by org applies the same limits as the webhook path', () =>
     integrationService.changeActiveCron.mockClear();
     await service.modifySubscriptionByOrg('org-1', 3, tier);
     expect(integrationService.changeActiveCron).toHaveBeenCalledWith('org-1', keep);
+  });
+});
+
+// A comp can now sit on an organization whose Stripe customer never
+// subscribed. It has to come off the same way, and an event about an old
+// Stripe subscription must not end it.
+describe('a comp on an organization with a Stripe customer', () => {
+  const withRevoke = (paymentId: string | null) => {
+    const built = build(paymentId);
+    (built.repository as any).softDeleteSubscriptionByOrg = jest
+      .fn()
+      .mockResolvedValue({ revoked: true });
+    jest.spyOn(built.service, 'modifySubscriptionByOrg').mockResolvedValue(undefined as any);
+    jest.spyOn(built.service as any, 'bustMembersAuthCache').mockResolvedValue(undefined);
+    return built;
+  };
+
+  it('can be revoked when Stripe has no open subscription', async () => {
+    const { service, repository } = withRevoke('cus_1');
+    const open = jest.fn().mockResolvedValue(false);
+    await expect(service.revokeSubscription('org-1', 'admin-1', open)).resolves.toEqual({
+      revoked: true,
+    });
+    expect(open).toHaveBeenCalledWith('cus_1');
+    expect((repository as any).softDeleteSubscriptionByOrg).toHaveBeenCalledWith('org-1');
+  });
+
+  it('is not revoked here while Stripe bills the organization', async () => {
+    const { service, repository } = withRevoke('cus_1');
+    await expect(
+      service.revokeSubscription('org-1', 'admin-1', jest.fn().mockResolvedValue(true))
+    ).rejects.toThrow(/Stripe subscription/);
+    expect((repository as any).softDeleteSubscriptionByOrg).not.toHaveBeenCalled();
+  });
+
+  it('survives a late deletion event for an older Stripe subscription', async () => {
+    const { service, repository } = build('cus_1');
+    (repository as any).getSubscriptionByCustomerId = jest
+      .fn()
+      .mockResolvedValue({ identifier: 'comp1', subscriptionTier: 'PRO' });
+    const modify = jest.spyOn(service, 'modifySubscription');
+    await expect(service.deleteSubscription('cus_1', 'old-stripe-unique-id')).resolves.toBe(false);
+    expect(modify).not.toHaveBeenCalled();
+  });
+
+  it('still ends the plan for an event about the plan itself', async () => {
+    const { service, repository } = build('cus_1');
+    (repository as any).getSubscriptionByCustomerId = jest
+      .fn()
+      .mockResolvedValue({ identifier: 'same-id', subscriptionTier: 'PRO' });
+    (repository as any).deleteSubscriptionByCustomerId = jest.fn().mockResolvedValue({ count: 1 });
+    jest.spyOn(service, 'modifySubscription').mockResolvedValue(true as any);
+    jest.spyOn(service as any, 'bustMembersAuthCache').mockResolvedValue(undefined);
+    await service.deleteSubscription('cus_1', 'same-id');
+    expect((repository as any).deleteSubscriptionByCustomerId).toHaveBeenCalledWith('cus_1');
   });
 });

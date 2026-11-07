@@ -322,6 +322,9 @@ export const MediaComponentInner: FC<{
   const setActivateExitButton = useLaunchStore((e) => e.setActivateExitButton);
   const newFetch = useFetch();
   const [newThumbnail, setNewThumbnail] = useState<string | null>(null);
+  // The frame itself. Reading it back through fetch(blob:) is refused by
+  // production's connect-src, which allows no blob: URLs.
+  const [newThumbnailBlob, setNewThumbnailBlob] = useState<Blob | null>(null);
   const [isEditingThumbnail, setIsEditingThumbnail] = useState(false);
   const [altText, setAltText] = useState<string>(media?.alt || '');
   const [altBusy, setAltBusy] = useState(false);
@@ -346,10 +349,9 @@ export const MediaComponentInner: FC<{
   const save = useCallback(async () => {
     setLoading(true);
     let path = thumbnail || '';
-    if (newThumbnail) {
-      const blob = await (await fetch(newThumbnail)).blob();
+    if (newThumbnailBlob) {
       const formData = new FormData();
-      formData.append('file', blob, 'media.jpg');
+      formData.append('file', newThumbnailBlob, 'media.jpg');
       formData.append('preventSave', 'true');
       const data = await (
         await newFetch('/media/upload-simple', {
@@ -374,7 +376,7 @@ export const MediaComponentInner: FC<{
 
     onSelect(media);
     onClose();
-  }, [altText, newThumbnail, thumbnail, thumbnailTimestamp]);
+  }, [altText, newThumbnailBlob, thumbnail, thumbnailTimestamp]);
 
   return (
     <div className="mt-[10px] flex flex-col gap-[20px]">
@@ -466,6 +468,7 @@ export const MediaComponentInner: FC<{
                       disabled={loading}
                       onClick={() => {
                         setNewThumbnail(null);
+                        setNewThumbnailBlob(null);
                         setThumbnail(null);
                       }}
                       className="bg-red-600 text-white px-6 py-2 rounded-lg hover:bg-opacity-80 transition-all flex-1 border border-red-700"
@@ -505,16 +508,11 @@ export const MediaComponentInner: FC<{
                 {/* Thumbnail Editor */}
                 <CreateThumbnail
                   onSelect={(blob: Blob, timestampMs: number) => {
-                    // Convert blob to base64 or handle as needed
-                    const reader = new FileReader();
-                    reader.onload = () => {
-                      // You can handle the result here - for now just call onSelect with the blob URL
-                      const url = URL.createObjectURL(blob);
-                      setNewThumbnail(url);
-                      setThumbnailTimestamp(timestampMs);
-                      setIsEditingThumbnail(false);
-                    };
-                    reader.readAsDataURL(blob);
+                    // The URL is only for the preview; the upload sends the blob.
+                    setNewThumbnail(URL.createObjectURL(blob));
+                    setNewThumbnailBlob(blob);
+                    setThumbnailTimestamp(timestampMs);
+                    setIsEditingThumbnail(false);
                   }}
                   media={media}
                   altText={altText}
