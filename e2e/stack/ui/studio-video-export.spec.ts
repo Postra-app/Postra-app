@@ -148,3 +148,38 @@ test('AI Captions burns the captions into the clip', { tag: '@safari' }, async (
   expect(file.duration).toBeGreaterThan(1.5);
   expect(problems).toEqual([]);
 });
+
+// An iPhone records HEVC in a .MOV. Safari decodes it; X and LinkedIn refuse
+// HEVC, so Trim re-encodes it to H.264. Engines without an HEVC decoder (the
+// Linux builds) cannot open the clip at all and skip.
+test('an iPhone HEVC clip comes out of Trim as H.264 with its sound', { tag: '@safari' }, async ({
+  page,
+  browserName,
+}) => {
+  test.setTimeout(120_000);
+  test.skip(browserName !== 'webkit', 'Safari is the browser that opens HEVC');
+  await page.goto('/studio?mode=video');
+  const hevc = await page.evaluate(() =>
+    VideoDecoder.isConfigSupported({ codec: 'hvc1.1.6.L93.B0', codedWidth: 360, codedHeight: 640 })
+      .then((r) => !!r.supported)
+      .catch(() => false)
+  );
+  test.skip(!hevc, 'this WebKit build has no HEVC decoder');
+  await page
+    .locator('input[type="file"][accept="video/*"]')
+    .first()
+    .setInputFiles({
+      name: 'IMG_0001.MOV',
+      mimeType: 'video/quicktime',
+      buffer: readFileSync(`${__dirname}/fixtures/iphone-hevc-two-seconds.mov`),
+    });
+  await page.getByRole('button', { name: 'Trim', exact: true }).click();
+  await expect(page.getByText(/^End: [12]\.\d\ds$/)).toBeVisible({ timeout: 30_000 });
+  await page.getByRole('button', { name: 'Export trimmed clip', exact: true }).click();
+  await expect(page.getByText('Trimmed. Continue', { exact: false })).toBeVisible({ timeout: 90_000 });
+  const [file] = await saveAll(page, 'Save to library');
+  expect(file.videoCodec).toBe('avc');
+  expect(file.audioCodec).toBe('aac');
+  expect(file.size).toBe('360x640');
+  expect(file.duration).toBeGreaterThan(1.5);
+});
