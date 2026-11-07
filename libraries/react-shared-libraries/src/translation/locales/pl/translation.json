@@ -1153,7 +1153,7 @@
   "crop_failed": "Smart crop nie powiódł się.",
   "crop_smart": "Smart crop do platformy",
   "crop_smart_hint": "Kadruje zdjęcie do bieżącego formatu (pasek na dole), zachowując w kadrze najbardziej szczegółową część obrazu",
-  "image_tools_hint": "Oba działają na zaznaczonym zdjęciu (albo ostatnio dodanym). Usuwanie tła zapisuje wycięte zdjęcie w bibliotece mediów; Smart crop przycina zdjęcie do bieżącego formatu posta.",
+  "image_tools_hint": "Te narzędzia działają na zaznaczonym zdjęciu (albo ostatnio dodanym). Usuwanie tła zapisuje wycięte zdjęcie w bibliotece mediów; Smart crop przycina zdjęcie do bieżącego formatu posta.",
   "text_placeholder": "Wpisz swój tekst",
   "background_custom": "Własny kolor tła",
   "ai_forbidden": "AI nie jest dostępne w Twoim planie. Sprawdź ustawienia subskrypcji.",
