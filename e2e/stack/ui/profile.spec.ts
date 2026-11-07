@@ -42,8 +42,9 @@ test.describe('a picture from the library', () => {
     const owner = await throwawayOrg(prisma, { tier: 'PRO', totalChannels: 5, channels: 0 });
     try {
       const PNG = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==', 'base64');
+      const original = `profile-${Date.now()}.png`;
       const res = await owner.api.post('/media/upload-simple', {
-        multipart: { file: { name: `profile-${Date.now()}.png`, mimeType: 'image/png', buffer: PNG } },
+        multipart: { file: { name: original, mimeType: 'image/png', buffer: PNG } },
       });
       expect(res.status(), await res.text()).toBe(201);
       const media: { id: string; path: string } = await res.json();
@@ -56,12 +57,9 @@ test.describe('a picture from the library', () => {
       await page.goto('/settings');
       await page.getByRole('button', { name: 'Choose picture', exact: true }).click();
       const file = media.path.split('/').pop()!;
+      // A tile is a checkbox named like its caption, the file's original name.
       // The app's top bar overlaps the first row of tiles in the test window.
-      await page
-        .locator('div.w-full.aspect-square')
-        .filter({ has: page.locator(`img[src*="${file}"]`) })
-        .getByRole('checkbox')
-        .dispatchEvent('click');
+      await page.getByRole('checkbox', { name: original, exact: true }).dispatchEvent('click');
       await page.getByRole('button', { name: 'Add selected media', exact: true }).click();
       await expect(page.getByAltText('Profile Picture')).toHaveAttribute('src', new RegExp(file.replace('.', '\\.')));
       const card = page.getByText('Profile', { exact: true }).locator('xpath=ancestor::*[contains(@class,"p-[24px]")][1]');
