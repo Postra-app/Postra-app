@@ -21,6 +21,7 @@ import { safeMediaUrl } from '@gitroom/helpers/utils/safe.media.url';
 import { assertVideoSurvives } from './mp4-source';
 import { UnsupportedCodecError } from './compositor-pipeline';
 import { useRenderJob } from './use-render-job';
+import { moveTrimEdge } from './trim-edges';
 
 interface VideoTrimmerProps {
   file: File | null;
@@ -150,15 +151,12 @@ export const VideoTrimmer: FC<VideoTrimmerProps> = ({ file, onTrimmed }) => {
     (side: 'start' | 'end', to: number) => {
       const region = regionRef.current;
       if (!region || !duration) return;
-      const minLength = 0.1;
-      const start =
-        side === 'start'
-          ? Math.min(Math.max(0, to), region.end - minLength)
-          : region.start;
-      const end =
-        side === 'end'
-          ? Math.max(Math.min(duration, to), region.start + minLength)
-          : region.end;
+      const { start, end } = moveTrimEdge(
+        side,
+        to,
+        { start: region.start, end: region.end },
+        duration
+      );
       region.setOptions({ start, end });
       setTrimStart(start);
       setTrimEnd(end);
