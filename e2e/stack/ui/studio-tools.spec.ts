@@ -420,3 +420,23 @@ test('Select: copy and paste, and duplicate, of several objects give each its ow
   await expect.poll(() => s.layers()).toBe(4);
   await s.clean();
 });
+
+// The font of a selected text could only be changed from the Text tool, whose
+// rail button adds a new text, and the change was no undo step: the Ctrl+Z
+// meant for the font undid the step before it as well.
+test('Font of the selected text: changed from the inspector, one Ctrl+Z brings it back', { tag: '@safari' }, async ({
+  page,
+}) => {
+  const s = await studio(page);
+  await addText(page, s);
+  const font = page.getByRole('combobox', { name: 'Font', exact: true });
+  await expect(font).toHaveValue(/Geist/);
+  await font.selectOption({ label: 'Montserrat' });
+  await expect(font).toHaveValue(/Montserrat/);
+  expect(await s.layers()).toBe(1);
+  await undoKey(page);
+  await expect.poll(() => s.layers()).toBe(1);
+  await selectFirstLayer(page);
+  await expect(font).toHaveValue(/Geist/);
+  await s.clean();
+});

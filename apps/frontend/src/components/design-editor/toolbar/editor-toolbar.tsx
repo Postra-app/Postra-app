@@ -415,7 +415,14 @@ export const EditorToolbar: FC<ToolbarProps> = ({ canvas }) => {
           touched = true;
         }
       });
-      if (touched) canvas.current.renderAll();
+      if (touched) {
+        canvas.current.renderAll();
+        // An undo step like every other edit: without it the Ctrl+Z meant
+        // for the font undid the step before it as well.
+        canvas.current.fire('object:modified', {
+          target: canvas.current.getActiveObject(),
+        } as fabric.ModifiedEvent);
+      }
     },
     [canvas]
   );

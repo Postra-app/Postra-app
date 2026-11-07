@@ -12,6 +12,8 @@ import {
 import * as fabric from 'fabric';
 import { useEditorStore } from '../editor.store';
 import { TextReadability } from './text-readability';
+import { STUDIO_FONTS, findFontByFamily } from '../fonts';
+import { ensureFontsLoaded } from '../utils/font-loading';
 import {
   readBox,
   scaleForSize,
@@ -134,6 +136,20 @@ export const PropertyInspector: FC<Props> = ({ canvas }) => {
       setVersion((n) => n + 1);
     },
     [canvas]
+  );
+
+  // The font of the selected text, where the rest of its styling is. The Text
+  // tool's picker sets the font for new text, and reaching it from a selected
+  // text added a new one.
+  const applyFont = useCallback(
+    async (family: string) => {
+      // Measuring before the face is in the document caches the fallback's
+      // widths and the text reflows wrongly.
+      await ensureFontsLoaded([family]);
+      applyToTexts({ fontFamily: family });
+      commit();
+    },
+    [applyToTexts, commit]
   );
 
   const applyToShapes = useCallback(
@@ -321,6 +337,22 @@ export const PropertyInspector: FC<Props> = ({ canvas }) => {
 
       {text && (
         <>
+          <label className="flex flex-col gap-0.5">
+            <span className="text-[11px] text-textColor/60">{t('font', 'Font')}</span>
+            <select
+              value={findFontByFamily(text.fontFamily).family}
+              onChange={(e) => void applyFont(e.target.value)}
+              aria-label={t('font', 'Font')}
+              className="text-xs px-2 py-1.5 rounded bg-newColColor text-textColor border border-newBorder focus:outline-none focus:border-forth"
+            >
+              {STUDIO_FONTS.map((font) => (
+                <option key={font.key} value={font.family} style={{ fontFamily: font.family }}>
+                  {font.label}
+                </option>
+              ))}
+            </select>
+          </label>
+
           <label className="flex flex-col gap-0.5">
             <span className="flex justify-between text-[11px] text-textColor/60">
               <span>{t('props_font_size', 'Font size')}</span>
