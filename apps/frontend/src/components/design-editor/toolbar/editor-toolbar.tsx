@@ -17,6 +17,7 @@ import { StockImagesPanel } from './stock-images-panel';
 import { ImageFiltersPanel } from './image-filters-panel';
 import { STUDIO_FONTS, DEFAULT_FONT, findFontByFamily } from '../fonts';
 import { ensureFontsLoaded } from '../utils/font-loading';
+import { downscaleForDesign } from '../utils/downscale-image';
 import { blend } from '../utils/brand-colors';
 import {
   cropFromRect,
@@ -315,7 +316,7 @@ export const EditorToolbar: FC<ToolbarProps> = ({ canvas }) => {
       setUploading(true);
       try {
         const formData = new FormData();
-        formData.append('file', file);
+        formData.append('file', await downscaleForDesign(file));
         const res = await fetch('/media/upload-simple', {
           method: 'POST',
           body: formData,
@@ -415,7 +416,14 @@ export const EditorToolbar: FC<ToolbarProps> = ({ canvas }) => {
           touched = true;
         }
       });
-      if (touched) canvas.current.renderAll();
+      if (touched) {
+        canvas.current.renderAll();
+        // An undo step like every other edit: without it the Ctrl+Z meant
+        // for the font undid the step before it as well.
+        canvas.current.fire('object:modified', {
+          target: canvas.current.getActiveObject(),
+        } as fabric.ModifiedEvent);
+      }
     },
     [canvas]
   );
@@ -635,11 +643,17 @@ export const EditorToolbar: FC<ToolbarProps> = ({ canvas }) => {
       setUploading(true);
       try {
         const formData = new FormData();
-        formData.append('file', file);
+        formData.append('file', await downscaleForDesign(file));
         const res = await fetch('/media/upload-simple', {
           method: 'POST',
           body: formData,
         });
+        // A refused upload has no path: the image was then pointed at
+        // "undefined" and the message blamed loading it.
+        if (!res.ok) {
+          toaster.show(t('upload_failed', 'Image upload failed'), 'warning');
+          return;
+        }
         const { path } = await res.json();
 
         const imgEl = new Image();

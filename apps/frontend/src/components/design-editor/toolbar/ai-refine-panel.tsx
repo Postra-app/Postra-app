@@ -10,6 +10,7 @@ import {
 } from 'react';
 import * as fabric from 'fabric';
 import { useEditorStore } from '../editor.store';
+import { withHistoryPaused } from '../utils/canvas-history';
 import { useFetch } from '@gitroom/helpers/utils/custom.fetch';
 import { isFetchHandledError } from '@gitroom/helpers/utils/fetch.errors';
 import { useToaster } from '@gitroom/react/toaster/toaster';
@@ -45,7 +46,7 @@ const QUICK_INSTRUCTIONS = [
 ];
 
 export const AiRefinePanel: FC<Props> = ({ canvas }) => {
-  const { platform, pushHistory } = useEditorStore();
+  const { platform } = useEditorStore();
   const fetch = useFetch();
   const toaster = useToaster();
   const t = useT();
@@ -109,8 +110,10 @@ export const AiRefinePanel: FC<Props> = ({ canvas }) => {
           explanation: string;
         };
 
-        await applyPatchToCanvas(c, spec, data.patch);
-        pushHistory(JSON.stringify(c.toJSON()));
+        // One undo step, like every other edit: each added or removed layer
+        // fired its own history event, and a second, unstamped copy was
+        // pushed on top, so the first Ctrl+Z visibly did nothing.
+        await withHistoryPaused(c, () => applyPatchToCanvas(c, spec, data.patch));
         setHistory((prev) => [
           ...prev,
           { role: 'assistant', text: data.explanation },
@@ -132,7 +135,7 @@ export const AiRefinePanel: FC<Props> = ({ canvas }) => {
         setBusy(false);
       }
     },
-    [canvas, busy, platform, fetch, t, toaster, pushHistory]
+    [canvas, busy, platform, fetch, t, toaster]
   );
 
   if (!allowed) {

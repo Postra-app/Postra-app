@@ -331,3 +331,266 @@ test('Carousel: a slide thumbnail is a button the keyboard reaches', async ({ pa
   await expect(first).toHaveAttribute('aria-current', 'true');
   await s.clean();
 });
+
+// Undo is one step per action, from wherever the action was made.
+const addText = async (page: Page, s: Awaited<ReturnType<typeof studio>>) => {
+  await s.tool('Text').click();
+  await page.waitForTimeout(800);
+  expect(await s.layers()).toBe(1);
+  await selectFirstLayer(page);
+};
+const selectFirstLayer = async (page: Page) => {
+  await page.locator('div:has(> button[aria-label="Bring forward"]) > button:first-child').first().click();
+  await expect(page.getByRole('slider', { name: 'Letter spacing' })).toBeVisible();
+};
+const undoKey = (page: Page) => page.keyboard.press('ControlOrMeta+z');
+
+// Clicking a slider leaves the focus on it, and Ctrl+Z was ignored while any
+// <input> had the focus: the change could only be undone after clicking away.
+test('Undo: Ctrl+Z straight after a slider undoes the slider', { tag: '@safari' }, async ({ page }) => {
+  const s = await studio(page);
+  await addText(page, s);
+  const spacing = page.getByRole('slider', { name: 'Letter spacing' });
+  const before = await spacing.inputValue();
+  await spacing.focus();
+  await page.keyboard.press('ArrowRight');
+  await expect(spacing).not.toHaveValue(before);
+  await undoKey(page);
+  await selectFirstLayer(page);
+  await expect(spacing).toHaveValue(before);
+  await s.clean();
+});
+
+// A field the user only passed through committed the unchanged design, and
+// each of those empty entries took one Ctrl+Z that visibly did nothing.
+test('Undo: passing through the inspector adds no undo step', { tag: '@safari' }, async ({ page }) => {
+  const s = await studio(page);
+  await addText(page, s);
+  for (const name of ['Letter spacing', 'Line spacing', 'Opacity', 'Rotation']) {
+    await page.getByRole('slider', { name }).first().focus();
+    await page.keyboard.press('Tab');
+  }
+  await page.getByTitle('Undo (Ctrl+Z)').click();
+  await expect.poll(() => s.layers()).toBe(0);
+  await s.clean();
+});
+
+// Holding an arrow key repeats it many times a second; every repeat was its
+// own undo step, which pushed the earlier work out of the 30-step history.
+test('Undo: holding an arrow key moves the object as one step', { tag: '@safari' }, async ({ page }) => {
+  const s = await studio(page);
+  await addText(page, s);
+  const x = await inspectorValue(page, 'X' as 'W');
+  await page.getByTitle('Undo (Ctrl+Z)').focus();
+  for (let i = 0; i < 12; i += 1) await page.keyboard.down('ArrowRight');
+  await page.keyboard.up('ArrowRight');
+  await expect.poll(() => inspectorValue(page, 'X' as 'W')).toBeGreaterThan(x);
+  await page.getByTitle('Undo (Ctrl+Z)').click();
+  await expect.poll(() => s.layers()).toBe(1);
+  await selectFirstLayer(page);
+  await expect.poll(() => inspectorValue(page, 'X' as 'W')).toBe(x);
+  await s.clean();
+});
+
+// Copying a multiple selection copied the selection box itself: the paste
+// arrived as one object that could not be taken apart.
+test('Select: copy and paste, and duplicate, of several objects give each its own layer', { tag: '@safari' }, async ({ page }) => {
+  const s = await studio(page);
+  await s.tool('Text').click();
+  await s.open('Shapes');
+  await page.getByRole('button', { name: /Rectangle/i }).first().click();
+  expect(await s.layers()).toBe(2);
+  await page.getByTitle('Undo (Ctrl+Z)').focus();
+  await page.keyboard.press('ControlOrMeta+a');
+  await page.keyboard.press('ControlOrMeta+c');
+  await page.keyboard.press('ControlOrMeta+v');
+  await expect.poll(() => s.layers()).toBe(4);
+  await page.keyboard.press('ControlOrMeta+a');
+  await page.keyboard.press('ControlOrMeta+d');
+  await expect.poll(() => s.layers()).toBe(8);
+  await page.getByTitle('Undo (Ctrl+Z)').click();
+  await expect.poll(() => s.layers()).toBe(4);
+
+  // Deleting several objects was one undo step per object.
+  await page.getByTitle('Undo (Ctrl+Z)').focus();
+  await page.keyboard.press('ControlOrMeta+a');
+  await page.keyboard.press('Delete');
+  await expect.poll(() => s.layers()).toBe(0);
+  await page.getByTitle('Undo (Ctrl+Z)').click();
+  await expect.poll(() => s.layers()).toBe(4);
+  await s.clean();
+});
+
+// The font of a selected text could only be changed from the Text tool, whose
+// rail button adds a new text, and the change was no undo step: the Ctrl+Z
+// meant for the font undid the step before it as well.
+test('Font of the selected text: changed from the inspector, one Ctrl+Z brings it back', { tag: '@safari' }, async ({
+  page,
+}) => {
+  const s = await studio(page);
+  await addText(page, s);
+  const font = page.getByRole('combobox', { name: 'Font', exact: true });
+  await expect(font).toHaveValue(/Geist/);
+  await font.selectOption({ label: 'Montserrat' });
+  await expect(font).toHaveValue(/Montserrat/);
+  expect(await s.layers()).toBe(1);
+  await undoKey(page);
+  await expect.poll(() => s.layers()).toBe(1);
+  await selectFirstLayer(page);
+  await expect(font).toHaveValue(/Geist/);
+  await s.clean();
+});
+
+// The credit is spent on the server whatever the browser does. Opening
+// another panel while the design was being made aborted the request and the
+// paid-for design never reached the canvas.
+test('AI Generate: the design lands on the canvas after a switch to another panel', { tag: '@safari' }, async ({
+  page,
+}) => {
+  test.setTimeout(90_000);
+  const s = await studio(page);
+  await page.route('**/api/media/generate-post-design', async (route) => {
+    const response = await route.fetch();
+    await new Promise((r) => setTimeout(r, 2_500));
+    await route.fulfill({ response });
+  });
+  await s.open('AI Generate');
+  await page.getByPlaceholder('e.g. Summer sale -50% at a clothing store').fill('Autumn coffee offer at a small cafe');
+  const done = page.waitForResponse((r) => r.url().includes('/media/generate-post-design'));
+  await page.getByRole('button', { name: 'Generate Design', exact: true }).click();
+  await s.open('Layers');
+  expect((await done).status()).toBe(201);
+  await expect.poll(() => s.layers(), { timeout: 20_000 }).toBeGreaterThan(1);
+  await s.clean();
+});
+
+test('AI Generate: a carousel of three makes three slides', { tag: '@safari' }, async ({ page }) => {
+  test.setTimeout(90_000);
+  const s = await studio(page);
+  await s.open('AI Generate');
+  await page.getByPlaceholder('e.g. Summer sale -50% at a clothing store').fill('Three tips for a calmer morning');
+  await page.locator('select:has(option[value="5"])').selectOption('3');
+  const done = page.waitForResponse((r) => r.url().includes('/media/generate-carousel-design'));
+  await page.getByRole('button', { name: 'Generate carousel (3)', exact: true }).click();
+  expect((await done).status()).toBe(201);
+  await expect(page.getByRole('button', { name: /^Go to Slide \d+$/ })).toHaveCount(3, { timeout: 20_000 });
+  await s.clean();
+});
+
+// Out of credits: say so once, with the way to more, and leave the button
+// usable.
+test('AI Generate: out of credits is said once, with the way to Billing', { tag: '@safari' }, async ({ page }) => {
+  const s = await studio(page);
+  await page.route('**/api/media/generate-post-design', (route) =>
+    route.fulfill({
+      status: 402,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        statusCode: 402,
+        message: 'No image generation credits remaining for this billing cycle',
+      }),
+    })
+  );
+  await s.open('AI Generate');
+  await page.getByPlaceholder('e.g. Summer sale -50% at a clothing store').fill('Spring sale');
+  await page.getByRole('button', { name: 'Generate Design', exact: true }).click();
+  await expect(page.getByText('No image generation credits remaining for this billing cycle')).toHaveCount(1);
+  await expect(page.getByRole('button', { name: 'Go to billing' })).toBeVisible();
+  await page.keyboard.press('Escape');
+  await expect(page.getByRole('button', { name: 'Generate Design', exact: true })).toBeEnabled();
+});
+
+// A Refine that added or removed layers recorded each of them, plus an
+// unstamped copy of the result: the first Ctrl+Z after it visibly did nothing.
+test('AI Refine: one Ctrl+Z undoes the whole refinement', { tag: '@safari' }, async ({ page }) => {
+  const s = await studio(page);
+  await s.tool('Text').click();
+  await s.open('Shapes');
+  await page.getByRole('button', { name: /Rectangle/i }).first().click();
+  expect(await s.layers()).toBe(2);
+  await page.route('**/api/media/refine-design', async (route) => {
+    const { spec } = route.request().postDataJSON();
+    await route.fulfill({
+      status: 201,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        patch: { ops: spec.layers.map((l: { id: string }) => ({ op: 'delete', id: l.id })) },
+        explanation: 'Cleared the design.',
+      }),
+    });
+  });
+  await s.open('AI Refine');
+  await page.getByPlaceholder(/shorten the headline/).fill('Remove everything');
+  await page.getByRole('button', { name: 'Refine design', exact: true }).click();
+  await expect(page.getByText('Cleared the design.')).toBeVisible();
+  expect(await s.layers()).toBe(0);
+  await page.getByTitle('Undo (Ctrl+Z)').click();
+  await expect.poll(() => s.layers()).toBe(2);
+  await s.clean();
+});
+
+// A camera photo (tens of MB) was uploaded as it was and refused by the
+// upload limit; the image was then pointed at "undefined". Studio brings it
+// down to 2048 px first, like the composer does.
+test('Images: a 20+ MB camera photo goes onto the canvas at 2048 px', { tag: '@safari' }, async ({ page }) => {
+  test.setTimeout(120_000);
+  const s = await studio(page);
+  const w = 6000;
+  const h = 4000;
+  const noise = Buffer.alloc(w * h * 3);
+  for (let i = 0; i < noise.length; i += 1) noise[i] = (i * 2654435761) >>> 24;
+  const big = await sharp(noise, { raw: { width: w, height: h, channels: 3 } }).jpeg({ quality: 95 }).toBuffer();
+  expect(big.length).toBeGreaterThan(10 * 1024 * 1024);
+  await s.open('Images');
+  const uploaded = page.waitForResponse(
+    (r) => r.url().includes('/media/upload-simple') && r.request().method() === 'POST'
+  );
+  await page.locator('input[type="file"]').first().setInputFiles({ name: 'DSC_0001.JPG', mimeType: 'image/jpeg', buffer: big });
+  const res = await uploaded;
+  expect(res.status()).toBe(201);
+  const stored = await sharp(await (await page.request.get((await res.json()).path)).body()).metadata();
+  expect([stored.width, stored.height]).toEqual([2048, 1365]);
+  await expect.poll(() => s.layers(), { timeout: 15_000 }).toBe(1);
+  await s.clean();
+});
+
+// A large WebP logo with transparency came out as JPEG, on a black square.
+test('Images: a large transparent WebP keeps its transparency', { tag: '@safari' }, async ({ page }) => {
+  test.setTimeout(90_000);
+  const s = await studio(page);
+  const logo = await sharp({
+    create: { width: 3000, height: 3000, channels: 4, background: { r: 0, g: 0, b: 0, alpha: 0 } },
+  })
+    .composite([{ input: Buffer.from('<svg width="3000" height="3000"><circle cx="1500" cy="1500" r="900" fill="#e11d48"/></svg>') }])
+    .webp()
+    .toBuffer();
+  await s.open('Images');
+  const uploaded = page.waitForResponse(
+    (r) => r.url().includes('/media/upload-simple') && r.request().method() === 'POST'
+  );
+  await page.locator('input[type="file"]').first().setInputFiles({ name: 'logo.webp', mimeType: 'image/webp', buffer: logo });
+  const res = await uploaded;
+  expect(res.status()).toBe(201);
+  const stored = await sharp(await (await page.request.get((await res.json()).path)).body()).metadata();
+  expect(stored.hasAlpha).toBe(true);
+  expect(stored.width).toBe(2048);
+  await s.clean();
+});
+
+// Held arrow, then the window loses focus: the key comes up elsewhere and no
+// keyup arrives. The move was never recorded, and the next Ctrl+Z took the
+// step before it.
+test('Undo: a nudge is recorded when the window loses focus mid-press', { tag: '@safari' }, async ({ page }) => {
+  const s = await studio(page);
+  await addText(page, s);
+  const x = await inspectorValue(page, 'X' as 'W');
+  await page.getByTitle('Undo (Ctrl+Z)').focus();
+  for (let i = 0; i < 5; i += 1) await page.keyboard.down('ArrowRight');
+  await page.evaluate(() => window.dispatchEvent(new Event('blur')));
+  await page.getByTitle('Undo (Ctrl+Z)').click();
+  await expect.poll(() => s.layers()).toBe(1);
+  await selectFirstLayer(page);
+  await expect.poll(() => inspectorValue(page, 'X' as 'W')).toBe(x);
+  await page.keyboard.up('ArrowRight');
+  await s.clean();
+});

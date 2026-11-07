@@ -7,11 +7,14 @@ import {
   ReactNode,
   useCallback,
   useEffect,
+  useRef,
   useState,
 } from 'react';
 import * as fabric from 'fabric';
 import { useEditorStore } from '../editor.store';
 import { TextReadability } from './text-readability';
+import { STUDIO_FONTS, findFontByFamily } from '../fonts';
+import { ensureFontsLoaded } from '../utils/font-loading';
 import {
   readBox,
   scaleForSize,
@@ -132,6 +135,33 @@ export const PropertyInspector: FC<Props> = ({ canvas }) => {
       });
       c.requestRenderAll();
       setVersion((n) => n + 1);
+    },
+    [canvas]
+  );
+
+  // The font of the selected text, where the rest of its styling is. The Text
+  // tool's picker sets the font for new text, and reaching it from a selected
+  // text added a new one.
+  const fontRequest = useRef(0);
+  const applyFont = useCallback(
+    async (family: string) => {
+      const c = canvas.current;
+      if (!c) return;
+      // The texts selected now, not whatever is selected once the font has
+      // loaded; and a later pick wins over an earlier one still loading.
+      const targets = c.getActiveObjects().filter(isText);
+      const request = ++fontRequest.current;
+      // Measuring before the face is in the document caches the fallback's
+      // widths and the text reflows wrongly.
+      await ensureFontsLoaded([family]);
+      if (request !== fontRequest.current || !targets.length) return;
+      targets.forEach((o) => {
+        o.set({ fontFamily: family });
+        o.setCoords();
+      });
+      c.requestRenderAll();
+      setVersion((n) => n + 1);
+      c.fire('object:modified', { target: targets[0] } as fabric.ModifiedEvent);
     },
     [canvas]
   );
@@ -321,6 +351,22 @@ export const PropertyInspector: FC<Props> = ({ canvas }) => {
 
       {text && (
         <>
+          <label className="flex flex-col gap-0.5">
+            <span className="text-[11px] text-textColor/60">{t('font', 'Font')}</span>
+            <select
+              value={findFontByFamily(text.fontFamily).family}
+              onChange={(e) => void applyFont(e.target.value)}
+              aria-label={t('font', 'Font')}
+              className="text-xs px-2 py-1.5 rounded bg-newColColor text-textColor border border-newBorder focus:outline-none focus:border-forth"
+            >
+              {STUDIO_FONTS.map((font) => (
+                <option key={font.key} value={font.family} style={{ fontFamily: font.family }}>
+                  {font.label}
+                </option>
+              ))}
+            </select>
+          </label>
+
           <label className="flex flex-col gap-0.5">
             <span className="flex justify-between text-[11px] text-textColor/60">
               <span>{t('props_font_size', 'Font size')}</span>

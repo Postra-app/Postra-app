@@ -1,6 +1,6 @@
 'use client';
 
-import { FC, MutableRefObject, useCallback, useEffect, useRef, useState } from 'react';
+import { FC, MutableRefObject, useCallback, useState } from 'react';
 import * as fabric from 'fabric';
 import { useEditorStore } from '../editor.store';
 import { useCarouselStore, CarouselSlide } from '../carousel.store';
@@ -46,12 +46,14 @@ export const AiGeneratePanel: FC<Props> = ({ canvas }) => {
   // where a 90-day window left one lonely chip that never seemed to change.
   const upcoming = getUpcomingHolidays(holidays, 4, 365);
   const brandKit = useBrandKit();
-  const abortRef = useRef<AbortController | null>(null);
   const [slidesCount, setSlidesCount] = useState(1);
   // Prompt parked while the user decides whether to replace a non-empty canvas.
   const [confirmPrompt, setConfirmPrompt] = useState<string | null>(null);
 
-  useEffect(() => () => abortRef.current?.abort(), []);
+  // No abort when the panel closes: the credit is spent on the server either
+  // way, so a design asked for and paid for still lands on the canvas when the
+  // user looks at another panel meanwhile. `isGenerating` lives in the store,
+  // so the panel shows the run again when it is reopened.
 
   // promptOverride lets the occasion chips generate in one click — the chip
   // passes its prompt directly because setAiPrompt hasn't re-rendered yet.
@@ -70,9 +72,6 @@ export const AiGeneratePanel: FC<Props> = ({ canvas }) => {
     }
     setConfirmPrompt(null);
 
-    abortRef.current?.abort();
-    const ctrl = new AbortController();
-    abortRef.current = ctrl;
     setGenerating(true);
     try {
       const isCarousel = slidesCount > 1;
@@ -95,7 +94,6 @@ export const AiGeneratePanel: FC<Props> = ({ canvas }) => {
               slidesCount,
               languageFallback,
             }),
-            signal: ctrl.signal,
           })
         : await fetch('/media/generate-post-design', {
             method: 'POST',
@@ -104,7 +102,6 @@ export const AiGeneratePanel: FC<Props> = ({ canvas }) => {
               platform: platform.key,
               languageFallback,
             }),
-            signal: ctrl.signal,
           });
 
       if (!res.ok) {
@@ -122,7 +119,9 @@ export const AiGeneratePanel: FC<Props> = ({ canvas }) => {
       }
 
       const data = await res.json();
-      if (ctrl.signal.aborted) return;
+      // Studio itself may have been closed while the design was being made.
+      const c = canvas.current;
+      if (!c) return;
 
       if (reusedBackground(data, isCarousel)) {
         toaster.show(
@@ -147,30 +146,29 @@ export const AiGeneratePanel: FC<Props> = ({ canvas }) => {
         // Five slides, each a full canvas rebuild, pushed roughly forty history
         // entries — past the 30-entry cap, so the design the user had BEFORE
         // generating was evicted. The whole generation is one undo step now.
-        await withHistoryPaused(canvas.current, async () => {
+        await withHistoryPaused(c, async () => {
           for (let i = 0; i < slideSpecs.length; i += 1) {
-            await renderDesignSpec(canvas.current!, slideSpecs[i], platform);
+            await renderDesignSpec(c, slideSpecs[i], platform);
             slides.push({
               id: `slide-${Date.now().toString(36)}-${i}`,
-              canvasJson: JSON.stringify(canvas.current!.toJSON()),
+              canvasJson: JSON.stringify(c.toJSON()),
             });
           }
           useCarouselStore.getState().replaceAllSlides(slides);
           // The loop leaves the canvas on the LAST slide, but the strip activates
           // slide 1 — reload slide 1 so the canvas matches the highlighted thumbnail
           // (otherwise clicking thumbnail 1 is a no-op and the canvas looks stuck).
-          await canvas.current!.loadFromJSON(slides[0].canvasJson!);
-          await loadCanvasFonts(canvas.current!);
-          canvas.current!.renderAll();
+          await c.loadFromJSON(slides[0].canvasJson!);
+          await loadCanvasFonts(c);
+          c.renderAll();
         });
       } else {
         const spec = data as PostDesignSpec;
-        await withHistoryPaused(canvas.current, () =>
-          renderDesignSpec(canvas.current!, spec, platform)
+        await withHistoryPaused(c, () =>
+          renderDesignSpec(c, spec, platform)
         );
       }
     } catch (err) {
-      if ((err as { name?: string })?.name === 'AbortError') return;
       // A globally-handled status (5xx/429/401) already showed its own message.
       // Telling the user to "try a different prompt" during a backend restart
       // sends them off rewriting perfectly good input.
@@ -180,7 +178,6 @@ export const AiGeneratePanel: FC<Props> = ({ canvas }) => {
         'warning'
       );
     } finally {
-      if (abortRef.current === ctrl) abortRef.current = null;
       setGenerating(false);
     }
   }, [canvas, aiPrompt, platform, isGenerating, fetch, toaster, t, setGenerating, slidesCount, i18n]);

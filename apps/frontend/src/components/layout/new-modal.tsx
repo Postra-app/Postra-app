@@ -487,7 +487,11 @@ export const useDecisionModal = () => {
         modals.openModal({
           title,
           askClose: false,
-          onClose: () => res(false),
+          // Escape, the close button or a click outside is a "no". Only the
+          // inner promise heard it, and a caller of areYouSure() waited for
+          // ever: a dismissed "out of credits" dialog left its request, and
+          // the button that started it, spinning.
+          onClose: () => (newRes ? newRes(false) : res(false)),
           children: (
             <DecisionModal
               onlyApprove={onlyApprove}

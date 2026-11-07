@@ -22,6 +22,7 @@ import {
 } from '@gitroom/nestjs-libraries/openai/language-rule';
 import { deepWithoutLongDashes } from '@gitroom/helpers/utils/long.dashes';
 import { withImageSlot } from '@gitroom/nestjs-libraries/openai/image-concurrency';
+import { safeDesignColors } from '@gitroom/nestjs-libraries/studio/post-design-spec';
 import {
   ImageOrientation,
   normalizeOrientation,
@@ -471,7 +472,7 @@ ${SETTINGS_BLOCK_RULE}`,
           }, orgId)
         ).choices[0].message.parsed;
 
-        if (parsed) return parsed;
+        if (parsed) return { ...parsed, colors: safeDesignColors(parsed.colors, brandKit?.colors) };
       } catch (err) {
         if (isAiOutage(err)) throw err;
         this._logger.warn(`generatePostDesign attempt failed: ${(err as Error)?.message ?? err}`);
@@ -706,7 +707,8 @@ ${SETTINGS_BLOCK_RULE}`,
 
         if (parsed?.slides?.length) {
           // Exact match — return immediately.
-          if (parsed.slides.length === count) return parsed;
+          if (parsed.slides.length === count)
+            return { ...parsed, colors: safeDesignColors(parsed.colors, brandKit?.colors) };
           // Otherwise keep the first usable result as a fallback and retry.
           if (!best) best = parsed;
         }
@@ -717,7 +719,11 @@ ${SETTINGS_BLOCK_RULE}`,
     }
 
     if (best) {
-      return { ...best, slides: normalizeSlides(best.slides, count) };
+      return {
+        ...best,
+        colors: safeDesignColors(best.colors, brandKit?.colors),
+        slides: normalizeSlides(best.slides, count),
+      };
     }
 
     throw new Error('Failed to generate carousel after 3 attempts');
