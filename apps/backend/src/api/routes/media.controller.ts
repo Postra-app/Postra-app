@@ -128,7 +128,6 @@ export class MediaController {
   // generating request; it never makes a clip or spends a credit.
   @Post('/generate-video/result')
   @HttpCode(200)
-  @CheckPolicies([AuthorizationActions.Create, Sections.AI])
   @Throttle({ default: { ttl: 300000, limit: 120 } })
   generateVideoResult(
     @GetOrgFromRequest() org: Organization,

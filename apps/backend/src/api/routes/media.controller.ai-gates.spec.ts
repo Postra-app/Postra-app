@@ -64,8 +64,9 @@ describe('media controller AI plan gates', () => {
   it('leaves the routes that never call a model open', () => {
     // Burning captions is ffmpeg over an SRT the user already has, and the
     // "allowed" probe only answers whether a video type is offered. Charging a
-    // plan gate for those would block work that costs us nothing.
-    for (const path of ["/:id/burn-captions"]) {
+    // plan gate for those would block work that costs us nothing. A clip's
+    // result is a read of what the generate request already paid for.
+    for (const path of ["/:id/burn-captions", "/generate-video/result"]) {
       expect(decoratorsAfterRoute(path)).not.toContain('@CheckPolicies');
     }
   });
