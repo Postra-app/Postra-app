@@ -440,3 +440,62 @@ test('Font of the selected text: changed from the inspector, one Ctrl+Z brings i
   await expect(font).toHaveValue(/Geist/);
   await s.clean();
 });
+
+// The credit is spent on the server whatever the browser does. Opening
+// another panel while the design was being made aborted the request and the
+// paid-for design never reached the canvas.
+test('AI Generate: the design lands on the canvas after a switch to another panel', { tag: '@safari' }, async ({
+  page,
+}) => {
+  test.setTimeout(90_000);
+  const s = await studio(page);
+  await page.route('**/api/media/generate-post-design', async (route) => {
+    const response = await route.fetch();
+    await new Promise((r) => setTimeout(r, 2_500));
+    await route.fulfill({ response });
+  });
+  await s.open('AI Generate');
+  await page.getByPlaceholder('e.g. Summer sale -50% at a clothing store').fill('Autumn coffee offer at a small cafe');
+  const done = page.waitForResponse((r) => r.url().includes('/media/generate-post-design'));
+  await page.getByRole('button', { name: 'Generate Design', exact: true }).click();
+  await s.open('Layers');
+  expect((await done).status()).toBe(201);
+  await expect.poll(() => s.layers(), { timeout: 20_000 }).toBeGreaterThan(1);
+  await s.clean();
+});
+
+test('AI Generate: a carousel of three makes three slides', { tag: '@safari' }, async ({ page }) => {
+  test.setTimeout(90_000);
+  const s = await studio(page);
+  await s.open('AI Generate');
+  await page.getByPlaceholder('e.g. Summer sale -50% at a clothing store').fill('Three tips for a calmer morning');
+  await page.locator('select:has(option[value="5"])').selectOption('3');
+  const done = page.waitForResponse((r) => r.url().includes('/media/generate-carousel-design'));
+  await page.getByRole('button', { name: 'Generate carousel (3)', exact: true }).click();
+  expect((await done).status()).toBe(201);
+  await expect(page.getByRole('button', { name: /^Go to Slide \d+$/ })).toHaveCount(3, { timeout: 20_000 });
+  await s.clean();
+});
+
+// Out of credits: say so once, with the way to more, and leave the button
+// usable.
+test('AI Generate: out of credits is said once, with the way to Billing', { tag: '@safari' }, async ({ page }) => {
+  const s = await studio(page);
+  await page.route('**/api/media/generate-post-design', (route) =>
+    route.fulfill({
+      status: 402,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        statusCode: 402,
+        message: 'No image generation credits remaining for this billing cycle',
+      }),
+    })
+  );
+  await s.open('AI Generate');
+  await page.getByPlaceholder('e.g. Summer sale -50% at a clothing store').fill('Spring sale');
+  await page.getByRole('button', { name: 'Generate Design', exact: true }).click();
+  await expect(page.getByText('No image generation credits remaining for this billing cycle')).toHaveCount(1);
+  await expect(page.getByRole('button', { name: 'Go to billing' })).toBeVisible();
+  await page.keyboard.press('Escape');
+  await expect(page.getByRole('button', { name: 'Generate Design', exact: true })).toBeEnabled();
+});
