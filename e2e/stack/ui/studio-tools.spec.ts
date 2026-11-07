@@ -139,6 +139,43 @@ test('Images: remove background puts a library cut-out on the canvas', async ({ 
   await s.clean();
 });
 
+// A template's photo sits behind its text. The cut-out (and a smart crop or a
+// replaced image) used to land on top of every layer, covering the headline,
+// and undo took two steps, the first leaving no photo at all.
+test('Images: remove background keeps the photo behind the text, one undo brings it back', async ({
+  page,
+}) => {
+  const s = await studio(page);
+  await s.uploadPhoto();
+  await s.tool('Text').click();
+  await page.waitForTimeout(800);
+  const order = async () => {
+    await s.layers();
+    return page
+      .locator('div:has(> button[aria-label="Bring forward"]) > button:first-child')
+      .evaluateAll((rows) => rows.map((r) => r.getAttribute('title')));
+  };
+  const before = await order();
+  expect(before).toHaveLength(2);
+  expect(before[1]).toBe('Image');
+
+  await page.locator('button[title="Image"]').click();
+  await s.open('Images');
+  const done = page.waitForResponse(
+    (r) => r.url().includes('/media/remove-background') && r.request().method() === 'POST'
+  );
+  await page.getByRole('button', { name: /Remove background/ }).click();
+  expect((await done).status()).toBe(201);
+  await expect(page.getByRole('button', { name: /Removing/ })).toHaveCount(0);
+  await page.waitForTimeout(800);
+  expect(await order()).toEqual(before);
+
+  await page.getByTitle('Undo (Ctrl+Z)').click();
+  await page.waitForTimeout(800);
+  expect(await order()).toEqual(before);
+  await s.clean();
+});
+
 test('Stock photos: search shows results', async ({ page }) => {
   const s = await studio(page);
   await s.open('Stock photos');

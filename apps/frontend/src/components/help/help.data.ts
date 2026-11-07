@@ -314,6 +314,7 @@ export const CHANNEL_GUIDES: ChannelGuide[] = [
       'Click "Add Channel", pick Pinterest, log in and approve access.',
     ],
     gotchas: [
+      'Pinterest only lets apps use boards on Business accounts. A personal account is refused when you connect: switch to a free Business account in Pinterest settings, then connect again.',
       'Every Pin goes to a board, so the account needs at least one board (create it on Pinterest first).',
       'Pinterest needs a picture: a Pin without media cannot be published.',
     ],
