@@ -54,3 +54,35 @@ test('a revoked plan is gone from the admin lists, and a comp can replace it', a
     await target.remove();
   }
 });
+
+// A lifetime grant writes a marker code per organisation, and the code is
+// unique: granting lifetime again after a revoke failed with a 500, so a
+// lifetime plan taken back could never be given back.
+test('lifetime can be granted again after it was revoked', async () => {
+  test.setTimeout(120_000);
+  const staff = await throwawayOrg(prisma, { tier: 'STANDARD', totalChannels: 3, channels: 0 });
+  const target = await throwawayOrg(prisma, { tier: 'STANDARD', totalChannels: 3, channels: 0 });
+  try {
+    const staffUser = await prisma.userOrganization.findFirstOrThrow({ where: { organizationId: staff.orgId } });
+    await makeAdministrator(prisma, { api: staff.api, userId: staffUser.userId });
+    await expect.poll(async () => (await staff.api.get('/admin/stats')).status(), { timeout: 60_000 }).toBe(200);
+    const targetUser = await prisma.user.findFirstOrThrow({
+      where: { organizations: { some: { organizationId: target.orgId } } },
+    });
+    const revoke = () => staff.api.post('/admin/revoke-subscription', { data: { organizationId: target.orgId } });
+    const grant = () => staff.api.post('/admin/grant-lifetime', { data: { email: targetUser.email, apply: true } });
+
+    expect((await revoke()).status()).toBe(201);
+    for (const round of [1, 2]) {
+      const granted = await grant();
+      expect(granted.status(), `grant ${round}: ${await granted.text()}`).toBe(201);
+      expect((await granted.json()).granted).toHaveLength(1);
+      const sub = await prisma.subscription.findUniqueOrThrow({ where: { organizationId: target.orgId } });
+      expect(sub).toMatchObject({ isLifetime: true, subscriptionTier: 'ULTIMATE', deletedAt: null });
+      expect((await revoke()).status()).toBe(201);
+    }
+  } finally {
+    await staff.remove();
+    await target.remove();
+  }
+});
