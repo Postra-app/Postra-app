@@ -594,3 +594,19 @@ test('Undo: a nudge is recorded when the window loses focus mid-press', { tag: '
   await page.keyboard.up('ArrowRight');
   await s.clean();
 });
+
+// Copy finishes asynchronously (an image is cloned by loading it again), and
+// a paste straight after the copy found the clipboard still empty or holding
+// the previous copy.
+test('Select: a paste straight after the copy pastes what was just copied', { tag: '@safari' }, async ({ page }) => {
+  const s = await studio(page);
+  await s.uploadPhoto();
+  await s.tool('Text').click();
+  expect(await s.layers()).toBe(2);
+  await page.getByTitle('Undo (Ctrl+Z)').focus();
+  await page.keyboard.press('ControlOrMeta+a');
+  await page.keyboard.press('ControlOrMeta+c');
+  await page.keyboard.press('ControlOrMeta+v');
+  await expect.poll(() => s.layers()).toBe(4);
+  await s.clean();
+});
