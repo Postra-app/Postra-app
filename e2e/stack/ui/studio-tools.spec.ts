@@ -143,7 +143,13 @@ test('Stock photos: search shows results', async ({ page }) => {
   const s = await studio(page);
   await s.open('Stock photos');
   await page.getByRole('button', { name: 'Unsplash', exact: true }).click();
-  await page.getByPlaceholder('e.g. coffee, office, summer').fill(`studio tools ${Date.now()}`);
+  // The panel opens on a starter search; a click and typing replace it.
+  const box = page.getByPlaceholder('e.g. coffee, office, summer');
+  await expect(box).toHaveValue('business');
+  await box.click();
+  const query = `studio tools ${Date.now()}`;
+  await page.keyboard.type(query);
+  await expect(box).toHaveValue(query);
   await page.keyboard.press('Enter');
   await expect(page.getByRole('link', { name: 'Unsplash', exact: true }).first()).toBeVisible();
   await expect(page.getByText('Photo by')).toBeVisible();

@@ -268,6 +268,9 @@ export const StockImagesPanel: FC<Props> = ({ canvas, defaultQuery }) => {
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           onKeyDown={(e) => e.key === 'Enter' && search()}
+          // The panel opens on a starter search; clicking in and typing
+          // made "businesstulips" and an empty result.
+          onFocus={(e) => e.currentTarget.select()}
           placeholder={t('image_stock_search_ph', 'e.g. coffee, office, summer')}
           className="flex-1 min-w-0 text-xs px-2 py-1.5 rounded bg-newColColor border border-newBorder text-textColor placeholder-textColor/60 focus:outline-none focus:border-forth"
         />
