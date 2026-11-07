@@ -255,17 +255,25 @@ test('Download PNG and Save as template', async ({ page }) => {
 test('Save as template with the Templates panel open lists it at once', async ({ page }) => {
   const s = await studio(page);
   await s.tool('Text').click();
+  const listed = () =>
+    page.waitForResponse((r) => r.url().includes('/media/my-templates') && r.status() === 200);
+  const first = listed();
   await s.open('Templates');
-  const mine = page.locator('button[title^="Apply this template"]');
-  await page.waitForTimeout(1500);
-  const before = await mine.count();
-  await page.getByRole('button', { name: 'Export' }).click();
+  await first;
+  // Other tests save templates too: compare with what the server says, not
+  // with a count taken before.
+  const again = listed();
   const marked = page.waitForResponse(
     (r) => /\/media\/[^/]+\/template$/.test(r.url()) && r.request().method() === 'PUT'
   );
+  await page.getByRole('button', { name: 'Export' }).click();
   await page.getByRole('menuitem', { name: /Save as template/ }).click();
-  expect((await marked).status()).toBe(200);
-  await expect(mine).toHaveCount(before + 1);
+  const put = await marked;
+  expect(put.status()).toBe(200);
+  const id = put.url().split('/').at(-2);
+  const list: { id: string }[] = await (await again).json();
+  expect(list.map((m) => m.id)).toContain(id);
+  await expect(page.locator('button[title^="Apply this template"]')).toHaveCount(list.length);
   await s.clean();
 });
 
