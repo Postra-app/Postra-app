@@ -70,6 +70,12 @@ interface EditorState {
    * to fall back on. The panel consumes it once and clears it.
    */
   pendingTemplateQuery: string | null;
+  /**
+   * Goes up when a design is saved as a template. The Templates panel reads
+   * "Your templates" when it opens; saving while it was already open left the
+   * new template missing until the panel was closed and opened again.
+   */
+  templatesVersion: number;
   platform: PlatformSize;
   history: string[];
   historyIndex: number;
@@ -81,6 +87,7 @@ interface EditorState {
   setTool: (tool: EditorTool) => void;
   setPanelOpen: (open: boolean) => void;
   setPendingTemplateQuery: (query: string | null) => void;
+  templatesChanged: () => void;
   setPlatform: (platform: PlatformSize) => void;
   setGenerating: (val: boolean) => void;
   setCanvasReady: (val: boolean) => void;
@@ -97,6 +104,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   activeTool: 'select',
   panelOpen: true,
   pendingTemplateQuery: null,
+  templatesVersion: 0,
   platform: PLATFORM_SIZES[0],
   history: [],
   historyIndex: -1,
@@ -108,6 +116,8 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   setTool: (tool) => set({ activeTool: tool, panelOpen: true }),
   setPanelOpen: (open) => set({ panelOpen: open }),
   setPendingTemplateQuery: (query) => set({ pendingTemplateQuery: query }),
+  templatesChanged: () =>
+    set((s) => ({ templatesVersion: s.templatesVersion + 1 })),
   setPlatform: (platform) => set({ platform }),
   setGenerating: (val) => set({ isGenerating: val }),
   setCanvasReady: (val) => set({ canvasReady: val }),

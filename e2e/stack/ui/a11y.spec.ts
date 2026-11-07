@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { expect, Page, test } from '@playwright/test';
 
-// axe (WCAG 2.2 A/AA) on the ten screens a customer lives in (P8). Critical
+// axe (WCAG 2.2 A/AA) on the screens a customer lives in (P8). Critical
 // and serious violations fail the test. Measured on production 2026-10-04
 // before the fix: every page without <html lang>, 62–200 images without alt
 // in the calendar, an invalid role on every channel row, unnamed selects,
@@ -24,6 +24,10 @@ const SCREENS = [
   '/agents',
   '/plugs',
   '/help',
+  // Studio, each tab as a customer opens it.
+  '/studio',
+  '/studio?mode=video',
+  '/studio?mode=photo',
 ];
 
 const violations = async (page: Page) => {

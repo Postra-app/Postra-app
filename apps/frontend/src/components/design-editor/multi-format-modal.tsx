@@ -2,7 +2,6 @@
 
 import { FC, MutableRefObject, useCallback, useEffect, useRef, useState } from 'react';
 import * as fabric from 'fabric';
-import JSZip from 'jszip';
 import { useFetch } from '@gitroom/helpers/utils/custom.fetch';
 import { useToaster } from '@gitroom/react/toaster/toaster';
 import { useT } from '@gitroom/react/translation/get.transation.service.client';
@@ -95,6 +94,11 @@ export const MultiFormatModal: FC<MultiFormatModalProps> = ({
 
   const handleDownloadZip = useCallback(async () => {
     try {
+      // JSZip's own browser build, loaded on the click. Its sources pull in
+      // Node's `stream`, which the bundler polyfills with `util`, and that
+      // polyfill probes for generators with Function() on every page the
+      // chunk reaches - a CSP eval violation the customer never sees.
+      const { default: JSZip } = await import('jszip/dist/jszip.min.js');
       const zip = new JSZip();
       await Promise.all(
         renders.map(async (r) => {

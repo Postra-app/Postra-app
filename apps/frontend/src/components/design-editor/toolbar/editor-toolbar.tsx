@@ -325,8 +325,10 @@ export const EditorToolbar: FC<ToolbarProps> = ({ canvas }) => {
           return;
         }
         const { path } = await res.json();
+        // replaceImageOnCanvas records the swap as one undo step. A second
+        // commit here stored the same state again, so the first Ctrl+Z did
+        // nothing and the swap took two to undo.
         await replaceImageOnCanvas(c, img, path, 'cover');
-        c.fire('object:modified', { target: c.getActiveObject()! } as fabric.ModifiedEvent);
       } catch {
         toaster.show(t('image_replace_failed', 'Could not load that image.'), 'warning');
       } finally {

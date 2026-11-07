@@ -918,7 +918,9 @@ const PostDesignEditor: FC<PostDesignEditorProps> = ({
       await saveDesignToLibrary(true);
       // Jump to the Templates panel so the fresh template is visible in
       // "Your templates" right away — a toast alone left users hunting for
-      // where the design went.
+      // where the design went. If the panel was already open it would not
+      // remount, so it is told to read the list again.
+      useEditorStore.getState().templatesChanged();
       setTool('templates');
       toaster.show(
         t(

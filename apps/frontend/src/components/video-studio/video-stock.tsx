@@ -181,6 +181,10 @@ export const VideoStock: FC<VideoStockProps> = ({ onImported }) => {
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
+          // The starting phrase is real text, not a placeholder: a click and
+          // a typed word used to search for "nature timelapsecoffee".
+          onFocus={(e) => e.currentTarget.select()}
+          aria-label={t('video_stock_search', 'Search')}
           placeholder={t('video_stock_search_ph', 'e.g. nature timelapse, city street, ocean')}
           className="flex-1 text-xs px-2 py-1 rounded bg-newColColor border border-newBorder text-textColor focus:outline-none focus:border-forth"
         />

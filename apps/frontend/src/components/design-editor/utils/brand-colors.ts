@@ -145,6 +145,12 @@ export const CONTRAST_AA_LARGE = 3;
 export const isReadable = (textColor: string, background: string): boolean =>
   contrastRatio(textColor, background) >= CONTRAST_AA_LARGE;
 
+/** The colour a template's text takes when it lands on a photo: its own where
+ *  it can be read against what is behind it, otherwise black or white. A
+ *  `behind` of null (the photo could not be read) keeps the colour. */
+export const readableOnPhoto = (fill: string, behind: string | null): string =>
+  !behind || isReadable(fill, behind) ? fill : readableTextOn(behind);
+
 /** The scrim (a translucent black or white layer) that lifts text back over
  *  the readable line. Returns null when none is needed, or when even a full
  *  scrim would not help. */

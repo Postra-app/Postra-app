@@ -35,3 +35,24 @@ test('a B-roll search typed while another is running shows its own clips', async
   await expect(page.getByRole('link', { name: 'NewClip' })).toBeVisible();
   await expect(page.getByRole('link', { name: 'OldClip' })).toHaveCount(0);
 });
+
+// The search box opens on a starter phrase that is real text, not a
+// placeholder. A click and a typed word searched for "nature timelapsecoffee"
+// (seen on production); the phrase is selected on focus, as in the photo panel.
+test('typing into the B-roll search replaces the starter phrase', async ({ page }) => {
+  test.setTimeout(60_000);
+  const asked: string[] = [];
+  await page.route('**/api/media/pixabay-videos?*', async (route) => {
+    asked.push(new URL(route.request().url()).searchParams.get('q') || '');
+    await route.fulfill({ json: { hits: [] } });
+  });
+  await page.goto('/studio?mode=video');
+  await page.getByRole('button', { name: /Stock B-roll/ }).first().click();
+  const box = page.getByRole('textbox', { name: 'Search' });
+  await expect(box).toHaveValue('nature timelapse', { timeout: 30_000 });
+  await box.click();
+  await page.keyboard.type('coffee');
+  await expect(box).toHaveValue('coffee');
+  await page.keyboard.press('Enter');
+  await expect.poll(() => asked.at(-1)).toBe('coffee');
+});

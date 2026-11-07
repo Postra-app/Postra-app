@@ -26,13 +26,16 @@ export interface UploadPlan {
 export function planUpload(
   results: { key: string }[],
   selectedKey: string | null,
-  intent: 'post' | 'library'
+  intent: 'post' | 'library',
+  /** Results of this render already in the library: never stored twice. */
+  stored: ReadonlySet<string> = new Set()
 ): UploadPlan {
   const keys = results.map((r) => r.key);
   if (!keys.length) return { toUpload: [], toAttach: null };
-  if (intent === 'library') return { toUpload: keys, toAttach: null };
+  const toUpload = keys.filter((k) => !stored.has(k));
+  if (intent === 'library') return { toUpload, toAttach: null };
   // An unknown or missing selection means the first result, so the button can
   // never do nothing.
   const chosen = selectedKey && keys.includes(selectedKey) ? selectedKey : keys[0];
-  return { toUpload: keys, toAttach: chosen };
+  return { toUpload, toAttach: chosen };
 }

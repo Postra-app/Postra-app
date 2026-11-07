@@ -60,6 +60,19 @@ test('Studio → All formats → Add all to post attaches every format', async (
 
   const addAll = page.getByRole('button', { name: 'Add all to post' });
   await expect(addAll).toBeEnabled({ timeout: 45_000 });
+
+  // The ZIP holds one PNG per format. The ZIP library used to come with Node
+  // polyfills whose generator probe calls Function(), which the policy
+  // refuses: an eval violation on every page that loaded the chunk.
+  const download = page.waitForEvent('download');
+  await page.getByRole('button', { name: /Download all/ }).click();
+  const zip = await (await download).createReadStream();
+  const chunks: Buffer[] = [];
+  for await (const chunk of zip) chunks.push(chunk as Buffer);
+  const bytes = Buffer.concat(chunks);
+  expect(bytes.subarray(0, 2).toString()).toBe('PK');
+  expect(bytes.toString('latin1').match(/\.png/g)?.length).toBeGreaterThanOrEqual(7);
+
   await addAll.click();
 
   // Studio closes and the post carries the pictures.
@@ -67,12 +80,8 @@ test('Studio → All formats → Add all to post attaches every format', async (
   expect(sent.length).toBeGreaterThan(1);
   expect(sent.every((s) => s === 201)).toBe(true);
   await expect(editor.locator('img[src*="/uploads/"]').first()).toBeVisible();
-  // The ZIP library's polyfills probe for generator support with Function()
-  // inside a try; the policy refuses it and the probe falls back. Nothing the
-  // customer sees, and not what this test is about.
-  const probe = (v: string) => v.startsWith('script-src eval') || /Refused to evaluate/.test(v);
-  expect((await violations()).filter((v) => !probe(v))).toEqual([]);
-  expect(problems.filter((v) => !probe(v))).toEqual([]);
+  expect(await violations()).toEqual([]);
+  expect(problems).toEqual([]);
 });
 
 test('composer → Studio → Use in post leaves no policy violation', async ({ page }) => {

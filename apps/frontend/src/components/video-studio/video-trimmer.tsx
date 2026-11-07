@@ -90,20 +90,26 @@ export const VideoTrimmer: FC<VideoTrimmerProps> = ({ file, onTrimmed }) => {
     // know its duration yet, in which case onLoadedMetadata finishes the job.
     // Switching files mid-load also errors; the rejection is swallowed so it
     // never surfaces as an unhandled rejection / dev error overlay.
+    // The clip is handed over as its bytes, never as the blob: URL. Given a
+    // URL, WaveSurfer fetch()es it, and production's connect-src has no blob:
+    // - every clip errored into the flat line below and the waveform this
+    // tool is built around never showed.
+    const source = file;
+    if (!source) return;
     let flatLoaded = false;
     const loadFlat = () => {
       const d = videoRef.current?.duration;
       if (flatLoaded || !d || !Number.isFinite(d)) return;
       flatLoaded = true;
       flatWaveRef.current = null;
-      ws.load(videoUrl, [[0, 0]], d).catch(() => {});
+      ws.loadBlob(source, [[0, 0]], d).catch(() => {});
     };
     ws.on('error', () => {
       if (flatLoaded) return;
       flatWaveRef.current = loadFlat;
       loadFlat();
     });
-    ws.load(videoUrl).catch(() => {});
+    ws.loadBlob(source).catch(() => {});
     ws.on('ready', () => {
       const d = ws.getDuration();
       setDuration(d);
@@ -133,7 +139,55 @@ export const VideoTrimmer: FC<VideoTrimmerProps> = ({ file, onTrimmed }) => {
       ws.destroy();
       wavesurferRef.current = null;
     };
+    // `file` and `videoUrl` change together; the URL is the one to wait for.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [videoUrl]);
+
+  // The region's edges could only be dragged with a mouse. The Start and End
+  // readouts are sliders for the keyboard: arrows move an edge by 0.1 s,
+  // Shift+arrows by a second, Home/End to the ends of the clip.
+  const moveEdge = useCallback(
+    (side: 'start' | 'end', to: number) => {
+      const region = regionRef.current;
+      if (!region || !duration) return;
+      const minLength = 0.1;
+      const start =
+        side === 'start'
+          ? Math.min(Math.max(0, to), region.end - minLength)
+          : region.start;
+      const end =
+        side === 'end'
+          ? Math.max(Math.min(duration, to), region.start + minLength)
+          : region.end;
+      region.setOptions({ start, end });
+      setTrimStart(start);
+      setTrimEnd(end);
+      const v = videoRef.current;
+      if (v) v.currentTime = side === 'end' ? end : start;
+    },
+    [duration]
+  );
+
+  const edgeKeyDown = useCallback(
+    (side: 'start' | 'end') => (e: React.KeyboardEvent) => {
+      const current = side === 'start' ? trimStart : trimEnd;
+      const step = e.shiftKey ? 1 : 0.1;
+      const target =
+        e.key === 'ArrowLeft' || e.key === 'ArrowDown'
+          ? current - step
+          : e.key === 'ArrowRight' || e.key === 'ArrowUp'
+          ? current + step
+          : e.key === 'Home'
+          ? 0
+          : e.key === 'End'
+          ? duration
+          : null;
+      if (target === null) return;
+      e.preventDefault();
+      moveEdge(side, target);
+    },
+    [trimStart, trimEnd, duration, moveEdge]
+  );
 
   const handleVideoLoaded = useCallback(() => {
     const v = videoRef.current;
@@ -243,13 +297,33 @@ export const VideoTrimmer: FC<VideoTrimmerProps> = ({ file, onTrimmed }) => {
       )}
       <div ref={waveContainerRef} className="w-full bg-white/[0.03] rounded" />
       <div className="flex items-center justify-between text-[11px] text-textColor/60">
-        <span>
+        <span
+          role="slider"
+          tabIndex={duration ? 0 : -1}
+          aria-label={t('video_trim_start', 'Start')}
+          aria-valuemin={0}
+          aria-valuemax={Number(duration.toFixed(2))}
+          aria-valuenow={Number(trimStart.toFixed(2))}
+          aria-valuetext={`${trimStart.toFixed(2)}s`}
+          onKeyDown={edgeKeyDown('start')}
+          className="rounded px-1 focus:outline-none focus-visible:ring-2 focus-visible:ring-newAccent"
+        >
           {t('video_trim_start', 'Start')}: {trimStart.toFixed(2)}s
         </span>
         <span className="text-textColor/45">
           {t('video_trim_drag_hint', 'Drag the highlighted part, or its edges.')}
         </span>
-        <span>
+        <span
+          role="slider"
+          tabIndex={duration ? 0 : -1}
+          aria-label={t('video_trim_end', 'End')}
+          aria-valuemin={0}
+          aria-valuemax={Number(duration.toFixed(2))}
+          aria-valuenow={Number(trimEnd.toFixed(2))}
+          aria-valuetext={`${trimEnd.toFixed(2)}s`}
+          onKeyDown={edgeKeyDown('end')}
+          className="rounded px-1 focus:outline-none focus-visible:ring-2 focus-visible:ring-newAccent"
+        >
           {t('video_trim_end', 'End')}: {trimEnd.toFixed(2)}s
         </span>
       </div>

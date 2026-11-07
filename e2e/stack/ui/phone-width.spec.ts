@@ -16,6 +16,8 @@ const SCREENS = [
   '/plugs',
   '/help',
   '/billing',
+  // Studio is desktop-only and says so on a phone; the message must fit.
+  '/studio',
 ];
 
 for (const screen of SCREENS) {

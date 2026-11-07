@@ -575,7 +575,12 @@ export const VideoStudio: FC<VideoStudioProps> = ({
             'Your browser does not support video editing (WebCodecs). Use Chrome, Edge or Safari 16.4+.'
           )}
         </div>
-        <Button onClick={closeModal}>{t('close', 'Close')}</Button>
+        {/* The Studio page is not a window: there, closeModal does nothing
+            and the button was a dead end. Graphics and Photos stay one tab
+            away. */}
+        {mode !== 'studio' && (
+          <Button onClick={closeModal}>{t('close', 'Close')}</Button>
+        )}
       </div>
     );
   }
@@ -626,7 +631,18 @@ export const VideoStudio: FC<VideoStudioProps> = ({
             </button>
           ))}
         </div>
-        <div className="flex gap-2">
+        <div className="flex gap-2 min-w-0">
+          {/* Trim, Formats and Captions work on the shared clip, and nothing
+              said which one that was - after "From library" or a restored
+              session the user had to guess. Text names its own clip. */}
+          {file && !showGoals && ['trim', 'formats', 'captions'].includes(tab) && (
+            <span
+              className="self-center min-w-0 max-w-[240px] truncate text-[11px] text-textColor/60"
+              title={file.name}
+            >
+              <StudioIcon name="done" size={12} className="inline-block" /> {file.name}
+            </span>
+          )}
           <input
             ref={fileInputRef}
             type="file"
