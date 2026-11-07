@@ -691,7 +691,10 @@ export class SubscriptionService {
   async addSubscription(
     orgId: string,
     userId: string,
-    subscription: string
+    subscription: string,
+    // Asks Stripe whether the customer has a subscription that can still
+    // bill or change state. Without it every cus_ counts as paying.
+    stripeSubscriptionOpen?: (customerId: string) => Promise<boolean>
   ): Promise<any> {
     // Validate before the first write. The tier used to be an unvalidated
     // string indexed straight into `pricing`: an unknown key threw a 500 and
@@ -708,11 +711,17 @@ export class SubscriptionService {
 
     // An org that pays through Stripe must be changed in Stripe. Comping it
     // here would leave the two disagreeing, and the next webhook would
-    // overwrite whatever we wrote.
+    // overwrite whatever we wrote. A customer alone is not paying: the plan
+    // page creates one for every new account the moment it opens, so the
+    // refusal is for a subscription Stripe can still bill or change.
     const paymentId = await this._subscriptionRepository.getPaymentId(orgId);
-    if (paymentId?.startsWith('cus_')) {
+    const stripeCustomer = !!paymentId?.startsWith('cus_');
+    if (
+      stripeCustomer &&
+      (!stripeSubscriptionOpen || (await stripeSubscriptionOpen(paymentId!)))
+    ) {
       throw new HttpException(
-        'This organization has a live Stripe customer - change the plan in Stripe instead.',
+        'This organization has a Stripe subscription - change the plan in Stripe instead.',
         400
       );
     }
@@ -721,7 +730,9 @@ export class SubscriptionService {
       action: 'subscription.comp',
       organizationId: orgId,
       userId,
-      metadata: { tier: subscription },
+      metadata: stripeCustomer
+        ? { tier: subscription, stripeCustomerWithoutSubscription: true }
+        : { tier: subscription },
     });
 
     return this.createOrUpdateSubscription(

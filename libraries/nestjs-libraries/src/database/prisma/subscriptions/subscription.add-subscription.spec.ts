@@ -67,15 +67,54 @@ describe('addSubscription never touches the org handle on Stripe', () => {
     expect(call[0]).toBe(false); // isTrailing
   });
 
-  it('refuses an org that pays through Stripe, and writes nothing', async () => {
+  it('refuses an org whose Stripe customer has an open subscription, and writes nothing', async () => {
     const { service, repository, auditService } = build('cus_U9EdTfSreZXTPu');
+    const open = jest.fn().mockResolvedValue(true);
+
+    await expect(
+      service.addSubscription('org-1', 'user-1', 'PRO', open)
+    ).rejects.toThrow(/Stripe subscription/i);
+
+    expect(open).toHaveBeenCalledWith('cus_U9EdTfSreZXTPu');
+    expect(repository.createOrUpdateSubscription).not.toHaveBeenCalled();
+    expect(auditService.record).not.toHaveBeenCalled();
+  });
+
+  it('refuses any Stripe customer when nobody can ask Stripe', async () => {
+    const { service, repository } = build('cus_U9EdTfSreZXTPu');
 
     await expect(
       service.addSubscription('org-1', 'user-1', 'PRO')
-    ).rejects.toThrow(/live Stripe customer/i);
-
+    ).rejects.toThrow(/Stripe subscription/i);
     expect(repository.createOrUpdateSubscription).not.toHaveBeenCalled();
-    expect(auditService.record).not.toHaveBeenCalled();
+  });
+
+  // The plan page creates a Stripe customer for every new account as soon as
+  // it opens, so a customer with no subscription was the normal case for an
+  // influencer, and every one of them was refused.
+  it('comps an org whose Stripe customer never subscribed', async () => {
+    const { service, repository, auditService } = build('cus_U9EdTfSreZXTPu');
+    const open = jest.fn().mockResolvedValue(false);
+
+    await service.addSubscription('org-1', 'user-1', 'PRO', open);
+
+    const call = repository.createOrUpdateSubscription.mock.calls[0];
+    expect(call[2]).toBe(''); // addressed by org, the customer id untouched
+    expect(call[4]).toBe('PRO');
+    expect(call[8]).toEqual({ id: 'org-1' });
+    expect(auditService.record).toHaveBeenCalledWith(
+      expect.objectContaining({
+        action: 'subscription.comp',
+        metadata: { tier: 'PRO', stripeCustomerWithoutSubscription: true },
+      })
+    );
+  });
+
+  it('does not ask Stripe about an org without a customer', async () => {
+    const { service } = build(null);
+    const open = jest.fn();
+    await service.addSubscription('org-1', 'user-1', 'PRO', open);
+    expect(open).not.toHaveBeenCalled();
   });
 
   it('records who comped which org, on which tier', async () => {

@@ -327,7 +327,8 @@ export class AdminController {
     await this._subscriptionService.addSubscription(
       organizationId,
       user.id,
-      subscription
+      subscription,
+      (customer) => this._stripeService.hasOpenSubscription(customer)
     );
 
     return { organizationId, subscription };

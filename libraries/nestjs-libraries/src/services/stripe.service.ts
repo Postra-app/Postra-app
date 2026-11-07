@@ -665,6 +665,22 @@ export class StripeService {
     return { ok: true };
   }
 
+  /**
+   * Whether the customer has a subscription Stripe can still bill or change:
+   * anything but cancelled or expired-before-paying. An `incomplete` one
+   * counts, since it either becomes paid or ends in its own webhook.
+   */
+  async hasOpenSubscription(customer: string): Promise<boolean> {
+    const { data } = await stripe.subscriptions.list({
+      customer,
+      status: 'all',
+      limit: 100,
+    });
+    return data.some(
+      (s) => s.status !== 'canceled' && s.status !== 'incomplete_expired'
+    );
+  }
+
   async deleteSubscription(event: Stripe.CustomerSubscriptionDeletedEvent) {
     const customer = event.data.object.customer as string;
     // The plan row is per customer, not per Stripe subscription. If the
