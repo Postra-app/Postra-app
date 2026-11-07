@@ -200,9 +200,6 @@ export const StockImagesPanel: FC<Props> = ({ canvas, defaultQuery }) => {
 
   return (
     <div className="flex flex-col gap-2">
-      <span className="text-[11px] text-textColor/60 uppercase tracking-wide">
-        {t('image_stock_title', 'Stock photos')}
-      </span>
       {(!!sources?.pexels || !!sources?.unsplash) && (
         <div className="flex gap-1" role="group" aria-label={t('stock_source', 'Photo library')}>
           {(['pixabay', 'unsplash', 'pexels'] as const)
