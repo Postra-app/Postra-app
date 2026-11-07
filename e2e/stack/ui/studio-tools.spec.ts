@@ -499,3 +499,32 @@ test('AI Generate: out of credits is said once, with the way to Billing', { tag:
   await page.keyboard.press('Escape');
   await expect(page.getByRole('button', { name: 'Generate Design', exact: true })).toBeEnabled();
 });
+
+// A Refine that added or removed layers recorded each of them, plus an
+// unstamped copy of the result: the first Ctrl+Z after it visibly did nothing.
+test('AI Refine: one Ctrl+Z undoes the whole refinement', { tag: '@safari' }, async ({ page }) => {
+  const s = await studio(page);
+  await s.tool('Text').click();
+  await s.open('Shapes');
+  await page.getByRole('button', { name: /Rectangle/i }).first().click();
+  expect(await s.layers()).toBe(2);
+  await page.route('**/api/media/refine-design', async (route) => {
+    const { spec } = route.request().postDataJSON();
+    await route.fulfill({
+      status: 201,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        patch: { ops: spec.layers.map((l: { id: string }) => ({ op: 'delete', id: l.id })) },
+        explanation: 'Cleared the design.',
+      }),
+    });
+  });
+  await s.open('AI Refine');
+  await page.getByPlaceholder(/shorten the headline/).fill('Remove everything');
+  await page.getByRole('button', { name: 'Refine design', exact: true }).click();
+  await expect(page.getByText('Cleared the design.')).toBeVisible();
+  expect(await s.layers()).toBe(0);
+  await page.getByTitle('Undo (Ctrl+Z)').click();
+  await expect.poll(() => s.layers()).toBe(2);
+  await s.clean();
+});
