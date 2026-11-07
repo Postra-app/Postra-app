@@ -188,6 +188,17 @@ function LayoutContextInner(params: { children: ReactNode }) {
       // match the expected pattern."), which Sentry reports as a crash while
       // the user sees nothing at all: clicking "Add channel" during a deploy
       // simply did nothing. Tell them why, and unwind.
+      //
+      // One exception: an AI clip can take longer than the load balancer's
+      // three minutes. Its 502/504 is the gateway giving up while the clip is
+      // still being made, not the server failing - "try again in a moment"
+      // was wrong, and the AI Video window says what is happening itself.
+      if (
+        (response.status === 502 || response.status === 504) &&
+        url.split('?')[0] === '/media/generate-video'
+      ) {
+        return true;
+      }
       if (response.status >= 500) {
         // A 503 with a JSON message is the backend naming the cause (OpenAI
         // down: "AI is unavailable right now…"); any other 5xx stays generic.

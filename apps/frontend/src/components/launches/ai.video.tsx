@@ -18,6 +18,8 @@ import { isFetchHandledError } from '@gitroom/helpers/utils/fetch.errors';
 
 // The server polls the video model for up to ten minutes.
 const VIDEO_WAIT_MS = 11 * 60 * 1000;
+// How often the composer asks where a clip stands once the request is lost.
+const VIDEO_RESULT_EVERY_MS = 10 * 1000;
 
 export const Modal: FC<{
   close: () => void;
@@ -58,6 +60,54 @@ export const Modal: FC<{
       return;
     }
 
+    const request = JSON.stringify({
+      type: type.identifier,
+      output: position,
+      customParams,
+    });
+    const stillRunning = () => {
+      toaster.show(
+        t(
+          'video_generation_still_running',
+          'Your video is taking longer than usual. It will appear in your media library when it is ready.'
+        ),
+        'warning'
+      );
+      // Veo can take longer than the load balancer's three minutes (4.5 on
+      // production): the clip was made and paid for, but the post never got
+      // it. Ask where it stands - a read that never makes a clip or spends
+      // a credit - and attach it when it is there.
+      void (async () => {
+        const until = Date.now() + VIDEO_WAIT_MS;
+        while (Date.now() < until) {
+          await new Promise((r) => setTimeout(r, VIDEO_RESULT_EVERY_MS));
+          let answer: { status?: string; media?: { id: string; path: string } };
+          try {
+            const res = await fetch(`/media/generate-video/result`, {
+              method: 'POST',
+              body: request,
+            });
+            if (!res.ok) return;
+            answer = await res.json();
+          } catch {
+            return;
+          }
+          if (answer?.status === 'pending') continue;
+          if (answer?.status === 'done' && answer.media?.id) {
+            onChange({ id: answer.media.id, path: answer.media.path });
+            mutate();
+            toaster.show(
+              t(
+                'video_generation_saved',
+                'Video created and saved to your media library.'
+              ),
+              'success'
+            );
+          }
+          return;
+        }
+      })();
+    };
     setLoading(true);
     close();
     setLocked(true);
@@ -79,11 +129,7 @@ export const Modal: FC<{
       }
       const image = await fetch(`/media/generate-video`, {
         method: 'POST',
-        body: JSON.stringify({
-          type: type.identifier,
-          output: position,
-          customParams,
-        }),
+        body: request,
         // A clip takes one to three minutes and the shared fetch gives up
         // after two: on 2026-10-10 the browser said "Could not generate the
         // video" for a clip that was made, paid for and saved. Wait as long
@@ -94,14 +140,9 @@ export const Modal: FC<{
 
       if (image.status === 504 || image.status === 502) {
         // The load balancer gives up after 3 minutes; the clip is still being
-        // made and lands in the media library (asking again returns it).
-        toaster.show(
-          t(
-            'video_generation_still_running',
-            'Your video is taking longer than usual. It will appear in your media library when it is ready.'
-          ),
-          'warning'
-        );
+        // made and lands in the media library (layout.context lets this one
+        // 5xx through instead of "server unavailable").
+        stillRunning();
         return;
       }
       if (!image.ok) {
@@ -128,13 +169,7 @@ export const Modal: FC<{
       if (isFetchHandledError(e)) return;
       console.error('[Postra:ai-video] generate failed', e);
       if ((e as Error)?.name === 'TimeoutError') {
-        toaster.show(
-          t(
-            'video_generation_still_running',
-            'Your video is taking longer than usual. It will appear in your media library when it is ready.'
-          ),
-          'warning'
-        );
+        stillRunning();
         return;
       }
       toaster.show(

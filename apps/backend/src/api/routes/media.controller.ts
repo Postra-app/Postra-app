@@ -5,6 +5,7 @@ import {
   Controller,
   Delete,
   Get,
+  HttpCode,
   HttpException,
   Param,
   Post,
@@ -120,6 +121,20 @@ export class MediaController {
     @Body() body: VideoDto
   ) {
     return this._mediaService.generateVideo(org, body);
+  }
+
+  // Read-only: where a clip asked for with this body stands. The composer
+  // asks every few seconds after the load balancer has given up on the
+  // generating request; it never makes a clip or spends a credit.
+  @Post('/generate-video/result')
+  @HttpCode(200)
+  @CheckPolicies([AuthorizationActions.Create, Sections.AI])
+  @Throttle({ default: { ttl: 300000, limit: 120 } })
+  generateVideoResult(
+    @GetOrgFromRequest() org: Organization,
+    @Body() body: VideoDto
+  ) {
+    return this._mediaService.videoResult(org, body);
   }
 
   @Post('/generate-image')

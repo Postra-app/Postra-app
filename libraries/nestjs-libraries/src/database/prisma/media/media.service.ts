@@ -700,11 +700,7 @@ export class MediaService {
     // for the same video. The same request from the same organization is
     // refused while it is being made and answered from the library for
     // VIDEO_REUSE_SECONDS after — even with no credits left, it is paid for.
-    const key = `ai-video:${createHash('sha256')
-      .update(
-        JSON.stringify([org.id, body.type, body.output, body.customParams])
-      )
-      .digest('hex')}`;
+    const key = this.videoKey(org.id, body);
     const reused = await this.finishedVideo(org.id, key);
     if (reused) {
       return reused;
@@ -786,6 +782,39 @@ export class MediaService {
       await ioRedis.del(key).catch(() => undefined);
       throw err;
     }
+  }
+
+  /** One key per organisation and request: the same prompt, shape and
+   *  pictures are the same clip. */
+  private videoKey(orgId: string, body: VideoDto) {
+    return `ai-video:${createHash('sha256')
+      .update(
+        JSON.stringify([orgId, body.type, body.output, body.customParams])
+      )
+      .digest('hex')}`;
+  }
+
+  /**
+   * Where the clip this exact request asked for stands: being made, made (the
+   * library file), or neither. It never makes a clip and never spends a
+   * credit. A clip can outlast the load balancer's three minutes, and the
+   * browser asks here instead of sending the request again: after a failure a
+   * second POST would have started, and paid for, a new clip.
+   */
+  async videoResult(
+    org: Organization,
+    body: VideoDto
+  ): Promise<
+    | { status: 'pending' }
+    | { status: 'done'; media: Awaited<ReturnType<MediaService['getMediaByIdOrg']>> }
+    | { status: 'none' }
+  > {
+    const key = this.videoKey(org.id, body);
+    if ((await ioRedis.get(key)) === VIDEO_PENDING) {
+      return { status: 'pending' };
+    }
+    const media = await this.finishedVideo(org.id, key);
+    return media ? { status: 'done', media } : { status: 'none' };
   }
 
   private async finishedVideo(org: string, key: string) {
