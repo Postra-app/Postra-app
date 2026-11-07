@@ -19,6 +19,7 @@ import { ErrorsService } from '@gitroom/nestjs-libraries/database/prisma/errors/
 import { AdminStatsService } from '@gitroom/nestjs-libraries/database/prisma/admin-stats/admin-stats.service';
 import { PrismaService } from '@gitroom/nestjs-libraries/database/prisma/prisma.service';
 import { SubscriptionService } from '@gitroom/nestjs-libraries/database/prisma/subscriptions/subscription.service';
+import { withLiveSubscription } from '@gitroom/nestjs-libraries/database/prisma/subscriptions/live.subscription';
 import { AuditService } from '@gitroom/nestjs-libraries/database/prisma/audit/audit.service';
 import { AiUsageService } from '@gitroom/nestjs-libraries/database/prisma/ai-usage/ai-usage.service';
 import dayjs from 'dayjs';
@@ -181,6 +182,7 @@ export class AdminController {
               totalChannels: true,
               isLifetime: true,
               cancelAt: true,
+              deletedAt: true,
             },
           },
           _count: {
@@ -195,7 +197,13 @@ export class AdminController {
       this._prisma.organization.count({ where }),
     ]);
 
-    return { items, total, page: page ? parseInt(page, 10) : 0, limit: take };
+    // A revoked plan is a soft-deleted row (live.subscription.ts).
+    return {
+      items: items.map(withLiveSubscription),
+      total,
+      page: page ? parseInt(page, 10) : 0,
+      limit: take,
+    };
   }
 
   @Get('/users')
@@ -245,7 +253,11 @@ export class AdminController {
                   id: true,
                   name: true,
                   subscription: {
-                    select: { subscriptionTier: true, isLifetime: true },
+                    select: {
+                      subscriptionTier: true,
+                      isLifetime: true,
+                      deletedAt: true,
+                    },
                   },
                 },
               },
@@ -256,7 +268,18 @@ export class AdminController {
       this._prisma.user.count({ where }),
     ]);
 
-    return { items, total, page: page ? parseInt(page, 10) : 0, limit: take };
+    return {
+      items: items.map((u) => ({
+        ...u,
+        organizations: u.organizations.map((uo) => ({
+          ...uo,
+          organization: withLiveSubscription(uo.organization),
+        })),
+      })),
+      total,
+      page: page ? parseInt(page, 10) : 0,
+      limit: take,
+    };
   }
 
   @Post('/grant-lifetime')
