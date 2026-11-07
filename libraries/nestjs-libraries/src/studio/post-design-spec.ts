@@ -33,6 +33,27 @@ export interface PostDesignSpec {
 
 export const DESIGN_TEXT_FONT = 'Geist, sans-serif';
 
+const HEX_COLOR = /^#(?:[0-9a-f]{3}|[0-9a-f]{6})$/i;
+
+/**
+ * The model is asked for hex colours but nothing holds it to that, and the
+ * renderers hand them to the canvas, which throws on anything it cannot parse
+ * and leaves half a design. A colour that is not a hex one is replaced: by the
+ * brand's own colour when there is one, otherwise by a readable default.
+ */
+export const safeDesignColors = (
+  colors: Partial<PostDesignSpec['colors']> | undefined,
+  brand?: { primary?: string; secondary?: string; text?: string }
+): PostDesignSpec['colors'] => {
+  const pick = (value: string | undefined, ...fallbacks: (string | undefined)[]) =>
+    [value, ...fallbacks].find((c): c is string => !!c && HEX_COLOR.test(c.trim()))!.trim();
+  return {
+    background: pick(colors?.background, brand?.secondary, '#1a1a2e'),
+    accent: pick(colors?.accent, brand?.primary, '#38bdf8'),
+    text: pick(colors?.text, brand?.text, '#ffffff'),
+  };
+};
+
 export interface DesignPositionEntry {
   left: number;
   top: number;
