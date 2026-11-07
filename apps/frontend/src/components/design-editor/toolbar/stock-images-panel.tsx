@@ -200,9 +200,6 @@ export const StockImagesPanel: FC<Props> = ({ canvas, defaultQuery }) => {
 
   return (
     <div className="flex flex-col gap-2">
-      <span className="text-[11px] text-textColor/60 uppercase tracking-wide">
-        {t('image_stock_title', 'Stock photos')}
-      </span>
       {(!!sources?.pexels || !!sources?.unsplash) && (
         <div className="flex gap-1" role="group" aria-label={t('stock_source', 'Photo library')}>
           {(['pixabay', 'unsplash', 'pexels'] as const)
@@ -271,6 +268,9 @@ export const StockImagesPanel: FC<Props> = ({ canvas, defaultQuery }) => {
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           onKeyDown={(e) => e.key === 'Enter' && search()}
+          // The panel opens on a starter search; clicking in and typing
+          // made "businesstulips" and an empty result.
+          onFocus={(e) => e.currentTarget.select()}
           placeholder={t('image_stock_search_ph', 'e.g. coffee, office, summer')}
           className="flex-1 min-w-0 text-xs px-2 py-1.5 rounded bg-newColColor border border-newBorder text-textColor placeholder-textColor/60 focus:outline-none focus:border-forth"
         />

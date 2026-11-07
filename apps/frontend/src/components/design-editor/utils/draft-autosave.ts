@@ -45,8 +45,8 @@ export const jsonHasObjects = (json: string | null): boolean => {
 const DRAFT_PREFIX = 'postra:studio-draft:';
 
 // localStorage gives a page about 5MB in total, shared with everything else the
-// app keeps there. A canvas JSON above this (background removal embeds the cut
-// out image as a data-URL, which alone is megabytes) is not worth the whole
+// app keeps there. A canvas JSON above this (a smart crop embeds the cropped
+// image as a data-URL, which alone is megabytes) is not worth the whole
 // budget, so it is skipped — but the editor is told, because silently not
 // saving is how a design gets lost on a refresh.
 const MAX_DRAFT_BYTES = 3_500_000;

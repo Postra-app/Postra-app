@@ -780,6 +780,21 @@ export class MediaController {
     );
   }
 
+  // Studio's Remove background. Before /:endpoint, which takes any one-segment
+  // path. Unmetered like retouch (Photoroom costs $0.02 a call, recorded to
+  // AiUsage), throttled per organisation like retouch.
+  @Post('/remove-background')
+  @CheckPolicies([AuthorizationActions.Create, Sections.AI])
+  @Throttle({ default: { ttl: 300000, limit: 60 } })
+  @UseGuards(AccountAgeGuard)
+  @UseInterceptors(FileInterceptor('file'))
+  removeBackground(
+    @GetOrgFromRequest() org: Organization,
+    @UploadedFile('file') file: Express.Multer.File
+  ) {
+    return this._mediaService.removeBackground(org, file);
+  }
+
   @Post('/:endpoint')
   @Throttle({ default: { ttl: 300_000, limit: 600 } })
   async uploadFile(

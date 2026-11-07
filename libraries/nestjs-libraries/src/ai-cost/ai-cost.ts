@@ -29,7 +29,8 @@ export const AI_PRICES_USD: Record<string, { input: number; cached: number; outp
 const DEAREST = AI_PRICES_USD['gpt-5.5'];
 
 const PER_UNIT_USD: Record<string, (model: string) => number> = {
-  images: () => 0.053,
+  // Photoroom's Remove Background, Basic plan; every other image is gpt-image.
+  images: (model) => (model === 'photoroom-segment' ? 0.02 : 0.053),
   videos: (model) => (model === 'veo3_fast' ? 0.325 : 0.4),
   seconds: () => 0.006 / 60,
   messages: () => 0,

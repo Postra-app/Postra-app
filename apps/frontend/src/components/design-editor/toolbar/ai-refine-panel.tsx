@@ -149,9 +149,6 @@ export const AiRefinePanel: FC<Props> = ({ canvas }) => {
   return (
     <div className="flex flex-col gap-2">
       <div>
-        <div className="text-[11px] uppercase tracking-wide text-textColor/60 mb-1">
-          {t('refine_title', 'AI Refine')}
-        </div>
         <p className="text-[11px] text-textColor/60 leading-snug">
           {t(
             'refine_intro',

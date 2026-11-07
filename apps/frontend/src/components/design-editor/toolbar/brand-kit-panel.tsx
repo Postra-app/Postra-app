@@ -187,10 +187,7 @@ export const BrandKitPanel: FC = () => {
 
   return (
     <div className="flex flex-col gap-3">
-      <div className="flex items-center justify-between">
-        <span className="text-[11px] uppercase tracking-wide text-textColor/60">
-          {t('brand_kit', 'Brand Kit')}
-        </span>
+      <div className="flex items-center justify-end">
         {savedAt && (
           <span className="text-[11px] text-textColor/65">
             {t('saved', 'Saved')}

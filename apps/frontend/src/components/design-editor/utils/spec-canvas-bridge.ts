@@ -143,8 +143,8 @@ const shapeLayer = (obj: fabric.FabricObject): StudioShapeLayer | null => {
 /**
  * What we are willing to tell the model about an image layer.
  *
- * Background removal and smart crop leave the result on the canvas as a data
- * URL, and the spec is JSON-stringified into the Refine prompt — so a single
+ * Smart crop leaves its result on the canvas as a data URL (background
+ * removal now points at a library file), and the spec is JSON-stringified into the Refine prompt — so a single
  * cut-out could push several megabytes of base64 into the request. That
  * overflows the vision model's context outright, and the text fallback would
  * happily bill for a million tokens of pixels that say nothing about the

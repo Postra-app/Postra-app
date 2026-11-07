@@ -88,9 +88,6 @@ export const LayersPanel: FC<{
   if (!rows.length) {
     return (
       <div className="flex flex-col gap-2">
-        <div className="text-xs uppercase tracking-wide text-textColor/60">
-          {t('layers_title', 'Layers')}
-        </div>
         <p className="text-[11px] text-textColor/65">
           {t('layers_empty', 'No layers. Add text, shape or image first.')}
         </p>
@@ -100,9 +97,6 @@ export const LayersPanel: FC<{
 
   return (
     <div className="flex flex-col gap-2 min-h-0">
-      <div className="text-xs uppercase tracking-wide text-textColor/60">
-        {t('layers_title', 'Layers')}
-      </div>
       <div className="flex flex-col gap-1 overflow-y-auto">
         {rows.map((row, index) => (
           <div

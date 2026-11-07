@@ -33,6 +33,14 @@ describe('AI cost', () => {
     expect(usd).toBeCloseTo(0.53 + 0.65 + 0.06, 6);
   });
 
+  it("prices Studio's background removal at Photoroom's price, not gpt-image's", () => {
+    const { usd, unknownModels } = costOfUsage([
+      { model: 'photoroom-segment', unit: 'images', inputAmount: 100 },
+    ]);
+    expect(usd).toBeCloseTo(2, 6);
+    expect(unknownModels).toEqual([]);
+  });
+
   // /admin/ai-costs on prod 2026-10-09 listed gpt-4o (Studio's vision call,
   // studio-ai.service.ts) as unknown, priced like gpt-5.5.
   it('prices the Studio vision model gpt-4o at its own price', () => {

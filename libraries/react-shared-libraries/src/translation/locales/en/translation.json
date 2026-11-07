@@ -1147,7 +1147,7 @@
   "crop_failed": "Smart crop failed.",
   "crop_smart": "Smart crop to platform",
   "crop_smart_hint": "Crops the photo to the current format (bottom bar), keeping the most detailed part of the picture in frame",
-  "image_tools_hint": "Both work on the selected image (or the last one added). Remove background downloads an AI model (~30MB) on first run; Smart crop trims the photo to the current post format.",
+  "image_tools_hint": "Both work on the selected image (or the last one added). Remove background keeps the cut-out in your media library; Smart crop trims the photo to the current post format.",
   "text_placeholder": "Type your text",
   "background_custom": "Custom color",
   "ai_forbidden": "AI is not available on your plan. Check your subscription settings.",
@@ -1964,5 +1964,7 @@
   "pinterest_boards_loading": "Loading boards…",
   "pinterest_boards_refresh": "Refresh boards",
   "pinterest_boards_failed": "Pinterest did not send your boards. Try again in a moment.",
-  "pinterest_boards_none": "No boards found. Create a board on Pinterest, then refresh."
+  "pinterest_boards_none": "No boards found. Create a board on Pinterest, then refresh.",
+  "video_format_export_one": "Export 1 format",
+  "video_format_exporting_one": "Exporting 1 format..."
 }

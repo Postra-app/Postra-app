@@ -1,6 +1,6 @@
 import sharp from 'sharp';
 import { createHash } from 'crypto';
-import { applyRetouch } from './retouch.service';
+import { applyRetouch, RetouchService } from './retouch.service';
 import { pipelineFor, RetouchSpec } from './retouch-spec';
 
 // A small photo-like source: a left-to-right gradient tinted blue, so white
@@ -86,3 +86,14 @@ describe('applyRetouch', () => {
     expect([meta.width, meta.height, meta.format]).toEqual([96, 64, 'jpeg']);
   });
 });
+
+// The one-line summary under each retouched photo is read by UK customers;
+// the model wrote "colors".
+describe('retouch summary', () => {
+  it('is asked for in British English', () => {
+    const prompt: string = (new RetouchService() as any).systemPrompt('medium');
+    expect(prompt).toContain('British English');
+    expect(prompt).toContain('colour');
+  });
+});
+

@@ -1,49 +1,49 @@
 'use client';
 
 import * as fabric from 'fabric';
-import { fitReplacement } from './image-crop';
+import { fitReplacement, keepWidthScale } from './image-crop';
 
-let cachedModule: typeof import('@imgly/background-removal') | null = null;
-
-const getModule = async () => {
-  if (cachedModule) return cachedModule;
-  cachedModule = await import('@imgly/background-removal');
-  return cachedModule;
-};
-
-const blobToDataUrl = (blob: Blob): Promise<string> =>
+const imageToBlob = (imgEl: HTMLImageElement): Promise<Blob> =>
   new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve(reader.result as string);
-    reader.onerror = reject;
-    reader.readAsDataURL(blob);
+    const canvas = document.createElement('canvas');
+    canvas.width = imgEl.naturalWidth || imgEl.width;
+    canvas.height = imgEl.naturalHeight || imgEl.height;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return reject(new Error('no 2d context'));
+    ctx.drawImage(imgEl, 0, 0);
+    canvas.toBlob(
+      (b) => (b ? resolve(b) : reject(new Error('image could not be read'))),
+      'image/png'
+    );
   });
 
-export interface RemoveBgOptions {
-  onProgress?: (progress: number) => void;
-}
+type Fetch = (url: string, init?: RequestInit) => Promise<Response>;
 
-const isWebGpuAvailable = (): boolean => {
-  if (typeof navigator === 'undefined') return false;
-  const nav = navigator as Navigator & { gpu?: unknown };
-  return Boolean(nav.gpu);
-};
+/** Why the server refused, in its own words, for the toast. */
+export class BackgroundRemovalError extends Error {}
 
+/**
+ * The picture on the canvas, sent as it looks now (a crop included), comes
+ * back with a transparent background as a new file in the media library.
+ * The work is done on the server: the model that used to run in the browser
+ * needs eval and blob: scripts, which the app's policy rightly refuses.
+ */
 export const removeBackgroundFromImage = async (
   imgEl: HTMLImageElement,
-  options: RemoveBgOptions = {}
+  fetch: Fetch
 ): Promise<string> => {
-  const mod = await getModule();
-  const blob = await mod.removeBackground(imgEl.src, {
-    device: isWebGpuAvailable() ? 'gpu' : 'cpu',
-    output: { format: 'image/png' },
-    progress: options.onProgress
-      ? (key, current, total) => {
-          if (total > 0) options.onProgress!(current / total);
-        }
-      : undefined,
-  });
-  return blobToDataUrl(blob);
+  const body = new FormData();
+  body.append('file', await imageToBlob(imgEl), 'image.png');
+  const res = await fetch('/media/remove-background', { method: 'POST', body });
+  if (!res.ok) {
+    const message = await res
+      .json()
+      .then((b: { message?: unknown }) => (typeof b?.message === 'string' ? b.message : ''))
+      .catch(() => '');
+    throw new BackgroundRemovalError(message);
+  }
+  const { path } = (await res.json()) as { path: string };
+  return path;
 };
 
 /**
@@ -57,7 +57,7 @@ export const replaceImageOnCanvas = async (
   canvas: fabric.Canvas,
   targetImage: fabric.FabricImage,
   newSrc: string,
-  fit: 'stretch' | 'cover' = 'stretch'
+  fit: 'stretch' | 'cover' | 'width' = 'stretch'
 ): Promise<void> => {
   const imgEl = new Image();
   imgEl.crossOrigin = 'anonymous';
@@ -95,6 +95,16 @@ export const replaceImageOnCanvas = async (
           width: cover.width,
           height: cover.height,
         }
+      : fit === 'width'
+      ? (() => {
+          // A picture in new proportions (a smart crop): same width on the
+          // canvas, its own height, never stretched.
+          const scale = keepWidthScale(
+            (targetImage.width || 1) * (targetImage.scaleX || 1),
+            sourceWidth
+          );
+          return { scaleX: scale, scaleY: scale };
+        })()
       : {
           scaleX: ((targetImage.width || 1) * (targetImage.scaleX || 1)) / sourceWidth,
           scaleY: ((targetImage.height || 1) * (targetImage.scaleY || 1)) / sourceHeight,

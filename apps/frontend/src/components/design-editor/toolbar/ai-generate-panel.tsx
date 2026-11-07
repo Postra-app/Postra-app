@@ -188,9 +188,6 @@ export const AiGeneratePanel: FC<Props> = ({ canvas }) => {
   if (!allowed) {
     return (
       <div className="flex flex-col gap-2 text-[11px] text-textColor/60 leading-relaxed">
-        <span className="text-[11px] uppercase tracking-wide text-textColor/60">
-          {t('ai_generate', 'AI Generate')}
-        </span>
         <p>
           {t(
             'ai_tier_required',
@@ -240,9 +237,6 @@ export const AiGeneratePanel: FC<Props> = ({ canvas }) => {
 
   return (
     <div className="flex flex-col gap-2">
-      <span className="text-[11px] uppercase tracking-wide text-textColor/60">
-        {t('ai_generate', 'AI Generate')}
-      </span>
       {!brandKit.loading && !brandKit.exists && (
         <div className="rounded-md bg-forth/10 border border-forth/30 px-2 py-1.5 flex flex-col gap-1.5">
           <p className="text-[11px] leading-snug text-textColor/80">

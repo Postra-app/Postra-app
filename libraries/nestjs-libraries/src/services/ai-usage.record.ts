@@ -26,7 +26,9 @@ export interface AiUsageEvent {
     // Scripts for the video generators (slides, avatar voice).
     | 'video'
     // Photo retouch: the vision model that decides the adjustments.
-    | 'retouch';
+    | 'retouch'
+    // Studio's Remove background (Photoroom), one image per call.
+    | 'background-removal';
   model: string;
   // 'videos': finished AI video clips; 'messages': questions to the
   // assistant, its monthly fair use (inputAmount = how many).
