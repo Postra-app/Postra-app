@@ -2,7 +2,7 @@ import { readFileSync } from 'fs';
 import { expect, Page, test } from '@playwright/test';
 import { watchForErrors } from './ui-helpers';
 
-// Studio → Video under production's Content-Security-Policy (the stack proxy
+// Studio → Video under the enforced Content-Security-Policy (the stack proxy
 // serves nginx.conf's). The clip is a two-second WebM with a 440 Hz tone:
 // Playwright's Chromium decodes VP8 and Opus, not H.264.
 
@@ -57,7 +57,7 @@ const waveformInk = (page: Page) =>
   });
 
 // WaveSurfer was handed the clip's blob: URL and fetch()ed it. connect-src has
-// no blob:, so in production every clip fell back to a flat line and the
+// no blob:, so under the policy every clip fell back to a flat line and the
 // waveform Trim is built around never showed.
 test('Trim draws the clip’s waveform without breaking the policy', async ({ page }) => {
   test.setTimeout(60_000);
@@ -111,4 +111,30 @@ test('a browser without WebCodecs is told so on the Studio page, without a dead 
     timeout: 30_000,
   });
   await expect(page.getByRole('button', { name: 'Close', exact: true })).toHaveCount(0);
+});
+
+// Photos → video could only add photos from disk, and the header's "From
+// library" (it loads a video for Trim) opened an empty list of videos there,
+// with the photos sitting in Media.
+test('Photos → video takes photos from the library', async ({ page }) => {
+  test.setTimeout(60_000);
+  const original = `slideshow-${Date.now()}.png`;
+  const PNG = Buffer.from(
+    'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==',
+    'base64'
+  );
+  const up = await page.request.post('/api/media/upload-simple', {
+    multipart: { file: { name: original, mimeType: 'image/png', buffer: PNG } },
+  });
+  expect(up.status(), await up.text()).toBe(201);
+
+  await page.goto('/studio?mode=video');
+  await page.getByRole('button', { name: /Photos → video/ }).first().click();
+  await expect(page.getByRole('button', { name: /Add photos \(0\/10\)/ })).toBeVisible({ timeout: 30_000 });
+  // Only the slideshow's own sources: the video ones are not offered here.
+  await expect(page.getByRole('button', { name: 'From disk', exact: true })).toHaveCount(0);
+  await page.getByRole('button', { name: 'From library', exact: true }).click();
+  await page.getByRole('checkbox', { name: original, exact: true }).dispatchEvent('click');
+  await page.getByRole('button', { name: 'Add selected media', exact: true }).click();
+  await expect(page.getByRole('button', { name: /Add photos \(1\/10\)/ })).toBeVisible({ timeout: 15_000 });
 });

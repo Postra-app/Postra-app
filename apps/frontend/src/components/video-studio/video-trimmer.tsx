@@ -92,7 +92,7 @@ export const VideoTrimmer: FC<VideoTrimmerProps> = ({ file, onTrimmed }) => {
     // Switching files mid-load also errors; the rejection is swallowed so it
     // never surfaces as an unhandled rejection / dev error overlay.
     // The clip is handed over as its bytes, never as the blob: URL. Given a
-    // URL, WaveSurfer fetch()es it, and production's connect-src has no blob:
+    // URL, WaveSurfer fetch()es it, and the enforced connect-src has no blob:
     // - every clip errored into the flat line below and the waveform this
     // tool is built around never showed.
     const source = file;
