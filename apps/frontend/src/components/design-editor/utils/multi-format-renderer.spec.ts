@@ -3,6 +3,7 @@ import {
   repositionObjectFromTo,
   isBackgroundBox,
   fitTemplateToPlatform,
+  dataUrlToBlob,
 } from './multi-format-renderer';
 
 /**
@@ -257,5 +258,42 @@ describe('fitTemplateToPlatform', () => {
     expect(fitTemplateToPlatform([layer as any], saved, x)).toBe(false);
     expect(fitTemplateToPlatform([layer as any], JSON.stringify({ objects: [] }), igFeed)).toBe(false);
     expect(layer.left).toBe(1350);
+  });
+});
+
+// Production's Content-Security-Policy allows no data: in connect-src, so the
+// export may not fetch its own data: URL back; it decodes it instead.
+describe('dataUrlToBlob', () => {
+  const png = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0x00, 0xff, 0x80]);
+
+  it('gives back the exact bytes and type of a base64 data: URL, without fetch', async () => {
+    const fetchSpy = jest.fn();
+    const realFetch = (globalThis as any).fetch;
+    (globalThis as any).fetch = fetchSpy;
+    try {
+      const blob = dataUrlToBlob(`data:image/png;base64,${png.toString('base64')}`);
+      expect(blob.type).toBe('image/png');
+      expect(Buffer.from(await blob.arrayBuffer())).toEqual(png);
+      expect(fetchSpy).not.toHaveBeenCalled();
+    } finally {
+      (globalThis as any).fetch = realFetch;
+    }
+  });
+
+  it('decodes a JPEG with parameters before base64', async () => {
+    const blob = dataUrlToBlob(`data:image/jpeg;charset=binary;base64,${png.toString('base64')}`);
+    expect(blob.type).toBe('image/jpeg');
+    expect(blob.size).toBe(png.length);
+  });
+
+  it('decodes a percent-encoded data: URL', async () => {
+    const blob = dataUrlToBlob('data:text/plain,a%20b');
+    expect(blob.type).toBe('text/plain');
+    expect(await blob.text()).toBe('a b');
+  });
+
+  it('refuses anything that is not a data: URL', () => {
+    expect(() => dataUrlToBlob('blob:http://localhost/1')).toThrow('not a data: URL');
+    expect(() => dataUrlToBlob('data:image/png;base64')).toThrow('not a data: URL');
   });
 });
