@@ -650,18 +650,25 @@ export const VideoStudio: FC<VideoStudioProps> = ({
             onChange={handleFileChange}
             className="hidden"
           />
-          <button
-            onClick={() => fileInputRef.current?.click()}
-            className="text-xs px-3 py-1 rounded bg-newColColor text-textColor hover:bg-white/[0.08] transition-colors"
-          >
-            {t('video_source_disk', 'From disk')}
-          </button>
-          <button
-            onClick={() => setShowLibrary(true)}
-            className="text-xs px-3 py-1 rounded bg-newColColor text-textColor hover:bg-white/[0.08] transition-colors"
-          >
-            {t('video_source_library', 'From library')}
-          </button>
+          {/* These load the clip Trim, Formats and Captions share. On Photos
+              → video they read as "add photos" and opened an empty list of
+              videos; Stock and Text have their own sources. */}
+          {(showGoals || ['trim', 'formats', 'captions'].includes(tab)) && (
+            <>
+              <button
+                onClick={() => fileInputRef.current?.click()}
+                className="text-xs px-3 py-1 rounded bg-newColColor text-textColor hover:bg-white/[0.08] transition-colors"
+              >
+                {t('video_source_disk', 'From disk')}
+              </button>
+              <button
+                onClick={() => setShowLibrary(true)}
+                className="text-xs px-3 py-1 rounded bg-newColColor text-textColor hover:bg-white/[0.08] transition-colors"
+              >
+                {t('video_source_library', 'From library')}
+              </button>
+            </>
+          )}
         </div>
       </div>
 

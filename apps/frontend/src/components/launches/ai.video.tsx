@@ -73,9 +73,8 @@ export const Modal: FC<{
         ),
         'warning'
       );
-      // Veo can take longer than the load balancer's three minutes (4.5 on
-      // production): the clip was made and paid for, but the post never got
-      // it. Ask where it stands - a read that never makes a clip or spends
+      // A clip can take longer than the load balancer's three minutes: it is
+      // still made and paid for, but the post never got it. Ask where it stands - a read that never makes a clip or spends
       // a credit - and attach it when it is there.
       void (async () => {
         const until = Date.now() + VIDEO_WAIT_MS;
@@ -93,6 +92,19 @@ export const Modal: FC<{
             return;
           }
           if (answer?.status === 'pending') continue;
+          if (answer?.status === 'none') {
+            // The model gave up or the clip is gone: say so, the credit was
+            // kept.
+            // Stopping quietly left "taking longer" on screen for good.
+            toaster.show(
+              t(
+                'video_generation_failed',
+                'Could not generate the video, please try again.'
+              ),
+              'warning'
+            );
+            return;
+          }
           if (answer?.status === 'done' && answer.media?.id) {
             onChange({ id: answer.media.id, path: answer.media.path });
             mutate();
