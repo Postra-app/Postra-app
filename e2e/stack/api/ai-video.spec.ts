@@ -163,3 +163,44 @@ test('a clip deleted from the library can be made again', async () => {
     await pro.remove();
   }
 });
+
+// Past the load balancer's three minutes the browser loses the request while
+// the clip is still being made. Asking where it stands must never make a clip
+// or spend a credit: "pending" while it is made, the clip once it is, and
+// "none" after a failure (a retried POST would have paid kie.ai again).
+test('asking for a clip’s result never makes one', async () => {
+  test.setTimeout(60_000);
+  const pro = await throwawayOrg(prisma, { tier: 'PRO', totalChannels: 6, channels: 0 });
+  const result = (prompt: string, output = 'vertical') =>
+    pro.api.post('/media/generate-video/result', {
+      data: { type: 'veo3', output, customParams: { prompt, images: [] } },
+    });
+  let first: Promise<unknown> | undefined;
+  try {
+    const slow = `stack-kie-slow A tram in Manchester ${Date.now()}`;
+    first = generate(pro.api, slow);
+    await expect.poll(async () => (await kieTasks(pro.api, slow)).length).toBe(1);
+    const during = await result(slow);
+    expect(during.status(), await during.text()).toBe(200);
+    expect((await during.json()).status).toBe('pending');
+
+    const done = (await first) as Awaited<ReturnType<typeof generate>>;
+    expect(done.status(), await done.text()).toBe(201);
+    const after = await (await result(slow)).json();
+    expect(after.status).toBe('done');
+    expect(after.media.id).toBe((await done.json()).id);
+
+    const failed = `stack-kie-fail A ferry at Dover ${Date.now()}`;
+    expect((await generate(pro.api, failed)).status()).toBe(422);
+    expect((await (await result(failed)).json()).status).toBe('none');
+    expect((await (await result(`never asked ${Date.now()}`)).json()).status).toBe('none');
+
+    expect(await kieTasks(pro.api, slow)).toHaveLength(1);
+    expect(await kieTasks(pro.api, failed)).toHaveLength(1);
+    expect(await videosLeft(pro.api)).toBe(29);
+  } finally {
+    // A failed assertion must not dispose the request still waiting on kie.ai.
+    await first?.catch(() => undefined);
+    await pro.remove();
+  }
+});

@@ -501,12 +501,12 @@ export const STUDIO_GRAPHICS_TOOLS: StudioToolGuide[] = [
   {
     name: 'Stock photos',
     description:
-      'Free Pixabay photos, on its own tool on the toolbar - it opens with results already showing, so a photo is two clicks from opening Studio. Click one and it lands on the canvas and in your media library at the same time. Pixabay License: commercial use is fine and no credit is required. Costs nothing and uses no AI credit, on every plan.',
+      'Free photos from Pixabay or Unsplash (pick the library at the top of the panel), on their own tool on the toolbar - the panel opens with results already showing, so a photo is two clicks from opening Studio. Click one and it lands on the canvas and in your media library at the same time. Both licences allow commercial use and need no credit. Costs nothing and uses no AI credit, on every plan.',
   },
   {
     name: 'Images',
     description:
-      'Upload your own photos, and work on whatever photo is on the canvas: filters (brightness, contrast, saturation, blur and black-and-white presets), background removal and a smart crop to the current format. Free stock photos have their own tool next to Templates.',
+      'Upload your own photos, and work on whatever photo is on the canvas: background removal, a smart crop to the current format, cropping by hand (Reset crop undoes it) and Replace image, which swaps in another photo and keeps the frame. Filters: presets (B&W, Sepia, Vivid, Cool, Warm) and sliders for brightness, contrast, saturation and blur. Free stock photos have their own tool next to Templates.',
   },
   {
     name: 'Layers',

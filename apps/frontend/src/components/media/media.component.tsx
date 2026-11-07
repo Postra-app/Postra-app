@@ -632,7 +632,9 @@ export const MediaBox: FC<{
                         type="button"
                         role="checkbox"
                         aria-checked={!!selected.find((p) => p.id === media.id)}
-                        aria-label={media.name || t('media', 'Media')}
+                        // The caption under the tile shows the original file
+                        // name; `name` is the stored one ("7YUbYjKf9w.jpg").
+                        aria-label={media.originalName || media.name || t('media', 'Media')}
                         onClick={addRemoveSelected(media)}
                         className="absolute inset-0 z-[10] rounded-[2px] cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-newAccent"
                       />

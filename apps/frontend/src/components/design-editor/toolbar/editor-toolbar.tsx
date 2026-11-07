@@ -1024,7 +1024,7 @@ export const EditorToolbar: FC<ToolbarProps> = ({ canvas }) => {
             <p className="text-[11px] text-textColor/65 leading-snug">
               {t(
                 'image_tools_hint',
-                'Both work on the selected image (or the last one added). Remove background keeps the cut-out in your media library; Smart crop trims the photo to the current post format.'
+                'These work on the selected image (or the last one added). Remove background keeps the cut-out in your media library; Smart crop trims the photo to the current post format.'
               )}
             </p>
 
