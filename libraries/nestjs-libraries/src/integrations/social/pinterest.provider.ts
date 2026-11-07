@@ -14,6 +14,7 @@ import { timer } from '@gitroom/helpers/utils/timer';
 import {
   BadBody,
   ProcessingTimeout,
+  RefreshToken,
   SocialAbstract,
   ValidityMedia,
 } from '@gitroom/nestjs-libraries/integrations/social.abstract';
@@ -260,21 +261,34 @@ export class PinterestProvider
     const boards: { name: string; id: string }[] = [];
     let bookmark = '';
     for (let page = 0; page < 10; page++) {
-      const { items, bookmark: next } = await (
-        await fetch(
-          pinterestApi(
-            `/boards?page_size=250${
-              bookmark ? `&bookmark=${encodeURIComponent(bookmark)}` : ''
-            }`
-          ),
-          {
-            method: 'GET',
-            headers: {
-              Authorization: `Bearer ${accessToken}`,
-            },
-          }
-        )
-      ).json();
+      const res = await fetch(
+        pinterestApi(
+          `/boards?page_size=250${
+            bookmark ? `&bookmark=${encodeURIComponent(bookmark)}` : ''
+          }`
+        ),
+        {
+          method: 'GET',
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+          },
+        }
+      );
+      const body = await res.json().catch(() => ({}));
+      // An error answer has no `items`, and read as one it became "No boards
+      // found" with nothing in the logs.
+      if (!res.ok) {
+        console.error(
+          `[pinterest] boards ${res.status} code=${body?.code ?? '-'} message=${String(
+            body?.message ?? ''
+          ).slice(0, 300)}`
+        );
+        if (res.status === 401) {
+          throw new RefreshToken('pinterest', JSON.stringify(body), {} as any, '');
+        }
+        throw new Error(`Pinterest boards ${res.status}`);
+      }
+      const { items, bookmark: next } = body;
 
       boards.push(
         ...(items || []).map((item: any) => ({

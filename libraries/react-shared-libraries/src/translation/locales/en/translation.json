@@ -1960,5 +1960,9 @@
   "republish_the_post": "Republish the post",
   "timezone": "Timezone",
   "automatic_timezone": "Automatic ({{timezone}})",
-  "could_not_save_timezone": "Could not save the timezone"
+  "could_not_save_timezone": "Could not save the timezone",
+  "pinterest_boards_loading": "Loading boards…",
+  "pinterest_boards_refresh": "Refresh boards",
+  "pinterest_boards_failed": "Pinterest did not send your boards. Try again in a moment.",
+  "pinterest_boards_none": "No boards found. Create a board on Pinterest, then refresh."
 }
