@@ -37,8 +37,8 @@ test('a B-roll search typed while another is running shows its own clips', async
 });
 
 // The search box opens on a starter phrase that is real text, not a
-// placeholder. A click and a typed word searched for "nature timelapsecoffee"
-// (seen on production); the phrase is selected on focus, as in the photo panel.
+// placeholder. A click and a typed word searched for "nature timelapsecoffee";
+// the phrase is selected on focus, as in the photo panel.
 test('typing into the B-roll search replaces the starter phrase', async ({ page }) => {
   test.setTimeout(60_000);
   const asked: string[] = [];

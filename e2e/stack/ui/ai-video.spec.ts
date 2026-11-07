@@ -55,9 +55,8 @@ test('a clip generated from the composer is attached to the post', async ({ page
   expect(problems).toEqual([]);
 });
 
-// The load balancer gives up after three minutes and Veo can take longer
-// (4.5 minutes on production): the clip was made, paid for and saved, but the
-// browser got a 504, showed "server unavailable" and the post never got the
+// The load balancer gives up after three minutes and a clip can take longer:
+// the clip was made, paid for and saved, but the browser got a 504, showed "server unavailable" and the post never got the
 // clip. Now the composer says it is still being made, asks where it stands
 // (a read that never makes a clip) and attaches it when it is ready.
 test('a clip that outlasts the load balancer still lands in the post', async ({ page }) => {
@@ -89,6 +88,25 @@ test('a clip that outlasts the load balancer still lands in the post', async ({ 
   await expect(page.getByText('Video created and saved to your media library.')).toBeVisible();
   expect(asked).toBeGreaterThanOrEqual(1);
   expect(await left()).toBe(before - 1);
+});
+
+// After the gateway gave up, a clip the model then failed left "taking
+// longer" on screen for good: the window stopped asking without a word.
+test('a clip that fails after the gateway gave up says so', async ({ page }) => {
+  test.setTimeout(60_000);
+  await openComposer(page, 'bluesky', 'A post whose video fails late');
+  await page.route('**/api/media/generate-video', async (route) => {
+    if (route.request().method() !== 'POST') return route.continue();
+    await route.fetch();
+    return route.fulfill({ status: 504, contentType: 'text/html', body: '<html>504</html>' });
+  });
+  await page.getByRole('button', { name: 'AI Video', exact: true }).click();
+  await page.getByLabel('Prompt').fill(`stack-kie-fail A lighthouse at dusk ${Date.now()}`);
+  await page.getByRole('button', { name: 'Generate', exact: true }).click();
+  await expect(page.getByText('Your video is taking longer than usual')).toBeVisible({ timeout: 30_000 });
+  await expect(page.getByText('Could not generate the video, please try again.')).toBeVisible({
+    timeout: 30_000,
+  });
 });
 
 test('Billing shows the AI images and videos left this month', async ({ page }) => {

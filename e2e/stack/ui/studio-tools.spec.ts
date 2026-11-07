@@ -3,7 +3,7 @@ import sharp from 'sharp';
 import { watchForErrors } from './ui-helpers';
 
 // Every Graphics tool in Studio, the way a customer reaches it, under
-// production's Content-Security-Policy (the stack proxy serves nginx.conf's).
+// the enforced Content-Security-Policy (the stack proxy serves nginx.conf's).
 // One test per tool on a fresh canvas, so one broken tool cannot hide the
 // rest. Each fails on a console error, a response of 400 or more, or a
 // violation of the enforced policy; violations of the report-only nonce
@@ -66,7 +66,7 @@ const studio = async (page: Page) => {
     expect(
       [...problems, ...violations.map((v) => `csp: ${v}`)]
         // The stack's fake stock photos come over http from localhost;
-        // production's come over https, which img-src allows.
+        // real ones come over https, which img-src allows.
         .filter((p) => !p.includes('localhost:58080'))
     ).toEqual([]);
   };
@@ -250,8 +250,7 @@ test('Download PNG and Save as template', async ({ page }) => {
 });
 
 // Saved while the Templates panel was already open, the new template did not
-// show under "Your templates" until the panel was closed and opened again
-// (seen on production).
+// show under "Your templates" until the panel was closed and opened again.
 test('Save as template with the Templates panel open lists it at once', async ({ page }) => {
   const s = await studio(page);
   await s.tool('Text').click();

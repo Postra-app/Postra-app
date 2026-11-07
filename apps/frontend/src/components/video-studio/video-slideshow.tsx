@@ -18,6 +18,9 @@ import {
   drawBrandText,
 } from './text-overlay';
 import { useBrandKit } from './use-brand-kit';
+import { useModals } from '@gitroom/frontend/components/layout/new-modal';
+import { MediaBox } from '@gitroom/frontend/components/media/media.component';
+import { useMediaDirectory } from '@gitroom/react/helpers/use.media.directory';
 
 interface VideoSlideshowProps {
   onReady: (media: { id: string; path: string }) => void;
@@ -51,6 +54,8 @@ export const VideoSlideshow: FC<VideoSlideshowProps> = ({ onReady }) => {
   const t = useT();
   const fetch = useFetch();
   const toaster = useToaster();
+  const modals = useModals();
+  const mediaDirectory = useMediaDirectory();
   const { kit, loading: kitLoading } = useBrandKit();
   const fileRef = useRef<HTMLInputElement>(null);
 
@@ -94,7 +99,7 @@ export const VideoSlideshow: FC<VideoSlideshowProps> = ({ onReady }) => {
   const resetResult = useCallback(() => setResultBlob(null), []);
 
   const addFiles = useCallback(
-    async (files: FileList) => {
+    async (files: FileList | File[]) => {
       // A .heic straight off an iPhone frequently arrives as
       // application/octet-stream, and filtering on MIME alone dropped it here -
       // before the probe below could name it - so the picker simply did
@@ -265,6 +270,45 @@ export const VideoSlideshow: FC<VideoSlideshowProps> = ({ onReady }) => {
 
 
 
+  // Photos already in the library could only come back in through the disk
+  // picker; the header's "From library" loads a video, so on this tab it was
+  // an empty list. The same picker as Photos, then the files go through the
+  // same checks as photos from disk.
+  const pickFromLibrary = useCallback(() => {
+    modals.openModal({
+      title: t('video_source_library', 'From library'),
+      askClose: false,
+      closeOnEscape: true,
+      fullScreen: true,
+      size: 'calc(100% - 80px)',
+      height: 'calc(100% - 80px)',
+      children: (close) => (
+        <MediaBox
+          type="image"
+          setMedia={async (picked) => {
+            const files: File[] = [];
+            for (const m of picked || []) {
+              try {
+                const res = await window.fetch(mediaDirectory.set(m.path));
+                if (!res.ok) throw new Error(String(res.status));
+                const blob = await res.blob();
+                const name = m.path.split('/').pop()?.split('?')[0] || `${m.id}.jpg`;
+                files.push(new File([blob], name, { type: blob.type || 'image/jpeg' }));
+              } catch {
+                toaster.show(
+                  t('retouch_load_failed', 'Could not load that photo from your library.'),
+                  'warning'
+                );
+              }
+            }
+            if (files.length) await addFiles(files);
+          }}
+          closeModal={close}
+        />
+      ),
+    });
+  }, [modals, mediaDirectory, addFiles, toaster, t]);
+
   return (
     <div className="flex flex-col gap-3 p-3 text-textColor">
       <div className="text-[11px] text-textColor/70 leading-snug">
@@ -294,6 +338,14 @@ export const VideoSlideshow: FC<VideoSlideshowProps> = ({ onReady }) => {
         className="text-xs px-3 py-2 rounded bg-newColColor hover:bg-white/[0.08] text-textColor transition-colors disabled:opacity-50"
       >
         {t('slideshow_add', 'Add photos')} ({images.length}/{MAX_IMAGES})
+      </button>
+      <button
+        type="button"
+        onClick={pickFromLibrary}
+        disabled={busy || images.length >= MAX_IMAGES}
+        className="text-xs px-3 py-2 rounded bg-newColColor hover:bg-white/[0.08] text-textColor transition-colors disabled:opacity-50"
+      >
+        {t('video_source_library', 'From library')}
       </button>
 
       {images.length > 0 && (
