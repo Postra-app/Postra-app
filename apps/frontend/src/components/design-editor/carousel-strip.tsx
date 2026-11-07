@@ -186,30 +186,41 @@ export const CarouselStrip: FC<CarouselStripProps> = ({ fabricRef }) => {
               onDragStart={() => onDragStart(i)}
               onDragOver={onDragOver}
               onDrop={() => onDrop(i)}
-              onClick={() => requestSlideSwitch(i)}
-              className={`relative flex-shrink-0 cursor-pointer rounded transition-all ${
+              className={`relative flex-shrink-0 rounded transition-all ${
                 isActive
                   ? 'ring-2 ring-newAccent shadow-lg'
-                  : 'ring-1 ring-newBorder opacity-70 hover:opacity-100'
+                  : 'ring-1 ring-newBorder opacity-70 hover:opacity-100 focus-within:opacity-100'
               }`}
-              title={t('carousel_switch_to', 'Go to Slide {n}').replace('{n}', String(i + 1))}
             >
               <SlideThumb
                 slide={slide}
                 sourceWidth={platform.width}
                 sourceHeight={platform.height}
               />
-              <div className="absolute top-0 left-0 bg-black/70 text-white text-[11px] px-1 rounded-br">
+              {/* The thumbnail was a clickable div: a keyboard could not
+                  reach another slide. The whole thumbnail is this button,
+                  under the delete one. */}
+              <button
+                type="button"
+                onClick={() => requestSlideSwitch(i)}
+                aria-current={isActive ? 'true' : undefined}
+                aria-label={t('carousel_switch_to', 'Go to Slide {n}').replace('{n}', String(i + 1))}
+                title={t('carousel_switch_to', 'Go to Slide {n}').replace('{n}', String(i + 1))}
+                className="absolute inset-0 cursor-pointer rounded focus:outline-none focus-visible:ring-2 focus-visible:ring-newAccent"
+              />
+              <div className="pointer-events-none absolute top-0 left-0 bg-black/70 text-white text-[11px] px-1 rounded-br">
                 {i + 1}
               </div>
               {slides.length > 1 && (
                 <button
+                  type="button"
                   onClick={(e) => {
                     e.stopPropagation();
                     deleteSlide(i);
                   }}
                   className="absolute top-0 right-0 bg-black/70 text-white text-[11px] w-4 h-4 rounded-bl hover:bg-red-500 flex items-center justify-center"
                   title={t('carousel_delete_slide', 'Delete this slide')}
+                  aria-label={t('carousel_delete_slide', 'Delete this slide')}
                 >
                   <StudioIcon name="close" size={11} />
                 </button>

@@ -80,7 +80,8 @@ export const TemplatesPanel: FC<TemplatesPanelProps> = ({ canvas }) => {
   );
   const [category, setCategory] = useState<TemplateCategory>('promo');
   const [query, setQuery] = useState('');
-  const { pendingTemplateQuery, setPendingTemplateQuery } = useEditorStore();
+  const { pendingTemplateQuery, setPendingTemplateQuery, templatesVersion } =
+    useEditorStore();
 
   // Consume a query handed over by another panel (occasion chips on the free
   // plan) exactly once, then clear it — otherwise re-opening Templates later
@@ -113,8 +114,10 @@ export const TemplatesPanel: FC<TemplatesPanelProps> = ({ canvas }) => {
     return () => {
       cancelled = true;
     };
+    // Read again after "Save as template", which can happen with this panel
+    // already open.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [templatesVersion]);
 
   const applyMyTemplate = useCallback(
     async (id: string) => {
@@ -353,7 +356,8 @@ export const TemplatesPanel: FC<TemplatesPanelProps> = ({ canvas }) => {
                 <button
                   onClick={() => removeMyTemplate(m.id)}
                   title={t('my_template_remove_hint', 'Remove from templates (the image stays in your library)')}
-                  className="absolute top-0.5 right-0.5 w-4 h-4 rounded-full bg-black/60 text-white text-[11px] leading-4 text-center opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-500"
+                  aria-label={t('my_template_remove_hint', 'Remove from templates (the image stays in your library)')}
+                  className="absolute top-0.5 right-0.5 w-4 h-4 rounded-full bg-black/60 text-white text-[11px] leading-4 text-center opacity-0 group-hover:opacity-100 focus-visible:opacity-100 transition-opacity hover:bg-red-500"
                 >
                   ×
                 </button>

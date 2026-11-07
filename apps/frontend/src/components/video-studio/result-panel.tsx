@@ -1,6 +1,6 @@
 'use client';
 
-import { FC, useCallback, useEffect, useMemo, useState } from 'react';
+import { FC, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Button } from '@gitroom/frontend/components/ui/button';
 import { StudioIcon } from '@gitroom/frontend/components/studio/studio-icons';
 import { useT } from '@gitroom/react/translation/get.transation.service.client';
@@ -63,9 +63,23 @@ export const ResultPanel: FC<ResultPanelProps> = ({
     };
   }, [urls]);
 
+  // What this set of results already put in the library. "Save to library"
+  // followed by "Use in post" used to upload the same file a second time,
+  // leaving two identical copies that both counted against storage.
+  const storedRef = useRef(new Map<string, UploadedMedia>());
+  useEffect(() => {
+    storedRef.current = new Map();
+  }, [results]);
+
   const run = useCallback(
     async (intent: 'post' | 'library') => {
-      const plan = planUpload(results, selected?.key ?? null, intent);
+      const plan = planUpload(
+        results,
+        selected?.key ?? null,
+        intent,
+        new Set(storedRef.current.keys())
+      );
+      const kept = storedRef.current;
       const stored: UploadedMedia[] = [];
       for (const key of plan.toUpload) {
         const result = results.find((r) => r.key === key);
@@ -74,16 +88,18 @@ export const ResultPanel: FC<ResultPanelProps> = ({
         // One failed upload (size ceiling, network) already told the user;
         // stop rather than half-attach a set.
         if (!media) return;
+        kept.set(key, media);
         stored.push(media);
-        if (key === plan.toAttach) onUseInPost(media);
       }
+      const attach = plan.toAttach ? kept.get(plan.toAttach) : undefined;
+      if (attach) onUseInPost(attach);
       if (intent === 'library') {
         toaster.show(
-          stored.length > 1
+          results.length > 1
             ? t(
                 'video_saved_to_library_many',
                 'Saved {n} files to your media library.'
-              ).replace('{n}', String(stored.length))
+              ).replace('{n}', String(results.length))
             : t(
                 'video_saved_to_library',
                 'Saved to media library - you can use it in any post.'

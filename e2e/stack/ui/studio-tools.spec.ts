@@ -248,3 +248,87 @@ test('Download PNG and Save as template', async ({ page }) => {
   await expect(page.getByText('Your templates', { exact: false })).toBeVisible();
   await s.clean();
 });
+
+// Saved while the Templates panel was already open, the new template did not
+// show under "Your templates" until the panel was closed and opened again
+// (seen on production).
+test('Save as template with the Templates panel open lists it at once', async ({ page }) => {
+  const s = await studio(page);
+  await s.tool('Text').click();
+  const listed = () =>
+    page.waitForResponse((r) => r.url().includes('/media/my-templates') && r.status() === 200);
+  const first = listed();
+  await s.open('Templates');
+  await first;
+  // Other tests save templates too: compare with what the server says, not
+  // with a count taken before.
+  const again = listed();
+  const marked = page.waitForResponse(
+    (r) => /\/media\/[^/]+\/template$/.test(r.url()) && r.request().method() === 'PUT'
+  );
+  await page.getByRole('button', { name: 'Export' }).click();
+  await page.getByRole('menuitem', { name: /Save as template/ }).click();
+  const put = await marked;
+  expect(put.status()).toBe(200);
+  const id = put.url().split('/').at(-2);
+  const list: { id: string }[] = await (await again).json();
+  expect(list.map((m) => m.id)).toContain(id);
+  await expect(page.locator('button[title^="Apply this template"]')).toHaveCount(list.length);
+  await s.clean();
+});
+
+// Replace image recorded the swap twice: the first Ctrl+Z changed nothing and
+// the old photo came back only on the second.
+test('Images: one undo brings back the photo a Replace swapped out', async ({ page }) => {
+  const s = await studio(page);
+  await s.uploadPhoto();
+  // The canvas's average red channel: the photo is blue and yellow, the
+  // replacement red.
+  const red = () =>
+    page.evaluate(() => {
+      const c = document.querySelector('canvas.lower-canvas') as HTMLCanvasElement;
+      const d = c.getContext('2d')!.getImageData(0, 0, c.width, c.height).data;
+      let sum = 0;
+      for (let i = 0; i < d.length; i += 4) sum += d[i];
+      return sum / (d.length / 4);
+    });
+  const before = await red();
+  const replaced = page.waitForResponse(
+    (r) => r.url().includes('/media/upload-simple') && r.request().method() === 'POST'
+  );
+  await page
+    .locator('input[type="file"]')
+    .nth(1)
+    .setInputFiles({
+      name: 'replacement.png',
+      mimeType: 'image/png',
+      buffer: await sharp({
+        create: { width: 400, height: 600, channels: 3, background: { r: 230, g: 20, b: 20 } },
+      })
+        .png()
+        .toBuffer(),
+    });
+  expect((await replaced).status()).toBe(201);
+  await expect.poll(red, { timeout: 10_000 }).toBeGreaterThan(before + 20);
+  const replacedRed = await red();
+  await page.getByTitle('Undo (Ctrl+Z)').click();
+  // The photo comes back (re-rendered from history, so within a shade).
+  await expect.poll(red, { timeout: 5_000 }).toBeLessThan(before + 3);
+  expect(replacedRed).toBeGreaterThan(before + 20);
+  await s.clean();
+});
+
+// Slide thumbnails were clickable divs: the keyboard could not reach them.
+test('Carousel: a slide thumbnail is a button the keyboard reaches', async ({ page }) => {
+  const s = await studio(page);
+  await s.tool('Text').click();
+  await page.getByRole('button', { name: /Carousel mode/ }).click();
+  await page.getByRole('button', { name: '+ Slide', exact: true }).click();
+  await expect(page.getByText(/Slide 2 of 2/)).toBeVisible();
+  const first = page.getByRole('button', { name: 'Go to Slide 1', exact: true });
+  await first.focus();
+  await page.keyboard.press('Enter');
+  await expect(page.getByText(/Slide 1 of 2/)).toBeVisible();
+  await expect(first).toHaveAttribute('aria-current', 'true');
+  await s.clean();
+});

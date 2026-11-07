@@ -33,4 +33,17 @@ describe('planUpload', () => {
   it('does nothing when there is no result', () => {
     expect(planUpload([], 'clip', 'post')).toEqual({ toUpload: [], toAttach: null });
   });
+
+  it('does not upload again what is already in the library', () => {
+    // "Save to library" and then "Use in post" stored the same bytes twice,
+    // and the copy counted against the customer's storage.
+    expect(planUpload([{ key: 'clip' }], null, 'post', new Set(['clip']))).toEqual({
+      toUpload: [],
+      toAttach: 'clip',
+    });
+    expect(planUpload(three, '1x1', 'library', new Set(['9x16']))).toEqual({
+      toUpload: ['1x1', '16x9'],
+      toAttach: null,
+    });
+  });
 });

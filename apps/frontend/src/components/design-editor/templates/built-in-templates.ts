@@ -3,6 +3,8 @@ import type { DesignTemplate, BrandStyle, TemplateLang } from './template-types'
 import type { PlatformSize } from '../editor.store';
 import { DEFAULT_FONT } from '../fonts';
 import { ensureFontsLoaded } from '../utils/font-loading';
+import { readableOnPhoto } from '../utils/brand-colors';
+import { sampleBehind } from '../utils/sample-behind';
 
 const pick = (lang: TemplateLang) => (pl: string, en: string) =>
   lang === 'pl' ? pl : en;
@@ -2869,5 +2871,18 @@ export const applyTemplate = async (
   }
 
   canvas.renderAll();
+  if (kept) {
+    // The layout was drawn for the Brand Kit background, not for this photo:
+    // a crimson accent line read fine on light grey and vanished into a dark
+    // cafe. Any text the inspector would flag gets black or white instead.
+    for (const object of canvas.getObjects()) {
+      if (!(object instanceof fabric.IText)) continue;
+      const fill = object.fill;
+      if (typeof fill !== 'string' || !fill.startsWith('#')) continue;
+      const readable = readableOnPhoto(fill, sampleBehind(canvas, object));
+      if (readable !== fill) object.set('fill', readable);
+    }
+    canvas.renderAll();
+  }
   return !!kept;
 };

@@ -622,17 +622,34 @@ export const MediaBox: FC<{
                         ? 'border-[#38bdf8]'
                         : 'border-transparent'
                     )}
-                    onClick={addRemoveSelected(media)}
                   >
+                    {/* When picking, the tile is one big checkbox under the
+                        preview and delete buttons. It used to be a bare div:
+                        the keyboard could not pick anything and a screen
+                        reader heard nothing. */}
+                    {!standalone && (
+                      <button
+                        type="button"
+                        role="checkbox"
+                        aria-checked={!!selected.find((p) => p.id === media.id)}
+                        aria-label={media.name || t('media', 'Media')}
+                        onClick={addRemoveSelected(media)}
+                        className="absolute inset-0 z-[10] rounded-[2px] cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-newAccent"
+                      />
+                    )}
                     {!!selected.find((p: any) => p.id === media.id) ? (
                       <div className="text-white flex z-[101] justify-center items-center text-[14px] font-[500] w-[24px] h-[24px] rounded-full bg-[#38bdf8] absolute -bottom-[10px] -end-[10px]">
                         {selected.findIndex((z: any) => z.id === media.id) + 1}
                       </div>
                     ) : (
-                      <DeleteCircleIcon
-                        className="cursor-pointer hidden z-[100] group-hover:block phone:block absolute -top-[5px] -end-[5px]"
+                      <button
+                        type="button"
+                        aria-label={t('delete', 'Delete')}
                         onClick={deleteImage(media)}
-                      />
+                        className="hidden z-[100] group-hover:block group-focus-within:block phone:block absolute -top-[5px] -end-[5px]"
+                      >
+                        <DeleteCircleIcon className="cursor-pointer" />
+                      </button>
                     )}
                     {/* /studio?mediaId= already loads a library file onto the
                         canvas; the library just never linked to it. Images
@@ -663,14 +680,30 @@ export const MediaBox: FC<{
                       </button>
                     )}
                     <div className="w-full h-full rounded-[6px] overflow-hidden relative">
-                      <div className="absolute z-[20] left-[50%] top-[50%] -translate-x-[50%] -translate-y-[50%]">
-                        <div
+                      {/* In the library the preview sits in the middle. When
+                          picking, the middle of the tile is where people click
+                          to pick, and it opened the preview instead: there it
+                          moves to the top corner. */}
+                      <div
+                        className={clsx(
+                          'absolute z-[20]',
+                          standalone
+                            ? 'left-[50%] top-[50%] -translate-x-[50%] -translate-y-[50%]'
+                            : 'top-[4px] start-[4px]'
+                        )}
+                      >
+                        <button
+                          type="button"
+                          aria-label={t('preview', 'Preview')}
                           onClick={maximize(media)}
-                          className="cursor-pointer p-[4px] bg-black/40 hidden group-hover:block phone:block transition-all hover:scale-150"
+                          className={clsx(
+                            'cursor-pointer p-[4px] bg-black/40 hidden group-hover:block group-focus-within:block phone:block transition-all',
+                            standalone && 'hover:scale-150'
+                          )}
                         >
                           <svg
-                            width="30"
-                            height="30"
+                            width={standalone ? 30 : 18}
+                            height={standalone ? 30 : 18}
                             viewBox="0 0 14 14"
                             fill="none"
                             xmlns="http://www.w3.org/2000/svg"
@@ -680,7 +713,7 @@ export const MediaBox: FC<{
                               fill="#F1F5F9"
                             />
                           </svg>
-                        </div>
+                        </button>
                       </div>
                       {isVideoMedia(media) ? (
                         <VideoFrame url={mediaDirectory.set(media.path)} />

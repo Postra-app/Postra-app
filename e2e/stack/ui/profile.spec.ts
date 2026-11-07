@@ -60,6 +60,7 @@ test.describe('a picture from the library', () => {
       await page
         .locator('div.w-full.aspect-square')
         .filter({ has: page.locator(`img[src*="${file}"]`) })
+        .getByRole('checkbox')
         .dispatchEvent('click');
       await page.getByRole('button', { name: 'Add selected media', exact: true }).click();
       await expect(page.getByAltText('Profile Picture')).toHaveAttribute('src', new RegExp(file.replace('.', '\\.')));

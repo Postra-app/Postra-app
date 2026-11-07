@@ -12,7 +12,27 @@ import {
   blend,
   averageColor,
   CONTRAST_AA_LARGE,
+  readableOnPhoto,
 } from './brand-colors';
+
+describe('readableOnPhoto', () => {
+  // A template laid over a photo kept the Brand Kit colours it was drawn
+  // for on a plain background: "Code: WEEKEND30" in crimson on a dark cafe
+  // photo, the kind of text the inspector itself flags as hard to read.
+  it('swaps an accent the photo behind it hides for black or white', () => {
+    expect(readableOnPhoto('#d2143a', '#2a211c')).toBe('#ffffff');
+    expect(readableOnPhoto('#f5e663', '#f2efe6')).toBe('#000000');
+  });
+
+  it('keeps the brand colour where it can be read', () => {
+    expect(readableOnPhoto('#ffffff', '#2a211c')).toBe('#ffffff');
+    expect(readableOnPhoto('#d2143a', '#ffffff')).toBe('#d2143a');
+  });
+
+  it('leaves the colour alone when the photo could not be read', () => {
+    expect(readableOnPhoto('#d2143a', null)).toBe('#d2143a');
+  });
+});
 
 const px = (...colors: [number, number, number, number][]) =>
   colors.flatMap((c) => c);
