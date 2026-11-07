@@ -781,7 +781,7 @@ export class MediaController {
   }
 
   // Studio's Remove background. Before /:endpoint, which takes any one-segment
-  // path. Unmetered like retouch (Photoroom costs $0.02 a call, recorded to
+  // path. Unmetered like retouch (kie.ai charges $0.005 a cut-out, recorded to
   // AiUsage), throttled per organisation like retouch.
   @Post('/remove-background')
   @CheckPolicies([AuthorizationActions.Create, Sections.AI])

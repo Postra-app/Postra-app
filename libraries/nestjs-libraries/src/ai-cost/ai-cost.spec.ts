@@ -33,11 +33,11 @@ describe('AI cost', () => {
     expect(usd).toBeCloseTo(0.53 + 0.65 + 0.06, 6);
   });
 
-  it("prices Studio's background removal at Photoroom's price, not gpt-image's", () => {
+  it("prices Studio's background removal at kie.ai's price, not gpt-image's", () => {
     const { usd, unknownModels } = costOfUsage([
-      { model: 'photoroom-segment', unit: 'images', inputAmount: 100 },
+      { model: 'recraft-remove-background', unit: 'images', inputAmount: 100 },
     ]);
-    expect(usd).toBeCloseTo(2, 6);
+    expect(usd).toBeCloseTo(0.5, 6);
     expect(unknownModels).toEqual([]);
   });
 

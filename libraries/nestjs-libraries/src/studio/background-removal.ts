@@ -1,70 +1,166 @@
 import { HttpException, Logger } from '@nestjs/common';
+import sharp, { type Metadata } from 'sharp';
 import { recordAiUsage } from '@gitroom/nestjs-libraries/services/ai-usage.record';
+import { timer } from '@gitroom/helpers/utils/timer';
 
-// Studio's "Remove background", done by Photoroom's Remove Background API
-// (https://docs.photoroom.com/remove-background-api-basic-plan). It used to
-// run a model in the browser, which needs eval and WebAssembly from blob:
-// URLs, none of which the app's Content-Security-Policy allows; on the server
-// it is one request, the same on every device, at commercial quality.
+// Studio's "Remove background", done by Recraft's model through kie.ai
+// (https://docs.kie.ai/market/recraft/remove-background), the same account
+// and balance as AI video. It used to run a model in the browser, which needs
+// eval and WebAssembly from blob: URLs, none of which the app's
+// Content-Security-Policy allows; on the server it is one task, the same on
+// every device.
 
 const logger = new Logger('BackgroundRemoval');
 
-// Photoroom reads PNG, JPEG, WebP and HEIC up to 50 MB and 6000 px; Studio
-// sends what is on its canvas, which the library already keeps at 2048 px.
+export const KIE_BACKGROUND_MODEL = 'recraft/remove-background';
+
+// What Studio may send: PNG, JPEG or WebP, as on its canvas.
 export const BACKGROUND_REMOVAL_TYPES = new Set(['image/png', 'image/jpeg', 'image/webp']);
 export const BACKGROUND_REMOVAL_MAX_BYTES = 25 * 1024 * 1024;
 
-const apiBase = () =>
-  (process.env.PHOTOROOM_API_URL || 'https://sdk.photoroom.com').replace(/\/+$/, '');
+// kie.ai takes 256 to 4096 px a side, up to 16 megapixels and 5 MB.
+const MIN_SIDE = 256;
+const MAX_SIDE = 4096;
+const MAX_PIXELS = 16_000_000;
+const MAX_INPUT_BYTES = 5 * 1024 * 1024;
 
 export const UNAVAILABLE =
   'Background removal is unavailable right now. Try again in a few minutes.';
 export const UNREADABLE =
   'This image could not be read. Try a PNG, JPEG or WebP photo.';
+export const TOO_SMALL =
+  'This image is too small to cut out. Use one at least 256 pixels on each side.';
 
-/** The picture with its background removed, as a transparent PNG. */
-export const removeBackground = async (
-  bytes: Buffer,
-  mime: string,
-  organizationId: string
-): Promise<Buffer> => {
-  const key = process.env.PHOTOROOM_API_KEY;
-  if (!key) {
-    logger.error('[bg-remove] PHOTOROOM_API_KEY is not set');
-    throw new HttpException(UNAVAILABLE, 503);
-  }
-  const form = new FormData();
-  form.append('image_file', new Blob([new Uint8Array(bytes)], { type: mime }), 'image');
+const kieUrl = (path: string) =>
+  `${(process.env.KIEAI_API_URL || 'https://api.kie.ai').replace(/\/+$/, '')}${path}`;
 
-  let res: Response;
+const kieHeaders = () => ({
+  'Content-Type': 'application/json',
+  Authorization: `Bearer ${process.env.KIEAI_API_KEY}`,
+});
+
+const parseJson = (value: unknown): any => {
+  if (value && typeof value === 'object') return value;
   try {
-    res = await fetch(`${apiBase()}/v1/segment`, {
-      method: 'POST',
-      headers: { 'x-api-key': key },
-      body: form,
-      signal: AbortSignal.timeout(30_000),
-    });
-  } catch (err) {
-    logger.error(`[bg-remove] photoroom unreachable: ${(err as Error).name}`);
+    return JSON.parse(String(value || '{}')) || {};
+  } catch {
+    return {};
+  }
+};
+
+/**
+ * The picture as kie.ai accepts it: at most 4096 px a side and 16 megapixels,
+ * at most 5 MB. A picture under 256 px a side is refused: the model needs
+ * that much to find an edge, and enlarging it would only blur the cut.
+ */
+export const prepareInput = async (bytes: Buffer): Promise<Buffer> => {
+  let meta: Metadata;
+  try {
+    meta = await sharp(bytes, { limitInputPixels: 60_000_000 }).metadata();
+  } catch {
+    throw new HttpException(UNREADABLE, 422);
+  }
+  const width = meta.width ?? 0;
+  const height = meta.height ?? 0;
+  if (!width || !height) throw new HttpException(UNREADABLE, 422);
+  if (Math.min(width, height) < MIN_SIDE) throw new HttpException(TOO_SMALL, 422);
+
+  const scale = Math.min(
+    1,
+    MAX_SIDE / Math.max(width, height),
+    Math.sqrt(MAX_PIXELS / (width * height))
+  );
+  const resized = () => {
+    const p = sharp(bytes, { limitInputPixels: 60_000_000 }).rotate();
+    return scale < 1 ? p.resize(Math.floor(width * scale), Math.floor(height * scale)) : p;
+  };
+  const png = await resized().png().toBuffer();
+  if (png.length <= MAX_INPUT_BYTES) return png;
+  // The model looks at the picture, not at its transparency: a JPEG carries
+  // the same picture in far fewer bytes.
+  return resized().flatten({ background: '#ffffff' }).jpeg({ quality: 92 }).toBuffer();
+};
+
+/** Where the finished cut-out is: `resultJson.resultUrls`, as documented. */
+export const resultUrlOf = (record: any): string | undefined => {
+  const list = parseJson(record?.resultJson)?.resultUrls;
+  return Array.isArray(list)
+    ? list.find((u: unknown): u is string => typeof u === 'string' && !!u)
+    : undefined;
+};
+
+/**
+ * Asks kie.ai to cut the picture at `imageUrl` out of its background and
+ * returns the URL of the result (a file kie.ai keeps for a while; the caller
+ * copies it into our storage). Polls every `pollMs`, up to `maxPolls` times.
+ */
+export const removeBackground = async (
+  imageUrl: string,
+  organizationId: string,
+  { pollMs = 2_000, maxPolls = 45 } = {}
+): Promise<string> => {
+  if (!process.env.KIEAI_API_KEY) {
+    logger.error('[bg-remove] KIEAI_API_KEY is not set');
     throw new HttpException(UNAVAILABLE, 503);
   }
 
-  if (!res.ok) {
-    // Never the key; Photoroom's own reason, short.
-    const detail = (await res.text().catch(() => '')).slice(0, 300).replace(/\s+/g, ' ');
-    logger.error(`[bg-remove] photoroom ${res.status} ${detail}`);
-    // 400 is about the picture; 401/402 (no credits), 403, 429 and 5xx are
-    // ours to fix, not the customer's.
-    throw new HttpException(res.status === 400 ? UNREADABLE : UNAVAILABLE, res.status === 400 ? 422 : 503);
+  let created: any;
+  try {
+    created = await (
+      await fetch(kieUrl('/api/v1/jobs/createTask'), {
+        method: 'POST',
+        headers: kieHeaders(),
+        body: JSON.stringify({ model: KIE_BACKGROUND_MODEL, input: { image: imageUrl } }),
+        signal: AbortSignal.timeout(30_000),
+      })
+    ).json();
+  } catch (err) {
+    logger.error(`[bg-remove] kie.ai unreachable: ${(err as Error).name}`);
+    throw new HttpException(UNAVAILABLE, 503);
+  }
+  if (created?.code !== 200 || !created?.data?.taskId) {
+    // 401/402/429: key, balance or rate, ours to fix and not the customer's.
+    logger.error(`[bg-remove] kie.ai createTask refused: ${created?.code} ${created?.msg}`);
+    throw new HttpException(UNAVAILABLE, 503);
   }
 
-  // Failed calls cost nothing at Photoroom, so only a result is metered.
-  recordAiUsage({
-    organizationId,
-    engine: 'background-removal',
-    model: 'photoroom-segment',
-    unit: 'images',
-    inputAmount: 1,
-  });
-  return Buffer.from(await res.arrayBuffer());
+  const taskId = created.data.taskId;
+  for (let poll = 0; poll < maxPolls; poll++) {
+    await timer(pollMs);
+    let info: any;
+    try {
+      info = await (
+        await fetch(kieUrl(`/api/v1/jobs/recordInfo?taskId=${encodeURIComponent(taskId)}`), {
+          headers: kieHeaders(),
+          signal: AbortSignal.timeout(15_000),
+        })
+      ).json();
+    } catch {
+      continue;
+    }
+    if (info?.code !== 200) continue;
+    const state = info?.data?.state;
+    if (state === 'fail') {
+      logger.warn(`[bg-remove] kie.ai task ${taskId} failed: ${info.data.failCode} ${info.data.failMsg}`);
+      throw new HttpException(UNREADABLE, 422);
+    }
+    if (state === 'success') {
+      const url = resultUrlOf(info.data);
+      if (!url) {
+        logger.error(`[bg-remove] kie.ai task ${taskId} finished without a result URL`);
+        throw new HttpException(UNAVAILABLE, 503);
+      }
+      // Paid at kie.ai once a result exists; a failed task costs nothing.
+      recordAiUsage({
+        organizationId,
+        engine: 'background-removal',
+        model: 'recraft-remove-background',
+        unit: 'images',
+        inputAmount: 1,
+      });
+      return url;
+    }
+  }
+  logger.error(`[bg-remove] kie.ai task ${taskId} timed out`);
+  throw new HttpException(UNAVAILABLE, 503);
 };

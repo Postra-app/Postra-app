@@ -27,7 +27,7 @@ export interface AiUsageEvent {
     | 'video'
     // Photo retouch: the vision model that decides the adjustments.
     | 'retouch'
-    // Studio's Remove background (Photoroom), one image per call.
+    // Studio's Remove background (Recraft through kie.ai), one image per call.
     | 'background-removal';
   model: string;
   // 'videos': finished AI video clips; 'messages': questions to the

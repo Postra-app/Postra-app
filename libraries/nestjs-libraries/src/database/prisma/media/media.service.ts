@@ -31,6 +31,7 @@ import { RetouchService } from '@gitroom/nestjs-libraries/studio/retouch.service
 import {
   BACKGROUND_REMOVAL_MAX_BYTES,
   BACKGROUND_REMOVAL_TYPES,
+  prepareInput,
   removeBackground,
   UNREADABLE,
 } from '@gitroom/nestjs-libraries/studio/background-removal';
@@ -953,29 +954,43 @@ export class MediaService {
     if (file.size > BACKGROUND_REMOVAL_MAX_BYTES) {
       throw new HttpException('This image is too large. Use one under 25 MB.', 413);
     }
-    // A full library stops here, before Photoroom is paid for a file that
-    // could not be kept; the cut-out is checked again at its own size, since
-    // a transparent PNG is often larger than the JPEG it came from.
+    // A full library stops here, before kie.ai is paid for a file that could
+    // not be kept; the cut-out is checked again at its own size before it is
+    // kept.
     await this.assertStorage(org.id, 0);
     const started = Date.now();
-    const png = await removeBackground(file.buffer, detected.mime, org.id);
-    await this.assertStorage(org.id, png.length);
-    const uploaded = await this.storage.uploadSimple(
-      `data:image/png;base64,${png.toString('base64')}`
+    const input = await prepareInput(file.buffer);
+    // kie.ai reads the picture from a URL: it goes to our storage first.
+    const inputUrl = await this.storage.uploadSimple(
+      `data:${input[0] === 0x89 ? 'image/png' : 'image/jpeg'};base64,${input.toString('base64')}`
     );
+    const resultUrl = await removeBackground(inputUrl, org.id).finally(() =>
+      // The input was only for kie.ai to read.
+      this.storage.removeFile(inputUrl).catch(() => undefined)
+    );
+    const uploaded = await this.storage.uploadSimple(resultUrl);
+    const size = await this.storedSize(uploaded);
+    try {
+      await this.assertStorage(org.id, size);
+    } catch (err) {
+      // Over the plan's storage with the cut-out: keep nothing.
+      await this.storage.removeFile(uploaded).catch(() => undefined);
+      throw err;
+    }
+    const ext = (uploaded.split('.').pop() || 'png').toLowerCase();
     const base = (file.originalname || 'image')
       .replace(/\.[a-z0-9]+$/i, '')
       .replace(/ \(background removed\)$/i, '');
     const saved = await this.saveFile(
       org.id,
-      uploaded.split('/').pop() || 'background-removed.png',
+      uploaded.split('/').pop() || `background-removed.${ext}`,
       uploaded,
-      `${base} (background removed).png`,
+      `${base} (background removed).${ext}`,
       false,
-      png.length
+      size
     );
     Logger.log(
-      `background removed ${file.size} -> ${png.length} bytes in ${Date.now() - started}ms`,
+      `background removed ${file.size} -> ${size} bytes in ${Date.now() - started}ms`,
       'BackgroundRemoval'
     );
     return { id: saved.id, path: saved.path, originalName: saved.originalName };
