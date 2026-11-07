@@ -953,9 +953,13 @@ export class MediaService {
     if (file.size > BACKGROUND_REMOVAL_MAX_BYTES) {
       throw new HttpException('This image is too large. Use one under 25 MB.', 413);
     }
-    await this.assertStorage(org.id, file.size);
+    // A full library stops here, before Photoroom is paid for a file that
+    // could not be kept; the cut-out is checked again at its own size, since
+    // a transparent PNG is often larger than the JPEG it came from.
+    await this.assertStorage(org.id, 0);
     const started = Date.now();
     const png = await removeBackground(file.buffer, detected.mime, org.id);
+    await this.assertStorage(org.id, png.length);
     const uploaded = await this.storage.uploadSimple(
       `data:image/png;base64,${png.toString('base64')}`
     );
