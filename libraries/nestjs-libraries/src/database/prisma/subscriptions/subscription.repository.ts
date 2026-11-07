@@ -332,12 +332,22 @@ export class SubscriptionRepository {
 
     if (code) {
       writes.push(
-        this._usedCodes.model.usedCodes.create({
-          data: {
-            code,
-            orgId: findOrg.id,
-          },
-        })
+        // A lifetime grant's `grandfather-<org>` is only a marker, one per
+        // organisation, and comes back when lifetime is granted again after a
+        // revoke: created twice it broke the unique code and the grant (500).
+        // A real code stays create-only, so it still cannot be used twice.
+        code.startsWith('grandfather-')
+          ? this._usedCodes.model.usedCodes.upsert({
+              where: { code },
+              create: { code, orgId: findOrg.id },
+              update: {},
+            })
+          : this._usedCodes.model.usedCodes.create({
+              data: {
+                code,
+                orgId: findOrg.id,
+              },
+            })
       );
     }
 
