@@ -177,4 +177,52 @@ describe('Pinterest API base', () => {
     const result = await new PinterestProvider().analytics('u1', 't', 30);
     expect(result.map((r) => r.data.length)).toEqual([0, 0, 0, 0, 0]);
   });
+
+});
+
+describe('Pinterest personal accounts', () => {
+  const provider = new PinterestProvider();
+
+  // Pinterest's policy since 14 Sep 2026: an app registered after it reads
+  // boards only on Business accounts. A personal account connected fine and
+  // then could never pick a board (403, code 6410).
+  describe('connecting', () => {
+    const answer = (body: object) => ({ ok: true, status: 200, json: async () => body });
+    const connect = (accountType?: string) => {
+      jest
+        .spyOn(global, 'fetch' as any)
+        .mockResolvedValueOnce(
+          answer({ access_token: 'a', refresh_token: 'r', expires_in: 3600, scope: provider.scopes.join(',') })
+        )
+        .mockResolvedValueOnce(
+          answer({ id: 'u1', username: 'maker', profile_image: 'p', ...(accountType ? { account_type: accountType } : {}) })
+        );
+      return provider.authenticate({ code: 'c', codeVerifier: 'v', refresh: '' });
+    };
+    afterEach(() => jest.restoreAllMocks());
+
+    it('a personal account is refused with what to do', async () => {
+      expect(await connect('PINNER')).toBe(
+        'Pinterest only lets apps use boards on Business accounts. Switch to a free Business account in Pinterest settings, then connect again.'
+      );
+    });
+
+    it('a Business account connects', async () => {
+      expect(await connect('BUSINESS')).toMatchObject({ id: 'u1', name: 'maker', accessToken: 'a' });
+    });
+
+    it('an answer without the account type is not refused', async () => {
+      expect(await connect()).toMatchObject({ id: 'u1' });
+    });
+  });
+
+  it('the boards list explains a personal account', async () => {
+    jest.spyOn(global, 'fetch' as any).mockResolvedValue({
+      ok: false,
+      status: 403,
+      json: async () => ({ code: 6410, message: 'Your application does not have access to read pinner data.' }),
+    });
+    await expect(provider.boards('t')).rejects.toThrow(/Business accounts/);
+    jest.restoreAllMocks();
+  });
 });

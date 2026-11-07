@@ -33,6 +33,12 @@ export const pinterestApi = (path: string) =>
     ''
   )}/v5${path}`;
 
+// Pinterest's policy since 14 Sep 2026: an app registered after it reads
+// boards only on Business accounts. A personal account ("PINNER") connected
+// fine and then could never pick a board (403, code 6410).
+export const PINTEREST_BUSINESS_ONLY =
+  'Pinterest only lets apps use boards on Business accounts. Switch to a free Business account in Pinterest settings, then connect again.';
+
 @Rules(
   'Pinterest requires at least one media, if posting a video, you must have two attachment, one for video, one for the cover picture, When posting a video, there can be only one, if posting images, there can be maximum 5'
 )
@@ -234,7 +240,7 @@ export class PinterestProvider
 
     this.checkScopes(this.scopes, scope);
 
-    const { id, profile_image, username } = await (
+    const { id, profile_image, username, account_type } = await (
       await fetch(pinterestApi('/user_account'), {
         method: 'GET',
         headers: {
@@ -242,6 +248,10 @@ export class PinterestProvider
         },
       })
     ).json();
+
+    if (account_type === 'PINNER') {
+      return PINTEREST_BUSINESS_ONLY;
+    }
 
     return {
       id: id,
@@ -285,6 +295,9 @@ export class PinterestProvider
         );
         if (res.status === 401) {
           throw new RefreshToken('pinterest', JSON.stringify(body), {} as any, '');
+        }
+        if (res.status === 403 && Number(body?.code) === 6410) {
+          throw new Error(PINTEREST_BUSINESS_ONLY);
         }
         throw new Error(`Pinterest boards ${res.status}`);
       }

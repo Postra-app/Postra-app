@@ -2,6 +2,7 @@
 
 import * as fabric from 'fabric';
 import { fitReplacement, keepWidthScale } from './image-crop';
+import { withHistoryPaused } from './canvas-history';
 
 const imageToBlob = (imgEl: HTMLImageElement): Promise<Blob> =>
   new Promise((resolve, reject) => {
@@ -118,8 +119,15 @@ export const replaceImageOnCanvas = async (
     hasBorders: true,
   });
 
-  canvas.remove(targetImage);
-  canvas.add(replacement);
+  // The new picture takes the old one's place in the stack: a template's
+  // photo is behind its text, and on top it covered the headline. One undo
+  // step, not two (the first used to leave no picture at all).
+  await withHistoryPaused(canvas, () => {
+    const index = canvas.getObjects().indexOf(targetImage);
+    canvas.remove(targetImage);
+    if (index >= 0) canvas.insertAt(index, replacement);
+    else canvas.add(replacement);
+  });
   canvas.setActiveObject(replacement);
   canvas.renderAll();
 };
