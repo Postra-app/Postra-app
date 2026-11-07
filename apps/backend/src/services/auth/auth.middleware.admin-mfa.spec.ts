@@ -1,6 +1,7 @@
 process.env.JWT_SECRET = 'test-secret';
 process.env.FRONTEND_URL = 'https://app.postra.co.uk';
 process.env.NOT_SECURED = '';
+process.env.ADMIN_TOTP_REQUIRED = 'true';
 
 import { AuthMiddleware } from '@gitroom/backend/services/auth/auth.middleware';
 import { AuthService } from '@gitroom/helpers/auth/auth.service';
@@ -10,9 +11,9 @@ import {
   adminMfaFresh,
 } from '@gitroom/backend/services/auth/admin-mfa';
 
-// A Postra administrator can act as every customer. Until 3 Nov 2026 the
-// password alone opened all of it; now the administrator flag only reaches a
-// request whose session carries a fresh second factor (`mfa`).
+// A Postra administrator can act as every customer. With ADMIN_TOTP_REQUIRED
+// on, the administrator flag only reaches a request whose session carries a
+// fresh second factor (`mfa`); off (the default), the password is enough.
 
 const now = () => Math.floor(Date.now() / 1000);
 
@@ -121,5 +122,33 @@ describe('administrator powers need the second factor', () => {
     await build(member).use(req, { cookie: jest.fn(), header: jest.fn() } as any, jest.fn());
     expect(req.user.isSuperAdmin).toBe(false);
     expect(req.user.adminMfaPending).toBeUndefined();
+  });
+});
+
+describe('with ADMIN_TOTP_REQUIRED off, the password is enough', () => {
+  beforeEach(() => {
+    delete process.env.ADMIN_TOTP_REQUIRED;
+  });
+  afterEach(() => {
+    process.env.ADMIN_TOTP_REQUIRED = 'true';
+  });
+
+  it('a password-only session has the administrator flag and is not sent to the code', async () => {
+    const req = await run({});
+    expect(req.user.isSuperAdmin).toBe(true);
+    expect(req.user.adminMfaPending).toBeUndefined();
+  });
+
+  it('can impersonate without a code', async () => {
+    const req = await run({}, admin, { impersonate: 'uo-c' });
+    expect(req.user.id).toBe('customer-1');
+    expect(req.impersonatedBy).toBe(admin.id);
+  });
+
+  it('only "true" turns it on', async () => {
+    process.env.ADMIN_TOTP_REQUIRED = 'false';
+    expect((await run({})).user.isSuperAdmin).toBe(true);
+    process.env.ADMIN_TOTP_REQUIRED = 'true';
+    expect((await run({})).user.isSuperAdmin).toBe(false);
   });
 });
