@@ -2,8 +2,9 @@
  * Photos from a camera or a high-quality phone export run to 20-40 MB, past
  * the upload limit, and a design is 1080-1920 px wide. Like the composer's
  * uploader, Studio brings a photo down to MAX_DESIGN_IMAGE_EDGE on its longest
- * side before it is uploaded. PNG stays PNG (transparency), the rest becomes
- * JPEG; GIF and SVG, and anything the browser cannot decode, go up as they are.
+ * side before it is uploaded. An image with transparency (a logo, a cut-out,
+ * in PNG or WebP) becomes PNG so it keeps it; the rest becomes JPEG. GIF and
+ * SVG, and anything the browser cannot decode, go up as they are.
  */
 export const MAX_DESIGN_IMAGE_EDGE = 2048;
 
@@ -21,6 +22,12 @@ export const fitWithin = (
   return { width: Math.round(width * scale), height: Math.round(height * scale) };
 };
 
+const hasTransparency = (ctx: CanvasRenderingContext2D, width: number, height: number) => {
+  const data = ctx.getImageData(0, 0, width, height).data;
+  for (let i = 3; i < data.length; i += 4) if (data[i] < 255) return true;
+  return false;
+};
+
 export const downscaleForDesign = async (file: File): Promise<File> => {
   if (!RESIZABLE.has(file.type) || typeof createImageBitmap !== 'function') return file;
   // createImageBitmap applies the photo's EXIF orientation, as <img> does.
@@ -36,7 +43,7 @@ export const downscaleForDesign = async (file: File): Promise<File> => {
     if (!ctx) return file;
     ctx.imageSmoothingQuality = 'high';
     ctx.drawImage(bitmap, 0, 0, size.width, size.height);
-    const type = file.type === 'image/png' ? 'image/png' : 'image/jpeg';
+    const type = hasTransparency(ctx, size.width, size.height) ? 'image/png' : 'image/jpeg';
     const blob = await new Promise<Blob | null>((resolve) =>
       canvas.toBlob(resolve, type, 0.9)
     );

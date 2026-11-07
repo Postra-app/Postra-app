@@ -1151,11 +1151,19 @@ const PostDesignEditor: FC<PostDesignEditorProps> = ({
       nudging = false;
       saveStateRef.current?.();
     };
+    // A key released outside the window never sends keyup here.
+    const onBlur = () => {
+      if (!nudging) return;
+      nudging = false;
+      saveStateRef.current?.();
+    };
     window.addEventListener('keydown', onKey);
     window.addEventListener('keyup', onKeyUp);
+    window.addEventListener('blur', onBlur);
     return () => {
       window.removeEventListener('keydown', onKey);
       window.removeEventListener('keyup', onKeyUp);
+      window.removeEventListener('blur', onBlur);
     };
   }, [handleDelete, handleUndo, handleRedo, setTool]);
 

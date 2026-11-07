@@ -7,6 +7,7 @@ import {
   ReactNode,
   useCallback,
   useEffect,
+  useRef,
   useState,
 } from 'react';
 import * as fabric from 'fabric';
@@ -141,15 +142,28 @@ export const PropertyInspector: FC<Props> = ({ canvas }) => {
   // The font of the selected text, where the rest of its styling is. The Text
   // tool's picker sets the font for new text, and reaching it from a selected
   // text added a new one.
+  const fontRequest = useRef(0);
   const applyFont = useCallback(
     async (family: string) => {
+      const c = canvas.current;
+      if (!c) return;
+      // The texts selected now, not whatever is selected once the font has
+      // loaded; and a later pick wins over an earlier one still loading.
+      const targets = c.getActiveObjects().filter(isText);
+      const request = ++fontRequest.current;
       // Measuring before the face is in the document caches the fallback's
       // widths and the text reflows wrongly.
       await ensureFontsLoaded([family]);
-      applyToTexts({ fontFamily: family });
-      commit();
+      if (request !== fontRequest.current || !targets.length) return;
+      targets.forEach((o) => {
+        o.set({ fontFamily: family });
+        o.setCoords();
+      });
+      c.requestRenderAll();
+      setVersion((n) => n + 1);
+      c.fire('object:modified', { target: targets[0] } as fabric.ModifiedEvent);
     },
-    [applyToTexts, commit]
+    [canvas]
   );
 
   const applyToShapes = useCallback(

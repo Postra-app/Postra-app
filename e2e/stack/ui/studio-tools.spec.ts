@@ -553,3 +553,44 @@ test('Images: a 20+ MB camera photo goes onto the canvas at 2048 px', { tag: '@s
   await expect.poll(() => s.layers(), { timeout: 15_000 }).toBe(1);
   await s.clean();
 });
+
+// A large WebP logo with transparency came out as JPEG, on a black square.
+test('Images: a large transparent WebP keeps its transparency', { tag: '@safari' }, async ({ page }) => {
+  test.setTimeout(90_000);
+  const s = await studio(page);
+  const logo = await sharp({
+    create: { width: 3000, height: 3000, channels: 4, background: { r: 0, g: 0, b: 0, alpha: 0 } },
+  })
+    .composite([{ input: Buffer.from('<svg width="3000" height="3000"><circle cx="1500" cy="1500" r="900" fill="#e11d48"/></svg>') }])
+    .webp()
+    .toBuffer();
+  await s.open('Images');
+  const uploaded = page.waitForResponse(
+    (r) => r.url().includes('/media/upload-simple') && r.request().method() === 'POST'
+  );
+  await page.locator('input[type="file"]').first().setInputFiles({ name: 'logo.webp', mimeType: 'image/webp', buffer: logo });
+  const res = await uploaded;
+  expect(res.status()).toBe(201);
+  const stored = await sharp(await (await page.request.get((await res.json()).path)).body()).metadata();
+  expect(stored.hasAlpha).toBe(true);
+  expect(stored.width).toBe(2048);
+  await s.clean();
+});
+
+// Held arrow, then the window loses focus: the key comes up elsewhere and no
+// keyup arrives. The move was never recorded, and the next Ctrl+Z took the
+// step before it.
+test('Undo: a nudge is recorded when the window loses focus mid-press', { tag: '@safari' }, async ({ page }) => {
+  const s = await studio(page);
+  await addText(page, s);
+  const x = await inspectorValue(page, 'X' as 'W');
+  await page.getByTitle('Undo (Ctrl+Z)').focus();
+  for (let i = 0; i < 5; i += 1) await page.keyboard.down('ArrowRight');
+  await page.evaluate(() => window.dispatchEvent(new Event('blur')));
+  await page.getByTitle('Undo (Ctrl+Z)').click();
+  await expect.poll(() => s.layers()).toBe(1);
+  await selectFirstLayer(page);
+  await expect.poll(() => inspectorValue(page, 'X' as 'W')).toBe(x);
+  await page.keyboard.up('ArrowRight');
+  await s.clean();
+});
