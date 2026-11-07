@@ -347,7 +347,12 @@ export const ContinueIntegration: FC<{
         returnURL,
         { kind: 'connected' }
       );
-    })();
+    })().catch(() => {
+      // 403, 429 and 5xx are answered by the app-wide fetch (a toast with
+      // the reason) and come back as a rejection; uncaught, "Adding Channel"
+      // kept spinning for good.
+      setError(true);
+    });
   }, []);
 
   const onSave = useCallback(
