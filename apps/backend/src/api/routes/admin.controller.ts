@@ -399,7 +399,8 @@ export class AdminController {
 
     return this._subscriptionService.revokeSubscription(
       organizationId,
-      user.id
+      user.id,
+      (customer) => this._stripeService.hasOpenSubscription(customer)
     );
   }
 

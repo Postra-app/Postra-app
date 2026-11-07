@@ -236,3 +236,58 @@ describe('tier change by org applies the same limits as the webhook path', () =>
     expect(integrationService.changeActiveCron).toHaveBeenCalledWith('org-1', keep);
   });
 });
+
+// A comp can now sit on an organization whose Stripe customer never
+// subscribed. It has to come off the same way, and an event about an old
+// Stripe subscription must not end it.
+describe('a comp on an organization with a Stripe customer', () => {
+  const withRevoke = (paymentId: string | null) => {
+    const built = build(paymentId);
+    (built.repository as any).softDeleteSubscriptionByOrg = jest
+      .fn()
+      .mockResolvedValue({ revoked: true });
+    jest.spyOn(built.service, 'modifySubscriptionByOrg').mockResolvedValue(undefined as any);
+    jest.spyOn(built.service as any, 'bustMembersAuthCache').mockResolvedValue(undefined);
+    return built;
+  };
+
+  it('can be revoked when Stripe has no open subscription', async () => {
+    const { service, repository } = withRevoke('cus_1');
+    const open = jest.fn().mockResolvedValue(false);
+    await expect(service.revokeSubscription('org-1', 'admin-1', open)).resolves.toEqual({
+      revoked: true,
+    });
+    expect(open).toHaveBeenCalledWith('cus_1');
+    expect((repository as any).softDeleteSubscriptionByOrg).toHaveBeenCalledWith('org-1');
+  });
+
+  it('is not revoked here while Stripe bills the organization', async () => {
+    const { service, repository } = withRevoke('cus_1');
+    await expect(
+      service.revokeSubscription('org-1', 'admin-1', jest.fn().mockResolvedValue(true))
+    ).rejects.toThrow(/Stripe subscription/);
+    expect((repository as any).softDeleteSubscriptionByOrg).not.toHaveBeenCalled();
+  });
+
+  it('survives a late deletion event for an older Stripe subscription', async () => {
+    const { service, repository } = build('cus_1');
+    (repository as any).getSubscriptionByCustomerId = jest
+      .fn()
+      .mockResolvedValue({ identifier: 'comp1', subscriptionTier: 'PRO' });
+    const modify = jest.spyOn(service, 'modifySubscription');
+    await expect(service.deleteSubscription('cus_1', 'old-stripe-unique-id')).resolves.toBe(false);
+    expect(modify).not.toHaveBeenCalled();
+  });
+
+  it('still ends the plan for an event about the plan itself', async () => {
+    const { service, repository } = build('cus_1');
+    (repository as any).getSubscriptionByCustomerId = jest
+      .fn()
+      .mockResolvedValue({ identifier: 'same-id', subscriptionTier: 'PRO' });
+    (repository as any).deleteSubscriptionByCustomerId = jest.fn().mockResolvedValue({ count: 1 });
+    jest.spyOn(service, 'modifySubscription').mockResolvedValue(true as any);
+    jest.spyOn(service as any, 'bustMembersAuthCache').mockResolvedValue(undefined);
+    await service.deleteSubscription('cus_1', 'same-id');
+    expect((repository as any).deleteSubscriptionByCustomerId).toHaveBeenCalledWith('cus_1');
+  });
+});

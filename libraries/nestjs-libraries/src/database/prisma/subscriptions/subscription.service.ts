@@ -122,7 +122,18 @@ export class SubscriptionService {
     return this._subscriptionRepository.getCode(code);
   }
 
-  async deleteSubscription(customerId: string) {
+  async deleteSubscription(customerId: string, forStripeUniqueId?: string) {
+    // A Stripe event names the subscription it is about (metadata.uniqueId,
+    // the plan row's identifier). The row is found by customer, so an event
+    // for an old subscription that arrives after an administrator comped the
+    // organization would otherwise end the comp.
+    if (forStripeUniqueId) {
+      const current =
+        await this._subscriptionRepository.getSubscriptionByCustomerId(customerId);
+      if (current?.identifier && current.identifier !== forStripeUniqueId) {
+        return false;
+      }
+    }
     // modifySubscription returns false for lifetime/grandfathered grants (and
     // unknown customers). A stray customer.subscription.deleted webhook or the
     // superadmin cancel path must NOT then hard-delete the lifetime row and drop
@@ -656,11 +667,20 @@ export class SubscriptionService {
    * Take back a comp or a lifetime grant. Stripe is not involved: an org that
    * pays is refused, because it must be changed where it is billed.
    */
-  async revokeSubscription(orgId: string, actorUserId: string) {
+  async revokeSubscription(
+    orgId: string,
+    actorUserId: string,
+    // As in addSubscription: a comp can sit on an organization whose Stripe
+    // customer never subscribed, and has to come off it the same way.
+    stripeSubscriptionOpen?: (customerId: string) => Promise<boolean>
+  ) {
     const paymentId = await this._subscriptionRepository.getPaymentId(orgId);
-    if (paymentId?.startsWith('cus_')) {
+    if (
+      paymentId?.startsWith('cus_') &&
+      (!stripeSubscriptionOpen || (await stripeSubscriptionOpen(paymentId)))
+    ) {
       throw new HttpException(
-        'This organization has a live Stripe customer - cancel it in Stripe instead.',
+        'This organization has a Stripe subscription - cancel it in Stripe instead.',
         400
       );
     }

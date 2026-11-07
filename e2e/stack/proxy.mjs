@@ -5,8 +5,7 @@
 // Like production, /uploads/* is served straight from the upload directory
 // (nginx `location /uploads/`): media stored locally shows in the composer.
 // And like production, every response carries nginx's Content-Security-Policy,
-// read from nginx.conf itself: the Studio exported nothing for weeks under the
-// real policy while every stack test, run without one, stayed green.
+// read from nginx.conf itself, so the UI tests run under the real policy.
 import { createReadStream, readFileSync, statSync } from 'node:fs';
 import { createServer, request } from 'node:http';
 import { dirname, extname, join, normalize } from 'node:path';

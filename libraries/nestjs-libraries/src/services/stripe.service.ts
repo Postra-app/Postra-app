@@ -468,7 +468,8 @@ export class StripeService {
       );
       if (!otherLive) {
         await this._subscriptionService.deleteSubscription(
-          current.customer as string
+          current.customer as string,
+          current.metadata?.uniqueId
         );
       }
       return { ok: true, skipped: current.status };
@@ -696,7 +697,10 @@ export class StripeService {
       return { ok: true, skipped: 'customer has another live subscription' };
     }
 
-    await this._subscriptionService.deleteSubscription(customer);
+    await this._subscriptionService.deleteSubscription(
+      customer,
+      event.data.object.metadata?.uniqueId
+    );
     return { ok: true };
   }
 

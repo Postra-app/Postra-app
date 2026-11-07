@@ -182,7 +182,7 @@ describe('customer.subscription.deleted', () => {
 
     await service.deleteSubscription(event('customer.subscription.deleted', sub('canceled')));
 
-    expect(subscriptionService.deleteSubscription).toHaveBeenCalledWith('cus_1');
+    expect(subscriptionService.deleteSubscription).toHaveBeenCalledWith('cus_1', 'u1');
   });
 });
 
@@ -475,7 +475,7 @@ describe('a subscription Stripe stopped charging has no plan', () => {
     await service.updateSubscription(event('customer.subscription.updated', sub(status)));
 
     expect(subscriptionService.createOrUpdateSubscription).not.toHaveBeenCalled();
-    expect(subscriptionService.deleteSubscription).toHaveBeenCalledWith('cus_1');
+    expect(subscriptionService.deleteSubscription).toHaveBeenCalledWith('cus_1', 'u1');
   });
 
   // The plan row is per customer; an old subscription going
