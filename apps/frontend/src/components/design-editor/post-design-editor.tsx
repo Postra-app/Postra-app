@@ -87,6 +87,38 @@ const NUDGE_LARGE = 10;
 /** So a duplicate lands next to its original rather than exactly on it. */
 const DUPLICATE_OFFSET = 16;
 const MAX_ZOOM = 4;
+/** Inputs that hold a caret; Ctrl+Z and Delete there belong to the text. */
+const TYPING_INPUTS = new Set(['text', 'search', 'email', 'url', 'tel', 'password', 'number']);
+const NUDGE_KEYS = { ArrowLeft: 1, ArrowRight: 1, ArrowUp: 1, ArrowDown: 1 };
+
+/**
+ * Adds a copy of `source` next to it and selects it, as one undo step. A
+ * multiple selection is copied object by object: added as it was, the
+ * selection box itself became a single object that could not be taken apart.
+ */
+const pasteCopyOf = async (
+  c: fabric.Canvas,
+  source: fabric.FabricObject
+): Promise<fabric.FabricObject> => {
+  const copy: fabric.FabricObject = await source.clone();
+  await withHistoryPaused(c, () => {
+    c.discardActiveObject();
+    copy.set({
+      left: (source.left ?? 0) + DUPLICATE_OFFSET,
+      top: (source.top ?? 0) + DUPLICATE_OFFSET,
+    });
+    if (copy instanceof fabric.ActiveSelection) {
+      copy.canvas = c;
+      copy.forEachObject((o) => c.add(o));
+    } else {
+      c.add(copy);
+    }
+    copy.setCoords();
+    c.setActiveObject(copy);
+    c.requestRenderAll();
+  });
+  return copy;
+};
 
 const PostDesignEditor: FC<PostDesignEditorProps> = ({
   setMedia,
@@ -949,9 +981,13 @@ const PostDesignEditor: FC<PostDesignEditorProps> = ({
       );
       return;
     }
-    active.forEach((obj) => fabricRef.current!.remove(obj));
-    fabricRef.current.discardActiveObject();
-    fabricRef.current.renderAll();
+    const c = fabricRef.current;
+    // One removal per object: several selected objects took as many Ctrl+Z.
+    void withHistoryPaused(c, () => {
+      c.discardActiveObject();
+      active.forEach((obj) => c.remove(obj));
+      c.renderAll();
+    });
   }, [toaster, t]);
 
   useEffect(() => {
@@ -961,7 +997,13 @@ const PostDesignEditor: FC<PostDesignEditorProps> = ({
     const isTypingTarget = (target: EventTarget | null) => {
       const el = target as HTMLElement | null;
       if (!el) return false;
-      if (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.isContentEditable) {
+      // Only fields with a caret. A slider or a colour well keeps the focus
+      // after a click, and Ctrl+Z there used to do nothing at all.
+      if (
+        (el instanceof HTMLInputElement && TYPING_INPUTS.has(el.type)) ||
+        el.tagName === 'TEXTAREA' ||
+        el.isContentEditable
+      ) {
         return true;
       }
       const active = fabricRef.current?.getActiveObject() as
@@ -979,8 +1021,12 @@ const PostDesignEditor: FC<PostDesignEditorProps> = ({
       if (!canvasRef.current?.offsetParent) return;
       if (rootRef.current?.querySelector('[role="dialog"]')) return;
       if (isTypingTarget(e.target)) return;
+      // A slider, colour well or list keeps its own keys (arrows move the
+      // slider); only undo and redo reach the design from there.
+      const inControl =
+        e.target instanceof HTMLInputElement || e.target instanceof HTMLSelectElement;
 
-      if (e.key === 'Delete' || e.key === 'Backspace') {
+      if (!inControl && (e.key === 'Delete' || e.key === 'Backspace')) {
         handleDelete();
       }
       // Shift turns 'z' into 'Z', so the redo branch never ran and the tooltip
@@ -995,6 +1041,7 @@ const PostDesignEditor: FC<PostDesignEditorProps> = ({
         e.preventDefault();
         handleRedo();
       }
+      if (inControl) return;
 
       const c = fabricRef.current;
       if (!c) return;
@@ -1005,16 +1052,7 @@ const PostDesignEditor: FC<PostDesignEditorProps> = ({
       if ((e.metaKey || e.ctrlKey) && key === 'd') {
         e.preventDefault();
         if (!active) return;
-        active.clone().then((copy: fabric.FabricObject) => {
-          copy.set({
-            left: (active.left ?? 0) + DUPLICATE_OFFSET,
-            top: (active.top ?? 0) + DUPLICATE_OFFSET,
-          });
-          copy.setCoords();
-          c.add(copy);
-          c.setActiveObject(copy);
-          c.requestRenderAll();
-        });
+        void pasteCopyOf(c, active);
         return;
       }
 
@@ -1043,18 +1081,14 @@ const PostDesignEditor: FC<PostDesignEditorProps> = ({
         const source = clipboardRef.current;
         if (!source) return;
         e.preventDefault();
-        source.clone().then((copy: fabric.FabricObject) => {
-          copy.set({
-            left: (source.left ?? 0) + DUPLICATE_OFFSET,
-            top: (source.top ?? 0) + DUPLICATE_OFFSET,
+        void pasteCopyOf(c, source)
+          .then((copy) => copy.clone())
+          .then((next: fabric.FabricObject) => {
+            // paste twice in a row and the second copy lands next to the
+            // first; a detached clone, because a multiple selection empties
+            // itself once it is deselected
+            clipboardRef.current = next;
           });
-          copy.setCoords();
-          c.add(copy);
-          c.setActiveObject(copy);
-          c.requestRenderAll();
-          // paste twice in a row and the second copy lands next to the first
-          clipboardRef.current = copy;
-        });
         return;
       }
 
@@ -1106,12 +1140,23 @@ const PostDesignEditor: FC<PostDesignEditorProps> = ({
         });
         active.setCoords();
         c.requestRenderAll();
-        // one history entry per burst, not per key repeat
-        saveStateRef.current?.();
+        // One history entry per burst, recorded when the key comes up: a held
+        // arrow repeats many times a second and used to fill the history.
+        nudging = true;
       }
     };
+    let nudging = false;
+    const onKeyUp = (e: KeyboardEvent) => {
+      if (!nudging || !(e.key in NUDGE_KEYS)) return;
+      nudging = false;
+      saveStateRef.current?.();
+    };
     window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
+    window.addEventListener('keyup', onKeyUp);
+    return () => {
+      window.removeEventListener('keydown', onKey);
+      window.removeEventListener('keyup', onKeyUp);
+    };
   }, [handleDelete, handleUndo, handleRedo, setTool]);
 
   return (

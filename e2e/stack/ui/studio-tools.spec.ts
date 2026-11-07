@@ -331,3 +331,92 @@ test('Carousel: a slide thumbnail is a button the keyboard reaches', async ({ pa
   await expect(first).toHaveAttribute('aria-current', 'true');
   await s.clean();
 });
+
+// Undo is one step per action, from wherever the action was made.
+const addText = async (page: Page, s: Awaited<ReturnType<typeof studio>>) => {
+  await s.tool('Text').click();
+  await page.waitForTimeout(800);
+  expect(await s.layers()).toBe(1);
+  await selectFirstLayer(page);
+};
+const selectFirstLayer = async (page: Page) => {
+  await page.locator('div:has(> button[aria-label="Bring forward"]) > button:first-child').first().click();
+  await expect(page.getByRole('slider', { name: 'Letter spacing' })).toBeVisible();
+};
+const undoKey = (page: Page) => page.keyboard.press('ControlOrMeta+z');
+
+// Clicking a slider leaves the focus on it, and Ctrl+Z was ignored while any
+// <input> had the focus: the change could only be undone after clicking away.
+test('Undo: Ctrl+Z straight after a slider undoes the slider', { tag: '@safari' }, async ({ page }) => {
+  const s = await studio(page);
+  await addText(page, s);
+  const spacing = page.getByRole('slider', { name: 'Letter spacing' });
+  const before = await spacing.inputValue();
+  await spacing.focus();
+  await page.keyboard.press('ArrowRight');
+  await expect(spacing).not.toHaveValue(before);
+  await undoKey(page);
+  await selectFirstLayer(page);
+  await expect(spacing).toHaveValue(before);
+  await s.clean();
+});
+
+// A field the user only passed through committed the unchanged design, and
+// each of those empty entries took one Ctrl+Z that visibly did nothing.
+test('Undo: passing through the inspector adds no undo step', { tag: '@safari' }, async ({ page }) => {
+  const s = await studio(page);
+  await addText(page, s);
+  for (const name of ['Letter spacing', 'Line spacing', 'Opacity', 'Rotation']) {
+    await page.getByRole('slider', { name }).first().focus();
+    await page.keyboard.press('Tab');
+  }
+  await page.getByTitle('Undo (Ctrl+Z)').click();
+  await expect.poll(() => s.layers()).toBe(0);
+  await s.clean();
+});
+
+// Holding an arrow key repeats it many times a second; every repeat was its
+// own undo step, which pushed the earlier work out of the 30-step history.
+test('Undo: holding an arrow key moves the object as one step', { tag: '@safari' }, async ({ page }) => {
+  const s = await studio(page);
+  await addText(page, s);
+  const x = await inspectorValue(page, 'X' as 'W');
+  await page.getByTitle('Undo (Ctrl+Z)').focus();
+  for (let i = 0; i < 12; i += 1) await page.keyboard.down('ArrowRight');
+  await page.keyboard.up('ArrowRight');
+  await expect.poll(() => inspectorValue(page, 'X' as 'W')).toBeGreaterThan(x);
+  await page.getByTitle('Undo (Ctrl+Z)').click();
+  await expect.poll(() => s.layers()).toBe(1);
+  await selectFirstLayer(page);
+  await expect.poll(() => inspectorValue(page, 'X' as 'W')).toBe(x);
+  await s.clean();
+});
+
+// Copying a multiple selection copied the selection box itself: the paste
+// arrived as one object that could not be taken apart.
+test('Select: copy and paste, and duplicate, of several objects give each its own layer', { tag: '@safari' }, async ({ page }) => {
+  const s = await studio(page);
+  await s.tool('Text').click();
+  await s.open('Shapes');
+  await page.getByRole('button', { name: /Rectangle/i }).first().click();
+  expect(await s.layers()).toBe(2);
+  await page.getByTitle('Undo (Ctrl+Z)').focus();
+  await page.keyboard.press('ControlOrMeta+a');
+  await page.keyboard.press('ControlOrMeta+c');
+  await page.keyboard.press('ControlOrMeta+v');
+  await expect.poll(() => s.layers()).toBe(4);
+  await page.keyboard.press('ControlOrMeta+a');
+  await page.keyboard.press('ControlOrMeta+d');
+  await expect.poll(() => s.layers()).toBe(8);
+  await page.getByTitle('Undo (Ctrl+Z)').click();
+  await expect.poll(() => s.layers()).toBe(4);
+
+  // Deleting several objects was one undo step per object.
+  await page.getByTitle('Undo (Ctrl+Z)').focus();
+  await page.keyboard.press('ControlOrMeta+a');
+  await page.keyboard.press('Delete');
+  await expect.poll(() => s.layers()).toBe(0);
+  await page.getByTitle('Undo (Ctrl+Z)').click();
+  await expect.poll(() => s.layers()).toBe(4);
+  await s.clean();
+});

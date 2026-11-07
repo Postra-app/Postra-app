@@ -131,6 +131,9 @@ export const useEditorStore = create<EditorState>((set, get) => ({
 
   pushHistory: (json) => {
     const { history, historyIndex } = get();
+    // A commit that changed nothing (a field the user only passed through)
+    // would be an undo step that visibly does nothing.
+    if (history[historyIndex] === json) return;
     const trimmed = history.slice(0, historyIndex + 1);
     const next = capHistory([...trimmed, json]);
     set({ history: next, historyIndex: next.length - 1 });

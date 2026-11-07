@@ -40,6 +40,14 @@ export const wireStudioIds = (canvas: fabric.Canvas): void => {
   };
   canvas.getObjects().forEach(ensureId);
   canvas.on('object:added', (e) => {
-    if (e.target) ensureId(e.target);
+    const added = e.target as (fabric.FabricObject & { studioId?: string }) | undefined;
+    if (!added) return;
+    // A copy (duplicate, paste) arrives with its original's id; AI edits find
+    // layers by id, so two layers sharing one were edited as one.
+    const taken = canvas
+      .getObjects()
+      .some((o) => o !== added && (o as typeof added).studioId === added.studioId);
+    if (added.studioId && taken) added.studioId = nextStudioId();
+    ensureId(added);
   });
 };
