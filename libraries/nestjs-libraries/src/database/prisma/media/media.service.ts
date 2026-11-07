@@ -29,6 +29,12 @@ import {
 import { DesignRenderService } from '@gitroom/nestjs-libraries/studio/design-render.service';
 import { RetouchService } from '@gitroom/nestjs-libraries/studio/retouch.service';
 import {
+  BACKGROUND_REMOVAL_MAX_BYTES,
+  BACKGROUND_REMOVAL_TYPES,
+  removeBackground,
+  UNREADABLE,
+} from '@gitroom/nestjs-libraries/studio/background-removal';
+import {
   RetouchLevel,
   RetouchSpec,
   RetouchSpecSchema,
@@ -929,6 +935,46 @@ export class MediaService {
       width: result.width,
       height: result.height,
     };
+  }
+
+  /**
+   * Studio's Remove background: the picture on the canvas in, a transparent
+   * PNG out, kept in the library like a retouched copy so the design and its
+   * drafts point at a file rather than carry megabytes of data: URL.
+   */
+  async removeBackground(org: Organization, file: Express.Multer.File) {
+    if (!file?.buffer?.length) {
+      throw new HttpException('No image was sent', 400);
+    }
+    const detected = await fileTypeFromBuffer(file.buffer);
+    if (!detected || !BACKGROUND_REMOVAL_TYPES.has(detected.mime)) {
+      throw new HttpException(UNREADABLE, 422);
+    }
+    if (file.size > BACKGROUND_REMOVAL_MAX_BYTES) {
+      throw new HttpException('This image is too large. Use one under 25 MB.', 413);
+    }
+    await this.assertStorage(org.id, file.size);
+    const started = Date.now();
+    const png = await removeBackground(file.buffer, detected.mime, org.id);
+    const uploaded = await this.storage.uploadSimple(
+      `data:image/png;base64,${png.toString('base64')}`
+    );
+    const base = (file.originalname || 'image')
+      .replace(/\.[a-z0-9]+$/i, '')
+      .replace(/ \(background removed\)$/i, '');
+    const saved = await this.saveFile(
+      org.id,
+      uploaded.split('/').pop() || 'background-removed.png',
+      uploaded,
+      `${base} (background removed).png`,
+      false,
+      png.length
+    );
+    Logger.log(
+      `background removed ${file.size} -> ${png.length} bytes in ${Date.now() - started}ms`,
+      'BackgroundRemoval'
+    );
+    return { id: saved.id, path: saved.path, originalName: saved.originalName };
   }
 
   async refineDesign(org: Organization, body: RefineDesignDto) {

@@ -30,7 +30,6 @@
     "@fontsource/playfair-display": "^5.3.0",
     "@fontsource/poppins": "^5.3.0",
     "@fontsource/roboto": "^5.3.0",
-    "@imgly/background-removal": "^1.7.0",
     "@tabler/icons-react": "^3.49.0",
     "dompurify": "^3.4.17",
     "geist": "^1.8.1",

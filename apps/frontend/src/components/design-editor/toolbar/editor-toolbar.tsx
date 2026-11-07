@@ -5,6 +5,7 @@ import * as fabric from 'fabric';
 import { useEditorStore, EditorTool } from '../editor.store';
 import { useT } from '@gitroom/react/translation/get.transation.service.client';
 import { useFetch } from '@gitroom/helpers/utils/custom.fetch';
+import { isFetchHandledError } from '@gitroom/helpers/utils/fetch.errors';
 import { useToaster } from '@gitroom/react/toaster/toaster';
 import { AiGeneratePanel } from './ai-generate-panel';
 import { AiRefinePanel } from './ai-refine-panel';
@@ -25,6 +26,7 @@ import {
 } from '../utils/image-crop';
 import {
   removeBackgroundFromImage,
+  BackgroundRemovalError,
   replaceImageOnCanvas,
 } from '../utils/background-removal';
 import { smartCrop } from '../utils/smart-crop';
@@ -148,7 +150,6 @@ export const EditorToolbar: FC<ToolbarProps> = ({ canvas }) => {
   const cropFrameRef = useRef<fabric.Rect | null>(null);
   const cropTargetRef = useRef<fabric.FabricImage | null>(null);
   const replaceRef = useRef<HTMLInputElement>(null);
-  const [bgProgress, setBgProgress] = useState(0);
 
   // Image tools shouldn't demand a manual selection: if nothing (or a
   // non-image) is selected, grab the topmost image on the canvas — users add
@@ -188,7 +189,7 @@ export const EditorToolbar: FC<ToolbarProps> = ({ canvas }) => {
     try {
       const targetAspect = platform.width / platform.height;
       const { dataUrl } = await smartCrop(el.src, targetAspect);
-      await replaceImageOnCanvas(canvas.current, active, dataUrl);
+      await replaceImageOnCanvas(canvas.current, active, dataUrl, 'width');
     } catch {
       toaster.show(
         t('crop_failed', 'Smart crop failed.'),
@@ -355,22 +356,22 @@ export const EditorToolbar: FC<ToolbarProps> = ({ canvas }) => {
     }
 
     setRemovingBg(true);
-    setBgProgress(0);
     try {
-      const newSrc = await removeBackgroundFromImage(sourceEl, {
-        onProgress: (p) => setBgProgress(p),
-      });
+      const newSrc = await removeBackgroundFromImage(sourceEl, fetch);
       await replaceImageOnCanvas(canvas.current, active, newSrc);
-    } catch {
+    } catch (err) {
+      // A 5xx, 402 or 429 is already on screen from the shared fetch.
+      if (isFetchHandledError(err)) return;
+      console.error('[Postra:bg-remove] failed', err);
       toaster.show(
-        t('bg_remove_failed', 'Background removal failed'),
+        (err instanceof BackgroundRemovalError && err.message) ||
+          t('bg_remove_failed', 'Background removal failed'),
         'warning'
       );
     } finally {
       setRemovingBg(false);
-      setBgProgress(0);
     }
-  }, [canvas, removingBg, toaster, t, resolveTargetImage]);
+  }, [canvas, removingBg, toaster, t, resolveTargetImage, fetch]);
 
   const addText = useCallback(async () => {
     if (!canvas.current) return;
@@ -826,9 +827,6 @@ export const EditorToolbar: FC<ToolbarProps> = ({ canvas }) => {
         </div>
         {activeTool === 'select' && (
           <div className="flex flex-col gap-2">
-            <span className="text-[11px] text-textColor/60 uppercase tracking-wide">
-              {t('tool_select', 'Select')}
-            </span>
             <p className="text-[11px] leading-relaxed text-textColor/70">
               {t(
                 'select_tool_hint',
@@ -939,7 +937,7 @@ export const EditorToolbar: FC<ToolbarProps> = ({ canvas }) => {
             >
               <StudioIcon name="eraser" size={16} />
               {removingBg
-                ? `${t('bg_remove_loading', 'Removing…')} ${Math.round(bgProgress * 100)}%`
+                ? t('bg_remove_loading', 'Removing…')
                 : t('bg_remove_button', 'Remove background')}
             </button>
 
@@ -1024,7 +1022,7 @@ export const EditorToolbar: FC<ToolbarProps> = ({ canvas }) => {
             <p className="text-[11px] text-textColor/65 leading-snug">
               {t(
                 'image_tools_hint',
-                'Both work on the selected image (or the last one added). Remove background downloads an AI model (~30MB) on first run; Smart crop trims the photo to the current post format.'
+                'Both work on the selected image (or the last one added). Remove background keeps the cut-out in your media library; Smart crop trims the photo to the current post format.'
               )}
             </p>
 

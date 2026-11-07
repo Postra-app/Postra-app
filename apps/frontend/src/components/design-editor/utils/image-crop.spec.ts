@@ -1,4 +1,5 @@
 import {
+  keepWidthScale,
   cropFromRect,
   resetCrop,
   initialCropRect,
@@ -147,5 +148,20 @@ describe('fitReplacement', () => {
       { width: 0, height: 0 }
     );
     expect(fit.scaleX).toBe(1);
+  });
+});
+
+// Smart crop returned a 4:5 picture and put it back into the 4:3 box it came
+// from, stretched. The replacement keeps the width and its own proportions.
+describe('keepWidthScale', () => {
+  it('keeps a 640 px wide image 640 px wide, whatever the new height', () => {
+    const scale = keepWidthScale(640, 384);
+    expect(384 * scale).toBeCloseTo(640);
+    // a 384x480 crop (4:5) is drawn 640x800: still 4:5
+    expect((480 * scale) / (384 * scale)).toBeCloseTo(480 / 384);
+  });
+
+  it('never divides by zero', () => {
+    expect(keepWidthScale(100, 0)).toBe(100);
   });
 });

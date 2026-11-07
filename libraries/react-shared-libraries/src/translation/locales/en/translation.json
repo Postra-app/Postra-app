@@ -1147,7 +1147,7 @@
   "crop_failed": "Smart crop failed.",
   "crop_smart": "Smart crop to platform",
   "crop_smart_hint": "Crops the photo to the current format (bottom bar), keeping the most detailed part of the picture in frame",
-  "image_tools_hint": "Both work on the selected image (or the last one added). Remove background downloads an AI model (~30MB) on first run; Smart crop trims the photo to the current post format.",
+  "image_tools_hint": "Both work on the selected image (or the last one added). Remove background keeps the cut-out in your media library; Smart crop trims the photo to the current post format.",
   "text_placeholder": "Type your text",
   "background_custom": "Custom color",
   "ai_forbidden": "AI is not available on your plan. Check your subscription settings.",

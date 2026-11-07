@@ -138,3 +138,11 @@ export const fitReplacement = (
     height: Math.round(visibleH),
   };
 };
+
+/**
+ * One scale for both axes that keeps a replacement as wide on the canvas as
+ * the image it replaces. A crop in new proportions then shows them, instead
+ * of being squeezed back into the old box.
+ */
+export const keepWidthScale = (displayedWidth: number, sourceWidth: number) =>
+  displayedWidth / Math.max(1, sourceWidth);
