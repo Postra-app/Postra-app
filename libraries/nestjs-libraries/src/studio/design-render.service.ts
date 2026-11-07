@@ -1,4 +1,5 @@
 import { Injectable } from '@nestjs/common';
+import { ctaStyle } from '@gitroom/helpers/utils/cta.style';
 import sharp, { type OverlayOptions, type Sharp } from 'sharp';
 import {
   PostDesignSpec,
@@ -176,7 +177,8 @@ export class DesignRenderService {
         width: width * DESIGN_TEXTBOX_WIDTH.cta,
         fontSize: fonts.cta,
         fontWeight: 600,
-        color: spec.colors.accent,
+        color: ctaStyle(spec.colors.accent).fill,
+        background: ctaStyle(spec.colors.accent).backgroundColor,
         charWidth: 0.52,
       })
     );
@@ -196,6 +198,8 @@ export class DesignRenderService {
       charWidth: number;
       opacity?: number;
       shadow?: boolean;
+      // A filled box behind the lines (the call to action's button).
+      background?: string;
     }
   ): string {
     const value = (raw || '').trim();
@@ -226,7 +230,19 @@ export class DesignRenderService {
       .filter(Boolean)
       .join(' ');
 
-    return `<text ${attrs}>${tspans}</text>`;
+    const text = `<text ${attrs}>${tspans}</text>`;
+    if (!opts.background) return text;
+    const longest = Math.max(...lines.map((l) => l.length));
+    const pad = Math.round(opts.fontSize * 0.6);
+    const boxWidth = Math.round(
+      Math.min(opts.width, longest * opts.fontSize * opts.charWidth) + pad * 2
+    );
+    const boxHeight = Math.round(lines.length * step + pad);
+    const boxLeft = anchor === 'middle' ? Math.round(x - boxWidth / 2) : x - pad;
+    const boxTop = Math.round(pos.top - pad / 2);
+    return `<rect x="${boxLeft}" y="${boxTop}" width="${boxWidth}" height="${boxHeight}" rx="${Math.round(
+      opts.fontSize * 0.4
+    )}" fill="${escapeXml(opts.background)}"/>${text}`;
   }
 
   private async loadLogo(

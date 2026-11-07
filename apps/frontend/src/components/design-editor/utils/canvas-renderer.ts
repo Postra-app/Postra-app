@@ -1,6 +1,7 @@
 import * as fabric from 'fabric';
 import { PlatformSize } from '../editor.store';
 import { ensureFontsLoaded } from './font-loading';
+import { ctaStyle } from './brand-colors';
 import {
   PostDesignSpec,
   computeLayout,
@@ -87,8 +88,7 @@ export const renderDesignSpec = async (
     fontSize: ctaFontSize,
     fontFamily: TEXT_FONT,
     fontWeight: '600',
-    fill: spec.colors.accent,
-    backgroundColor: 'rgba(255,255,255,0.08)',
+    ...ctaStyle(spec.colors.accent),
   });
 
   canvas.add(headline);

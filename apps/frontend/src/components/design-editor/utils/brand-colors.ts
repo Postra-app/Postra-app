@@ -53,6 +53,9 @@ export const readableTextOn = (background: string): string =>
     ? '#ffffff'
     : '#000000';
 
+// The call to action's colours live with the server renderer's.
+export { ctaStyle } from '@gitroom/helpers/utils/cta.style';
+
 const saturationOf = (hex: string): number => {
   const rgb = hexToRgb(hex);
   if (!rgb) return 0;

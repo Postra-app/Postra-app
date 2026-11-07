@@ -1,4 +1,5 @@
 import {
+  ctaStyle,
   hexToRgb,
   rgbToHex,
   contrastRatio,
@@ -148,5 +149,25 @@ describe('averageColor', () => {
 
   it('answers black for an empty sample rather than throwing', () => {
     expect(averageColor([])).toBe('#000000');
+  });
+});
+
+// The AI design's call to action was accent-coloured words on a nearly clear
+// bar: red on a dark photo could not be read.
+describe('ctaStyle', () => {
+  it('fills the button with the accent and writes in the colour that reads on it', () => {
+    expect(ctaStyle('#e11d48')).toEqual({ fill: '#ffffff', backgroundColor: '#e11d48' });
+    expect(ctaStyle('#fde047')).toEqual({ fill: '#000000', backgroundColor: '#fde047' });
+  });
+
+  it('keeps the words readable on their button: at least 4.5:1', () => {
+    for (const accent of ['#e11d48', '#38bdf8', '#a78bfa', '#16a34a', '#f97316', '#0a0e1a']) {
+      const { fill, backgroundColor } = ctaStyle(accent);
+      expect(contrastRatio(fill, backgroundColor)).toBeGreaterThanOrEqual(4.5);
+    }
+  });
+
+  it('falls back to white on a dark button for an accent it cannot read', () => {
+    expect(ctaStyle('rgb(1,2,3)')).toEqual({ fill: '#ffffff', backgroundColor: 'rgba(0,0,0,0.6)' });
   });
 });

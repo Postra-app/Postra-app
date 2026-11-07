@@ -52,4 +52,28 @@ describe('DesignRenderService', () => {
       format: 'png',
     });
   });
+
+  // The call to action was the accent colour straight on the picture, which
+  // did not read on a dark or busy photo. It is a button now: accent fill,
+  // black or white words, whichever reads on it.
+  it('draws the call to action as a button in the accent colour', () => {
+    const svg: string = (service as any).buildSvg(
+      { ...spec(''), colors: { background: '#0a0e1a', accent: '#e11d48', text: '#ffffff' } },
+      { width: 1080, height: 1350 },
+      false
+    );
+    const button = svg.match(/<rect [^>]*fill="#e11d48"\/><text [^>]*fill="(#[0-9a-f]{6})"[^>]*>(.*?)<\/text>/);
+    expect(button).not.toBeNull();
+    expect(button![1]).toBe('#ffffff');
+    expect(button![2]).toContain('Try it');
+  });
+
+  it('writes dark words on a light accent', () => {
+    const svg: string = (service as any).buildSvg(
+      { ...spec(''), colors: { background: '#0a0e1a', accent: '#fde047', text: '#ffffff' } },
+      { width: 1080, height: 1350 },
+      false
+    );
+    expect(svg).toMatch(/<rect [^>]*fill="#fde047"\/><text [^>]*fill="#000000"/);
+  });
 });
