@@ -2,85 +2,160 @@ const recordAiUsage = jest.fn();
 jest.mock('@gitroom/nestjs-libraries/services/ai-usage.record', () => ({ recordAiUsage }));
 
 import { HttpException, Logger } from '@nestjs/common';
-import { removeBackground, UNAVAILABLE, UNREADABLE } from './background-removal';
+import sharp from 'sharp';
+import { randomBytes } from 'crypto';
+import {
+  KIE_BACKGROUND_MODEL,
+  prepareInput,
+  removeBackground,
+  resultUrlOf,
+  TOO_NARROW,
+  TOO_SMALL,
+  UNAVAILABLE,
+  UNREADABLE,
+} from './background-removal';
 
-const PNG = Buffer.from([0x89, 0x50, 0x4e, 0x47, 1, 2, 3]);
+// Studio's Remove background through kie.ai (Recraft): a task, polled until
+// it has a result URL. Polling runs with no wait here.
+const FAST = { pollMs: 0, maxPolls: 3 };
+const ok = (data: unknown) => new Response(JSON.stringify({ code: 200, msg: 'success', data }));
 
-describe('removeBackground (Photoroom)', () => {
+describe('removeBackground (kie.ai, Recraft)', () => {
   const env = { ...process.env };
   let fetchSpy: jest.SpyInstance;
   let errors: jest.SpyInstance;
 
   beforeEach(() => {
-    process.env.PHOTOROOM_API_KEY = 'secret-photoroom-key';
-    delete process.env.PHOTOROOM_API_URL;
+    process.env.KIEAI_API_KEY = 'secret-kie-key';
+    delete process.env.KIEAI_API_URL;
     recordAiUsage.mockClear();
     errors = jest.spyOn(Logger.prototype, 'error').mockImplementation(() => undefined);
+    jest.spyOn(Logger.prototype, 'warn').mockImplementation(() => undefined);
   });
   afterEach(() => {
     process.env = { ...env };
     jest.restoreAllMocks();
   });
 
-  const answer = (status: number, body: BodyInit) =>
-    (fetchSpy = jest.spyOn(global, 'fetch').mockResolvedValue(new Response(body, { status })));
+  const answers = (...responses: Response[]) => {
+    fetchSpy = jest.spyOn(global, 'fetch');
+    responses.forEach((r) => fetchSpy.mockResolvedValueOnce(r));
+  };
 
-  it('sends the picture as image_file with the key in x-api-key and returns the PNG', async () => {
-    answer(200, new Uint8Array(PNG));
-    const out = await removeBackground(Buffer.from('jpeg-bytes'), 'image/jpeg', 'org-1');
+  it('asks for the Recraft model on the picture URL and returns the result URL', async () => {
+    answers(
+      ok({ taskId: 't1' }),
+      ok({ taskId: 't1', state: 'generating' }),
+      ok({ taskId: 't1', state: 'success', resultJson: JSON.stringify({ resultUrls: ['https://cdn.kie/out.png'] }) })
+    );
+    const url = await removeBackground('https://cdn.postra.co.uk/in.png', 'org-1', FAST);
 
-    expect(out.equals(PNG)).toBe(true);
-    const [url, init] = fetchSpy.mock.calls[0];
-    expect(url).toBe('https://sdk.photoroom.com/v1/segment');
-    expect(init.method).toBe('POST');
-    expect(init.headers).toEqual({ 'x-api-key': 'secret-photoroom-key' });
-    const file = (init.body as FormData).get('image_file') as Blob;
-    expect(file.type).toBe('image/jpeg');
-    expect(Buffer.from(await file.arrayBuffer()).toString()).toBe('jpeg-bytes');
+    expect(url).toBe('https://cdn.kie/out.png');
+    const [createUrl, init] = fetchSpy.mock.calls[0];
+    expect(createUrl).toBe('https://api.kie.ai/api/v1/jobs/createTask');
+    expect(init.headers.Authorization).toBe('Bearer secret-kie-key');
+    expect(JSON.parse(init.body)).toEqual({
+      model: KIE_BACKGROUND_MODEL,
+      input: { image: 'https://cdn.postra.co.uk/in.png' },
+    });
+    expect(fetchSpy.mock.calls[1][0]).toBe('https://api.kie.ai/api/v1/jobs/recordInfo?taskId=t1');
   });
 
-  it('meters one image for the organisation on success only', async () => {
-    answer(200, new Uint8Array(PNG));
-    await removeBackground(PNG, 'image/png', 'org-1');
+  it('meters one image for the organisation once there is a result', async () => {
+    answers(
+      ok({ taskId: 't1' }),
+      ok({ state: 'success', resultJson: { resultUrls: ['https://cdn.kie/out.png'] } })
+    );
+    await removeBackground('https://x/in.png', 'org-1', FAST);
     expect(recordAiUsage).toHaveBeenCalledWith({
       organizationId: 'org-1',
       engine: 'background-removal',
-      model: 'photoroom-segment',
+      model: 'recraft-remove-background',
       unit: 'images',
       inputAmount: 1,
     });
-
-    answer(500, 'boom');
-    await expect(removeBackground(PNG, 'image/png', 'org-1')).rejects.toThrow(UNAVAILABLE);
-    expect(recordAiUsage).toHaveBeenCalledTimes(1);
   });
 
-  it('tells the customer the picture is unreadable on 400', async () => {
-    answer(400, JSON.stringify({ detail: 'bad image' }));
-    const err = await removeBackground(PNG, 'image/png', 'org-1').catch((e) => e);
+  it('a task kie.ai fails is the picture: 422, nothing metered', async () => {
+    answers(ok({ taskId: 't1' }), ok({ state: 'fail', failCode: '400', failMsg: 'no subject' }));
+    const err = await removeBackground('https://x/in.png', 'org-1', FAST).catch((e) => e);
     expect(err).toBeInstanceOf(HttpException);
     expect(err.getStatus()).toBe(422);
     expect(err.message).toBe(UNREADABLE);
+    expect(recordAiUsage).not.toHaveBeenCalled();
   });
 
-  it.each([401, 402, 403, 429, 503])('answers 503 when Photoroom says %s, and logs it without the key', async (status) => {
-    answer(status, JSON.stringify({ detail: 'nope' }));
-    const err = await removeBackground(PNG, 'image/png', 'org-1').catch((e) => e);
+  it.each([401, 402, 429])('a refused task (%s) is ours: 503, logged without the key', async (code) => {
+    answers(new Response(JSON.stringify({ code, msg: 'nope' })));
+    const err = await removeBackground('https://x/in.png', 'org-1', FAST).catch((e) => e);
     expect(err.getStatus()).toBe(503);
+    expect(err.message).toBe(UNAVAILABLE);
     const line = String(errors.mock.calls.at(-1)?.[0]);
-    expect(line).toContain(`[bg-remove] photoroom ${status}`);
-    expect(line).not.toContain('secret-photoroom-key');
+    expect(line).toContain(`createTask refused: ${code}`);
+    expect(line).not.toContain('secret-kie-key');
+  });
+
+  it('gives up with 503 when the task never finishes', async () => {
+    answers(ok({ taskId: 't1' }), ok({ state: 'generating' }), ok({ state: 'generating' }), ok({ state: 'generating' }));
+    await expect(removeBackground('https://x/in.png', 'org-1', FAST)).rejects.toThrow(UNAVAILABLE);
   });
 
   it('answers 503 without calling out when no key is set', async () => {
-    delete process.env.PHOTOROOM_API_KEY;
+    delete process.env.KIEAI_API_KEY;
     fetchSpy = jest.spyOn(global, 'fetch');
-    await expect(removeBackground(PNG, 'image/png', 'org-1')).rejects.toThrow(UNAVAILABLE);
+    await expect(removeBackground('https://x/in.png', 'org-1', FAST)).rejects.toThrow(UNAVAILABLE);
     expect(fetchSpy).not.toHaveBeenCalled();
   });
 
-  it('answers 503 when Photoroom cannot be reached', async () => {
-    jest.spyOn(global, 'fetch').mockRejectedValue(new TypeError('fetch failed'));
-    await expect(removeBackground(PNG, 'image/png', 'org-1')).rejects.toThrow(UNAVAILABLE);
+  it('reads resultUrls from resultJson as text or as an object', () => {
+    expect(resultUrlOf({ resultJson: '{"resultUrls":["a"]}' })).toBe('a');
+    expect(resultUrlOf({ resultJson: { resultUrls: ['b'] } })).toBe('b');
+    expect(resultUrlOf({ resultJson: '' })).toBeUndefined();
+  });
+});
+
+describe('prepareInput (kie.ai limits)', () => {
+  const image = (width: number, height: number) =>
+    sharp({ create: { width, height, channels: 3, background: '#3366cc' } }).png().toBuffer();
+
+  it('keeps a picture inside the limits as it is', async () => {
+    const out = await prepareInput(await image(800, 600));
+    expect(await sharp(out).metadata()).toMatchObject({ width: 800, height: 600, format: 'png' });
+  });
+
+  it('brings a picture over 4096 px down to 4096 on its long side', async () => {
+    const meta = await sharp(await prepareInput(await image(5000, 1000))).metadata();
+    expect(meta.width).toBe(4096);
+    expect(meta.height).toBe(819);
+  });
+
+  it('refuses a picture under 256 px a side', async () => {
+    await expect(prepareInput(await image(300, 200))).rejects.toThrow(TOO_SMALL);
+  });
+
+  it('refuses a long, narrow picture that would end under 256 px', async () => {
+    await expect(prepareInput(await image(6000, 300))).rejects.toThrow(TOO_NARROW);
+  });
+
+  it('keeps a picture that cannot be squeezed into PNG under 5 MB within 5 MB', async () => {
+    // Noise does not compress: 4000 x 4000 random pixels stay over 5 MB even as JPEG.
+    const noise = randomBytes(4000 * 4000 * 3);
+    const big = await sharp(noise, { raw: { width: 4000, height: 4000, channels: 3 } }).png().toBuffer();
+    const out = await prepareInput(big);
+    expect(out.length).toBeLessThanOrEqual(5 * 1024 * 1024);
+    const meta = await sharp(out).metadata();
+    expect(Math.min(meta.width!, meta.height!)).toBeGreaterThanOrEqual(256);
+  });
+
+  it('answers 422, not 500, for pixels that do not decode behind a valid header', async () => {
+    const good = await sharp({ create: { width: 800, height: 600, channels: 3, background: '#888' } })
+      .jpeg()
+      .toBuffer();
+    const broken = Buffer.concat([good.subarray(0, 600), Buffer.alloc(2000, 0xff)]);
+    await expect(prepareInput(broken)).rejects.toThrow(UNREADABLE);
+  });
+
+  it('refuses bytes that are not a picture', async () => {
+    await expect(prepareInput(Buffer.from('not a picture'))).rejects.toThrow(UNREADABLE);
   });
 });

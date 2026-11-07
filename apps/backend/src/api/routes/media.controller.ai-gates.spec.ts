@@ -2,7 +2,7 @@ import { readFileSync } from 'fs';
 import { join } from 'path';
 
 // Every route here reaches a model: OpenAI through StudioAi, DALL·E, Whisper,
-// fal for video, Photoroom for background removal, or embeddings for template
+// fal and kie.ai for video, kie.ai for background removal, or embeddings for template
 // search. The client already hides
 // these behind `user.tier.ai`; the server has to say no as well, or the gate is
 // a suggestion.
@@ -25,7 +25,7 @@ const AI_ROUTES = [
   "/search-templates",
   // Photo retouch: a vision model decides the adjustments.
   "/:id/retouch",
-  // Studio's Remove background: Photoroom's model, paid per image.
+  // Studio's Remove background: Recraft's model through kie.ai, paid per image.
   "/remove-background",
 ];
 

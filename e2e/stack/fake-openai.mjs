@@ -32,11 +32,10 @@
 //                                 tiny MP4 as a data: URL (the app's
 //                                 uploader refuses local http URLs), in the
 //                                 shape kie.ai really sends for veo-3-1
-//
-// And for Photoroom's Remove Background API (stack.env PHOTOROOM_API_URL):
-//   POST /photoroom/v1/segment   a 1x1 PNG for a request with the right
-//                                x-api-key and an image_file part; 401 for
-//                                another key, 400 without the part
+//                                 model recraft/remove-background (Studio's
+//                                 Remove background) finishes with a PNG
+//                                 data: URL under the documented
+//                                 resultJson.resultUrls
 import { createServer } from 'node:http';
 
 const PORT = Number(process.env.FAKE_OPENAI_PORT || 58090);
@@ -211,19 +210,6 @@ createServer((req, res) => {
       });
     }
 
-    if (req.method === 'POST' && req.url === '/photoroom/v1/segment') {
-      requests.push({ path: req.url, bytes: raw.length });
-      if (req.headers['x-api-key'] !== 'stack-fake-photoroom') {
-        return json(res, 401, { error: { message: 'Unauthorized' } });
-      }
-      if (!raw.includes('name="image_file"')) {
-        return json(res, 400, { detail: 'image_file is missing', status_code: 400, type: 'field_missing' });
-      }
-      res.writeHead(200, { 'content-type': 'image/png' });
-      res.end(Buffer.from(PNG_1x1, 'base64'));
-      return;
-    }
-
     if (req.method === 'POST' && req.url === '/v1/images/generations') {
       requests.push({ path: req.url, model: body.model, size: body.size, moderation: body.moderation });
       if (String(body.prompt || '').includes('stack-refuse')) {
@@ -252,6 +238,7 @@ createServer((req, res) => {
       kieTasks.set(taskId, {
         fail: prompt.includes('stack-kie-fail'),
         pending: prompt.includes('stack-kie-slow') ? 1 : 0,
+        cutout: body.model === 'recraft/remove-background',
       });
       return json(res, 200, { code: 200, msg: 'success', data: { taskId } });
     }
@@ -268,6 +255,16 @@ createServer((req, res) => {
         return json(res, 200, {
           code: 200,
           data: { taskId, state: 'fail', resultJson: '', failCode: '400', failMsg: 'stack: refused' },
+        });
+      }
+      if (task.cutout) {
+        return json(res, 200, {
+          code: 200,
+          data: {
+            taskId,
+            state: 'success',
+            resultJson: JSON.stringify({ resultUrls: [`data:image/png;base64,${PNG_1x1}`] }),
+          },
         });
       }
       return json(res, 200, {
