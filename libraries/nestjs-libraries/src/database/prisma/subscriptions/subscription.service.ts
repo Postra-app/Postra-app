@@ -396,6 +396,11 @@ export class SubscriptionService {
       if (!load) {
         return {};
       }
+    } else if (org) {
+      // A lifetime grant to an organisation: the plan's limits apply as for a
+      // comp. Skipped, channels a revoke had switched off stayed off under
+      // the new 100-channel plan.
+      await this.modifySubscriptionByOrg(org, totalChannels, billing, isTrailing);
     }
     this._auditService.record({
       action: 'subscription.change',

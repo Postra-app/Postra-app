@@ -57,11 +57,14 @@ test('a revoked plan is gone from the admin lists, and a comp can replace it', a
 
 // A lifetime grant writes a marker code per organisation, and the code is
 // unique: granting lifetime again after a revoke failed with a 500, so a
-// lifetime plan taken back could never be given back.
-test('lifetime can be granted again after it was revoked', async () => {
+// lifetime plan taken back could never be given back. And the grant skipped
+// the plan's limits, so channels the revoke had switched off stayed off.
+test('lifetime can be granted again after it was revoked, with its channels back on', async () => {
   test.setTimeout(120_000);
   const staff = await throwawayOrg(prisma, { tier: 'STANDARD', totalChannels: 3, channels: 0 });
-  const target = await throwawayOrg(prisma, { tier: 'STANDARD', totalChannels: 3, channels: 0 });
+  const target = await throwawayOrg(prisma, { tier: 'ULTIMATE', totalChannels: 15, channels: 6 });
+  const disabled = () =>
+    prisma.integration.count({ where: { organizationId: target.orgId, deletedAt: null, disabled: true } });
   try {
     const staffUser = await prisma.userOrganization.findFirstOrThrow({ where: { organizationId: staff.orgId } });
     await makeAdministrator(prisma, { api: staff.api, userId: staffUser.userId });
@@ -74,11 +77,15 @@ test('lifetime can be granted again after it was revoked', async () => {
 
     expect((await revoke()).status()).toBe(201);
     for (const round of [1, 2]) {
+      // Back on the free tier, channels over its cap are off.
+      expect(await disabled(), `round ${round} after revoke`).toBeGreaterThan(0);
       const granted = await grant();
       expect(granted.status(), `grant ${round}: ${await granted.text()}`).toBe(201);
       expect((await granted.json()).granted).toHaveLength(1);
       const sub = await prisma.subscription.findUniqueOrThrow({ where: { organizationId: target.orgId } });
       expect(sub).toMatchObject({ isLifetime: true, subscriptionTier: 'ULTIMATE', deletedAt: null });
+      // A lifetime grant switches them back on, as a comp does.
+      expect(await disabled(), `round ${round} after grant`).toBe(0);
       expect((await revoke()).status()).toBe(201);
     }
   } finally {

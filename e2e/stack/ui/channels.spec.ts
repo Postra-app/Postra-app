@@ -49,6 +49,24 @@ test('a forged or expired callback shows why it failed', async ({ page }) => {
   await expect(page.getByText(/connection attempt has expired/)).toBeVisible();
 });
 
+test('a refused connection shows an error, not an endless spinner', async ({ page }) => {
+  // 403 (the session is not a member of the organisation the connection was
+  // started for, e.g. an admin viewing a customer), 429 and 5xx are handled
+  // by the app-wide fetch, which rejects; the page never caught it and kept
+  // "Adding Channel" spinning.
+  await page.route('**/api/integrations/social-connect/mastodon', (route) =>
+    route.request().method() === 'POST'
+      ? route.fulfill({
+          status: 403,
+          contentType: 'application/json',
+          body: JSON.stringify({ message: 'This connection does not belong to your organization' }),
+        })
+      : route.continue()
+  );
+  await page.goto('/integrations/social/mastodon?code=any&state=another-org');
+  await expect(page.getByText('An error occurred. Please try again.')).toBeVisible();
+});
+
 test("the channel menu opens from the keyboard and its items are readable", async ({ page }) => {
   // The trigger was a div with onClick: no keyboard, no name. And
   // text-textColor/78 generated no CSS, so the items took the body's grey
