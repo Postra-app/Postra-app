@@ -175,7 +175,11 @@ export const VideoMultiFormat: FC<VideoMultiFormatProps> = ({ source, onReady })
           disabled={isExporting || selected.size === 0}
           className="self-start"
         >
-          {isExporting
+          {selected.size === 1
+            ? isExporting
+              ? t('video_format_exporting_one', 'Exporting 1 format...')
+              : t('video_format_export_one', 'Export 1 format')
+            : isExporting
             ? t('video_format_exporting', 'Exporting {n} formats...').replace(
                 '{n}',
                 String(selected.size)

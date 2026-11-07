@@ -1720,5 +1720,7 @@
   "what_do_you_want_to_do": "Co chcesz zrobić?",
   "timezone": "Strefa czasowa",
   "automatic_timezone": "Automatycznie ({{timezone}})",
-  "could_not_save_timezone": "Nie udało się zapisać strefy czasowej"
+  "could_not_save_timezone": "Nie udało się zapisać strefy czasowej",
+  "video_format_export_one": "Eksportuj 1 format",
+  "video_format_exporting_one": "Eksportuję 1 format..."
 }
