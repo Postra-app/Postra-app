@@ -138,3 +138,40 @@ test('Photos → video takes photos from the library', { tag: '@safari' }, async
   await page.getByRole('button', { name: 'Add selected media', exact: true }).click();
   await expect(page.getByRole('button', { name: /Add photos \(1\/10\)/ })).toBeVisible({ timeout: 15_000 });
 });
+
+// The Start and End sliders come alive with the video's metadata, the
+// waveform only once the sound is decoded, which in Safari takes a while. An
+// edge moved in between did nothing, and the waveform then put both edges
+// back to the whole clip.
+test('a trim edge moved before the waveform is ready stays where it was put', { tag: '@safari' }, async ({
+  page,
+  browserName,
+}) => {
+  test.setTimeout(60_000);
+  await page.addInitScript(() => {
+    const decode = AudioContext.prototype.decodeAudioData;
+    AudioContext.prototype.decodeAudioData = function (this: AudioContext, data: ArrayBuffer) {
+      return new Promise<AudioBuffer>((resolve, reject) =>
+        setTimeout(() => decode.call(this, data).then(resolve, reject), 3_000)
+      );
+    } as typeof decode;
+  });
+  await page.goto('/studio?mode=video');
+  await page
+    .locator('input[type="file"][accept="video/*"]')
+    .first()
+    .setInputFiles(
+      browserName === 'webkit'
+        ? { name: 'tone.mp4', mimeType: 'video/mp4', buffer: readFileSync(`${__dirname}/fixtures/tone-two-seconds.mp4`) }
+        : { name: 'tone.webm', mimeType: 'video/webm', buffer: clip }
+    );
+  await page.getByRole('button', { name: 'Trim', exact: true }).click();
+  const start = page.getByRole('slider', { name: 'Start' });
+  await expect(page.getByText(/^End: [12]\.\d\ds$/)).toBeVisible({ timeout: 30_000 });
+  expect(await waveformInk(page)).toBe(0);
+  await start.focus();
+  await page.keyboard.press('Shift+ArrowRight');
+  await expect(start).toHaveAttribute('aria-valuenow', '1');
+  await expect.poll(() => waveformInk(page), { timeout: 15_000 }).toBeGreaterThan(0.1);
+  await expect(start).toHaveAttribute('aria-valuenow', '1');
+});

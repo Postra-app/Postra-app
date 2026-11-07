@@ -43,6 +43,13 @@ export const VideoTrimmer: FC<VideoTrimmerProps> = ({ file, onTrimmed }) => {
   const [duration, setDuration] = useState(0);
   const [trimStart, setTrimStart] = useState(0);
   const [trimEnd, setTrimEnd] = useState(0);
+  // The edges as last set, for the waveform's `ready`: the sliders work from
+  // the video's metadata, which arrives before the sound is decoded (in Safari
+  // well before), and an edge moved in between must survive the region.
+  const trimRef = useRef({ start: 0, end: 0 });
+  useEffect(() => {
+    trimRef.current = { start: trimStart, end: trimEnd };
+  }, [trimStart, trimEnd]);
   const job = useRenderJob();
   const isExporting = job.busy;
   const progress = job.progress;
@@ -113,13 +120,17 @@ export const VideoTrimmer: FC<VideoTrimmerProps> = ({ file, onTrimmed }) => {
     ws.loadBlob(source).catch(() => {});
     ws.on('ready', () => {
       const d = ws.getDuration();
+      const set = trimRef.current;
+      const keep = set.end > set.start && set.start < d;
+      const start = keep ? set.start : 0;
+      const end = keep ? Math.min(set.end, d) : d;
       setDuration(d);
-      setTrimStart(0);
-      setTrimEnd(d);
+      setTrimStart(start);
+      setTrimEnd(end);
       regions.clearRegions();
       regionRef.current = regions.addRegion({
-        start: 0,
-        end: d,
+        start,
+        end,
         color: 'rgba(56,189,248,0.18)',
         drag: true,
         resize: true,
@@ -149,15 +160,17 @@ export const VideoTrimmer: FC<VideoTrimmerProps> = ({ file, onTrimmed }) => {
   // Shift+arrows by a second, Home/End to the ends of the clip.
   const moveEdge = useCallback(
     (side: 'start' | 'end', to: number) => {
+      if (!duration) return;
+      // Before the waveform is ready there is no region yet; the edges then
+      // live in state alone and the region is made from them.
       const region = regionRef.current;
-      if (!region || !duration) return;
       const { start, end } = moveTrimEdge(
         side,
         to,
-        { start: region.start, end: region.end },
+        region ? { start: region.start, end: region.end } : trimRef.current,
         duration
       );
-      region.setOptions({ start, end });
+      region?.setOptions({ start, end });
       setTrimStart(start);
       setTrimEnd(end);
       const v = videoRef.current;
