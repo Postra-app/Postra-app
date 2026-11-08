@@ -626,6 +626,10 @@ export const VideoStudio: FC<VideoStudioProps> = ({
               key={tDef.key}
               onClick={() => {
                 setShowGoals(false);
+                // The library picker sits over every tab: left open, it hid the
+                // tab just chosen (Stock B-roll read as "No videos in your
+                // library").
+                setShowLibrary(false);
                 // Formats and AI Captions used to be greyed out until a clip
                 // was loaded, with nothing saying why or where to load one.
                 // Now they open on the clip picker and carry on once it loads.
