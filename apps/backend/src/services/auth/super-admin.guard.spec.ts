@@ -24,7 +24,7 @@ describe('the admin controller', () => {
   it('is guarded as a whole', () => {
     jest.isolateModules(() => {
       // Loaded lazily: the controller pulls in the app's services.
-      // eslint-disable-next-line @typescript-eslint/no-var-requires
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
       const { AdminController } = require('@gitroom/backend/api/routes/admin.controller');
       const guards = (Reflect.getMetadata(GUARDS_METADATA, AdminController) ?? []) as { name: string }[];
       expect(guards.map((g) => g.name)).toContain('SuperAdminGuard');

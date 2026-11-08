@@ -6,7 +6,7 @@ describe('the in-memory Redis stand-in', () => {
     delete process.env.REDIS_URL;
     let ioRedis: any;
     jest.isolateModules(() => {
-      // eslint-disable-next-line @typescript-eslint/no-var-requires
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
       ioRedis = require('./redis.service').ioRedis;
     });
     return ioRedis;
