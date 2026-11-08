@@ -20,7 +20,10 @@ import { Media } from '@prisma/client';
 import { useMediaDirectory } from '@gitroom/react/helpers/use.media.directory';
 import { useVariables } from '@gitroom/react/helpers/variable.context';
 import { useSettings } from '@gitroom/frontend/components/launches/helpers/use.values';
-import EventEmitter from 'events';
+import {
+  listenForMediaBox,
+  requestMediaBox,
+} from '@gitroom/frontend/components/media/media-box-request';
 import { useToaster } from '@gitroom/react/toaster/toaster';
 import clsx from 'clsx';
 import { VideoFrame } from '@gitroom/react/helpers/video.frame';
@@ -69,7 +72,6 @@ const PostDesignEditor = dynamic(
   () => import('@gitroom/frontend/components/design-editor/post-design-editor'),
   { ssr: false }
 );
-const showModalEmitter = new EventEmitter();
 export const Pagination: FC<{
   current: number;
   totalPages: number;
@@ -190,15 +192,14 @@ export const ShowMediaBoxModal: FC = () => {
     setShowModal(false);
     setCallBack(undefined);
   }, []);
-  useEffect(() => {
-    showModalEmitter.on('show-modal', (cCallback) => {
-      setShowModal(true);
-      setCallBack(() => cCallback);
-    });
-    return () => {
-      showModalEmitter.removeAllListeners('show-modal');
-    };
-  }, []);
+  useEffect(
+    () =>
+      listenForMediaBox((cCallback) => {
+        setShowModal(true);
+        setCallBack(() => cCallback);
+      }),
+    []
+  );
   if (!showModal) return null;
   return (
     <div className="text-textColor">
@@ -211,7 +212,7 @@ export const ShowMediaBoxModal: FC = () => {
 export const showMediaBox = (
   callback: (params: { id: string; path: string }[]) => void
 ) => {
-  showModalEmitter.emit('show-modal', callback);
+  requestMediaBox(callback);
 };
 const CHUNK_SIZE = 1024 * 1024;
 const MAX_UPLOAD_SIZE = 1024 * 1024 * 1024; // 1 GB
