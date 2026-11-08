@@ -105,6 +105,57 @@ class MockRedis {
     return Math.ceil((entry.expiresAt - Date.now()) / 1000);
   }
 
+  // Sorted sets: push receipts wait in one (mobile.push.service.ts). Without
+  // them a send threw "not a function" after its first batch of 100.
+  private zset(key: string): Map<string, number> {
+    const entry = this.live(key);
+    if (entry?.value instanceof Map) {
+      return entry.value;
+    }
+    const value = new Map<string, number>();
+    this.data.set(key, { value, expiresAt: null });
+    return value;
+  }
+
+  async zadd(key: string, ...scoreMembers: (string | number)[]) {
+    const set = this.zset(key);
+    let added = 0;
+    for (let i = 0; i + 1 < scoreMembers.length; i += 2) {
+      const member = String(scoreMembers[i + 1]);
+      if (!set.has(member)) added += 1;
+      set.set(member, Number(scoreMembers[i]));
+    }
+    return added;
+  }
+
+  async zrangebyscore(key: string, min: number, max: number, ...args: any[]) {
+    const members = [...this.zset(key).entries()]
+      .filter(([, score]) => score >= Number(min) && score <= Number(max))
+      .sort((a, b) => a[1] - b[1])
+      .map(([member]) => member);
+    const at = args.map((a) => String(a).toUpperCase()).indexOf('LIMIT');
+    return at >= 0
+      ? members.slice(Number(args[at + 1]), Number(args[at + 1]) + Number(args[at + 2]))
+      : members;
+  }
+
+  async zremrangebyscore(key: string, min: number, max: number) {
+    const set = this.zset(key);
+    let removed = 0;
+    for (const [member, score] of set) {
+      if (score >= Number(min) && score <= Number(max)) {
+        set.delete(member);
+        removed += 1;
+      }
+    }
+    return removed;
+  }
+
+  async zrem(key: string, ...members: string[]) {
+    const set = this.zset(key);
+    return members.filter((member) => set.delete(member)).length;
+  }
+
   // Add other Redis methods as needed for your tests
 }
 
