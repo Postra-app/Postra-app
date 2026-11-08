@@ -72,6 +72,19 @@ describe('a provider outage during a refresh keeps its status', () => {
     expect(isTransientRefreshError(outcome.error)).toBe(true);
   });
 
+  it.each(providers)('%s: a connection dropped while the answer arrives is a passing outage', async (_name, run) => {
+    global.fetch = jest.fn(async () => {
+      const res = reply(200, {});
+      const dropped = Object.assign(new TypeError('terminated'), { cause: { code: 'UND_ERR_SOCKET' } });
+      Object.defineProperty(res, 'text', { value: () => Promise.reject(dropped) });
+      Object.defineProperty(res, 'json', { value: () => Promise.reject(dropped) });
+      return res;
+    }) as any;
+    const outcome: any = await failure(run());
+    expect(outcome.error).toBeDefined();
+    expect(isTransientRefreshError(outcome.error)).toBe(true);
+  });
+
   it('instagram: a refused token says why and still asks for a reconnect', async () => {
     answerAll(400, {
       error: { message: 'Error validating access token: Session has expired', code: 190 },

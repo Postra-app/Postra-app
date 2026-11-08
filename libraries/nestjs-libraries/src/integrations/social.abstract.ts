@@ -124,11 +124,13 @@ export function providerErrorMessage(json: string): string | undefined {
  * real refusal still names the platform's reason (secrets stripped).
  */
 export async function refreshJson(platform: string, res: Response): Promise<any> {
-  // Stubbed answers in tests may only have json().
+  // A connection dropped while the body arrives must stay an error (a
+  // network outage), not turn into an empty answer. Stubbed answers in tests
+  // may only have json().
   const text: string =
     typeof res.text === 'function'
-      ? await res.text().catch(() => '')
-      : JSON.stringify((await res.json?.().catch(() => ({}))) ?? {});
+      ? await res.text()
+      : JSON.stringify((await res.json?.()) ?? {});
   if (typeof res.status === 'number' && res.status >= 400) {
     const reason = providerErrorMessage(text) || 'no reason given';
     throw Object.assign(

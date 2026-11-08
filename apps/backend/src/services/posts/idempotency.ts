@@ -1,4 +1,4 @@
-import { createHash } from 'node:crypto';
+import { createHash, randomUUID } from 'node:crypto';
 import {
   BadRequestException,
   ConflictException,
@@ -17,15 +17,59 @@ import { ioRedis } from '@gitroom/nestjs-libraries/redis/redis.service';
  * the client can retry after fixing what was refused.
  */
 const KEPT_FOR_SECONDS = 24 * 60 * 60;
-// A request still running holds the key for at most this long.
-const HELD_FOR_SECONDS = 5 * 60;
+// The claim of a request still running; renewed while it runs, so a slow
+// save cannot lose it to a retry, and gone soon after a crash.
+const HELD_FOR_SECONDS = 60;
+const RENEW_EVERY_MS = 20_000;
 const KEY = /^[A-Za-z0-9_-]{8,128}$/;
-const PENDING = 'pending';
+
+// Each changes the key only while it still holds this request's claim, so a
+// request whose claim was lost cannot overwrite or free another one's.
+const RENEW =
+  "if redis.call('get', KEYS[1]) == ARGV[1] then return redis.call('expire', KEYS[1], ARGV[2]) end return 0";
+const FINISH =
+  "if redis.call('get', KEYS[1]) == ARGV[1] then redis.call('set', KEYS[1], ARGV[2], 'EX', ARGV[3]) return 1 end return 0";
+const RELEASE =
+  "if redis.call('get', KEYS[1]) == ARGV[1] then return redis.call('del', KEYS[1]) end return 0";
 
 const fingerprint = (body: unknown) =>
   createHash('sha256')
     .update(JSON.stringify(body ?? null))
     .digest('hex');
+
+const redisKey = (scope: string, orgId: string, key: string) =>
+  `idempotency:${scope}:${orgId}:${key}`;
+
+const validKey = (key: string | undefined): key is string => {
+  if (key === undefined || key === '') {
+    return false;
+  }
+  if (!KEY.test(key)) {
+    throw new BadRequestException(
+      'Idempotency-Key must be 8 to 128 letters, digits, "-" or "_"'
+    );
+  }
+  return true;
+};
+
+/**
+ * Whether this request is a retry whose result is already stored — it
+ * creates nothing, so a limit on new posts must not refuse it.
+ */
+export async function isStoredReplay(
+  scope: string,
+  orgId: string,
+  key: string | undefined,
+  body: unknown
+): Promise<boolean> {
+  if (key === undefined || key === '' || !KEY.test(key)) {
+    return false;
+  }
+  const stored = JSON.parse(
+    (await ioRedis.get(redisKey(scope, orgId, key))) || 'null'
+  );
+  return stored?.state === 'done' && stored.hash === fingerprint(body);
+}
 
 export async function withIdempotencyKey<T>(
   scope: string,
@@ -34,24 +78,14 @@ export async function withIdempotencyKey<T>(
   body: unknown,
   run: () => Promise<T>
 ): Promise<T> {
-  if (key === undefined || key === '') {
+  if (!validKey(key)) {
     return run();
   }
-  if (!KEY.test(key)) {
-    throw new BadRequestException(
-      'Idempotency-Key must be 8 to 128 letters, digits, "-" or "_"'
-    );
-  }
 
-  const id = `idempotency:${scope}:${orgId}:${key}`;
+  const id = redisKey(scope, orgId, key);
   const hash = fingerprint(body);
-  const claimed = await ioRedis.set(
-    id,
-    JSON.stringify({ state: PENDING, hash }),
-    'EX',
-    HELD_FOR_SECONDS,
-    'NX'
-  );
+  const claim = JSON.stringify({ state: 'pending', hash, by: randomUUID() });
+  const claimed = await ioRedis.set(id, claim, 'EX', HELD_FOR_SECONDS, 'NX');
 
   if (claimed !== 'OK') {
     const stored = JSON.parse((await ioRedis.get(id)) || 'null');
@@ -64,7 +98,7 @@ export async function withIdempotencyKey<T>(
         'This Idempotency-Key was used for a different request'
       );
     }
-    if (stored.state === PENDING) {
+    if (stored.state === 'pending') {
       throw new ConflictException(
         'A request with this Idempotency-Key is still being processed'
       );
@@ -72,17 +106,26 @@ export async function withIdempotencyKey<T>(
     return stored.result as T;
   }
 
+  const renew = setInterval(() => {
+    ioRedis.eval(RENEW, 1, id, claim, HELD_FOR_SECONDS).catch(() => undefined);
+  }, RENEW_EVERY_MS);
+  renew.unref?.();
+
   let result: T;
   try {
     result = await run();
   } catch (err) {
-    await ioRedis.del(id);
+    clearInterval(renew);
+    await ioRedis.eval(RELEASE, 1, id, claim);
     throw err;
   }
-  await ioRedis.set(
+  clearInterval(renew);
+  await ioRedis.eval(
+    FINISH,
+    1,
     id,
+    claim,
     JSON.stringify({ state: 'done', hash, result: result ?? null }),
-    'EX',
     KEPT_FOR_SECONDS
   );
   return result;

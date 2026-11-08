@@ -15,6 +15,7 @@ import {
   postsReleasedBy,
 } from '@gitroom/nestjs-libraries/database/prisma/posts/post.cap';
 import { Request } from 'express';
+import { isStoredReplay } from '@gitroom/backend/services/posts/idempotency';
 import {
   PermissionDeniedException,
   Sections,
@@ -76,6 +77,19 @@ export class PoliciesGuard implements CanActivate {
       ? bodyPosts.every((post) => typeOf(post) === 'draft')
       : request.body?.type === 'draft' ||
         (request.body?.type === undefined && request.body?.status === 'draft');
+    // A retry of a saved POST /posts (same Idempotency-Key and body) gets the
+    // stored answer and creates nothing; the last post of the month must not
+    // turn its retry into a 402.
+    const replay =
+      !publicApi &&
+      request.method === 'POST' &&
+      /(^|\/)posts\/?$/.test(path) &&
+      (await isStoredReplay(
+        'posts',
+        org.id,
+        request.headers['idempotency-key'] as string | undefined,
+        request.body
+      ));
 
     // Every channel and every thread part of a save is a post against the
     // monthly cap; the check used to let one request through for any count
@@ -97,7 +111,7 @@ export class PoliciesGuard implements CanActivate {
     };
 
     // @ts-ignore
-    const ability = await this._authorizationService.check(org.id, org.createdAt, org.users[0].role, policyHandlers, refreshChannelId, org.isTrailing, isDraft, postsRequested);
+    const ability = await this._authorizationService.check(org.id, org.createdAt, org.users[0].role, policyHandlers, refreshChannelId, org.isTrailing, isDraft || replay, postsRequested);
 
     const item = policyHandlers.find(
       (handler) => !this.execPolicyHandler(handler, ability)
