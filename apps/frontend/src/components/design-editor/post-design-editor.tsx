@@ -149,7 +149,10 @@ const PostDesignEditor: FC<PostDesignEditorProps> = ({
   const [hasSelection, setHasSelection] = useState(false);
   // Copy/paste keeps its own clipboard: the system one carries text, and a
   // Fabric object cannot survive a round trip through it.
-  const clipboardRef = useRef<fabric.FabricObject | null>(null);
+  // The copy as a promise: cloning finishes later (an image is loaded again),
+  // and a paste straight after the copy has to wait for it, not find the
+  // clipboard empty or holding the previous copy.
+  const clipboardRef = useRef<Promise<fabric.FabricObject> | null>(null);
 
   const { platform, setPlatform, pushHistory, setCanvasReady, setTool } =
     useEditorStore();
@@ -1071,24 +1074,24 @@ const PostDesignEditor: FC<PostDesignEditorProps> = ({
       if ((e.metaKey || e.ctrlKey) && key === 'c') {
         if (!active) return;
         e.preventDefault();
-        active.clone().then((copy: fabric.FabricObject) => {
-          clipboardRef.current = copy;
-        });
+        clipboardRef.current = active.clone();
         return;
       }
 
       if ((e.metaKey || e.ctrlKey) && key === 'v') {
-        const source = clipboardRef.current;
-        if (!source) return;
+        const pending = clipboardRef.current;
+        if (!pending) return;
         e.preventDefault();
-        void pasteCopyOf(c, source)
-          .then((copy) => copy.clone())
-          .then((next: fabric.FabricObject) => {
-            // paste twice in a row and the second copy lands next to the
-            // first; a detached clone, because a multiple selection empties
-            // itself once it is deselected
-            clipboardRef.current = next;
-          });
+        // Paste twice in a row and the second copy lands next to the first;
+        // a detached clone, because a multiple selection empties itself once
+        // it is deselected.
+        const next = pending
+          .then((source) => pasteCopyOf(c, source))
+          .then((copy) => copy.clone());
+        clipboardRef.current = next;
+        next.catch(() => {
+          if (clipboardRef.current === next) clipboardRef.current = pending;
+        });
         return;
       }
 
