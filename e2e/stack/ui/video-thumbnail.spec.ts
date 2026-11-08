@@ -39,7 +39,7 @@ test('a frame picked as the video thumbnail is uploaded on Save Changes', async 
   const tile = page.locator('.sortable-container > div').first();
   await expect(tile).toBeVisible({ timeout: 30_000 });
   await tile.hover();
-  await tile.locator('.group > div').first().click();
+  await tile.getByRole('button', { name: 'Media Settings' }).click();
 
   await page.getByRole('button', { name: 'Create Thumbnail' }).click();
   await page.getByRole('button', { name: 'Select This Frame' }).click({ timeout: 20_000 });

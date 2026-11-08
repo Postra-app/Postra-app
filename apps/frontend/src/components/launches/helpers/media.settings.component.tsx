@@ -382,7 +382,7 @@ export const MediaComponentInner: FC<{
     <div className="mt-[10px] flex flex-col gap-[20px]">
       <div className="flex flex-col space-y-2">
         <div className="flex items-center justify-between gap-[10px]">
-          <label className="text-sm text-textColor font-medium">
+          <label htmlFor="media-alt-text" className="text-sm text-textColor font-medium">
             {t('alt_text_label', 'Alt text (for accessibility)')}
           </label>
           {/* The field has always been here with nothing to fill it, so most
@@ -422,6 +422,7 @@ export const MediaComponentInner: FC<{
           )}
         </div>
         <input
+          id="media-alt-text"
           type="text"
           value={altText}
           onChange={(e) => setAltText(e.target.value)}

@@ -113,6 +113,9 @@ export const LayersPanel: FC<{
                 if (row.locked) return;
                 c.setActiveObject(row.object);
               })}
+              // The highlight says which layer is selected; a screen reader
+              // needs it said too.
+              aria-pressed={index === activeIndex}
               className="flex flex-1 items-center gap-2 min-w-0 text-start"
               title={row.label}
             >

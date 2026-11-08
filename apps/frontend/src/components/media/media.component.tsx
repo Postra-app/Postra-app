@@ -958,7 +958,12 @@ export const MultiMediaComponent: FC<{
                     <DragHandleIcon className="z-[20] dragging absolute pe-[1px] pb-[3px] -start-[4px] -top-[4px] cursor-move" />
 
                     <div className="w-full h-full relative group">
-                      <div
+                      {/* Alt text lives behind this. It was a div that only
+                          appeared on hover, so a keyboard could not reach the
+                          one setting that is there for accessibility. */}
+                      <button
+                        type="button"
+                        aria-label={t('media_settings', 'Media Settings')}
                         onClick={async () => {
                           modals.openModal({
                             title: t('media_settings', 'Media Settings'),
@@ -986,10 +991,10 @@ export const MultiMediaComponent: FC<{
                             ),
                           });
                         }}
-                        className="absolute top-[50%] left-[50%] -translate-x-[50%] -translate-y-[50%] bg-black/80 rounded-[10px] opacity-0 group-hover:opacity-100 transition-opacity z-[9]"
+                        className="absolute top-[50%] left-[50%] -translate-x-[50%] -translate-y-[50%] bg-black/80 rounded-[10px] opacity-0 group-hover:opacity-100 focus-visible:opacity-100 transition-opacity z-[9]"
                       >
                         <MediaSettingsIcon className="cursor-pointer relative z-[200]" />
-                      </div>
+                      </button>
                       {isVideoMedia(media) ? (
                         <VideoFrame url={mediaDirectory.set(media?.path)} />
                       ) : (

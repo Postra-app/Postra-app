@@ -249,6 +249,21 @@ test('Download PNG and Save as template', async ({ page }) => {
   await s.clean();
 });
 
+// The layer list from the keyboard alone: pick a layer, delete it.
+test('Layers: a layer is picked and deleted from the keyboard', { tag: '@safari' }, async ({ page }) => {
+  const s = await studio(page);
+  await s.tool('Text').click();
+  await page.getByRole('button', { name: /Add text/ }).click();
+  expect(await s.layers()).toBe(2);
+  const row = page.locator('div.group > button[aria-pressed]').last();
+  await row.focus();
+  await page.keyboard.press('Enter');
+  await expect(row).toHaveAttribute('aria-pressed', 'true');
+  await page.keyboard.press('Delete');
+  await expect(page.getByRole('button', { name: /^(Hide|Show)$/ })).toHaveCount(1);
+  await s.clean();
+});
+
 // Pinterest's recommended pin is 2:3; the PNG has to come out at that size.
 test('Pinterest Pin (2:3) downloads as a 1000x1500 PNG', { tag: '@safari' }, async ({ page }) => {
   const s = await studio(page);
