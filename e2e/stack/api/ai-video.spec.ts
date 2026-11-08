@@ -346,13 +346,27 @@ test('public API: start answers with an id, the id answers where the clip stands
     const done = await (await where(headers)).json();
     expect(done.media.path).toMatch(/\.mp4$/);
 
-    // Another organisation learns nothing, and does not make the owner's
-    // finished clip forgotten.
+    // Another organisation gets 404, as for an id that does not exist, and
+    // does not make the owner's finished clip forgotten.
     const foreign = await where({ Authorization: await key(other.orgId) });
-    expect(foreign.status()).toBe(200);
-    expect((await foreign.json()).status).toBe('none');
+    expect(foreign.status()).toBe(404);
     expect((await (await where(headers)).json()).status).toBe('done');
     expect((await pro.api.get('/public/v1/generate-video/not-an-id', { headers })).status()).toBe(404);
+    expect(
+      (await pro.api.get(`/public/v1/generate-video/${'0'.repeat(64)}`, { headers })).status()
+    ).toBe(404);
+
+    // How another organisation's clip failed is not theirs to read either.
+    const failing = await pro.api.post('/public/v1/generate-video/start', {
+      headers,
+      data: { type: 'veo3', output: 'vertical', customParams: { prompt: `stack-kie-fail A tram in Sheffield ${Date.now()}`, images: [] } },
+    });
+    const failedId = (await failing.json()).id;
+    const failedAt = (h: Record<string, string>) => pro.api.get(`/public/v1/generate-video/${failedId}`, { headers: h });
+    await expect
+      .poll(async () => (await (await failedAt(headers)).json()).status, { timeout: 30_000, intervals: [1_000] })
+      .toBe('failed');
+    expect((await failedAt({ Authorization: await key(other.orgId) })).status()).toBe(404);
   } finally {
     await pro.remove();
     await other.remove();
@@ -397,15 +411,32 @@ test('a clip whose process stopped is finished by another, or failed with the cr
     // Stopped before kie.ai had it.
     const lost = body(`A clip that never started ${randomBytes(4).toString('hex')}`);
     await leave(lost);
-    expect(await videosLeft(pro.api)).toBe(28);
+    // Saved to the library just before its process stopped: finished
+    // without a second file.
+    const saved = body(`A clip saved just in time ${randomBytes(4).toString('hex')}`);
+    const existing = await prisma.media.create({
+      data: { organizationId: pro.orgId, name: 'saved.mp4', path: 'http://localhost/saved.mp4', type: 'video', aiGenerated: true },
+    });
+    await leave(saved, 'stack-kie-gone');
+    await redis.set(
+      `ai-video-job:${keyOf(saved)}`,
+      JSON.stringify({ ...JSON.parse((await redis.get(`ai-video-job:${keyOf(saved)}`))!), mediaId: existing.id }),
+      'EX',
+      1800
+    );
+    expect(await videosLeft(pro.api)).toBe(27);
 
     const statusOf = async (b: ReturnType<typeof body>) =>
       (await (await pro.api.post('/media/generate-video/result', { data: b })).json()).status;
     await expect.poll(() => statusOf(made), { timeout: 100_000, intervals: [2_000] }).toBe('done');
     await expect.poll(() => statusOf(lost), { timeout: 30_000, intervals: [2_000] }).toBe('failed');
-    expect(await prisma.media.count({ where: { organizationId: pro.orgId, aiGenerated: true } })).toBe(1);
-    // One credit for the clip made, none for the one lost; kie.ai asked once.
-    expect(await videosLeft(pro.api)).toBe(29);
+    await expect.poll(() => statusOf(saved), { timeout: 30_000, intervals: [2_000] }).toBe('done');
+    const savedResult = await (await pro.api.post('/media/generate-video/result', { data: saved })).json();
+    expect(savedResult.media.id).toBe(existing.id);
+    expect(await prisma.media.count({ where: { organizationId: pro.orgId, aiGenerated: true } })).toBe(2);
+    // One credit each for the clips made, none for the one lost; kie.ai
+    // asked once.
+    expect(await videosLeft(pro.api)).toBe(28);
     expect(await kieTasks(pro.api, made.customParams.prompt)).toHaveLength(1);
     expect(await redis.exists(`ai-video-job:${keyOf(made)}`, `ai-video-job:${keyOf(lost)}`)).toBe(0);
   } finally {

@@ -109,6 +109,7 @@ const VIDEO_REUSE_SECONDS = 10 * 60;
 const VIDEO_KEY_PREFIX = 'ai-video:';
 const VIDEO_JOB_PREFIX = 'ai-video-job:';
 const VIDEO_LEASE_PREFIX = 'ai-video-lease:';
+const VIDEO_OWNER_PREFIX = 'ai-video-owner:';
 const VIDEO_FAILED = 'failed:';
 const VIDEO_FAILED_SECONDS = 10 * 60;
 const VIDEO_JOB_SECONDS = 30 * 60;
@@ -127,6 +128,7 @@ type VideoJob = {
   creditId: string;
   startedAt: number;
   taskId?: string;
+  mediaId?: string;
 };
 
 @Injectable()
@@ -834,6 +836,7 @@ export class MediaService {
     // still being started here for one left by a stopped process.
     const lease = `${VIDEO_LEASE_PREFIX}${id}`;
     await ioRedis.set(lease, '1', 'EX', VIDEO_LEASE_SECONDS);
+    await ioRedis.set(this.videoOwnerPath(key), org.id, 'EX', VIDEO_JOB_SECONDS);
 
     // The credit is reserved inside useCredit before the clip is started;
     // a refusal there (402, the plan's limit) must reach this caller.
@@ -856,7 +859,7 @@ export class MediaService {
     try {
       await Promise.race([reservation, run]);
     } catch (err) {
-      await ioRedis.del(key, lease).catch(() => undefined);
+      await ioRedis.del(key, lease, this.videoOwnerPath(key)).catch(() => undefined);
       throw err;
     }
     run.then(
@@ -936,17 +939,31 @@ export class MediaService {
         url = await instance.process(body.output, body.customParams);
       }
       const file = await this.storage.uploadSimple(url);
-      return await this.saveFile(
+      const media = await this.saveFile(
         orgId,
         file.split('/').pop(),
         file,
         undefined,
         true
       );
+      // Kept with the job: a process stopped from here on is finished
+      // without saving the clip a second time.
+      await this.updateVideoJob(key, { mediaId: media.id });
+      return media;
     } finally {
       clearInterval(keepAlive);
-      await ioRedis.del(lease).catch(() => undefined);
+      // The lease stays (it expires on its own) until videoMade or
+      // videoFailed has removed the job: released here, the minute sweep
+      // could take a job that is finished and make its clip again.
     }
+  }
+
+  /** The job is done with: its record first, then the lease. */
+  private async closeVideoJob(key: string) {
+    await ioRedis.del(this.videoJobPath(key));
+    await ioRedis
+      .del(`${VIDEO_LEASE_PREFIX}${this.videoJobId(key)}`)
+      .catch(() => undefined);
   }
 
   private async videoMade(
@@ -967,7 +984,8 @@ export class MediaService {
         inputAmount: 1,
       });
       await ioRedis.set(key, media.id, 'EX', VIDEO_REUSE_SECONDS);
-      await ioRedis.del(this.videoJobPath(key));
+      await ioRedis.set(this.videoOwnerPath(key), orgId, 'EX', VIDEO_REUSE_SECONDS);
+      await this.closeVideoJob(key);
       // The window that asked may be long closed.
       await this._notificationService.inAppNotification(
         orgId,
@@ -1002,7 +1020,8 @@ export class MediaService {
         'EX',
         VIDEO_FAILED_SECONDS
       );
-      await ioRedis.del(this.videoJobPath(key));
+      await ioRedis.set(this.videoOwnerPath(key), orgId, 'EX', VIDEO_FAILED_SECONDS);
+      await this.closeVideoJob(key);
       await this._notificationService.inAppNotification(
         orgId,
         VIDEO_FAILED_SUBJECT,
@@ -1032,6 +1051,11 @@ export class MediaService {
 
   private videoJobPath(key: string) {
     return `${VIDEO_JOB_PREFIX}${this.videoJobId(key)}`;
+  }
+
+  /** Which organisation a clip id belongs to, for lookups by id. */
+  private videoOwnerPath(key: string) {
+    return `${VIDEO_OWNER_PREFIX}${this.videoJobId(key)}`;
   }
 
   private async saveVideoJob(key: string, job: VideoJob) {
@@ -1090,7 +1114,10 @@ export class MediaService {
 
   private async resumeVideoJob(key: string, job: VideoJob) {
     const video = this._videoManager.getVideoByName(job.body.type);
-    const resumable = !!(video?.instance.start && video.instance.finish && job.taskId);
+    const resumable = !!(
+      job.mediaId ||
+      (video?.instance.start && video.instance.finish && job.taskId)
+    );
     this._videoLogger.log(
       `AI video ${this.videoJobId(key)}: ${resumable ? 'resuming' : 'failing'} a job left by a stopped process`
     );
@@ -1099,13 +1126,16 @@ export class MediaService {
         throw new HttpException(VIDEO_FAILED_MESSAGE, 500);
       }
       await ioRedis.set(key, VIDEO_PENDING, 'EX', VIDEO_PENDING_SECONDS);
-      const media = await this.makeVideo(
-        job.orgId,
-        key,
-        video!.instance,
-        job.body,
-        job.taskId
-      );
+      // Saved before its process stopped: only the finishing is left.
+      const media = job.mediaId
+        ? { id: job.mediaId }
+        : await this.makeVideo(
+            job.orgId,
+            key,
+            video!.instance,
+            job.body,
+            job.taskId
+          );
       await this.videoMade(job.orgId, key, job.body, video!.instance, media);
     } catch (err) {
       await this._subscriptionService
@@ -1124,12 +1154,22 @@ export class MediaService {
     return this.videoResultByKey(org.id, this.videoKey(org.id, body));
   }
 
-  /** The same, by the id startVideo answered with (the public API). */
+  /** The same, by the id startVideo answered with (the public API). Another
+   *  organisation's id, like an unknown one, is a 404: it must not learn the
+   *  clip exists, nor how it ended. */
   async videoResultById(org: Organization, id: string) {
-    if (!/^[0-9a-f]{64}$/.test(id)) {
+    const key = `${VIDEO_KEY_PREFIX}${id}`;
+    if (
+      !/^[0-9a-f]{64}$/.test(id) ||
+      (await ioRedis.get(this.videoOwnerPath(key))) !== org.id
+    ) {
       throw new HttpException('Video not found', 404);
     }
-    return this.videoResultByKey(org.id, `${VIDEO_KEY_PREFIX}${id}`);
+    const result = await this.videoResultByKey(org.id, key);
+    if (result.status === 'none') {
+      throw new HttpException('Video not found', 404);
+    }
+    return result;
   }
 
   private async videoResultByKey(
