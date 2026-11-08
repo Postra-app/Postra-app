@@ -11,6 +11,12 @@ const { getIntegrationsById, refreshToken } =
     },
   });
 
+// The stored expiry of a scheduled channel is two days before the platform's
+// (58 of 60 days), so a refresh that failed on an outage still has time.
+// 36 hourly tries stay well inside that margin.
+const RETRY_EVERY = 60 * 60 * 1000;
+const RETRIES = 36;
+
 export async function refreshTokenWorkflow({
   organizationId,
   integrationId,
@@ -18,6 +24,7 @@ export async function refreshTokenWorkflow({
   integrationId: string;
   organizationId: string;
 }) {
+  let retries = 0;
   while (true) {
     let integration = await getIntegrationsById(integrationId, organizationId);
     if (
@@ -33,11 +40,19 @@ export async function refreshTokenWorkflow({
     const endDate = new Date(integration.tokenExpiration);
 
     const minMax = Math.max(0, endDate.getTime() - today.getTime());
-    if (!minMax) {
-      return false;
+    if (minMax) {
+      retries = 0;
+      await sleep(minMax as number);
+    } else {
+      // Already due: the last refresh failed without marking the channel
+      // (an outage at the platform), or it was due when the run started.
+      // Returning here left the channel with nothing watching it.
+      if (retries >= RETRIES) {
+        return false;
+      }
+      retries++;
+      await sleep(RETRY_EVERY);
     }
-
-    await sleep(minMax as number);
 
     // while we were sleeping, the integration might have been deleted
     integration = await getIntegrationsById(integrationId, organizationId);

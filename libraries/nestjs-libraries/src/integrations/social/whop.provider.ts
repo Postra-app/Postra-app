@@ -9,7 +9,10 @@ import {
 } from '@gitroom/nestjs-libraries/integrations/social/social.integrations.interface';
 import { makeSecureId } from '@gitroom/nestjs-libraries/services/make.secure.id';
 import { timer } from '@gitroom/helpers/utils/timer';
-import { SocialAbstract } from '@gitroom/nestjs-libraries/integrations/social.abstract';
+import {
+  SocialAbstract,
+  refreshJson,
+} from '@gitroom/nestjs-libraries/integrations/social.abstract';
 import { WhopDto } from '@gitroom/nestjs-libraries/dtos/posts/providers-settings/whop.dto';
 import { Integration } from '@prisma/client';
 import { Tool } from '@gitroom/nestjs-libraries/integrations/tool.decorator';
@@ -70,7 +73,8 @@ export class WhopProvider extends SocialAbstract implements SocialProvider {
   }
 
   async refreshToken(refreshToken: string): Promise<AuthTokenDetails> {
-    const response = await (
+    const response = await refreshJson(
+      'Whop',
       await fetch('https://api.whop.com/oauth/token', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -80,7 +84,7 @@ export class WhopProvider extends SocialAbstract implements SocialProvider {
           client_id: process.env.WHOP_CLIENT_ID,
         }),
       })
-    ).json();
+    );
 
     const userInfo = await (
       await fetch('https://api.whop.com/oauth/userinfo', {

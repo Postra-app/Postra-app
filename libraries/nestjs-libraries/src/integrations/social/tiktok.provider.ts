@@ -13,6 +13,7 @@ import {
   ProcessingTimeout,
   SocialAbstract,
   ValidityMedia,
+  refreshJson,
 } from '@gitroom/nestjs-libraries/integrations/social.abstract';
 import { TikTokDto } from '@gitroom/nestjs-libraries/dtos/posts/providers-settings/tiktok.dto';
 import { timer } from '@gitroom/helpers/utils/timer';
@@ -315,7 +316,8 @@ export class TiktokProvider extends SocialAbstract implements SocialProvider {
       refresh_token: refreshToken,
     };
 
-    const tokens: any = await (
+    const tokens: any = await refreshJson(
+      'TikTok',
       await fetch('https://open.tiktokapis.com/v2/oauth/token/', {
         headers: {
           'Content-Type': 'application/x-www-form-urlencoded',
@@ -323,9 +325,7 @@ export class TiktokProvider extends SocialAbstract implements SocialProvider {
         method: 'POST',
         body: new URLSearchParams(value).toString(),
       })
-    )
-      .json()
-      .catch(() => ({}));
+    );
     const { access_token, refresh_token } = tokens;
 
     // A refused refresh (revoked, expired, already used) answers with an

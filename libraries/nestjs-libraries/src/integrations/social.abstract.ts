@@ -115,6 +115,34 @@ export function providerErrorMessage(json: string): string | undefined {
   return found ? sanitizeSecrets(found.trim()).slice(0, 300) : undefined;
 }
 
+/**
+ * The JSON of a token-refresh answer, or an error that keeps the HTTP status.
+ * Read as plain JSON, a 503 or a 429 came back without a token, which the
+ * caller cannot tell from a revoked grant: the channel was marked for
+ * reconnecting over an outage. With the status on the error,
+ * `isTransientRefreshError` leaves the channel for the next attempt, and a
+ * real refusal still names the platform's reason (secrets stripped).
+ */
+export async function refreshJson(platform: string, res: Response): Promise<any> {
+  // Stubbed answers in tests may only have json().
+  const text: string =
+    typeof res.text === 'function'
+      ? await res.text().catch(() => '')
+      : JSON.stringify((await res.json?.().catch(() => ({}))) ?? {});
+  if (typeof res.status === 'number' && res.status >= 400) {
+    const reason = providerErrorMessage(text) || 'no reason given';
+    throw Object.assign(
+      new Error(`${platform} refused the refresh (${res.status}: ${reason})`),
+      { status: res.status }
+    );
+  }
+  try {
+    return JSON.parse(text || '{}');
+  } catch {
+    return {};
+  }
+}
+
 function safeStringify(obj: any) {
   const seen = new WeakSet();
 
@@ -279,12 +307,14 @@ export abstract class SocialAbstract {
     const reason =
       handleError?.value || providerErrorMessage(json) || 'Unknown Error';
 
+    // The status rides along so a refresh can tell an outage (429, 5xx)
+    // from a refused grant (isTransientRefreshError).
+    const withStatus = <T extends object>(err: T) =>
+      Object.assign(err, { status: request.status });
+
     if (totalRetries > 2) {
-      throw new BadBody(
-        identifier,
-        json,
-        options.body || '{}',
-        reason
+      throw withStatus(
+        new BadBody(identifier, json, options.body || '{}', reason)
       );
     }
 
@@ -322,20 +352,12 @@ export abstract class SocialAbstract {
         (handleError?.type === 'refresh-token' || !handleError)) ||
       handleError?.type === 'refresh-token'
     ) {
-      throw new RefreshToken(
-        identifier,
-        json,
-        options.body!,
-        handleError?.value
+      throw withStatus(
+        new RefreshToken(identifier, json, options.body!, handleError?.value)
       );
     }
 
-    throw new BadBody(
-      identifier,
-      json,
-      options.body!,
-      reason
-    );
+    throw withStatus(new BadBody(identifier, json, options.body!, reason));
   }
 
   checkScopes(required: string[], got: string | string[]) {

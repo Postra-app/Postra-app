@@ -10,6 +10,7 @@ import dayjs from 'dayjs';
 import {
   SocialAbstract,
   ValidityMedia,
+  refreshJson,
 } from '@gitroom/nestjs-libraries/integrations/social.abstract';
 import { InstagramDto } from '@gitroom/nestjs-libraries/dtos/posts/providers-settings/instagram.dto';
 import {
@@ -80,22 +81,24 @@ export class InstagramStandaloneProvider
   }
 
   async refreshToken(refresh_token: string): Promise<AuthTokenDetails> {
-    const { access_token } = await (
+    const { access_token } = await refreshJson(
+      'Instagram',
       await fetch(
         `https://graph.instagram.com/refresh_access_token?grant_type=ig_refresh_token&access_token=${refresh_token}`
       )
-    ).json();
+    );
 
     const {
       user_id,
       name,
       username,
       profile_picture_url = '',
-    } = await (
+    } = await refreshJson(
+      'Instagram',
       await fetch(
         `https://graph.instagram.com/${META_GRAPH_API_VERSION}/me?fields=user_id,username,name,profile_picture_url&access_token=${access_token}`
       )
-    ).json();
+    );
 
     return {
       id: user_id,
