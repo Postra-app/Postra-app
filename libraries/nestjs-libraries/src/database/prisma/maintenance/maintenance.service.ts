@@ -78,6 +78,28 @@ export interface SweepReport {
   failed: number;
 }
 
+export interface UnlistedSweepReport {
+  apply: boolean;
+  graceDays: number;
+  /** Stored objects under a dated key (the shape every upload gets). */
+  listed: number;
+  /** Of those, older than the grace window. */
+  old: number;
+  /** Old objects no row of any table mentions. */
+  unreferenced: number;
+  removed: number;
+  bytes: number;
+  /** Too many to be believable: nothing removed, the run is reported. */
+  refused: boolean;
+}
+
+// The key every upload gets: <yyyy>/<mm>/<dd>/<file>.
+const STORED_KEY = /^\d{4}\/\d{2}\/\d{2}\/[A-Za-z0-9._-]+$/;
+// A sweep that would remove more than this share of the old objects (and more
+// than the floor) is more likely a broken reference scan than real litter.
+const UNLISTED_SWEEP_MAX_SHARE = 0.2;
+const UNLISTED_SWEEP_FLOOR = 50;
+
 @Injectable()
 export class MaintenanceService {
   constructor(
@@ -323,6 +345,96 @@ export class MaintenanceService {
     }
 
     return report;
+  }
+
+  /**
+   * Stored files that no row refers to at all: a thumbnail uploaded without
+   * a library row and then replaced, an upload whose save never happened, the
+   * files of a test. sweepOrphanMedia only ever looks at media rows, so these
+   * stayed in the bucket for good.
+   *
+   * Blunt on purpose, like the reference check above: every row of every
+   * table is read as text and any dated key found in it (plain or
+   * URL-encoded) is kept. A false positive keeps a file; a false negative
+   * would delete one in use. Only objects older than the grace window, a
+   * second look right before deleting, and a refusal when the share is too
+   * large to be real.
+   */
+  async sweepUnlistedObjects(
+    apply: boolean,
+    graceDays = DEFAULT_RETENTION.mediaGraceDays
+  ): Promise<UnlistedSweepReport> {
+    const report: UnlistedSweepReport = {
+      apply,
+      graceDays,
+      listed: 0,
+      old: 0,
+      unreferenced: 0,
+      removed: 0,
+      bytes: 0,
+      refused: false,
+    };
+    const storage = UploadFactory.createStorage();
+    if (!storage.listStored) {
+      return report;
+    }
+    const cutoff = dayjs().subtract(graceDays, 'day').toDate();
+    const old: { key: string; path: string; size: number }[] = [];
+    for await (const item of storage.listStored()) {
+      if (!STORED_KEY.test(item.key)) continue;
+      report.listed++;
+      if (item.lastModified < cutoff) old.push(item);
+    }
+    report.old = old.length;
+    if (!old.length) {
+      return report;
+    }
+
+    const referenced = await this.referencedStoredKeys();
+    let drop = old.filter((item) => !referenced.has(item.key));
+    report.unreferenced = drop.length;
+    if (
+      drop.length > UNLISTED_SWEEP_FLOOR &&
+      drop.length > old.length * UNLISTED_SWEEP_MAX_SHARE
+    ) {
+      report.refused = true;
+      Logger.warn(
+        `sweepUnlistedObjects: ${drop.length} of ${old.length} old objects look unreferenced; refusing to remove that many`
+      );
+      return report;
+    }
+    if (!apply || !drop.length) {
+      return report;
+    }
+
+    const again = await this.referencedStoredKeys();
+    drop = drop.filter((item) => !again.has(item.key));
+    for (const item of drop) {
+      await storage.removeFile(item.path);
+      report.removed++;
+      report.bytes += item.size;
+    }
+    return report;
+  }
+
+  // Every dated storage key any row mentions, in any table.
+  private async referencedStoredKeys(): Promise<Set<string>> {
+    const tables = await this._prisma.model.$queryRawUnsafe<{ t: string }[]>(
+      `SELECT table_name AS t FROM information_schema.tables
+       WHERE table_schema = 'public' AND table_type = 'BASE TABLE'
+         AND table_name NOT LIKE '\\_prisma%'`
+    );
+    const keys = new Set<string>();
+    for (const { t } of tables) {
+      if (!/^[A-Za-z0-9_]+$/.test(t)) continue;
+      const rows = await this._prisma.model.$queryRawUnsafe<{ k: string }[]>(
+        `SELECT DISTINCT (regexp_matches(x::text, '(\\d{4}(?:/|%2[Ff])\\d{2}(?:/|%2[Ff])\\d{2}(?:/|%2[Ff])[A-Za-z0-9._-]+)', 'g'))[1] AS k FROM "${t}" x`
+      );
+      for (const { k } of rows) {
+        keys.add(k.replace(/%2[Ff]/g, '/'));
+      }
+    }
+    return keys;
   }
 
   /**

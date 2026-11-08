@@ -6,4 +6,15 @@ export interface IUploadProvider {
   // the file is not in this storage or its size cannot be read: the media
   // library counts it as 0 then.
   sizeOf?(filePath: string): Promise<number | null>;
+  // Every stored object, for the sweep of files nothing refers to. A storage
+  // that cannot list (local disk) leaves it out and the sweep skips.
+  listStored?(): AsyncGenerator<StoredObject>;
+}
+
+export interface StoredObject {
+  key: string;
+  /** The public URL a row would keep for it. */
+  path: string;
+  lastModified: Date;
+  size: number;
 }
