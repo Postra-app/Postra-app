@@ -199,3 +199,24 @@ for (const [tool, title, ready] of [
     expect(problems).toEqual([]);
   });
 }
+
+// A clip with music and no speech: the server finds nothing to caption, and the
+// user is told so instead of being left with an empty box.
+test('AI Captions on a clip without speech says so', { tag: '@safari' }, async ({ page, browserName }) => {
+  await page.route('**/api/media/*/auto-caption', (route) =>
+    route.fulfill({ status: 201, contentType: 'application/json', body: JSON.stringify({ srt: '' }) })
+  );
+  await page.goto('/studio?mode=video');
+  await page
+    .locator('input[type="file"][accept="video/*"]')
+    .first()
+    .setInputFiles(
+      browserName === 'webkit'
+        ? { name: 'tone.mp4', mimeType: 'video/mp4', buffer: readFileSync(`${__dirname}/fixtures/tone-two-seconds.mp4`) }
+        : { name: 'tone.webm', mimeType: 'video/webm', buffer: clip }
+    );
+  await page.getByRole('button', { name: 'AI Captions', exact: true }).click();
+  await page.getByRole('button', { name: 'Generate captions', exact: true }).click();
+  await expect(page.getByText('No speech found in this clip', { exact: false })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Burn into video', exact: true })).toBeDisabled();
+});

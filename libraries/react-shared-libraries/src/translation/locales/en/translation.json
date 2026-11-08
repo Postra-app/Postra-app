@@ -1033,6 +1033,7 @@
   "video_format_export": "Export {n} formats",
   "video_captions_no_media": "Load a video first (Trim / From library) to transcribe it.",
   "video_captions_failed": "Caption generation failed.",
+  "video_captions_no_speech": "No speech found in this clip, so there is nothing to caption.",
   "video_captions_no_segments": "Could not parse any caption segments (check the SRT format).",
   "video_burn_failed": "Burning captions failed. Try a different clip - our team has been notified.",
   "clip_too_long": "Clip is too long to edit in the browser (5 min limit). Use a shorter one.",

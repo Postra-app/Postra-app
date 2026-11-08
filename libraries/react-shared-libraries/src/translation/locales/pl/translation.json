@@ -1039,6 +1039,7 @@
   "video_format_export": "Eksportuj {n} formatów",
   "video_captions_no_media": "Najpierw wczytaj wideo (Wytnij / Z biblioteki), żeby je przepisać.",
   "video_captions_failed": "Generowanie napisów nie powiodło się.",
+  "video_captions_no_speech": "W tym klipie nie ma mowy, więc nie ma czego podpisać.",
   "video_captions_no_segments": "Nie rozpoznałem segmentów napisów (sprawdź format SRT).",
   "video_burn_failed": "Wpalenie napisów nie powiodło się. Spróbuj innego klipu - nasz zespół dostał zgłoszenie.",
   "clip_too_long": "Klip za długi do edycji w przeglądarce (limit 5 min). Użyj krótszego.",
