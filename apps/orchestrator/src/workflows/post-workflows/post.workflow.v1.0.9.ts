@@ -11,7 +11,8 @@ import {
 } from '@temporalio/workflow';
 import dayjs from 'dayjs';
 import { Integration } from '@prisma/client';
-import { capitalize, sortBy } from 'lodash';
+import { sortBy } from 'lodash';
+import { platformName } from '@gitroom/helpers/utils/platform.name';
 import { PostResponse } from '@gitroom/nestjs-libraries/integrations/social/social.integrations.interface';
 import { makeId } from '@gitroom/nestjs-libraries/services/make.is';
 import {
@@ -314,10 +315,10 @@ export async function postWorkflowV109({
             // send notification on a sucessful post
             await inAppNotification(
               post.integration.organizationId,
-              `Your post has been published on ${capitalize(
+              `Your post has been published on ${platformName(
                 post.integration.providerIdentifier
               )}`,
-              `Your post has been published on ${capitalize(
+              `Your post has been published on ${platformName(
                 post.integration.providerIdentifier
               )} at ${postsResults[0].releaseURL}`,
               true,
@@ -437,7 +438,7 @@ export async function postWorkflowV109({
   // say so and park those rows in ERROR — leaving them in QUEUE made the loss
   // invisible everywhere (no notification, no /admin/errors entry, nothing).
   if (skippedComments.length) {
-    const channel = capitalize(post.integration.providerIdentifier);
+    const channel = platformName(post.integration.providerIdentifier);
     const many = skippedComments.length > 1;
 
     // A platform with no comment API at all (TikTok) is not a missing
@@ -478,7 +479,7 @@ export async function postWorkflowV109({
   // A comment the channel accepted in principle but the platform rejected in
   // practice. Same treatment: flag the comment, leave the post published.
   if (failedComment) {
-    const channel = capitalize(post.integration.providerIdentifier);
+    const channel = platformName(post.integration.providerIdentifier);
     const reason = failedComment.err?.cause?.message
       ? `: ${failedComment.err.cause.message}`
       : '';

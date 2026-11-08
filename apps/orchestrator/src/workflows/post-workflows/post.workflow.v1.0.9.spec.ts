@@ -227,6 +227,23 @@ describe('postWorkflowV109 — after the platform has the post', () => {
   });
 });
 
+describe('postWorkflowV109 — the platform by its name', () => {
+  // The notification and mail read "published on Linkedin-page" (the
+  // provider identifier, capitalised), "Tiktok", "Youtube".
+  it('names the platform as customers know it in the published notification', async () => {
+    const page = { ...integration, providerIdentifier: 'linkedin-page' };
+    activities.getPost.mockResolvedValue({ ...post, integration: page });
+    activities.getPostsList.mockResolvedValue([{ ...post, integration: page }]);
+    activities.postSocial = jest.fn().mockResolvedValue(published);
+
+    await run();
+
+    const [, subject, body] = activities.inAppNotification.mock.calls[0];
+    expect(subject).toBe('Your post has been published on LinkedIn Page');
+    expect(body).toBe('Your post has been published on LinkedIn Page at https://t.me/x/9');
+  });
+});
+
 describe('postWorkflowV109 — plug checks', () => {
   // Every delay is counted from the publish, but
   // each sleep was the full delay again, so a plug checking every 6 h ran at
@@ -290,8 +307,8 @@ describe('postWorkflowV109 — comments the channel cannot take', () => {
 
     await run();
 
-    expect(commentError()).toBe("Comment not published: Tiktok doesn't let apps post comments.");
-    expect(notificationBody()).toContain("Tiktok doesn't let apps post comments");
+    expect(commentError()).toBe("Comment not published: TikTok doesn't let apps post comments.");
+    expect(notificationBody()).toContain("TikTok doesn't let apps post comments");
     expect(notificationBody()).not.toContain('permission');
     expect(notificationBody()).not.toMatch(/[—–]/);
   });
@@ -302,7 +319,7 @@ describe('postWorkflowV109 — comments the channel cannot take', () => {
     await run();
 
     expect(commentError()).toBe(
-      'Comment not published: Tiktok has not granted this channel the permission needed to post comments.'
+      'Comment not published: TikTok has not granted this channel the permission needed to post comments.'
     );
     expect(notificationBody()).not.toMatch(/[—–]/);
   });
