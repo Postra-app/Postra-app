@@ -249,6 +249,24 @@ test('Download PNG and Save as template', async ({ page }) => {
   await s.clean();
 });
 
+// Pinterest's recommended pin is 2:3; the PNG has to come out at that size.
+test('Pinterest Pin (2:3) downloads as a 1000x1500 PNG', { tag: '@safari' }, async ({ page }) => {
+  const s = await studio(page);
+  await s.tool('Text').click();
+  await page.getByRole('button', { name: 'Pinterest Pin (2:3)', exact: true }).click();
+  await expect(page.getByText('1000×1500px')).toBeVisible();
+  await page.getByRole('button', { name: 'Export' }).click();
+  const download = page.waitForEvent('download');
+  await page.getByRole('menuitem', { name: /Download PNG/ }).click();
+  const stream = await (await download).createReadStream();
+  const chunks: Buffer[] = [];
+  for await (const chunk of stream) chunks.push(chunk as Buffer);
+  const png = Buffer.concat(chunks);
+  // A PNG says its size in the IHDR chunk, bytes 16-23.
+  expect([png.readUInt32BE(16), png.readUInt32BE(20)]).toEqual([1000, 1500]);
+  await s.clean();
+});
+
 // Saved while the Templates panel was already open, the new template did not
 // show under "Your templates" until the panel was closed and opened again.
 test('Save as template with the Templates panel open lists it at once', async ({ page }) => {

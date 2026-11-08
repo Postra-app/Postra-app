@@ -55,6 +55,7 @@ const PLATFORM_PROMPT_LABELS: Record<string, string> = {
   'linkedin-feed': 'LinkedIn feed',
   'tiktok-cover': 'TikTok cover',
   'x-post': 'X (Twitter)',
+  'pinterest-pin': 'Pinterest pin',
   instagram: 'Instagram',
   'instagram-standalone': 'Instagram',
   facebook: 'Facebook',

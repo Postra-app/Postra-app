@@ -1263,7 +1263,9 @@ const PostDesignEditor: FC<PostDesignEditorProps> = ({
                     key: 'formats',
                     icon: 'formats',
                     label: t('multi_format_button', 'All formats'),
-                    hint: t('multi_format_hint', 'Generate 7 variants for all platforms'),
+                    hint: t('multi_format_hint', 'Generate {{count}} variants for all platforms', {
+                      count: PLATFORM_SIZES.filter((p) => p.key !== 'custom').length,
+                    }),
                     onSelect: () => setMultiFormatOpen(true),
                   },
                 ]}

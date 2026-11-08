@@ -20,6 +20,7 @@ const PLATFORM_KEY_MAP: Record<string, StudioPlatformKey> = {
   'linkedin-feed': 'linkedin',
   'tiktok-cover': 'tiktok',
   'x-post': 'x',
+  'pinterest-pin': 'pinterest',
   custom: 'custom',
 };
 
