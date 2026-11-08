@@ -123,9 +123,21 @@ export class MediaController {
     return this._mediaService.generateVideo(org, body);
   }
 
+  // Starts a clip and answers at once ({ status: 'pending' } or, for the same
+  // request made in the last minutes, { status: 'done', media }); the server
+  // makes it, saves it to the library and tells the organisation.
+  @Post('/generate-video/start')
+  @HttpCode(200)
+  @CheckPolicies([AuthorizationActions.Create, Sections.AI])
+  @Throttle({ default: { ttl: 300000, limit: 10 } })
+  @UseGuards(AccountAgeGuard)
+  startVideo(@GetOrgFromRequest() org: Organization, @Body() body: VideoDto) {
+    return this._mediaService.startVideo(org, body);
+  }
+
   // Read-only: where a clip asked for with this body stands. The composer
-  // asks every few seconds after the load balancer has given up on the
-  // generating request; it never makes a clip or spends a credit.
+  // asks every few seconds after starting it; it never makes a clip or
+  // spends a credit.
   @Post('/generate-video/result')
   @HttpCode(200)
   @Throttle({ default: { ttl: 300000, limit: 120 } })

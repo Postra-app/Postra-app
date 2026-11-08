@@ -1,5 +1,5 @@
 import { Button } from '@gitroom/frontend/components/ui/button';
-import React, { FC, useCallback, useState } from 'react';
+import React, { FC, useCallback, useEffect, useRef, useState } from 'react';
 import clsx from 'clsx';
 import Loading from '@gitroom/frontend/components/layout/loading';
 import { useFetch } from '@gitroom/helpers/utils/custom.fetch';
@@ -16,9 +16,10 @@ import { createPortal } from 'react-dom';
 import { useAiError } from '@gitroom/frontend/components/ai/use-ai-error';
 import { isFetchHandledError } from '@gitroom/helpers/utils/fetch.errors';
 
-// The server polls the video model for up to ten minutes.
-const VIDEO_WAIT_MS = 11 * 60 * 1000;
-// How often the composer asks where a clip stands once the request is lost.
+// How long the composer follows a clip: the model gets ten minutes, and a
+// clip whose server process restarts is finished by another one.
+const VIDEO_WAIT_MS = 25 * 60 * 1000;
+// How often the composer asks where a clip stands.
 const VIDEO_RESULT_EVERY_MS = 10 * 1000;
 
 export const Modal: FC<{
@@ -65,57 +66,57 @@ export const Modal: FC<{
       output: position,
       customParams,
     });
-    const stillRunning = () => {
+    const saved = (media: { id: string; path: string }) => {
+      onChange({ id: media.id, path: media.path });
+      mutate();
       toaster.show(
         t(
-          'video_generation_still_running',
-          'Your video is taking longer than usual. It will appear in your media library when it is ready.'
+          'video_generation_saved',
+          'Video created and saved to your media library.'
         ),
-        'warning'
+        'success'
       );
-      // A clip can take longer than the load balancer's three minutes: it is
-      // still made and paid for, but the post never got it. Ask where it stands - a read that never makes a clip or spends
-      // a credit - and attach it when it is there.
+    };
+    // The server makes the clip (a few minutes) and keeps it in the media
+    // library even if this window or the composer is closed; meanwhile the
+    // composer stays usable. Ask where it stands - a read that never makes a
+    // clip or spends a credit - and attach it when it is there.
+    const follow = () => {
       void (async () => {
         const until = Date.now() + VIDEO_WAIT_MS;
         while (Date.now() < until) {
           await new Promise((r) => setTimeout(r, VIDEO_RESULT_EVERY_MS));
-          let answer: { status?: string; media?: { id: string; path: string } };
+          let answer: {
+            status?: string;
+            message?: string;
+            media?: { id: string; path: string };
+          };
           try {
             const res = await fetch(`/media/generate-video/result`, {
               method: 'POST',
               body: request,
             });
-            if (!res.ok) return;
+            if (!res.ok) continue;
             answer = await res.json();
           } catch {
-            return;
+            continue;
           }
           if (answer?.status === 'pending') continue;
-          if (answer?.status === 'none') {
-            // The model gave up or the clip is gone: say so, the credit was
-            // kept.
-            // Stopping quietly left "taking longer" on screen for good.
-            toaster.show(
+          if (answer?.status === 'done' && answer.media?.id) {
+            saved(answer.media);
+            return;
+          }
+          // Failed (the reason from the server; the credit was handed back)
+          // or gone. Stopping quietly left the wait on screen for good.
+          mutate();
+          toaster.show(
+            answer?.message ||
               t(
                 'video_generation_failed',
                 'Could not generate the video, please try again.'
               ),
-              'warning'
-            );
-            return;
-          }
-          if (answer?.status === 'done' && answer.media?.id) {
-            onChange({ id: answer.media.id, path: answer.media.path });
-            mutate();
-            toaster.show(
-              t(
-                'video_generation_saved',
-                'Video created and saved to your media library.'
-              ),
-              'success'
-            );
-          }
+            'warning'
+          );
           return;
         }
       })();
@@ -139,27 +140,13 @@ export const Modal: FC<{
         );
         return;
       }
-      const image = await fetch(`/media/generate-video`, {
+      const started = await fetch(`/media/generate-video/start`, {
         method: 'POST',
         body: request,
-        // A clip takes one to three minutes and the shared fetch gives up
-        // after two: on 2026-10-10 the browser said "Could not generate the
-        // video" for a clip that was made, paid for and saved. Wait as long
-        // as the server does; past the load balancer's 3 minutes it answers
-        // 504, handled below.
-        signal: AbortSignal.timeout(VIDEO_WAIT_MS),
       });
-
-      if (image.status === 504 || image.status === 502) {
-        // The load balancer gives up after 3 minutes; the clip is still being
-        // made and lands in the media library (layout.context lets this one
-        // 5xx through instead of "server unavailable").
-        stillRunning();
-        return;
-      }
-      if (!image.ok) {
+      if (!started.ok) {
         await showAiError(
-          image,
+          started,
           t(
             'video_generation_failed',
             'Could not generate the video, please try again.'
@@ -167,23 +154,25 @@ export const Modal: FC<{
         );
         return;
       }
-      onChange(await image.json());
+      const answer: { status?: string; media?: { id: string; path: string } } =
+        await started.json();
+      if (answer?.status === 'done' && answer.media?.id) {
+        saved(answer.media);
+        return;
+      }
       mutate();
       toaster.show(
         t(
-          'video_generation_saved',
-          'Video created and saved to your media library.'
+          'video_generation_started',
+          'Your video is being made. It takes a few minutes and will be added here and to your media library.'
         ),
         'success'
       );
+      follow();
     } catch (e) {
       // Already reported by the shared fetch; a second toast contradicted it.
       if (isFetchHandledError(e)) return;
       console.error('[Postra:ai-video] generate failed', e);
-      if ((e as Error)?.name === 'TimeoutError') {
-        stillRunning();
-        return;
-      }
       toaster.show(
         t(
           'video_generation_failed',
@@ -299,6 +288,21 @@ export const AiVideo: FC<{
   const [loading, setLoading] = useState(false);
   const fetch = useFetch();
   const modals = useModals();
+  // A clip arrives minutes after it was asked for. The composer's onChange
+  // from that moment adds it to the media list of that moment, dropping
+  // anything added since; the latest one is used, and none once the
+  // composer is gone (the clip is in the library and announced).
+  const latestOnChange = useRef<typeof onChange | null>(onChange);
+  latestOnChange.current = onChange;
+  useEffect(
+    () => () => {
+      latestOnChange.current = null;
+    },
+    []
+  );
+  const attach = useCallback((media: { id: string; path: string }) => {
+    latestOnChange.current?.(media);
+  }, []);
 
   const loadVideoList = useCallback(async () => {
     // /media/video-options can come back with an empty body (no options
@@ -337,13 +341,13 @@ export const AiVideo: FC<{
       children: (close) => (
         <AiVideoModal
           list={data}
-          onChange={onChange}
+          onChange={attach}
           setLoading={setLoading}
           close={close}
         />
       ),
     });
-  }, [loading, data, onChange]);
+  }, [loading, data, attach]);
 
   if (isLoading || data?.length === 0) {
     return null;

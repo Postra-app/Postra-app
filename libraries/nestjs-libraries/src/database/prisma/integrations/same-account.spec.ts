@@ -31,6 +31,7 @@ const build = (channels: any[]) => {
       token: 'user-token',
     })),
     updateIntegration: jest.fn(async () => ({})),
+    findActiveByProviderIdentifier: jest.fn(async () => null),
   };
   const provider = {
     fetchPageInformation: jest.fn(async () => ({

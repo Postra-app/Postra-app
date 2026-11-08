@@ -6,6 +6,9 @@ import { SubscriptionService } from '@gitroom/nestjs-libraries/database/prisma/s
 import { Organization } from '@prisma/client';
 import { SaveMediaInformationDto } from '@gitroom/nestjs-libraries/dtos/media/save.media.information.dto';
 import { VideoManager } from '@gitroom/nestjs-libraries/videos/video.manager';
+import { VideoAbstract } from '@gitroom/nestjs-libraries/videos/video.interface';
+import { NotificationService } from '@gitroom/nestjs-libraries/database/prisma/notifications/notification.service';
+import { timer } from '@gitroom/helpers/utils/timer';
 import { VideoDto } from '@gitroom/nestjs-libraries/dtos/videos/video.dto';
 import { UploadFactory } from '@gitroom/nestjs-libraries/upload/upload.factory';
 import {
@@ -100,6 +103,33 @@ import { fromBuffer as fileTypeFromBuffer } from '@gitroom/nestjs-libraries/uplo
 const VIDEO_PENDING = 'pending';
 const VIDEO_PENDING_SECONDS = 15 * 60;
 const VIDEO_REUSE_SECONDS = 10 * 60;
+// Redis keys of an AI clip: its state (pending / the media id / a failure),
+// the job a restarted process needs to finish it, and the lease of the
+// process making it.
+const VIDEO_KEY_PREFIX = 'ai-video:';
+const VIDEO_JOB_PREFIX = 'ai-video-job:';
+const VIDEO_LEASE_PREFIX = 'ai-video-lease:';
+const VIDEO_OWNER_PREFIX = 'ai-video-owner:';
+const VIDEO_FAILED = 'failed:';
+const VIDEO_FAILED_SECONDS = 10 * 60;
+const VIDEO_JOB_SECONDS = 30 * 60;
+const VIDEO_LEASE_SECONDS = 60;
+const VIDEO_LEASE_REFRESH_MS = 20_000;
+const VIDEO_WAIT_POLL_MS = 2_000;
+const VIDEO_FAILED_MESSAGE = 'Could not generate the video, please try again.';
+const VIDEO_READY_SUBJECT = 'Your AI video is ready';
+const VIDEO_READY_MESSAGE =
+  'Your AI video is ready. You will find it in your media library.';
+const VIDEO_FAILED_SUBJECT = 'Your AI video could not be made';
+
+type VideoJob = {
+  orgId: string;
+  body: VideoDto;
+  creditId: string;
+  startedAt: number;
+  taskId?: string;
+  mediaId?: string;
+};
 
 @Injectable()
 export class MediaService {
@@ -114,8 +144,11 @@ export class MediaService {
     private _studioAi: StudioAiService,
     private _postsRepository: PostsRepository,
     private _designRender: DesignRenderService,
-    private _retouch: RetouchService
+    private _retouch: RetouchService,
+    private _notificationService: NotificationService
   ) {}
+
+  private readonly _videoLogger = new Logger('AiVideo');
 
   async deleteMedia(org: string, id: string) {
     const deleted = await this._mediaRepository.deleteMedia(org, id);
@@ -705,19 +738,64 @@ export class MediaService {
     return true;
   }
 
+  /**
+   * Makes the clip and answers only when it is in the library (or failed).
+   * Kept for the public API's original endpoint; everything in the app uses
+   * startVideo. Past the load balancer's three minutes the caller gets a 504,
+   * but the clip is still made, saved and announced.
+   */
   async generateVideo(org: Organization, body: VideoDto) {
+    const started = await this.startVideo(org, body);
+    if (started.status === 'done') {
+      return started.media;
+    }
+    const key = this.videoKey(org.id, body);
+    for (;;) {
+      await timer(VIDEO_WAIT_POLL_MS);
+      const value = await ioRedis.get(key);
+      if (value === VIDEO_PENDING) {
+        continue;
+      }
+      const failure = this.videoFailure(value);
+      if (failure) {
+        throw new HttpException(failure.message, failure.status);
+      }
+      const media = await this.finishedVideo(org.id, key);
+      if (media) {
+        return media;
+      }
+      throw new HttpException(VIDEO_FAILED_MESSAGE, 500);
+    }
+  }
+
+  /**
+   * Starts a clip and answers at once. A clip takes minutes: longer than the
+   * load balancer's three, the assistant's two-minute run and any API
+   * client's patience. The server makes
+   * it, saves it to the library and tells the organisation; callers ask
+   * videoResult where it stands.
+   *
+   * One clip, one payment: a double click, a retry or the assistant calling
+   * twice joins the clip already being made, and a finished one is answered
+   * from the library for VIDEO_REUSE_SECONDS - even with no credits left, it
+   * is paid for. The credit is reserved here (so "no credits" is answered at
+   * once) and handed back when the clip fails.
+   */
+  async startVideo(
+    org: Organization,
+    body: VideoDto
+  ): Promise<
+    | { status: 'pending'; id: string }
+    | { status: 'done'; id: string; media: Awaited<ReturnType<MediaService['getMediaByIdOrg']>> }
+  > {
     // A full library stops here, before any credit or model time is spent
     // on a file that could not be kept.
     await this.assertStorage(org.id, 0);
-    // One clip, one payment: a double click, a retry after the browser gave
-    // up, or the assistant calling the tool twice used to pay kie.ai again
-    // for the same video. The same request from the same organization is
-    // refused while it is being made and answered from the library for
-    // VIDEO_REUSE_SECONDS after — even with no credits left, it is paid for.
     const key = this.videoKey(org.id, body);
+    const id = this.videoJobId(key);
     const reused = await this.finishedVideo(org.id, key);
     if (reused) {
-      return reused;
+      return { status: 'done', id, media: reused };
     }
     const totalCredits = await this._subscriptionService.checkCredits(
       org,
@@ -745,100 +823,395 @@ export class MediaService {
 
     await video.instance.processAndValidate(body.customParams);
 
-    if (
-      (await ioRedis.set(key, VIDEO_PENDING, 'EX', VIDEO_PENDING_SECONDS, 'NX')) !==
-      'OK'
-    ) {
+    if (!(await this.claimVideoKey(key))) {
       const finished = await this.finishedVideo(org.id, key);
       if (finished) {
-        return finished;
+        return { status: 'done', id, media: finished };
       }
-      throw new HttpException(
-        'This video is already being made - it will appear in your media library when it is ready.',
-        409
-      );
+      // Being made: this request is that clip.
+      return { status: 'pending', id };
     }
 
-    try {
-      const saved = await this._subscriptionService.useCredit(
-        org,
-        'ai_videos',
-        async () => {
-          const loadedData = await video.instance.process(
-            body.output,
-            body.customParams
-          );
+    // Held from the start, so the minute sweep never takes a clip that is
+    // still being started here for one left by a stopped process.
+    const lease = `${VIDEO_LEASE_PREFIX}${id}`;
+    await ioRedis.set(lease, '1', 'EX', VIDEO_LEASE_SECONDS);
+    await ioRedis.set(this.videoOwnerPath(key), org.id, 'EX', VIDEO_JOB_SECONDS);
 
-          const file = await this.storage.uploadSimple(loadedData);
-          return this.saveFile(
-            org.id,
-            file.split('/').pop(),
-            file,
-            undefined,
-            true
-          );
-        }
-      );
-      // What the clip cost us, for the margin guard (images and text are
-      // logged where they are made; a clip only once it is in the library).
-      recordAiUsage({
-        organizationId: org.id,
-        engine: 'video',
-        model: video.instance.usageModel || body.type,
-        unit: 'videos',
-        inputAmount: 1,
-      });
-      await ioRedis
-        .set(key, saved.id, 'EX', VIDEO_REUSE_SECONDS)
-        .catch(() => undefined);
-      return saved;
+    // The credit is reserved inside useCredit before the clip is started;
+    // a refusal there (402, the plan's limit) must reach this caller.
+    let reserved!: () => void;
+    const reservation = new Promise<void>((resolve) => (reserved = resolve));
+    const run = this._subscriptionService.useCredit(
+      org,
+      'ai_videos',
+      async (credit) => {
+        await this.saveVideoJob(key, {
+          orgId: org.id,
+          body,
+          creditId: credit.id,
+          startedAt: Date.now(),
+        });
+        reserved();
+        return this.makeVideo(org.id, key, video.instance, body);
+      }
+    );
+    try {
+      await Promise.race([reservation, run]);
     } catch (err) {
-      await ioRedis.del(key).catch(() => undefined);
+      await ioRedis.del(key, lease, this.videoOwnerPath(key)).catch(() => undefined);
       throw err;
     }
+    run.then(
+      (media) => this.videoMade(org.id, key, body, video.instance, media),
+      // useCredit has handed the credit back by now.
+      (err) => this.videoFailed(org.id, key, err)
+    );
+    return { status: 'pending', id };
   }
 
   /** One key per organisation and request: the same prompt, shape and
    *  pictures are the same clip. */
   private videoKey(orgId: string, body: VideoDto) {
-    return `ai-video:${createHash('sha256')
+    return `${VIDEO_KEY_PREFIX}${createHash('sha256')
       .update(
         JSON.stringify([orgId, body.type, body.output, body.customParams])
       )
       .digest('hex')}`;
   }
 
+  private videoJobId(key: string) {
+    return key.slice(VIDEO_KEY_PREFIX.length);
+  }
+
+  /** Marks the clip as being made, unless it already is (or is made). A
+   *  failure left by an earlier try does not block a new one. */
+  private async claimVideoKey(key: string) {
+    for (let attempt = 0; attempt < 2; attempt++) {
+      if (
+        (await ioRedis.set(key, VIDEO_PENDING, 'EX', VIDEO_PENDING_SECONDS, 'NX')) ===
+        'OK'
+      ) {
+        return true;
+      }
+      const value = await ioRedis.get(key);
+      if (!this.videoFailure(value)) {
+        return false;
+      }
+      await ioRedis
+        .eval(
+          "if redis.call('get', KEYS[1]) == ARGV[1] then return redis.call('del', KEYS[1]) end return 0",
+          1,
+          key,
+          value as string
+        )
+        .catch(() => undefined);
+    }
+    return false;
+  }
+
+  /** Makes the clip and keeps it in the library. While it runs this process
+   *  holds a lease on it; a process that dies leaves the job and its kie.ai
+   *  task id behind for resumeVideoJobs. */
+  private async makeVideo(
+    orgId: string,
+    key: string,
+    instance: VideoAbstract<any>,
+    body: VideoDto,
+    taskId?: string
+  ) {
+    const lease = `${VIDEO_LEASE_PREFIX}${this.videoJobId(key)}`;
+    await ioRedis.set(lease, '1', 'EX', VIDEO_LEASE_SECONDS);
+    const keepAlive = setInterval(() => {
+      ioRedis.set(lease, '1', 'EX', VIDEO_LEASE_SECONDS).catch(() => undefined);
+      ioRedis.expire(key, VIDEO_PENDING_SECONDS).catch(() => undefined);
+    }, VIDEO_LEASE_REFRESH_MS);
+    keepAlive.unref?.();
+    try {
+      let url: string;
+      if (instance.start && instance.finish) {
+        if (!taskId) {
+          taskId = await instance.start(body.output, body.customParams);
+          await this.updateVideoJob(key, { taskId });
+        }
+        url = await instance.finish(taskId);
+      } else {
+        url = await instance.process(body.output, body.customParams);
+      }
+      const file = await this.storage.uploadSimple(url);
+      const media = await this.saveFile(
+        orgId,
+        file.split('/').pop(),
+        file,
+        undefined,
+        true
+      );
+      // Kept with the job: a process stopped from here on is finished
+      // without saving the clip a second time.
+      await this.updateVideoJob(key, { mediaId: media.id });
+      return media;
+    } finally {
+      clearInterval(keepAlive);
+      // The lease stays (it expires on its own) until videoMade or
+      // videoFailed has removed the job: released here, the minute sweep
+      // could take a job that is finished and make its clip again.
+    }
+  }
+
+  /** The job is done with: its record first, then the lease. */
+  private async closeVideoJob(key: string) {
+    await ioRedis.del(this.videoJobPath(key));
+    await ioRedis
+      .del(`${VIDEO_LEASE_PREFIX}${this.videoJobId(key)}`)
+      .catch(() => undefined);
+  }
+
+  private async videoMade(
+    orgId: string,
+    key: string,
+    body: VideoDto,
+    instance: VideoAbstract<any>,
+    media: { id: string }
+  ) {
+    try {
+      // What the clip cost us, for the margin guard (images and text are
+      // logged where they are made; a clip only once it is in the library).
+      recordAiUsage({
+        organizationId: orgId,
+        engine: 'video',
+        model: instance.usageModel || body.type,
+        unit: 'videos',
+        inputAmount: 1,
+      });
+      await ioRedis.set(key, media.id, 'EX', VIDEO_REUSE_SECONDS);
+      await ioRedis.set(this.videoOwnerPath(key), orgId, 'EX', VIDEO_REUSE_SECONDS);
+      await this.closeVideoJob(key);
+      // The window that asked may be long closed.
+      await this._notificationService.inAppNotification(
+        orgId,
+        VIDEO_READY_SUBJECT,
+        VIDEO_READY_MESSAGE,
+        false,
+        false,
+        'success'
+      );
+    } catch (err) {
+      this._videoLogger.error(
+        `AI video ${this.videoJobId(key)} saved as ${media.id}, but finishing it failed: ${(err as Error)?.message}`
+      );
+    }
+  }
+
+  private async videoFailed(orgId: string, key: string, err: unknown) {
+    const status = err instanceof HttpException ? err.getStatus() : 500;
+    // Our own words reach the customer (a refused prompt, the model being
+    // down); anything else stays in the log.
+    const message =
+      err instanceof HttpException && status !== 500
+        ? err.message
+        : VIDEO_FAILED_MESSAGE;
+    this._videoLogger.warn(
+      `AI video ${this.videoJobId(key)} failed: ${(err as Error)?.message}`
+    );
+    try {
+      await ioRedis.set(
+        key,
+        `${VIDEO_FAILED}${status}:${message}`,
+        'EX',
+        VIDEO_FAILED_SECONDS
+      );
+      await ioRedis.set(this.videoOwnerPath(key), orgId, 'EX', VIDEO_FAILED_SECONDS);
+      await this.closeVideoJob(key);
+      await this._notificationService.inAppNotification(
+        orgId,
+        VIDEO_FAILED_SUBJECT,
+        message,
+        false,
+        false,
+        'fail'
+      );
+    } catch (e) {
+      this._videoLogger.error(
+        `AI video ${this.videoJobId(key)}: recording the failure failed: ${(e as Error)?.message}`
+      );
+    }
+  }
+
+  private videoFailure(value: string | null) {
+    if (!value?.startsWith(VIDEO_FAILED)) {
+      return null;
+    }
+    const rest = value.slice(VIDEO_FAILED.length);
+    const colon = rest.indexOf(':');
+    return {
+      status: Number(rest.slice(0, colon)) || 500,
+      message: rest.slice(colon + 1) || VIDEO_FAILED_MESSAGE,
+    };
+  }
+
+  private videoJobPath(key: string) {
+    return `${VIDEO_JOB_PREFIX}${this.videoJobId(key)}`;
+  }
+
+  /** Which organisation a clip id belongs to, for lookups by id. */
+  private videoOwnerPath(key: string) {
+    return `${VIDEO_OWNER_PREFIX}${this.videoJobId(key)}`;
+  }
+
+  private async saveVideoJob(key: string, job: VideoJob) {
+    await ioRedis.set(
+      this.videoJobPath(key),
+      JSON.stringify(job),
+      'EX',
+      VIDEO_JOB_SECONDS
+    );
+  }
+
+  private async updateVideoJob(key: string, change: Partial<VideoJob>) {
+    const raw = await ioRedis.get(this.videoJobPath(key));
+    if (!raw) {
+      return;
+    }
+    await this.saveVideoJob(key, { ...(JSON.parse(raw) as VideoJob), ...change });
+  }
+
+  /**
+   * Collects clips whose process is gone (a deploy, a restart): the job
+   * outlives it in Redis with the kie.ai task id, and the first process to
+   * take the lease finishes it - the customer paid one credit and gets the
+   * clip. A job that never reached kie.ai is failed and its credit handed
+   * back. Called every minute by each backend process.
+   */
+  async resumeVideoJobs() {
+    let cursor = '0';
+    do {
+      const [next, paths] = await ioRedis.scan(
+        cursor,
+        'MATCH',
+        `${VIDEO_JOB_PREFIX}*`,
+        'COUNT',
+        100
+      );
+      cursor = next;
+      for (const path of paths) {
+        const id = path.slice(VIDEO_JOB_PREFIX.length);
+        const lease = `${VIDEO_LEASE_PREFIX}${id}`;
+        if (
+          (await ioRedis.set(lease, '1', 'EX', VIDEO_LEASE_SECONDS, 'NX')) !==
+          'OK'
+        ) {
+          continue;
+        }
+        const raw = await ioRedis.get(path);
+        if (!raw) {
+          await ioRedis.del(lease);
+          continue;
+        }
+        void this.resumeVideoJob(`${VIDEO_KEY_PREFIX}${id}`, JSON.parse(raw));
+      }
+    } while (cursor !== '0');
+  }
+
+  private async resumeVideoJob(key: string, job: VideoJob) {
+    const video = this._videoManager.getVideoByName(job.body.type);
+    const resumable = !!(
+      job.mediaId ||
+      (video?.instance.start && video.instance.finish && job.taskId)
+    );
+    this._videoLogger.log(
+      `AI video ${this.videoJobId(key)}: ${resumable ? 'resuming' : 'failing'} a job left by a stopped process`
+    );
+    try {
+      if (!resumable) {
+        throw new HttpException(VIDEO_FAILED_MESSAGE, 500);
+      }
+      await ioRedis.set(key, VIDEO_PENDING, 'EX', VIDEO_PENDING_SECONDS);
+      // Saved before its process stopped: only the finishing is left.
+      const media = job.mediaId
+        ? { id: job.mediaId }
+        : await this.makeVideo(
+            job.orgId,
+            key,
+            video!.instance,
+            job.body,
+            job.taskId
+          );
+      await this.videoMade(job.orgId, key, job.body, video!.instance, media);
+    } catch (err) {
+      await this._subscriptionService
+        .refundCredit(job.creditId)
+        .catch(() => undefined);
+      await this.videoFailed(job.orgId, key, err);
+    }
+  }
+
   /**
    * Where the clip this exact request asked for stands: being made, made (the
-   * library file), or neither. It never makes a clip and never spends a
-   * credit. A clip can outlast the load balancer's three minutes, and the
-   * browser asks here instead of sending the request again: after a failure a
-   * second POST would have started, and paid for, a new clip.
+   * library file), failed (with the reason, the credit handed back), or
+   * never asked for. It never makes a clip and never spends a credit.
    */
-  async videoResult(
-    org: Organization,
-    body: VideoDto
+  async videoResult(org: Organization, body: VideoDto) {
+    return this.videoResultByKey(org.id, this.videoKey(org.id, body));
+  }
+
+  /** The same, by the id startVideo answered with (the public API). Another
+   *  organisation's id, like an unknown one, is a 404: it must not learn the
+   *  clip exists, nor how it ended. */
+  async videoResultById(org: Organization, id: string) {
+    const key = `${VIDEO_KEY_PREFIX}${id}`;
+    if (
+      !/^[0-9a-f]{64}$/.test(id) ||
+      (await ioRedis.get(this.videoOwnerPath(key))) !== org.id
+    ) {
+      throw new HttpException('Video not found', 404);
+    }
+    const result = await this.videoResultByKey(org.id, key);
+    if (result.status === 'none') {
+      throw new HttpException('Video not found', 404);
+    }
+    return result;
+  }
+
+  private async videoResultByKey(
+    orgId: string,
+    key: string
   ): Promise<
     | { status: 'pending' }
     | { status: 'done'; media: Awaited<ReturnType<MediaService['getMediaByIdOrg']>> }
+    | { status: 'failed'; message: string }
     | { status: 'none' }
   > {
-    const key = this.videoKey(org.id, body);
-    if ((await ioRedis.get(key)) === VIDEO_PENDING) {
-      return { status: 'pending' };
+    // The id is the hash of the organisation and the request: another
+    // organisation's id names nothing here.
+    const value = await ioRedis.get(key);
+    if (value === VIDEO_PENDING) {
+      const job = await ioRedis.get(this.videoJobPath(key));
+      if (!job || (JSON.parse(job) as VideoJob).orgId === orgId) {
+        return { status: 'pending' };
+      }
+      return { status: 'none' };
     }
-    const media = await this.finishedVideo(org.id, key);
+    const failure = this.videoFailure(value);
+    if (failure) {
+      return { status: 'failed', message: failure.message };
+    }
+    const media = await this.finishedVideo(orgId, key);
     return media ? { status: 'done', media } : { status: 'none' };
   }
 
   private async finishedVideo(org: string, key: string) {
     const id = await ioRedis.get(key);
-    if (!id || id === VIDEO_PENDING) {
+    if (!id || id === VIDEO_PENDING || this.videoFailure(id)) {
       return null;
     }
     const media = await this.getMediaByIdOrg(org, id);
     if (media && !media.deletedAt) {
       return media;
+    }
+    if (!media && (await this.getMediaById(id))) {
+      // Another organisation's clip (an id passed to the public API): not
+      // ours to answer, and not ours to forget.
+      return null;
     }
     // Deleted from the library: forget it, so the same request can make the
     // clip again instead of reading as "already being made". Only

@@ -90,3 +90,30 @@ test('B-roll shows a row of clips with whole Import buttons', { tag: '@safari' }
   });
   expect(inView).toBe(true);
 });
+
+// The library picker ("From library") sits over every Video tab. Left open
+// while switching to Stock B-roll, it hid the stock search: a word typed there
+// searched the empty library and read "No videos in your library".
+test('switching tab closes the library picker, so Stock B-roll shows its search @safari', async ({ page }) => {
+  test.setTimeout(60_000);
+  await page.route('**/api/media/pixabay-videos?*', (route) =>
+    route.fulfill({
+      json: { hits: [{ id: 7, duration: 8, pageURL: 'https://pixabay.com/videos/x/', tags: 'coffee', user: 'CoffeeClip', user_id: 7, videos: {} }] },
+    })
+  );
+  await page.goto('/studio');
+  await expect(page.locator('canvas').first()).toBeVisible({ timeout: 30_000 });
+  await page.getByRole('button', { name: /Blank canvas/ }).click();
+  await page.getByRole('button', { name: 'Video', exact: true }).click();
+  await page.getByRole('button', { name: /AI Captions/ }).first().click();
+  await page.getByRole('button', { name: 'From library', exact: true }).first().click();
+  await expect(page.getByText('Library videos', { exact: true })).toBeVisible({ timeout: 15_000 });
+
+  await page.getByRole('button', { name: /Stock B-roll/ }).first().click();
+  await expect(page.getByText('Library videos', { exact: true })).toHaveCount(0);
+  const box = page.getByPlaceholder('e.g. nature timelapse, city street, ocean');
+  await expect(box).toBeVisible({ timeout: 15_000 });
+  await box.fill('coffee');
+  await box.press('Enter');
+  await expect(page.getByText('CoffeeClip').first()).toBeVisible({ timeout: 15_000 });
+});

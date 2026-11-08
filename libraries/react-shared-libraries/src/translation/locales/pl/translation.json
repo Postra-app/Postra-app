@@ -1570,7 +1570,7 @@
   "ai_image": "Obraz AI",
   "ai_videos_left": "zostało {n} kredytów na wideo",
   "video_generation_saved": "Wideo utworzone i zapisane w bibliotece mediów.",
-  "video_generation_still_running": "Wideo powstaje dłużej niż zwykle. Pojawi się w bibliotece mediów, gdy będzie gotowe.",
+  "video_generation_started": "Wideo jest w przygotowaniu. Potrwa to kilka minut, a gotowe trafi tutaj i do biblioteki mediów.",
   "billing_plan_videos": "{{count}} wideo AI miesięcznie",
   "billing_this_month": "W tym miesiącu",
   "billing_ai_images_left": "zostało {{left}} z {{total}} obrazów AI",

@@ -43,6 +43,9 @@ import {
 
 dayjs.extend(utc);
 
+const ALREADY_CONNECTED_ELSEWHERE =
+  'This channel is already connected to another Postra account. Disconnect it there first, then try again.';
+
 @Injectable()
 export class IntegrationService {
   private storage = UploadFactory.createStorage();
@@ -148,10 +151,7 @@ export class IntegrationService {
       internalId
     );
     if (existingChannel && existingChannel.organizationId !== org) {
-      throw new HttpException(
-        'This channel is already connected to another Postra account. Disconnect it there first, then try again.',
-        HttpStatus.CONFLICT
-      );
+      throw new HttpException(ALREADY_CONNECTED_ELSEWHERE, HttpStatus.CONFLICT);
     }
 
     // Parse the hostname instead of substring-matching — a URL like
@@ -766,6 +766,18 @@ export class IntegrationService {
       String(getIntegrationInformation.id)
     );
     try {
+      // The page (or Instagram account) is only known here: the callback
+      // checked the person's own id, so a page live in another organisation
+      // was connected a second time.
+      const elsewhere =
+        await this._integrationRepository.findActiveByProviderIdentifier(
+          getIntegration.providerIdentifier,
+          String(getIntegrationInformation.id)
+        );
+      if (elsewhere && elsewhere.organizationId !== org) {
+        throw new HttpException(ALREADY_CONNECTED_ELSEWHERE, HttpStatus.CONFLICT);
+      }
+
       const other = await this.connectedThroughOtherRoute(
         org,
         getIntegration.providerIdentifier,

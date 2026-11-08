@@ -13,14 +13,16 @@ describe('media storage is checked before generating', () => {
     'generatePostDesign',
     'createBrandedDraft',
     'generatePostCarousel',
-    'generateVideo',
+    // generateVideo starts the clip through startVideo.
+    'startVideo',
     'retouch',
   ])('%s', (method) => {
     const start = source.indexOf(`  async ${method}(`);
     expect(start).toBeGreaterThan(-1);
     const body = source.slice(start, start + 1200);
-    const firstBrace = body.indexOf(') {');
-    expect(body.slice(firstBrace, firstBrace + 260)).toContain('await this.assertStorage(org.id, 0);');
+    // The first thing the method waits for.
+    const firstAwait = body.indexOf('await ');
+    expect(body.slice(firstAwait)).toMatch(/^await this\.assertStorage\(org\.id, 0\);/);
   });
 });
 

@@ -55,58 +55,57 @@ test('a clip generated from the composer is attached to the post', async ({ page
   expect(problems).toEqual([]);
 });
 
-// The load balancer gives up after three minutes and a clip can take longer:
-// the clip was made, paid for and saved, but the browser got a 504, showed "server unavailable" and the post never got the
-// clip. Now the composer says it is still being made, asks where it stands
-// (a read that never makes a clip) and attaches it when it is ready.
-test('a clip that outlasts the load balancer still lands in the post', async ({ page }) => {
+// A clip takes minutes. The composer used to wait on one request for all of
+// them, locked, and past the load balancer's three minutes it lost the clip.
+// Now it starts the clip, stays usable, and attaches the clip when the server
+// has made it.
+test('the composer stays usable while a clip is made, and the clip lands in the post', async ({ page }) => {
   test.setTimeout(90_000);
+  const problems = watchForErrors(page);
   await openComposer(page, 'bluesky', 'A post that waits for its video');
   const left = async () =>
     (await (await page.request.get('/api/copilot/credits?type=ai_videos')).json()).credits as number;
   const before = await left();
-  await page.route('**/api/media/generate-video', async (route) => {
-    if (route.request().method() !== 'POST') return route.continue();
-    // The clip is made on the server; the browser only hears the gateway.
-    await route.fetch();
-    return route.fulfill({ status: 504, contentType: 'text/html', body: '<html>504</html>' });
-  });
-  let asked = 0;
+  let generating = 0;
   page.on('request', (r) => {
-    if (r.url().endsWith('/media/generate-video/result')) asked += 1;
+    if (r.method() === 'POST' && r.url().endsWith('/api/media/generate-video')) generating += 1;
   });
 
   await page.getByRole('button', { name: 'AI Video', exact: true }).click();
-  await page.getByLabel('Prompt').fill(`A kite over a beach ${Date.now()}`);
+  await page.getByLabel('Prompt').fill(`stack-kie-slow A kite over a beach ${Date.now()}`);
   await page.getByRole('button', { name: 'Generate', exact: true }).click();
 
-  await expect(page.getByText('Your video is taking longer than usual')).toBeVisible({ timeout: 30_000 });
-  await expect(page.getByText('The server is temporarily unavailable')).toHaveCount(0);
+  await expect(page.getByText('Your video is being made.')).toBeVisible({ timeout: 10_000 });
+  // Paid for at the start, not at the end.
+  await expect.poll(left).toBe(before - 1);
+  // The composer is not locked while the clip is made.
+  const editor = page.getByRole('textbox').first();
+  await editor.click();
+  await page.keyboard.type(' and some more words');
+  await expect(editor).toContainText('and some more words');
+
   await expect(page.locator('.sortable-container video, .sortable-container [src$=".mp4"]').first()).toBeAttached({
     timeout: 60_000,
   });
   await expect(page.getByText('Video created and saved to your media library.')).toBeVisible();
-  expect(asked).toBeGreaterThanOrEqual(1);
+  await expect(editor).toContainText('and some more words');
+  expect(generating).toBe(0);
   expect(await left()).toBe(before - 1);
+  expect(problems).toEqual([]);
 });
 
-// After the gateway gave up, a clip the model then failed left "taking
-// longer" on screen for good: the window stopped asking without a word.
-test('a clip that fails after the gateway gave up says so', async ({ page }) => {
+// A clip the model refused after it started left the wait on screen for good.
+test('a clip that fails after it started says why', async ({ page }) => {
   test.setTimeout(60_000);
   await openComposer(page, 'bluesky', 'A post whose video fails late');
-  await page.route('**/api/media/generate-video', async (route) => {
-    if (route.request().method() !== 'POST') return route.continue();
-    await route.fetch();
-    return route.fulfill({ status: 504, contentType: 'text/html', body: '<html>504</html>' });
-  });
   await page.getByRole('button', { name: 'AI Video', exact: true }).click();
   await page.getByLabel('Prompt').fill(`stack-kie-fail A lighthouse at dusk ${Date.now()}`);
   await page.getByRole('button', { name: 'Generate', exact: true }).click();
-  await expect(page.getByText('Your video is taking longer than usual')).toBeVisible({ timeout: 30_000 });
-  await expect(page.getByText('Could not generate the video, please try again.')).toBeVisible({
+  await expect(page.getByText('Your video is being made.')).toBeVisible({ timeout: 10_000 });
+  await expect(page.getByText('The video model could not make this video.', { exact: false })).toBeVisible({
     timeout: 30_000,
   });
+  await expect(page.locator('.sortable-container video, .sortable-container [src$=".mp4"]')).toHaveCount(0);
 });
 
 test('Billing shows the AI images and videos left this month', async ({ page }) => {
@@ -132,39 +131,4 @@ test('Billing shows the AI images and videos left this month', async ({ page }) 
     });
   }).toPass({ timeout: 20_000 });
   expect(problems).toEqual([]);
-});
-
-// On production a clip took about 2 min 45 s. The browser gave up after 2 min
-// (the shared fetch timeout) and said "Could not generate the video, please try
-// again" while the clip was made, paid for and saved to the library - trying
-// again would have paid twice.
-test('a clip that takes longer than two minutes still arrives, without an error', async ({ page }) => {
-  test.setTimeout(90_000);
-  await page.clock.install();
-  await openComposer(page, 'bluesky', 'A post that wants a slow video');
-
-  let release: () => void = () => {};
-  const held = new Promise<void>((r) => (release = r));
-  let seen = false;
-  await page.route('**/api/media/generate-video', async (route) => {
-    seen = true;
-    await held;
-    const response = await route.fetch();
-    await route.fulfill({ response });
-  });
-
-  await page.getByRole('button', { name: 'AI Video', exact: true }).click();
-  await page.getByLabel('Prompt').fill(`A slow paper boat ${Date.now()}`);
-  await page.getByRole('button', { name: 'Generate', exact: true }).click();
-  await expect.poll(() => seen).toBe(true);
-
-  await page.clock.fastForward('02:10');
-  await page.waitForTimeout(500);
-  release();
-
-  await expect(page.locator('.sortable-container video, .sortable-container [src$=".mp4"]').first()).toBeAttached({
-    timeout: 30_000,
-  });
-  await expect(page.getByText('Could not generate the video', { exact: false })).toHaveCount(0);
-  await expect(page.getByText('Video created and saved to your media library.')).toBeVisible();
 });
