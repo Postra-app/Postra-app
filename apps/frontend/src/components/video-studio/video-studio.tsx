@@ -587,6 +587,16 @@ export const VideoStudio: FC<VideoStudioProps> = ({
 
   // Formats/captions work on whatever clip is loaded — no forced trim first.
   const hasClip = !!(file || trimmedBlob);
+  // With no clip, Trim, Formats and AI Captions all show the clip picker; the
+  // tab that was asked for stays the highlighted one.
+  const needsPick = !showGoals && !hasClip && tab === 'trim';
+  const activeTab: Tab = needsPick && pendingGoal ? pendingGoal : tab;
+  const pickTitle =
+    activeTab === 'captions'
+      ? t('video_pick_for_captions', 'Choose a video to caption.')
+      : activeTab === 'formats'
+      ? t('video_pick_for_formats', 'Choose a video to resize.')
+      : t('video_select_file', 'Choose a video file to get started.');
   const tabs: { key: Tab; label: string; icon: StudioIconName; needsClip: boolean; onClick?: () => void }[] = [
     { key: 'trim', label: t('video_tab_trim', 'Trim'), icon: 'trim', needsClip: false },
     { key: 'formats', label: t('video_tab_formats', 'Formats'), icon: 'formats', needsClip: true },
@@ -616,12 +626,21 @@ export const VideoStudio: FC<VideoStudioProps> = ({
               key={tDef.key}
               onClick={() => {
                 setShowGoals(false);
+                // Formats and AI Captions used to be greyed out until a clip
+                // was loaded, with nothing saying why or where to load one.
+                // Now they open on the clip picker and carry on once it loads.
+                if (tDef.needsClip && !hasClip) {
+                  setPendingGoal(tDef.key);
+                  setTab('trim');
+                  return;
+                }
+                setPendingGoal(null);
                 if (tDef.onClick) tDef.onClick();
                 else setTab(tDef.key);
               }}
-              disabled={(tDef.needsClip && !hasClip) || isUploading || isConverting}
+              disabled={isUploading || isConverting}
               className={`text-xs px-3 py-1 rounded transition-colors ${
-                tab === tDef.key && !showGoals
+                activeTab === tDef.key && !showGoals
                   ? 'bg-newAccent text-[#06222e] font-[600]'
                   : 'bg-newColColor text-textColor hover:bg-white/[0.08]'
               } disabled:opacity-40`}
@@ -767,6 +786,19 @@ export const VideoStudio: FC<VideoStudioProps> = ({
             the render that was still going. The goals screen hides them the
             same way, because opening it used to cost the work too. Mounting
             lazily keeps the cost of the ones nobody opens at zero. */}
+        {needsPick && !showLibrary && (
+          <div className="flex flex-col items-center gap-3 p-8 text-center">
+            <div className="text-sm text-textColor">{pickTitle}</div>
+            <div className="flex gap-2">
+              <Button onClick={() => fileInputRef.current?.click()}>
+                {t('video_source_disk', 'From disk')}
+              </Button>
+              <Button secondary onClick={() => setShowLibrary(true)}>
+                {t('video_source_library', 'From library')}
+              </Button>
+            </div>
+          </div>
+        )}
         {visited.has('trim') && (
           <div hidden={showGoals || tab !== 'trim'}>
             <VideoTrimmer file={file} onTrimmed={handleTrimmedExport} />

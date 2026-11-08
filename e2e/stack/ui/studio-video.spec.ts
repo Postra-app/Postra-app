@@ -175,3 +175,27 @@ test('a trim edge moved before the waveform is ready stays where it was put', { 
   await expect.poll(() => waveformInk(page), { timeout: 15_000 }).toBeGreaterThan(0.1);
   await expect(start).toHaveAttribute('aria-valuenow', '1');
 });
+
+// Formats and AI Captions were greyed out until a clip was loaded, and nothing
+// said why or where to load one. They open on the clip picker instead and go
+// on to the tool once the clip is in.
+for (const [tool, title, ready] of [
+  ['Formats', 'Choose a video to resize.', 'Export 4 formats'],
+  ['AI Captions', 'Choose a video to caption.', 'Generate captions'],
+] as const) {
+  test(`${tool} with no clip asks for one, then opens`, { tag: '@safari' }, async ({ page, browserName }) => {
+    const problems = watchForErrors(page);
+    await page.goto('/studio?mode=video');
+    await page.getByRole('button', { name: tool, exact: true }).click();
+    await expect(page.getByText(title, { exact: true })).toBeVisible();
+    const chooser = page.waitForEvent('filechooser');
+    await page.getByRole('button', { name: 'From disk', exact: true }).last().click();
+    await (await chooser).setFiles(
+      browserName === 'webkit'
+        ? { name: 'tone.mp4', mimeType: 'video/mp4', buffer: readFileSync(`${__dirname}/fixtures/tone-two-seconds.mp4`) }
+        : { name: 'tone.webm', mimeType: 'video/webm', buffer: clip }
+    );
+    await expect(page.getByRole('button', { name: ready, exact: true })).toBeVisible({ timeout: 30_000 });
+    expect(problems).toEqual([]);
+  });
+}
