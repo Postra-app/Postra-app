@@ -42,6 +42,9 @@ The second argument is the API base URL. It defaults to
 | `triggerIntegration(channelId, methodName, data)` | `POST /public/v1/integration-trigger/:id` | Run one of the channel's tools |
 | `connectChannel(platform, { refresh })` | `GET /public/v1/social/:platform` | Sign-in address that connects a new channel |
 | `deleteIntegration(channelId)` | `DELETE /public/v1/integrations/:id` | Remove a channel and all its posts |
+| `startVideo({ type, output, customParams })` | `POST /public/v1/generate-video/start` | Start an AI video; answers at once with its `id` |
+| `video(id)` | `GET /public/v1/generate-video/:id` | Where a started video stands: `pending`, `done` (with the media item) or `failed` |
+| `videoFunction(identifier, functionName, params)` | `POST /public/v1/video/function` | A helper an engine needs before a video |
 | `analytics(channelId, { date })` | `GET /public/v1/analytics/:id` | Channel analytics over the last `date` days (default 7) |
 | `postAnalytics(postId, { date })` | `GET /public/v1/analytics/post/:postId` | Analytics of one published post |
 | `notifications({ page })` | `GET /public/v1/notifications` | Notifications, newest first, 100 per page from page 0 |

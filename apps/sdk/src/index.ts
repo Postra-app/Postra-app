@@ -18,6 +18,13 @@ export type CreatePostInput = Omit<CreatePostDto, 'posts'> & {
 };
 export type GetPostsInput = Optional<GetPostsDto, 'customer'>;
 
+// An AI video request, as the API docs describe it ("AI video").
+export type VideoInput = {
+  type: string;
+  output: 'vertical' | 'horizontal';
+  customParams: Record<string, unknown>;
+};
+
 // The public API lives under /api on app.postra.co.uk; without it every call
 // landed on the web app and came back as a redirect to the login page.
 export const DEFAULT_BASE_URL = 'https://app.postra.co.uk/api';
@@ -216,6 +223,23 @@ export default class Postra {
   // The organisation's notifications, newest first, 100 per page from page 0.
   notifications(options: { page?: number } = {}) {
     return this.request(`/notifications?${toQueryString(options)}`);
+  }
+
+  // Starts an AI video and answers at once: { status: 'pending', id }, or
+  // { status: 'done', id, media } for the same request made minutes ago.
+  startVideo(input: VideoInput) {
+    return this.json('/generate-video/start', 'POST', input);
+  }
+
+  // Where a started video stands: pending, done (with the media item) or
+  // failed (with the reason). Ask every 10 to 30 seconds.
+  video(id: string) {
+    return this.request(`/generate-video/${encodeURIComponent(id)}`);
+  }
+
+  // A helper some engines need before a video (a list of voices, say).
+  videoFunction(identifier: string, functionName: string, params: unknown = {}) {
+    return this.json('/video/function', 'POST', { identifier, functionName, params });
   }
 
   private json(path: string, method: 'POST' | 'PUT', body: unknown) {

@@ -126,6 +126,22 @@ describe('@postra/node', () => {
     }
   });
 
+  it('starts an AI video and asks where it stands, on the documented routes', async () => {
+    const postra = new Postra('key');
+    const base = 'https://app.postra.co.uk/api/public/v1';
+    const input = { type: 'veo3', output: 'vertical' as const, customParams: { prompt: 'A bus in Leeds', images: [] as string[] } };
+    await postra.startVideo(input);
+    await postra.video('ab/c');
+    await postra.videoFunction('image-text-slides', 'loadVoices');
+    expect(
+      calls.map((c) => `${c.init.method || 'GET'} ${c.url.slice(base.length)}${c.init.body ? ' ' + c.init.body : ''}`)
+    ).toEqual([
+      `POST /generate-video/start ${JSON.stringify(input)}`,
+      'GET /generate-video/ab%2Fc',
+      'POST /video/function {"identifier":"image-text-slides","functionName":"loadVoices","params":{}}',
+    ]);
+  });
+
   it('lists the media library with page and search in the query', async () => {
     next = () => respond(200, '{"pages":1,"results":[]}');
     await new Postra('key').mediaList({ page: 2, search: 'logo' });
