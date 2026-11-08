@@ -39,21 +39,8 @@ export const SwrProvider = ({ children }: { children: ReactNode }) => {
   const t = useT();
   const lastToast = useRef(0);
 
-  const report = useCallback(
-    (error: unknown, key: string, settled: boolean): void => {
-      // Already surfaced globally (dialog or toast) — not a load failure.
-      if (isFetchHandledError(error)) {
-        return;
-      }
-
-      if (leaving) {
-        return;
-      }
-      if (isNetworkError(error) && !settled) {
-        setTimeout(() => report(error, key, true), NETWORK_ERROR_GRACE_MS);
-        return;
-      }
-
+  const deliver = useCallback(
+    (error: unknown, key: string): void => {
       // The ConnectionStatus banner already says "you're offline" and stays up
       // until the connection returns; a toast repeating it is noise. Log at
       // info, not error: consoleLoggingIntegration ships warn/error to Sentry,
@@ -85,9 +72,24 @@ export const SwrProvider = ({ children }: { children: ReactNode }) => {
     },
     [toaster, t]
   );
+
   const onError = useCallback(
-    (error: unknown, key: string) => report(error, key, false),
-    [report]
+    (error: unknown, key: string): void => {
+      // Already surfaced globally (dialog or toast) — not a load failure.
+      if (isFetchHandledError(error) || leaving) {
+        return;
+      }
+      if (isNetworkError(error)) {
+        setTimeout(() => {
+          if (!leaving) {
+            deliver(error, key);
+          }
+        }, NETWORK_ERROR_GRACE_MS);
+        return;
+      }
+      deliver(error, key);
+    },
+    [deliver]
   );
 
   return (
