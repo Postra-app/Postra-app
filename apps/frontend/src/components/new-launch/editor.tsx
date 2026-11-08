@@ -624,7 +624,6 @@ export const Editor: FC<{
   const t = useT();
   const toaster = useToaster();
   const editorRef = useRef<undefined | { editor: any }>(undefined);
-  const [loading, setLoading] = useState(false);
 
   const uppy = useUppyUploader({
     // No uppy.clear() here: the finished files are already removed, and
@@ -634,7 +633,7 @@ export const Editor: FC<{
     },
     allowedFileTypes: 'image/*,video/mp4',
     onStart: () => {},
-    onEnd: () => setLoading(false),
+    onEnd: () => {},
   });
 
   const onDrop = useCallback(
@@ -651,8 +650,6 @@ export const Editor: FC<{
         );
         return;
       }
-
-      setLoading(true);
 
       for (const file of acceptedFiles) {
         uppy.addFile(file);
@@ -703,10 +700,6 @@ export const Editor: FC<{
         return;
       }
 
-      if (files.length > 0) {
-        setLoading(true);
-      }
-
       for (const file of files) {
         uppy.addFile(file);
       }
@@ -715,16 +708,11 @@ export const Editor: FC<{
   );
 
   const { getRootProps, isDragActive } = useDropzone({
-    onDrop: (files) => {
-      if (loading) {
-        toaster.show(
-          'Upload current in progress, please wait and then try again.',
-          'warning'
-        );
-        return;
-      }
-      onDrop(files);
-    },
+    // A drop while another upload runs is added to it: the uploader takes
+    // files in parallel and keeps each one (no clearing between them), the
+    // same as a paste already did. Refusing it only sent people back to try
+    // again.
+    onDrop,
     noDrag: num > 0 && comments === 'no-media',
   });
 
