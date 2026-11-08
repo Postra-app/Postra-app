@@ -60,6 +60,42 @@ test('MCP: handshake, tools and the per-organisation limit', async () => {
   }
 });
 
+// Sessions lived in one backend process's memory. With more than one process,
+// or after a restart, a connected assistant sent its session id to a process
+// that had never seen it and got 404 "Session not found" until it was
+// reconnected by hand.
+test('MCP keeps answering a client whose session another process started', async () => {
+  const prisma = database();
+  const org = await throwawayOrg(prisma, { tier: 'PRO', totalChannels: 6, channels: 0 });
+  const { apiKey } = (await prisma.organization.findUniqueOrThrow({ where: { id: org.orgId } }))!;
+  const api = await pwRequest.newContext({ baseURL: BACKEND_URL });
+  const headers = (sid?: string) => ({
+    'content-type': 'application/json',
+    accept: 'application/json, text/event-stream',
+    authorization: `Bearer ${apiKey}`,
+    ...(sid ? { 'mcp-session-id': sid } : {}),
+  });
+  const toolNames = async (sid?: string) => {
+    const res = await api.post('/mcp', { headers: headers(sid), data: { jsonrpc: '2.0', id: 7, method: 'tools/list' } });
+    expect(res.status(), await res.text()).toBe(200);
+    return parse(await res.text()).result.tools.map((t: { name: string }) => t.name);
+  };
+  try {
+    // A session id from a process that is gone (or is the other one).
+    expect(await toolNames('3f0c8a52-6d1e-4b7a-9c2d-0e5f1a2b3c4d')).toContain('integrationList');
+    // And no session at all, as the next MCP version has none.
+    expect(await toolNames()).toContain('ask_postra');
+    // Nothing for the client to hold on to.
+    const hello = await api.post('/mcp', { headers: headers(), data: init });
+    expect(hello.status()).toBe(200);
+    expect(hello.headers()['mcp-session-id']).toBeUndefined();
+  } finally {
+    await api.dispose();
+    await org.remove();
+    await prisma.$disconnect();
+  }
+});
+
 // integrationList says it lists the channels posts can go to, but it gave
 // disabled ones too, and its output schema drops "disabled", so the assistant
 // could not tell them apart and offered a channel nothing publishes to.
