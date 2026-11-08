@@ -185,6 +185,12 @@ export class S3Storage implements IUploadProvider {
     } while (token);
   }
 
+  async removeStored(item: StoredObject): Promise<void> {
+    await this._client.send(
+      new DeleteObjectCommand({ Bucket: this._bucketName, Key: item.key })
+    );
+  }
+
   async removeFile(filePath: string): Promise<void> {
     try {
       const url = new URL(filePath);

@@ -9,6 +9,9 @@ export interface IUploadProvider {
   // Every stored object, for the sweep of files nothing refers to. A storage
   // that cannot list (local disk) leaves it out and the sweep skips.
   listStored?(): AsyncGenerator<StoredObject>;
+  // Removes one listed object and throws when the storage refuses, so a
+  // sweep can count what really went (removeFile only logs a failure).
+  removeStored?(item: StoredObject): Promise<void>;
 }
 
 export interface StoredObject {

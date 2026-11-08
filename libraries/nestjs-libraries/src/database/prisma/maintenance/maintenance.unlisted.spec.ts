@@ -3,12 +3,14 @@ import { MaintenanceService } from '@gitroom/nestjs-libraries/database/prisma/ma
 // Files no row refers to at all (a replaced thumbnail, an upload never saved,
 // a test file) stayed in the bucket for good: the media sweep only looks at
 // media rows.
-const removeFile = jest.fn(async () => undefined);
+const removeFile = jest.fn(async (_path: string) => undefined);
+const removeStored = jest.fn(async (item: { path: string }) => removeFile(item.path));
 let stored: { key: string; path: string; lastModified: Date; size: number }[] = [];
 jest.mock('@gitroom/nestjs-libraries/upload/upload.factory', () => ({
   UploadFactory: {
     createStorage: () => ({
       removeFile,
+      removeStored,
       async *listStored() {
         for (const item of stored) yield item;
       },
@@ -42,6 +44,8 @@ const service = (tables: Record<string, string[]>) => {
 
 beforeEach(() => {
   removeFile.mockClear();
+  removeStored.mockClear();
+  removeStored.mockImplementation(async (item: { path: string }) => removeFile(item.path));
   stored = [];
 });
 
@@ -75,4 +79,13 @@ it('refuses when too much looks unreferenced to be real (a broken scan)', async 
   const report = await service({ Media: [] }).sweepUnlistedObjects(true);
   expect(report.refused).toBe(true);
   expect(removeFile).not.toHaveBeenCalled();
+});
+
+it('a removal the storage refuses is counted as failed, not removed', async () => {
+  stored = [object('2026/09/01/a.jpg', 60, 10), object('2026/09/01/b.jpg', 60, 20)];
+  removeStored.mockImplementationOnce(async () => {
+    throw new Error('AccessDenied');
+  });
+  const report = await service({ Media: [] }).sweepUnlistedObjects(true);
+  expect(report).toMatchObject({ removed: 1, failed: 1, bytes: 20 });
 });

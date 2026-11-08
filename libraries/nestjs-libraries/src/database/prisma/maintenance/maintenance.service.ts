@@ -1,6 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { PrismaRepository } from '@gitroom/nestjs-libraries/database/prisma/prisma.service';
 import { UploadFactory } from '@gitroom/nestjs-libraries/upload/upload.factory';
+import type { StoredObject } from '@gitroom/nestjs-libraries/upload/upload.interface';
 import dayjs from 'dayjs';
 
 /**
@@ -88,6 +89,8 @@ export interface UnlistedSweepReport {
   /** Old objects no row of any table mentions. */
   unreferenced: number;
   removed: number;
+  /** The storage refused; tried again tomorrow, and the day is not "ok". */
+  failed: number;
   bytes: number;
   /** Too many to be believable: nothing removed, the run is reported. */
   refused: boolean;
@@ -371,15 +374,16 @@ export class MaintenanceService {
       old: 0,
       unreferenced: 0,
       removed: 0,
+      failed: 0,
       bytes: 0,
       refused: false,
     };
     const storage = UploadFactory.createStorage();
-    if (!storage.listStored) {
+    if (!storage.listStored || !storage.removeStored) {
       return report;
     }
     const cutoff = dayjs().subtract(graceDays, 'day').toDate();
-    const old: { key: string; path: string; size: number }[] = [];
+    const old: StoredObject[] = [];
     for await (const item of storage.listStored()) {
       if (!STORED_KEY.test(item.key)) continue;
       report.listed++;
@@ -410,9 +414,18 @@ export class MaintenanceService {
     const again = await this.referencedStoredKeys();
     drop = drop.filter((item) => !again.has(item.key));
     for (const item of drop) {
-      await storage.removeFile(item.path);
-      report.removed++;
-      report.bytes += item.size;
+      try {
+        await storage.removeStored(item);
+        report.removed++;
+        report.bytes += item.size;
+      } catch {
+        report.failed++;
+      }
+    }
+    if (report.failed) {
+      Logger.warn(
+        `sweepUnlistedObjects: ${report.failed} object(s) could not be removed`
+      );
     }
     return report;
   }

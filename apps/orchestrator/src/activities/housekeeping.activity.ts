@@ -58,12 +58,12 @@ export class HousekeepingActivity {
     const unlisted = await this._maintenance.sweepUnlistedObjects(true);
     const agentThreads = await this._maintenance.purgeOrphanAgentMemory(true);
     this._logger.log(
-      `housekeeping: rows deleted Errors ${purge.errors}, AuditLog ${purge.auditLog}, AiUsage ${purge.aiUsage}, StripeProcessedEvent ${purge.stripeEvents}, MobilePushToken ${purge.pushTokens}; media objects removed ${sweep.removed}${sweep.failed ? `, failed ${sweep.failed}` : ''}; unlisted objects removed ${unlisted.removed} of ${unlisted.old} old (${unlisted.bytes} B)${unlisted.refused ? `, REFUSED ${unlisted.unreferenced} unreferenced` : ''}; agent threads of deleted organisations ${agentThreads}`
+      `housekeeping: rows deleted Errors ${purge.errors}, AuditLog ${purge.auditLog}, AiUsage ${purge.aiUsage}, StripeProcessedEvent ${purge.stripeEvents}, MobilePushToken ${purge.pushTokens}; media objects removed ${sweep.removed}${sweep.failed ? `, failed ${sweep.failed}` : ''}; unlisted objects removed ${unlisted.removed} of ${unlisted.old} old (${unlisted.bytes} B)${unlisted.failed ? `, failed ${unlisted.failed}` : ''}${unlisted.refused ? `, REFUSED ${unlisted.unreferenced} unreferenced` : ''}; agent threads of deleted organisations ${agentThreads}`
     );
     return {
       ...purge,
       removed: sweep.removed,
-      failed: sweep.failed + (unlisted.refused ? 1 : 0),
+      failed: sweep.failed + unlisted.failed + (unlisted.refused ? 1 : 0),
       unlisted: unlisted.removed,
       agentThreads,
     };
