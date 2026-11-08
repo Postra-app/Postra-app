@@ -3,10 +3,11 @@ import {
   PutObjectCommand,
   DeleteObjectCommand,
   HeadObjectCommand,
+  ListObjectsV2Command,
 } from '@aws-sdk/client-s3';
 import 'multer';
 import { makeId } from '@gitroom/nestjs-libraries/services/make.is';
-import { IUploadProvider } from './upload.interface';
+import { IUploadProvider, StoredObject } from './upload.interface';
 import { isSafePublicHttpsUrl } from '@gitroom/nestjs-libraries/dtos/webhooks/webhook.url.validator';
 import { ssrfSafeDispatcher } from '@gitroom/nestjs-libraries/dtos/webhooks/ssrf.safe.dispatcher';
 import { parseDataUrl } from '@gitroom/nestjs-libraries/upload/data.url';
@@ -160,6 +161,34 @@ export class S3Storage implements IUploadProvider {
     } catch {
       return null;
     }
+  }
+
+  async *listStored(): AsyncGenerator<StoredObject> {
+    let token: string | undefined;
+    do {
+      const page = await this._client.send(
+        new ListObjectsV2Command({
+          Bucket: this._bucketName,
+          ContinuationToken: token,
+        })
+      );
+      for (const item of page.Contents ?? []) {
+        if (!item.Key) continue;
+        yield {
+          key: item.Key,
+          path: `${this._cdnUrl}/${item.Key}`,
+          lastModified: item.LastModified ?? new Date(),
+          size: Number(item.Size) || 0,
+        };
+      }
+      token = page.IsTruncated ? page.NextContinuationToken : undefined;
+    } while (token);
+  }
+
+  async removeStored(item: StoredObject): Promise<void> {
+    await this._client.send(
+      new DeleteObjectCommand({ Bucket: this._bucketName, Key: item.key })
+    );
   }
 
   async removeFile(filePath: string): Promise<void> {

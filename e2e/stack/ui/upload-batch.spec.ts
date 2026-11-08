@@ -74,10 +74,30 @@ test('one file failing keeps the rest of the batch, with a warning', async ({ pa
   expect(problems.filter((p) => !expectedNoise(p))).toEqual([]);
 });
 
+// A second file dropped while the first was still uploading was refused
+// with "Upload current in progress, please wait and then try again", though
+// the uploader takes files in parallel.
+test('a file dropped while another is uploading is attached too', async ({ page }) => {
+  test.setTimeout(60_000);
+  const problems = watchForErrors(page);
+  await page.route('**/media/upload-server', async (route) => {
+    if (nameOf(route).includes('slow-')) {
+      await new Promise((resolve) => setTimeout(resolve, 2500));
+    }
+    return route.continue();
+  });
+  await openComposer(page, 'bluesky', `[stack ui] drop overlap ${Date.now()}`);
+  await drop(page, [`slow-${Date.now()}.png`]);
+  await page.waitForTimeout(300);
+  await drop(page, [`fast-${Date.now()}.png`]);
+  await expect(attached(page)).toHaveCount(2, { timeout: 15_000 });
+  await expect(page.getByText('Upload current in progress', { exact: false })).toHaveCount(0);
+  expect(problems.filter((p) => !expectedNoise(p))).toEqual([]);
+});
+
 test('a file finishing first does not drop another still uploading', async ({ page, browserName }) => {
   // Firefox drops the files of a ClipboardEvent made in script (measured: 0
-  // files, 1 in Chromium and WebKit), and a second drop during an upload is
-  // refused on purpose, so the overlap cannot be driven there.
+  // files, 1 in Chromium and WebKit); the drop test above covers it there.
   test.fixme(browserName === 'firefox', 'a scripted paste carries no files in Firefox');
   test.setTimeout(60_000);
   const problems = watchForErrors(page);
