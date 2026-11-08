@@ -373,6 +373,72 @@ test('public API: start answers with an id, the id answers where the clip stands
   }
 });
 
+// The hour after signup held only on the Studio and composer buttons: a
+// trial that signed up minutes ago got its clip through the public API (and
+// the assistant and MCP, which spend through the same place).
+test('a trial that signed up minutes ago waits the hour through the public API too', async () => {
+  const fresh = await throwawayOrg(prisma, {
+    tier: 'PRO',
+    totalChannels: 6,
+    channels: 0,
+    isTrailing: true,
+    createdAt: new Date(Date.now() - 10 * 60_000),
+  });
+  try {
+    const { apiKey } = await prisma.organization.findUniqueOrThrow({ where: { id: fresh.orgId } });
+    const marker = `Fresh trial clip ${Date.now()}`;
+    const res = await fresh.api.post('/public/v1/generate-video/start', {
+      headers: { Authorization: apiKey! },
+      data: { type: 'veo3', output: 'vertical', customParams: { prompt: marker, images: [] } },
+    });
+    expect(res.status(), await res.text()).toBe(403);
+    expect((await res.json()).message).toMatch(/^AI tools unlock one hour after signup, in 5\d minutes\./);
+    expect(await videosLeft(fresh.api)).toBe(1);
+    expect(await kieTasks(fresh.api, marker)).toHaveLength(0);
+    // Asked again, the same request is not "already being made".
+    const again = await fresh.api.post('/public/v1/generate-video/start', {
+      headers: { Authorization: apiKey! },
+      data: { type: 'veo3', output: 'vertical', customParams: { prompt: marker, images: [] } },
+    });
+    expect(again.status()).toBe(403);
+  } finally {
+    await fresh.remove();
+  }
+});
+
+// The limits the API docs promise: 5 starts and 120 lookups per 5 minutes
+// per key, and another key keeps its own.
+test('public API: 5 video starts and 120 lookups per 5 minutes per key', async () => {
+  const pro = await throwawayOrg(prisma, { tier: 'PRO', totalChannels: 6, channels: 0 });
+  const other = await throwawayOrg(prisma, { tier: 'PRO', totalChannels: 6, channels: 0 });
+  try {
+    const key = async (orgId: string) =>
+      (await prisma.organization.findUniqueOrThrow({ where: { id: orgId } })).apiKey!;
+    const headers = { Authorization: await key(pro.orgId) };
+    // An engine that does not exist: refused by validation (400), no clip,
+    // still counted.
+    const startOnce = (h: Record<string, string>) =>
+      pro.api.post('/public/v1/generate-video/start', {
+        headers: h,
+        data: { type: 'no-such-engine', output: 'vertical', customParams: { prompt: 'x', images: [] } },
+      });
+    for (let i = 0; i < 5; i++) {
+      expect((await startOnce(headers)).status()).toBe(400);
+    }
+    expect((await startOnce(headers)).status()).toBe(429);
+    expect((await startOnce({ Authorization: await key(other.orgId) })).status()).toBe(400);
+
+    const lookups = await Promise.all(
+      Array.from({ length: 120 }, () => pro.api.get(`/public/v1/generate-video/${'0'.repeat(64)}`, { headers }))
+    );
+    expect(lookups.map((r) => r.status()).filter((s) => s !== 404)).toEqual([]);
+    expect((await pro.api.get(`/public/v1/generate-video/${'0'.repeat(64)}`, { headers })).status()).toBe(429);
+  } finally {
+    await pro.remove();
+    await other.remove();
+  }
+});
+
 // A deploy or a restart stops the process making a clip. Its job stays in
 // Redis with the kie.ai task id, and another process finishes it within a
 // minute: the customer paid one credit and gets the clip. A job stopped

@@ -6,8 +6,7 @@ import {
   Injectable,
 } from '@nestjs/common';
 import { UsersService } from '@gitroom/nestjs-libraries/database/prisma/users/users.service';
-
-const AI_COOLDOWN_MS = 60 * 60 * 1000; // 1 hour
+import { aiCooldownMessage } from '@gitroom/nestjs-libraries/services/ai.cooldown';
 
 @Injectable()
 export class AccountAgeGuard implements CanActivate {
@@ -29,17 +28,9 @@ export class AccountAgeGuard implements CanActivate {
     const user = await this._usersService.getUserById(userId);
     if (!user) return false;
 
-    const accountAge = Date.now() - new Date(user.createdAt).getTime();
-    if (accountAge < AI_COOLDOWN_MS) {
-      const minutesLeft = Math.ceil(
-        (AI_COOLDOWN_MS - accountAge) / 60_000
-      );
-      throw new HttpException(
-        `AI tools unlock one hour after signup, in ${minutesLeft} ${
-          minutesLeft === 1 ? 'minute' : 'minutes'
-        }. Try our templates in the meantime!`,
-        HttpStatus.FORBIDDEN
-      );
+    const refusal = aiCooldownMessage(user.createdAt);
+    if (refusal) {
+      throw new HttpException(refusal, HttpStatus.FORBIDDEN);
     }
 
     return true;
