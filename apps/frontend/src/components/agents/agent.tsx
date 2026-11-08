@@ -271,7 +271,14 @@ const Threads: FC = () => {
               href={`/agents/${p.id}`}
               key={p.id}
             >
-              {p.title}
+              {/* An untitled chat was a link with no name to a screen reader. */}
+              {p.title ||
+                (p.createdAt
+                  ? new Date(p.createdAt).toLocaleString(undefined, {
+                      dateStyle: 'medium',
+                      timeStyle: 'short',
+                    })
+                  : p.id.slice(0, 8))}
             </Link>
           ))}
         </div>

@@ -10,7 +10,22 @@ export const watchForErrors = (page: Page) => {
       problems.push(`console: ${msg.text()}`);
     }
   });
-  page.on('pageerror', (err) => problems.push(`pageerror: ${err.message}`));
+  // WebKit reports a request the page cancelled on leaving as an uncaught
+  // "<url> due to access control checks." Only for a request that really was
+  // cancelled; anything else still counts.
+  const cancelled = new Set<string>();
+  page.on('requestfailed', (req) => {
+    if (/cancel|access control/i.test(req.failure()?.errorText || '')) {
+      cancelled.add(new URL(req.url()).pathname);
+    }
+  });
+  page.on('pageerror', (err) => {
+    const path = /\/[^\s]*?(?= due to access control checks\.$)/.exec(err.message)?.[0];
+    if (path && [...cancelled].some((c) => path.endsWith(c))) {
+      return;
+    }
+    problems.push(`pageerror: ${err.message}`);
+  });
   page.on('response', (res) => {
     if (res.status() >= 400) {
       problems.push(`${res.status()} ${res.request().method()} ${res.url()}`);

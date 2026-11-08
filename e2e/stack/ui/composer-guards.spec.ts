@@ -46,8 +46,20 @@ test('leaving the page with text in the composer asks the browser first', async 
   expect(await asked).toBe('beforeunload');
 });
 
-test('leaving the page with an untouched composer does not ask', async ({ page }) => {
+test('leaving the page with an untouched composer does not ask', async ({ page, browserName }) => {
   await openEmptyComposer(page);
+  // What the browser decides on: nothing holds the page.
+  const held = await page.evaluate(() => {
+    const event = new Event('beforeunload', { cancelable: true });
+    window.dispatchEvent(event);
+    return event.defaultPrevented;
+  });
+  expect(held).toBe(false);
+  // Playwright's WebKit never finishes closing a page through beforeunload
+  // when no dialog comes up; the check above covers it there.
+  if (browserName === 'webkit') {
+    return;
+  }
   let asked = false;
   page.on('dialog', async (dialog) => {
     asked = true;

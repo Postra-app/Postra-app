@@ -31,7 +31,10 @@ import {
 } from '@gitroom/helpers/utils/posting.times';
 import utc from 'dayjs/plugin/utc';
 import { AutopostRepository } from '@gitroom/nestjs-libraries/database/prisma/autopost/autopost.repository';
-import { RefreshIntegrationService } from '@gitroom/nestjs-libraries/integrations/refresh.integration.service';
+import {
+  RefreshIntegrationService,
+  isTransientRefreshError,
+} from '@gitroom/nestjs-libraries/integrations/refresh.integration.service';
 import { TemporalService } from 'nestjs-temporal-core';
 import { fetch } from 'undici';
 import { AuthService } from '@gitroom/helpers/auth/auth.service';
@@ -440,6 +443,8 @@ export class IntegrationService {
     return this._integrationRepository.getIntegrationsByIds(org, ids);
   }
 
+  // `'outage'`: the platform was briefly down (429, 5xx, network); the
+  // channel is not marked for reconnecting over it.
   async refreshToken(provider: SocialProvider, refresh: string) {
     try {
       const { refreshToken, accessToken, expiresIn } =
@@ -451,7 +456,7 @@ export class IntegrationService {
 
       return { refreshToken, accessToken, expiresIn };
     } catch (e) {
-      return false;
+      return isTransientRefreshError(e) ? ('outage' as const) : false;
     }
   }
 
@@ -601,6 +606,11 @@ export class IntegrationService {
       }
 
       const data = await this.refreshToken(provider, integration.refreshToken!);
+
+      if (data === 'outage') {
+        failed.push(describe);
+        continue;
+      }
 
       if (!data) {
         const flagged = await this._integrationRepository.refreshNeeded(

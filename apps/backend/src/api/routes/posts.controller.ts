@@ -1,4 +1,5 @@
 import { Throttle } from '@nestjs/throttler';
+import { withIdempotencyKey } from '@gitroom/backend/services/posts/idempotency';
 import { AccountAgeGuard } from '@gitroom/backend/services/auth/account-age.guard';
 import {
   Body,
@@ -196,7 +197,18 @@ export class PostsController {
     @Body() rawBody: any,
     // The native app sends `x-client: mobile`; without reading it here every
     // post from a phone was filed as WEB and the two were indistinguishable.
-    @Headers('x-client') client?: string
+    @Headers('x-client') client?: string,
+    @Headers('idempotency-key') idempotencyKey?: string
+  ) {
+    return withIdempotencyKey('posts', org.id, idempotencyKey, rawBody, () =>
+      this.createPostOnce(org, rawBody, client)
+    );
+  }
+
+  private async createPostOnce(
+    org: Organization,
+    rawBody: any,
+    client?: string
   ) {
     // Server-side validation — never trust the client to have validated.
     const validation = await this._postsService.validatePosts(

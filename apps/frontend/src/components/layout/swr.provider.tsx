@@ -21,18 +21,26 @@ import { useT } from '@gitroom/react/translation/get.transation.service.client';
  * them here rather than stacking a generic "something went wrong" on top. Only
  * real transport/parse failures reach the toast.
  */
+// Leaving the page cancels the requests still in flight. Safari reports each
+// as "TypeError: Load failed" before the page says it is going (pagehide),
+// which reached the console, so Sentry, as a load failure on every full
+// navigation taken mid-request. A network failure is therefore reported a
+// moment later, and not at all once the page has gone.
+let leaving = false;
+if (typeof window !== 'undefined') {
+  window.addEventListener('pagehide', () => (leaving = true));
+  // Back from the back/forward cache: the page is live again.
+  window.addEventListener('pageshow', () => (leaving = false));
+}
+const NETWORK_ERROR_GRACE_MS = 1_500;
+
 export const SwrProvider = ({ children }: { children: ReactNode }) => {
   const toaster = useToaster();
   const t = useT();
   const lastToast = useRef(0);
 
-  const onError = useCallback(
-    (error: unknown, key: string) => {
-      // Already surfaced globally (dialog or toast) — not a load failure.
-      if (isFetchHandledError(error)) {
-        return;
-      }
-
+  const deliver = useCallback(
+    (error: unknown, key: string): void => {
       // The ConnectionStatus banner already says "you're offline" and stays up
       // until the connection returns; a toast repeating it is noise. Log at
       // info, not error: consoleLoggingIntegration ships warn/error to Sentry,
@@ -63,6 +71,25 @@ export const SwrProvider = ({ children }: { children: ReactNode }) => {
       }
     },
     [toaster, t]
+  );
+
+  const onError = useCallback(
+    (error: unknown, key: string): void => {
+      // Already surfaced globally (dialog or toast) — not a load failure.
+      if (isFetchHandledError(error) || leaving) {
+        return;
+      }
+      if (isNetworkError(error)) {
+        setTimeout(() => {
+          if (!leaving) {
+            deliver(error, key);
+          }
+        }, NETWORK_ERROR_GRACE_MS);
+        return;
+      }
+      deliver(error, key);
+    },
+    [deliver]
   );
 
   return (

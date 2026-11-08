@@ -17,6 +17,7 @@ import {
   RefreshToken,
   SocialAbstract,
   ValidityMedia,
+  refreshJson,
 } from '@gitroom/nestjs-libraries/integrations/social.abstract';
 import dayjs from 'dayjs';
 import { Tool } from '@gitroom/nestjs-libraries/integrations/tool.decorator';
@@ -163,7 +164,8 @@ export class PinterestProvider
   }
 
   async refreshToken(refreshToken: string): Promise<AuthTokenDetails> {
-    const { access_token, expires_in } = await (
+    const { access_token, expires_in } = await refreshJson(
+      'Pinterest',
       await fetch(pinterestApi('/oauth/token'), {
         method: 'POST',
         headers: {
@@ -179,16 +181,17 @@ export class PinterestProvider
           redirect_uri: `${process.env.FRONTEND_URL}/integrations/social/pinterest`,
         }),
       })
-    ).json();
+    );
 
-    const { id, profile_image, username } = await (
+    const { id, profile_image, username } = await refreshJson(
+      'Pinterest',
       await fetch(pinterestApi('/user_account'), {
         method: 'GET',
         headers: {
           Authorization: `Bearer ${access_token}`,
         },
       })
-    ).json();
+    );
 
     return {
       id: id,

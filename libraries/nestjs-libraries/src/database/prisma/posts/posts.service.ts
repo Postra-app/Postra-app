@@ -1109,7 +1109,15 @@ export class PostsService {
             },
           ]),
         });
-    } catch (err) {}
+    } catch (err: any) {
+      // The post stays saved and the hourly sweep for missed posts starts it
+      // after its time; without this line nothing said why it was late.
+      console.error(
+        `[posts] could not start the publish workflow for ${postId}: ${
+          err?.message || err
+        }`
+      );
+    }
   }
 
   /**

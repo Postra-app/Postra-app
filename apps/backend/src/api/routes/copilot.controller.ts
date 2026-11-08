@@ -336,6 +336,9 @@ export class CopilotController {
       threads: list.threads.map((p) => ({
         id: p.id,
         title: p.title,
+        // A chat is titled after its first answer; until then the list
+        // names it by when it started.
+        createdAt: p.createdAt,
       })),
     };
   }

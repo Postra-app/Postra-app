@@ -786,9 +786,12 @@ export class MediaController {
       throw new BadRequestException('No file was sent');
     }
     const originalName = file.originalname;
-    if (preventSave !== 'true') {
-      await this._mediaService.assertStorage(org.id, file.size);
+    // preventSave stores a video's thumbnail with no library row. It must
+    // stay a thumbnail: an image, within the plan's storage like any upload.
+    if (preventSave === 'true' && !file.mimetype?.startsWith('image/')) {
+      throw new BadRequestException('A thumbnail must be an image');
     }
+    await this._mediaService.assertStorage(org.id, file.size);
     const getFile = await this.storage.uploadFile(file);
 
     if (preventSave === 'true') {
