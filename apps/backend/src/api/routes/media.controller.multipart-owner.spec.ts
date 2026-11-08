@@ -209,3 +209,86 @@ describe('sign-part goes only within the declared size', () => {
     expect(s3).toHaveBeenCalledTimes(1);
   });
 });
+
+// Abuse: once an upload is complete and saved, its pair must not open a way
+// back in — another part signed into it, or a second completion that saves
+// the same file twice.
+describe('after a completed upload', () => {
+  const media = {
+    assertStorage: jest.fn(async () => undefined),
+    saveFile: jest.fn(async () => ({ id: 'm1' })),
+    storedSize: jest.fn(async () => 10),
+  };
+  const controller = new MediaController(media as any, {} as any, {} as any);
+  beforeEach(() => {
+    store.clear();
+    hashes.clear();
+    s3.mockReset();
+    media.saveFile.mockClear();
+    process.env.STORAGE_PROVIDER = 's3';
+  });
+
+  it('signing another part or completing again is 404, and nothing is saved twice', async () => {
+    s3.mockImplementation(async (_e: string, _req: any, res: any) =>
+      res.status(200).json({ uploadId: 'up-9', key: '2026/10/26/z.mp4' })
+    );
+    await controller.uploadFile({ id: 'org-a' } as any, { body: { file: { name: 'z.mp4', size: 10 } } } as any, response(), 'create-multipart-upload');
+    s3.mockReset();
+    s3.mockImplementation(async () => ({ Location: 'https://cdn/2026/10/26/z.mp4', size: 10 }));
+    await controller.uploadFile({ id: 'org-a' } as any, { body: { uploadId: 'up-9', key: '2026/10/26/z.mp4', file: { name: 'z.mp4' } } } as any, response(), 'complete-multipart-upload');
+    expect(media.saveFile).toHaveBeenCalledTimes(1);
+
+    s3.mockReset();
+    for (const [endpoint, body] of [
+      ['sign-part', { uploadId: 'up-9', key: '2026/10/26/z.mp4', partNumber: 2, size: 5 }],
+      ['complete-multipart-upload', { uploadId: 'up-9', key: '2026/10/26/z.mp4' }],
+    ] as const) {
+      const res = response();
+      await controller.uploadFile({ id: 'org-a' } as any, { body } as any, res, endpoint);
+      expect(res.status).toHaveBeenCalledWith(404);
+    }
+    expect(s3).not.toHaveBeenCalled();
+    expect(media.saveFile).toHaveBeenCalledTimes(1);
+  });
+});
+
+// `preventSave` uploads a video's thumbnail without a library row. It went
+// around the storage check and took any file the route takes, a 200 MB
+// video included, so an organisation could keep writing files to the bucket
+// that no library listed and no plan limit counted.
+describe('a thumbnail upload (preventSave)', () => {
+  const file = (mimetype: string, size: number) =>
+    ({ originalname: `t.${mimetype.split('/')[1]}`, mimetype, size, buffer: Buffer.alloc(1) }) as any;
+  const build = (full = false) => {
+    const media = {
+      assertStorage: jest.fn(async () => {
+        if (full) throw Object.assign(new Error('Your media storage is full'), { status: 402 });
+      }),
+      saveFile: jest.fn(),
+    };
+    const controller = new MediaController(media as any, {} as any, {} as any);
+    const uploadFile = jest.fn(async (f: any) => ({ path: `https://cdn/2026/11/08/${f.originalname}`, originalname: f.originalname }));
+    (controller as any).storage = { uploadFile };
+    return { controller, media, uploadFile };
+  };
+
+  it('takes an image and saves no library row', async () => {
+    const { controller, media, uploadFile } = build();
+    const out = await controller.uploadSimple({ id: 'o1' } as any, file('image/jpeg', 50_000), 'true');
+    expect(out).toEqual({ path: 'https://cdn/2026/11/08/t.jpeg' });
+    expect(uploadFile).toHaveBeenCalledTimes(1);
+    expect(media.saveFile).not.toHaveBeenCalled();
+  });
+
+  it('refuses a video before anything is stored', async () => {
+    const { controller, uploadFile } = build();
+    await expect(controller.uploadSimple({ id: 'o1' } as any, file('video/mp4', 200 * 1024 * 1024), 'true')).rejects.toMatchObject({ status: 400 });
+    expect(uploadFile).not.toHaveBeenCalled();
+  });
+
+  it('a full library refuses it too', async () => {
+    const { controller, uploadFile } = build(true);
+    await expect(controller.uploadSimple({ id: 'o1' } as any, file('image/png', 50_000), 'true')).rejects.toMatchObject({ status: 402 });
+    expect(uploadFile).not.toHaveBeenCalled();
+  });
+});
