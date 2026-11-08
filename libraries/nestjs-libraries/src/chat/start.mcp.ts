@@ -5,7 +5,6 @@ import { INestApplication } from '@nestjs/common';
 import { json, Request, Response } from 'express';
 import { MastraService } from '@gitroom/nestjs-libraries/chat/mastra.service';
 import { MCPServer } from '@mastra/mcp';
-import { randomUUID } from 'crypto';
 import { OrganizationService } from '@gitroom/nestjs-libraries/database/prisma/organizations/organization.service';
 import { OAuthService } from '@gitroom/nestjs-libraries/database/prisma/oauth/oauth.service';
 import { runWithContext } from './async.storage';
@@ -250,9 +249,13 @@ export const startMcp = async (app: INestApplication) => {
         url: url,
         httpPath: url.pathname,
         options: {
-          sessionIdGenerator: () => {
-            return randomUUID();
-          },
+          // No sessions (upstream e11477ee0): Mastra kept each session in
+          // this process's memory, for good. Any other backend process, and
+          // every process after a restart, answered a client's session with
+          // 404 "Session not found", and each session held ~76 KB until the
+          // process died. Nothing here needs one: auth is bound per request
+          // (runWithContext) and no tool talks back to the client mid-call.
+          serverless: true,
           enableJsonResponse: true,
         },
         req,
@@ -322,9 +325,13 @@ export const startMcp = async (app: INestApplication) => {
         url,
         httpPath: url.pathname,
         options: {
-          sessionIdGenerator: () => {
-            return randomUUID();
-          },
+          // No sessions (upstream e11477ee0): Mastra kept each session in
+          // this process's memory, for good. Any other backend process, and
+          // every process after a restart, answered a client's session with
+          // 404 "Session not found", and each session held ~76 KB until the
+          // process died. Nothing here needs one: auth is bound per request
+          // (runWithContext) and no tool talks back to the client mid-call.
+          serverless: true,
           enableJsonResponse: true,
         },
         req,

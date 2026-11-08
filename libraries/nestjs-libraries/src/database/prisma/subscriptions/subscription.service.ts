@@ -20,6 +20,7 @@ import { makeId } from '@gitroom/nestjs-libraries/services/make.is';
 import { AuditService } from '@gitroom/nestjs-libraries/database/prisma/audit/audit.service';
 import { AiUsageService } from '@gitroom/nestjs-libraries/database/prisma/ai-usage/ai-usage.service';
 import { bustAuthContextCacheForUsers } from '@gitroom/nestjs-libraries/redis/auth-context.cache';
+import { aiCooldownMessage } from '@gitroom/nestjs-libraries/services/ai.cooldown';
 
 // The start of the current monthly period, counted from the subscription's
 // day of the month — the window AI credits are counted in.
@@ -76,7 +77,12 @@ export class SubscriptionService {
     // The trial flag too: without it a trial was held to the full plan pool.
     const organization = await this._organizationService.getOrgById(orgId);
     return this.useCredit(
-      { id: orgId, subscription, isTrailing: !!organization?.isTrailing } as any,
+      {
+        id: orgId,
+        subscription,
+        isTrailing: !!organization?.isTrailing,
+        createdAt: organization?.createdAt,
+      } as any,
       type,
       func
     );
@@ -87,6 +93,18 @@ export class SubscriptionService {
     type = 'ai_images',
     func: (reservation: { id: string }) => Promise<T>
   ): Promise<T> {
+    // Every paid image and clip comes through here, whichever way it was
+    // asked for, so the signup hour is held here too (ai.cooldown.ts).
+    const paid =
+      // @ts-ignore
+      organization?.subscription &&
+      // @ts-ignore
+      !organization.subscription.deletedAt &&
+      !organization.isTrailing;
+    const refusal = paid ? null : aiCooldownMessage(organization?.createdAt);
+    if (refusal) {
+      return Promise.reject(new HttpException(refusal, 403));
+    }
     return this._subscriptionRepository.useCredit(
       organization,
       type,

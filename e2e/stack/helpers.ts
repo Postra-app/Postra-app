@@ -94,6 +94,9 @@ export const throwawayOrg = async (
     isTrailing?: boolean;
     // A fixed id, for an organisation named in stack.env (PREVIEW_ORGANIZATIONS).
     id?: string;
+    // When the organisation signed up; two days ago unless a spec needs a
+    // fresh one (AI waits an hour after signup on a trial).
+    createdAt?: Date;
   }
 ) => {
   const tag = `${process.pid}-${Date.now()}-${++throwawayCount}`;
@@ -105,6 +108,7 @@ export const throwawayOrg = async (
       name: `Stack throwaway ${tag}`,
       apiKey: `stack-api-key-${tag}`,
       isTrailing: !!options.isTrailing,
+      createdAt: options.createdAt ?? new Date(Date.now() - 2 * 86_400_000),
     },
   });
   const user = await prisma.user.create({

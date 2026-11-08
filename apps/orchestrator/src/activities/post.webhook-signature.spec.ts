@@ -63,3 +63,21 @@ it('a changed body, another secret or an old delivery does not verify', async ()
   const t = Number(signature.match(/t=(\d+)/)![1]);
   expect(verifyWebhookSignature('whsec_one', body, signature, 300, t + 301)).toBe(false);
 });
+
+// A webhook set to some channels hears only about those; one with none set
+// hears about every channel.
+it('a webhook limited to some channels is sent only their posts', async () => {
+  const a = activity();
+  a._webhookService.getWebhooksForDelivery = async () => [
+    { id: 'all', url: 'https://all.example/hook', integrations: [], secret: 'whsec_all' },
+    { id: 'fb', url: 'https://fb.example/hook', integrations: [{ integration: { id: 'i-fb' } }], secret: 'whsec_fb' },
+  ];
+  await a.sendWebhooks('p1', 'o1', 'i-x');
+  expect(fetchMock.mock.calls.map(([url]) => String(url))).toEqual(['https://all.example/hook']);
+  fetchMock.mockClear();
+  await a.sendWebhooks('p1', 'o1', 'i-fb');
+  expect(fetchMock.mock.calls.map(([url]) => String(url)).sort()).toEqual([
+    'https://all.example/hook',
+    'https://fb.example/hook',
+  ]);
+});

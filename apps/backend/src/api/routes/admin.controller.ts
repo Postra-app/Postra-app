@@ -10,6 +10,7 @@ import {
   Query,
   Res,
   ServiceUnavailableException,
+  UseGuards,
 } from '@nestjs/common';
 import { Response } from 'express';
 import { GetUserFromRequest } from '@gitroom/nestjs-libraries/user/user.from.request';
@@ -50,9 +51,11 @@ import {
 import { canPostComments, grantedScopesOf } from '@gitroom/nestjs-libraries/integrations/social/comment.capability';
 import { redactSecretsInJson } from '@gitroom/nestjs-libraries/services/redact.secrets';
 import { isScreenshotFile, signScreenshot } from '@gitroom/backend/api/routes/problem.report.screenshot';
+import { SuperAdminGuard } from '@gitroom/backend/services/auth/super-admin.guard';
 
 @ApiTags('Admin')
 @Controller('/admin')
+@UseGuards(SuperAdminGuard)
 export class AdminController {
   constructor(
     private _errorsService: ErrorsService,
