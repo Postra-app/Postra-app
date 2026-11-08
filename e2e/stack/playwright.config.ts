@@ -137,6 +137,28 @@ export default defineConfig({
               trace: 'retain-on-failure' as const,
             },
           },
+          // The whole UI suite in another engine, on request:
+          // STACK_BROWSERS=firefox,webkit. One browser per run: they share
+          // the signed-in organisations, and three engines at once exhaust
+          // its per-organisation upload limits (429s that are not bugs).
+          ...(['firefox', 'webkit'] as const)
+            .filter((engine) =>
+              (process.env.STACK_BROWSERS || '').split(',').includes(engine)
+            )
+            .map((engine) => ({
+              name: `ui-${engine}`,
+              testMatch: /ui\/.*\.spec\.ts/,
+              use: {
+                baseURL: 'http://localhost:54000',
+                browserName: engine,
+                viewport: { width: 1440, height: 900 },
+                locale: 'en-GB',
+                timezoneId: 'Europe/London',
+                storageState: `${__dirname}/.auth/a.json`,
+                screenshot: 'only-on-failure' as const,
+                trace: 'retain-on-failure' as const,
+              },
+            })),
         ]
       : []),
   ],

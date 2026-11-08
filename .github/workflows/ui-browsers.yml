@@ -1,0 +1,75 @@
+name: UI in Firefox and WebKit
+
+# The whole UI suite of the stack tests in Firefox and in WebKit (Safari's
+# engine), once a night. Pull requests run it in Chromium plus the @safari
+# tests in WebKit (ci.yml); a difference in another engine would otherwise
+# only show up when a customer met it. Throwaway stores and local fakes only:
+# nothing here reaches production or publishes anywhere.
+#
+# One engine per job: the engines share the signed-in test organisations, and
+# running them together exhausts per-organisation limits.
+
+on:
+  schedule:
+    - cron: '20 2 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  ui:
+    runs-on: ubuntu-26.04
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        engine: [firefox, webkit]
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6.0.10
+        with:
+          run_install: false
+
+      - name: Setup Node.js (volta.node)
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: package.json
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build backend, orchestrator and frontend
+        run: pnpm build
+        env:
+          NODE_OPTIONS: '--max-old-space-size=4096'
+
+      - name: Install the browser
+        run: pnpm exec playwright install --with-deps ${{ matrix.engine }}
+
+      # Same list as ci.yml: the stack's ports kept out of the ephemeral range.
+      - name: Reserve the stack's ports
+        run: sudo sysctl -w net.ipv4.ip_local_reserved_ports=9464,53000,54000,54200,55432,56379,57233,58080,58090
+
+      - name: Stack UI tests
+        run: pnpm e2e:stack --project=ui-${{ matrix.engine }}
+        env:
+          STACK_UI: '1'
+          STACK_BROWSERS: ${{ matrix.engine }}
+
+      # Only local fakes in here: stack.env values, example.com users.
+      - name: Upload logs and screenshots
+        if: failure()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: ui-${{ matrix.engine }}
+          path: |
+            e2e/stack/.logs/
+            e2e/stack/.results/
+          retention-days: 7
+          include-hidden-files: true

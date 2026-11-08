@@ -74,7 +74,11 @@ test('one file failing keeps the rest of the batch, with a warning', async ({ pa
   expect(problems.filter((p) => !expectedNoise(p))).toEqual([]);
 });
 
-test('a file finishing first does not drop another still uploading', async ({ page }) => {
+test('a file finishing first does not drop another still uploading', async ({ page, browserName }) => {
+  // Firefox drops the files of a ClipboardEvent made in script (measured: 0
+  // files, 1 in Chromium and WebKit), and a second drop during an upload is
+  // refused on purpose, so the overlap cannot be driven there.
+  test.fixme(browserName === 'firefox', 'a scripted paste carries no files in Firefox');
   test.setTimeout(60_000);
   const problems = watchForErrors(page);
   await page.route('**/media/upload-server', async (route) => {

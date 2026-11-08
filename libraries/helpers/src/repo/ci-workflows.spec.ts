@@ -152,9 +152,8 @@ describe('CI workflows', () => {
   // The stack's backend died with EADDRINUSE on 53000 in CI. Every stack port
   // is inside Linux's ephemeral range, so the runner reserves them before the
   // stack starts; a new port in the stack config must be added to that list.
-  it('reserves every stack port on the runner before the stack starts', () => {
-    const ci = workflows.find((w) => w.name === 'ci.yml')!.text;
-    const reserved = ci
+  it.each(workflows.filter((w) => w.text.includes('e2e:stack')))('$name reserves every stack port on the runner before the stack starts', ({ text }) => {
+    const reserved = text
       .match(/ip_local_reserved_ports=([0-9,]+)/)![1]
       .split(',')
       .map(Number);
