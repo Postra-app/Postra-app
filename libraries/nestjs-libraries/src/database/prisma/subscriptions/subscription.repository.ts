@@ -414,7 +414,9 @@ export class SubscriptionRepository {
   async useCredit<T>(
     org: Organization,
     type = 'ai_images',
-    func: () => Promise<T>,
+    // Gets the reserved credit row, so work that outlives this call (an AI
+    // video finished by another process after a restart) can hand it back.
+    func: (reservation: { id: string }) => Promise<T>,
     enforce?: { limit: number; cycleStart: Date }
   ) {
     // Reserve-then-verify: check-then-insert (checkCredits -> useCredit as two
@@ -463,7 +465,7 @@ export class SubscriptionRepository {
         });
 
     try {
-      return await func();
+      return await func({ id: data.id });
     } catch (err) {
       await this._credits.model.credits.delete({
         where: {
@@ -474,4 +476,9 @@ export class SubscriptionRepository {
     }
   }
 
+  /** Hands back one reserved credit (by its row), when the work it paid for
+   *  failed after the call that reserved it was gone. */
+  async refundCredit(id: string) {
+    await this._credits.model.credits.deleteMany({ where: { id } });
+  }
 }

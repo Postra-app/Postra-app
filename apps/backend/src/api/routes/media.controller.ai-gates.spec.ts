@@ -12,6 +12,7 @@ import { join } from 'path';
 // the decorator is what this checks.
 const AI_ROUTES = [
   "/generate-video",
+  "/generate-video/start",
   "/generate-image",
   "/generate-image-with-prompt",
   "/generate-post-design",

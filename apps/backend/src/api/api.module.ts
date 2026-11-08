@@ -41,6 +41,7 @@ import { AdminController } from '@gitroom/backend/api/routes/admin.controller';
 import { AdminMfaController } from '@gitroom/backend/api/routes/admin-mfa.controller';
 import { AdminMfaService } from '@gitroom/backend/services/auth/admin-mfa.service';
 import { AuthProviderManager } from '@gitroom/backend/services/auth/providers/providers.manager';
+import { AiVideoJobsService } from '@gitroom/backend/services/media/ai-video-jobs.service';
 import { GithubProvider } from '@gitroom/backend/services/auth/providers/github.provider';
 import { GoogleProvider } from '@gitroom/backend/services/auth/providers/google.provider';
 import { FarcasterProvider } from '@gitroom/backend/services/auth/providers/farcaster.provider';
@@ -84,6 +85,7 @@ const authenticatedController = [
     ...authenticatedController,
   ],
   providers: [
+    AiVideoJobsService,
     AuthService,
     AdminMfaService,
     StripeService,

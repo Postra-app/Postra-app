@@ -62,10 +62,14 @@ export class SubscriptionService {
 
   // For background flows (autopost, generate-posts) that only hold an orgId:
   // loads the subscription so credit enforcement sees the real tier.
+  refundCredit(id: string) {
+    return this._subscriptionRepository.refundCredit(id);
+  }
+
   async useCreditByOrgId<T>(
     orgId: string,
     type: string,
-    func: () => Promise<T>
+    func: (reservation: { id: string }) => Promise<T>
   ): Promise<T> {
     const subscription =
       await this._subscriptionRepository.getSubscriptionByOrgId(orgId);
@@ -81,7 +85,7 @@ export class SubscriptionService {
   useCredit<T>(
     organization: Organization,
     type = 'ai_images',
-    func: () => Promise<T>
+    func: (reservation: { id: string }) => Promise<T>
   ): Promise<T> {
     return this._subscriptionRepository.useCredit(
       organization,

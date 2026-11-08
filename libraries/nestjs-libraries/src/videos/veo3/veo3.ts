@@ -96,6 +96,14 @@ export class Veo3 extends VideoAbstract<Veo3Params> {
     output: 'vertical' | 'horizontal',
     customParams: Veo3Params
   ): Promise<URL> {
+    return this.finish(await this.start(output, customParams));
+  }
+
+  /** Asks kie.ai for the clip and returns its task id. */
+  override async start(
+    output: 'vertical' | 'horizontal',
+    customParams: Veo3Params
+  ): Promise<string> {
     const images = (customParams?.images || []).map((p) => p.path);
     const created = (await (
       await fetch(kieUrl('/api/v1/jobs/createTask'), {
@@ -131,7 +139,11 @@ export class Veo3 extends VideoAbstract<Veo3Params> {
       );
     }
 
-    const taskId = created.data.taskId;
+    return String(created.data.taskId);
+  }
+
+  /** Waits for a kie.ai task and returns where the clip is. */
+  override async finish(taskId: string): Promise<URL> {
     for (let poll = 0; poll < MAX_POLLS; poll++) {
       if (poll) {
         await timer(POLL_MS);

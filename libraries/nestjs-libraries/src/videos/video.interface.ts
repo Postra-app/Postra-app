@@ -27,6 +27,12 @@ export abstract class VideoAbstract<T> {
     output: 'vertical' | 'horizontal',
     customParams?: T
   ): Promise<URL>;
+
+  // A model that works as a remote task (kie.ai) can be started and finished
+  // apart: the task id is kept, so a clip started before a restart is still
+  // collected by whichever process is up afterwards.
+  start?(output: 'vertical' | 'horizontal', customParams?: T): Promise<string>;
+  finish?(taskId: string): Promise<URL>;
 }
 
 export interface VideoParams {

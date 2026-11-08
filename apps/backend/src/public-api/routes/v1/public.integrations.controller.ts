@@ -4,6 +4,7 @@ import {
   Controller,
   Delete,
   Get,
+  HttpCode,
   HttpException,
   Param,
   Post,
@@ -451,6 +452,9 @@ export class PublicIntegrationsController {
     );
   }
 
+  // Waits for the clip. A clip takes minutes, longer than the load
+  // balancer's three, so clients get a 504 for most clips (the clip is still
+  // made and saved): use /generate-video/start and /generate-video/:id.
   @Post('/generate-video')
   @Throttle({ default: { ttl: 300000, limit: 5 } })
   generateVideo(
@@ -459,6 +463,25 @@ export class PublicIntegrationsController {
   ) {
     Sentry.metrics.count('public_api-request', 1);
     return this._mediaService.generateVideo(org, body);
+  }
+
+  // Starts a clip and answers at once with its id: { status: 'pending', id },
+  // or { status: 'done', id, media } for the same request made minutes ago.
+  @Post('/generate-video/start')
+  @HttpCode(200)
+  @Throttle({ default: { ttl: 300000, limit: 5 } })
+  startVideo(@GetOrgFromRequest() org: Organization, @Body() body: VideoDto) {
+    Sentry.metrics.count('public_api-request', 1);
+    return this._mediaService.startVideo(org, body);
+  }
+
+  // Where a started clip stands: pending, done (with the media), failed
+  // (with the reason; the credit is handed back) or none.
+  @Get('/generate-video/:id')
+  @Throttle({ default: { ttl: 300000, limit: 120 } })
+  videoResult(@GetOrgFromRequest() org: Organization, @Param('id') id: string) {
+    Sentry.metrics.count('public_api-request', 1);
+    return this._mediaService.videoResultById(org, id);
   }
 
   @Post('/video/function')

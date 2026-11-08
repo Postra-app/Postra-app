@@ -34,7 +34,10 @@ export class GenerateVideoTool implements AgentToolInterface {
           openWorldHint: true,
         },
       },
-      description: `Generate video to use in a post,
+      description: `Start making a video to use in a post. A video takes a few minutes, so this only starts it:
+                    tell the user it is being made and will be in their media library (with a notification) in a few minutes,
+                    and do not wait for it or call this tool again for the same video.
+                    Generate video to use in a post,
                     in case the user specified a platform that requires attachment and attachment was not provided,
                     ask if they want to generate a picture of a video.
                     In many cases 'videoFunctionTool' will need to be called first, to get things like voice id
@@ -55,12 +58,16 @@ export class GenerateVideoTool implements AgentToolInterface {
         ),
       }),
       outputSchema: z.object({
-        url: z.string(),
+        status: z.enum(['started', 'done']),
+        url: z.string().optional(),
+        message: z.string(),
       }),
       execute: async (inputData, context) => {
         checkAuth(inputData, context);
         const org = JSON.parse((context?.requestContext as any)?.get('organization') as string);
-        const value = await this._mediaService.generateVideo(org, {
+        // A clip takes minutes, longer than an assistant run: start it and
+        // let the server finish it into the library.
+        const value = await this._mediaService.startVideo(org, {
           type: inputData.identifier,
           output: inputData.output,
           customParams: inputData.customParams.reduce(
@@ -72,8 +79,17 @@ export class GenerateVideoTool implements AgentToolInterface {
           ),
         });
 
+        if (value.status === 'done' && value.media) {
+          return {
+            status: 'done' as const,
+            url: value.media.path,
+            message: 'This video was made a few minutes ago and is in the media library.',
+          };
+        }
         return {
-          url: value.path,
+          status: 'started' as const,
+          message:
+            'The video is being made. It takes a few minutes and will be in the media library, with a notification, when it is ready.',
         };
       },
     });
