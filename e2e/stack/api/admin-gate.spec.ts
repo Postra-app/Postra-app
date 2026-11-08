@@ -48,6 +48,29 @@ test('an organisation owner cannot announce, delete announcements or grant plans
   await api.dispose();
 });
 
+// Every route of the admin controller, as the owner of an organisation:
+// refused before anything is read or changed (the admin controller is
+// guarded as a whole, so a route added later is refused too).
+const ADMIN_ROUTES: [string, string][] = [
+  ['GET', '/admin/errors'], ['GET', '/admin/errors/platforms'], ['GET', `/admin/errors/${UNKNOWN}`],
+  ['GET', '/admin/organizations'], ['GET', '/admin/metrics'], ['GET', '/admin/health'],
+  ['GET', '/admin/ai-costs'], ['GET', '/admin/ai-usage'], ['GET', '/admin/growth'],
+  ['GET', '/admin/subscriptions'], ['GET', '/admin/audit/actions'], ['GET', '/admin/charges'],
+  ['GET', '/admin/integrations/providers'],
+  ['POST', '/admin/grant-lifetime'], ['POST', '/admin/comp-subscription'], ['POST', '/admin/reset-credits'],
+  ['POST', '/admin/revoke-subscription'], ['POST', '/admin/grant-admin'], ['POST', '/admin/refund-charges'],
+  ['POST', '/admin/cancel-subscription'], ['POST', '/admin/delete-user'], ['POST', '/admin/delete-organization'],
+];
+
+test('an organisation owner is refused every admin route with 403', async () => {
+  const api = await signedIn('a');
+  for (const [method, path] of ADMIN_ROUTES) {
+    const res = await api.fetch(path, { method, data: method === 'POST' ? { userId: UNKNOWN, organizationId: UNKNOWN } : undefined });
+    expect(res.status(), `${method} ${path}`).toBe(403);
+  }
+  await api.dispose();
+});
+
 test('admin routes without a session are 401', async () => {
   const api = await anonymous();
   for (const path of ADMIN_READS) {
