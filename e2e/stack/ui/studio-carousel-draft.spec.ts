@@ -46,3 +46,39 @@ test('a carousel draft keeps every slide, and Undo stays on its own slide', asyn
   await page.reload();
   await expect(page.getByText('Slide 1 of 2')).toBeVisible({ timeout: 30_000 });
 });
+
+// Every open Studio tab wrote its design to the one draft every 30 seconds,
+// changed or not, so a tab left open in the background put its older design
+// back over the newer one being worked on in another tab.
+test('a second Studio tab left alone does not overwrite the draft', { tag: '@safari' }, async ({ page, context }) => {
+  const draftTexts = (p: typeof page) =>
+    p.evaluate(() => {
+      // pagehide is when a tab writes outside its 30-second timer.
+      window.dispatchEvent(new Event('pagehide'));
+      const key = Object.keys(localStorage).find((k) => k.startsWith('postra:studio-draft:'));
+      return key ? (JSON.parse(localStorage.getItem(key)!) as Draft).canvasJson : null;
+    });
+
+  await page.goto('/studio');
+  await expect(page.locator('canvas').first()).toBeVisible({ timeout: 30_000 });
+  await page.getByRole('button', { name: /Blank canvas/ }).click();
+  await page.getByRole('button', { name: 'Text', exact: true }).click();
+  // The rail's Text adds one text; Add text a second.
+  await page.getByRole('button', { name: /Add text/ }).click();
+  // Adding a text waits for its font, so the count is polled.
+  await expect.poll(async () => textsIn(await draftTexts(page))).toBe(2);
+
+  // The second tab opens on the same draft and is then left alone.
+  const second = await context.newPage();
+  await second.goto('/studio');
+  await expect(second.getByText('Layers (1)', { exact: false }).or(second.locator('canvas').first())).toBeVisible({
+    timeout: 30_000,
+  });
+  await second.waitForTimeout(1_000);
+
+  await page.bringToFront();
+  await page.getByRole('button', { name: /Add text/ }).click();
+  await expect.poll(async () => textsIn(await draftTexts(page))).toBe(3);
+
+  expect(textsIn(await draftTexts(second))).toBe(3);
+});

@@ -198,6 +198,12 @@ const PostDesignEditor: FC<PostDesignEditorProps> = ({
   const doneJsonRef = useRef<string | null>(null);
   /** Whether this editor ever held a design, so "empty" can be read correctly. */
   const hadContentRef = useRef(false);
+  // What this tab last wrote to (or restored from) the draft. A tab writes
+  // only when its design has changed since: every open Studio tab used to
+  // write every 30 seconds, so one left open in the background put its older
+  // design back over the newer one being worked on in another tab.
+  const draftSigRef = useRef<string | null>(null);
+  const markDraftSeenRef = useRef<(() => void) | null>(null);
 
   useEffect(() => {
     if (!canvasRef.current) return;
@@ -320,6 +326,9 @@ const PostDesignEditor: FC<PostDesignEditorProps> = ({
       const liveJson = JSON.stringify(c.toJSON());
       const carousel = useCarouselStore.getState();
       const slides = draftSlides(liveJson, carousel);
+      const platformKey = useEditorStore.getState().platform.key;
+      const sig = JSON.stringify([liveJson, slides, carousel.currentSlideIndex, platformKey]);
+      if (sig === draftSigRef.current) return;
       // An empty slide on screen is not an empty carousel.
       const hasContent =
         c.getObjects().length > 0 || !!slides?.some(jsonHasObjects);
@@ -329,18 +338,32 @@ const PostDesignEditor: FC<PostDesignEditorProps> = ({
         // draft. An editor that never held anything (a second tab, say) must
         // leave the stored draft alone — otherwise simply opening Studio in
         // another tab wiped the design being worked on in the first.
-        if (hadContentRef.current) clearDraft(orgIdRef.current);
+        if (hadContentRef.current) {
+          clearDraft(orgIdRef.current);
+          draftSigRef.current = null;
+        }
         return;
       }
       const result = writeDraft(orgIdRef.current, {
         canvasJson: liveJson,
-        platformKey: useEditorStore.getState().platform.key,
+        platformKey,
         savedAt: Date.now(),
         ...(slides
           ? { slides, slideIndex: carousel.currentSlideIndex }
           : {}),
       });
+      if (result === 'saved') draftSigRef.current = sig;
       setSaveState({ result, at: Date.now() });
+    };
+    markDraftSeenRef.current = () => {
+      const liveJson = JSON.stringify(c.toJSON());
+      const carousel = useCarouselStore.getState();
+      draftSigRef.current = JSON.stringify([
+        liveJson,
+        draftSlides(liveJson, carousel),
+        carousel.currentSlideIndex,
+        useEditorStore.getState().platform.key,
+      ]);
     };
     const autosave = window.setInterval(snapshotDraft, 30_000);
     // React cleanup never runs on a browser refresh/close — pagehide is the
@@ -691,7 +714,11 @@ const PostDesignEditor: FC<PostDesignEditorProps> = ({
     // Push the restored state into history, otherwise the first undo after a
     // restore would jump back to the initial empty canvas with no way forward.
     restoreState(canvasJson)
-      .then(() => saveStateRef.current?.())
+      .then(() => {
+        saveStateRef.current?.();
+        // The draft holds this design already: nothing to write until it changes.
+        markDraftSeenRef.current?.();
+      })
       .finally(() => setRestoringDraft(false));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [canvasReady]);
