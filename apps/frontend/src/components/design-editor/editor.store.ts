@@ -1,6 +1,7 @@
 'use client';
 
 import { create } from 'zustand';
+import { DESIGN_FORMATS } from '@gitroom/nestjs-libraries/studio/design-formats';
 
 export type EditorTool =
   | 'select'
@@ -22,19 +23,10 @@ export interface PlatformSize {
   height: number;
 }
 
-// Labels stay untranslated on purpose. Every one that a user ever sees is a
-// platform name plus an aspect ratio — "IG Story (9:16)", "X Post (16:9)" —
-// and neither half translates: the names are proper nouns and the ratios are
-// universal. The one entry that would need a translation, 'custom', is
-// filtered out of the format bar and never rendered.
+// The formats come from one list shared with the server. 'custom' is the
+// editor's own: it is filtered out of the format bar and never rendered.
 export const PLATFORM_SIZES: PlatformSize[] = [
-  { key: 'instagram-feed', label: 'IG Feed (4:5)', width: 1080, height: 1350 },
-  { key: 'instagram-square', label: 'IG Square (1:1)', width: 1080, height: 1080 },
-  { key: 'instagram-story', label: 'IG Story (9:16)', width: 1080, height: 1920 },
-  { key: 'facebook-feed', label: 'FB Feed (1:1)', width: 1080, height: 1080 },
-  { key: 'linkedin-feed', label: 'LinkedIn (1:1)', width: 1200, height: 1200 },
-  { key: 'tiktok-cover', label: 'TikTok (9:16)', width: 1080, height: 1920 },
-  { key: 'x-post', label: 'X Post (16:9)', width: 1600, height: 900 },
+  ...DESIGN_FORMATS.map((f) => ({ ...f })),
   { key: 'custom', label: 'Custom', width: 1080, height: 1080 },
 ];
 

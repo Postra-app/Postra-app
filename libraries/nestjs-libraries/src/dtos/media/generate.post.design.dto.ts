@@ -9,18 +9,14 @@ import {
   ValidateNested,
 } from 'class-validator';
 import { Type } from 'class-transformer';
+import {
+  DESIGN_FORMAT_KEYS,
+  DesignFormatKey,
+} from '@gitroom/nestjs-libraries/studio/design-formats';
 
-export const POST_DESIGN_PLATFORMS = [
-  'instagram-feed',
-  'instagram-square',
-  'instagram-story',
-  'facebook-feed',
-  'linkedin-feed',
-  'tiktok-cover',
-  'x-post',
-] as const;
+export const POST_DESIGN_PLATFORMS = DESIGN_FORMAT_KEYS;
 
-export type PostDesignPlatform = (typeof POST_DESIGN_PLATFORMS)[number];
+export type PostDesignPlatform = DesignFormatKey;
 
 export class BrandKitColorsDto {
   @IsString()

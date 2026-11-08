@@ -1,4 +1,5 @@
 import { APIRequestContext, expect, test } from '@playwright/test';
+import Redis from 'ioredis';
 import { readFileSync } from 'fs';
 import { join } from 'path';
 import { database, throwawayOrg } from '../helpers';
@@ -108,6 +109,37 @@ test('images are asked for with low moderation', async () => {
     const seen = (await (await fetch('http://localhost:58090/__requests')).json()) as { path: string; moderation?: string }[];
     expect(seen.filter((r) => r.path === '/v1/images/generations').at(-1)?.moderation).toBe('low');
   } finally {
+    await pro.remove();
+  }
+});
+
+// AI Generate makes the background in the design's own shape. The editor sends
+// its format key ('x-post'), which the server used to size as the 4:5 default:
+// an X post got a portrait picture cropped to a strip.
+test('AI Generate asks for the background in the shape of the format', async () => {
+  const pro = await throwawayOrg(prisma, { tier: 'PRO', totalChannels: 6, channels: 0 });
+  // Backgrounds are cached per shape; a cached one would hide the request.
+  const redis = new Redis(process.env.REDIS_URL || 'redis://localhost:56379');
+  const sizes = async () =>
+    ((await (await fetch('http://localhost:58090/__requests')).json()) as { path: string; size?: string }[])
+      .filter((r) => r.path === '/v1/images/generations')
+      .map((r) => r.size);
+  const generate = async (platform: string) => {
+    const keys = await redis.keys('bg:*');
+    if (keys.length) await redis.del(...keys);
+    const before = (await sizes()).length;
+    const res = await pro.api.post('/media/generate-post-design', {
+      data: { prompt: `Autumn coffee week ${Date.now()}`, platform },
+    });
+    expect(res.status(), await res.text()).toBe(201);
+    return (await sizes()).slice(before);
+  };
+  try {
+    expect(await generate('x-post')).toContain('1536x1024');
+    expect(await generate('pinterest-pin')).toContain('1024x1536');
+    expect(await generate('instagram-square')).toContain('1024x1024');
+  } finally {
+    redis.disconnect();
     await pro.remove();
   }
 });

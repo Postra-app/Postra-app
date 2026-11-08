@@ -87,17 +87,17 @@ test('Trim exports a shorter MP4 with its sound', { tag: '@safari' }, async ({ p
 });
 
 test('Formats exports every format at its own size, with sound', { tag: '@safari' }, async ({ page, browserName }) => {
-  test.setTimeout(180_000);
+  test.setTimeout(240_000);
   const problems = watchForErrors(page);
   await loadClip(page, browserName);
   await page.getByRole('button', { name: 'Formats', exact: true }).click();
   for (const box of await page.getByRole('checkbox').all()) {
     if (!(await box.isChecked())) await box.check();
   }
-  await page.getByRole('button', { name: 'Export 3 formats', exact: true }).click();
-  await expect(page.getByText('All are kept', { exact: false })).toBeVisible({ timeout: 150_000 });
-  const files = await saveAll(page, 'Save to library', 3);
-  expect(files.map((f) => f.size).sort()).toEqual(['1080x1080', '1080x1920', '1920x1080']);
+  await page.getByRole('button', { name: 'Export 4 formats', exact: true }).click();
+  await expect(page.getByText('All are kept', { exact: false })).toBeVisible({ timeout: 200_000 });
+  const files = await saveAll(page, 'Save to library', 4);
+  expect(files.map((f) => f.size).sort()).toEqual(['1080x1080', '1080x1350', '1080x1920', '1920x1080']);
   for (const f of files) {
     expect(f.audioCodec).toBe(sourceAudio(browserName));
     expect(f.duration).toBeGreaterThan(1.5);

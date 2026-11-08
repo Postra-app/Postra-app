@@ -98,3 +98,25 @@ test('composer → Studio → Use in post leaves no policy violation', async ({ 
   expect(sent).toEqual([201]);
   expect(await violations()).toEqual([]);
 });
+
+// Alt text for a Studio graphic is set in the post, in Media Settings. That
+// opened from an icon that appeared on hover only, out of a keyboard's reach.
+test('Studio → Use in post → alt text set from the keyboard', { tag: '@safari' }, async ({ page }) => {
+  await openComposer(page, 'bluesky', 'A graphic with alt text');
+  const editor = page.getByRole('dialog', { name: 'Post editor' });
+  await editor.getByRole('button', { name: 'Studio', exact: true }).click();
+  await page.getByText('Blank canvas').click();
+  await page.getByRole('button', { name: 'Use in post' }).click();
+  await expect(page.getByRole('button', { name: 'Use in post' })).toHaveCount(0, { timeout: 20_000 });
+
+  const settings = editor.getByRole('button', { name: 'Media Settings' });
+  await settings.focus();
+  await page.keyboard.press('Enter');
+  const alt = 'A dark blue square with the Postra logo';
+  await page.getByLabel('Alt text (for accessibility)').fill(alt);
+  const saved = page.waitForResponse((r) => r.url().includes('/media/information') && r.request().method() === 'POST');
+  await page.getByRole('button', { name: 'Save Changes' }).click();
+  const res = await saved;
+  expect(res.status()).toBeLessThan(300);
+  expect((await res.json()).alt).toBe(alt);
+});

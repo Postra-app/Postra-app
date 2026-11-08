@@ -40,7 +40,10 @@ import {
   RetouchSpec,
   RetouchSpecSchema,
 } from '@gitroom/nestjs-libraries/studio/retouch-spec';
-import { platformDesignSize } from '@gitroom/nestjs-libraries/studio/post-design-spec';
+import {
+  DesignSize,
+  platformDesignSize,
+} from '@gitroom/nestjs-libraries/studio/post-design-spec';
 import { templateCorpus } from '@gitroom/nestjs-libraries/studio/template-corpus';
 import {
   BrandVoiceCheckDto,
@@ -85,6 +88,7 @@ const DESIGN_PLATFORM_BY_SOCIAL: Record<string, PostDesignPlatform> = {
   threads: 'instagram-feed',
   mastodon: 'instagram-feed',
   bluesky: 'instagram-feed',
+  pinterest: 'pinterest-pin',
 };
 const TEMPLATE_EMBED_CACHE_TTL = 60 * 60 * 24 * 30; // 30 days
 const RECENT_POSTS_FOR_VOICE = 5;
@@ -184,7 +188,13 @@ export class MediaService {
     return generating;
   }
 
-  async generatePostDesign(org: Organization, dto: GeneratePostDesignDto) {
+  /** `size` is for a caller that renders the design itself at a size of its
+   *  own, so the background is made in that shape, not the format's. */
+  async generatePostDesign(
+    org: Organization,
+    dto: GeneratePostDesignDto,
+    size: DesignSize = platformDesignSize(dto.platform)
+  ) {
     // A full library stops here, before any credit or model time is spent
     // on a file that could not be kept.
     await this.assertStorage(org.id, 0);
@@ -213,8 +223,7 @@ export class MediaService {
     // to the crop. The orientation is part of the cache key for the same
     // reason — a square cached under this prompt is the wrong picture for a
     // landscape design.
-    const designSize = platformDesignSize(dto.platform);
-    const orientation = orientationForSize(designSize.width, designSize.height);
+    const orientation = orientationForSize(size.width, size.height);
     const cacheKey = `bg:${orientation}:${createHash('md5')
       .update(spec.imagePrompt.trim().toLowerCase())
       .digest('hex')}`;
@@ -274,11 +283,16 @@ export class MediaService {
     // Pass one explicit language to BOTH the design and the caption so they
     // can't diverge (each generator otherwise detects language independently
     // and the brand-kit tone can tip the design to a different language).
-    const spec = await this.generatePostDesign(org, {
-      prompt: dto.prompt,
-      platform: designPlatform,
-      language: dto.language,
-    } as GeneratePostDesignDto);
+    const draftSize = platformDesignSize(dto.platform);
+    const spec = await this.generatePostDesign(
+      org,
+      {
+        prompt: dto.prompt,
+        platform: designPlatform,
+        language: dto.language,
+      } as GeneratePostDesignDto,
+      draftSize
+    );
 
     const brandKit = await this._brandKitService.getNormalized(org.id);
 
@@ -290,7 +304,7 @@ export class MediaService {
         dto.language,
         org.id
       ),
-      this._designRender.renderDesignToPng(spec, platformDesignSize(dto.platform)),
+      this._designRender.renderDesignToPng(spec, draftSize),
     ]);
 
     const uploaded = await this.storage.uploadSimple(

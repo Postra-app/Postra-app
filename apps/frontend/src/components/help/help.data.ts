@@ -601,7 +601,7 @@ export const STUDIO_VIDEO_TOOLS: StudioToolGuide[] = [
   {
     name: 'Formats',
     description:
-      'One clip, re-framed for every placement: 9:16 (Reels / TikTok / Stories), 1:1 (feed) and 16:9 (YouTube / X) with an automatic centre crop. Each variant can go to your library or straight into a post.',
+      'One clip, re-framed for every placement: 9:16 (Reels / TikTok / Stories), 4:5 and 1:1 (Instagram and Facebook feed) and 16:9 (YouTube / X) with an automatic centre crop. Each variant can go to your library or straight into a post.',
   },
   {
     name: 'AI Captions',

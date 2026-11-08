@@ -13,6 +13,8 @@
  * positions and can never drift.
  */
 
+import { designFormatByKey } from './design-formats';
+
 export type PostDesignLayout =
   | 'centered-stack'
   | 'left-aligned'
@@ -139,6 +141,10 @@ export interface DesignSize {
  * feed format and the design editor's own default.
  */
 export const platformDesignSize = (platform?: string): DesignSize => {
+  // A Studio format key ('x-post', 'pinterest-pin') is what the editor sends;
+  // a channel name ('x', 'pinterest') is what the assistant sends.
+  const format = designFormatByKey(platform);
+  if (format) return { width: format.width, height: format.height };
   switch ((platform || '').toLowerCase()) {
     case 'instagram':
     case 'instagram-standalone':
@@ -155,6 +161,8 @@ export const platformDesignSize = (platform?: string): DesignSize => {
     case 'x':
     case 'twitter':
       return { width: 1600, height: 900 };
+    case 'pinterest':
+      return { width: 1000, height: 1500 };
     default:
       return { width: 1080, height: 1350 };
   }

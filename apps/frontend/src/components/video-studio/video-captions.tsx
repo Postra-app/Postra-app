@@ -102,7 +102,15 @@ export const VideoCaptions: FC<VideoCaptionsProps> = ({ mediaId, source, onCapti
         return;
       }
       const data = await res.json();
-      setSrt(data?.srt ?? '');
+      const found = data?.srt ?? '';
+      setSrt(found);
+      // Music or noise only: say so, rather than leave an empty box.
+      if (!found.trim()) {
+        toaster.show(
+          t('video_captions_no_speech', 'No speech found in this clip, so there is nothing to caption.'),
+          'warning'
+        );
+      }
     } catch (err) {
       // A 402/403/406/429/5xx is reported globally and rejects with a marker;
       // anything else reaching here would otherwise surface as an unhandled

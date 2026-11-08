@@ -1,4 +1,5 @@
 import { HttpException, Injectable, Logger } from '@nestjs/common';
+import { segmentsToSrt, WhisperSegment } from './whisper-srt';
 import OpenAI from 'openai';
 import { shuffle } from 'lodash';
 import { zodResponseFormat } from 'openai/helpers/zod';
@@ -55,6 +56,7 @@ const PLATFORM_PROMPT_LABELS: Record<string, string> = {
   'linkedin-feed': 'LinkedIn feed',
   'tiktok-cover': 'TikTok cover',
   'x-post': 'X (Twitter)',
+  'pinterest-pin': 'Pinterest pin',
   instagram: 'Instagram',
   'instagram-standalone': 'Instagram',
   facebook: 'Facebook',
@@ -139,30 +141,27 @@ export class OpenaiService {
     if (info.size > 25 * 1024 * 1024) {
       throw new Error('Audio file exceeds Whisper 25MB limit - trim before transcribing');
     }
-    const result = await openai.audio.transcriptions.create({
+    // Segments with their confidence, not ready-made SRT: on a clip without
+    // speech Whisper makes a line up, and only the confidence shows it.
+    const result = (await openai.audio.transcriptions.create({
       file: createReadStream(audioFilePath),
       model: 'whisper-1',
-      response_format: 'srt',
+      response_format: 'verbose_json',
+      timestamp_granularities: ['segment'],
       // "Auto-detect" reaches us as an empty string, and the SDK serialises
       // that into the multipart form as `language=`, which the API rejects.
       // Omitting the field is what auto-detect actually means.
       language: language?.trim() || undefined,
-    });
-    const srt = typeof result === 'string' ? result : '';
-    // Whisper bills per audio minute but the srt response carries no usage —
-    // the last subtitle timecode is a good-enough duration proxy.
-    const timecodes = srt.match(/\d{2}:\d{2}:\d{2},\d{3}/g);
-    const last = timecodes?.[timecodes.length - 1];
-    if (last) {
-      const [h, m, sec] = last.replace(',', '.').split(':');
+    })) as unknown as { duration?: number; segments?: WhisperSegment[] };
+    const srt = segmentsToSrt(result.segments ?? []);
+    // Whisper bills per audio minute; verbose_json says how long the audio was.
+    if (result.duration) {
       recordAiUsage({
         organizationId: orgId ?? null,
         engine: 'whisper',
         model: 'whisper-1',
         unit: 'seconds',
-        inputAmount: Math.ceil(
-          parseInt(h, 10) * 3600 + parseInt(m, 10) * 60 + parseFloat(sec)
-        ),
+        inputAmount: Math.ceil(result.duration),
       });
     }
     return srt;

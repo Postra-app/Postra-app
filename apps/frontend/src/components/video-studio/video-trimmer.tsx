@@ -286,13 +286,8 @@ export const VideoTrimmer: FC<VideoTrimmerProps> = ({ file, onTrimmed }) => {
     }
   }, [file, trimStart, trimEnd, onTrimmed, t, toaster, job]);
 
-  if (!file) {
-    return (
-      <div className="text-xs text-textColor/60 p-4 text-center">
-        {t('video_select_file', 'Choose a video file to get started.')}
-      </div>
-    );
-  }
+  // Without a clip the studio shows the clip picker in this place.
+  if (!file) return null;
 
   return (
     <div className="flex flex-col gap-3 p-3">

@@ -18,6 +18,7 @@ export type StudioPlatformKey =
   | 'linkedin'
   | 'tiktok'
   | 'x'
+  | 'pinterest'
   | 'custom';
 
 export interface StudioBrandRef {
