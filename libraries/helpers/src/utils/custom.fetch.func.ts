@@ -21,15 +21,6 @@ export const customFetch = (
   secured: boolean = true
 ) => {
   return async function newFetch(url: string, options: RequestInit = {}) {
-    // ?loggedAuth= is the mobile-WebView auth bridge and must work ONLY on
-    // the /provider/ pages built for it. Honoring it everywhere lets a link
-    // pin a victim's session to an attacker's JWT (session fixation) and
-    // leaks tokens via history/referrer/ALB logs.
-    const loggedAuth =
-      typeof window === 'undefined' ||
-      !window.location.pathname.startsWith('/provider/')
-        ? undefined
-        : new URL(window.location.href).searchParams.get('loggedAuth');
     const newRequestObject = await params?.beforeRequest?.(url, options);
     const authNonSecuredCookie =
       typeof document === 'undefined'
@@ -80,7 +71,6 @@ export const customFetch = (
             ? {}
             : { 'Content-Type': 'application/json' }),
           Accept: 'application/json',
-          ...(loggedAuth ? { auth: loggedAuth } : {}),
           ...options?.headers,
           ...(auth
             ? { auth }

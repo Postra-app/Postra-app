@@ -31,11 +31,21 @@ describe('requestLanguage', () => {
     expect(await requestLanguage()).toBe('en');
   });
 
-  // (provider) and (extension) passed language="en": the server rendered
-  // English for a Polish browser, and the browser, starting on the server's
-  // language, saved "en" over the visitor's choice.
+  // A language parked (German and twelve others held a third of the
+  // texts) must not come back from a cookie saved before, nor from a device
+  // that asks for it: English, like any language Postra does not offer.
+  it('a saved or device language Postra no longer offers renders English', async () => {
+    Object.assign(jar, { cookie: 'de', header: 'fr' });
+    expect(await requestLanguage()).toBe('en');
+    Object.assign(jar, { cookie: 'de', header: 'pl' });
+    expect(await requestLanguage()).toBe('pl');
+  });
+
+  // (extension) passed language="en" (and (provider), since removed): the
+  // server rendered English for a Polish browser, and the browser, starting
+  // on the server's language, saved "en" over the visitor's choice.
   it('every layout renders the request language', () => {
-    for (const group of ['(app)', '(provider)', '(extension)']) {
+    for (const group of ['(app)', '(extension)']) {
       const layout = readFileSync(
         join(__dirname, '..', '..', 'app', group, 'layout.tsx'),
         'utf8'

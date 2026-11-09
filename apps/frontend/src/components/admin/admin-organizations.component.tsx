@@ -7,7 +7,7 @@ import { useFetch } from '@gitroom/helpers/utils/custom.fetch';
 import { useT } from '@gitroom/react/translation/get.transation.service.client';
 import { Input } from '@gitroom/react/form/input';
 import { useDebouncedSearch } from '@gitroom/frontend/components/admin/use-debounced-search';
-import { tierBadgeClass, tierLabel, withReason } from './admin-ui';
+import { tierBadgeClass, tierName, withReason } from './admin-ui';
 import { deleteDialog } from '@gitroom/react/helpers/delete.dialog';
 import { useToaster } from '@gitroom/react/toaster/toaster';
 
@@ -238,7 +238,7 @@ export const AdminOrganizationsComponent = () => {
                       org.subscription?.subscriptionTier
                     )}
                   >
-                    {tierLabel(org.subscription?.subscriptionTier)}
+                    {tierName(org.subscription?.subscriptionTier)}
                   </span>
                 </td>
                 <td className="p-[12px] text-[13px] text-newTextColor/60">

@@ -92,3 +92,33 @@ test('an announcement opens from the keyboard', async ({ page }) => {
   await page.keyboard.press('Enter');
   await expect(page.getByText('Publishing pauses for ten minutes at 23:00 UK time.')).toBeVisible();
 });
+
+// A click anywhere else
+// closes the list, as every popover in the app does.
+test('the notification list closes on a click outside it', async ({ page }) => {
+  await page.goto('/launches');
+  await page.getByRole('button', { name: 'Notifications', exact: true }).click();
+  const list = page.locator('#notification-popup');
+  await expect(list).toBeVisible();
+  await page.locator('main, body').first().click({ position: { x: 5, y: 400 } });
+  await expect(list).toBeHidden();
+});
+
+// Only complete languages. A German browser used to get a
+// German-English mix (686 of 1972 texts); now it gets English, and the
+// language dialog offers English and Polish only.
+test.describe('a device in a language Postra does not offer', () => {
+  test.use({ locale: 'de-DE', extraHTTPHeaders: { 'accept-language': 'de-DE,de;q=0.9' } });
+
+  test('gets English, and the dialog offers English and Polish', async ({ page, context }) => {
+    await context.clearCookies({ name: 'i18next' });
+    await page.goto('/launches');
+    await expect(page.locator('html')).toHaveAttribute('lang', 'en');
+    await page.getByRole('button', { name: 'Change Language' }).click();
+    const dialog = page.getByRole('dialog', { name: 'Change Language' });
+    await expect(dialog.getByRole('button', { name: 'English' })).toBeVisible();
+    await expect(dialog.getByRole('button', { name: 'polski' })).toBeVisible();
+    await expect(dialog.getByRole('button', { name: /Deutsch/ })).toHaveCount(0);
+    await expect(dialog.getByRole('button', { name: /Français/ })).toHaveCount(0);
+  });
+});

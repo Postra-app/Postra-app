@@ -1,5 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { expect, Page, test } from '@playwright/test';
+import { database } from '../helpers';
+import { USERS } from '../seed';
 
 // axe (WCAG 2.2 A/AA) on the screens a customer lives in (P8). Critical
 // and serious violations fail the test. Measured on production 2026-10-04
@@ -24,6 +26,8 @@ const SCREENS = [
   '/agents',
   '/plugs',
   '/help',
+  // The page a mistyped address lands on.
+  '/this-page-does-not-exist',
   // Studio, each tab as a customer opens it.
   '/studio',
   '/studio?mode=video',
@@ -58,6 +62,39 @@ for (const screen of SCREENS) {
 
 test.describe('signed out', () => {
   test.use({ storageState: { cookies: [], origins: [] } });
+
+  // The public preview a customer sends to their client: the
+  // one screen people outside Postra see.
+  test('axe: /p/[id] public preview', async ({ page }) => {
+    const prisma = database();
+    const channel = await prisma.integration.findUniqueOrThrow({ where: { id: USERS.a.channel.id } });
+    const post = await prisma.post.create({
+      data: {
+        organizationId: channel.organizationId,
+        integrationId: USERS.a.channel.id,
+        group: `a11y-preview-${Date.now()}`,
+        content: '<p>A post the client reviews before it goes out.</p>',
+        publishDate: new Date(Date.now() + 2 * 86_400_000),
+      },
+    });
+    try {
+      await page.goto(`/p/${post.id}?share=true`);
+      await page.waitForLoadState('networkidle');
+      await expect(page.getByText('A post the client reviews')).toBeVisible();
+      expect(await violations(page)).toEqual([]);
+    } finally {
+      await prisma.post.delete({ where: { id: post.id } });
+      await prisma.$disconnect();
+    }
+  });
+
+  // A channel-connect link someone was sent, here an expired one.
+  test('axe: /connect/[provider]/[token]', async ({ page }) => {
+    await page.goto('/connect/bluesky/expired-token');
+    await page.waitForLoadState('networkidle');
+    await expect(page.getByText(/expired/i)).toBeVisible();
+    expect(await violations(page)).toEqual([]);
+  });
 
   test('axe: /auth/login', async ({ page }) => {
     await page.goto('/auth/login');

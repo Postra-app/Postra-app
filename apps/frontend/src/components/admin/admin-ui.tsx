@@ -2,6 +2,7 @@
 
 import { ButtonHTMLAttributes, DetailedHTMLProps, FC } from 'react';
 import { clsx } from 'clsx';
+import { planLabels } from '@gitroom/nestjs-libraries/database/prisma/subscriptions/pricing';
 
 type Variant = 'primary' | 'secondary' | 'ghost' | 'danger';
 
@@ -137,6 +138,17 @@ export const deleteOutcome = (
  * colour.
  */
 export const tierLabel = (tier?: string | null) => tier || 'FREE';
+
+/**
+ * The plan as the rest of Postra names it (Starter, Pro, Business) — the
+ * panel showed the enum, so "ULTIMATE" in the admin was "Business" on the
+ * landing page and in Billing. No subscription is "Free" here,
+ * not planLabels' "Trial": in the admin FREE means no plan at all.
+ */
+export const tierName = (tier?: string | null) => {
+  const key = tierLabel(tier);
+  return key === 'FREE' ? 'Free' : planLabels[key] ?? key;
+};
 
 const tierBadgeColors: Record<string, string> = {
   ULTIMATE: 'bg-purple-500/20 text-purple-400 border-purple-500/30',

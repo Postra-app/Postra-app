@@ -4,6 +4,7 @@ import {
   serverReason,
   tierBadgeClass,
   tierLabel,
+  tierName,
   withReason,
 } from '@gitroom/frontend/components/admin/admin-ui';
 import { CHANNEL_STATES } from '@gitroom/nestjs-libraries/database/prisma/integrations/channel.state';
@@ -164,5 +165,26 @@ describe('formatExpiry', () => {
 
   it('never rounds a live token down to zero', () => {
     expect(formatExpiry(20)).toBe('in 1m');
+  });
+});
+
+/**
+ * The panel printed the enum ("ULTIMATE", "STANDARD") where the landing page,
+ * Billing and the comp menu's customer say Business and Starter.
+ */
+describe('tierName', () => {
+  it('names paid plans like the rest of Postra', () => {
+    expect(tierName('STANDARD')).toBe('Starter');
+    expect(tierName('PRO')).toBe('Pro');
+    expect(tierName('ULTIMATE')).toBe('Business');
+  });
+
+  it('says Free for no plan, not Trial', () => {
+    expect(tierName(null)).toBe('Free');
+    expect(tierName('FREE')).toBe('Free');
+  });
+
+  it('shows a tier it does not know as it is', () => {
+    expect(tierName('MYSTERY')).toBe('MYSTERY');
   });
 });

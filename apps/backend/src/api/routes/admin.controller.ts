@@ -52,6 +52,7 @@ import { canPostComments, grantedScopesOf } from '@gitroom/nestjs-libraries/inte
 import { redactSecretsInJson } from '@gitroom/nestjs-libraries/services/redact.secrets';
 import { isScreenshotFile, signScreenshot } from '@gitroom/backend/api/routes/problem.report.screenshot';
 import { SuperAdminGuard } from '@gitroom/backend/services/auth/super-admin.guard';
+import { countPostsSince } from '@gitroom/nestjs-libraries/database/prisma/posts/posts-published.count';
 
 @ApiTags('Admin')
 @Controller('/admin')
@@ -541,11 +542,18 @@ export class AdminController {
     const aiCalls24h = await this._prisma.credits.count({
       where: { createdAt: { gte: dayjs().subtract(24, 'hour').toDate() } },
     });
+    // From the Post rows, like Stats: Temporal's own counter starts afresh in
+    // every new process and lost most publishes of a quiet day.
+    const counted = await countPostsSince(
+      (args) => this._prisma.post.count(args as any),
+      dayjs().subtract(24, 'hour').toDate()
+    );
+    const publish24h = { completed: counted.published, failed: counted.failed };
 
     const token = process.env.GRAFANA_SA_TOKEN;
     const grafanaUrl = process.env.GRAFANA_URL || 'https://postra.grafana.net';
     if (!token) {
-      return { enabled: false, aiCalls24h };
+      return { enabled: false, aiCalls24h, publish24h };
     }
 
     // Same PromQL as the Tier 1 dashboards (observability/dashboards/generate.py)
@@ -611,8 +619,6 @@ export class AdminController {
               'B',
               'histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket[5m])) by (le))'
             ),
-            instant('C', 'sum(increase(temporal_workflow_completed[24h]))'),
-            instant('D', 'sum(increase(temporal_workflow_failed[24h]))'),
           ],
         })
       );
@@ -626,19 +632,12 @@ export class AdminController {
           .map((t: number, i: number) => [t, vals[i]] as [number, number])
           .filter((p: [number, number]) => p[1] != null);
       };
-      const last = (refId: string) => {
-        const s = series(refId);
-        return s.length ? s[s.length - 1][1] : 0;
-      };
 
       return {
         enabled: true,
         requestRate: series('A'),
         latencyP95: series('B'),
-        publish24h: {
-          completed: Math.round(last('C')),
-          failed: Math.round(last('D')),
-        },
+        publish24h,
         aiCalls24h,
       };
     } catch (e: any) {

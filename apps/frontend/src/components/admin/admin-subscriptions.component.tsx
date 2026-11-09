@@ -4,7 +4,7 @@ import { useCallback } from 'react';
 import useSWR from 'swr';
 import { useFetch } from '@gitroom/helpers/utils/custom.fetch';
 import { useT } from '@gitroom/react/translation/get.transation.service.client';
-import { tierBadgeClass } from './admin-ui';
+import { tierBadgeClass, tierName } from './admin-ui';
 
 interface SubscriptionOrg {
   id: string;
@@ -122,7 +122,7 @@ export const AdminSubscriptionsComponent = () => {
               return (
                 <div key={entry.tier} className="flex flex-col gap-[4px]">
                   <div className="flex items-center justify-between text-[13px]">
-                    <span>{entry.tier}</span>
+                    <span>{tierName(entry.tier)}</span>
                     <span className="text-newTextColor/50">
                       {entry.count.toLocaleString()}
                     </span>
@@ -222,7 +222,7 @@ export const AdminSubscriptionsComponent = () => {
                       </td>
                       <td className="p-[12px] text-[13px]">
                         <span className={tierBadgeClass(sub.subscriptionTier)}>
-                          {sub.subscriptionTier}
+                          {tierName(sub.subscriptionTier)}
                         </span>
                       </td>
                       <td className="p-[12px] text-[13px] text-newTextColor/70">

@@ -12,6 +12,7 @@ import {
   startOfWeek,
   today,
 } from '@gitroom/frontend/components/admin/admin-dates';
+import { platformName } from '@gitroom/frontend/components/launches/platform.name';
 
 interface PerSocial {
   provider: string;
@@ -99,7 +100,7 @@ const PerSocialTable: FC<{ title: string; block: StatsBlock }> = ({
           key={row.provider}
           className="grid grid-cols-[1fr_120px] gap-[12px] px-[12px] py-[10px] text-[13px] border-b border-newTableBorder last:border-b-0"
         >
-          <div className="capitalize">{row.provider}</div>
+          <div>{platformName(row.provider)}</div>
           <div className="text-right">{row.count.toLocaleString()}</div>
         </div>
       ))

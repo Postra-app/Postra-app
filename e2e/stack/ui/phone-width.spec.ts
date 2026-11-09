@@ -1,4 +1,6 @@
-import { expect, test } from '@playwright/test';
+import { expect, Page, test } from '@playwright/test';
+import { database } from '../helpers';
+import { USERS } from '../seed';
 
 // The web app at phone width (390 px, iPhone 14/15): no screen scrolls
 // sideways (P8). A page wider than the phone hides its right edge — often
@@ -9,6 +11,9 @@ const SCREENS = [
   '/launches',
   '/launches?display=day',
   '/launches?display=list',
+  // The month view and the 404 page were never measured.
+  '/launches?display=month',
+  '/this-page-does-not-exist',
   '/settings',
   '/media',
   '/analytics',
@@ -20,27 +25,63 @@ const SCREENS = [
   '/studio',
 ];
 
+const fitsThePhone = async (page: Page, screen: string) => {
+  await page.goto(screen);
+  await page.waitForLoadState('networkidle');
+  expect(await page.evaluate(() => window.innerWidth)).toBe(390);
+  const overflow = await page.evaluate(() => {
+    const width = document.documentElement.clientWidth;
+    return [...document.querySelectorAll('body *')]
+      .filter((el) => {
+        const r = el.getBoundingClientRect();
+        const style = getComputedStyle(el);
+        return r.width > 0 && r.right > width + 1 && style.position !== 'fixed' &&
+          !el.closest('[class*="overflow-x-auto"], [class*="overflow-auto"], .overflow-hidden');
+      })
+      .slice(0, 5)
+      .map((el) => `${el.tagName.toLowerCase()}.${String(el.className).slice(0, 60)} → ${Math.round(el.getBoundingClientRect().right)}px`);
+  });
+  const scrollWidth = await page.evaluate(() => document.documentElement.scrollWidth);
+  expect({ scrollWidth, overflow }).toEqual({ scrollWidth: 390, overflow: [] });
+};
+
 for (const screen of SCREENS) {
   test(`390 px: ${screen} does not scroll sideways`, async ({ page }) => {
-    await page.goto(screen);
-    await page.waitForLoadState('networkidle');
-    expect(await page.evaluate(() => window.innerWidth)).toBe(390);
-    const overflow = await page.evaluate(() => {
-      const width = document.documentElement.clientWidth;
-      return [...document.querySelectorAll('body *')]
-        .filter((el) => {
-          const r = el.getBoundingClientRect();
-          const style = getComputedStyle(el);
-          return r.width > 0 && r.right > width + 1 && style.position !== 'fixed' &&
-            !el.closest('[class*="overflow-x-auto"], [class*="overflow-auto"], .overflow-hidden');
-        })
-        .slice(0, 5)
-        .map((el) => `${el.tagName.toLowerCase()}.${String(el.className).slice(0, 60)} → ${Math.round(el.getBoundingClientRect().right)}px`);
-    });
-    const scrollWidth = await page.evaluate(() => document.documentElement.scrollWidth);
-    expect({ scrollWidth, overflow }).toEqual({ scrollWidth: 390, overflow: [] });
+    await fitsThePhone(page, screen);
   });
 }
+
+// What people without a session open on a phone: sign-in, sign-up, a
+// forgotten password and the preview a client is sent.
+test.describe('signed out', () => {
+  test.use({ storageState: { cookies: [], origins: [] } });
+
+  for (const screen of ['/auth/login', '/auth/register', '/auth/forgot']) {
+    test(`390 px: ${screen} does not scroll sideways`, async ({ page }) => {
+      await fitsThePhone(page, screen);
+    });
+  }
+
+  test('390 px: a public post preview does not scroll sideways', async ({ page }) => {
+    const prisma = database();
+    const channel = await prisma.integration.findUniqueOrThrow({ where: { id: USERS.a.channel.id } });
+    const post = await prisma.post.create({
+      data: {
+        organizationId: channel.organizationId,
+        integrationId: channel.id,
+        group: `phone-preview-${Date.now()}`,
+        content: '<p>A long first line a client reads on the bus, with a link https://postra.co.uk/docs/guide/channels/ in it.</p>',
+        publishDate: new Date(Date.now() + 86_400_000),
+      },
+    });
+    try {
+      await fitsThePhone(page, `/p/${post.id}?share=true`);
+    } finally {
+      await prisma.post.delete({ where: { id: post.id } });
+      await prisma.$disconnect();
+    }
+  });
+});
 
 // The Agent's chat history on a phone: with many chats every row was squeezed
 // below its text and the titles were cut in half (seen on production with 20
