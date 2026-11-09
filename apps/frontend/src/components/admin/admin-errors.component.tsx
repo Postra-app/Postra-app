@@ -1,6 +1,7 @@
 'use client';
 
 import React, { FC, useCallback, useMemo, useState } from 'react';
+import { platformName } from '@gitroom/frontend/components/launches/platform.name';
 import useSWR from 'swr';
 import copy from 'copy-to-clipboard';
 import { useFetch } from '@gitroom/helpers/utils/custom.fetch';
@@ -117,7 +118,7 @@ const ErrorDetailsModal: FC<{ row: ErrorRow }> = ({ row }) => {
       <div className="grid grid-cols-2 gap-[12px] text-[13px] mb-[12px]">
         <div>
           <div className="opacity-60">Platform</div>
-          <div>{row.platform}</div>
+          <div>{platformName(row.platform)}</div>
         </div>
         <div>
           <div className="opacity-60">Created</div>
@@ -311,8 +312,10 @@ export const AdminErrorsComponent: FC = () => {
       </div>
 
       <div className="flex flex-wrap gap-[12px] items-end bg-white/[0.03] border border-newTableBorder rounded-[8px] p-[12px]">
-        <div className="flex flex-col gap-[6px]">
-          <div className="text-[12px] opacity-70">Platform</div>
+        {/* A caption in a <label>, so the select is named "Platform" and not
+            just "combo box" (axe select-name). */}
+        <label className="flex flex-col gap-[6px]">
+          <span className="text-[12px] opacity-70">Platform</span>
           <select
             value={platform}
             onChange={(e) => {
@@ -324,16 +327,17 @@ export const AdminErrorsComponent: FC = () => {
             <option value="">All platforms</option>
             {(platforms || []).map((p) => (
               <option key={p} value={p}>
-                {p}
+                {platformName(p)}
               </option>
             ))}
           </select>
-        </div>
+        </label>
 
         <div className="flex flex-col gap-[6px]">
-          <div className="text-[12px] opacity-70">Email contains</div>
+          <div className="text-[12px] opacity-70" id="admin-errors-email">Email contains</div>
           <div className="flex gap-[8px]">
             <input
+              aria-labelledby="admin-errors-email"
               value={emailInput}
               onChange={(e) => setEmailInput(e.target.value)}
               onKeyDown={(e) => {
@@ -359,8 +363,8 @@ export const AdminErrorsComponent: FC = () => {
           Unknown Error first
         </label>
 
-        <div className="flex flex-col gap-[6px]">
-          <div className="text-[12px] opacity-70">Per page</div>
+        <label className="flex flex-col gap-[6px]">
+          <span className="text-[12px] opacity-70">Per page</span>
           <select
             value={limit}
             onChange={(e) => {
@@ -375,7 +379,7 @@ export const AdminErrorsComponent: FC = () => {
               </option>
             ))}
           </select>
-        </div>
+        </label>
 
         <Button secondary onClick={onClear}>
           Clear filters
@@ -431,7 +435,7 @@ export const AdminErrorsComponent: FC = () => {
                         : 'opacity-90'
                     }
                   >
-                    {row.platform}
+                    {platformName(row.platform)}
                   </span>
                 </div>
                 <div className="break-all">

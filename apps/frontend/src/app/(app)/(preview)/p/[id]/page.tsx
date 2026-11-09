@@ -102,9 +102,12 @@ export default async function Auth(props: {
   };
   return (
     <div>
-      <div className="mx-auto w-full max-w-[1346px] py-3 text-white">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center space-x-4">
+      {/* At 390 px the header did not wrap: the logo was squeezed to a few
+          pixels and the publication date ran off the right edge of the one
+          page a client opens on a phone . */}
+      <div className="mx-auto w-full max-w-[1346px] py-3 px-[16px] lg:px-0 text-white">
+        <div className="flex flex-wrap items-center justify-between gap-[12px]">
+          <div className="flex shrink-0 items-center space-x-4">
             <div className="flex items-center space-x-2">
               <div className="min-w-[55px]">
                 <Link
@@ -133,7 +136,7 @@ export default async function Auth(props: {
               </div>
             </div>
           </div>
-          <div className="text-sm text-gray-400 flex items-center gap-[20px]">
+          <div className="text-sm text-gray-400 flex flex-wrap items-center gap-[12px] min-w-0">
             {!!searchParams?.share && (
               <>
                 <div>
@@ -142,7 +145,7 @@ export default async function Auth(props: {
                 <ClosePreviewButton />
               </>
             )}
-            <div className="flex-1">
+            <div className="min-w-0">
               {t('publication_date', 'Publication Date:')}{' '}
               <RenderPreviewDateClient date={post[0].publishDate} />
             </div>

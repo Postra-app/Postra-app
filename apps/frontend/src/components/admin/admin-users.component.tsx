@@ -7,7 +7,7 @@ import { useUser } from '@gitroom/frontend/components/layout/user.context';
 import { useT } from '@gitroom/react/translation/get.transation.service.client';
 import { Input } from '@gitroom/react/form/input';
 import { Select } from '@gitroom/react/form/select';
-import { AdminButton as Button, withReason } from './admin-ui';
+import { AdminButton as Button, tierName, withReason } from './admin-ui';
 import { COMPABLE_TIERS } from '@gitroom/nestjs-libraries/database/prisma/subscriptions/pricing';
 import { deleteDialog } from '@gitroom/react/helpers/delete.dialog';
 import { useModals } from '@gitroom/frontend/components/layout/new-modal';
@@ -184,7 +184,7 @@ const CompSubscription: FC<{
       </option>
       {COMPABLE_TIERS.map((key) => (
         <option key={key} value={key}>
-          {key}
+          {tierName(key)}
         </option>
       ))}
     </Select>
@@ -700,8 +700,9 @@ export const AdminUsersComponent = () => {
                         <span className="text-newTextColor/70">
                           {o.organization.subscription?.isLifetime
                             ? 'LIFETIME'
-                            : o.organization.subscription?.subscriptionTier ??
-                              'FREE'}
+                            : tierName(
+                                o.organization.subscription?.subscriptionTier
+                              )}
                         </span>
                       </span>
                     ))}

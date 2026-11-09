@@ -37,8 +37,7 @@ function LayoutContextInner(params: { children: ReactNode }) {
     async (url: string, options: RequestInit, response: Response) => {
       if (
         typeof window !== 'undefined' &&
-        (window.location.href.includes('/p/') ||
-          window.location.pathname.startsWith('/provider/'))
+        window.location.href.includes('/p/')
       ) {
         return true;
       }

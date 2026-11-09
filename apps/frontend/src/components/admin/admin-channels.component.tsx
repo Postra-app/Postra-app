@@ -16,6 +16,7 @@ import {
   CHANNEL_STATES,
   ChannelState,
 } from '@gitroom/nestjs-libraries/database/prisma/integrations/channel.state';
+import { platformName } from '@gitroom/frontend/components/launches/platform.name';
 
 interface ChannelItem {
   id: string;
@@ -279,7 +280,7 @@ export const AdminChannelsComponent = () => {
             </option>
             {(providers ?? []).map((row) => (
               <option key={row.provider} value={row.provider}>
-                {row.provider} ({row.channels})
+                {platformName(row.provider)} ({row.channels})
               </option>
             ))}
           </select>
@@ -399,7 +400,7 @@ export const AdminChannelsComponent = () => {
                     <td className="p-[12px] text-[13px]">
                       <div className="font-[500]">{item.name}</div>
                       <div className="text-[11.5px] text-newTextColor/60">
-                        {item.provider}
+                        {platformName(item.provider)}
                         {item.customer ? ` · ${item.customer.name}` : ''}
                       </div>
                     </td>

@@ -20,14 +20,10 @@ acceptLanguage.languages(languages);
 // This function can be marked `async` if using `await` inside
 export async function proxy(request: NextRequest) {
   const nextUrl = request.nextUrl;
-  // ?loggedAuth= (mobile-WebView bridge) is honored only on /provider/ pages
-  // — see custom.fetch.func.ts for the rationale.
-  const authCookie =
-    request.cookies.get('auth') ||
-    request.headers.get('auth') ||
-    (nextUrl.pathname.startsWith('/provider/')
-      ? nextUrl.searchParams.get('loggedAuth')
-      : null);
+  // The upstream mobile-WebView bridge (/provider/*, a session JWT taken
+  // from ?loggedAuth= in the URL) is gone: Postra's app never used it, and a
+  // token in a URL ends up in history, referrers and access logs.
+  const authCookie = request.cookies.get('auth') || request.headers.get('auth');
   const lng = request.cookies.has(cookieName)
     ? acceptLanguage.get(request.cookies.get(cookieName).value)
     : acceptLanguage.get(
@@ -65,7 +61,6 @@ export async function proxy(request: NextRequest) {
   if (
     nextUrl.pathname.startsWith('/uploads/') ||
     nextUrl.pathname.startsWith('/p/') ||
-    nextUrl.pathname.startsWith('/provider/') ||
     // Invite links are opened by the customer's client, who has no account here.
     nextUrl.pathname.startsWith('/connect/') ||
     // App Links / Universal Links verification. Android and iOS fetch these

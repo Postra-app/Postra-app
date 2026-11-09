@@ -9,6 +9,7 @@ import {
   axisLabel,
   fullLabel,
   today,
+  isoDaysAgo,
 } from '@gitroom/frontend/components/admin/admin-dates';
 
 interface ChartPoint {
@@ -94,7 +95,10 @@ export const AdminGrowthComponent = () => {
   const fetch = useFetch();
   const t = useT();
   const [days, setDays] = useState<number>(30);
-  const [fromInput, setFromInput] = useState(today());
+  // The fields show the range on screen, preset or custom: with "30d" lit
+  // they said today to today. Same arithmetic as the backend
+  // (until = today, since = until minus the days).
+  const [fromInput, setFromInput] = useState(isoDaysAgo(30));
   const [toInput, setToInput] = useState(today());
   // null = preset mode (days); set = custom from/to range
   const [customRange, setCustomRange] = useState<{
@@ -139,6 +143,8 @@ export const AdminGrowthComponent = () => {
               onClick={() => {
                 setDays(p.days);
                 setCustomRange(null);
+                setFromInput(isoDaysAgo(p.days));
+                setToInput(today());
               }}
               {...adminSegmentProps(!customRange && days === p.days)}
             >
