@@ -40,3 +40,43 @@ describe('Help tells the limits', () => {
     expect(MOBILE_APP.webOnly.join(' ')).toContain('Studio');
   });
 });
+
+// Help said "3, 6 or 12" channels while Business has 15: the numbers were
+// typed in by hand. Every plan number in these answers is the plan's own.
+describe('Help numbers are the plans', () => {
+  const { pricing, TRIAL_LIMITS, TRIAL_CHANNEL_CAP } = jest.requireActual<
+    typeof import('@gitroom/nestjs-libraries/database/prisma/subscriptions/pricing')
+  >('@gitroom/nestjs-libraries/database/prisma/subscriptions/pricing');
+  const answer = (q: RegExp) => FAQ_ITEMS.find((f) => q.test(f.question))!.answer;
+
+  it('names the channels of every plan and the trial', () => {
+    expect(answer(/more channels/)).toContain(
+      `${pricing.STANDARD.channel}, ${pricing.PRO.channel} or ${pricing.ULTIMATE.channel}, depending on the plan; trials are capped at ${TRIAL_CHANNEL_CAP}`
+    );
+  });
+
+  it('names the storage of every plan and the trial', () => {
+    const storage = answer(/storage/);
+    for (const part of [
+      `${pricing.STANDARD.media_storage_gb} GB on Starter`,
+      `${pricing.PRO.media_storage_gb} GB on Pro`,
+      `${pricing.ULTIMATE.media_storage_gb} GB on Business`,
+      `${TRIAL_LIMITS.media_storage_gb} GB during the free trial`,
+    ]) {
+      expect(storage).toContain(part);
+    }
+  });
+
+  it("names the trial's limits", () => {
+    const trial = answer(/trial work/);
+    for (const part of [
+      `up to ${TRIAL_CHANNEL_CAP} channels`,
+      `up to ${TRIAL_LIMITS.posts_per_month} posts`,
+      `${TRIAL_LIMITS.webhooks} webhook`,
+      `${TRIAL_LIMITS.autoPostLimit} Auto Post feed`,
+      `up to ${TRIAL_LIMITS.media_storage_gb} GB`,
+    ]) {
+      expect(trial).toContain(part);
+    }
+  });
+});

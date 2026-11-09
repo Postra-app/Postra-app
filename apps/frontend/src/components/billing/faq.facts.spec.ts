@@ -71,3 +71,15 @@ it('names every trial limit in the trial note, in English and Polish', () => {
     expect(text).not.toMatch(/[–—]/);
   }
 });
+
+// It sent people to Settings to cancel; "Cancel my subscription" is on the
+// Billing page, its own menu entry.
+it('sends people to Billing to cancel, where the button is', () => {
+  const pl = JSON.parse(
+    read('libraries/react-shared-libraries/src/translation/locales/pl/translation.json')
+  );
+  const page = read('apps/frontend/src/components/billing/main.billing.component.tsx');
+  expect(page).toContain("'cancel_my_subscription'");
+  expect(en.faq_to_confirm_credit_card_information_postra_will_hold).toContain(`cancel any time in ${en.billing}`);
+  expect(pl.faq_to_confirm_credit_card_information_postra_will_hold).toContain(`w zakładce ${pl.billing}`);
+});
