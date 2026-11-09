@@ -45,7 +45,7 @@ const loadPreview = async (id: string): Promise<any[] | null> => {
     }
     // A non-5xx answer that isn't a JSON list means "nothing to show" rather
     // than "come back later" — a missing post is an empty array with a 200.
-    const body = await response.json().catch(() => null);
+    const body = await response.json().catch((): null => null);
     return Array.isArray(body) ? body : [];
   } catch (e) {
     // Connection refused or timed out while the container restarts.

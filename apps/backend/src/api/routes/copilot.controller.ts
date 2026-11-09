@@ -196,7 +196,7 @@ export class CopilotController {
         return;
       }
       res.on('close', () => {
-        release().catch(() => undefined);
+        release().catch((): undefined => undefined);
       });
       recordAgentMessage(organization.id);
     }

@@ -23,7 +23,7 @@ export class UsersRepository {
         where: { id },
         data: { lastOnline: new Date() },
       })
-      .catch(() => undefined);
+      .catch((): undefined => undefined);
   }
 
   getImpersonateUser(name: string) {

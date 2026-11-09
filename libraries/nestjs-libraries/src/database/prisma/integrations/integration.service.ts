@@ -414,7 +414,7 @@ export class IntegrationService {
 
   async unlockSameAccount(key: string | null) {
     if (key) {
-      await ioRedis.del(key).catch(() => undefined);
+      await ioRedis.del(key).catch((): undefined => undefined);
     }
   }
 
@@ -679,7 +679,7 @@ export class IntegrationService {
         throw new NotFoundException('Channel not found');
       }
     } finally {
-      await ioRedis.del(lock).catch(() => undefined);
+      await ioRedis.del(lock).catch((): undefined => undefined);
     }
   }
 
@@ -729,7 +729,7 @@ export class IntegrationService {
       }
       return ids;
     } finally {
-      await ioRedis.del(lock).catch(() => undefined);
+      await ioRedis.del(lock).catch((): undefined => undefined);
     }
   }
 

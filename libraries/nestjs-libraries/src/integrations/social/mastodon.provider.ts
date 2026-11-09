@@ -164,7 +164,7 @@ export class MastodonProvider extends SocialAbstract implements SocialProvider {
   ) {
     const form = new FormData();
     // SSRF-guarded: fileUrl comes from client-controlled media path
-    form.append('file', new Blob([await fetchMediaBuffer(fileUrl)]));
+    form.append('file', new Blob([(await fetchMediaBuffer(fileUrl)) as Uint8Array<ArrayBuffer>]));
     if (alt) {
       form.append('description', alt);
     }

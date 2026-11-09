@@ -53,7 +53,7 @@ export class OAuthService {
     try {
       return await this.createOnlyApp(orgId, dto);
     } finally {
-      await ioRedis.del(lock).catch(() => undefined);
+      await ioRedis.del(lock).catch((): undefined => undefined);
     }
   }
 

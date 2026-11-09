@@ -42,7 +42,7 @@ export class StripeEventStore {
   }
 
   async release(id: string): Promise<void> {
-    await ioRedis.del(`stripe-event:${id}`).catch(() => undefined);
+    await ioRedis.del(`stripe-event:${id}`).catch((): undefined => undefined);
   }
 
   /**
@@ -80,8 +80,8 @@ export class StripeEventStore {
 
   async releaseCustomer(customerId: string, eventId: string): Promise<void> {
     const key = `stripe-customer:${customerId}`;
-    if ((await ioRedis.get(key).catch(() => null)) === eventId) {
-      await ioRedis.del(key).catch(() => undefined);
+    if ((await ioRedis.get(key).catch((): null => null)) === eventId) {
+      await ioRedis.del(key).catch((): undefined => undefined);
     }
   }
 

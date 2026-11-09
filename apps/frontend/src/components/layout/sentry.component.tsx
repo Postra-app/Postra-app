@@ -24,7 +24,7 @@ export const SentryComponent: FC<{ children: ReactNode }> = ({ children }) => {
           eventId,
           page: window.location.pathname,
         }),
-      }).catch(() => undefined);
+      }).catch((): undefined => undefined);
     });
   }, [dsn]);
 

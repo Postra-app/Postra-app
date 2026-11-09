@@ -376,7 +376,7 @@ export class UsersService {
           ...integrations.map((i) => i.picture),
           ...brandKits.map((b) => b.logoPath),
           ...posts.map((p) => p.image),
-        ].flatMap((text) => (text ? text.match(ours) ?? [] : []))
+        ].flatMap((text): string[] => (text ? text.match(ours) ?? [] : []))
       ),
     ];
   }

@@ -87,7 +87,7 @@ export const VideoStock: FC<VideoStockProps> = ({ onImported }) => {
       }
       // Guard an empty / non-JSON 200 body (auth redirect, proxy hiccup) —
       // res.json() on an empty body throws "Unexpected end of JSON input".
-      const data = await res.json().catch(() => null);
+      const data = await res.json().catch((): null => null);
       if (request !== latest.current) return;
       if (!data) {
         toaster.show(

@@ -30,7 +30,7 @@ const response = () => {
 // the first call returned. Another organisation holding that pair could list,
 // sign parts into, abort or complete the upload.
 describe('multipart upload steps', () => {
-  const media = { assertStorage: jest.fn(async () => undefined), saveFile: jest.fn(async () => ({ id: 'm1' })) };
+  const media = { assertStorage: jest.fn(async (): Promise<undefined> => undefined), saveFile: jest.fn(async () => ({ id: 'm1' })) };
   const controller = new MediaController(media as any, {} as any, {} as any);
   beforeEach(() => {
     store.clear();
@@ -124,7 +124,7 @@ describe('multipart upload and the media storage', () => {
       saveFile: jest.fn(),
     };
     const controller = new MediaController(media as any, {} as any, {} as any);
-    const removeFile = jest.fn(async () => undefined);
+    const removeFile = jest.fn(async (): Promise<undefined> => undefined);
     (controller as any).storage = { removeFile };
     s3.mockImplementation(async (_e: string, _req: any, res: any) =>
       res.status(200).json({ uploadId: 'up-9', key: '2026/11/05/z.mp4' })
@@ -144,7 +144,7 @@ describe('multipart upload and the media storage', () => {
 
   it('an uploader that gives no size: the size is read from the storage, not taken as 0', async () => {
     const media = {
-      assertStorage: jest.fn(async () => undefined),
+      assertStorage: jest.fn(async (): Promise<undefined> => undefined),
       saveFile: jest.fn(async () => ({ id: 'm2' })),
       storedSize: jest.fn(async () => 7777),
     };
@@ -162,7 +162,7 @@ describe('multipart upload and the media storage', () => {
   });
 
   it('a completion that fits is saved with its real size', async () => {
-    const media = { assertStorage: jest.fn(async () => undefined), saveFile: jest.fn(async () => ({ id: 'm1' })) };
+    const media = { assertStorage: jest.fn(async (): Promise<undefined> => undefined), saveFile: jest.fn(async () => ({ id: 'm1' })) };
     const controller = new MediaController(media as any, {} as any, {} as any);
     s3.mockImplementation(async (_e: string, _req: any, res: any) =>
       res.status(200).json({ uploadId: 'up-8', key: '2026/11/05/y.mp4' })
@@ -178,7 +178,7 @@ describe('multipart upload and the media storage', () => {
 });
 
 describe('sign-part goes only within the declared size', () => {
-  const media = { assertStorage: jest.fn(async () => undefined) };
+  const media = { assertStorage: jest.fn(async (): Promise<undefined> => undefined) };
   const controller = new MediaController(media as any, {} as any, {} as any);
   beforeEach(() => {
     store.clear();
@@ -215,7 +215,7 @@ describe('sign-part goes only within the declared size', () => {
 // the same file twice.
 describe('after a completed upload', () => {
   const media = {
-    assertStorage: jest.fn(async () => undefined),
+    assertStorage: jest.fn(async (): Promise<undefined> => undefined),
     saveFile: jest.fn(async () => ({ id: 'm1' })),
     storedSize: jest.fn(async () => 10),
   };

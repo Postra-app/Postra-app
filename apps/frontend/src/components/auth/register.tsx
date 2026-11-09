@@ -75,7 +75,7 @@ export function Register() {
           state,
         }),
       }
-    ).catch(() => null);
+    ).catch((): null => null);
     // A spent state or a refused code answers 400 in plain text; reading it
     // as JSON threw and left the spinner up for good.
     if (!response?.ok) {

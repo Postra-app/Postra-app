@@ -64,7 +64,7 @@ const run = async (claims: Record<string, unknown>, user: any = admin, cookies =
 };
 
 beforeEach(async () => {
-  await ioRedis.del(`authctx:${admin.id}`).catch(() => undefined);
+  await ioRedis.del(`authctx:${admin.id}`).catch((): undefined => undefined);
 });
 
 describe('administrator powers need the second factor', () => {

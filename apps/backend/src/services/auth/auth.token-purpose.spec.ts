@@ -1,7 +1,7 @@
 jest.mock('isomorphic-dompurify', () => ({ __esModule: true, default: { sanitize: (v: string) => v } }));
 jest.mock('nostr-tools', () => ({ getPublicKey: jest.fn(), Relay: class {}, finalizeEvent: jest.fn(), SimplePool: class {} }));
 jest.mock('@gitroom/nestjs-libraries/redis/redis.service', () => ({
-  ioRedis: { get: jest.fn(async () => null), incr: jest.fn(async () => 1), expire: jest.fn(async () => 1), del: jest.fn(async () => 1), exists: jest.fn(async () => 0) },
+  ioRedis: { get: jest.fn(async (): Promise<null> => null), incr: jest.fn(async () => 1), expire: jest.fn(async () => 1), del: jest.fn(async () => 1), exists: jest.fn(async () => 0) },
 }));
 
 // eslint-disable-next-line @typescript-eslint/no-require-imports
@@ -67,7 +67,7 @@ describe('signing in with an unknown address', () => {
     const compare = jest.spyOn(AuthChecker, 'comparePassword');
     const service = Object.create(AuthService.prototype);
     Object.assign(service, {
-      _userService: { getUserByEmail: async () => null },
+      _userService: { getUserByEmail: async (): Promise<null> => null },
       canRegister: async () => true,
     });
     await expect(

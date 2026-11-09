@@ -660,7 +660,7 @@ export class NoAuthIntegrationsController {
         );
     } finally {
       if (capLock && capHeld) {
-        await ioRedis.del(capLock).catch(() => undefined);
+        await ioRedis.del(capLock).catch((): undefined => undefined);
       }
       await this._integrationService.unlockSameAccount(accountLock);
     }

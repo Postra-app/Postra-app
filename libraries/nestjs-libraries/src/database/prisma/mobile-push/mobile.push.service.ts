@@ -119,7 +119,7 @@ export class MobilePushService {
       body: JSON.stringify(messages),
       signal: AbortSignal.timeout(EXPO_TIMEOUT_MS),
     });
-    const json: any = await res.json().catch(() => null);
+    const json: any = await res.json().catch((): null => null);
     if (!res.ok) {
       // The whole request was refused: nothing reached any phone.
       const codes = (Array.isArray(json?.errors) ? json.errors : [])
@@ -197,7 +197,7 @@ export class MobilePushService {
         this._logger.warn(`Expo push receipts unavailable: HTTP ${res.status}`);
         return;
       }
-      const json: any = await res.json().catch(() => null);
+      const json: any = await res.json().catch((): null => null);
       const receipts: Record<string, Ticket> = json?.data || {};
       const dead: string[] = [];
       const failed: Record<string, number> = {};
@@ -226,7 +226,7 @@ export class MobilePushService {
         await ioRedis.zrem(PUSH_RECEIPTS_KEY, ...read);
       }
     } finally {
-      await ioRedis.del(RECEIPTS_LOCK).catch(() => undefined);
+      await ioRedis.del(RECEIPTS_LOCK).catch((): undefined => undefined);
     }
   }
 

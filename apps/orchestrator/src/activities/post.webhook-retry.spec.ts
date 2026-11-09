@@ -14,7 +14,7 @@ const activity = () => {
   Object.assign(a, {
     _logger: { error: jest.fn(), log: jest.fn(), warn: jest.fn() },
     _webhookService: {
-      getWebhooksForDelivery: async () => [
+      getWebhooksForDelivery: async (): Promise<any[]> => [
         { id: 'w-flaky', url: 'https://flaky.example/hook', integrations: [], secret: 'whsec_flaky' },
         { id: 'w-ok', url: 'https://ok.example/hook', integrations: [], secret: 'whsec_ok' },
       ],

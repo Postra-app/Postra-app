@@ -164,7 +164,7 @@ export const AdminAnnouncementsComponent = () => {
       // A failed delete used to do nothing at all — no refresh, no message —
       // so the announcement stayed on screen and the operator could not tell
       // whether it had gone.
-      const body = await res.json().catch(() => null);
+      const body = await res.json().catch((): null => null);
       const outcome = deleteOutcome(res.ok, body);
       if (outcome === 'failed') {
         setDeleteError('failed');

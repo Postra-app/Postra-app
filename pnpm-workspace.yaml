@@ -8,4 +8,4 @@ catalog:
   mobx: 6.15.0
   mobx-react-lite: 4.1.1
   polotno: 3.0.0-beta.25
-  typescript: 5.5.4
+  typescript: 6.0.3

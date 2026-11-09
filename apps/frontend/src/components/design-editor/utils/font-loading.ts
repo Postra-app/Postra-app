@@ -71,7 +71,7 @@ export const ensureFontsLoaded = async (
   if (!specifiers.length) return;
   // A face the browser cannot fetch rejects; one missing font must not stop the
   // others from arriving, and it must never break adding text.
-  await Promise.all(specifiers.map((spec) => fonts.load(spec).catch(() => [])));
+  await Promise.all(specifiers.map((spec) => fonts.load(spec).catch((): any[] => [])));
 };
 
 /** Drop the cached metrics of every text object so the freshly arrived family

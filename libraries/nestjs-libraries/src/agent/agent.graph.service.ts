@@ -26,7 +26,11 @@ import { languageRule } from '@gitroom/nestjs-libraries/openai/language-rule';
 const tools = !process.env.TAVILY_API_KEY
   ? []
   : [new TavilySearch({ maxResults: 3 })];
-const toolNode = new ToolNode(tools);
+// Resolved through the packages' "exports", @langchain/tavily and
+// @langchain/langgraph see two copies of @langchain/core's declarations (CJS
+// and ESM), so the same tool class does not match by type. It is the same
+// class at run time.
+const toolNode = new ToolNode(tools as unknown as ConstructorParameters<typeof ToolNode>[0]);
 
 const model = new ChatOpenAI({
   apiKey: process.env.OPENAI_API_KEY || 'sk-proj-',

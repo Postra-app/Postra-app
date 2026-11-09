@@ -49,7 +49,7 @@ export const useAddProvider = (update?: () => void, invite?: boolean) => {
         // How many channels take a slot now, for the counter.
         fetch('/integrations/list')
           .then((r) => r.json())
-          .catch(() => null),
+          .catch((): null => null),
       ]);
       const used = Array.isArray(list?.integrations)
         ? channelsInUse(list.integrations)

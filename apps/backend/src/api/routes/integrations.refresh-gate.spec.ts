@@ -52,9 +52,9 @@ const integrationService = (channels: any[]) => ({
     )
   ),
   getIntegrationsList: jest.fn(async () => channels),
-  connectedThroughOtherRoute: jest.fn(async () => null),
-  lockSameAccount: jest.fn(async () => null),
-  unlockSameAccount: jest.fn(async () => undefined),
+  connectedThroughOtherRoute: jest.fn(async (): Promise<null> => null),
+  lockSameAccount: jest.fn(async (): Promise<null> => null),
+  unlockSameAccount: jest.fn(async (): Promise<undefined> => undefined),
   checkPreviousConnections: jest.fn(async () => false),
   createOrUpdateIntegration: jest.fn(async () => ({ id: 'int-new' })),
 });
@@ -135,7 +135,7 @@ describe('POST /integrations/social-connect/:integration with refresh', () => {
         getSessionMembership: jest.fn(async () => ({ role: 'ADMIN' })),
         getOrgById: jest.fn(async () => FREE_ORG),
       } as any,
-      { getSubscriptionByOrganizationId: jest.fn(async () => null) } as any
+      { getSubscriptionByOrganizationId: jest.fn(async (): Promise<null> => null) } as any
     );
     const req = {
       headers: { auth: AuthService.signJWT({ id: 'user-1' }) },
@@ -213,13 +213,13 @@ describe('reconnect through a provider with pages keeps the sign-in tokens', () 
         getSocialIntegration: () => youtube,
       } as any,
       integrations as any,
-      { startRefreshWorkflow: jest.fn(async () => undefined) } as any,
+      { startRefreshWorkflow: jest.fn(async (): Promise<undefined> => undefined) } as any,
       {
         getUserOrgMembership: jest.fn(async () => ({ role: 'ADMIN' })),
         getSessionMembership: jest.fn(async () => ({ role: 'ADMIN' })),
         getOrgById: jest.fn(async () => FREE_ORG),
       } as any,
-      { getSubscriptionByOrganizationId: jest.fn(async () => null) } as any
+      { getSubscriptionByOrganizationId: jest.fn(async (): Promise<null> => null) } as any
     );
     await controller.connectSocialMedia(
       'youtube',

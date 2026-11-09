@@ -129,7 +129,7 @@ export const forgetUpload = async (uploadId: string) => {
   localParts.delete(uploadId);
   await ioRedis
     .del(ownerKey(uploadId), sizeKey(uploadId), partsKey(uploadId))
-    .catch(() => undefined);
+    .catch((): undefined => undefined);
 };
 
 // Where each step carries the pair: prepare-upload-parts nests it in partData.

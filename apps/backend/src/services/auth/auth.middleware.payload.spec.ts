@@ -31,9 +31,9 @@ describe('session token payload', () => {
 
 describe('UsersRepository.getUserById', () => {
   it('looks nothing up for an id that is not a string', async () => {
-    const { UsersRepository } = await import(
-      '@gitroom/nestjs-libraries/database/prisma/users/users.repository'
-    );
+    const { UsersRepository } = jest.requireActual<
+      typeof import('@gitroom/nestjs-libraries/database/prisma/users/users.repository')
+    >('@gitroom/nestjs-libraries/database/prisma/users/users.repository');
     const findFirst = jest.fn();
     const repo = new (UsersRepository as any)({ model: { user: { findFirst } } }, {}, {});
     expect(await repo.getUserById({ not: '' } as any)).toBeNull();

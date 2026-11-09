@@ -15,6 +15,6 @@ export const failBoot = async (
     'Bootstrap'
   );
   Sentry.captureException(error);
-  await Sentry.flush(2000).catch(() => undefined);
+  await Sentry.flush(2000).catch((): undefined => undefined);
   exit(1);
 };

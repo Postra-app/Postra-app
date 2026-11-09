@@ -47,7 +47,7 @@ export async function readResponseCapped(
   const tooLarge = () =>
     new Error(`The file is larger than ${Math.round(maxBytes / 1024 / 1024)} MB`);
   if (Number(response.headers.get('content-length')) > maxBytes) {
-    await response.body?.cancel().catch(() => undefined);
+    await response.body?.cancel().catch((): undefined => undefined);
     throw tooLarge();
   }
   const chunks: Buffer[] = [];
@@ -55,7 +55,7 @@ export async function readResponseCapped(
   for await (const chunk of response.body ?? []) {
     size += chunk.length;
     if (size > maxBytes) {
-      await response.body?.cancel().catch(() => undefined);
+      await response.body?.cancel().catch((): undefined => undefined);
       throw tooLarge();
     }
     chunks.push(Buffer.from(chunk));

@@ -31,7 +31,7 @@ const hasTransparency = (ctx: CanvasRenderingContext2D, width: number, height: n
 export const downscaleForDesign = async (file: File): Promise<File> => {
   if (!RESIZABLE.has(file.type) || typeof createImageBitmap !== 'function') return file;
   // createImageBitmap applies the photo's EXIF orientation, as <img> does.
-  const bitmap = await createImageBitmap(file).catch(() => null);
+  const bitmap = await createImageBitmap(file).catch((): null => null);
   if (!bitmap) return file;
   try {
     const size = fitWithin(bitmap.width, bitmap.height);

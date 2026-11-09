@@ -209,7 +209,7 @@ export class MeweProvider extends SocialAbstract implements SocialProvider {
     mediaPath: string
   ): Promise<string> {
     // SSRF-guarded: mediaPath is client-controlled
-    const blob = new Blob([await fetchMediaBuffer(mediaPath)]);
+    const blob = new Blob([(await fetchMediaBuffer(mediaPath)) as Uint8Array<ArrayBuffer>]);
     const fileName = mediaPath.split('/').pop() || 'photo.jpg';
 
     const form = new FormData();

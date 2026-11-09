@@ -239,7 +239,7 @@ export class SkoolProvider extends SocialAbstract implements SocialProvider {
           'Content-Type': createFileResponse.content_type,
           'x-amz-acl': createFileResponse.acl,
         },
-        body: fileBuffer,
+        body: fileBuffer as Uint8Array<ArrayBuffer>,
       });
 
       fileIds.push(createFileResponse.file.id);
