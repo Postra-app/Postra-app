@@ -1,6 +1,14 @@
 // Static content for the in-app Help page. Steps/gotchas/descriptions are
 // filled in per channel and per tab as we write them — an empty array/string
 // renders as a "coming soon" placeholder, so the page structure can ship first.
+// The plan numbers in the answers below come from the plans themselves: typed
+// in by hand, Help said "3, 6 or 12" channels while Business has 15.
+import {
+  pricing,
+  TRIAL_CHANNEL_CAP,
+  TRIAL_LIMITS,
+} from '@gitroom/nestjs-libraries/database/prisma/subscriptions/pricing';
+
 export type ChannelConnectType = 'oauth' | 'credentials' | 'bot';
 
 export interface ChannelGuide {
@@ -403,7 +411,7 @@ export const APP_TABS: AppTabGuide[] = [
     id: 'media',
     name: 'Media',
     description:
-      "Every image and video you've uploaded or made in Postra, ready to reuse in any post. Pictures can be up to 30 MB (GIFs 10 MB) and videos (MP4) up to 1 GB. The library has a storage limit set by your plan: 10 GB on Starter, 25 GB on Pro and 100 GB on Business (2 GB during the free trial). The bar at the top of Media shows how much you use. Deleting a file frees its space at once.",
+      `Every image and video you've uploaded or made in Postra, ready to reuse in any post. Pictures can be up to 30 MB (GIFs 10 MB) and videos (MP4) up to 1 GB. The library has a storage limit set by your plan: ${pricing.STANDARD.media_storage_gb} GB on Starter, ${pricing.PRO.media_storage_gb} GB on Pro and ${pricing.ULTIMATE.media_storage_gb} GB on Business (${TRIAL_LIMITS.media_storage_gb} GB during the free trial). The bar at the top of Media shows how much you use. Deleting a file frees its space at once.`,
   },
   {
     id: 'plugs',
@@ -684,12 +692,12 @@ export const FAQ_ITEMS: FaqItem[] = [
   {
     question: 'How much storage do I get for my media?',
     answer:
-      'Your media library can hold 10 GB on Starter, 25 GB on Pro and 100 GB on Business, and 2 GB during the free trial. That is room for thousands of photos or dozens of long videos. Media shows how much you use. When the library is full, new uploads stop with a message: delete files you no longer need (the space is free again at once) or upgrade your plan. Posts that already use a file are not affected when you delete it.',
+      `Your media library can hold ${pricing.STANDARD.media_storage_gb} GB on Starter, ${pricing.PRO.media_storage_gb} GB on Pro and ${pricing.ULTIMATE.media_storage_gb} GB on Business, and ${TRIAL_LIMITS.media_storage_gb} GB during the free trial. That is room for thousands of photos or dozens of long videos. Media shows how much you use. When the library is full, new uploads stop with a message: delete files you no longer need (the space is free again at once) or upgrade your plan. Posts that already use a file are not affected when you delete it.`,
   },
   {
     question: "Why can't I add more channels?",
     answer:
-      'Each plan includes a fixed number of channels (3, 6 or 12, depending on the plan; trials are capped at 3). Upgrade in Billing to unlock more. A channel waiting to be reconnected keeps its slot; disabling or deleting a channel frees it.',
+      `Each plan includes a fixed number of channels (${pricing.STANDARD.channel}, ${pricing.PRO.channel} or ${pricing.ULTIMATE.channel}, depending on the plan; trials are capped at ${TRIAL_CHANNEL_CAP}). Upgrade in Billing to unlock more. A channel waiting to be reconnected keeps its slot; disabling or deleting a channel frees it.`,
   },
   {
     question: 'A post failed to publish - what should I do?',
@@ -699,7 +707,7 @@ export const FAQ_ITEMS: FaqItem[] = [
   {
     question: 'How does the trial work?',
     answer:
-      "Paid plans start with a 7-day free trial. During the trial you can connect up to 3 channels, schedule up to 30 posts, add 1 webhook and 1 Auto Post feed, use Starter's AI allowance with one AI video, and keep up to 2 GB of photos and videos. The trial is for one person; team invites open with your plan. Cancel any time in Billing before the trial ends and you won't be charged.",
+      `Paid plans start with a 7-day free trial. During the trial you can connect up to ${TRIAL_CHANNEL_CAP} channels, schedule up to ${TRIAL_LIMITS.posts_per_month} posts, add ${TRIAL_LIMITS.webhooks} webhook and ${TRIAL_LIMITS.autoPostLimit} Auto Post feed, use Starter's AI allowance with one AI video, and keep up to ${TRIAL_LIMITS.media_storage_gb} GB of photos and videos. The trial is for one person; team invites open with your plan. Cancel any time in Billing before the trial ends and you won't be charged.`,
   },
   {
     question: 'How do AI videos work?',
