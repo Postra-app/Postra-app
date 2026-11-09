@@ -7,6 +7,17 @@
 @tailwind components;
 @tailwind utilities;
 
+// The browser draws its own parts (scrollbars, date pickers, form controls)
+// in the page's colour scheme: without one, Safari drew them light on the
+// dark theme, white scrollbar tracks beside the composer. ModeComponent puts
+// `dark` or `light` on <body>; dark is the theme before it runs.
+:root {
+  color-scheme: dark;
+}
+:root:has(body.light) {
+  color-scheme: light;
+}
+
 @keyframes spin {
   to { transform: rotate(360deg); }
 }
