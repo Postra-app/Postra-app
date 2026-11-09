@@ -14,7 +14,7 @@
     "importHelpers": true,
     "target": "es2015",
     "module": "esnext",
-    "lib": ["es2020", "dom"],
+    "lib": ["es2023", "dom", "dom.iterable"],
     "skipLibCheck": true,
     "types": ["node", "jest"],
     "skipDefaultLibCheck": true,
