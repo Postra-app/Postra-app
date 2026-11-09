@@ -6,13 +6,12 @@ import { database, throwawayOrg } from '../helpers';
 // Webhooks a customer never sees being sent: a renewal the card declines, a
 // renewal the bank wants confirmed, an event that is not ours, and the same
 // event delivered twice. Stripe TEST mode on a test clock, webhooks through
-// `stripe listen` (see README); the last one is posted straight to the
-// backend, signed with STRIPE_SIGNING_KEY like Stripe signs a redelivery.
+// `stripe listen` (see README); the last two are also posted straight to
+// the backend, signed with STRIPE_SIGNING_KEY, to read the answer.
 
 const sk = process.env.STRIPE_SECRET_KEY || '';
 test.skip(!sk.startsWith('sk_test_'), 'needs Stripe test-mode keys');
 const stripe = new Stripe(sk);
-const MONTH = 31 * 86_400;
 
 let prisma: PrismaClient;
 const cleanup: (() => Promise<unknown>)[] = [];
@@ -31,6 +30,21 @@ const tierOf = async (orgId: string) =>
 
 const notes = async (orgId: string) =>
   (await prisma.notifications.findMany({ where: { organizationId: orgId }, select: { content: true } })).map((n) => n.content);
+
+// An event posted to the backend signed with the key of `stripe listen`, the
+// way Stripe delivers (and redelivers) it.
+const secret = process.env.STRIPE_SIGNING_KEY || '';
+const deliver = (event: Stripe.Event) => {
+  const payload = JSON.stringify(event);
+  return fetch('http://localhost:53000/stripe', {
+    method: 'POST',
+    headers: {
+      'content-type': 'application/json',
+      'stripe-signature': stripe.webhooks.generateTestHeaderString({ payload, secret }),
+    },
+    body: payload,
+  });
+};
 
 // A Pro organisation paying monthly with a working card, on a test clock.
 const payingPro = async () => {
@@ -56,8 +70,11 @@ const renewWith = async (o: Awaited<ReturnType<typeof payingPro>>, card: string)
   const pm = await stripe.paymentMethods.attach(card, { customer: o.customer });
   await stripe.customers.update(o.customer, { invoice_settings: { default_payment_method: pm.id } });
   await stripe.subscriptions.update(o.sub, { default_payment_method: pm.id });
-  const c = await stripe.testHelpers.testClocks.retrieve(o.clock);
-  await stripe.testHelpers.testClocks.advance(o.clock, { frozen_time: c.frozen_time + MONTH });
+  // Past the end of the period and the hour Stripe waits before it
+  // finalises and charges the renewal invoice: a fixed month landed exactly
+  // on the boundary in a 31-day month, with the invoice still a draft.
+  const periodEnd = (await stripe.subscriptions.retrieve(o.sub)).items.data[0].current_period_end;
+  await stripe.testHelpers.testClocks.advance(o.clock, { frozen_time: periodEnd + 2 * 3_600 });
   await expect
     .poll(async () => (await stripe.testHelpers.testClocks.retrieve(o.clock)).status, { timeout: 180_000, intervals: [2_000] })
     .toBe('ready');
@@ -87,6 +104,7 @@ test('a renewal the bank wants confirmed sends the customer to the invoice page'
 });
 
 test('an event that is not ours is acknowledged and changes nothing', async () => {
+  test.skip(!secret.startsWith('whsec_'), 'needs the signing key of `stripe listen`');
   // Another product on the same Stripe account: no `service: gitroom`.
   const customer = await stripe.customers.create({ email: `not-ours-${Date.now()}@example.com` });
   cleanup.push(() => stripe.customers.del(customer.id));
@@ -102,17 +120,19 @@ test('an event that is not ours is acknowledged and changes nothing', async () =
       (e) => (e.data.object as Stripe.Subscription).id === sub.id
     )?.id ?? '';
   await expect.poll(created, { timeout: 30_000 }).not.toBe('');
-  const eventId = await created();
-  // Delivered and answered (it is not ours, so not recorded as handled), and
-  // no organisation got this customer or a plan from it.
-  await new Promise((r) => setTimeout(r, 5_000));
-  expect(await prisma.stripeProcessedEvent.count({ where: { id: eventId } })).toBe(0);
+  const event = await stripe.events.retrieve(await created());
+  // Posted signed, like Stripe delivers it: answered with success, not
+  // recorded as handled (it is not ours), and no organisation got this
+  // customer or a plan from it.
+  const res = await deliver(event);
+  expect(res.status).toBe(201);
+  expect(await res.json()).toEqual({ ok: true });
+  expect(await prisma.stripeProcessedEvent.count({ where: { id: event.id } })).toBe(0);
   expect(await prisma.organization.count({ where: { paymentId: customer.id } })).toBe(0);
   expect(await prisma.subscription.count({ where: { organization: { paymentId: customer.id } } })).toBe(0);
 });
 
 test('the same event delivered again is a duplicate and grants nothing twice', async () => {
-  const secret = process.env.STRIPE_SIGNING_KEY || '';
   test.skip(!secret.startsWith('whsec_'), 'needs the signing key of `stripe listen`');
   const o = await payingPro();
   const paid = async () =>
@@ -125,15 +145,7 @@ test('the same event delivered again is a duplicate and grants nothing twice', a
   const subsBefore = await prisma.subscription.count({ where: { organizationId: o.orgId } });
   const orgBefore = await prisma.organization.findUnique({ where: { id: o.orgId } });
 
-  const payload = JSON.stringify(event);
-  const res = await fetch('http://localhost:53000/stripe', {
-    method: 'POST',
-    headers: {
-      'content-type': 'application/json',
-      'stripe-signature': stripe.webhooks.generateTestHeaderString({ payload, secret }),
-    },
-    body: payload,
-  });
+  const res = await deliver(event);
   expect(res.status).toBe(201);
   expect(await res.json()).toEqual({ ok: true, duplicate: true });
   expect(await prisma.stripeProcessedEvent.count({ where: { id: event.id } })).toBe(1);
