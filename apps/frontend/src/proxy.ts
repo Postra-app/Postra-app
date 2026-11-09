@@ -4,7 +4,7 @@ import type { NextRequest } from 'next/server';
 import { legacyCookieDomain } from '@gitroom/helpers/subdomain/subdomain.management';
 import { internalFetch } from '@gitroom/helpers/utils/internal.fetch';
 import {
-  CSP_REPORT_ONLY,
+  CSP_HEADER,
   NONCE_HEADER,
   newNonce,
   nonceCsp,
@@ -41,18 +41,18 @@ export async function proxy(request: NextRequest) {
   }
 
   // A nonce per page request (csp.ts): on the request for the render, on the
-  // response for the browser. Report-only for now.
+  // response for the browser, which enforces it.
   const nonce = newNonce();
   const csp = nonceCsp(nonce);
   requestHeaders.set(NONCE_HEADER, nonce);
-  requestHeaders.set(CSP_REPORT_ONLY.toLowerCase(), csp);
+  requestHeaders.set(CSP_HEADER.toLowerCase(), csp);
 
   const topResponse = NextResponse.next({
     request: {
       headers: requestHeaders,
     },
   });
-  topResponse.headers.set(CSP_REPORT_ONLY, csp);
+  topResponse.headers.set(CSP_HEADER, csp);
 
   if (lng) {
     topResponse.headers.set(cookieName, lng);

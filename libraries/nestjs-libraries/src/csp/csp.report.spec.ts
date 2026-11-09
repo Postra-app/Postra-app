@@ -47,9 +47,10 @@ describe('CSP reports', () => {
     ]);
   });
 
-  // The nonce policy runs report-only beside the enforced one: its lines must
-  // stand apart, or the days without a report before enforcing it cannot be
-  // counted. A report without disposition (older browsers) is the enforced one.
+  // A report-only policy (the nonce one ran so before it was enforced) must
+  // stand apart from the enforced ones, or the days without a report before
+  // enforcing it cannot be counted. A report without disposition (older
+  // browsers) is an enforced one.
   it('tells report-only violations from enforced ones', () => {
     const report = (disposition?: string) => ({
       'csp-report': {
