@@ -289,7 +289,23 @@ export function useUppyUploader(props: {
       props.onEnd();
       fileOrderIndex = 0;
     });
+    // Files dropped or pasted while others upload start a batch of their
+    // own, and each batch ends with its own 'complete' (Uppy takes a batch out
+    // of currentUploads before it). The composer stays locked, and the
+    // library busy, until the last batch has been uploaded and saved: the
+    // first to finish unlocked it while another was still on its way, and a
+    // post saved then went out without that file.
+    let finishing = 0;
+    const settle = () => {
+      if (finishing > 0 || Object.keys(uppy2.getState().currentUploads).length) {
+        return;
+      }
+      setLocked(false);
+      props.onEnd();
+      fileOrderIndex = 0;
+    };
     uppy2.on('complete', async (result) => {
+      finishing++;
       const failed = result.failed || [];
       // Failed files go too, or the next upload would quietly retry them.
       for (const file of [...result.successful, ...failed]) {
@@ -305,7 +321,6 @@ export function useUppyUploader(props: {
         );
       }
 
-      props.onEnd();
       // Sort results by original add order to maintain file sequence
       const sortedSuccessful = [...result.successful].sort((a, b) => {
         const orderA = +((a.meta as any)?.addedOrder ?? 0);
@@ -382,8 +397,8 @@ export function useUppyUploader(props: {
           'warning'
         );
       } finally {
-        setLocked(false);
-        fileOrderIndex = 0;
+        finishing--;
+        settle();
       }
     });
     uppy2.on('upload-success', (file, response) => {

@@ -95,6 +95,33 @@ test('a file dropped while another is uploading is attached too', async ({ page 
   expect(problems.filter((p) => !expectedNoise(p))).toEqual([]);
 });
 
+// The later file finishing first unlocked the composer while the earlier one
+// was still uploading: the post could be saved without it.
+test('the composer stays locked until every upload has finished', async ({ page }) => {
+  test.setTimeout(60_000);
+  const problems = watchForErrors(page);
+  let release: () => void = () => undefined;
+  const held = new Promise<void>((resolve) => (release = resolve));
+  await page.route('**/media/upload-server', async (route) => {
+    if (nameOf(route).includes('slow-')) {
+      await held;
+    }
+    return route.continue();
+  });
+  await openComposer(page, 'bluesky', `[stack ui] upload lock ${Date.now()}`);
+  const save = page.getByRole('button', { name: 'Save as draft' });
+  await drop(page, [`slow-${Date.now()}.png`]);
+  await page.waitForTimeout(300);
+  await drop(page, [`fast-${Date.now()}.png`]);
+  await expect(attached(page)).toHaveCount(1, { timeout: 15_000 });
+  await page.waitForTimeout(500);
+  await expect(save).toBeDisabled();
+  release();
+  await expect(attached(page)).toHaveCount(2, { timeout: 15_000 });
+  await expect(save).toBeEnabled();
+  expect(problems.filter((p) => !expectedNoise(p))).toEqual([]);
+});
+
 // The Media page refused it the same way, with the same English-only toast.
 test('a file dropped on the Media page while another is uploading is saved too', async ({ page }) => {
   test.setTimeout(60_000);
