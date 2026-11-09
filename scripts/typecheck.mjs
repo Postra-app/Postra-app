@@ -27,7 +27,9 @@ const projects = [
 const run = (project) =>
   new Promise((resolve) => {
     const started = Date.now();
-    const child = spawn('npx', ['tsc', '--noEmit', '-p', project], {
+    // --incremental false: a .tsbuildinfo left by an earlier run made tsc
+    // skip files it took as unchanged, and an error CI found passed here.
+    const child = spawn('npx', ['tsc', '--noEmit', '--incremental', 'false', '-p', project], {
       stdio: ['ignore', 'pipe', 'pipe'],
     });
     let output = '';
