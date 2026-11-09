@@ -362,7 +362,7 @@ export class LinkedinProvider extends SocialAbstract implements SocialProvider {
               Authorization: `Bearer ${accessToken}`,
               'Content-Type': 'application/octet-stream',
             },
-            body: part,
+            body: part as Uint8Array<ArrayBuffer>,
           },
           'linkedin',
           0,

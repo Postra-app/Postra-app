@@ -101,7 +101,7 @@ export default class Postra {
     const formData = new FormData();
     formData.append(
       'file',
-      new Blob([file], { type: MIME_TYPES[ext] || 'application/octet-stream' }),
+      new Blob([file as Uint8Array<ArrayBuffer>], { type: MIME_TYPES[ext] || 'application/octet-stream' }),
       `upload.${ext}`
     );
     return this.request('/upload', { method: 'POST', body: formData });

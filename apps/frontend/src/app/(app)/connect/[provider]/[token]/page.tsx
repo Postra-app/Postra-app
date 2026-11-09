@@ -30,7 +30,7 @@ const loadInvite = async (
       console.error(`[Postra:invite] /integrations/invite -> ${response.status}`);
       return null;
     }
-    const body = await response.json().catch(() => null);
+    const body = await response.json().catch((): null => null);
     return body?.valid
       ? { organization: body.organization || null }
       : undefined;

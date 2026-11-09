@@ -26,10 +26,10 @@ const notAdmin = { id: 'user-1', isSuperAdmin: false } as any;
 const build = (overrides: any = {}) => {
   const audit = { record: jest.fn() };
   const stripe = {
-    getCharges: jest.fn(async () => []),
-    refundCharges: jest.fn(async () => ({ refunded: ['ch_1'], failed: [] })),
+    getCharges: jest.fn(async (): Promise<any[]> => []),
+    refundCharges: jest.fn(async () => ({ refunded: ['ch_1'], failed: [] as any[] })),
     cancelSubscription: jest.fn(async () => ({ cancelled: true })),
-    cancelAllSubscriptionsForDeletedAccount: jest.fn(async () => undefined),
+    cancelAllSubscriptionsForDeletedAccount: jest.fn(async (): Promise<undefined> => undefined),
     ...overrides.stripe,
   };
   const users = {
@@ -109,7 +109,7 @@ describe('GET /admin/charges', () => {
 
   it('refuses an organization that does not exist', async () => {
     const { controller } = build({
-      prisma: { organization: { findUnique: jest.fn(async () => null) } },
+      prisma: { organization: { findUnique: jest.fn(async (): Promise<null> => null) } },
     });
     await expect(
       status(() => controller.listCharges(admin, 'nope'))
@@ -123,7 +123,7 @@ describe('GET /admin/charges', () => {
           findUnique: jest.fn(async () => ({
             id: 'org-1',
             name: 'Comped Co',
-            paymentId: null,
+            paymentId: null as any,
           })),
         },
       },
@@ -159,7 +159,7 @@ describe('POST /admin/refund-charges', () => {
           findUnique: jest.fn(async () => ({
             id: 'org-1',
             name: 'Comped Co',
-            paymentId: null,
+            paymentId: null as any,
           })),
         },
       },
@@ -212,7 +212,7 @@ describe('POST /admin/cancel-subscription', () => {
           findUnique: jest.fn(async () => ({
             id: 'org-1',
             name: 'Comped Co',
-            paymentId: null,
+            paymentId: null as any,
           })),
         },
       },
@@ -296,7 +296,7 @@ describe('POST /admin/delete-user', () => {
 
   it('refuses a user who is not there', async () => {
     const { controller } = build({
-      prisma: { user: { findUnique: jest.fn(async () => null) } },
+      prisma: { user: { findUnique: jest.fn(async (): Promise<null> => null) } },
     });
     await expect(
       status(() => controller.deleteUser(admin, 'ghost'))

@@ -129,10 +129,10 @@ export class AuthMiddleware implements NestMiddleware {
         })
         // Nothing about being seen is worth failing a request, or an
         // unhandled rejection, over.
-        .catch(() => undefined);
+        .catch((): undefined => undefined);
 
       const cacheKey = authContextCacheKey(payload.id);
-      const cached = await ioRedis.get(cacheKey).catch(() => null);
+      const cached = await ioRedis.get(cacheKey).catch((): null => null);
       let user: User | null = null;
       let organization: any[] | null = null;
       if (cached) {

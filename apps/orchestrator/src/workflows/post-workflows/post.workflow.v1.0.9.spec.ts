@@ -14,7 +14,7 @@ jest.mock('@temporalio/workflow', () => {
     proxyActivities: () =>
       new Proxy({}, { get: (_t, name: string) => (activities[name] ||= jest.fn()) }),
     defineSignal: () => 'poke',
-    setHandler: () => undefined,
+    setHandler: (): undefined => undefined,
     sleep: (d: unknown) => {
       sleeps.push(d);
       return Promise.resolve();

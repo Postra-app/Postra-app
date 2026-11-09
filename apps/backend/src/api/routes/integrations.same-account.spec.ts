@@ -102,13 +102,13 @@ describe('POST /integrations/social-connect/instagram-standalone', () => {
     const controller = new NoAuthIntegrationsController(
       manager as any,
       integrations as any,
-      { startRefreshWorkflow: jest.fn(async () => undefined) } as any,
+      { startRefreshWorkflow: jest.fn(async (): Promise<undefined> => undefined) } as any,
       {
         getUserOrgMembership: jest.fn(async () => ({ role: 'ADMIN' })),
         getSessionMembership: jest.fn(async () => ({ role: 'ADMIN' })),
         getOrgById: jest.fn(async () => ORG),
       } as any,
-      { getSubscriptionByOrganizationId: jest.fn(async () => null) } as any
+      { getSubscriptionByOrganizationId: jest.fn(async (): Promise<null> => null) } as any
     );
     const req = {
       headers: { auth: AuthService.signJWT({ id: 'user-1' }) },

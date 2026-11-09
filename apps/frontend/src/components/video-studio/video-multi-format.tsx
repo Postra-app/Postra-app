@@ -208,7 +208,7 @@ export const VideoMultiFormat: FC<VideoMultiFormatProps> = ({ source, onReady })
             key: r.format.key,
             label: r.format.label,
             blob: r.blob,
-            hadAudio: null,
+            hadAudio: null as boolean | null,
           }))}
           fileNameFor={(r) => `${r.key}-${Date.now()}`}
           onUseInPost={onReady}

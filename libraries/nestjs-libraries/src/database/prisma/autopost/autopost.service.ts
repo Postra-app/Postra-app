@@ -682,8 +682,8 @@ export class AutopostService {
         settings: {
           __type: i.providerIdentifier as any,
           title: '',
-          tags: [],
-          subreddit: [],
+          tags: [] as never[],
+          subreddit: [] as never[],
           // Instagram's DTO requires post_type. Publishing tolerates the gap
           // (provider defaults to a feed post), but a failed post can't be
           // re-published from the editor — validation blocks Update until the

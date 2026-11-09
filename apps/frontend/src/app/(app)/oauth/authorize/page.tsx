@@ -91,7 +91,7 @@ export default function OAuthAuthorizePage() {
         }
         setOrgId(self?.orgId || '');
       })
-      .catch(() => undefined);
+      .catch((): undefined => undefined);
   }, []);
 
   const changeOrg = useCallback(async (id: string) => {

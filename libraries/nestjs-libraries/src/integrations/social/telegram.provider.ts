@@ -255,7 +255,7 @@ export class TelegramProvider extends SocialAbstract implements SocialProvider {
             chat_id: chatId,
             text: "Connection Successful. I don't have admin privileges to delete these messages, please go ahead and remove them yourself.",
           })
-          .catch(() => undefined);
+          .catch((): undefined => undefined);
       } else {
         // Delete the message that triggered the connection
         await telegram().deleteMessage({
@@ -274,7 +274,7 @@ export class TelegramProvider extends SocialAbstract implements SocialProvider {
               chat_id: chatId,
               message_id: successMessage.message_id,
             })
-            .catch(() => undefined);
+            .catch((): undefined => undefined);
         }, 10000);
       }
     }

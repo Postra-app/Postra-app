@@ -255,7 +255,7 @@ export class WhopProvider extends SocialAbstract implements SocialProvider {
         await fetch(createFileResponse.upload_url, {
           method: 'PUT',
           headers: createFileResponse.upload_headers || {},
-          body: fileBuffer,
+          body: fileBuffer as Uint8Array<ArrayBuffer>,
         });
 
         let uploadStatus = 'pending';

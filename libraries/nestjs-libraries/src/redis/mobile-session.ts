@@ -42,7 +42,7 @@ const revokedKey = (sid: string) => `mobilesession:revoked:${sid}`;
 export const revokeMobileSession = (
   sid: string,
   ttlSeconds: number = MOBILE_TOKEN_TTL_SECONDS
-) => ioRedis.set(revokedKey(sid), '1', 'EX', ttlSeconds).catch(() => null);
+) => ioRedis.set(revokedKey(sid), '1', 'EX', ttlSeconds).catch((): null => null);
 
 /**
  * Fails open, deliberately. Treating an unreachable Redis as "revoked" would

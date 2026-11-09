@@ -64,7 +64,7 @@ export class RenderJobRunner {
     // say) must not replace the cancellation the caller is about to see.
     for (const stop of this.stoppers) {
       try {
-        Promise.resolve(stop()).catch(() => undefined);
+        Promise.resolve(stop()).catch((): undefined => undefined);
       } catch {
         /* nothing left to do */
       }

@@ -58,7 +58,7 @@ export class AutopostController {
       await this.requireAutopost(org, AuthorizationActions.Create);
       return await this._autopostsService.createAutopost(org.id, body);
     } finally {
-      await ioRedis.del(lock).catch(() => undefined);
+      await ioRedis.del(lock).catch((): undefined => undefined);
     }
   }
 
@@ -139,7 +139,7 @@ export class AutopostController {
       }
       return await run();
     } finally {
-      await ioRedis.del(lock).catch(() => undefined);
+      await ioRedis.del(lock).catch((): undefined => undefined);
     }
   }
 

@@ -83,7 +83,7 @@ const takeOrgSlot = async (org: string): Promise<OrgSlot> => {
     if (Number(taken) !== 1) return undefined;
     return {
       release: () => {
-        ioRedis.zrem(orgKey(org), lease).catch(() => undefined);
+        ioRedis.zrem(orgKey(org), lease).catch((): undefined => undefined);
       },
     };
   } catch {

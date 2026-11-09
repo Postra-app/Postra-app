@@ -85,7 +85,7 @@ export async function mediaRange(
     // A 200 is the whole file: sent as one part it would corrupt the video
     // without an error anywhere.
     if (response.status !== 206) {
-      await response.body?.cancel().catch(() => undefined);
+      await response.body?.cancel().catch((): undefined => undefined);
       throw new MediaRangeUnsupported(
         `Media storage ignored the range request (status ${response.status}); large videos need HTTP Range support`
       );

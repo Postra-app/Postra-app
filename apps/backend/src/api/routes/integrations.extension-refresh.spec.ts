@@ -12,7 +12,7 @@ jest.mock('isomorphic-dompurify', () => ({
   default: { sanitize: (v: string) => v },
 }));
 jest.mock('@gitroom/nestjs-libraries/redis/redis.service', () => ({
-  ioRedis: { get: jest.fn(async () => null) },
+  ioRedis: { get: jest.fn(async (): Promise<null> => null) },
 }));
 
 import { AuthService } from '@gitroom/helpers/auth/auth.service';

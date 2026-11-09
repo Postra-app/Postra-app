@@ -859,7 +859,7 @@ export class MediaService {
     try {
       await Promise.race([reservation, run]);
     } catch (err) {
-      await ioRedis.del(key, lease, this.videoOwnerPath(key)).catch(() => undefined);
+      await ioRedis.del(key, lease, this.videoOwnerPath(key)).catch((): undefined => undefined);
       throw err;
     }
     run.then(
@@ -905,7 +905,7 @@ export class MediaService {
           key,
           value as string
         )
-        .catch(() => undefined);
+        .catch((): undefined => undefined);
     }
     return false;
   }
@@ -923,8 +923,8 @@ export class MediaService {
     const lease = `${VIDEO_LEASE_PREFIX}${this.videoJobId(key)}`;
     await ioRedis.set(lease, '1', 'EX', VIDEO_LEASE_SECONDS);
     const keepAlive = setInterval(() => {
-      ioRedis.set(lease, '1', 'EX', VIDEO_LEASE_SECONDS).catch(() => undefined);
-      ioRedis.expire(key, VIDEO_PENDING_SECONDS).catch(() => undefined);
+      ioRedis.set(lease, '1', 'EX', VIDEO_LEASE_SECONDS).catch((): undefined => undefined);
+      ioRedis.expire(key, VIDEO_PENDING_SECONDS).catch((): undefined => undefined);
     }, VIDEO_LEASE_REFRESH_MS);
     keepAlive.unref?.();
     try {
@@ -963,7 +963,7 @@ export class MediaService {
     await ioRedis.del(this.videoJobPath(key));
     await ioRedis
       .del(`${VIDEO_LEASE_PREFIX}${this.videoJobId(key)}`)
-      .catch(() => undefined);
+      .catch((): undefined => undefined);
   }
 
   private async videoMade(
@@ -1140,7 +1140,7 @@ export class MediaService {
     } catch (err) {
       await this._subscriptionService
         .refundCredit(job.creditId)
-        .catch(() => undefined);
+        .catch((): undefined => undefined);
       await this.videoFailed(job.orgId, key, err);
     }
   }
@@ -1223,7 +1223,7 @@ export class MediaService {
         key,
         id
       )
-      .catch(() => undefined);
+      .catch((): undefined => undefined);
     return null;
   }
 
@@ -1382,7 +1382,7 @@ export class MediaService {
     );
     const resultUrl = await removeBackground(inputUrl, org.id).finally(() =>
       // The input was only for kie.ai to read.
-      this.storage.removeFile(inputUrl).catch(() => undefined)
+      this.storage.removeFile(inputUrl).catch((): undefined => undefined)
     );
     const uploaded = await this.storage.uploadSimple(resultUrl);
     const size = await this.storedSize(uploaded);
@@ -1390,7 +1390,7 @@ export class MediaService {
       await this.assertStorage(org.id, size);
     } catch (err) {
       // Over the plan's storage with the cut-out: keep nothing.
-      await this.storage.removeFile(uploaded).catch(() => undefined);
+      await this.storage.removeFile(uploaded).catch((): undefined => undefined);
       throw err;
     }
     const ext = (uploaded.split('.').pop() || 'png').toLowerCase();

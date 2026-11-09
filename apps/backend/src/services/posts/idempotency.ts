@@ -107,7 +107,7 @@ export async function withIdempotencyKey<T>(
   }
 
   const renew = setInterval(() => {
-    ioRedis.eval(RENEW, 1, id, claim, HELD_FOR_SECONDS).catch(() => undefined);
+    ioRedis.eval(RENEW, 1, id, claim, HELD_FOR_SECONDS).catch((): undefined => undefined);
   }, RENEW_EVERY_MS);
   renew.unref?.();
 

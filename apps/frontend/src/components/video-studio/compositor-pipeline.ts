@@ -152,7 +152,7 @@ export async function composeVideo(opts: ComposeOptions): Promise<ComposeResult>
   // Failures here re-throw at `await audioPump` below; without this parked
   // catch, a rejection during the (long) video loop has no handler attached
   // yet and surfaces as an unhandled rejection (Sentry POSTRA-9).
-  audioPump.catch(() => undefined);
+  audioPump.catch((): undefined => undefined);
 
   // Decode → composite overlays → encode, frame by frame.
   const videoSink = new CanvasSink(videoTrack);

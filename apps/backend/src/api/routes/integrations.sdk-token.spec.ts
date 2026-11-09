@@ -63,10 +63,10 @@ const setup = (provider: Record<string, any>, state = true) => {
   }
   const integrations = {
     hasChannel: jest.fn(async () => false),
-    getIntegrationsList: jest.fn(async () => []),
-    connectedThroughOtherRoute: jest.fn(async () => null),
-    lockSameAccount: jest.fn(async () => null),
-    unlockSameAccount: jest.fn(async () => undefined),
+    getIntegrationsList: jest.fn(async (): Promise<any[]> => []),
+    connectedThroughOtherRoute: jest.fn(async (): Promise<null> => null),
+    lockSameAccount: jest.fn(async (): Promise<null> => null),
+    unlockSameAccount: jest.fn(async (): Promise<undefined> => undefined),
     checkPreviousConnections: jest.fn(async () => false),
     createOrUpdateIntegration: jest.fn(async () => ({ id: 'int-new' })),
   };
@@ -78,12 +78,12 @@ const setup = (provider: Record<string, any>, state = true) => {
       isPreview: () => false,
     } as any,
     integrations as any,
-    { startRefreshWorkflow: jest.fn(async () => undefined) } as any,
+    { startRefreshWorkflow: jest.fn(async (): Promise<undefined> => undefined) } as any,
     {
       getSessionMembership: jest.fn(async () => ({ role: 'ADMIN' })),
       getOrgById: jest.fn(async () => ORG),
     } as any,
-    { getSubscriptionByOrganizationId: jest.fn(async () => null) } as any
+    { getSubscriptionByOrganizationId: jest.fn(async (): Promise<null> => null) } as any
   );
   return { controller, integrations };
 };
@@ -237,7 +237,7 @@ describe('connect outcome in the logs', () => {
       isBetweenSteps: true,
       authenticate: jest.fn(),
       authenticateSdkToken: jest.fn(async () => details),
-      pages: jest.fn(async () => []),
+      pages: jest.fn(async (): Promise<any[]> => []),
     };
     const { controller } = setup(facebook);
 

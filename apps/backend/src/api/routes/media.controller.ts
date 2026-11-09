@@ -611,7 +611,7 @@ export class MediaController {
     await fetch(unsplashApiUrl(`/photos/${encodeURIComponent(id)}/download`), {
       headers: { Authorization: `Client-ID ${key}`, 'Accept-Version': 'v1' },
       signal: AbortSignal.timeout(10_000),
-    }).catch(() => undefined);
+    }).catch((): undefined => undefined);
     return media;
   }
 

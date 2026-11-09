@@ -246,7 +246,7 @@ export class UsersController {
     const replyTo = body.email || user.email;
     const shot = decodeScreenshot(body.screenshot);
     const screenshotFile = shot
-      ? await storeScreenshot(shot).catch((err) => {
+      ? await storeScreenshot(shot).catch((err): undefined => {
           Logger.error(`problem-report screenshot not stored: ${err?.message}`);
           return undefined;
         })

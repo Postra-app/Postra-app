@@ -364,7 +364,7 @@ export class BlueskyProvider extends SocialAbstract implements SocialProvider {
         return {
           width,
           height,
-          buffer: await agent.uploadBlob(new Blob([buffer])),
+          buffer: await agent.uploadBlob(new Blob([buffer as Uint8Array<ArrayBuffer>])),
         };
       })
     );

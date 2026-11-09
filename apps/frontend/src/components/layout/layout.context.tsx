@@ -150,7 +150,7 @@ function LayoutContextInner(params: { children: ReactNode }) {
       // does. (Before the backend split these, this arrived as a 402 with no
       // message and opened an empty "Go to billing" dialog.)
       if (response.status === 403) {
-        const body = await response.json().catch(() => null);
+        const body = await response.json().catch((): null => null);
         toaster.show(
           body?.message ||
             t(
@@ -205,7 +205,7 @@ function LayoutContextInner(params: { children: ReactNode }) {
         const named =
           response.status === 503 &&
           response.headers.get('content-type')?.includes('application/json')
-            ? (await response.json().catch(() => null))?.message
+            ? (await response.json().catch((): null => null))?.message
             : undefined;
         if (Date.now() - last5xx.current > 5000) {
           last5xx.current = Date.now();

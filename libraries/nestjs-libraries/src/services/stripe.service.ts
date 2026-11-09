@@ -63,6 +63,22 @@ const waitsForRenewal = (
   !!currentTier &&
   TIER_ORDER.indexOf(billing) < TIER_ORDER.indexOf(currentTier);
 
+
+/** A succeeded charge as Billing and the admin panel list it. */
+export type ChargeSummary = {
+  id: string;
+  amount: number;
+  currency: string;
+  created: number;
+  status: Stripe.Charge['status'];
+  refunded: boolean;
+  amount_refunded: number;
+  description: string | null;
+  receipt_url: string | null;
+  invoice: string | null;
+  invoice_pdf: string | null;
+};
+
 @Injectable()
 export class StripeService {
   private readonly _logger = new Logger(StripeService.name);
@@ -76,7 +92,7 @@ export class StripeService {
   // While the webhook endpoint moves to a new API version, the old and the new
   // endpoint both deliver, each signing with its own secret: the signing key
   // then holds both, comma-separated, until the old endpoint is deleted.
-  validateRequest(rawBody: Buffer, signature: string, endpointSecret: string) {
+  validateRequest(rawBody: Buffer, signature: string, endpointSecret: string): Stripe.Event {
     const secrets = (endpointSecret || '')
       .split(',')
       .map((secret) => secret.trim())
@@ -766,7 +782,7 @@ export class StripeService {
       return customer.id;
     }
     // Another checkout stored its customer first; this one would be an orphan.
-    await stripe.customers.del(customer.id).catch(() => undefined);
+    await stripe.customers.del(customer.id).catch((): undefined => undefined);
     return stored;
   }
 
@@ -1189,7 +1205,9 @@ export class StripeService {
     return org.paymentId;
   }
 
-  async createBillingPortalLink(customer: string) {
+  async createBillingPortalLink(
+    customer: string
+  ): Promise<Stripe.Response<Stripe.BillingPortal.Session>> {
     return stripe.billingPortal.sessions.create({
       customer,
       return_url: process.env['FRONTEND_URL'] + '/billing',
@@ -1892,7 +1910,7 @@ export class StripeService {
     return { ok: true };
   }
 
-  async getCharges(organizationId: string) {
+  async getCharges(organizationId: string): Promise<ChargeSummary[]> {
     const org = await this._organizationService.getOrgById(organizationId);
     if (!org?.paymentId) {
       return [];

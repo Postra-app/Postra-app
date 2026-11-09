@@ -18,7 +18,7 @@ const org = { id: 'org-1', createdAt: new Date(), isTrailing: false } as any;
 const make = () => {
   const posts = {
     mapTypeToPost: jest.fn(async (body: any) => body),
-    validatePosts: jest.fn(async () => []),
+    validatePosts: jest.fn(async (): Promise<any[]> => []),
     createPost: jest.fn(async () => [{ postId: 'post-1' }]),
   };
   const permissions = { postCap: jest.fn(async () => 10) };

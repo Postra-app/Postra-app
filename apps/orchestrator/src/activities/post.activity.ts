@@ -416,7 +416,7 @@ export class PostActivity {
       throw new Error('This post is being published by another run');
     }
     const keepAlive = setInterval(() => {
-      ioRedis.expire(lockKey, 90).catch(() => undefined);
+      ioRedis.expire(lockKey, 90).catch((): undefined => undefined);
     }, 30_000);
     let postNow: PostResponse[];
     try {
@@ -427,8 +427,8 @@ export class PostActivity {
       postNow = outcome.responses;
     } finally {
       clearInterval(keepAlive);
-      if ((await ioRedis.get(lockKey).catch(() => null)) === owner) {
-        await ioRedis.del(lockKey).catch(() => undefined);
+      if ((await ioRedis.get(lockKey).catch((): null => null)) === owner) {
+        await ioRedis.del(lockKey).catch((): undefined => undefined);
       }
     }
 
