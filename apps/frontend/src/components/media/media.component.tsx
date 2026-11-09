@@ -476,7 +476,7 @@ export const MediaBox: FC<{
   }, [t, loading]);
 
   return (
-    <DropFiles disabled={loading} className="flex flex-col flex-1" onDrop={dragAndDrop}>
+    <DropFiles className="flex flex-col flex-1" onDrop={dragAndDrop}>
       <div className="flex flex-col flex-1">
         <div
           className={clsx(
