@@ -4,7 +4,7 @@ import { NextRequest } from 'next/server';
 import { newNonce, nonceCsp } from './csp';
 import { proxy } from './proxy';
 
-// The nonce policy runs report-only beside the one nginx enforces
+// The nonce policy is enforced on pages beside the one nginx sends everywhere
 // (var/docker/nginx.conf). It drops 'unsafe-inline' from script-src: only
 // scripts carrying this request's nonce, and what they load ('strict-dynamic'),
 // may run. Everything else must match the enforced policy, so the reports
@@ -72,25 +72,25 @@ describe('proxy - nonce policy on pages', () => {
     ['a signed-in page', '/launches', 'auth=token'],
     ['the login page', '/auth/login', undefined],
   ] as const) {
-    it(`sends it report-only on ${label}, with the nonce handed to the render`, async () => {
+    it(`enforces it on ${label}, with the nonce handed to the render`, async () => {
       const res = await page(path, cookie);
-      const header = res.headers.get('content-security-policy-report-only');
+      const header = res.headers.get('content-security-policy');
       expect(header).toBeTruthy();
-      expect(res.headers.get('content-security-policy')).toBeNull();
+      expect(res.headers.get('content-security-policy-report-only')).toBeNull();
       const nonce = header!.match(/'nonce-([^']+)'/)![1];
       // NextResponse.next({ request: { headers } }) forwards the request
       // headers the render reads (Next picks the nonce out of the policy,
       // the layout takes x-nonce for its <Script> tags).
       expect(res.headers.get('x-middleware-request-x-nonce')).toBe(nonce);
       expect(
-        res.headers.get('x-middleware-request-content-security-policy-report-only')
+        res.headers.get('x-middleware-request-content-security-policy')
       ).toBe(header);
     });
   }
 
   it('draws a different nonce for each request', async () => {
-    const a = (await page('/auth/login')).headers.get('content-security-policy-report-only');
-    const b = (await page('/auth/login')).headers.get('content-security-policy-report-only');
+    const a = (await page('/auth/login')).headers.get('content-security-policy');
+    const b = (await page('/auth/login')).headers.get('content-security-policy');
     expect(a).not.toBe(b);
   });
 });

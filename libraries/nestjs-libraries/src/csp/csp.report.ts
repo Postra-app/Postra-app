@@ -3,8 +3,8 @@
 // `{"csp-report": {...}}` as application/csp-report, the Reporting API posts
 // a list of `{type: "csp-violation", body: {...}}` as application/reports+json.
 //
-// mode: the enforced policy (nginx) blocked it, or the report-only nonce
-// policy (apps/frontend/src/csp.ts) would have. Browsers that send no
+// mode: an enforced policy blocked it (nginx's, or the nonce policy of
+// apps/frontend/src/csp.ts on pages), or a report-only one would have. Browsers that send no
 // disposition only know the enforced header.
 export type CspViolation = {
   directive: string;

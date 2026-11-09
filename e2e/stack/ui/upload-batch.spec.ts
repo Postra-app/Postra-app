@@ -95,6 +95,62 @@ test('a file dropped while another is uploading is attached too', async ({ page 
   expect(problems.filter((p) => !expectedNoise(p))).toEqual([]);
 });
 
+// The later file finishing first unlocked the composer while the earlier one
+// was still uploading: the post could be saved without it.
+test('the composer stays locked until every upload has finished', async ({ page }) => {
+  test.setTimeout(60_000);
+  const problems = watchForErrors(page);
+  let release: () => void = () => undefined;
+  const held = new Promise<void>((resolve) => (release = resolve));
+  await page.route('**/media/upload-server', async (route) => {
+    if (nameOf(route).includes('slow-')) {
+      await held;
+    }
+    return route.continue();
+  });
+  await openComposer(page, 'bluesky', `[stack ui] upload lock ${Date.now()}`);
+  const save = page.getByRole('button', { name: 'Save as draft' });
+  await drop(page, [`slow-${Date.now()}.png`]);
+  await page.waitForTimeout(300);
+  await drop(page, [`fast-${Date.now()}.png`]);
+  await expect(attached(page)).toHaveCount(1, { timeout: 15_000 });
+  await page.waitForTimeout(500);
+  await expect(save).toBeDisabled();
+  release();
+  await expect(attached(page)).toHaveCount(2, { timeout: 15_000 });
+  await expect(save).toBeEnabled();
+  expect(problems.filter((p) => !expectedNoise(p))).toEqual([]);
+});
+
+// The Media page refused it the same way, with the same English-only toast.
+test('a file dropped on the Media page while another is uploading is saved too', async ({ page }) => {
+  test.setTimeout(60_000);
+  const problems = watchForErrors(page);
+  await page.route('**/media/upload-server', async (route) => {
+    if (nameOf(route).includes('slow-')) {
+      await new Promise((resolve) => setTimeout(resolve, 2500));
+    }
+    return route.continue();
+  });
+  await page.goto('/media');
+  // Any element inside the page's drop zone: the drop bubbles up to it. Not
+  // the Upload button: its label is hidden while an upload runs.
+  const zone = page.getByPlaceholder('Search by file name');
+  await zone.waitFor({ state: 'attached', timeout: 15_000 });
+  const slow = `slow-${Date.now()}.png`;
+  const fast = `fast-${Date.now()}.png`;
+  for (const name of [slow, fast]) {
+    const dataTransfer = await files(page, [name]);
+    await zone.dispatchEvent('dragenter', { dataTransfer });
+    await zone.dispatchEvent('drop', { dataTransfer });
+    await page.waitForTimeout(300);
+  }
+  await expect(page.getByText(slow, { exact: true })).toBeVisible({ timeout: 15_000 });
+  await expect(page.getByText(fast, { exact: true })).toBeVisible();
+  await expect(page.getByText('Upload current in progress', { exact: false })).toHaveCount(0);
+  expect(problems.filter((p) => !expectedNoise(p))).toEqual([]);
+});
+
 test('a file finishing first does not drop another still uploading', async ({ page, browserName }) => {
   // Firefox drops the files of a ClipboardEvent made in script (measured: 0
   // files, 1 in Chromium and WebKit); the drop test above covers it there.

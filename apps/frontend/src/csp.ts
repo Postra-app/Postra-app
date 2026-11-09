@@ -1,8 +1,8 @@
-// Content-Security-Policy with a nonce drawn for every page request. nginx
-// (var/docker/nginx.conf) enforces the policy that still allows inline
-// scripts; this one is sent beside it as Content-Security-Policy-Report-Only,
-// so browsers report what it would block without blocking anything. Once the
-// reports stay empty it replaces the enforced one.
+// Content-Security-Policy with a nonce drawn for every page request, enforced
+// on every page (it ran report-only first, with nothing legitimate reported).
+// nginx (var/docker/nginx.conf) still sends its own policy on every response;
+// a browser enforces both, so its 'unsafe-inline' opens nothing on a page,
+// and it keeps covering what never passes through here (API, static files).
 //
 // script-src: only scripts with this request's nonce run, and whatever they
 // load ('strict-dynamic'), so an injected <script> without the nonce does not.
@@ -11,7 +11,7 @@
 // list stays for browsers without CSP3, which ignore 'strict-dynamic'.
 // Every other directive is the enforced policy's (csp.spec.ts compares them).
 
-export const CSP_REPORT_ONLY = 'Content-Security-Policy-Report-Only';
+export const CSP_HEADER = 'Content-Security-Policy';
 export const NONCE_HEADER = 'x-nonce';
 
 export const newNonce = () => btoa(crypto.randomUUID());

@@ -6,8 +6,7 @@ import { watchForErrors } from './ui-helpers';
 // the enforced Content-Security-Policy (the stack proxy serves nginx.conf's).
 // One test per tool on a fresh canvas, so one broken tool cannot hide the
 // rest. Each fails on a console error, a response of 400 or more, or a
-// violation of the enforced policy; violations of the report-only nonce
-// policy fail too, because they are what breaks once it is enforced.
+// violation of either enforced policy (nginx's and the nonce one).
 
 test.use({ viewport: { width: 1440, height: 900 } });
 
@@ -315,9 +314,12 @@ test('Images: one undo brings back the photo a Replace swapped out', async ({ pa
   const s = await studio(page);
   await s.uploadPhoto();
   // The canvas's average red channel: the photo is blue and yellow, the
-  // replacement red.
+  // replacement red. Read after two frames: a canvas resized for the new
+  // photo is blank until its next render (WebKit, measured: 0 between two
+  // reads), and a blank read would also pass for the photo coming back.
   const red = () =>
-    page.evaluate(() => {
+    page.evaluate(async () => {
+      await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
       const c = document.querySelector('canvas.lower-canvas') as HTMLCanvasElement;
       const d = c.getContext('2d')!.getImageData(0, 0, c.width, c.height).data;
       let sum = 0;
@@ -342,11 +344,9 @@ test('Images: one undo brings back the photo a Replace swapped out', async ({ pa
     });
   expect((await replaced).status()).toBe(201);
   await expect.poll(red, { timeout: 10_000 }).toBeGreaterThan(before + 20);
-  const replacedRed = await red();
   await page.getByTitle('Undo (Ctrl+Z)').click();
   // The photo comes back (re-rendered from history, so within a shade).
-  await expect.poll(red, { timeout: 5_000 }).toBeLessThan(before + 3);
-  expect(replacedRed).toBeGreaterThan(before + 20);
+  await expect.poll(async () => Math.abs((await red()) - before), { timeout: 5_000 }).toBeLessThan(3);
   await s.clean();
 });
 
