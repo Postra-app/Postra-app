@@ -4,6 +4,7 @@ import { CreateOrgUserDto } from '@gitroom/nestjs-libraries/dtos/auth/create.org
 import { LoginUserDto } from '@gitroom/nestjs-libraries/dtos/auth/login.user.dto';
 import { UsersService } from '@gitroom/nestjs-libraries/database/prisma/users/users.service';
 import { OrganizationService } from '@gitroom/nestjs-libraries/database/prisma/organizations/organization.service';
+import { SubscriptionService } from '@gitroom/nestjs-libraries/database/prisma/subscriptions/subscription.service';
 import { AuthService as AuthChecker } from '@gitroom/helpers/auth/auth.service';
 import { AuthProviderManager } from '@gitroom/backend/services/auth/providers/providers.manager';
 import dayjs from 'dayjs';
@@ -73,7 +74,9 @@ export class AuthService {
     private _organizationService: OrganizationService,
     private _notificationService: NotificationService,
     private _emailService: EmailService,
-    private _providerManager: AuthProviderManager
+    private _providerManager: AuthProviderManager,
+    // A comp promised to the address before it signed up (influencers).
+    private _subscriptionService?: SubscriptionService
   ) {}
   async canRegister(provider: string) {
     if (
@@ -125,6 +128,7 @@ export class AuthService {
           ip,
           userAgent
         );
+        await this._subscriptionService?.applyPendingGrant(create.id, body.email);
 
         const addedOrg =
           addToOrg && typeof addToOrg !== 'boolean'
@@ -272,6 +276,10 @@ export class AuthService {
       },
       ip,
       userAgent
+    );
+    await this._subscriptionService?.applyPendingGrant(
+      create.id,
+      providerUser.email
     );
 
     this._track('register', providerUser.email, body.datafast_visitor_id).catch(

@@ -58,6 +58,7 @@ const ADMIN_ROUTES: [string, string][] = [
   ['GET', '/admin/subscriptions'], ['GET', '/admin/audit/actions'], ['GET', '/admin/charges'],
   ['GET', '/admin/integrations/providers'],
   ['POST', '/admin/grant-lifetime'], ['POST', '/admin/comp-subscription'], ['POST', '/admin/reset-credits'],
+  ['GET', '/admin/comps'], ['POST', '/admin/pending-grants'], ['DELETE', `/admin/pending-grants/${UNKNOWN}`],
   ['POST', '/admin/revoke-subscription'], ['POST', '/admin/grant-admin'], ['POST', '/admin/refund-charges'],
   ['POST', '/admin/cancel-subscription'], ['POST', '/admin/delete-user'], ['POST', '/admin/delete-organization'],
 ];

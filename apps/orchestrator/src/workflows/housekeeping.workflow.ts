@@ -1,7 +1,7 @@
 import { continueAsNew, patched, proxyActivities, sleep } from '@temporalio/workflow';
 import type { HousekeepingActivity } from '@gitroom/orchestrator/activities/housekeeping.activity';
 
-const { purgeOldRecords, checkAiMargins } = proxyActivities<HousekeepingActivity>({
+const { purgeOldRecords, checkAiMargins, expireComps } = proxyActivities<HousekeepingActivity>({
   startToCloseTimeout: '30 minute',
   retry: {
     maximumAttempts: 3,
@@ -21,7 +21,8 @@ const { housekeepingStarted, housekeepingFinished } =
 // Started once by the backend when RUN_CRON is set (InfiniteWorkflowRegister),
 // like missingPostWorkflow. Once a day: retention for Errors, AuditLog and
 // AiUsage, stored files behind media deleted long enough ago that nothing
-// refers to, and the margin guard (AI cost per organisation vs its plan).
+// refers to, the margin guard (AI cost per organisation vs its plan) and
+// comps whose end date has passed.
 // A failed day is tried again the next day; one failing does not skip the
 // other.
 export async function housekeepingWorkflow() {
@@ -53,6 +54,14 @@ export async function housekeepingWorkflow() {
       await checkAiMargins();
     } catch (err) {
       // Next run tomorrow.
+      ok = false;
+    }
+  }
+  if (patched('housekeeping-comp-expiry')) {
+    try {
+      await expireComps();
+    } catch (err) {
+      // Next run tomorrow; the comp stays a day longer.
       ok = false;
     }
   }

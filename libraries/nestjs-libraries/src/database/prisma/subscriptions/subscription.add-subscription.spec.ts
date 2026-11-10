@@ -105,7 +105,12 @@ describe('addSubscription never touches the org handle on Stripe', () => {
     expect(auditService.record).toHaveBeenCalledWith(
       expect.objectContaining({
         action: 'subscription.comp',
-        metadata: { tier: 'PRO', stripeCustomerWithoutSubscription: true },
+        metadata: {
+          tier: 'PRO',
+          reason: 'compensation',
+          endsAt: null,
+          stripeCustomerWithoutSubscription: true,
+        },
       })
     );
   });
@@ -126,7 +131,7 @@ describe('addSubscription never touches the org handle on Stripe', () => {
         action: 'subscription.comp',
         organizationId: 'org-1',
         userId: 'user-1',
-        metadata: { tier: 'ULTIMATE' },
+        metadata: { tier: 'ULTIMATE', reason: 'compensation', endsAt: null },
       })
     );
   });

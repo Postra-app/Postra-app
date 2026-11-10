@@ -15,7 +15,7 @@ import * as Sentry from '@sentry/nestjs';
 import { HOUSEKEEPING_MONITOR, HousekeepingActivity } from './housekeeping.activity';
 
 const activity = () =>
-  new HousekeepingActivity({} as any, {} as any, {} as any, {} as any);
+  new HousekeepingActivity({} as any, {} as any, {} as any, {} as any, {} as any);
 
 describe('housekeeping check-in', () => {
   beforeEach(() => jest.clearAllMocks());
