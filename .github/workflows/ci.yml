@@ -80,9 +80,18 @@ jobs:
   # through the real Mastodon provider to a fake instance, and the composer in
   # Chromium. Catches what unit tests mock away and what production may never
   # be used for (publishing, destructive cases).
-  stack-e2e:
+  #
+  # Three shards, each with its own stack: one job ran 19-21 minutes against a
+  # 30-minute limit (the tests alone 15-17), and a run was cancelled by the
+  # limit with no test failing. Every spec is independent (fullyParallel), so
+  # Playwright splits them evenly; `stack-e2e` below is the required check.
+  stack-e2e-shard:
     runs-on: ubuntu-26.04
     timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3]
 
     steps:
       - name: Checkout repo
@@ -123,15 +132,15 @@ jobs:
       - name: Reserve the stack's ports
         run: sudo sysctl -w net.ipv4.ip_local_reserved_ports=9464,53000,54000,54200,55432,56379,57233,58080,58090
 
-      - name: Stack tests (API + UI)
-        run: pnpm e2e:stack:ui
+      - name: Stack tests (API + UI), shard ${{ matrix.shard }} of 3
+        run: pnpm e2e:stack:ui --shard=${{ matrix.shard }}/3
 
       # Only local fakes in here: stack.env values, example.com users.
       - name: Upload logs and screenshots
         if: failure()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
-          name: stack-e2e
+          name: stack-e2e-${{ matrix.shard }}
           path: |
             e2e/stack/.logs/
             e2e/stack/.results/
@@ -139,6 +148,17 @@ jobs:
           # The result folders start with a dot, which upload-artifact skips
           # unless told otherwise.
           include-hidden-files: true
+
+  # The required check: green only when every shard is. A skipped or
+  # cancelled shard fails it too.
+  stack-e2e:
+    runs-on: ubuntu-26.04
+    timeout-minutes: 5
+    needs: stack-e2e-shard
+    if: always()
+    steps:
+      - name: Every shard passed
+        run: test "${{ needs.stack-e2e-shard.result }}" = success
 
   # Boot applies migration files (prisma migrate deploy), so the schema is only
   # real once a migration carries it. `db push` used to reconcile the difference
