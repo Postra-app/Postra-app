@@ -361,7 +361,7 @@ export const DeveloperComponent: FC = () => {
                 className="bg-white/[0.03] border border-white/10 rounded-[8px] px-[16px] h-[44px] text-textColor outline-none"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                placeholder="My Application"
+                placeholder={t('oauth_app_name_placeholder', 'My Application')}
                 maxLength={100}
               />
             </div>
@@ -373,7 +373,7 @@ export const DeveloperComponent: FC = () => {
                 className="bg-white/[0.03] border border-white/10 rounded-[8px] p-[16px] text-textColor outline-none min-h-[80px]"
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
-                placeholder="Describe what your app does"
+                placeholder={t('oauth_app_description_placeholder', 'Describe what your app does')}
                 maxLength={500}
               />
             </div>
@@ -410,7 +410,7 @@ export const DeveloperComponent: FC = () => {
                 className="bg-white/[0.03] border border-white/10 rounded-[8px] px-[16px] h-[44px] text-textColor outline-none"
                 value={redirectUrl}
                 onChange={(e) => setRedirectUrl(e.target.value)}
-                placeholder="https://yourapp.com/callback"
+                placeholder={t('oauth_app_redirect_placeholder', 'https://yourapp.com/callback')}
               />
             </div>
             <div className="flex gap-[8px]">
@@ -486,7 +486,7 @@ export const DeveloperComponent: FC = () => {
                 className="bg-white/[0.03] border border-white/10 rounded-[8px] px-[16px] h-[44px] text-textColor outline-none"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                placeholder="My Application"
+                placeholder={t('oauth_app_name_placeholder', 'My Application')}
                 maxLength={100}
               />
             </div>
@@ -498,7 +498,7 @@ export const DeveloperComponent: FC = () => {
                 className="bg-white/[0.03] border border-white/10 rounded-[8px] p-[16px] text-textColor outline-none min-h-[80px]"
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
-                placeholder="Describe what your app does"
+                placeholder={t('oauth_app_description_placeholder', 'Describe what your app does')}
                 maxLength={500}
               />
             </div>
@@ -535,7 +535,7 @@ export const DeveloperComponent: FC = () => {
                 className="bg-white/[0.03] border border-white/10 rounded-[8px] px-[16px] h-[44px] text-textColor outline-none"
                 value={redirectUrl}
                 onChange={(e) => setRedirectUrl(e.target.value)}
-                placeholder="https://yourapp.com/callback"
+                placeholder={t('oauth_app_redirect_placeholder', 'https://yourapp.com/callback')}
               />
             </div>
             <div className="flex gap-[8px]">
