@@ -61,11 +61,22 @@ export class MediaRepository {
         originalName: true,
         path: true,
         thumbnail: true,
+        poster: true,
         alt: true,
         aiGenerated: true,
         type: true,
       },
     });
+  }
+
+  // Only over an empty poster: a poster written meanwhile (the run after the
+  // upload and the daily one racing) is kept.
+  async setPoster(id: string, poster: string) {
+    const { count } = await this._media.model.media.updateMany({
+      where: { id, poster: null },
+      data: { poster },
+    });
+    return count === 1;
   }
 
   // Bytes the organisation's library holds now. A file deleted from the
@@ -277,6 +288,7 @@ export class MediaRepository {
         originalName: true,
         alt: true,
         thumbnail: true,
+        poster: true,
         path: true,
         thumbnailTimestamp: true,
       },
@@ -339,6 +351,7 @@ export class MediaRepository {
         originalName: true,
         path: true,
         thumbnail: true,
+        poster: true,
         alt: true,
         thumbnailTimestamp: true,
         aiGenerated: true,

@@ -351,6 +351,22 @@ export const COMPABLE_TIERS = ['STANDARD', 'PRO', 'ULTIMATE'] as const;
 
 export type CompableTier = (typeof COMPABLE_TIERS)[number];
 
+// How long a comp lasts (months); null = until it is revoked.
+export const COMP_MONTHS = [1, 3, 6, 12] as const;
+// Why a plan was given away — kept on the subscription for the admin list.
+export const COMP_REASONS = [
+  'influencer',
+  'compensation',
+  'tester',
+  'partner',
+] as const;
+export type CompReason = (typeof COMP_REASONS)[number];
+
+export const isCompMonths = (value: unknown): value is number =>
+  (COMP_MONTHS as readonly unknown[]).includes(value);
+export const isCompReason = (value: unknown): value is CompReason =>
+  (COMP_REASONS as readonly unknown[]).includes(value);
+
 export const isCompableTier = (value: unknown): value is CompableTier =>
   typeof value === 'string' &&
   (COMPABLE_TIERS as readonly string[]).includes(value) &&

@@ -8,6 +8,8 @@ import { PrismaService } from '@gitroom/nestjs-libraries/database/prisma/prisma.
 import { ioRedis } from '@gitroom/nestjs-libraries/redis/redis.service';
 import { marginAlertMail } from '@gitroom/nestjs-libraries/ai-cost/margin-alert.mail';
 import * as Sentry from '@sentry/nestjs';
+import { SubscriptionService } from '@gitroom/nestjs-libraries/database/prisma/subscriptions/subscription.service';
+import { compExpiredMail } from '@gitroom/nestjs-libraries/database/prisma/subscriptions/comp-expired.mail';
 
 // Sentry's cron monitor of the daily run. The operator's monitoring setup
 // owns the monitor (slug, schedule, margins); the SDK only reports to it.
@@ -21,7 +23,8 @@ export class HousekeepingActivity {
     private _maintenance: MaintenanceService,
     private _aiUsage: AiUsageService,
     private _email: EmailService,
-    private _prisma: PrismaService
+    private _prisma: PrismaService,
+    private _subscriptions: SubscriptionService
   ) {}
 
   // The daily run reports to Sentry's cron monitor: a day without an "ok", or
@@ -67,6 +70,40 @@ export class HousekeepingActivity {
       unlisted: unlisted.removed,
       agentThreads,
     };
+  }
+
+  // A still frame for videos stored without one (the ones from before
+  // posters existed, or an upload whose own attempt a restart cut short).
+  @ActivityMethod()
+  async fillVideoPosters() {
+    const report = await this._maintenance.fillVideoPosters();
+    if (report.filled || report.none || report.failed) {
+      this._logger.log(
+        `video posters: filled ${report.filled}, no frame ${report.none}, failed ${report.failed}`
+      );
+    }
+    return report;
+  }
+
+  // Comps given for a time (influencers: 1/3/6/12 months) come back on their
+  // end date, and the administrators get one mail naming them. A failed mail
+  // does not undo the revoke; the audit log has every one.
+  @ActivityMethod()
+  async expireComps() {
+    const expired = await this._subscriptions.expireComps();
+    if (!expired.length) {
+      return { expired: 0 };
+    }
+    this._logger.log(`comp expiry: ${expired.length} organisation(s) back on Free`);
+    const admins = await this._prisma.user.findMany({
+      where: { isSuperAdmin: true, activated: true },
+      select: { email: true },
+    });
+    const { subject, html } = compExpiredMail(expired);
+    for (const admin of admins) {
+      await this._email.sendEmailSync(admin.email, subject, html);
+    }
+    return { expired: expired.length };
   }
 
   // The margin guard, daily: Postra administrators get one mail when an

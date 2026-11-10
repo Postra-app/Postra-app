@@ -1,4 +1,5 @@
 import { HttpException, Injectable, Logger } from '@nestjs/common';
+import { posterFor } from '@gitroom/nestjs-libraries/videos/poster/video.poster';
 import { createHash } from 'crypto';
 import { MediaRepository } from '@gitroom/nestjs-libraries/database/prisma/media/media.repository';
 import { OpenaiService } from '@gitroom/nestjs-libraries/openai/openai.service';
@@ -641,7 +642,7 @@ export class MediaService {
     fileSize?: number
   ) {
     const size = await sizeToRecord(fileSize, this.storage, filePath);
-    return this._mediaRepository.saveFile(
+    const media = await this._mediaRepository.saveFile(
       org,
       fileName,
       filePath,
@@ -649,6 +650,27 @@ export class MediaService {
       aiGenerated,
       size
     );
+    if (media.type === 'video') {
+      // Not awaited: the upload answers at once and the frame follows in a
+      // second or two. If this process dies first, the daily housekeeping
+      // run fills it.
+      void this.fillPoster(media.id, media.path);
+    }
+    return media;
+  }
+
+  // A still frame for the video's tile in lists.
+  async fillPoster(id: string, path: string) {
+    try {
+      const poster = await posterFor(path, this.storage);
+      if (poster !== null) {
+        await this._mediaRepository.setPoster(id, poster);
+      }
+      return poster;
+    } catch (err) {
+      Logger.warn(`poster for media ${id} failed: ${(err as Error)?.message}`);
+      return null;
+    }
   }
 
   // Bytes of a stored file (0 when the storage cannot tell).

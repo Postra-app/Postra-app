@@ -5,6 +5,8 @@
  */
 const purgeOldRecords = jest.fn();
 const checkAiMargins = jest.fn();
+const expireComps = jest.fn();
+const fillVideoPosters = jest.fn();
 const housekeepingStarted = jest.fn();
 const housekeepingFinished = jest.fn();
 const sleep = jest.fn().mockResolvedValue(undefined);
@@ -16,6 +18,8 @@ jest.mock('@temporalio/workflow', () => ({
   proxyActivities: () => ({
     purgeOldRecords,
     checkAiMargins,
+    expireComps,
+    fillVideoPosters,
     housekeepingStarted,
     housekeepingFinished,
   }),
@@ -31,11 +35,46 @@ beforeEach(() => {
   jest.clearAllMocks();
   purgeOldRecords.mockResolvedValue({});
   checkAiMargins.mockResolvedValue({});
+  expireComps.mockResolvedValue({ expired: 0 });
+  fillVideoPosters.mockResolvedValue({ filled: 0, none: 0, failed: 0 });
   housekeepingStarted.mockResolvedValue('check-in-1');
   housekeepingFinished.mockResolvedValue(undefined);
 });
 
 describe('housekeepingWorkflow', () => {
+  it('takes back ended comps behind its own patch', async () => {
+    await housekeepingWorkflow();
+    expect(patched).toHaveBeenCalledWith('housekeeping-comp-expiry');
+    expect(expireComps).toHaveBeenCalledTimes(1);
+    expect(housekeepingFinished).toHaveBeenCalledWith('check-in-1', true);
+  });
+
+  it('fills video posters behind its own patch; a run started before skips it', async () => {
+    await housekeepingWorkflow();
+    expect(patched).toHaveBeenCalledWith('housekeeping-video-posters');
+    expect(fillVideoPosters).toHaveBeenCalledTimes(1);
+    jest.clearAllMocks();
+    patches = { 'housekeeping-video-posters': false };
+    await housekeepingWorkflow();
+    expect(fillVideoPosters).not.toHaveBeenCalled();
+    expect(continueAsNew).toHaveBeenCalledTimes(1);
+  });
+
+  it('a run started before comp expiry skips it', async () => {
+    patches = { 'housekeeping-comp-expiry': false };
+    await housekeepingWorkflow();
+    expect(expireComps).not.toHaveBeenCalled();
+    expect(continueAsNew).toHaveBeenCalledTimes(1);
+  });
+
+  it('a failed comp expiry marks the day as failed and still continues', async () => {
+    expireComps.mockRejectedValueOnce(new Error('db down'));
+    await housekeepingWorkflow();
+    expect(checkAiMargins).toHaveBeenCalledTimes(1);
+    expect(housekeepingFinished).toHaveBeenCalledWith('check-in-1', false);
+    expect(continueAsNew).toHaveBeenCalledTimes(1);
+  });
+
   it('a new run purges, checks margins, sleeps a day and continues as new', async () => {
     await housekeepingWorkflow();
     expect(purgeOldRecords).toHaveBeenCalledTimes(1);

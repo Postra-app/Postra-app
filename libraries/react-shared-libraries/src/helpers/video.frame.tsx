@@ -16,8 +16,12 @@ export const VideoFrame: FC<{
   // Full native player (play/pause, seek bar, time, volume, fullscreen).
   // Off by default so grid thumbnails stay clean — they get a length badge.
   controls?: boolean;
+  // A still the server took (Media.poster) or the customer's cover: shown
+  // before the video loads, and where the browser draws nothing for #t=1
+  // (Safari on iOS with preload="metadata").
+  poster?: string | null;
 }> = (props) => {
-  const { url, autoplay, controls } = props;
+  const { url, autoplay, controls, poster } = props;
   const [duration, setDuration] = useState<number | null>(null);
   return (
     <div className="relative w-full h-full">
@@ -29,6 +33,7 @@ export const VideoFrame: FC<{
         // starts at 0 so the seek bar spans the whole clip.
         src={controls ? url : url + '#t=1'}
         preload="metadata"
+        poster={poster || undefined}
         autoPlay={!!autoplay}
         controls={!!controls}
         onLoadedMetadata={(e) => {

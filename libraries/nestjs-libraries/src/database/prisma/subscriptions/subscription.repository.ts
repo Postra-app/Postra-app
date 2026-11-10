@@ -14,7 +14,8 @@ export class SubscriptionRepository {
     private readonly _user: PrismaRepository<'user'>,
     private readonly _credits: PrismaRepository<'credits'>,
     private _usedCodes: PrismaRepository<'usedCodes'>,
-    private readonly _prismaTransaction: PrismaTransaction
+    private readonly _prismaTransaction: PrismaTransaction,
+    private readonly _pendingGrant: PrismaRepository<'pendingGrant'>
   ) {}
 
   getUserAccount(userId: string) {
@@ -162,6 +163,128 @@ export class SubscriptionRepository {
    * deletes anything. A comped or granted account therefore could not be taken
    * back through the product at all.
    */
+  // Comps whose end date has passed and that are still in force.
+  listExpiredComps(now: Date) {
+    return this._subscription.model.subscription.findMany({
+      where: { deletedAt: null, isLifetime: false, compEndsAt: { lte: now } },
+      select: {
+        organizationId: true,
+        subscriptionTier: true,
+        compReason: true,
+        compEndsAt: true,
+        organization: { select: { name: true } },
+      },
+    });
+  }
+
+  // Every plan in force that nobody pays for: rows written by a comp, and
+  // older comps from before the reason was kept (a non-lifetime plan on an
+  // organization without a Stripe customer can only be one).
+  listComps() {
+    return this._subscription.model.subscription.findMany({
+      where: {
+        deletedAt: null,
+        isLifetime: false,
+        OR: [
+          { compReason: { not: null } },
+          { organization: { paymentId: null } },
+          { organization: { NOT: { paymentId: { startsWith: 'cus_' } } } },
+        ],
+      },
+      orderBy: [{ compEndsAt: { sort: 'asc', nulls: 'last' } }, { createdAt: 'desc' }],
+      select: {
+        organizationId: true,
+        subscriptionTier: true,
+        compReason: true,
+        compEndsAt: true,
+        createdAt: true,
+        organization: { select: { name: true } },
+      },
+    });
+  }
+
+  findOpenPendingGrant(email: string) {
+    return this._pendingGrant.model.pendingGrant.findFirst({
+      where: { email, consumedAt: null },
+      orderBy: { createdAt: 'desc' },
+    });
+  }
+
+  listOpenPendingGrants() {
+    return this._pendingGrant.model.pendingGrant.findMany({
+      where: { consumedAt: null },
+      orderBy: { createdAt: 'desc' },
+    });
+  }
+
+  listPendingGrants() {
+    return this._pendingGrant.model.pendingGrant.findMany({
+      orderBy: { createdAt: 'desc' },
+      take: 200,
+    });
+  }
+
+  createPendingGrant(data: {
+    email: string;
+    tier: 'STANDARD' | 'TEAM' | 'PRO' | 'ULTIMATE';
+    months: number | null;
+    reason: string;
+    createdById: string;
+  }) {
+    return this._pendingGrant.model.pendingGrant.create({ data });
+  }
+
+  deleteOpenPendingGrantsByEmail(email: string) {
+    return this._pendingGrant.model.pendingGrant.deleteMany({
+      where: { email, consumedAt: null },
+    });
+  }
+
+  async userExistsByEmail(email: string) {
+    return !!(await this._user.model.user.findFirst({
+      where: { email: { equals: email, mode: 'insensitive' } },
+      select: { id: true },
+    }));
+  }
+
+  deleteOpenPendingGrant(id: string) {
+    return this._pendingGrant.model.pendingGrant.deleteMany({
+      where: { id, consumedAt: null },
+    });
+  }
+
+  // Claims the grant for one organization: of two sign-ups racing on the same
+  // address, only the first gets it.
+  async consumePendingGrant(id: string, organizationId: string) {
+    const { count } = await this._pendingGrant.model.pendingGrant.updateMany({
+      where: { id, consumedAt: null },
+      data: { consumedAt: new Date(), organizationId },
+    });
+    return count === 1;
+  }
+
+  // Only while it is still an ended comp: a write in between (an extension,
+  // a Stripe plan, a lifetime grant) moves or clears compEndsAt.
+  async softDeleteExpiredComp(orgId: string, now: Date) {
+    const { count } = await this._subscription.model.subscription.updateMany({
+      where: {
+        organizationId: orgId,
+        deletedAt: null,
+        isLifetime: false,
+        compEndsAt: { lte: now },
+      },
+      data: { deletedAt: new Date() },
+    });
+    return { revoked: count > 0 };
+  }
+
+  async releasePendingGrant(id: string, organizationId: string) {
+    await this._pendingGrant.model.pendingGrant.updateMany({
+      where: { id, organizationId },
+      data: { consumedAt: null, organizationId: null },
+    });
+  }
+
   async softDeleteSubscriptionByOrg(orgId: string) {
     const { count } = await this._subscription.model.subscription.updateMany({
       where: { organizationId: orgId, deletedAt: null },
@@ -267,7 +390,11 @@ export class SubscriptionRepository {
     cancelAt: number | null,
     code?: string,
     org?: { id: string },
-    periodAnchor?: Date
+    periodAnchor?: Date,
+    // Set only by an admin comp. Every other write (a Stripe webhook, a
+    // lifetime grant) clears it: a plan the customer now pays for must not be
+    // taken back on a comp's end date.
+    comp?: { reason: string; endsAt: Date | null }
   ) {
     const findOrg =
       org || (await this.getOrganizationByCustomerId(customerId))!;
@@ -302,6 +429,8 @@ export class SubscriptionRepository {
         isLifetime: !!code,
         cancelAt: cancelAt ? new Date(cancelAt * 1000) : null,
         ...(periodAnchor ? { periodAnchor } : {}),
+        compReason: comp?.reason ?? null,
+        compEndsAt: comp?.endsAt ?? null,
         deletedAt: null,
       },
       create: {
@@ -313,6 +442,8 @@ export class SubscriptionRepository {
         cancelAt: cancelAt ? new Date(cancelAt * 1000) : null,
         identifier,
         ...(periodAnchor ? { periodAnchor } : {}),
+        compReason: comp?.reason ?? null,
+        compEndsAt: comp?.endsAt ?? null,
         deletedAt: null,
       },
       })

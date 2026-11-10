@@ -16,9 +16,10 @@ const read = (file: string) => readFileSync(join(ADMIN, file), 'utf8');
 describe('every admin tab', () => {
   // Twelve since channels got a tab of its own: the panel showed no token
   // state at all, so "my channel keeps disconnecting" could only be answered
-  // by running a command over SSM.
-  it('there are twelve of them', () => {
-    expect(tabs).toHaveLength(12);
+  // by running a command over SSM. Thirteen with comps (end dates, plans
+  // promised to an email), shown under Subscriptions.
+  it('there are thirteen of them', () => {
+    expect(tabs).toHaveLength(13);
   });
 
   // Four of them had no heading element at all, and the rest mixed h1 with

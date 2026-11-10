@@ -111,3 +111,53 @@ test('the panel names plans like the rest of Postra and shows the range it chart
     await staff.remove();
   }
 });
+
+// Influencers: the admin promises Pro to an address before it has an
+// account, sees it waiting, and a comp given from Users carries its length.
+test('a plan promised to an email shows as waiting, and a comp from Users shows its end date', async ({ page }) => {
+  test.setTimeout(180_000);
+  const prisma = database();
+  const staff = await signInAsAdmin(page, prisma);
+  const target = await throwawayOrg(prisma, { tier: 'PRO', totalChannels: 5, channels: 0 });
+  const email = `ui-creator-${process.pid}-${Date.now()}@example.com`;
+  try {
+    await prisma.subscription.deleteMany({ where: { organizationId: target.orgId } });
+
+    await page.goto('/admin/subscriptions');
+    const form = page.getByRole('form', { name: 'Promise a plan to an email' });
+    await form.getByRole('textbox', { name: 'Email' }).fill(email);
+    await form.getByRole('combobox', { name: 'Plan' }).selectOption('PRO');
+    await form.getByRole('combobox', { name: 'Length' }).selectOption('6');
+    await form.getByRole('combobox', { name: 'Reason' }).selectOption('influencer');
+    await form.getByRole('button', { name: 'Save grant' }).click();
+    const waiting = page.getByRole('row').filter({ hasText: email });
+    await expect(waiting).toContainText('Pro');
+    await expect(waiting).toContainText('6 mo');
+    await expect(waiting).toContainText('Waiting for sign-up');
+    await page.screenshot({ path: 'e2e/stack/.results/admin-comps.png', fullPage: true });
+
+    await page.goto('/admin/users');
+    // The list reloads a moment after typing (debounced search) and a reload
+    // resets the row's controls, so act only on the searched list.
+    const searched = page.waitForResponse(
+      (r) => r.url().includes('/admin/users?') && r.url().includes(encodeURIComponent(target.email))
+    );
+    await page.getByRole('textbox', { name: 'Search users' }).fill(target.email);
+    await searched;
+    await expect(page.getByRole('row')).toHaveCount(2);
+    const row = page.getByRole('row').filter({ hasText: target.email });
+    await row.getByRole('combobox', { name: 'Comp a subscription' }).selectOption('PRO');
+    await row.getByRole('combobox', { name: 'Length' }).selectOption('1');
+    await row.getByRole('combobox', { name: 'Reason' }).selectOption('tester');
+    await row.getByRole('button', { name: 'Comp', exact: true }).click();
+    await page.getByRole('dialog').getByRole('button', { name: 'Comp', exact: true }).click();
+    await expect(row).toContainText('comp until');
+    const sub = await prisma.subscription.findUniqueOrThrow({ where: { organizationId: target.orgId } });
+    expect(sub).toMatchObject({ subscriptionTier: 'PRO', compReason: 'tester' });
+    expect(sub.compEndsAt).not.toBeNull();
+  } finally {
+    await prisma.pendingGrant.deleteMany({ where: { email } });
+    await target.remove();
+    await staff.remove();
+  }
+});

@@ -17,8 +17,7 @@ export const initializeSentryClient = (
   // email it to the team (Sentry sends no mail for it on our plan).
   onProblemReport?: (report: ProblemReport, eventId: string) => void
 ) => {
-  // A remounted layout must not build a second replay integration: Sentry
-  // throws on it (upstream 2aac6f374).
+  // A remounted layout must not build a second client (upstream 2aac6f374).
   if (Sentry.getClient()) {
     return;
   }
@@ -28,12 +27,9 @@ export const initializeSentryClient = (
       // Add default integrations back
       Sentry.browserTracingIntegration(),
       Sentry.browserProfilingIntegration(),
-      Sentry.replayIntegration({
-        // GDPR: replays capture whatever the user sees (post drafts, emails),
-        // so mask everything and record only when an error actually happens.
-        maskAllText: true,
-        maskAllInputs: true,
-      }),
+      // No session replay, not even on error: no recordings of what a
+      // customer does (the rule for Postra's monitoring; the error, its stack
+      // and the trace say what broke).
       Sentry.feedbackIntegration({
         // Disable the injection of the default widget — the topbar chat icon
         // (AttachToFeedbackIcon) opens it instead.
@@ -68,14 +64,7 @@ export const initializeSentryClient = (
             eventId
           ),
       }),
-      // No replayCanvasIntegration: Sentry does not mask canvas recordings
-      // ("There is currently no PII scrubbing in canvas recordings"), and the
-      // design studio's canvas shows customers' images and text.
     ],
-    // Error-only replays: the free tier includes ~50 replays/month, so recording
-    // every session would exhaust the quota within a day.
-    replaysSessionSampleRate: 0,
-    replaysOnErrorSampleRate: 1.0,
 
     // Sentry 11 removed profilesSampleRate: a sampled session is profiled
     // while a trace runs, the backend's setting.

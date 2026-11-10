@@ -11,6 +11,7 @@ import { BackfillMediaType } from './tasks/backfill.media.type';
 import { BackfillMediaSize } from './tasks/backfill.media.size';
 import { ScrubErrorSecrets } from './tasks/scrub.error.secrets';
 import { PurgeOldRecords } from './tasks/purge.old.records';
+import { FillVideoPosters } from './tasks/fill.video.posters';
 import { AgentModule } from '@gitroom/nestjs-libraries/agent/agent.module';
 import { TemporalStubModule } from './temporal.stub.module';
 
@@ -51,6 +52,7 @@ import { TemporalStubModule } from './temporal.stub.module';
     BackfillMediaSize,
     ScrubErrorSecrets,
     PurgeOldRecords,
+    FillVideoPosters,
   ],
   get exports() {
     return [...this.imports, ...this.providers];

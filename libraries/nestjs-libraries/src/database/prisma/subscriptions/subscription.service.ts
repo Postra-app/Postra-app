@@ -1,6 +1,10 @@
-import { HttpException, Injectable } from '@nestjs/common';
+import { HttpException, Injectable, Logger } from '@nestjs/common';
 import {
   COMPABLE_TIERS,
+  COMP_MONTHS,
+  COMP_REASONS,
+  isCompMonths,
+  isCompReason,
   channelLimitFor,
   isCompableTier,
   postAllowance,
@@ -21,6 +25,7 @@ import { AuditService } from '@gitroom/nestjs-libraries/database/prisma/audit/au
 import { AiUsageService } from '@gitroom/nestjs-libraries/database/prisma/ai-usage/ai-usage.service';
 import { bustAuthContextCacheForUsers } from '@gitroom/nestjs-libraries/redis/auth-context.cache';
 import { aiCooldownMessage } from '@gitroom/nestjs-libraries/services/ai.cooldown';
+import { normalizeEmail } from '@gitroom/helpers/utils/email.normalize';
 
 // The start of the current monthly period, counted from the subscription's
 // day of the month — the window AI credits are counted in.
@@ -37,6 +42,18 @@ const currentPeriodStart = (subscription: {
     date = date.add(1, 'month');
   }
   return date.subtract(1, 'month');
+};
+
+// One "@", something before it, a dotted domain after it, no spaces, at
+// most 254 characters. Checked without a regular expression: the pattern
+// used before backtracked polynomially on crafted input.
+export const isPlainEmail = (address: string) => {
+  if (!address || address.length > 254 || /\s/.test(address)) return false;
+  const at = address.indexOf('@');
+  if (at <= 0 || at !== address.lastIndexOf('@')) return false;
+  const domain = address.slice(at + 1);
+  const dot = domain.lastIndexOf('.');
+  return dot > 0 && dot < domain.length - 1;
 };
 
 @Injectable()
@@ -393,7 +410,9 @@ export class SubscriptionService {
     code?: string,
     org?: string,
     // Stripe's billing_cycle_anchor (webhooks only).
-    periodAnchor?: Date
+    periodAnchor?: Date,
+    // An admin comp's reason and end date; every other write clears them.
+    comp?: { reason: string; endsAt: Date | null }
   ) {
     if (!code) {
       // Addressed by org (an admin comp) rather than by Stripe customer:
@@ -440,7 +459,8 @@ export class SubscriptionService {
         cancelAt,
         code,
         org ? { id: org } : undefined,
-        periodAnchor
+        periodAnchor,
+        comp
       );
     await this.bustMembersAuthCache(org, customerId);
     return result;
@@ -717,22 +737,26 @@ export class SubscriptionService {
     );
 
     if (result.revoked) {
-      // Back to the free tier: channels over the cap are disabled and team
-      // seats reconciled, exactly as a downgrade does.
-      await this.modifySubscriptionByOrg(
-        orgId,
-        pricing.FREE.channel || 0,
-        'FREE'
-      );
-      await this.bustMembersAuthCache(orgId, undefined);
-      this._auditService.record({
-        action: 'subscription.revoke',
-        organizationId: orgId,
-        userId: actorUserId,
-      });
+      await this.backToFree(orgId, 'subscription.revoke', actorUserId);
     }
 
     return result;
+  }
+
+  // Back to the free tier: channels over the cap are disabled and team seats
+  // reconciled, exactly as a downgrade does.
+  private async backToFree(
+    orgId: string,
+    action: 'subscription.revoke' | 'subscription.comp.expired',
+    actorUserId?: string
+  ) {
+    await this.modifySubscriptionByOrg(orgId, pricing.FREE.channel || 0, 'FREE');
+    await this.bustMembersAuthCache(orgId, undefined);
+    this._auditService.record({
+      action,
+      organizationId: orgId,
+      userId: actorUserId,
+    });
   }
 
   async addSubscription(
@@ -741,7 +765,10 @@ export class SubscriptionService {
     subscription: string,
     // Asks Stripe whether the customer has a subscription that can still
     // bill or change state. Without it every cus_ counts as paying.
-    stripeSubscriptionOpen?: (customerId: string) => Promise<boolean>
+    stripeSubscriptionOpen?: (customerId: string) => Promise<boolean>,
+    // How long and why. No months = until revoked; no reason = 'compensation'
+    // (what every comp was before reasons were kept).
+    terms: { months?: number | null; reason?: string | null } = {}
   ): Promise<any> {
     // Validate before the first write. The tier used to be an unvalidated
     // string indexed straight into `pricing`: an unknown key threw a 500 and
@@ -755,6 +782,21 @@ export class SubscriptionService {
         400
       );
     }
+    const months = terms.months ?? null;
+    if (months !== null && !isCompMonths(months)) {
+      throw new HttpException(
+        `A comp lasts ${COMP_MONTHS.join(', ')} months, or until revoked.`,
+        400
+      );
+    }
+    const reason = terms.reason ?? 'compensation';
+    if (!isCompReason(reason)) {
+      throw new HttpException(
+        `Unknown reason "${reason}". Expected one of ${COMP_REASONS.join(', ')}.`,
+        400
+      );
+    }
+    const endsAt = months ? dayjs().add(months, 'month').toDate() : null;
 
     // An org that pays through Stripe must be changed in Stripe. Comping it
     // here would leave the two disagreeing, and the next webhook would
@@ -777,9 +819,12 @@ export class SubscriptionService {
       action: 'subscription.comp',
       organizationId: orgId,
       userId,
-      metadata: stripeCustomer
-        ? { tier: subscription, stripeCustomerWithoutSubscription: true }
-        : { tier: subscription },
+      metadata: {
+        tier: subscription,
+        reason,
+        endsAt: endsAt?.toISOString() ?? null,
+        ...(stripeCustomer ? { stripeCustomerWithoutSubscription: true } : {}),
+      },
     });
 
     return this.createOrUpdateSubscription(
@@ -791,7 +836,162 @@ export class SubscriptionService {
       'MONTHLY',
       null,
       undefined,
-      orgId
+      orgId,
+      undefined,
+      { reason, endsAt }
     );
+  }
+
+  /**
+   * Take back every comp whose end date has passed — the organization goes
+   * back to FREE exactly as a revoke from the panel does. Run daily by
+   * housekeeping. A Stripe write clears the end date, so a row that still
+   * carries one was last written by a comp and is not billed by Stripe.
+   */
+  async expireComps(now = new Date()) {
+    const due = await this._subscriptionRepository.listExpiredComps(now);
+    const expired: typeof due = [];
+    for (const row of due) {
+      // The end date is checked again in the write itself: a comp extended,
+      // or a plan bought (which clears compEndsAt), between the list and
+      // this point must not be taken away.
+      const { revoked } = await this._subscriptionRepository.softDeleteExpiredComp(
+        row.organizationId,
+        now
+      );
+      if (!revoked) continue;
+      await this.backToFree(row.organizationId, 'subscription.comp.expired');
+      expired.push(row);
+    }
+    return expired;
+  }
+
+  listComps() {
+    return this._subscriptionRepository.listComps();
+  }
+
+  listPendingGrants() {
+    return this._subscriptionRepository.listPendingGrants();
+  }
+
+  /**
+   * Promise a comp to an email address whose account does not exist yet. The
+   * organization created at sign-up gets it at once (applyPendingGrant), so
+   * the person never meets the plan page. An address that already has an
+   * account is refused: comp its organization instead.
+   */
+  async createPendingGrant(
+    email: string,
+    tier: string,
+    terms: { months?: number | null; reason?: string | null },
+    actorUserId: string
+  ) {
+    // Raw request body: a number or an object here must be a 400, not a 500.
+    const address = typeof email === 'string' ? email.trim().toLowerCase() : '';
+    if (!isPlainEmail(address)) {
+      throw new HttpException('A valid email address is required', 400);
+    }
+    if (!isCompableTier(tier)) {
+      throw new HttpException(
+        `Unknown subscription tier "${tier}". Expected one of ${COMPABLE_TIERS.join(', ')}.`,
+        400
+      );
+    }
+    const months = terms.months ?? null;
+    if (months !== null && !isCompMonths(months)) {
+      throw new HttpException(
+        `A comp lasts ${COMP_MONTHS.join(', ')} months, or until revoked.`,
+        400
+      );
+    }
+    const reason = terms.reason ?? 'influencer';
+    if (!isCompReason(reason)) {
+      throw new HttpException(
+        `Unknown reason "${reason}". Expected one of ${COMP_REASONS.join(', ')}.`,
+        400
+      );
+    }
+    if (await this._subscriptionRepository.userExistsByEmail(address)) {
+      throw new HttpException(
+        'This email already has an account - comp its organization in Users.',
+        409
+      );
+    }
+    // One promise per address: a new one replaces the one still waiting.
+    await this._subscriptionRepository.deleteOpenPendingGrantsByEmail(address);
+    const grant = await this._subscriptionRepository.createPendingGrant({
+      email: address,
+      tier,
+      months,
+      reason,
+      createdById: actorUserId,
+    });
+    this._auditService.record({
+      action: 'subscription.pending-grant',
+      userId: actorUserId,
+      metadata: { grantId: grant.id, tier, months, reason },
+    });
+    return grant;
+  }
+
+  async deletePendingGrant(id: string) {
+    const { count } = await this._subscriptionRepository.deleteOpenPendingGrant(id);
+    return { deleted: count > 0 };
+  }
+
+  /**
+   * Called when sign-up creates an organization: a comp promised to this
+   * address is put on it now. Never throws — a failed grant must not fail the
+   * sign-up; the admin can still comp the organization by hand.
+   */
+  // The promise as typed, or the same Gmail mailbox written with other dots
+  // (sign-up treats those as one address, so the person cannot have both).
+  // Not across a +tag: on most domains that is a different mailbox, and a
+  // sign-up there must not use up someone else's promise.
+  private async findPendingGrantFor(address: string) {
+    const exact = await this._subscriptionRepository.findOpenPendingGrant(address);
+    if (exact || address.split('@')[0].includes('+')) return exact;
+    const wanted = normalizeEmail(address);
+    const open = await this._subscriptionRepository.listOpenPendingGrants();
+    return (
+      open.find(
+        (g) => !g.email.split('@')[0].includes('+') && normalizeEmail(g.email) === wanted
+      ) ?? null
+    );
+  }
+
+  async applyPendingGrant(organizationId: string, email?: string | null) {
+    const address = (email || '').trim().toLowerCase();
+    if (!address) return false;
+    try {
+      const grant = await this.findPendingGrantFor(address);
+      if (!grant) return false;
+      if (!(await this._subscriptionRepository.consumePendingGrant(grant.id, organizationId))) {
+        return false;
+      }
+      try {
+        await this.addSubscription(organizationId, grant.createdById, grant.tier, undefined, {
+          months: grant.months,
+          reason: grant.reason,
+        });
+      } catch (err) {
+        // No plan, so no "applied": the promise goes back to waiting and the
+        // panel shows it, instead of a grant used up for nothing.
+        await this._subscriptionRepository.releasePendingGrant(grant.id, organizationId);
+        throw err;
+      }
+      this._auditService.record({
+        action: 'subscription.pending-grant.applied',
+        organizationId,
+        userId: grant.createdById,
+        metadata: { grantId: grant.id, tier: grant.tier, months: grant.months, reason: grant.reason },
+      });
+      return true;
+    } catch (err) {
+      new Logger(SubscriptionService.name).error(
+        `[pending-grant] not applied to ${organizationId}: ${(err as Error)?.message}`
+      );
+      return false;
+    }
   }
 }

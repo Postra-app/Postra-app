@@ -11,8 +11,7 @@ export const initializeSentryBasic = (environment: string, dsn: string, extensio
   // connection instead of the app — the two must not drift apart.
   const ignorePatterns = NETWORK_FAILURE_PATTERNS;
 
-  // Sample rate: full traces in dev, 10% in prod (100% + session replays burns the
-  // Sentry quota). Override via NEXT_PUBLIC_SENTRY_TRACES_SAMPLE_RATE (build-time).
+  // Sample rate: full traces in dev, 10% in prod (100% burns the Sentry quota). Override via NEXT_PUBLIC_SENTRY_TRACES_SAMPLE_RATE (build-time).
   const prodTracesDefault = environment === 'production' ? 0.1 : 1.0;
   const tracesSampleRate = process.env.NEXT_PUBLIC_SENTRY_TRACES_SAMPLE_RATE
     ? parseFloat(process.env.NEXT_PUBLIC_SENTRY_TRACES_SAMPLE_RATE)
@@ -24,7 +23,6 @@ export const initializeSentryBasic = (environment: string, dsn: string, extensio
         tags: {
           service: 'frontend',
           component: 'nextjs',
-          replaysEnabled: 'true',
         },
         // Streamed spans (Sentry 11) do not carry the tags above.
         attributes: {

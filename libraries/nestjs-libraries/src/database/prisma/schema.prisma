@@ -285,6 +285,10 @@ model Media {
   fileSize           Int                 @default(0)
   type               String              @default("image")
   thumbnail          String?
+  // A frame of a video for lists (the phone app cannot take one itself).
+  // Ours only: `thumbnail` is the cover sent to the platforms. Empty string
+  // = ffmpeg found no frame; clients read `thumbnail || poster`.
+  poster             String?
   alt                String?
   thumbnailTimestamp Int?
   designSpec         Json?
@@ -374,6 +378,11 @@ model Subscription {
   // Stripe's billing_cycle_anchor: the AI allowance month starts here, with
   // the invoices. Empty for plans Stripe does not bill.
   periodAnchor     DateTime?
+  // A plan given without a payment (an admin comp): why, and when it ends.
+  // The daily housekeeping run takes it back after compEndsAt. Empty on
+  // every plan Stripe bills.
+  compReason       String?
+  compEndsAt       DateTime?
   createdAt        DateTime         @default(now())
   updatedAt        DateTime         @updatedAt
   deletedAt        DateTime?
@@ -381,6 +390,24 @@ model Subscription {
 
   @@index([organizationId])
   @@index([deletedAt])
+  @@index([compEndsAt])
+}
+
+// A comp promised to an email address before its account exists: the
+// organization created at sign-up gets the plan at once, so the person never
+// meets the plan page. Used once; the row stays as a record.
+model PendingGrant {
+  id             String           @id @default(cuid())
+  email          String
+  tier           SubscriptionTier
+  months         Int?
+  reason         String
+  createdById    String
+  createdAt      DateTime         @default(now())
+  consumedAt     DateTime?
+  organizationId String?
+
+  @@index([email])
 }
 
 model Customer {

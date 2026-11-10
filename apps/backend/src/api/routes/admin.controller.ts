@@ -2,6 +2,7 @@ import { Throttle } from '@nestjs/throttler';
 import {
   Body,
   Controller,
+  Delete,
   ForbiddenException,
   Get,
   HttpException,
@@ -260,6 +261,8 @@ export class AdminController {
                     select: {
                       subscriptionTier: true,
                       isLifetime: true,
+                      compReason: true,
+                      compEndsAt: true,
                       deletedAt: true,
                     },
                   },
@@ -336,7 +339,10 @@ export class AdminController {
   async compSubscription(
     @GetUserFromRequest() user: User,
     @Body('organizationId') organizationId: string,
-    @Body('subscription') subscription: string
+    @Body('subscription') subscription: string,
+    // Optional: 1/3/6/12 months (none = until revoked) and why.
+    @Body('months') months?: number | null,
+    @Body('reason') reason?: string | null
   ) {
     this.assertSuperAdmin(user);
     if (!organizationId?.trim()) {
@@ -355,10 +361,65 @@ export class AdminController {
       organizationId,
       user.id,
       subscription,
-      (customer) => this._stripeService.hasOpenSubscription(customer)
+      (customer) => this._stripeService.hasOpenSubscription(customer),
+      { months, reason }
     );
 
     return { organizationId, subscription };
+  }
+
+  /**
+   * Every plan in force that nobody pays for, with its end date, and the
+   * comps promised to addresses that have not signed up yet.
+   */
+  @Get('/comps')
+  async listComps(@GetUserFromRequest() user: User) {
+    this.assertSuperAdmin(user);
+    const [comps, pending] = await Promise.all([
+      this._subscriptionService.listComps(),
+      this._subscriptionService.listPendingGrants(),
+    ]);
+    return { comps, pending };
+  }
+
+  /**
+   * Promise a comp to an email before its account exists: the organization
+   * created at sign-up gets the plan at once (influencers send only their
+   * address and never meet the plan page).
+   */
+  @Post('/pending-grants')
+  async createPendingGrant(
+    @GetUserFromRequest() user: User,
+    @Body('email') email: string,
+    @Body('subscription') subscription: string,
+    @Body('months') months?: number | null,
+    @Body('reason') reason?: string | null
+  ) {
+    this.assertSuperAdmin(user);
+    return this._subscriptionService.createPendingGrant(
+      email,
+      subscription,
+      { months, reason },
+      user.id
+    );
+  }
+
+  @Delete('/pending-grants/:id')
+  async deletePendingGrant(
+    @GetUserFromRequest() user: User,
+    @Param('id') id: string
+  ) {
+    this.assertSuperAdmin(user);
+    const result = await this._subscriptionService.deletePendingGrant(id);
+    if (!result.deleted) {
+      throw new HttpException('No waiting grant with this id', 404);
+    }
+    this._auditService.record({
+      action: 'subscription.pending-grant',
+      userId: user.id,
+      metadata: { grantId: id, deleted: true },
+    });
+    return result;
   }
 
   /**

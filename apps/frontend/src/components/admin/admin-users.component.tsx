@@ -16,6 +16,10 @@ import { AdminBillingModal } from './admin-billing.modal';
 import { AdminSuspendModal } from './admin-suspend.modal';
 import { useToaster } from '@gitroom/react/toaster/toaster';
 import { useDebouncedSearch } from '@gitroom/frontend/components/admin/use-debounced-search';
+import {
+  CompTermsFields,
+  compDay,
+} from '@gitroom/frontend/components/admin/admin-comps.component';
 
 /**
  * Give an org this billing period's AI images or videos back (a generation
@@ -116,78 +120,98 @@ const CompSubscription: FC<{
   const fetch = useFetch();
   const toaster = useToaster();
   const t = useT();
+  const [tier, setTier] = useState('');
+  // A comp for a time by default: one without an end is easy to forget.
+  const [months, setMonths] = useState('3');
+  const [reason, setReason] = useState<string>('influencer');
 
-  const comp: React.ChangeEventHandler<HTMLSelectElement> = useCallback(
-    async (e) => {
-      const value = e.target.value;
-      if (!value) {
-        return;
-      }
-      e.target.value = '';
+  const comp = useCallback(async () => {
+    if (!tier) {
+      return;
+    }
+    const length = months
+      ? `${months} month${months === '1' ? '' : 's'}`
+      : 'until revoked';
+    if (
+      !(await deleteDialog(
+        t(
+          'admin_comp_subscription_confirm',
+          `Put ${org.organization.name} on ${tierName(tier)} without a payment (${length}, ${reason})?`
+        ),
+        t('admin_comp', 'Comp')
+      ))
+    ) {
+      return;
+    }
 
-      if (
-        !(await deleteDialog(
-          t(
-            'admin_comp_subscription_confirm',
-            `Put ${org.organization.name} on ${value} without a payment?`
-          ),
-          t('admin_comp', 'Comp')
-        ))
-      ) {
-        return;
-      }
+    const res = await fetch('/admin/comp-subscription', {
+      method: 'POST',
+      body: JSON.stringify({
+        organizationId: org.organization.id,
+        subscription: tier,
+        months: months ? Number(months) : null,
+        reason,
+      }),
+    });
 
-      const res = await fetch('/admin/comp-subscription', {
-        method: 'POST',
-        body: JSON.stringify({
-          organizationId: org.organization.id,
-          subscription: value,
-        }),
-      });
-
-      if (!res.ok) {
-        toaster.show(
-          await withReason(
-            res,
-            t('admin_comp_subscription_failed', 'Failed to add the subscription')
-          ),
-          'warning'
-        );
-        return;
-      }
-
+    if (!res.ok) {
       toaster.show(
-        t('admin_comp_subscription_done', 'Subscription added'),
-        'success'
+        await withReason(
+          res,
+          t('admin_comp_subscription_failed', 'Failed to add the subscription')
+        ),
+        'warning'
       );
-      onDone();
-    },
-    [fetch, toaster, t, org, onDone]
-  );
+      return;
+    }
+
+    toaster.show(
+      t('admin_comp_subscription_done', 'Subscription added'),
+      'success'
+    );
+    setTier('');
+    onDone();
+  }, [fetch, toaster, t, org, onDone, tier, months, reason]);
 
   return (
-    <Select
-      onChange={comp}
-      hideErrors={true}
-      disableForm={true}
-      name={`comp-${org.id}`}
-      label=""
-      aria-label={t('admin_comp_subscription', 'Comp a subscription')}
-      value=""
-    >
-      <option value="">
-        {showOrgName
-          ? `${t('admin_comp_plan', 'Comp a plan')} · ${
-              org.organization.name
-            }`
-          : t('admin_comp_plan', 'Comp a plan')}
-      </option>
-      {COMPABLE_TIERS.map((key) => (
-        <option key={key} value={key}>
-          {tierName(key)}
+    <div className="flex flex-wrap gap-[4px] items-center">
+      <Select
+        onChange={(e) => setTier(e.target.value)}
+        hideErrors={true}
+        disableForm={true}
+        name={`comp-${org.id}`}
+        label=""
+        aria-label={t('admin_comp_subscription', 'Comp a subscription')}
+        value={tier}
+      >
+        <option value="">
+          {showOrgName
+            ? `${t('admin_comp_plan', 'Comp a plan')} · ${
+                org.organization.name
+              }`
+            : t('admin_comp_plan', 'Comp a plan')}
         </option>
-      ))}
-    </Select>
+        {COMPABLE_TIERS.map((key) => (
+          <option key={key} value={key}>
+            {tierName(key)}
+          </option>
+        ))}
+      </Select>
+      {!!tier && (
+        <>
+          <CompTermsFields
+            months={months}
+            reason={reason}
+            onMonths={setMonths}
+            onReason={setReason}
+            idPrefix={`comp-${org.id}`}
+          />
+          <Button onClick={comp} className="rounded-[8px] text-[12px]">
+            {t('admin_comp', 'Comp')}
+          </Button>
+        </>
+      )}
+    </div>
   );
 };
 
@@ -201,6 +225,8 @@ interface UserOrgItem {
     subscription: {
       subscriptionTier: string;
       isLifetime: boolean;
+      compReason?: string | null;
+      compEndsAt?: string | null;
     } | null;
   };
 }
@@ -704,6 +730,13 @@ export const AdminUsersComponent = () => {
                                 o.organization.subscription?.subscriptionTier
                               )}
                         </span>
+                        {o.organization.subscription?.compEndsAt && (
+                          <span className="text-newTextColor/70">
+                            {`${t('admin_comp_until', 'comp until')} ${compDay(
+                              o.organization.subscription.compEndsAt
+                            )}`}
+                          </span>
+                        )}
                       </span>
                     ))}
                   </div>
