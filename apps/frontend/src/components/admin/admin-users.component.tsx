@@ -129,7 +129,9 @@ const CompSubscription: FC<{
     if (!tier) {
       return;
     }
-    const length = months ? `${months} months` : 'until revoked';
+    const length = months
+      ? `${months} month${months === '1' ? '' : 's'}`
+      : 'until revoked';
     if (
       !(await deleteDialog(
         t(

@@ -137,13 +137,20 @@ test('a plan promised to an email shows as waiting, and a comp from Users shows 
     await page.screenshot({ path: 'e2e/stack/.results/admin-comps.png', fullPage: true });
 
     await page.goto('/admin/users');
+    // The list reloads a moment after typing (debounced search) and a reload
+    // resets the row's controls, so act only on the searched list.
+    const searched = page.waitForResponse(
+      (r) => r.url().includes('/admin/users?') && r.url().includes(encodeURIComponent(target.email))
+    );
     await page.getByRole('textbox', { name: 'Search users' }).fill(target.email);
+    await searched;
+    await expect(page.getByRole('row')).toHaveCount(2);
     const row = page.getByRole('row').filter({ hasText: target.email });
     await row.getByRole('combobox', { name: 'Comp a subscription' }).selectOption('PRO');
     await row.getByRole('combobox', { name: 'Length' }).selectOption('1');
     await row.getByRole('combobox', { name: 'Reason' }).selectOption('tester');
     await row.getByRole('button', { name: 'Comp', exact: true }).click();
-    await page.getByRole('button', { name: 'Comp', exact: true }).last().click();
+    await page.getByRole('dialog').getByRole('button', { name: 'Comp', exact: true }).click();
     await expect(row).toContainText('comp until');
     const sub = await prisma.subscription.findUniqueOrThrow({ where: { organizationId: target.orgId } });
     expect(sub).toMatchObject({ subscriptionTier: 'PRO', compReason: 'tester' });
