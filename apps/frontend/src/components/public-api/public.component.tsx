@@ -30,7 +30,9 @@ type McpClient = (typeof mcpClients)[number];
 const getMcpConfig = (
   client: McpClient,
   mcpBase: string,
-  apiKey: string
+  apiKey: string,
+  // The hints were English in every language.
+  t: (key: string, fallback: string) => string
 ): { config: string; hint: string } => {
   const urlBase = `${mcpBase}/mcp`;
   const bearer = `Bearer ${apiKey}`;
@@ -41,7 +43,7 @@ const getMcpConfig = (
     case 'Claude Code':
       return {
         config: `claude mcp add postra \\\n  --transport http \\\n  --header "Authorization: ${bearer}" \\\n  "${urlBase}"`,
-        hint: 'Run this command in your terminal.',
+        hint: t('mcp_hint_claude_code', 'Run this command in your terminal.'),
       };
     case 'Cursor':
       return {
@@ -50,7 +52,7 @@ const getMcpConfig = (
             postra: { url: urlBase, headers: { Authorization: bearer } },
           },
         }),
-        hint: 'Add to .cursor/mcp.json in your project root.',
+        hint: t('mcp_hint_cursor', 'Add to .cursor/mcp.json in your project root.'),
       };
     case 'VS Code / Copilot':
       return {
@@ -63,7 +65,7 @@ const getMcpConfig = (
             },
           },
         }),
-        hint: 'Add to .vscode/mcp.json in your project root.',
+        hint: t('mcp_hint_vscode', 'Add to .vscode/mcp.json in your project root.'),
       };
     case 'Windsurf':
       return {
@@ -75,7 +77,7 @@ const getMcpConfig = (
             },
           },
         }),
-        hint: 'Add to ~/.codeium/windsurf/mcp_config.json',
+        hint: t('mcp_hint_windsurf', 'Add to ~/.codeium/windsurf/mcp_config.json'),
       };
     case 'Amp':
       return {
@@ -84,12 +86,12 @@ const getMcpConfig = (
             postra: { url: urlBase, headers: { Authorization: bearer } },
           },
         }),
-        hint: 'Add to your Amp settings.json',
+        hint: t('mcp_hint_amp', 'Add to your Amp settings.json'),
       };
     case 'Codex':
       return {
         config: `# ~/.codex/config.toml\n\n[mcp_servers.postra]\nurl = "${urlBase}"\nhttp_headers = { "Authorization" = "${bearer}" }`,
-        hint: 'Add to ~/.codex/config.toml',
+        hint: t('mcp_hint_codex', 'Add to ~/.codex/config.toml'),
       };
     case 'Gemini CLI':
       return {
@@ -98,14 +100,14 @@ const getMcpConfig = (
             postra: { url: urlBase, headers: { Authorization: bearer } },
           },
         }),
-        hint: 'Add to ~/.gemini/settings.json',
+        hint: t('mcp_hint_gemini', 'Add to ~/.gemini/settings.json'),
       };
     case 'Warp':
       return {
         config: json({
           postra: { url: urlBase, headers: { Authorization: bearer } },
         }),
-        hint: 'Settings > MCP Servers > + Add, then paste this config.',
+        hint: t('mcp_hint_warp', 'Settings > MCP Servers > + Add, then paste this config.'),
       };
   }
 };
@@ -125,7 +127,8 @@ const McpSection = ({
   const { config, hint } = getMcpConfig(
     activeClient,
     mcpBase,
-    user.publicApi
+    user.publicApi,
+    t
   );
 
   // ChatGPT and Claude sign in by OAuth (dynamic client registration): the

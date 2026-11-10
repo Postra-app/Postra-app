@@ -119,19 +119,16 @@ export default async function Auth(props: {
                       src={'/postra-icon.webp'}
                       width={55}
                       height={55}
-                      alt="Postra"
+                      alt=""
                       className="rounded-[14px]"
                     />
                   </div>
-                  <div>
-                    <SafeImage
-                      src={'/postra-logo.webp'}
-                      width={120}
-                      height={40}
-                      alt="Postra"
-                      className="h-auto w-[120px]"
-                    />
-                  </div>
+                  {/* The name is text, not an image: the old wordmark image
+                      carried a second icon and dark lettering that vanished
+                      on the dark header. */}
+                  <span className="text-[28px] font-semibold leading-none text-white">
+                    Postra
+                  </span>
                 </Link>
               </div>
             </div>

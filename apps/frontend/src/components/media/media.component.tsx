@@ -184,28 +184,29 @@ export const Pagination: FC<{
     </ul>
   );
 };
+// "Choose picture" (profile, organisation, channel avatar) opens the library
+// here. It rendered the box straight into the page, outside any window: the
+// tile grid had no height, every tile sat under the button row and nothing
+// could be picked. It opens in the same full-screen window as the composer's.
 export const ShowMediaBoxModal: FC = () => {
-  const [showModal, setShowModal] = useState(false);
-  const [callBack, setCallBack] =
-    useState<(params: { id: string; path: string }[]) => void | undefined>();
-  const closeModal = useCallback(() => {
-    setShowModal(false);
-    setCallBack(undefined);
-  }, []);
+  const { openModal } = useModals();
+  const t = useT();
   useEffect(
     () =>
-      listenForMediaBox((cCallback) => {
-        setShowModal(true);
-        setCallBack(() => cCallback);
+      listenForMediaBox((pick) => {
+        openModal({
+          title: t('media_library', 'Media Library'),
+          askClose: false,
+          closeOnEscape: true,
+          fullScreen: true,
+          size: 'calc(100% - 80px)',
+          height: 'calc(100% - 80px)',
+          children: (close) => <MediaBox setMedia={pick} closeModal={close} />,
+        });
       }),
-    []
+    [openModal, t]
   );
-  if (!showModal) return null;
-  return (
-    <div className="text-textColor">
-      <MediaBox setMedia={callBack!} closeModal={closeModal} />
-    </div>
-  );
+  return null;
 };
 // The library hands back the list of chosen files (MediaBox.addMedia), not one
 // file: callers read the first.

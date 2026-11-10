@@ -13,9 +13,10 @@ import {
   browserTimezone,
   isTimezone,
 } from '@gitroom/frontend/components/layout/set.timezone';
+// Labels are translation keys: "24 hours" stayed English in Polish.
 const dateMetrics = [
-  { label: 'AM:PM', value: 'US' },
-  { label: '24 hours', value: 'GLOBAL' },
+  { key: 'time_format_12h', label: '12-hour (AM/PM)', value: 'US' },
+  { key: 'time_format_24h', label: '24-hour', value: 'GLOBAL' },
 ];
 
 // The list has names that are not IANA timezones (Europe/Zaporizhzhia).
@@ -69,7 +70,7 @@ const MetricComponent = () => {
             key={metric.value}
             value={metric.value}
           >
-            {metric.label}
+            {t(metric.key, metric.label)}
           </option>
         ))}
       </Select>

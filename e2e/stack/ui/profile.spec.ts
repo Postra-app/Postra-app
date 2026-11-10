@@ -58,9 +58,14 @@ test.describe('a picture from the library', () => {
       await page.getByRole('button', { name: 'Choose picture', exact: true }).click();
       const file = media.path.split('/').pop()!;
       // A tile is a checkbox named like its caption, the file's original name.
-      // The app's top bar overlaps the first row of tiles in the test window.
-      await page.getByRole('checkbox', { name: original, exact: true }).dispatchEvent('click');
-      await page.getByRole('button', { name: 'Add selected media', exact: true }).click();
+      // The library opened outside any window, its grid had no height and
+      // the button row covered every tile: only a synthetic click got through.
+      // A real click inside the window now picks the file.
+      const library = page.getByRole('dialog').filter({ hasText: 'Media Library' });
+      await expect(library).toBeVisible();
+      await library.getByRole('checkbox', { name: original, exact: true }).click();
+      await library.getByRole('button', { name: 'Add selected media', exact: true }).click();
+      await expect(library).toBeHidden();
       await expect(page.getByAltText('Profile Picture')).toHaveAttribute('src', new RegExp(file.replace('.', '\\.')));
       const card = page.getByText('Profile', { exact: true }).locator('xpath=ancestor::*[contains(@class,"p-[24px]")][1]');
       await card.getByRole('button', { name: 'Save', exact: true }).click();

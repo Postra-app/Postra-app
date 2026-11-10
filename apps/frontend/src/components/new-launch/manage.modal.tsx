@@ -1230,7 +1230,7 @@ export const ManageModal: FC<AddEditModalProps> = (props) => {
                 }
                 onClick={schedule('draft')}
               >
-                Save Set
+                {t('save_set', 'Save Set')}
               </button>
             )}
             {!addEditSets && (

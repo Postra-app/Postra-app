@@ -64,7 +64,22 @@ test('a refused connection shows an error, not an endless spinner', async ({ pag
       : route.continue()
   );
   await page.goto('/integrations/social/mastodon?code=any&state=another-org');
+  // Trying again cannot help with a 403: the page says who can add it.
+  await expect(
+    page.getByText("This channel can't be added from here. Ask the organization's owner to connect it.")
+  ).toBeVisible();
+  await expect(page.getByText('An error occurred. Please try again.')).toHaveCount(0);
+});
+
+test('a connection that fails on our side still says to try again', async ({ page }) => {
+  await page.route('**/api/integrations/social-connect/mastodon', (route) =>
+    route.request().method() === 'POST'
+      ? route.fulfill({ status: 503, contentType: 'application/json', body: '{}' })
+      : route.continue()
+  );
+  await page.goto('/integrations/social/mastodon?code=any&state=any');
   await expect(page.getByText('An error occurred. Please try again.')).toBeVisible();
+  await expect(page.getByText("This channel can't be added from here.", { exact: false })).toHaveCount(0);
 });
 
 test("the channel menu opens from the keyboard and its items are readable", async ({ page }) => {

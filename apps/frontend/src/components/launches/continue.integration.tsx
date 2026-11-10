@@ -8,6 +8,7 @@ import { useRouter } from 'next/navigation';
 import { Button } from '@gitroom/frontend/components/ui/button';
 import { useT } from '@gitroom/react/translation/get.transation.service.client';
 import { useFetch } from '@gitroom/helpers/utils/custom.fetch';
+import { isFetchHandledError } from '@gitroom/helpers/utils/fetch.errors';
 import { continueProviderList } from '@gitroom/frontend/components/new-launch/providers/continue-provider/list';
 import { IntegrationContext } from '@gitroom/frontend/components/launches/helpers/use.integration';
 import {
@@ -347,10 +348,19 @@ export const ContinueIntegration: FC<{
         returnURL,
         { kind: 'connected' }
       );
-    })().catch(() => {
+    })().catch((e) => {
       // 403, 429 and 5xx are answered by the app-wide fetch (a toast with
       // the reason) and come back as a rejection; uncaught, "Adding Channel"
-      // kept spinning for good.
+      // kept spinning for good. A 403 is not worth retrying, so it says who
+      // can add the channel instead of "try again".
+      if (isFetchHandledError(e) && e.status === HttpStatusCode.Forbidden) {
+        setErrorMessage(
+          t(
+            'connect_forbidden_ask_owner',
+            "This channel can't be added from here. Ask the organization's owner to connect it."
+          )
+        );
+      }
       setError(true);
     });
   }, []);
@@ -463,7 +473,8 @@ export const ContinueIntegration: FC<{
             {successState.message ||
               t(
                 'channel_connected_description',
-                `Your ${providerDisplayName} channel has been successfully connected. You can close this window now.`
+                'Your {{provider}} channel has been successfully connected. You can close this window now.',
+                { provider: providerDisplayName, interpolation: { escapeValue: false } }
               )}
           </div>
         </div>
@@ -491,7 +502,8 @@ export const ContinueIntegration: FC<{
               <p className="text-[14px] text-gray-400">
                 {t(
                   'select_the_page_or_account',
-                  `Select the ${providerDisplayName} page or account you want to connect.`
+                  'Select the {{provider}} page or account you want to connect.',
+                  { provider: providerDisplayName, interpolation: { escapeValue: false } }
                 )}
               </p>
             </div>

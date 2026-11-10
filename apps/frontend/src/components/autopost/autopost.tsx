@@ -471,7 +471,7 @@ export const AddOrEditWebhook: FC<{
                 <Input
                   label="Tone / Style (optional)"
                   translationKey="label_tone"
-                  placeholder="e.g. professional, casual, humorous, inspirational"
+                  placeholder={t('autopost_tone_placeholder', 'e.g. professional, casual, humorous, inspirational')}
                   {...form.register('tone')}
                 />
                 <div className="text-[14px] mb-[6px]">

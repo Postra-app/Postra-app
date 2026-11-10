@@ -26,11 +26,13 @@ export const CopyButton = ({
     setTimeout(() => setCopied(false), 1500);
   }, [text, t, toaster]);
 
+  // Named by its visible label ("Copy ID", "Copy URL"): a shared "Copy to
+  // clipboard" hid which button was which from a screen reader, and voice
+  // control could not reach "Copy" by the word on it.
   return (
     <button
       type="button"
       onClick={onClick}
-      aria-label={t('copy_to_clipboard', 'Copy to clipboard')}
       className={clsx(
         'cursor-pointer px-[16px] h-[36px] bg-btnSimple hover:bg-boxHover transition-colors rounded-[8px] text-[13px] font-[600] flex items-center gap-[6px]',
         className
