@@ -35,6 +35,14 @@ test('the client preview shows no creation badge, and Close is in English', asyn
     await expect(clientPage.getByText(content)).toBeVisible();
     await expect(clientPage.getByText('WEB', { exact: true })).toHaveCount(0);
 
+    // The header named the product with an image whose dark lettering was
+    // invisible on the dark header, next to a second copy of the icon.
+    const home = clientPage.getByRole('link', { name: 'Postra', exact: true });
+    await expect(home).toHaveCount(1);
+    await expect(home.getByText('Postra', { exact: true })).toBeVisible();
+    await expect(home.locator('img')).toHaveCount(1);
+    await expect(clientPage.locator('img[src*="postra-logo"]')).toHaveCount(0);
+
     await page.goto(`/p/${id}?share=true`);
     await expect(page.getByText(content)).toBeVisible();
     await expect(page.getByRole('button', { name: 'Close', exact: true })).toBeVisible();
