@@ -263,6 +263,28 @@ export class SubscriptionRepository {
     return count === 1;
   }
 
+  // Only while it is still an ended comp: a write in between (an extension,
+  // a Stripe plan, a lifetime grant) moves or clears compEndsAt.
+  async softDeleteExpiredComp(orgId: string, now: Date) {
+    const { count } = await this._subscription.model.subscription.updateMany({
+      where: {
+        organizationId: orgId,
+        deletedAt: null,
+        isLifetime: false,
+        compEndsAt: { lte: now },
+      },
+      data: { deletedAt: new Date() },
+    });
+    return { revoked: count > 0 };
+  }
+
+  async releasePendingGrant(id: string, organizationId: string) {
+    await this._pendingGrant.model.pendingGrant.updateMany({
+      where: { id, organizationId },
+      data: { consumedAt: null, organizationId: null },
+    });
+  }
+
   async softDeleteSubscriptionByOrg(orgId: string) {
     const { count } = await this._subscription.model.subscription.updateMany({
       where: { organizationId: orgId, deletedAt: null },

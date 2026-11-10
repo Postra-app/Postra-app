@@ -26,6 +26,8 @@ const build = (over: Record<string, any> = {}) => {
     getSubscriptionByOrgId: jest.fn().mockResolvedValue(null),
     getOrganizationByCustomerId: jest.fn().mockResolvedValue(null),
     softDeleteSubscriptionByOrg: jest.fn().mockResolvedValue({ revoked: true }),
+    softDeleteExpiredComp: jest.fn().mockResolvedValue({ revoked: true }),
+    releasePendingGrant: jest.fn().mockResolvedValue(undefined),
     listExpiredComps: jest.fn().mockResolvedValue([]),
     userExistsByEmail: jest.fn().mockResolvedValue(false),
     deleteOpenPendingGrantsByEmail: jest.fn().mockResolvedValue({ count: 0 }),
@@ -109,9 +111,11 @@ describe('comp expiry', () => {
     const { service, repository, auditService } = build({
       listExpiredComps: jest.fn().mockResolvedValue([row]),
     });
-    const expired = await service.expireComps(new Date('2026-11-10'));
+    const now = new Date('2026-11-10');
+    const expired = await service.expireComps(now);
     expect(expired).toEqual([row]);
-    expect(repository.softDeleteSubscriptionByOrg).toHaveBeenCalledWith('org-9');
+    expect(repository.softDeleteExpiredComp).toHaveBeenCalledWith('org-9', now);
+    expect(repository.softDeleteSubscriptionByOrg).not.toHaveBeenCalled();
     expect(auditService.record).toHaveBeenCalledWith(
       expect.objectContaining({
         action: 'subscription.comp.expired',
@@ -127,15 +131,21 @@ describe('comp expiry', () => {
       getPaymentId: jest.fn().mockResolvedValue('cus_abc'),
     });
     await expect(service.expireComps()).resolves.toHaveLength(1);
-    expect(repository.softDeleteSubscriptionByOrg).toHaveBeenCalled();
+    expect(repository.softDeleteExpiredComp).toHaveBeenCalled();
   });
 
-  it('reports nothing when nothing was revoked', async () => {
-    const { service } = build({
+  // The list is read first, the revoke comes later. A comp
+  // extended, or a plan bought, in between must keep its plan: the end date
+  // is checked again in the write, and nothing else happens without it.
+  it('keeps a plan that changed between the list and the revoke', async () => {
+    const { service, repository, auditService } = build({
       listExpiredComps: jest.fn().mockResolvedValue([row]),
-      softDeleteSubscriptionByOrg: jest.fn().mockResolvedValue({ revoked: false }),
+      softDeleteExpiredComp: jest.fn().mockResolvedValue({ revoked: false }),
     });
     await expect(service.expireComps()).resolves.toEqual([]);
+    expect(repository.softDeleteSubscriptionByOrg).not.toHaveBeenCalled();
+    expect(repository.createOrUpdateSubscription).not.toHaveBeenCalled();
+    expect(auditService.record).not.toHaveBeenCalled();
   });
 });
 
@@ -197,6 +207,24 @@ describe('a comp promised to an email', () => {
     });
     await expect(service.applyPendingGrant('org-2', 'c@x.co')).resolves.toBe(false);
     expect(repository.createOrUpdateSubscription).not.toHaveBeenCalled();
+  });
+
+  // The promise was marked used before the plan was written,
+  // so a failed write left a used promise and an organization without a plan.
+  it('goes back to waiting when the plan could not be written', async () => {
+    const grant = { id: 'g5', email: 'c@x.co', tier: 'PRO', months: 1, reason: 'influencer', createdById: 'a' };
+    const { service, repository } = build({
+      findOpenPendingGrant: jest.fn().mockResolvedValue(grant),
+      createOrUpdateSubscription: jest.fn().mockRejectedValue(new Error('db down')),
+    });
+    await expect(service.applyPendingGrant('org-5', 'c@x.co')).resolves.toBe(false);
+    expect(repository.releasePendingGrant).toHaveBeenCalledWith('g5', 'org-5');
+  });
+
+  it.each([[123], [{ a: 1 }], [null]])('refuses a non-text address %p with 400', async (email) => {
+    const { service, repository } = build();
+    await expect(service.createPendingGrant(email as any, 'PRO', {}, 'admin-1')).rejects.toMatchObject({ status: 400 });
+    expect(repository.createPendingGrant).not.toHaveBeenCalled();
   });
 
   it('never fails the sign-up', async () => {

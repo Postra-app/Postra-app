@@ -704,12 +704,10 @@ export class SubscriptionService {
    */
   async revokeSubscription(
     orgId: string,
-    // Empty when the daily run takes back a comp whose time is up.
-    actorUserId: string | undefined,
+    actorUserId: string,
     // As in addSubscription: a comp can sit on an organization whose Stripe
     // customer never subscribed, and has to come off it the same way.
-    stripeSubscriptionOpen?: (customerId: string) => Promise<boolean>,
-    action: 'subscription.revoke' | 'subscription.comp.expired' = 'subscription.revoke'
+    stripeSubscriptionOpen?: (customerId: string) => Promise<boolean>
   ) {
     const paymentId = await this._subscriptionRepository.getPaymentId(orgId);
     if (
@@ -727,22 +725,26 @@ export class SubscriptionService {
     );
 
     if (result.revoked) {
-      // Back to the free tier: channels over the cap are disabled and team
-      // seats reconciled, exactly as a downgrade does.
-      await this.modifySubscriptionByOrg(
-        orgId,
-        pricing.FREE.channel || 0,
-        'FREE'
-      );
-      await this.bustMembersAuthCache(orgId, undefined);
-      this._auditService.record({
-        action,
-        organizationId: orgId,
-        userId: actorUserId,
-      });
+      await this.backToFree(orgId, 'subscription.revoke', actorUserId);
     }
 
     return result;
+  }
+
+  // Back to the free tier: channels over the cap are disabled and team seats
+  // reconciled, exactly as a downgrade does.
+  private async backToFree(
+    orgId: string,
+    action: 'subscription.revoke' | 'subscription.comp.expired',
+    actorUserId?: string
+  ) {
+    await this.modifySubscriptionByOrg(orgId, pricing.FREE.channel || 0, 'FREE');
+    await this.bustMembersAuthCache(orgId, undefined);
+    this._auditService.record({
+      action,
+      organizationId: orgId,
+      userId: actorUserId,
+    });
   }
 
   async addSubscription(
@@ -838,13 +840,16 @@ export class SubscriptionService {
     const due = await this._subscriptionRepository.listExpiredComps(now);
     const expired: typeof due = [];
     for (const row of due) {
-      const { revoked } = await this.revokeSubscription(
+      // The end date is checked again in the write itself: a comp extended,
+      // or a plan bought (which clears compEndsAt), between the list and
+      // this point must not be taken away.
+      const { revoked } = await this._subscriptionRepository.softDeleteExpiredComp(
         row.organizationId,
-        undefined,
-        async () => false,
-        'subscription.comp.expired'
+        now
       );
-      if (revoked) expired.push(row);
+      if (!revoked) continue;
+      await this.backToFree(row.organizationId, 'subscription.comp.expired');
+      expired.push(row);
     }
     return expired;
   }
@@ -869,7 +874,8 @@ export class SubscriptionService {
     terms: { months?: number | null; reason?: string | null },
     actorUserId: string
   ) {
-    const address = (email || '').trim().toLowerCase();
+    // Raw request body: a number or an object here must be a 400, not a 500.
+    const address = typeof email === 'string' ? email.trim().toLowerCase() : '';
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(address)) {
       throw new HttpException('A valid email address is required', 400);
     }
@@ -951,10 +957,17 @@ export class SubscriptionService {
       if (!(await this._subscriptionRepository.consumePendingGrant(grant.id, organizationId))) {
         return false;
       }
-      await this.addSubscription(organizationId, grant.createdById, grant.tier, undefined, {
-        months: grant.months,
-        reason: grant.reason,
-      });
+      try {
+        await this.addSubscription(organizationId, grant.createdById, grant.tier, undefined, {
+          months: grant.months,
+          reason: grant.reason,
+        });
+      } catch (err) {
+        // No plan, so no "applied": the promise goes back to waiting and the
+        // panel shows it, instead of a grant used up for nothing.
+        await this._subscriptionRepository.releasePendingGrant(grant.id, organizationId);
+        throw err;
+      }
       this._auditService.record({
         action: 'subscription.pending-grant.applied',
         organizationId,

@@ -3,7 +3,7 @@ import { join } from 'path';
 
 // Postra's monitoring records no sessions: what a customer does is not
 // filmed, not even after an error. The browser client recorded a masked
-// replay of every session that hit an error (3 in the 30 days before it went).
+// replay of every session that hit an error.
 // Read as source: initializing Sentry in jsdom is not possible here.
 const read = (f: string) => readFileSync(join(__dirname, f), 'utf8');
 

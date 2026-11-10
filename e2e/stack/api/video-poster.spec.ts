@@ -3,8 +3,8 @@ import { join } from 'node:path';
 import { expect, test } from '@playwright/test';
 import { database, signedIn } from '../helpers';
 
-// Every video in the phone app's Media tab was a bare play icon
-// (0 of 38 videos on production had a still). A video saved to the library
+// Every video in the phone app's Media tab was a bare play icon: no video
+// had a still of its own. A video saved to the library
 // now gets a poster frame from ffmpeg, listed with the media, without
 // touching `thumbnail` (the cover the customer picks for the platforms).
 const MP4 = readFileSync(join(__dirname, '../ui/fixtures/two-seconds.mp4'));

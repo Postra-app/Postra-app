@@ -148,6 +148,7 @@ test('bad promises are refused with 400 and nothing is stored', async () => {
     const email = `bad-${process.pid}-${Date.now()}@example.com`;
     for (const data of [
       { email: 'not-an-email', subscription: 'PRO' },
+      { email: 123, subscription: 'PRO' },
       { email, subscription: 'FREE' },
       { email, subscription: 'PRO', months: 2 },
       { email, subscription: 'PRO', reason: 'friend' },
