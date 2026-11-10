@@ -1,7 +1,7 @@
 import { continueAsNew, patched, proxyActivities, sleep } from '@temporalio/workflow';
 import type { HousekeepingActivity } from '@gitroom/orchestrator/activities/housekeeping.activity';
 
-const { purgeOldRecords, checkAiMargins, expireComps } = proxyActivities<HousekeepingActivity>({
+const { purgeOldRecords, checkAiMargins, expireComps, fillVideoPosters } = proxyActivities<HousekeepingActivity>({
   startToCloseTimeout: '30 minute',
   retry: {
     maximumAttempts: 3,
@@ -21,8 +21,8 @@ const { housekeepingStarted, housekeepingFinished } =
 // Started once by the backend when RUN_CRON is set (InfiniteWorkflowRegister),
 // like missingPostWorkflow. Once a day: retention for Errors, AuditLog and
 // AiUsage, stored files behind media deleted long enough ago that nothing
-// refers to, the margin guard (AI cost per organisation vs its plan) and
-// comps whose end date has passed.
+// refers to, the margin guard (AI cost per organisation vs its plan), comps
+// whose end date has passed and poster frames for videos without one.
 // A failed day is tried again the next day; one failing does not skip the
 // other.
 export async function housekeepingWorkflow() {
@@ -62,6 +62,14 @@ export async function housekeepingWorkflow() {
       await expireComps();
     } catch (err) {
       // Next run tomorrow; the comp stays a day longer.
+      ok = false;
+    }
+  }
+  if (patched('housekeeping-video-posters')) {
+    try {
+      await fillVideoPosters();
+    } catch (err) {
+      // Next run tomorrow; the tiles keep their play icon a day longer.
       ok = false;
     }
   }

@@ -13,6 +13,8 @@ import { useT } from '@gitroom/react/translation/get.transation.service.client';
 export interface LibraryMedia {
   id: string;
   path: string;
+  thumbnail?: string | null;
+  poster?: string | null;
 }
 
 interface VideoLibraryPickerProps {
@@ -118,7 +120,7 @@ export const VideoLibraryPicker: FC<VideoLibraryPickerProps> = ({
                 className="group relative aspect-video rounded overflow-hidden border border-newBorder hover:border-newAccent transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 title={t('video_library_edit', 'Edit this clip')}
               >
-                <VideoFrame url={mediaDirectory.set(media.path)} />
+                <VideoFrame url={mediaDirectory.set(media.path)} poster={media.thumbnail || media.poster} />
                 <div className="absolute inset-0 flex items-center justify-center bg-black/40 text-white text-xs opacity-0 group-hover:opacity-100 transition-opacity">
                   <StudioIcon name="edit" size={12} className="inline-block me-1" />{t('video_library_edit_cta', 'Edit')}
                 </div>

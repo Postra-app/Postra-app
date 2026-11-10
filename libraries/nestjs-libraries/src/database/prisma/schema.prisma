@@ -285,6 +285,10 @@ model Media {
   fileSize           Int                 @default(0)
   type               String              @default("image")
   thumbnail          String?
+  // A frame of a video for lists (the phone app cannot take one itself).
+  // Ours only: `thumbnail` is the cover sent to the platforms. Empty string
+  // = ffmpeg found no frame; clients read `thumbnail || poster`.
+  poster             String?
   alt                String?
   thumbnailTimestamp Int?
   designSpec         Json?

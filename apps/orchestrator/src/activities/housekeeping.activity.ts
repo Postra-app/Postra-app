@@ -72,6 +72,19 @@ export class HousekeepingActivity {
     };
   }
 
+  // A still frame for videos stored without one (the ones from before
+  // posters existed, or an upload whose own attempt a restart cut short).
+  @ActivityMethod()
+  async fillVideoPosters() {
+    const report = await this._maintenance.fillVideoPosters();
+    if (report.filled || report.none || report.failed) {
+      this._logger.log(
+        `video posters: filled ${report.filled}, no frame ${report.none}, failed ${report.failed}`
+      );
+    }
+    return report;
+  }
+
   // Comps given for a time (influencers: 1/3/6/12 months) come back on their
   // end date, and the administrators get one mail naming them. A failed mail
   // does not undo the revoke; the audit log has every one.

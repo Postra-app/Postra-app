@@ -719,7 +719,10 @@ export const MediaBox: FC<{
                         </button>
                       </div>
                       {isVideoMedia(media) ? (
-                        <VideoFrame url={mediaDirectory.set(media.path)} />
+                        <VideoFrame
+                          url={mediaDirectory.set(media.path)}
+                          poster={media.thumbnail || media.poster}
+                        />
                       ) : (
                         <img
                           width="100%"

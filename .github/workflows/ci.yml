@@ -110,6 +110,10 @@ jobs:
       - name: Install Chromium and WebKit
         run: pnpm exec playwright install --with-deps chromium webkit
 
+      # The app image has ffmpeg (poster frames, captions); the runner does not.
+      - name: Install ffmpeg
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq --no-install-recommends ffmpeg
+
       # Every port the stack listens on sits in Linux's ephemeral range
       # (32768-60999), so a stray outbound connection of the runner can take
       # one first: once the backend died with EADDRINUSE on 53000 and the

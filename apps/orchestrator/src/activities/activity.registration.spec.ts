@@ -34,6 +34,7 @@ it('the housekeeping workflow can reach the margin guard', () => {
   expect([...methods.keys()].sort()).toEqual([
     'checkAiMargins',
     'expireComps',
+    'fillVideoPosters',
     'housekeepingFinished',
     'housekeepingStarted',
     'purgeOldRecords',

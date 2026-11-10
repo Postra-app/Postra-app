@@ -2,6 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { PrismaRepository } from '@gitroom/nestjs-libraries/database/prisma/prisma.service';
 import { UploadFactory } from '@gitroom/nestjs-libraries/upload/upload.factory';
 import type { StoredObject } from '@gitroom/nestjs-libraries/upload/upload.interface';
+import { posterFor } from '@gitroom/nestjs-libraries/videos/poster/video.poster';
 import dayjs from 'dayjs';
 
 /**
@@ -347,6 +348,48 @@ export class MaintenanceService {
       );
     }
 
+    return report;
+  }
+
+  /**
+   * Videos without a poster frame: the ones stored before posters
+   * existed, and any whose frame the upload did not get to (a restart). The
+   * newest first, a bounded number per day; a video ffmpeg cannot read is
+   * marked so it is not tried again.
+   */
+  async fillVideoPosters(
+    limit = 100,
+    extract?: Parameters<typeof posterFor>[2]
+  ): Promise<{ filled: number; none: number; failed: number }> {
+    const rows = await this._prisma.model.media.findMany({
+      where: {
+        type: 'video',
+        poster: null,
+        deletedAt: null,
+        // Leave the upload's own attempt its minute.
+        createdAt: { lt: dayjs().subtract(10, 'minute').toDate() },
+      },
+      orderBy: { createdAt: 'desc' },
+      take: limit,
+      select: { id: true, path: true },
+    });
+    const storage = UploadFactory.createStorage();
+    const report = { filled: 0, none: 0, failed: 0 };
+    for (const row of rows) {
+      try {
+        const poster = await posterFor(row.path, storage, extract);
+        if (poster === null) continue;
+        await this._prisma.model.media.updateMany({
+          where: { id: row.id, poster: null },
+          data: { poster },
+        });
+        if (poster) report.filled++;
+        else report.none++;
+      } catch (err) {
+        report.failed++;
+        Logger.warn(`fillVideoPosters: ${row.id}: ${(err as Error)?.message}`);
+      }
+    }
     return report;
   }
 
