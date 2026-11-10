@@ -12,7 +12,7 @@ jest.mock('@gitroom/nestjs-libraries/redis/auth-context.cache', () => ({
   bustAuthContextCacheForUsers: jest.fn().mockResolvedValue(undefined),
 }));
 
-import { SubscriptionService } from '@gitroom/nestjs-libraries/database/prisma/subscriptions/subscription.service';
+import { isPlainEmail, SubscriptionService } from '@gitroom/nestjs-libraries/database/prisma/subscriptions/subscription.service';
 
 // Influencers get Pro for a while in return for posts. A comp used to be
 // open-ended and could only be given to an account that already existed, so
@@ -256,5 +256,24 @@ describe('a comp promised to an email', () => {
     const { service, repository } = build();
     await expect(service.applyPendingGrant('org-2', undefined)).resolves.toBe(false);
     expect(repository.findOpenPendingGrant).not.toHaveBeenCalled();
+  });
+});
+
+describe('isPlainEmail', () => {
+  it.each(['a@b.co', 'jan.kowalski@gmail.com', 'creator+x@studio.co.uk'])('accepts %s', (e) => {
+    expect(isPlainEmail(e)).toBe(true);
+  });
+  it.each(['', 'a', '@b.co', 'a@b', 'a@.co', 'a@b.', 'a@@b.co', 'a@b@c.co', 'a b@c.co', `${'a'.repeat(250)}@b.co`])(
+    'refuses %p',
+    (e) => {
+      expect(isPlainEmail(e)).toBe(false);
+    }
+  );
+  // The regular expression it replaced backtracked polynomially on this.
+  it('answers at once on crafted input', () => {
+    const crafted = '!@!.' + '!.'.repeat(50_000);
+    const start = Date.now();
+    isPlainEmail(crafted);
+    expect(Date.now() - start).toBeLessThan(50);
   });
 });

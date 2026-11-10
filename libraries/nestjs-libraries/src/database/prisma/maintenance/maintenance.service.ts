@@ -359,8 +359,10 @@ export class MaintenanceService {
    */
   async fillVideoPosters(
     limit = 100,
-    extract?: Parameters<typeof posterFor>[2]
-  ): Promise<{ filled: number; none: number; failed: number }> {
+    extract?: Parameters<typeof posterFor>[2],
+    // Dry-run: only counts the videos that would get a frame.
+    apply = true
+  ): Promise<{ filled: number; none: number; failed: number; candidates: number }> {
     const rows = await this._prisma.model.media.findMany({
       where: {
         type: 'video',
@@ -374,7 +376,8 @@ export class MaintenanceService {
       select: { id: true, path: true },
     });
     const storage = UploadFactory.createStorage();
-    const report = { filled: 0, none: 0, failed: 0 };
+    const report = { filled: 0, none: 0, failed: 0, candidates: rows.length };
+    if (!apply) return report;
     for (const row of rows) {
       try {
         const poster = await posterFor(row.path, storage, extract);

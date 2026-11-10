@@ -44,6 +44,18 @@ const currentPeriodStart = (subscription: {
   return date.subtract(1, 'month');
 };
 
+// One "@", something before it, a dotted domain after it, no spaces, at
+// most 254 characters. Checked without a regular expression: the pattern
+// used before backtracked polynomially on crafted input.
+export const isPlainEmail = (address: string) => {
+  if (!address || address.length > 254 || /\s/.test(address)) return false;
+  const at = address.indexOf('@');
+  if (at <= 0 || at !== address.lastIndexOf('@')) return false;
+  const domain = address.slice(at + 1);
+  const dot = domain.lastIndexOf('.');
+  return dot > 0 && dot < domain.length - 1;
+};
+
 @Injectable()
 export class SubscriptionService {
   constructor(
@@ -876,7 +888,7 @@ export class SubscriptionService {
   ) {
     // Raw request body: a number or an object here must be a 400, not a 500.
     const address = typeof email === 'string' ? email.trim().toLowerCase() : '';
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(address)) {
+    if (!isPlainEmail(address)) {
       throw new HttpException('A valid email address is required', 400);
     }
     if (!isCompableTier(tier)) {

@@ -9,13 +9,18 @@ export class FillVideoPosters {
   @Command({
     command: 'fill-video-posters',
     describe:
-      'Takes a poster frame (ffmpeg) for library videos without one, newest first, up to --limit=N (default 100). The daily housekeeping run does the same; this is for doing it now, e.g. right after the deploy that added posters.',
+      'Takes a poster frame (ffmpeg) for library videos without one, newest first, up to --limit=N (default 100). The daily housekeeping run does the same; this is for doing it now, e.g. right after the deploy that added posters. Dry-run (counts only) unless --apply.',
   })
   async run() {
     const arg = process.argv.find((v) => v.startsWith('--limit='));
     const parsed = arg ? Number.parseInt(arg.slice('--limit='.length), 10) : NaN;
     const limit = Number.isFinite(parsed) && parsed > 0 ? parsed : 100;
-    const report = await this._maintenance.fillVideoPosters(limit);
+    const apply = process.argv.includes('--apply');
+    const report = await this._maintenance.fillVideoPosters(limit, undefined, apply);
+    if (!apply) {
+      console.log(`DRY-RUN: ${report.candidates} video(s) without a poster; run again with -- --apply to take their frames.`);
+      return;
+    }
     console.log(JSON.stringify(report));
   }
 }
