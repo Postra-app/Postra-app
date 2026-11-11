@@ -47,3 +47,13 @@ describe('IntegrationService.informAboutRefreshError', () => {
     );
   });
 });
+
+// A tap on the phone's push opened the calendar; the channel to reconnect is
+// on the Channels screen.
+it('sends the phone to the Channels screen', async () => {
+  const s = Object.create(IntegrationService.prototype) as IntegrationService;
+  const inAppNotification = jest.fn();
+  (s as any)._notificationService = { inAppNotification };
+  await s.informAboutRefreshError('org-1', { providerIdentifier: 'x' } as any, 'expired');
+  expect(inAppNotification.mock.calls[0][6]).toBe('channels');
+});

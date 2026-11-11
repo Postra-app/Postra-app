@@ -24,6 +24,9 @@ type Ticket = { status?: string; id?: string; message?: string; details?: { erro
  * Tokens are Expo push tokens; sending goes through the Expo Push API (no key needed).
  * Best-effort by design — callers must never let a push failure break their flow.
  */
+/** Screens the mobile app opens from a push (`src/lib/push.ts` there). */
+export type PushScreen = 'calendar' | 'media' | 'channels';
+
 @Injectable()
 export class MobilePushService {
   private readonly _logger = new Logger('MobilePush');
@@ -75,12 +78,18 @@ export class MobilePushService {
     });
   }
 
-  /** Best-effort push to every device registered for an organization. */
+  /**
+   * Best-effort push to every device registered for an organization.
+   * `screen` tells the app where a tap goes when the calendar is the wrong
+   * place (a finished AI video is in Media, a channel to reconnect in
+   * Channels). Older apps ignore it and open the calendar.
+   */
   async notifyOrg(
     organizationId: string,
     title: string,
     body: string,
-    type: 'success' | 'fail' | 'info' = 'info'
+    type: 'success' | 'fail' | 'info' = 'info',
+    screen?: PushScreen
   ) {
     // Devices of people still in the organisation: a removed, disabled or
     // suspended member's phone kept getting every publication and failure.
@@ -104,7 +113,7 @@ export class MobilePushService {
       body,
       sound: 'default',
       priority: 'high',
-      data: { type },
+      data: screen ? { type, screen } : { type },
     }));
 
     for (let i = 0; i < messages.length; i += MESSAGES_PER_REQUEST) {
