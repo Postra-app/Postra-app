@@ -10,9 +10,11 @@ const GOOGLE_USER = { id: 'google-sub-1', email: 'g@example.com' };
 function setup(opts: {
   verified?: { id: string; email: string } | false;
   user?: any;
+  passwordUser?: any;
 }) {
   const users = {
     getUserByProvider: jest.fn(async () => opts.user ?? null),
+    getUserByEmail: jest.fn(async () => opts.passwordUser ?? null),
   };
   const orgs = { createOrgAndUser: jest.fn() };
   const verifyIdToken = jest.fn(async () => opts.verified ?? false);
@@ -53,6 +55,21 @@ describe('Google sign-in from the mobile app', () => {
     await expect(service.googleNativeLogin('id-token')).resolves.toEqual({
       error: 'no_account',
     });
+    expect(orgs.createOrgAndUser).not.toHaveBeenCalled();
+  });
+
+  // "No account" sent people who signed up with a password to sign up again.
+  it('says the address has a password account, and still signs nobody in', async () => {
+    const { service, users, orgs } = setup({
+      verified: { id: 'google-sub-1', email: 'G@Example.com' },
+      user: null,
+      passwordUser: { id: 'u9', providerName: 'LOCAL' },
+    });
+
+    await expect(service.googleNativeLogin('id-token')).resolves.toEqual({
+      error: 'password_account',
+    });
+    expect(users.getUserByEmail).toHaveBeenCalledWith('g@example.com');
     expect(orgs.createOrgAndUser).not.toHaveBeenCalled();
   });
 
