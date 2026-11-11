@@ -261,7 +261,8 @@ export class AuthController {
   // returns an ID token, this checks it with Google and answers like /login
   // does for `x-client: mobile` — the app's short, revocable token in the
   // body. Existing accounts only (AuthService.googleNativeLogin). The app
-  // tells 404 (no account: sign up on the web) from 400 (try again).
+  // tells 404 (no account: sign up on the web) and 409 (the address has an
+  // account with a password: sign in with it) from 400 (try again).
   @Post('/google/native')
   @Throttle({ default: { ttl: 900000, limit: 10 } })
   async googleNative(
@@ -291,6 +292,12 @@ export class AuthController {
         userAgent,
         metadata: { provider: 'GOOGLE', via: 'mobile', reason: result.error },
       });
+      if (result.error === 'password_account') {
+        return response
+          .status(409)
+          .type('text/plain')
+          .send('This email has a Postra account with a password.');
+      }
       return result.error === 'no_account'
         ? response
             .status(404)

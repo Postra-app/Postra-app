@@ -544,12 +544,16 @@ export class AuthService {
    * accounts (sign-ups and plans are on the web, Apple 3.1.1), and while
    * sign-ups are frozen this must not open a way around the freeze. An
    * account made with a password and the same address is not the Google
-   * account, as on the web, so the address alone never signs anyone in.
+   * account, as on the web, so the address alone never signs anyone in; the
+   * app is told so (`password_account`), because "no account" sent people who
+   * have one to sign up again. Only the owner of the address learns it:
+   * Google has verified that the person holding the token controls it.
    */
   async googleNativeLogin(
     idToken: string
   ): Promise<
-    { jwt: string; user: User } | { error: 'invalid' | 'no_account' }
+    | { jwt: string; user: User }
+    | { error: 'invalid' | 'no_account' | 'password_account' }
   > {
     const google = await this._providerManager
       .getProvider(Provider.GOOGLE)
@@ -562,7 +566,10 @@ export class AuthService {
       Provider.GOOGLE
     );
     if (!user) {
-      return { error: 'no_account' };
+      const withPassword = await this._userService.getUserByEmail(
+        google.email.toLowerCase()
+      );
+      return { error: withPassword ? 'password_account' : 'no_account' };
     }
     return { jwt: await this.jwt(user), user };
   }

@@ -54,6 +54,18 @@ describe('POST /auth/google/native', () => {
     expect(audit.record).toHaveBeenCalledWith(expect.objectContaining({ action: 'auth.login.failed' }));
   });
 
+  it('answers 409 when the address has an account with a password', async () => {
+    const { ctrl, audit } = controller({ error: 'password_account' });
+    const res = fakeResponse();
+    await ctrl.googleNative({ idToken: 't' } as any, res, 'ip', 'ua');
+
+    expect(res.statusCode).toBe(409);
+    expect(res.cookie).not.toHaveBeenCalled();
+    expect(audit.record).toHaveBeenCalledWith(
+      expect.objectContaining({ action: 'auth.login.failed', metadata: expect.objectContaining({ reason: 'password_account' }) })
+    );
+  });
+
   it('answers 400 for a token Google did not vouch for', async () => {
     const { ctrl } = controller({ error: 'invalid' });
     const res = fakeResponse();
