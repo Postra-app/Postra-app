@@ -1,5 +1,7 @@
 'use client';
 
+// The assistant's styles load with the assistant, not on every page.
+import '@copilotkit/react-ui/styles.css';
 import React, {
   FC,
   useCallback,

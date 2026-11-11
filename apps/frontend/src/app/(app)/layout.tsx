@@ -11,7 +11,6 @@ export const viewport: Viewport = {
 };
 import '../global.scss';
 import 'react-tooltip/dist/react-tooltip.css';
-import '@copilotkit/react-ui/styles.css';
 import LayoutContext from '@gitroom/frontend/components/layout/layout.context';
 import { ReactNode } from 'react';
 import { GeistSans } from 'geist/font/sans';

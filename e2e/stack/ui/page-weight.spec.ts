@@ -33,3 +33,27 @@ test('the calendar does not download the post editor before it is opened', async
   await page.waitForTimeout(3_000); // idle-time prefetch of the menu routes
   expect(editorChunks).toEqual([]);
 });
+
+test('the calendar paints without the AI assistant library or the uploader', async ({ page }) => {
+  // Real-user LCP on the calendar was 5.7 s at p75: the whole app shell waited
+  // for ~0.5 MB (gzip) of CopilotKit, pulled in by a provider around every page
+  // that no chat used (the assistant on /agents brings its own), and ~140 KB of
+  // Uppy, pulled in by a channel-menu button that only asks for the media box.
+  // Each library is recognised by a text only it ships, not by a class name a
+  // component may mention.
+  const markers = { CopilotKit: 'wrap your app in a `<CopilotKit>`', Uppy: 'youCanOnlyUploadX' };
+  const found: string[] = [];
+  let painted = false;
+  page.on('response', async (res) => {
+    if (painted) return; // idle-time prefetch of the menu routes may load /agents
+    if (res.request().resourceType() !== 'script' || !res.url().includes('/_next/')) return;
+    const body = await res.text().catch(() => '');
+    for (const [name, marker] of Object.entries(markers)) {
+      if (body.includes(marker)) found.push(`${name}: ${res.url().split('/').pop()}`);
+    }
+  });
+  await page.goto('/launches');
+  await expect(page.getByRole('button', { name: 'Create Post' })).toBeVisible();
+  painted = true;
+  expect(found).toEqual([]);
+});
