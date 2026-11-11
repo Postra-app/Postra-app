@@ -496,7 +496,8 @@ export class IntegrationService {
       }. Please go back to the system and connect it again ${process.env.FRONTEND_URL}/launches`,
       true,
       false,
-      'info'
+      'info',
+      'channels'
     );
   }
 

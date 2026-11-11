@@ -1015,7 +1015,8 @@ export class MediaService {
         VIDEO_READY_MESSAGE,
         false,
         false,
-        'success'
+        'success',
+        'media'
       );
     } catch (err) {
       this._videoLogger.error(
@@ -1050,7 +1051,8 @@ export class MediaService {
         message,
         false,
         false,
-        'fail'
+        'fail',
+        'media'
       );
     } catch (e) {
       this._videoLogger.error(

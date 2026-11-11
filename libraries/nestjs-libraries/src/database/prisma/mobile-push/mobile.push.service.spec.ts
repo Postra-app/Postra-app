@@ -84,3 +84,23 @@ describe('notifyOrg recipients', () => {
     );
   });
 });
+
+// A tap on "Your AI video is ready" opened the calendar; the clip is in Media.
+describe('notifyOrg tells the app which screen a tap opens', () => {
+  async function sent(screen?: 'media' | 'channels') {
+    const { service, model } = makeService();
+    model.findMany.mockResolvedValue([{ token: 'ExponentPushToken[a]' }]);
+    const send = jest.spyOn(service as any, 'send').mockResolvedValue(undefined);
+    await service.notifyOrg('orgA', 'title', 'body', 'success', screen);
+    return (send.mock.calls[0][0] as any[])[0].data;
+  }
+
+  it('adds the screen when one is given', async () => {
+    expect(await sent('media')).toEqual({ type: 'success', screen: 'media' });
+    expect(await sent('channels')).toEqual({ type: 'success', screen: 'channels' });
+  });
+
+  it('leaves the data as before when none is given, so older apps see no change', async () => {
+    expect(await sent()).toEqual({ type: 'success' });
+  });
+});
