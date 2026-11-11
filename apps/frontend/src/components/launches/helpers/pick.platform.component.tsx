@@ -4,7 +4,6 @@ import { useMoveToIntegrationListener } from '@gitroom/frontend/components/launc
 import { deleteDialog } from '@gitroom/react/helpers/delete.dialog';
 import clsx from 'clsx';
 import SafeImage from '@gitroom/react/helpers/safe.image';
-import { useCopilotAction, useCopilotReadable } from '@copilotkit/react-core';
 import { useStateCallback } from '@gitroom/react/helpers/use.state.callback';
 import { timer } from '@gitroom/helpers/utils/timer';
 export const PickPlatforms: FC<{
@@ -16,7 +15,7 @@ export const PickPlatforms: FC<{
   isMain: boolean;
   toolTip?: boolean;
 }> = (props) => {
-  const { hide, isMain, integrations, selectedIntegrations, onChange } = props;
+  const { hide, integrations, selectedIntegrations, onChange } = props;
   const ref = useRef<HTMLDivElement>(null);
   const [isLeft, setIsLeft] = useState(false);
   const [isRight, setIsRight] = useState(false);
@@ -133,49 +132,6 @@ export const PickPlatforms: FC<{
       await Promise.all(promises);
     },
     [onChange, props.singleSelect, selectedAccounts, setSelectedAccounts]
-  );
-  const handler = async ({ integrationsId }: { integrationsId: string[] }) => {
-    const selected = selectedIntegrations.map((p) => p.id);
-    const notToRemove = selected.filter((p) => integrationsId.includes(p));
-    const toAdd = integrationsId.filter((p) => !selected.includes(p));
-    const newIntegrations = [...notToRemove, ...toAdd]
-      .map((id) => integrations.find((p) => p.id === id)!)
-      .filter((p) => p);
-    setSelectedAccounts(newIntegrations, () => {
-    });
-    onChange(newIntegrations, () => {
-    });
-  };
-  useCopilotReadable({
-    description: isMain
-      ? 'All available platforms channels'
-      : 'Possible platforms channels to edit',
-    value: JSON.stringify(integrations),
-  });
-  useCopilotAction(
-    {
-      name: isMain ? `addOrRemovePlatform` : 'setSelectedIntegration',
-      description: isMain
-        ? `Add or remove channels to schedule your post to, pass all the ids as array`
-        : 'Set selected integrations',
-      parameters: [
-        {
-          name: 'integrationsId',
-          type: 'string[]',
-          description: 'List of integrations id to set as selected',
-          required: true,
-        },
-      ],
-      handler,
-    },
-    [
-      addPlatform,
-      selectedAccounts,
-      integrations,
-      onChange,
-      props.singleSelect,
-      setSelectedAccounts,
-    ]
   );
   if (hide) {
     return null;

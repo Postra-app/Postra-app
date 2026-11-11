@@ -1,6 +1,7 @@
 import {
   listenForMediaBox,
   requestMediaBox,
+  whenMediaBoxRequested,
 } from '@gitroom/frontend/components/media/media-box-request';
 
 describe('the shared media box', () => {
@@ -37,5 +38,31 @@ describe('the shared media box', () => {
     expect(second).toHaveBeenCalledWith(pick);
     expect(first).not.toHaveBeenCalled();
     stopSecond();
+  });
+
+  it('asks for the box to be loaded only when someone wants it, then opens it', () => {
+    const load = jest.fn();
+    const stopWaking = whenMediaBoxRequested(load);
+    expect(load).not.toHaveBeenCalled();
+    const pick = jest.fn();
+    requestMediaBox(pick);
+    expect(load).toHaveBeenCalledTimes(1);
+    const open = jest.fn();
+    const stop = listenForMediaBox(open);
+    expect(open).toHaveBeenCalledWith(pick);
+    stop();
+    stopWaking();
+  });
+
+  it('loads the box at once for a request made before the layout was ready', () => {
+    const pick = jest.fn();
+    requestMediaBox(pick);
+    const load = jest.fn();
+    const stopWaking = whenMediaBoxRequested(load);
+    expect(load).toHaveBeenCalledTimes(1);
+    const open = jest.fn();
+    listenForMediaBox(open)();
+    expect(open).toHaveBeenCalledWith(pick);
+    stopWaking();
   });
 });

@@ -20,10 +20,7 @@ import { Media } from '@prisma/client';
 import { useMediaDirectory } from '@gitroom/react/helpers/use.media.directory';
 import { useVariables } from '@gitroom/react/helpers/variable.context';
 import { useSettings } from '@gitroom/frontend/components/launches/helpers/use.values';
-import {
-  listenForMediaBox,
-  requestMediaBox,
-} from '@gitroom/frontend/components/media/media-box-request';
+import { listenForMediaBox } from '@gitroom/frontend/components/media/media-box-request';
 import { useToaster } from '@gitroom/react/toaster/toaster';
 import clsx from 'clsx';
 import { VideoFrame } from '@gitroom/react/helpers/video.frame';
@@ -207,13 +204,6 @@ export const ShowMediaBoxModal: FC = () => {
     [openModal, t]
   );
   return null;
-};
-// The library hands back the list of chosen files (MediaBox.addMedia), not one
-// file: callers read the first.
-export const showMediaBox = (
-  callback: (params: { id: string; path: string }[]) => void
-) => {
-  requestMediaBox(callback);
 };
 const CHUNK_SIZE = 1024 * 1024;
 const MAX_UPLOAD_SIZE = 1024 * 1024 * 1024; // 1 GB

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { ReactNode, useCallback } from 'react';
+import React, { ReactNode, useCallback, useEffect, useState } from 'react';
 import { useFollowOrgChange } from '@gitroom/frontend/components/layout/org.broadcast';
 import { Logo } from '@gitroom/frontend/components/new-layout/logo';
 import { GeistSans } from 'geist/font/sans';
@@ -20,7 +20,7 @@ import useSWR from 'swr';
 import { CheckPayment } from '@gitroom/frontend/components/layout/check.payment';
 import { ToolTip } from '@gitroom/frontend/components/layout/top.tip';
 // media.component drags the whole Uppy suite — keep it out of the app-shell
-// bundle; the modal mounts lazily.
+// bundle; the modal mounts only once something asks for the media box.
 const ShowMediaBoxModal = dynamic(
   () =>
     import('@gitroom/frontend/components/media/media.component').then(
@@ -36,7 +36,6 @@ import { NewSubscription } from '@gitroom/frontend/components/layout/new.subscri
 import { Support } from '@gitroom/frontend/components/layout/support';
 import { ContinueProvider } from '@gitroom/frontend/components/layout/continue.provider';
 import { ContextWrapper } from '@gitroom/frontend/components/layout/user.context';
-import { CopilotKit } from '@copilotkit/react-core';
 import { MantineWrapper } from '@gitroom/react/helpers/mantine.wrapper';
 import { AnnouncementBanner } from '@gitroom/frontend/components/layout/announcement.banner';
 import { Title } from '@gitroom/frontend/components/layout/title';
@@ -58,11 +57,18 @@ import { AgentHistoryMobile } from '@gitroom/frontend/components/agents/agent.hi
 import { TrialTracker } from '@gitroom/frontend/components/layout/gtm.component';
 import { ImpersonationBanner } from '@gitroom/frontend/components/new-layout/impersonation-banner';
 import { accountTimezoneLoaded } from '@gitroom/frontend/components/layout/set.timezone';
+import { whenMediaBoxRequested } from '@gitroom/frontend/components/media/media-box-request';
+
+const MediaBoxOnRequest = () => {
+  const [wanted, setWanted] = useState(false);
+  useEffect(() => whenMediaBoxRequested(() => setWanted(true)), []);
+  return wanted ? <ShowMediaBoxModal /> : null;
+};
 
 export const LayoutComponent = ({ children }: { children: ReactNode }) => {
   const fetch = useFetch();
 
-  const { backendUrl, billingEnabled, isGeneral } = useVariables();
+  const { billingEnabled, isGeneral } = useVariables();
 
   // Feedback icon component attaches Sentry feedback to a top-bar icon when DSN is present
   const searchParams = useSearchParams();
@@ -96,99 +102,95 @@ export const LayoutComponent = ({ children }: { children: ReactNode }) => {
 
   return (
     <ContextWrapper user={user}>
-      <CopilotKit
-        credentials="include"
-        runtimeUrl={backendUrl + '/copilot/chat'}
-        useSingleEndpoint={true}
-        showDevConsole={false}
-      >
-        <MantineWrapper>
-          <ToolTip />
-          <Toaster />
-          <TrialTracker />
-          <CheckPayment check={searchParams.get('check') || ''} mutate={mutate}>
-            <ShowMediaBoxModal />
-            <ShowLinkedinCompany />
-            <MediaSettingsLayout />
-            <ShowPostSelector />
-            <PreConditionComponent />
-            <NewSubscription />
-            <ContinueProvider />
-            <div
-              className={clsx(
-                'flex flex-col min-h-screen min-w-screen text-newTextColor p-[14px] relative',
-                GeistSans.className
-              )}
-            >
-              {user?.impersonate && <ImpersonationBanner email={user?.email} />}
-              <div />
-              {/* An invitation is answered before any paywall: joining a paid
+      {/* No CopilotKit provider here: the assistant has its own on /agents.
+          This one put ~0.5 MB of JavaScript in front of the first paint of
+          every page, for hooks no chat ever read. */}
+      <MantineWrapper>
+        <ToolTip />
+        <Toaster />
+        <TrialTracker />
+        <CheckPayment check={searchParams.get('check') || ''} mutate={mutate}>
+          <MediaBoxOnRequest />
+          <ShowLinkedinCompany />
+          <MediaSettingsLayout />
+          <ShowPostSelector />
+          <PreConditionComponent />
+          <NewSubscription />
+          <ContinueProvider />
+          <div
+            className={clsx(
+              'flex flex-col min-h-screen min-w-screen text-newTextColor p-[14px] relative',
+              GeistSans.className
+            )}
+          >
+            {user?.impersonate && <ImpersonationBanner email={user?.email} />}
+            <div />
+            {/* An invitation is answered before any paywall: joining a paid
                   organisation is the way out of a free one. */}
-              {user.tier === 'FREE' &&
-              isGeneral &&
-              billingEnabled &&
-              pathname !== '/join' ? (
-                <FirstBillingComponent />
-              ) : (
-                <>
-                  <AnnouncementBanner />
-                  <div className="flex-1 flex gap-[8px]">
-                    <Support />
-                    <div className="hidden md:flex flex-col w-[84px] rounded-[18px] border border-white/10 bg-white/[0.03] shadow-[0_24px_80px_rgba(2,6,23,0.45)] backdrop-blur-xl">
-                      <div
-                        id="left-menu"
-                        className={clsx(
-                          'fixed h-full w-[64px] start-[10px] flex flex-1 top-0',
-                          false
-                        )}
-                      >
-                        <div className="flex flex-col h-full gap-[12px] flex-1 py-[16px] items-center overflow-y-auto scrollbar scrollbar-thumb-fifth scrollbar-track-newBgColor">
-                          <Logo />
-                          <TopMenu />
-                        </div>
+            {user.tier === 'FREE' &&
+            isGeneral &&
+            billingEnabled &&
+            pathname !== '/join' ? (
+              <FirstBillingComponent />
+            ) : (
+              <>
+                <AnnouncementBanner />
+                <div className="flex-1 flex gap-[8px]">
+                  <Support />
+                  <div className="hidden md:flex flex-col w-[84px] rounded-[18px] border border-white/10 bg-white/[0.03] shadow-[0_24px_80px_rgba(2,6,23,0.45)] backdrop-blur-xl">
+                    <div
+                      id="left-menu"
+                      className={clsx(
+                        'fixed h-full w-[64px] start-[10px] flex flex-1 top-0',
+                        false
+                      )}
+                    >
+                      <div className="flex flex-col h-full gap-[12px] flex-1 py-[16px] items-center overflow-y-auto scrollbar scrollbar-thumb-fifth scrollbar-track-newBgColor">
+                        <Logo />
+                        <TopMenu />
                       </div>
-                    </div>
-                    <div className="app-shell-surface flex-1 rounded-[20px] overflow-hidden flex flex-col gap-[1px] blurMe border border-white/10 shadow-[0_32px_120px_rgba(2,6,23,0.42)] bg-[rgba(15,23,42,0.72)] backdrop-blur-xl">
-                      <div className="app-shell-topbar relative z-[10] flex bg-[rgba(15,23,42,0.82)] backdrop-blur-xl h-[56px] md:h-[60px] px-[16px] md:px-[24px] items-center gap-[8px] border-b border-white/10">
-                        <MobileNav />
-                        <div className="text-[20px] md:text-[24px] font-[600] flex flex-1 phone:justify-center truncate">
-                          <Title />
-                        </div>
-                        <div className="flex gap-[12px] md:gap-[20px] text-textItemBlur items-center">
-                          <div className="hidden md:flex items-center gap-[20px]">
-                            <StreakComponent />
-                            <div className="w-[1px] h-[20px] bg-blockSeparator" />
-                            <OrganizationSelector />
-                            <InvoicesComponent />
-                            <div className="hover:text-newTextColor">
-                              <ModeComponent />
-                            </div>
-                            <div className="w-[1px] h-[20px] bg-blockSeparator" />
-                            <LanguageComponent />
-                            <ChromeExtensionComponent />
-                            <div className="w-[1px] h-[20px] bg-blockSeparator" />
-                            <AttachToFeedbackIcon />
-                          </div>
-                          {pathname?.startsWith('/agents') && (
-                            <AgentHistoryMobile />
-                          )}
-                          <NotificationComponent />
-                        </div>
-                      </div>
-                      {/* The page itself: a screen reader's "skip to main content"
-                          had no landmark to land on (Lighthouse landmark-one-main). */}
-                      <main className="app-shell-content flex phone:flex-col flex-1 gap-[1px] pb-[64px] md:pb-0 bg-[linear-gradient(180deg,rgba(15,23,42,0.92),rgba(8,14,28,0.96))]">
-                        {children}
-                      </main>
                     </div>
                   </div>
-                  <BottomNav />
-                </>
-              )}
-            </div>
-          </CheckPayment>
-        </MantineWrapper>
-      </CopilotKit>
+                  <div className="app-shell-surface flex-1 rounded-[20px] overflow-hidden flex flex-col gap-[1px] blurMe border border-white/10 shadow-[0_32px_120px_rgba(2,6,23,0.42)] bg-[rgba(15,23,42,0.72)] backdrop-blur-xl">
+                    <div className="app-shell-topbar relative z-[10] flex bg-[rgba(15,23,42,0.82)] backdrop-blur-xl h-[56px] md:h-[60px] px-[16px] md:px-[24px] items-center gap-[8px] border-b border-white/10">
+                      <MobileNav />
+                      <div className="text-[20px] md:text-[24px] font-[600] flex flex-1 phone:justify-center truncate">
+                        <Title />
+                      </div>
+                      <div className="flex gap-[12px] md:gap-[20px] text-textItemBlur items-center">
+                        <div className="hidden md:flex items-center gap-[20px]">
+                          <StreakComponent />
+                          <div className="w-[1px] h-[20px] bg-blockSeparator" />
+                          <OrganizationSelector />
+                          <InvoicesComponent />
+                          <div className="hover:text-newTextColor">
+                            <ModeComponent />
+                          </div>
+                          <div className="w-[1px] h-[20px] bg-blockSeparator" />
+                          <LanguageComponent />
+                          <ChromeExtensionComponent />
+                          <div className="w-[1px] h-[20px] bg-blockSeparator" />
+                          <AttachToFeedbackIcon />
+                        </div>
+                        {pathname?.startsWith('/agents') && (
+                          <AgentHistoryMobile />
+                        )}
+                        <NotificationComponent />
+                      </div>
+                    </div>
+                    {/* The page itself: a screen reader's "skip to main content"
+                          had no landmark to land on (Lighthouse landmark-one-main). */}
+                    <main className="app-shell-content flex phone:flex-col flex-1 gap-[1px] pb-[64px] md:pb-0 bg-[linear-gradient(180deg,rgba(15,23,42,0.92),rgba(8,14,28,0.96))]">
+                      {children}
+                    </main>
+                  </div>
+                </div>
+                <BottomNav />
+              </>
+            )}
+          </div>
+        </CheckPayment>
+      </MantineWrapper>
     </ContextWrapper>
   );
 };

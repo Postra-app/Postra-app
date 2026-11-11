@@ -8,7 +8,7 @@ import { Card } from '@gitroom/frontend/components/ui/card';
 import { Button } from '@gitroom/frontend/components/ui/button';
 import { useToaster } from '@gitroom/react/toaster/toaster';
 import { useT } from '@gitroom/react/translation/get.transation.service.client';
-import { showMediaBox } from '@gitroom/frontend/components/media/media.component';
+import { showMediaBox } from '@gitroom/frontend/components/media/media-box-request';
 
 type Picture = { id: string; path: string } | null;
 
