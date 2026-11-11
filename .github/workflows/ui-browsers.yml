@@ -52,6 +52,10 @@ jobs:
       - name: Install the browser
         run: pnpm exec playwright install --with-deps ${{ matrix.engine }}
 
+      # The app image has ffmpeg (poster frames, captions); the runner does not.
+      - name: Install ffmpeg
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq --no-install-recommends ffmpeg
+
       # Same list as ci.yml: the stack's ports kept out of the ephemeral range.
       - name: Reserve the stack's ports
         run: sudo sysctl -w net.ipv4.ip_local_reserved_ports=9464,53000,54000,54200,55432,56379,57233,58080,58090

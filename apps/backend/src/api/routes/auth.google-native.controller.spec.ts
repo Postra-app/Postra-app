@@ -32,7 +32,7 @@ function controller(result: any) {
 
 describe('POST /auth/google/native', () => {
   it('answers the app token in the body, never the web one, and sets no cookie', async () => {
-    const { ctrl, audit } = controller({ jwt: 'web', user: { email: 'g@example.com' } });
+    const { ctrl, audit } = controller({ jwt: 'web', user: { id: 'user-g', email: 'g@example.com' } });
     const res = fakeResponse();
     await ctrl.googleNative({ idToken: 't' } as any, res, '1.2.3.4', 'ua');
 
@@ -40,7 +40,7 @@ describe('POST /auth/google/native', () => {
     expect(res.body).toEqual({ login: true, token: 'mobile:web' });
     expect(res.cookie).not.toHaveBeenCalled();
     expect(audit.record).toHaveBeenCalledWith(
-      expect.objectContaining({ action: 'auth.login', metadata: expect.objectContaining({ provider: 'GOOGLE', via: 'mobile' }) })
+      expect.objectContaining({ action: 'auth.login', userId: 'user-g', metadata: expect.objectContaining({ provider: 'GOOGLE', via: 'mobile' }) })
     );
   });
 

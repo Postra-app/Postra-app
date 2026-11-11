@@ -140,7 +140,11 @@ export class AuthService {
               )
             : false;
 
-        const obj = { addedOrg, jwt: await this.jwt(create.users[0].user) };
+        const obj = {
+          addedOrg,
+          jwt: await this.jwt(create.users[0].user),
+          userId: create.users[0].user.id,
+        };
         const activation = authEmails.activation[lang];
         await sendActivationMail(
           this._emailService,
@@ -184,7 +188,7 @@ export class AuthService {
       }
 
       await ioRedis.del(failuresKey);
-      return { addedOrg: false, jwt: await this.jwt(user) };
+      return { addedOrg: false, jwt: await this.jwt(user), userId: user.id };
     }
 
     const user = await this.loginOrRegisterProvider(
@@ -203,7 +207,7 @@ export class AuthService {
             addToOrg.role
           )
         : false;
-    return { addedOrg, jwt: await this.jwt(user) };
+    return { addedOrg, jwt: await this.jwt(user), userId: user.id };
   }
 
   public getOrgFromCookie(cookie?: string) {

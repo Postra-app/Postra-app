@@ -149,6 +149,15 @@ describe('CI workflows', () => {
     }
   });
 
+  // The stack makes video poster frames with ffmpeg, as the app image does.
+  // The nightly Firefox/WebKit run had no ffmpeg on its runner: the media
+  // library tests waited a minute for a poster that never came, every night.
+  it.each(workflows.filter((w) => w.text.includes('e2e:stack')))('$name installs ffmpeg before the stack starts', ({ text }) => {
+    const ffmpeg = text.search(/apt-get install[^\n]*\bffmpeg\b/);
+    expect(ffmpeg).toBeGreaterThan(-1);
+    expect(ffmpeg).toBeLessThan(text.search(/pnpm e2e:stack/));
+  });
+
   // The stack's backend died with EADDRINUSE on 53000 in CI. Every stack port
   // is inside Linux's ephemeral range, so the runner reserves them before the
   // stack starts; a new port in the stack config must be added to that list.
