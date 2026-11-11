@@ -69,7 +69,7 @@ describe('login lockout', () => {
     for (let i = 0; i < 9; i++) {
       await expect(login(s, 'wrong')).rejects.toThrow('Invalid user name or password');
     }
-    await expect(login(s, 'right-password')).resolves.toEqual({ addedOrg: false, jwt: 'jwt' });
+    await expect(login(s, 'right-password')).resolves.toEqual({ addedOrg: false, jwt: 'jwt', userId: 'u1' });
     await expect(login(s, 'wrong')).rejects.toThrow('Invalid user name or password');
   });
 });

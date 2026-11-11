@@ -164,7 +164,7 @@ export class AuthController {
         req?.cookies?.org
       );
 
-      const { jwt, addedOrg } = await this._authService.routeAuth(
+      const { jwt, addedOrg, userId } = await this._authService.routeAuth(
         body.provider,
         body,
         ip,
@@ -173,8 +173,10 @@ export class AuthController {
         pickEmailLang(req)
       );
 
+      // Signing in runs before there is a session: name the person here.
       this._auditService.record({
         action: 'auth.login',
+        userId,
         ip,
         userAgent,
         metadata: { email: body.email, provider: body.provider },
@@ -311,6 +313,7 @@ export class AuthController {
 
     this._auditService.record({
       action: 'auth.login',
+      userId: result.user.id,
       ip,
       userAgent,
       metadata: { email: result.user.email, provider: 'GOOGLE', via: 'mobile' },
