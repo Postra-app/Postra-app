@@ -20,6 +20,13 @@ export const safeRedirect = (candidate?: string) => {
   }
 };
 
+// One verifier for the process: the client keeps Google's public keys until
+// they expire, so a sign-in does not fetch them again (or fail when Google's
+// key endpoint is slow) while the ones it has are still good.
+let idTokenVerifier: InstanceType<typeof google.auth.OAuth2> | undefined;
+export const googleIdTokenVerifier = () =>
+  (idTokenVerifier ??= new google.auth.OAuth2());
+
 const makeClient = (redirectUri: string) =>
   new google.auth.OAuth2({
     clientId: process.env.YOUTUBE_CLIENT_ID,
@@ -47,6 +54,33 @@ export class GoogleProvider extends AuthProviderAbstract {
     const client = makeClient(safeRedirect(redirectUri));
     const { tokens } = await client.getToken(code);
     return tokens.access_token!;
+  }
+
+  // The mobile app signs in with Google natively (Credential Manager on
+  // Android, the Google Sign-In SDK on iOS) and sends the ID token it got.
+  // Both SDKs are configured with the web client as the server client, so the
+  // token's audience is that client on both platforms. Google's signature,
+  // expiry and issuer are checked by the library; an unverified address is
+  // refused. `sub` is the same id the web flow stores (userinfo `id`), so the
+  // account found is the one made on the web.
+  async verifyIdToken(
+    idToken: string
+  ): Promise<{ id: string; email: string } | false> {
+    const audience = process.env.YOUTUBE_CLIENT_ID;
+    if (!audience || !idToken) return false;
+    try {
+      const ticket = await googleIdTokenVerifier().verifyIdToken({
+        idToken,
+        audience,
+      });
+      const payload = ticket.getPayload();
+      if (!payload?.sub || !payload.email || payload.email_verified !== true) {
+        return false;
+      }
+      return { id: payload.sub, email: payload.email };
+    } catch {
+      return false;
+    }
   }
 
   async getUser(providerToken: string) {

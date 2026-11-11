@@ -18,6 +18,7 @@ import { AuthService } from '@gitroom/backend/services/auth/auth.service';
 import { ForgotReturnPasswordDto } from '@gitroom/nestjs-libraries/dtos/auth/forgot-return.password.dto';
 import { ForgotPasswordDto } from '@gitroom/nestjs-libraries/dtos/auth/forgot.password.dto';
 import { ResendActivationDto } from '@gitroom/nestjs-libraries/dtos/auth/resend-activation.dto';
+import { GoogleNativeLoginDto } from '@gitroom/nestjs-libraries/dtos/auth/google-native.dto';
 import { ApiTags } from '@nestjs/swagger';
 import {
   authCookieOptions,
@@ -254,6 +255,63 @@ export class AuthController {
     } catch (e: any) {
       throw new HttpException(e.message, 400);
     }
+  }
+
+  // Sign-in with Google in the mobile app: the native sign-in on the phone
+  // returns an ID token, this checks it with Google and answers like /login
+  // does for `x-client: mobile` — the app's short, revocable token in the
+  // body. Existing accounts only (AuthService.googleNativeLogin). The app
+  // tells 404 (no account: sign up on the web) from 400 (try again).
+  @Post('/google/native')
+  @Throttle({ default: { ttl: 900000, limit: 10 } })
+  async googleNative(
+    @Body() body: GoogleNativeLoginDto,
+    @Res({ passthrough: false }) response: Response,
+    @RealIP() ip: string,
+    @UserAgent() userAgent: string
+  ) {
+    let result: Awaited<ReturnType<AuthService['googleNativeLogin']>>;
+    try {
+      result = await this._authService.googleNativeLogin(body.idToken);
+    } catch (e: any) {
+      // A suspended account: the same message /login gives.
+      this._auditService.record({
+        action: 'auth.login.failed',
+        ip,
+        userAgent,
+        metadata: { provider: 'GOOGLE', via: 'mobile', reason: e?.message?.slice(0, 200) },
+      });
+      return response.status(400).type('text/plain').send(e?.message);
+    }
+
+    if ('error' in result) {
+      this._auditService.record({
+        action: 'auth.login.failed',
+        ip,
+        userAgent,
+        metadata: { provider: 'GOOGLE', via: 'mobile', reason: result.error },
+      });
+      return result.error === 'no_account'
+        ? response
+            .status(404)
+            .type('text/plain')
+            .send('No Postra account uses this Google account.')
+        : response
+            .status(400)
+            .type('text/plain')
+            .send('Google sign-in failed. Please try again.');
+    }
+
+    this._auditService.record({
+      action: 'auth.login',
+      ip,
+      userAgent,
+      metadata: { email: result.user.email, provider: 'GOOGLE', via: 'mobile' },
+    });
+    return response.status(200).json({
+      login: true,
+      token: this._authService.mobileJwt(result.jwt),
+    });
   }
 
   @Get('/oauth-mobile-callback')

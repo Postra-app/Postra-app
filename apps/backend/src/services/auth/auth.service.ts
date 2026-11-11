@@ -539,6 +539,35 @@ export class AuthService {
   }
 
   /**
+   * Sign-in from the mobile app with the ID token its native Google sign-in
+   * returned. Only an account that already exists: the app creates no
+   * accounts (sign-ups and plans are on the web, Apple 3.1.1), and while
+   * sign-ups are frozen this must not open a way around the freeze. An
+   * account made with a password and the same address is not the Google
+   * account, as on the web, so the address alone never signs anyone in.
+   */
+  async googleNativeLogin(
+    idToken: string
+  ): Promise<
+    { jwt: string; user: User } | { error: 'invalid' | 'no_account' }
+  > {
+    const google = await this._providerManager
+      .getProvider(Provider.GOOGLE)
+      .verifyIdToken?.(idToken);
+    if (!google) {
+      return { error: 'invalid' };
+    }
+    const user = await this._userService.getUserByProvider(
+      google.id,
+      Provider.GOOGLE
+    );
+    if (!user) {
+      return { error: 'no_account' };
+    }
+    return { jwt: await this.jwt(user), user };
+  }
+
+  /**
    * Swap a freshly minted web token for one the native app can be signed out
    * of. The browser's token can live 30 days because logging out deletes the
    * cookie holding it; the app keeps its token in the Keychain, where signing

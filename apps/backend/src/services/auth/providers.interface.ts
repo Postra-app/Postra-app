@@ -6,6 +6,10 @@ export abstract class AuthProviderAbstract {
   abstract getUser(
     providerToken: string
   ): Promise<{ email: string; id: string }> | false;
+  // Only Google: the ID token from the mobile app's native sign-in.
+  verifyIdToken?(
+    idToken: string
+  ): Promise<{ email: string; id: string } | false>;
   async postRegistration(
     providerToken: string,
     orgId: string
