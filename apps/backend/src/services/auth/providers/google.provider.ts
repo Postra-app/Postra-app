@@ -20,6 +20,13 @@ export const safeRedirect = (candidate?: string) => {
   }
 };
 
+// One verifier for the process: the client keeps Google's public keys until
+// they expire, so a sign-in does not fetch them again (or fail when Google's
+// key endpoint is slow) while the ones it has are still good.
+let idTokenVerifier: InstanceType<typeof google.auth.OAuth2> | undefined;
+export const googleIdTokenVerifier = () =>
+  (idTokenVerifier ??= new google.auth.OAuth2());
+
 const makeClient = (redirectUri: string) =>
   new google.auth.OAuth2({
     clientId: process.env.YOUTUBE_CLIENT_ID,
@@ -62,7 +69,7 @@ export class GoogleProvider extends AuthProviderAbstract {
     const audience = process.env.YOUTUBE_CLIENT_ID;
     if (!audience || !idToken) return false;
     try {
-      const ticket = await new google.auth.OAuth2().verifyIdToken({
+      const ticket = await googleIdTokenVerifier().verifyIdToken({
         idToken,
         audience,
       });

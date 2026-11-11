@@ -1,6 +1,6 @@
 import { generateKeyPairSync, createSign } from 'crypto';
 import { google } from 'googleapis';
-import { GoogleProvider } from './google.provider';
+import { GoogleProvider, googleIdTokenVerifier } from './google.provider';
 
 // Real signatures, real checks: only the download of Google's public keys is
 // replaced by a key made here, so audience, issuer, expiry and the signature
@@ -86,6 +86,21 @@ describe('Google ID token from the mobile app', () => {
     delete process.env.YOUTUBE_CLIENT_ID;
     await expect(provider.verifyIdToken(idToken({}))).resolves.toBe(false);
     expect(certs).not.toHaveBeenCalled();
+  });
+
+  // A new client per sign-in threw away the keys the last one had fetched.
+  it('verifies every sign-in with the same client, so Google keys are kept between them', async () => {
+    const seen = new Set<unknown>();
+    const verify = jest.spyOn(google.auth.OAuth2.prototype, 'verifyIdToken');
+    verify.mockImplementation(function (this: unknown) {
+      seen.add(this);
+      return Promise.reject(new Error('stop'));
+    } as any);
+    await provider.verifyIdToken(idToken({}));
+    await provider.verifyIdToken(idToken({}));
+    expect(verify).toHaveBeenCalledTimes(2);
+    expect([...seen]).toEqual([googleIdTokenVerifier()]);
+    verify.mockRestore();
   });
 
   it('refuses rubbish without throwing', async () => {

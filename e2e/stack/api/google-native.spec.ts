@@ -1,7 +1,7 @@
 import { expect, request as pwRequest, test } from '@playwright/test';
 import { BACKEND_URL } from '../helpers';
 
-// E2E-11-206: the mobile app's Google sign-in. A real Google ID token cannot
+// The mobile app's Google sign-in. A real Google ID token cannot
 // be minted here (the signature check is covered with a local key in
 // google.id-token.spec.ts); this proves the route is public, validates its
 // body and never signs anyone in or sets a cookie for a token Google did not
