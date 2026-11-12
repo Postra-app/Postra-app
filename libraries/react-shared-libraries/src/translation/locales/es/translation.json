@@ -687,7 +687,7 @@
   "web3_provider": "Proveedor Web3",
   "add_provider_title": "Agregar proveedor",
   "profile": "Perfil",
-  "profile_description": "Tu nombre y tu foto, tal como los ve tu equipo en los comentarios y en Equipos.",
+  "profile_description": "Tu nombre y tu foto.",
   "choose_picture": "Elegir foto",
   "bio": "Biografía",
   "profile_not_saved": "No se pudo guardar tu perfil.",

@@ -12,7 +12,7 @@ import { showMediaBox } from '@gitroom/frontend/components/media/media-box-reque
 
 type Picture = { id: string; path: string } | null;
 
-// Name, bio and picture: what a team sees on comments and in Teams. The API
+// Name, bio and picture of the signed-in person. The API
 // was here all along, but the form had no fields since an upstream rework, so
 // nobody could change their name or picture on the web.
 const ProfileComponent = () => {
@@ -72,7 +72,7 @@ const ProfileComponent = () => {
       <div className="flex flex-col gap-[4px]">
         <div className="text-[15px] font-[600] text-newTextColor">{t('profile', 'Profile')}</div>
         <div className="text-[13px] text-newTextColor/70 max-w-[560px]">
-          {t('profile_description', 'Your name and picture, as your team sees them on comments and in Teams.')}
+          {t('profile_description', 'Your name and picture.')}
         </div>
       </div>
       <div className="flex items-center gap-[12px]">

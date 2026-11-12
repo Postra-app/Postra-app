@@ -68,7 +68,7 @@ test.describe('in Polish', () => {
     const format = page.getByRole('combobox', { name: 'Format godziny' });
     await expect(format.locator('option')).toHaveText(['12-godzinny (AM/PM)', '24-godzinny']);
     await expect(page.getByText('Wyloguj się z Postry', { exact: true })).toBeVisible();
-    await expect(page.getByText('w zakładce Zespoły', { exact: false })).toBeVisible();
+    await expect(page.getByText('Twoje imię i zdjęcie.', { exact: true })).toBeVisible();
   });
 
   test('Developers: the MCP setup hint is Polish', async ({ page }) => {

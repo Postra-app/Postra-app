@@ -687,7 +687,7 @@
   "web3_provider": "Web3-Anbieter",
   "add_provider_title": "Anbieter hinzufügen",
   "profile": "Profil",
-  "profile_description": "Ihr Name und Ihr Bild, wie Ihr Team sie bei Kommentaren und unter Teams sieht.",
+  "profile_description": "Ihr Name und Ihr Bild.",
   "choose_picture": "Bild auswählen",
   "bio": "Bio",
   "profile_not_saved": "Ihr Profil konnte nicht gespeichert werden.",
