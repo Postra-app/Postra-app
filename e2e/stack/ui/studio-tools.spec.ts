@@ -541,7 +541,7 @@ test('AI Generate: a link alone is sent as the brief, and an unreadable page say
   expect(sent).toMatchObject({ sourceUrl: 'https://blog.example/launch-week', slidesCount: 3 });
   expect(sent).not.toHaveProperty('prompt');
   await expect(go).toBeEnabled();
-  await s.clean();
+  // No s.clean(): the 422 this test answers with is the one failed request.
 });
 
 // Out of credits: say so once, with the way to more, and leave the button
