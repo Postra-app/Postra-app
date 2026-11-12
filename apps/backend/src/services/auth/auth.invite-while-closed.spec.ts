@@ -90,6 +90,52 @@ describe('sign-ups closed: only an address with a promised plan gets in', () => 
     expect(applied).toEqual([]);
   });
 
+  it('a provider that does not say the address is verified is not trusted with a promise', async () => {
+    const { s, created } = service({
+      _providerManager: {
+        getProvider: () => ({
+          getUser: async () => ({ id: 'gh-1', email: PROMISED }),
+        }),
+      },
+    });
+    await expect(
+      s.loginOrRegisterProvider('GITHUB', { providerToken: 'tok', company: 'X', termsAccepted: true } as any, '1.2.3.4', 'ua')
+    ).rejects.toThrow('Registration is disabled');
+    expect(created).toEqual([]);
+  });
+
+  it('two sign-ups racing for the same promised address: only one gets in', async () => {
+    let waiting = true;
+    const created: string[] = [];
+    const { s } = service({
+      _organizationService: {
+        getCount: async () => 4,
+        createOrgAndUser: async (body: { email: string }) => {
+          await new Promise((r) => setTimeout(r, 50));
+          created.push(body.email);
+          return { id: `org-${created.length}`, users: [{ user: { id: 'u' } }] };
+        },
+      },
+      _subscriptionService: {
+        hasPendingGrant: async (email?: string | null) => waiting && (email || '').toLowerCase() === PROMISED,
+        applyPendingGrant: async () => {
+          const had = waiting;
+          waiting = false;
+          return had;
+        },
+      },
+    });
+    const viaGoogle = (id: string) => ({
+      _providerManager: { getProvider: () => ({ getUser: async () => ({ id, email: PROMISED, verified: true }) }) },
+    });
+    Object.assign(s, viaGoogle('g-a'));
+    const first = s.loginOrRegisterProvider('GOOGLE', { providerToken: 'a', company: 'A', termsAccepted: true } as any, '1.2.3.4', 'ua');
+    const second = s.loginOrRegisterProvider('GOOGLE', { providerToken: 'b', company: 'B', termsAccepted: true } as any, '1.2.3.4', 'ua');
+    const results = await Promise.allSettled([first, second]);
+    expect(results.filter((r) => r.status === 'fulfilled')).toHaveLength(1);
+    expect(created).toEqual([PROMISED]);
+  });
+
   it('the sign-up page learns before the form whether a new Google account may be made', async () => {
     const provider = (email: string, verified = true) => ({
       _providerManager: {

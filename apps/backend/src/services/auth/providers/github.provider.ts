@@ -33,7 +33,9 @@ export class GithubProvider extends AuthProviderAbstract {
     return access_token;
   }
 
-  async getUser(access_token: string): Promise<{ email: string; id: string }> {
+  async getUser(
+    access_token: string
+  ): Promise<{ email: string; id: string; verified: boolean }> {
     const data = await (
       await fetch('https://api.github.com/user', {
         headers: {
@@ -42,17 +44,25 @@ export class GithubProvider extends AuthProviderAbstract {
       })
     ).json();
 
-    const [{ email }] = await (
-      await fetch('https://api.github.com/user/emails', {
-        headers: {
-          Authorization: `token ${access_token}`,
-        },
-      })
-    ).json();
+    // The primary address if GitHub verified it, else any verified one; the
+    // first in the list could be an address nobody confirmed owning.
+    const emails: Array<{ email: string; primary?: boolean; verified?: boolean }> =
+      await (
+        await fetch('https://api.github.com/user/emails', {
+          headers: {
+            Authorization: `token ${access_token}`,
+          },
+        })
+      ).json();
+    const chosen =
+      emails.find((e) => e.primary && e.verified) ??
+      emails.find((e) => e.verified) ??
+      emails[0];
 
     return {
-      email: email,
+      email: chosen?.email,
       id: String(data.id),
+      verified: chosen?.verified === true,
     };
   }
 }
