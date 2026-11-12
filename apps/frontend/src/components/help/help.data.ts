@@ -470,7 +470,7 @@ export const STUDIO_GRAPHICS_TOOLS: StudioToolGuide[] = [
   {
     name: 'AI Generate',
     description:
-      'Describe your idea - or click an upcoming occasion chip (✎ copies it into the prompt for editing) - and AI builds the whole design in one step: a background image plus an editable headline, subtext and call-to-action in your Brand Kit colours. Takes about 30 seconds and uses one AI image credit per image (a carousel uses one per slide, up to 5; an identical prompt reuses its background for free). Set SLIDES to 2-5 to get a multi-slide carousel instead of a single graphic. Needs the Starter plan or above - on the free plan the upcoming-occasion list is still there, and the chips open matching templates instead.',
+      'Describe your idea - or click an upcoming occasion chip (✎ copies it into the prompt for editing) - and AI builds the whole design in one step: a background image plus an editable headline, subtext and call-to-action in your Brand Kit colours. Takes about 30 seconds and uses one AI image credit per image (a carousel uses one per slide, up to 5; an identical prompt reuses its background for free). Set SLIDES to 2-5 to get a multi-slide carousel instead of a single graphic. To start from something already written, paste the address of a blog post or article into FROM A LINK: AI reads the page and builds the design from it, and the prompt becomes an optional note on what to focus on. The page has to open without signing in. Needs the Starter plan or above - on the free plan the upcoming-occasion list is still there, and the chips open matching templates instead.',
   },
   {
     name: 'AI Refine',

@@ -97,6 +97,34 @@ test('an organisation without a plan gets 402 from every AI route, and OpenAI he
   }
 });
 
+// Studio "From a link": an address that is not a public https page is refused
+// before the server fetches anything, and costs nothing.
+test('a design from a link to an internal address is refused and costs no credit', async () => {
+  const pro = await throwawayOrg(prisma, { tier: 'PRO', totalChannels: 6, channels: 0 });
+  try {
+    const before = await imagesLeft(pro.api);
+    for (const [route, extra] of [
+      ['/media/generate-post-design', {}],
+      ['/media/generate-carousel-design', { slidesCount: 2 }],
+    ] as const) {
+      const res = await pro.api.post(route, {
+        data: { sourceUrl: 'https://169.254.169.254/latest/meta-data', platform: 'instagram-feed', ...extra },
+      });
+      expect(res.status(), `${route} ${await res.text()}`).toBe(422);
+      expect((await res.json()).message).toContain('We could not read an article at that address');
+    }
+    // http and a link with no prompt-or-link at all never reach the service.
+    expect(
+      (await pro.api.post('/media/generate-post-design', {
+        data: { sourceUrl: 'http://blog.example/post', platform: 'instagram-feed' },
+      })).status()
+    ).toBe(400);
+    expect(await imagesLeft(pro.api)).toBe(before);
+  } finally {
+    await pro.remove();
+  }
+});
+
 // 2026-10-10 on prod: the same prompt was refused once and drawn the next
 // time. gpt-image's default moderation ("auto") turns away ordinary marketing
 // prompts at random; "low" is OpenAI's documented, policy-compliant setting

@@ -510,6 +510,40 @@ test('AI Generate: a carousel of three makes three slides', { tag: '@safari' }, 
   await s.clean();
 });
 
+// From a link: the article is the brief, so the prompt may stay empty, and
+// what the server says about an unreadable page is what the user reads.
+test('AI Generate: a link alone is sent as the brief, and an unreadable page says why', { tag: '@safari' }, async ({ page }) => {
+  const s = await studio(page);
+  const message =
+    'We could not read an article at that address. Check the link opens without signing in, or paste the text into the prompt instead.';
+  let sent: Record<string, unknown> | null = null;
+  await page.route('**/api/media/generate-carousel-design', (route) => {
+    sent = route.request().postDataJSON();
+    return route.fulfill({
+      status: 422,
+      contentType: 'application/json',
+      body: JSON.stringify({ statusCode: 422, message }),
+    });
+  });
+  await s.open('AI Generate');
+  const link = page.getByPlaceholder('https://your-site.com/blog/article');
+  await page.locator('select:has(option[value="5"])').selectOption('3');
+  const go = page.getByRole('button', { name: 'Generate carousel (3)', exact: true });
+
+  await link.fill('your-site.com/blog');
+  await go.click();
+  await expect(page.getByText('Enter a full link that starts with https://')).toBeVisible();
+  expect(sent).toBeNull();
+
+  await link.fill('https://blog.example/launch-week');
+  await go.click();
+  await expect(page.getByText(message)).toHaveCount(1);
+  expect(sent).toMatchObject({ sourceUrl: 'https://blog.example/launch-week', slidesCount: 3 });
+  expect(sent).not.toHaveProperty('prompt');
+  await expect(go).toBeEnabled();
+  await s.clean();
+});
+
 // Out of credits: say so once, with the way to more, and leave the button
 // usable.
 test('AI Generate: out of credits is said once, with the way to Billing', { tag: '@safari' }, async ({ page }) => {
