@@ -611,6 +611,8 @@ export class AutopostService {
       twitter: 'twitter',
       x: 'twitter',
       instagram: 'instagram',
+      // The same Instagram, signed in without a Facebook Page.
+      'instagram-standalone': 'instagram',
       facebook: 'facebook',
       'facebook-page': 'facebook',
       threads: 'instagram',

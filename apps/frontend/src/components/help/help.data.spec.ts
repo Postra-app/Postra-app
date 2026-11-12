@@ -201,6 +201,8 @@ describe('Help names only what the app has', () => {
       expect(channels).toContain(name);
     }
     expect(channels).not.toContain('most channels');
+    // The phone app's fifth tab is Account (strings.ts 'tabs.account').
+    expect(MOBILE_APP.canDo.some((l) => l.startsWith('Account:'))).toBe(true);
   });
 
   it('MCP: names the remote connectors the Developers tab offers', () => {

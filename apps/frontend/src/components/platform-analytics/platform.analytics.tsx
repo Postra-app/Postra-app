@@ -2,7 +2,7 @@
 
 import useSWR from 'swr';
 import { useCallback, useMemo, useState } from 'react';
-import { capitalize, orderBy } from 'lodash';
+import { orderBy } from 'lodash';
 import clsx from 'clsx';
 import ImageWithFallback from '@gitroom/react/helpers/image.with.fallback';
 import SafeImage from '@gitroom/react/helpers/safe.image';
@@ -17,18 +17,10 @@ import { useVariables } from '@gitroom/react/helpers/variable.context';
 import useCookie from 'react-use-cookie';
 import { SVGLine } from '@gitroom/frontend/components/launches/launches.component';
 import { AnalyticsSkeleton } from '@gitroom/frontend/components/ui/skeleton';
-const allowedIntegrations = [
-  'facebook',
-  'instagram',
-  'instagram-standalone',
-  'linkedin-page',
-  'tiktok',
-  'youtube',
-  'gmb',
-  'pinterest',
-  'threads',
-  'x',
-];
+import {
+  ANALYTICS_CHANNELS,
+  ANALYTICS_SUPPORTED_NAMES,
+} from './analytics.channels';
 // Brand colour + label per platform — drives the selected-channel glow and the
 // subtitle in the Analytics sidebar, so it's obvious which network's metrics are
 // on screen (and which channel got selected when you click between them).
@@ -80,7 +72,7 @@ export const PlatformAnalytics = () => {
       }
       return true;
     });
-    return int.filter((f: any) => allowedIntegrations.includes(f.identifier));
+    return int.filter((f: any) => ANALYTICS_CHANNELS.includes(f.identifier));
   }, []);
   const { data, isLoading } = useSWR('analytics-list', load, {
     revalidateOnFocus: false,
@@ -107,18 +99,7 @@ export const PlatformAnalytics = () => {
     }
     const arr = [];
     if (
-      [
-        'facebook',
-        'instagram',
-        'instagram-standalone',
-        'linkedin-page',
-        'pinterest',
-        'youtube',
-        'threads',
-        'gmb',
-        'x',
-        'tiktok',
-      ].indexOf(currentIntegration.identifier) !== -1
+      ANALYTICS_CHANNELS.includes(currentIntegration.identifier)
     ) {
       arr.push({
         key: 7,
@@ -126,18 +107,7 @@ export const PlatformAnalytics = () => {
       });
     }
     if (
-      [
-        'facebook',
-        'instagram',
-        'instagram-standalone',
-        'linkedin-page',
-        'pinterest',
-        'youtube',
-        'threads',
-        'gmb',
-        'x',
-        'tiktok',
-      ].indexOf(currentIntegration.identifier) !== -1
+      ANALYTICS_CHANNELS.includes(currentIntegration.identifier)
     ) {
       arr.push({
         key: 30,
@@ -186,7 +156,8 @@ export const PlatformAnalytics = () => {
         </div>
         <div className="text-[20px]">
           {t('supported', 'Supported channels:')}
-          {allowedIntegrations.map((p) => capitalize(p)).join(', ')}
+          {' '}
+          {ANALYTICS_SUPPORTED_NAMES.join(', ')}
         </div>
         <Button onClick={() => router.push('/launches')}>
           {t(

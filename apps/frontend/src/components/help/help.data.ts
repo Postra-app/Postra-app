@@ -443,7 +443,7 @@ export const MOBILE_APP = {
     'New post: write the text, add a photo or video, pick your channels, then post now, schedule it or save a draft. A first comment is available on the channels that support it.',
     'Media: your media library, the same one as on the web. Add photos and videos from your phone, or start a post from a file.',
     'Channels: see all your channels and connect Facebook, Instagram (with a Facebook Page), LinkedIn, TikTok, YouTube, X and Threads. The other channels, and reconnecting a channel, are done on the web.',
-    'Settings: language, sign out and deleting your account.',
+    'Account: language, sign out and deleting your account.',
   ],
   webOnly: [
     'Studio, Auto Post, Analytics and the Agent.',
