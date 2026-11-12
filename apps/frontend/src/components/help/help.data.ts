@@ -7,6 +7,7 @@ import {
   pricing,
   TRIAL_CHANNEL_CAP,
   TRIAL_LIMITS,
+  TRIAL_VIDEO_CLIPS,
 } from '@gitroom/nestjs-libraries/database/prisma/subscriptions/pricing';
 
 export type ChannelConnectType = 'oauth' | 'credentials' | 'bot';
@@ -83,7 +84,7 @@ export const CHANNEL_GUIDES: ChannelGuide[] = [
       'Enter the full handle, including .bsky.social (or your custom domain).',
     ],
     composer: [
-      'Character limit: 300. For longer content click "Add post" to build a thread - each follow-up post can have its own Delay (1 min - 2 h or a custom gap after the previous one).',
+      'Character limit: 300. For longer content click "Add post in a thread" to build a thread - each follow-up post can have its own Delay (1 min - 2 h or a custom gap after the previous one).',
       'Settings tab: optional "thread finisher" - a closing post appended at the end of a thread.',
       'Media: up to 4 images or 1 video per post.',
     ],
@@ -102,7 +103,7 @@ export const CHANNEL_GUIDES: ChannelGuide[] = [
     ],
     composer: [
       'Settings: who can see the post - Public (default), Unlisted or Followers only. Replies follow the same choice.',
-      'Character limit: 500. For longer content click "Add post" to build a thread - each follow-up post can have its own Delay (1 min - 2 h or a custom gap).',
+      'Character limit: 500. For longer content click "Add post in a thread" to build a thread - each follow-up post can have its own Delay (1 min - 2 h or a custom gap).',
     ],
   },
   {
@@ -219,7 +220,7 @@ export const CHANNEL_GUIDES: ChannelGuide[] = [
       'Threads connects separately from Instagram - connect both if you post to both.',
     ],
     composer: [
-      'Character limit: 500. Click "Add post" to build a thread - each follow-up post can have its own Delay (1 min - 2 h or a custom gap).',
+      'Character limit: 500. Click "Add post in a thread" to build a thread - each follow-up post can have its own Delay (1 min - 2 h or a custom gap).',
       'Settings tab: optional "thread finisher" - a closing post appended at the end of a thread.',
     ],
   },
@@ -237,7 +238,7 @@ export const CHANNEL_GUIDES: ChannelGuide[] = [
       'Who can reply: Everyone, accounts you follow, mentioned accounts, subscribers or verified accounts.',
       'Post to a community: paste the community URL.',
       '"Made with AI" and "Paid partnership" flags.',
-      'Click "Add post" to build a thread; each follow-up post can have its own Delay (1 min - 2 h or a custom gap). Optional thread finisher.',
+      'Click "Add post in a thread" to build a thread; each follow-up post can have its own Delay (1 min - 2 h or a custom gap). Optional thread finisher.',
       'Character limit: 280 (4,000 if your X account has Premium).',
     ],
   },
@@ -349,7 +350,7 @@ export const CHANNEL_GUIDES: ChannelGuide[] = [
     composer: [
       'Settings tab: the Slack channel to post in (required).',
       'Message limit: 3,000 characters, with images shown under the text.',
-      '"Add comment / post" adds replies in the message thread.',
+      '"Add comment" adds replies in the message thread; you can add several.',
     ],
   },
   {
@@ -436,13 +437,13 @@ export const APP_TABS: AppTabGuide[] = [
 // code; keep in sync when a release adds or moves a feature.
 export const MOBILE_APP = {
   intro:
-    'Postra for iPhone and Android covers the everyday basics, so you can post without a computer. Sign in with your Postra email and password: Google sign-in is on the web only for now.',
+    'Postra for iPhone and Android covers the everyday basics, so you can post without a computer. Sign in with your Postra email and password. An account made with Google signs in with the Google button on Android; on iPhone, Google sign-in is on the web only for now.',
   canDo: [
     'Calendar: see your scheduled, draft and published posts.',
     'New post: write the text, add a photo or video, pick your channels, then post now, schedule it or save a draft. A first comment is available on the channels that support it.',
     'Media: your media library, the same one as on the web. Add photos and videos from your phone, or start a post from a file.',
-    'Channels: connect and reconnect most channels. Bluesky and the other channels that ask for a password or a bot are connected on the web.',
-    'Settings: language, sign out and deleting your account.',
+    'Channels: see all your channels and connect Facebook, Instagram (with a Facebook Page), LinkedIn, TikTok, YouTube, X and Threads. The other channels, and reconnecting a channel, are done on the web.',
+    'Account: language, sign out and deleting your account.',
   ],
   webOnly: [
     'Studio, Auto Post, Analytics and the Agent.',
@@ -643,7 +644,7 @@ export const SETTINGS_SECTIONS: SettingsSectionGuide[] = [
     name: 'Global Settings',
     availability: 'All plans',
     description:
-      'Interface language, email notifications, link shortening and account deletion.',
+      'Your profile, interface language, time format and time zone, email notifications, link shortening and account deletion.',
   },
   {
     name: 'Teams',
@@ -653,7 +654,7 @@ export const SETTINGS_SECTIONS: SettingsSectionGuide[] = [
   },
   {
     name: 'Webhooks',
-    availability: 'All paid plans (Starter 2, Pro 30, Business unlimited webhooks), admins only',
+    availability: `All paid plans (Starter ${pricing.STANDARD.webhooks}, Pro ${pricing.PRO.webhooks}, Business unlimited webhooks), admins only`,
     description:
       'Get an HTTP call to your own endpoint whenever posts publish - for connecting Postra to your own tools.',
   },
@@ -681,7 +682,7 @@ export const SETTINGS_SECTIONS: SettingsSectionGuide[] = [
       'Your API key (with Rotate), the MCP setup for AI assistants, the Node.js SDK and your OAuth apps - everything for connecting Postra to your own tools. See "How do I use the Postra API?" and the questions after it below.',
   },
   {
-    name: 'Approved Apps',
+    name: 'Approved apps',
     availability: 'All plans',
     description:
       "Third-party apps you've granted access to your account - review and revoke them here.",
@@ -712,7 +713,7 @@ export const FAQ_ITEMS: FaqItem[] = [
   {
     question: 'How do AI videos work?',
     answer:
-      'In the post editor, click AI Video (on a computer or tablet), describe the scene, pick vertical (Stories, Reels) or horizontal, and optionally add up to 3 of your images for the video to feature. Google\'s Veo 3.1 model makes an 8-second clip with sound in one to three minutes; it is attached to your post and saved in your media library. Each clip uses one video credit: 15 a month on Starter, 30 on Pro and 60 on Business, and 1 during the trial. A clip that fails costs nothing, and asking for exactly the same clip again within 10 minutes returns the one already made instead of using another credit.',
+      `In the post editor, click AI Video (on a computer or tablet), describe the scene, pick vertical (Stories, Reels) or horizontal, and optionally add up to 3 of your images for the video to feature. Google's Veo 3.1 model makes an 8-second clip with sound in one to three minutes; it is attached to your post and saved in your media library. Each clip uses one video credit: ${pricing.STANDARD.generate_videos} a month on Starter, ${pricing.PRO.generate_videos} on Pro and ${pricing.ULTIMATE.generate_videos} on Business, and ${TRIAL_VIDEO_CLIPS} during the trial. A clip that fails costs nothing, and asking for exactly the same clip again within 10 minutes returns the one already made instead of using another credit.`,
   },
   {
     question: 'Can I post to multiple channels at once?',
@@ -727,7 +728,7 @@ export const FAQ_ITEMS: FaqItem[] = [
   {
     question: 'How do first comments and threads work?',
     answer:
-      'Depending on the channel, the composer shows an extra button below your post. "Add comment" publishes a first comment right under the post on the platform - supported on LinkedIn, LinkedIn Page and Instagram (text only), Telegram, Discord and Facebook Pages. "Add post" chains additional posts into a thread - that\'s how X, Threads, Bluesky and Mastodon work. In both cases you can add several entries, reorder them, and give each one a Delay (1 min - 2 h presets or a custom number of minutes) so it publishes that long after the previous one. TikTok and YouTube don\'t support first comments. Where a channel supports them but the button is missing, reconnect that channel - the feature follows the permissions the platform granted at connect time. Separately, the comments you see when opening a post on the Calendar are internal team notes - they are never published anywhere.',
+      'Depending on the channel, the composer shows an extra button below your post. "Add comment" publishes a first comment right under the post on the platform - supported on LinkedIn, LinkedIn Page and Instagram (text only), Telegram, Discord, Facebook Pages and Slack (as replies in the message thread). "Add post in a thread" chains additional posts into a thread - that\'s how X, Threads, Bluesky and Mastodon work. In both cases you can add several entries, reorder them, and give each one a Delay (1 min - 2 h presets or a custom number of minutes) so it publishes that long after the previous one. TikTok, YouTube, Pinterest and WordPress don\'t support first comments. Where a channel supports them but the button is missing, reconnect that channel - the feature follows the permissions the platform granted at connect time. Separately, the comments you see when opening a post on the Calendar are internal team notes - they are never published anywhere.',
   },
   {
     question: 'How do I use the Postra API?',
@@ -742,7 +743,7 @@ export const FAQ_ITEMS: FaqItem[] = [
   {
     question: 'How do I connect an AI assistant (MCP)?',
     answer:
-      'MCP lets an AI assistant work in Postra for you: you ask in plain words ("schedule a post about our sale on Facebook and Instagram tomorrow at 10:00, with a graphic in our colours") and the assistant does it. In Settings → Developers pick your tool - Claude Code, Cursor, VS Code (Copilot), Windsurf, Amp, Codex, Gemini CLI or Warp - and copy the configuration Postra generates into it. The assistant can list your channels, write and schedule posts, create on-brand images, upload media from a link and read analytics. Through MCP the assistant does not move or delete posts: do that in the Calendar, or ask the assistant inside Postra, where you approve each change. Each workspace can make up to 120 requests every 5 minutes.',
+      'MCP lets an AI assistant work in Postra for you: you ask in plain words ("schedule a post about our sale on Facebook and Instagram tomorrow at 10:00, with a graphic in our colours") and the assistant does it. In Settings → Developers pick your tool - Claude Code, Cursor, VS Code (Copilot), Windsurf, Amp, Codex, Gemini CLI or Warp - and copy the configuration Postra generates into it. ChatGPT and Claude connect as a custom connector instead: add the address shown under "Remote servers" and sign in to Postra when they ask, no API key needed. The assistant can list your channels, write and schedule posts, create on-brand images, upload media from a link and read analytics. Through MCP the assistant does not move or delete posts: do that in the Calendar, or ask the assistant inside Postra, where you approve each change. Each workspace can make up to 120 requests every 5 minutes.',
   },
   {
     question: 'What do webhooks do?',
@@ -757,6 +758,6 @@ export const FAQ_ITEMS: FaqItem[] = [
   {
     question: 'Are the API, MCP and webhooks safe to use?',
     answer:
-      'Your API key gives full access to your workspace, so treat it like a password: keep it on your own server or in your AI tool\'s settings, never in a website\'s code or a public repository. If it ever leaks, press Rotate in Settings → Developers - the old key stops working at once. Only workspace owners and admins can see the key. Apps you signed in to with your Postra account are listed in Settings → Approved Apps, where you can revoke them. Webhook messages carry no passwords or channel tokens, only the post details listed above, and each is signed so your server can tell it came from Postra.',
+      'Your API key gives full access to your workspace, so treat it like a password: keep it on your own server or in your AI tool\'s settings, never in a website\'s code or a public repository. If it ever leaks, press Rotate in Settings → Developers - the old key stops working at once. Only workspace owners and admins can see the key. Apps you signed in to with your Postra account are listed in Settings → Approved apps, where you can revoke them. Webhook messages carry no passwords or channel tokens, only the post details listed above, and each is signed so your server can tell it came from Postra.',
   },
 ];

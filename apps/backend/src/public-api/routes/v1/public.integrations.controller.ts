@@ -378,11 +378,18 @@ export class PublicIntegrationsController {
 
     // `refresh` skips the gates below, so it has to name a channel this org
     // already has on this platform, as in the dashboard (the callback checks
-    // it again, but only after the customer consented at the platform).
-    if (
-      refresh &&
-      !(await this._integrationService.hasChannel(org.id, integration, refresh))
-    ) {
+    // it again, but only after the customer consented at the platform). The
+    // API lists channels by their Postra id; the callback compares the
+    // platform account id, so either names the channel and the account id
+    // is what is kept.
+    const refreshAccount = refresh
+      ? await this._integrationService.channelAccountId(
+          org.id,
+          integration,
+          refresh
+        )
+      : undefined;
+    if (refresh && !refreshAccount) {
       throw new HttpException('The channel to reconnect was not found', 404);
     }
 
@@ -427,8 +434,8 @@ export class PublicIntegrationsController {
       const { codeVerifier, state, url } =
         await integrationProvider.generateAuthUrl();
 
-      if (refresh) {
-        await ioRedis.set(`refresh:${state}`, refresh, 'EX', 3600);
+      if (refreshAccount) {
+        await ioRedis.set(`refresh:${state}`, refreshAccount, 'EX', 3600);
       }
 
       await ioRedis.set(`organization:${state}`, org.id, 'EX', 3600);

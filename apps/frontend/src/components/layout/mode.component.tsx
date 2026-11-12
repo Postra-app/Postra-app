@@ -3,10 +3,12 @@
 import { useCallback, useEffect, useState } from 'react';
 import useCookie from 'react-use-cookie';
 import EventEmitter from 'events';
+import { useT } from '@gitroom/react/translation/get.transation.service.client';
 
 export const modeEmitter = new EventEmitter();
 
 const ModeComponent = () => {
+  const t = useT();
   const [mode, setMode] = useCookie('mode', 'dark');
 
   const changeMode = useCallback(() => {
@@ -25,7 +27,9 @@ const ModeComponent = () => {
       type="button"
       onClick={changeMode}
       aria-label={
-        mode === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'
+        mode === 'dark'
+          ? t('switch_to_light_mode', 'Switch to light mode')
+          : t('switch_to_dark_mode', 'Switch to dark mode')
       }
       className="select-none cursor-pointer flex"
     >
