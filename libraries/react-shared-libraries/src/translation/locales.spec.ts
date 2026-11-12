@@ -72,7 +72,8 @@ describe('translation catalogues', () => {
   // A translation that drops or renames {{name}}, {n} or a <tag> shows the
   // raw placeholder, or loses the value, in that language only. Every loaded
   // language keeps the English text's placeholders and tags.
-  it.each(languages.filter((l) => l !== 'en'))(
+  // Parked catalogues too: they are filled ahead of being switched on.
+  it.each([...languages.filter((l) => l !== 'en'), ...parkedLanguages])(
     '%s keeps every placeholder and tag of the English text',
     (lang) => {
       const read = (l: string) =>
