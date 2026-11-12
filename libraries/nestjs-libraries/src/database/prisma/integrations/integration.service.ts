@@ -361,6 +361,21 @@ export class IntegrationService {
    * (`refresh`) skips the plan and channel-limit gates, so it is only a
    * reconnect when this is true.
    */
+  /**
+   * The platform account id (internalId) of the org's channel on this
+   * provider, named either by its Postra id (what the public API lists) or by
+   * that account id; undefined when the org has no such channel.
+   */
+  async channelAccountId(org: string, provider: string, ref: string) {
+    const list = await this._integrationRepository.getIntegrationsList(org);
+    const channel = list.find(
+      (i) =>
+        i.providerIdentifier === provider &&
+        (i.id === ref || String(i.internalId) === String(ref))
+    );
+    return channel ? String(channel.internalId) : undefined;
+  }
+
   async hasChannel(org: string, provider: string, internalId: string) {
     const list = await this._integrationRepository.getIntegrationsList(org);
     return list.some(
