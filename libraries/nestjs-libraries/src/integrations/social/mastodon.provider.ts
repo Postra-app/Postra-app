@@ -15,7 +15,10 @@ import { hasExtension } from '@gitroom/helpers/utils/has.extension';
 import dayjs from 'dayjs';
 import { Integration } from '@prisma/client';
 import { number, string } from 'yup';
-import { MASTODON_VISIBILITY } from '@gitroom/nestjs-libraries/dtos/posts/providers-settings/mastodon.dto';
+import {
+  MASTODON_VISIBILITY,
+  MastodonDto,
+} from '@gitroom/nestjs-libraries/dtos/posts/providers-settings/mastodon.dto';
 
 export class MastodonProvider extends SocialAbstract implements SocialProvider {
   override maxConcurrentJob = 5; // Mastodon instances typically have generous limits
@@ -24,6 +27,9 @@ export class MastodonProvider extends SocialAbstract implements SocialProvider {
   isBetweenSteps = false;
   scopes = ['write:statuses', 'profile', 'write:media'];
   editor = 'normal' as const;
+  // Read by GET /integration-settings and the MCP integrationSchema; without
+  // it both said Mastodon has no settings (visibility has).
+  dto = MastodonDto;
   // Neither Mastodon provider had a media check, so a post the platform refuses
   // was scheduled without a word and failed at publish time.
   override async checkValidity(

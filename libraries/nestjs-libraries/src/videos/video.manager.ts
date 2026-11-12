@@ -58,7 +58,10 @@ export class VideoManager {
     // The signature has always promised undefined for an unknown identifier,
     // but the code dereferenced it regardless — so a typo in the request came
     // back as a TypeError 500 instead of the caller's own "not found".
-    if (!video) {
+    // An engine that is not available is not offered (getAllVideos), so it
+    // must not be callable by name either: POST /video/function reached the
+    // functions of a switched-off engine.
+    if (!video || !video.available) {
       return undefined;
     }
 

@@ -66,6 +66,9 @@ export class LinkedinProvider extends SocialAbstract implements SocialProvider {
   override maxConcurrentJob = 2; // LinkedIn has professional posting limits
   refreshWait = true;
   editor = 'normal' as const;
+  // Read by GET /integration-settings and the MCP integrationSchema; without
+  // it both said LinkedIn has no settings (the carousel has).
+  dto = LinkedinDto;
   maxLength() {
     return 3000;
   }
