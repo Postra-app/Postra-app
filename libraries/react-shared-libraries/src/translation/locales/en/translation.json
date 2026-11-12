@@ -687,7 +687,7 @@
   "web3_provider": "Web3 provider",
   "add_provider_title": "Add channel",
   "profile": "Profile",
-  "profile_description": "Your name and picture, as your team sees them on comments and in Teams.",
+  "profile_description": "Your name and picture.",
   "choose_picture": "Choose picture",
   "bio": "Bio",
   "profile_not_saved": "Could not save your profile.",

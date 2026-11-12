@@ -209,4 +209,10 @@ describe('Help names only what the app has', () => {
     expect(mcp).toContain('ChatGPT and Claude');
     expect(en.remote_servers ?? 'Remote servers (ChatGPT, Claude)').toContain('Remote servers');
   });
+
+  it('Settings does not promise the profile shows on comments or in Teams', () => {
+    // Teams lists members by email and the client preview shows comments as
+    // "User 1", "User 2": the profile is only the name and picture.
+    expect(en.profile_description).toBe('Your name and picture.');
+  });
 });

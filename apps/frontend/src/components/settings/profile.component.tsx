@@ -72,7 +72,7 @@ const ProfileComponent = () => {
       <div className="flex flex-col gap-[4px]">
         <div className="text-[15px] font-[600] text-newTextColor">{t('profile', 'Profile')}</div>
         <div className="text-[13px] text-newTextColor/70 max-w-[560px]">
-          {t('profile_description', 'Your name and picture, as your team sees them on comments and in Teams.')}
+          {t('profile_description', 'Your name and picture.')}
         </div>
       </div>
       <div className="flex items-center gap-[12px]">
