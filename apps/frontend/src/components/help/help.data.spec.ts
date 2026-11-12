@@ -81,7 +81,7 @@ describe('Help numbers are the plans', () => {
   });
 });
 
-// Night check 12/13 Nov: Help against the code. The guards below fail when
+// Help against the code: the guards below fail when
 // Help names a platform customers cannot connect, a price that is not a plan's,
 // or a button label the composer does not show.
 describe('Help names only what the app has', () => {
