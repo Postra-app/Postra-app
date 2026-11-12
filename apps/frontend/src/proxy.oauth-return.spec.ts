@@ -85,6 +85,11 @@ describe('proxy - sign-ups closed', () => {
     expect(new URL(res.headers.get('location')!).pathname).toBe('/auth/login');
   });
 
+  it('lets the invitation link from the admin panel through', async () => {
+    const res = await signedOut('/auth/register?invite');
+    expect(res.headers.get('location')).toBeNull();
+  });
+
   it('lets the way back from Google through, code and all', async () => {
     const res = await signedOut(
       '/auth/register?provider=google&code=4%2Fabc&state=s1'

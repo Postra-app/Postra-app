@@ -6,6 +6,8 @@ import { useFetch } from '@gitroom/helpers/utils/custom.fetch';
 import { useT } from '@gitroom/react/translation/get.transation.service.client';
 import { useToaster } from '@gitroom/react/toaster/toaster';
 import { deleteDialog } from '@gitroom/react/helpers/delete.dialog';
+import { CopyButton } from '@gitroom/frontend/components/ui/copy-button';
+import { useVariables } from '@gitroom/react/helpers/variable.context';
 import {
   COMPABLE_TIERS,
   COMP_MONTHS,
@@ -107,6 +109,8 @@ export const AdminCompsComponent = () => {
   const fetch = useFetch();
   const toaster = useToaster();
   const t = useT();
+  const { frontEndUrl } = useVariables();
+  const signUpLink = `${frontEndUrl}/auth/register?invite`;
 
   const [email, setEmail] = useState('');
   const [tier, setTier] = useState<string>('PRO');
@@ -215,6 +219,23 @@ export const AdminCompsComponent = () => {
             'admin_pending_grant_help',
             'For someone without an account yet: when this email signs up, its organization gets the plan at once and never sees the plan page. For an existing account, use Comp a plan in Users.'
           )}
+        </div>
+        {/* While sign-ups are closed the sign-up page is reachable only
+            through this link, and only the promised address gets in. */}
+        <div className="flex flex-wrap gap-[8px] items-center text-[13px] text-newTextColor/70">
+          <span>
+            {t(
+              'admin_pending_grant_link',
+              'Send them this sign-up link (it works while sign-ups are closed, for the promised email only):'
+            )}
+          </span>
+          <code className="px-[8px] py-[4px] rounded-[6px] bg-white/[0.06]">
+            {signUpLink}
+          </code>
+          <CopyButton
+            text={signUpLink}
+            label={t('admin_copy_link', 'Copy link')}
+          />
         </div>
         <div className="flex flex-wrap gap-[8px] items-center">
           <input

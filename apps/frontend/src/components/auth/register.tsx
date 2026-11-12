@@ -58,6 +58,11 @@ export function Register() {
   const [code, setCode] = useState(getQuery?.get('code') || '');
   const [state] = useState(getQuery?.get('state') || '');
   const [show, setShow] = useState(false);
+  // While sign-ups are closed: the invitation link (?invite) shows the form,
+  // and a new Google account gets it when the backend says its address may
+  // sign up (a plan was promised to it). Everyone else sees "closed".
+  const [invited] = useState(!!getQuery?.has('invite'));
+  const [allowed, setAllowed] = useState(false);
   const [failed, setFailed] = useState('');
   const t = useT();
   useEffect(() => {
@@ -88,13 +93,14 @@ export function Register() {
       );
       return;
     }
-    const { token, login } = await response.json();
+    const { token, login, canRegister } = await response.json();
     // Existing account — the backend already set the auth cookie.
     if (login) {
       window.location.href = '/';
       return;
     }
     if (token) {
+      setAllowed(!!canRegister);
       setCode(token);
       setShow(true);
     }
@@ -122,7 +128,7 @@ export function Register() {
       </div>
     );
   }
-  if (disableRegistration) {
+  if (disableRegistration && !(provider && code ? show && allowed : invited)) {
     return provider && code && !show ? (
       <LoadingComponent />
     ) : (

@@ -418,7 +418,7 @@ export class AuthController {
   ) {
     // A spent or forged state, or a code the provider refuses, is the
     // caller's problem: it was a 500 (and a Sentry issue) every time.
-    let result: { jwt?: string; token?: string };
+    let result: { jwt?: string; token?: string; canRegister?: boolean };
     const { maxAge: _maxAge, ...cookieScope } = oauthStateCookieOptions();
     response.clearCookie(OAUTH_STATE_COOKIE, cookieScope);
     try {
@@ -436,10 +436,10 @@ export class AuthController {
           : 'Sign-in with this provider failed. Please try again.';
       return response.status(400).type('text/plain').send(message);
     }
-    const { jwt, token } = result;
+    const { jwt, token, canRegister } = result;
 
     if (token) {
-      return response.json({ token });
+      return response.json({ token, canRegister });
     }
 
     setSessionCookie(response, jwt);

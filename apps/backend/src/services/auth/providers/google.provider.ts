@@ -93,6 +93,9 @@ export class GoogleProvider extends AuthProviderAbstract {
     return {
       id: data.id!,
       email: data.email!,
+      // An address Google has not verified is not proof of owning it: it
+      // must not claim a plan promised to that address.
+      verified: data.verified_email !== false,
     };
   }
 }

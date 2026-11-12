@@ -78,11 +78,17 @@ export class AuthService {
     // A comp promised to the address before it signed up (influencers).
     private _subscriptionService?: SubscriptionService
   ) {}
-  async canRegister(provider: string) {
+  async canRegister(provider: string, email?: string | null) {
     if (
       process.env.DISABLE_REGISTRATION !== 'true' ||
       provider === Provider.GENERIC
     ) {
+      return true;
+    }
+    // While sign-ups are closed, an address an admin promised a plan to
+    // (influencers before launch) can still sign up, by password or Google;
+    // nobody else can.
+    if (email && (await this._subscriptionService?.hasPendingGrant(email))) {
       return true;
     }
 
@@ -119,7 +125,7 @@ export class AuthService {
           throw new Error('Email already exists');
         }
 
-        if (!(await this.canRegister(provider))) {
+        if (!(await this.canRegister(provider, body.email))) {
           throw new Error('Registration is disabled');
         }
 
@@ -263,7 +269,11 @@ export class AuthService {
       return user;
     }
 
-    if (!(await this.canRegister(provider))) {
+    // Only an address the provider verified counts as owned: it is what lets
+    // a new account in while sign-ups are closed, and what claims a plan
+    // promised to the address.
+    const ownedEmail = providerUser.verified === false ? null : providerUser.email;
+    if (!(await this.canRegister(provider, ownedEmail))) {
       throw new Error('Registration is disabled');
     }
 
@@ -281,10 +291,7 @@ export class AuthService {
       ip,
       userAgent
     );
-    await this._subscriptionService?.applyPendingGrant(
-      create.id,
-      providerUser.email
-    );
+    await this._subscriptionService?.applyPendingGrant(create.id, ownedEmail);
 
     this._track('register', providerUser.email, body.datafast_visitor_id).catch(
       (err) => {}
@@ -539,7 +546,15 @@ export class AuthService {
       return { jwt: await this.jwt(checkExists) };
     }
 
-    return { token };
+    // Whether this new account may be made, so the sign-up page shows the
+    // form or "Sign-ups are closed" before anyone fills it in.
+    return {
+      token,
+      canRegister: await this.canRegister(
+        provider,
+        user.verified === false ? null : user.email
+      ),
+    };
   }
 
   /**

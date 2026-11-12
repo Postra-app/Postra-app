@@ -125,10 +125,13 @@ export async function proxy(request: NextRequest) {
   // on the way back from Google (or another provider): that page is where an
   // existing account is signed in, and sending it to /auth/login dropped the
   // code, and people who sign in with Google could not get in.
-  // A new account is still refused there and by the backend.
+  // A new account is still refused there and by the backend. The link an
+  // admin hands out with a promised plan (?invite) opens the form too: the
+  // backend lets in only the address the plan was promised to.
   if (
     nextUrl.pathname.startsWith('/auth/register') &&
     process.env.DISABLE_REGISTRATION === 'true' &&
+    !nextUrl.searchParams.has('invite') &&
     !(nextUrl.searchParams.get('provider') && nextUrl.searchParams.get('code'))
   ) {
     return NextResponse.redirect(new URL('/auth/login', nextUrl.href));
