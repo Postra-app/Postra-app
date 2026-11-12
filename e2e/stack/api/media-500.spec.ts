@@ -47,13 +47,14 @@ test('a library of 500 files pages quickly and completely', async () => {
     }
     expect(seen.size).toBe(FILES);
 
-    // The Media page asks the dashboard route for the newest files first.
+    // The Media page asks the dashboard route for the newest files first;
+    // filtered by this test's files, as other specs add media to A meanwhile.
     const t0 = Date.now();
-    const res = await app.get('/media?page=1');
+    const res = await app.get(`/media?page=1&search=${tag}`);
     const took = Date.now() - t0;
     expect(res.status(), await res.text()).toBe(200);
     const body = await res.json();
-    expect(body.pages).toBeGreaterThanOrEqual(pages);
+    expect(body.pages).toBe(pages);
     expect(body.results[0].name).toBe(`${tag}-${FILES - 1}.png`);
     expect(took, `dashboard page took ${took} ms`).toBeLessThan(1000);
   } finally {
