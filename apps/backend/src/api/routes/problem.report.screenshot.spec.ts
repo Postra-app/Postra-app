@@ -24,6 +24,33 @@ describe('problem report screenshot', () => {
     expect(decodeScreenshot(url('png', big))).toBeNull();
   });
 
+  // A regular expression over the whole data URL (7 MB of base64) ran out of
+  // stack in CI: "Maximum call stack size exceeded" instead of a refusal, and
+  // a 500 for the person reporting a problem. The size is checked first and
+  // no pattern ever sees more than the header.
+  it('never runs a pattern over the whole screenshot', () => {
+    const exec = jest.spyOn(RegExp.prototype, 'exec');
+    const test = jest.spyOn(RegExp.prototype, 'test');
+    try {
+      const big = Buffer.concat([png, Buffer.alloc(5 * 1024 * 1024)]);
+      expect(decodeScreenshot(url('png', big))).toBeNull();
+      expect(decodeScreenshot(url('png', png))).toMatchObject({ ext: 'png' });
+      const longest = [...exec.mock.calls, ...test.mock.calls].reduce(
+        (max, [arg]) => Math.max(max, String(arg).length),
+        0
+      );
+      expect(longest).toBeLessThan(100);
+    } finally {
+      exec.mockRestore();
+      test.mockRestore();
+    }
+  });
+
+  it('drops a data URL that is not clean base64', () => {
+    expect(decodeScreenshot(`data:image/png;base64,${png.toString('base64')}*`)).toBeNull();
+    expect(decodeScreenshot('data:image/png;base64,')).toBeNull();
+  });
+
   // A presigned link signed with the server's role dies within hours, so the
   // mail points at the admin route, which signs a fresh one on every click.
   it('links the mail to the admin route, not to a signed S3 URL', () => {

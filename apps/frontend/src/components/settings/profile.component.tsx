@@ -12,7 +12,7 @@ import { showMediaBox } from '@gitroom/frontend/components/media/media-box-reque
 
 type Picture = { id: string; path: string } | null;
 
-// Name, bio and picture: what a team sees on comments and in Teams. The API
+// Name, bio and picture of the signed-in person. The API
 // was here all along, but the form had no fields since an upstream rework, so
 // nobody could change their name or picture on the web.
 const ProfileComponent = () => {
