@@ -22,7 +22,9 @@ import {
 
 export class GeneratePostCarouselDto {
   // With a link the article is the brief and the prompt is an optional note.
-  @ValidateIf((o) => !o.sourceUrl || !!o.prompt)
+  // Only an absent note is let through: `false` or `0` is a wrong type and
+  // gets the 400 any other wrong type gets.
+  @ValidateIf((o) => !o.sourceUrl || (o.prompt ?? '') !== '')
   @IsString()
   @IsDefined()
   @MinLength(3)

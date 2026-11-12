@@ -11,6 +11,7 @@ export const ARTICLE_MAX_BYTES = 3 * 1024 * 1024;
 // What reaches the model: enough for the argument of a long article, small
 // enough that one request cannot be made arbitrarily expensive.
 export const ARTICLE_PROMPT_CHARS = 6000;
+export const ARTICLE_TITLE_CHARS = 200;
 // Below this there is no article to work from (a login wall, a page drawn
 // entirely by scripts), and the model would invent one from the address.
 const ARTICLE_MIN_CHARS = 200;
@@ -36,7 +37,11 @@ export function articleFromHtml(html: string): Article {
     document.querySelector('meta[property="og:title"]')?.getAttribute('content') ||
       document.querySelector('title')?.textContent ||
       document.querySelector('h1')?.textContent
-  ).replace(/\n/g, ' ');
+  )
+    .replace(/\n/g, ' ')
+    // A page can put anything in its <title>; the title goes to the model
+    // next to the text, so it is bounded like the text.
+    .slice(0, ARTICLE_TITLE_CHARS);
 
   const articles = Array.from(document.querySelectorAll('article')).sort(
     (a, b) => (b.textContent?.length ?? 0) - (a.textContent?.length ?? 0)

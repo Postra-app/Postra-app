@@ -28,6 +28,14 @@ describe.each(cases)('%s request', (_name, Dto, base) => {
     expect(await errors({ sourceUrl: 'https://blog.example/post', prompt: 'for agencies' })).toEqual([]);
   });
 
+  it('refuses a note of the wrong type instead of passing it to the service', async () => {
+    for (const prompt of [false, 0, 12, {}, []]) {
+      expect(await errors({ sourceUrl: 'https://blog.example/post', prompt })).toEqual(['prompt']);
+    }
+    expect(await errors({ sourceUrl: 'https://blog.example/post', prompt: '' })).toEqual([]);
+    expect(await errors({ sourceUrl: 'https://blog.example/post', prompt: null })).toEqual([]);
+  });
+
   it('holds the note to the prompt rules and the link to https', async () => {
     expect(await errors({ sourceUrl: 'https://blog.example/post', prompt: 'x'.repeat(501) })).toEqual(['prompt']);
     expect(await errors({ sourceUrl: 'http://blog.example/post' })).toEqual(['sourceUrl']);

@@ -49,6 +49,11 @@ describe('articleFromHtml', () => {
     expect(a.text).not.toContain('Menu');
     expect(a.text).not.toContain('Legal');
   });
+  it('bounds the title like the text: a page can put anything in its <title>', () => {
+    const a = articleFromHtml(page(`<p>${body}</p>`, `<meta property="og:title" content="${'T'.repeat(50000)}">`));
+    expect(a.title).toHaveLength(200);
+    expect(articlePrompt(a).length).toBeLessThan(ARTICLE_PROMPT_CHARS + 600);
+  });
 });
 
 describe('readArticle', () => {
