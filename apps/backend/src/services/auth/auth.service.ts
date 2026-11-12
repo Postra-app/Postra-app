@@ -162,13 +162,21 @@ export class AuthService {
           throw new Error('Email already exists');
         }
 
+        // A plan promised to this address waits for the activation link (or
+        // a reset link): typing an address proves nothing, and the first
+        // stranger to type it took the plan and blocked the owner.
         const create = await this.admit(provider, body.email, async () => {
           const made = await this._organizationService.createOrgAndUser(
             body,
             ip,
             userAgent
           );
-          await this._subscriptionService?.applyPendingGrant(made.id, body.email);
+          // Without an email provider accounts are active from the start and
+          // nothing will ever prove the address: the promise goes now, as it
+          // always did on such an instance.
+          if (made.users[0].user.activated) {
+            await this._subscriptionService?.applyPendingGrant(made.id, body.email);
+          }
           return made;
         });
 
@@ -457,10 +465,33 @@ export class AuthService {
     if (!updated) {
       return false;
     }
+    // The reset link went to the address, so it proves the address as well
+    // as the activation link does. An account nobody activated (someone else
+    // signed up with this address first) becomes the owner's: their password,
+    // active, with any plan promised to the address.
+    if (!current.activated) {
+      await this._userService.activateUser(user.id);
+    }
+    // Also on an active account: a plan whose delivery failed after the
+    // activation (the database between two writes) arrives with this proof.
+    await this.applyGrantOnProof(user.id, current.email);
     // updatePassword bumped tokenVersion; drop the cached auth context so the
     // new version is enforced on the very next request (not up to 30s later).
     await bustAuthContextCache(user.id);
     return true;
+  }
+
+  // The address is proven (activation or reset link): a plan promised to it
+  // goes to the organisation the account owns.
+  private async applyGrantOnProof(userId: string, email: string) {
+    if (!this._subscriptionService) return;
+    const orgs = await this._organizationService.getOrgsByUserId(userId);
+    const own = orgs.find((o: any) =>
+      o.users?.some((u: any) => u.role === 'SUPERADMIN' && !u.disabled)
+    );
+    if (own) {
+      await this._subscriptionService.applyPendingGrant(own.id, email);
+    }
   }
 
   async activate(code: string, tracking: string) {
@@ -490,10 +521,19 @@ export class AuthService {
     }
     if (user.id && !user.activated) {
       const getUserAgain = await this._userService.getUserByEmail(user.email);
+      // A link minted for another account that once had this address (gone,
+      // signed up again) activates nothing.
+      if (!getUserAgain || getUserAgain.id !== user.id) {
+        throw new Error(ACTIVATION_LINK_INVALID);
+      }
       if (getUserAgain.activated) {
+        // Opened again: a plan that did not arrive the first time (the
+        // database failed after the activation) gets another chance.
+        await this.applyGrantOnProof(user.id, getUserAgain.email);
         return false;
       }
       await this._userService.activateUser(user.id);
+      await this.applyGrantOnProof(user.id, getUserAgain.email);
       this._track('register', user.email, tracking).catch((err) => {});
       // No newsletter auto-enroll: marketing email needs its own opt-in
       // consent (UK GDPR/PECR) — registration alone is not that consent.

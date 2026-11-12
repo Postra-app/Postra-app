@@ -5,8 +5,10 @@ import { BACKEND_URL, database, makeAdministrator, throwawayOrg } from '../helpe
 // Influencers get Pro for a while in return for posts. A comp could only be
 // given to an account that already existed (so every influencer met the plan
 // page first) and never ended on its own. Now an admin promises the plan to
-// an email, the organization made at sign-up gets it at once, and the comp
-// carries its reason and end date.
+// an email, the organization made at sign-up gets it, and the comp carries
+// its reason and end date. With an email provider (production) the plan waits
+// for the activation or reset link (auth.grant-on-proof.spec.ts); the stack
+// sends no mail, so its accounts are active at sign-up and get it then.
 let prisma: PrismaClient;
 test.beforeAll(() => {
   prisma = database();

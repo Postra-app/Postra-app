@@ -23,7 +23,7 @@ describe('a token does only what it was issued for', () => {
     const service = Object.create(AuthService.prototype);
     const updatePassword = jest.fn().mockResolvedValue(true);
     Object.assign(service, {
-      _userService: { getUserById: async () => ({ id: 'u1', tokenVersion: 3 }), updatePassword },
+      _userService: { getUserById: async () => ({ id: 'u1', tokenVersion: 3, activated: true }), updatePassword },
     });
     return { service, updatePassword };
   };

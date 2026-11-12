@@ -95,7 +95,7 @@ describe('password policy', () => {
     const service = Object.create(AuthService.prototype);
     const updatePassword = jest.fn().mockResolvedValue(true);
     Object.assign(service, {
-      _userService: { getUserById: async () => ({ id: 'u1', tokenVersion: 1 }), updatePassword },
+      _userService: { getUserById: async () => ({ id: 'u1', tokenVersion: 1, activated: true }), updatePassword },
     });
     const token = AuthChecker.signJWT({ id: 'u1', tokenVersion: 1, expires: new Date(Date.now() + 600_000).toISOString(), purpose: 'reset' });
 
