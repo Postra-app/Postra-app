@@ -471,8 +471,10 @@ export class AuthService {
     // active, with any plan promised to the address.
     if (!current.activated) {
       await this._userService.activateUser(user.id);
-      await this.applyGrantOnProof(user.id, current.email);
     }
+    // Also on an active account: a plan whose delivery failed after the
+    // activation (the database between two writes) arrives with this proof.
+    await this.applyGrantOnProof(user.id, current.email);
     // updatePassword bumped tokenVersion; drop the cached auth context so the
     // new version is enforced on the very next request (not up to 30s later).
     await bustAuthContextCache(user.id);
@@ -525,6 +527,9 @@ export class AuthService {
         throw new Error(ACTIVATION_LINK_INVALID);
       }
       if (getUserAgain.activated) {
+        // Opened again: a plan that did not arrive the first time (the
+        // database failed after the activation) gets another chance.
+        await this.applyGrantOnProof(user.id, getUserAgain.email);
         return false;
       }
       await this._userService.activateUser(user.id);

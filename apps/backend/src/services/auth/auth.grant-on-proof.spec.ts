@@ -139,7 +139,9 @@ describe('a promised plan goes to the account only once the address is proven', 
     expect(applied).toEqual([['org-of-u3', PROMISED]]);
   });
 
-  it('a reset on an account that is already active changes only the password', async () => {
+  // The account is active but the plan never arrived (the database failed
+  // between the two writes): every later proof of the address tries again.
+  it('a reset on an active account does not activate again, and still delivers a waiting plan', async () => {
     const users = { [PROMISED]: { id: 'u4', email: PROMISED, activated: true, tokenVersion: 0 } };
     const { s, applied, activated } = service(users);
     const token = AuthChecker.signJWT({
@@ -150,7 +152,16 @@ describe('a promised plan goes to the account only once the address is proven', 
     });
     await expect(s.forgotReturn({ token, password: 'owner-password-123' })).resolves.toBe(true);
     expect(activated).toEqual([]);
-    expect(applied).toEqual([]);
+    expect(applied).toEqual([['org-of-u4', PROMISED]]);
+  });
+
+  it('the activation link opened again on an active account delivers a plan that did not arrive', async () => {
+    const users = { [PROMISED]: { id: 'u5', email: PROMISED, activated: true } };
+    const { s, applied, activated } = service(users);
+    const code = AuthChecker.signJWT({ id: 'u5', email: PROMISED, activated: false, purpose: 'activate' });
+    await expect(s.activate(code, '')).resolves.toBe(false);
+    expect(activated).toEqual([]);
+    expect(applied).toEqual([['org-of-u5', PROMISED]]);
   });
 });
 
