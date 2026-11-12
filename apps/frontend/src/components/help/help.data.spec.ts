@@ -1,4 +1,8 @@
+import * as fs from 'fs';
+import * as path from 'path';
+import * as help from './help.data';
 import { APP_TABS, FAQ_ITEMS, MOBILE_APP } from './help.data';
+import en from '@gitroom/react/translation/locales/en/translation.json';
 
 // Help told customers things the app does not do:
 // LinkedIn Pages is "Coming soon" for new connections (integration.manager.ts
@@ -85,15 +89,9 @@ describe('Help numbers are the plans', () => {
 // Help names a platform customers cannot connect, a price that is not a plan's,
 // or a button label the composer does not show.
 describe('Help names only what the app has', () => {
-  /* eslint-disable @typescript-eslint/no-var-requires */
-  const fs = require('fs');
-  const path = require('path');
-  const help = require('./help.data');
-  const en = require('@gitroom/react/translation/locales/en/translation.json');
   const { pricing, TRIAL_VIDEO_CLIPS } = jest.requireActual<
     typeof import('@gitroom/nestjs-libraries/database/prisma/subscriptions/pricing')
   >('@gitroom/nestjs-libraries/database/prisma/subscriptions/pricing');
-  /* eslint-enable @typescript-eslint/no-var-requires */
 
   const social = path.join(
     __dirname,
