@@ -257,6 +257,19 @@ describe('a comp promised to an email', () => {
     await expect(service.applyPendingGrant('org-2', undefined)).resolves.toBe(false);
     expect(repository.findOpenPendingGrant).not.toHaveBeenCalled();
   });
+  // While sign-ups are closed this decides who may still sign up, without
+  // using the promise up: the same matching as above.
+  it('tells whether a promise waits for an address, without using it up', async () => {
+    const grant = { id: 'g4', email: 'jan.kowalski@gmail.com', tier: 'PRO', months: 1, reason: 'influencer', createdById: 'a' };
+    const { service, repository } = build({
+      listOpenPendingGrants: jest.fn().mockResolvedValue([grant]),
+    });
+    await expect(service.hasPendingGrant('JanKowalski@gmail.com')).resolves.toBe(true);
+    await expect(service.hasPendingGrant('jan.kowalski+x@gmail.com')).resolves.toBe(false);
+    await expect(service.hasPendingGrant('someone@example.com')).resolves.toBe(false);
+    await expect(service.hasPendingGrant('')).resolves.toBe(false);
+    expect(repository.consumePendingGrant).not.toHaveBeenCalled();
+  });
 });
 
 describe('isPlainEmail', () => {

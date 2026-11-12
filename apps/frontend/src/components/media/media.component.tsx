@@ -636,11 +636,14 @@ export const MediaBox: FC<{
                         {selected.findIndex((z: any) => z.id === media.id) + 1}
                       </div>
                     ) : (
+                      // 24 px around the 18 px icon (WCAG 2.5.8 target size):
+                      // it sits right next to the tile's own target. Offset
+                      // so the icon stays where it was.
                       <button
                         type="button"
                         aria-label={t('delete', 'Delete')}
                         onClick={deleteImage(media)}
-                        className="hidden z-[100] group-hover:block group-focus-within:block phone:block absolute -top-[5px] -end-[5px]"
+                        className="hidden z-[100] group-hover:flex group-focus-within:flex phone:flex items-center justify-center w-[24px] h-[24px] absolute -top-[8px] -end-[8px]"
                       >
                         <DeleteCircleIcon className="cursor-pointer" />
                       </button>

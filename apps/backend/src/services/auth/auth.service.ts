@@ -78,15 +78,58 @@ export class AuthService {
     // A comp promised to the address before it signed up (influencers).
     private _subscriptionService?: SubscriptionService
   ) {}
-  async canRegister(provider: string) {
+  // While sign-ups are closed, an address an admin promised a plan to
+  // (influencers before launch) can still sign up, by password or with a
+  // provider that verified the address; nobody else can.
+  private async registrationGate(
+    provider: string,
+    email?: string | null
+  ): Promise<'open' | 'invited' | 'closed'> {
     if (
       process.env.DISABLE_REGISTRATION !== 'true' ||
-      provider === Provider.GENERIC
+      provider === Provider.GENERIC ||
+      (await this._organizationService.getCount()) === 0
     ) {
-      return true;
+      return 'open';
     }
+    if (email && (await this._subscriptionService?.hasPendingGrant(email))) {
+      return 'invited';
+    }
+    return 'closed';
+  }
 
-    return (await this._organizationService.getCount()) === 0;
+  async canRegister(provider: string, email?: string | null) {
+    return (await this.registrationGate(provider, email)) !== 'closed';
+  }
+
+  // Makes the account (and claims the promise) only if the gate lets it in.
+  // Let in by a promise: one sign-up per address at a time, and the promise
+  // checked again under the lock, so a password and a Google sign-up racing
+  // for the same address cannot both get in while sign-ups are closed.
+  private async admit<T>(
+    provider: string,
+    email: string | null | undefined,
+    create: () => Promise<T>
+  ): Promise<T> {
+    const gate = await this.registrationGate(provider, email);
+    if (gate === 'closed') {
+      throw new Error('Registration is disabled');
+    }
+    if (gate === 'open') {
+      return create();
+    }
+    const lock = `register-invite:${normalizeEmail(email!)}`;
+    if ((await ioRedis.set(lock, '1', 'EX', 120, 'NX')) !== 'OK') {
+      throw new Error('Registration is disabled');
+    }
+    try {
+      if (!(await this._subscriptionService?.hasPendingGrant(email))) {
+        throw new Error('Registration is disabled');
+      }
+      return await create();
+    } finally {
+      await ioRedis.del(lock);
+    }
   }
 
   async routeAuth(
@@ -119,16 +162,15 @@ export class AuthService {
           throw new Error('Email already exists');
         }
 
-        if (!(await this.canRegister(provider))) {
-          throw new Error('Registration is disabled');
-        }
-
-        const create = await this._organizationService.createOrgAndUser(
-          body,
-          ip,
-          userAgent
-        );
-        await this._subscriptionService?.applyPendingGrant(create.id, body.email);
+        const create = await this.admit(provider, body.email, async () => {
+          const made = await this._organizationService.createOrgAndUser(
+            body,
+            ip,
+            userAgent
+          );
+          await this._subscriptionService?.applyPendingGrant(made.id, body.email);
+          return made;
+        });
 
         const addedOrg =
           addToOrg && typeof addToOrg !== 'boolean'
@@ -263,28 +305,30 @@ export class AuthService {
       return user;
     }
 
-    if (!(await this.canRegister(provider))) {
-      throw new Error('Registration is disabled');
-    }
-
-    const create = await this._organizationService.createOrgAndUser(
-      {
-        company: body.company,
-        email: providerUser.email,
-        password: '',
-        provider,
-        providerId: providerUser.id,
-        termsAccepted: body.termsAccepted,
-        datafast_visitor_id: body.datafast_visitor_id,
-        region: body.region,
-      },
-      ip,
-      userAgent
-    );
-    await this._subscriptionService?.applyPendingGrant(
-      create.id,
-      providerUser.email
-    );
+    // Only an address the provider verified counts as owned: it is what lets
+    // a new account in while sign-ups are closed, and what claims a plan
+    // promised to the address.
+    // Only a positive "verified" counts: a provider that does not say is not
+    // trusted with someone else's promise.
+    const ownedEmail = providerUser.verified === true ? providerUser.email : null;
+    const create = await this.admit(provider, ownedEmail, async () => {
+      const made = await this._organizationService.createOrgAndUser(
+        {
+          company: body.company,
+          email: providerUser.email,
+          password: '',
+          provider,
+          providerId: providerUser.id,
+          termsAccepted: body.termsAccepted,
+          datafast_visitor_id: body.datafast_visitor_id,
+          region: body.region,
+        },
+        ip,
+        userAgent
+      );
+      await this._subscriptionService?.applyPendingGrant(made.id, ownedEmail);
+      return made;
+    });
 
     this._track('register', providerUser.email, body.datafast_visitor_id).catch(
       (err) => {}
@@ -539,7 +583,15 @@ export class AuthService {
       return { jwt: await this.jwt(checkExists) };
     }
 
-    return { token };
+    // Whether this new account may be made, so the sign-up page shows the
+    // form or "Sign-ups are closed" before anyone fills it in.
+    return {
+      token,
+      canRegister: await this.canRegister(
+        provider,
+        user.verified === true ? user.email : null
+      ),
+    };
   }
 
   /**

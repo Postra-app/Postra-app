@@ -88,6 +88,45 @@ test.describe('a library with files', () => {
     });
   });
 
+  // The delete button shows on hover (always on a phone) in the corner of a
+  // tile, right next to the tile's own target. At 18 px it was under the
+  // 24 px WCAG 2.5.8 minimum: axe flagged it in Firefox, where the pointer
+  // happened to rest on a tile after "Choose picture" was clicked.
+  test('the delete button on a file is at least 24 px, in the library and in the picker', async ({
+    page,
+    context,
+  }) => {
+    test.setTimeout(120_000);
+    await withLibrary(context, async ({ image }) => {
+      const big = async () => {
+        // Only the hovered tile shows its button.
+        const del = page.getByRole('button', { name: 'Delete', exact: true }).filter({ visible: true });
+        await expect(del).toBeVisible();
+        const box = await del.boundingBox();
+        expect(box?.width).toBeGreaterThanOrEqual(24);
+        expect(box?.height).toBeGreaterThanOrEqual(24);
+        expect(await violations(page)).toEqual([]);
+      };
+
+      await page.goto('/media');
+      await expect(page.getByText(image)).toBeVisible();
+      await page.waitForLoadState('networkidle');
+      // The caption belongs to the tile; the middle of the picture is the
+      // Preview button.
+      await page.getByText(image).hover();
+      await big();
+
+      await page.goto('/settings');
+      await page.getByRole('button', { name: 'Choose picture', exact: true }).click();
+      const library = page.getByRole('dialog').filter({ hasText: 'Media Library' });
+      const tile = library.getByRole('checkbox', { name: image, exact: true });
+      await expect(tile).toBeVisible();
+      await page.waitForLoadState('networkidle');
+      await tile.hover();
+      await big();
+    });
+  });
+
   test.describe('at phone width', () => {
     test.use({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true });
 

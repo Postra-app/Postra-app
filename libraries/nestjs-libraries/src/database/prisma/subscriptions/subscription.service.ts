@@ -960,6 +960,15 @@ export class SubscriptionService {
     );
   }
 
+  // A plan an admin promised to this address is still waiting for it (same
+  // matching as applyPendingGrant). While sign-ups are closed this is what
+  // lets the address sign up.
+  async hasPendingGrant(email?: string | null) {
+    const address = (email || '').trim().toLowerCase();
+    if (!address) return false;
+    return !!(await this.findPendingGrantFor(address));
+  }
+
   async applyPendingGrant(organizationId: string, email?: string | null) {
     const address = (email || '').trim().toLowerCase();
     if (!address) return false;
