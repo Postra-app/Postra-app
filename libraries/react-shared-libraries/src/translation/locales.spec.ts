@@ -68,4 +68,25 @@ describe('translation catalogues', () => {
   it.each(languages)('%s has a catalogue', (lang) => {
     expect(existsSync(join(dir, lang, `${defaultNS}.json`))).toBe(true);
   });
+
+  // A translation that drops or renames {{name}}, {n} or a <tag> shows the
+  // raw placeholder, or loses the value, in that language only. Every loaded
+  // language keeps the English text's placeholders and tags.
+  it.each(languages.filter((l) => l !== 'en'))(
+    '%s keeps every placeholder and tag of the English text',
+    (lang) => {
+      const read = (l: string) =>
+        JSON.parse(readFileSync(join(dir, l, `${defaultNS}.json`), 'utf8'));
+      const en = read('en');
+      const other = read(lang);
+      const marks = (v: unknown) =>
+        typeof v === 'string'
+          ? (v.match(/\{\{?\s*[\w.]+\s*\}?\}|<\/?[a-zA-Z0-9]+>/g) || []).sort()
+          : [];
+      const broken = Object.keys(en).filter(
+        (k) => k in other && marks(en[k]).join() !== marks(other[k]).join()
+      );
+      expect(broken).toEqual([]);
+    }
+  );
 });

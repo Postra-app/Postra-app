@@ -858,7 +858,7 @@
   "tpl_cat_quote": "Cytat",
   "tpl_cat_announcement": "Ogłoszenie",
   "tpl_cat_stats": "Statystyki",
-  "tpl_cat_tip": "Tip",
+  "tpl_cat_tip": "Porada",
   "tpl_cat_event": "Wydarzenie",
   "tpl_cat_community": "Społeczność",
   "template_kept_photo": "Szablon nałożony na Twoje zdjęcie - cofnij Ctrl+Z, jeśli wolisz czysty projekt.",
@@ -885,7 +885,7 @@
   "icon_cat_arrows": "Strzałki",
   "icon_cat_commerce": "Sprzedaż",
   "icon_cat_business": "Biznes",
-  "icon_cat_social": "Social",
+  "icon_cat_social": "Społecznościowe",
   "icon_cat_time": "Czas",
   "icon_cat_shapes": "Kształty",
   "icon_cat_utility": "Użytkowe",
@@ -1990,5 +1990,10 @@
   "channel_connected_description": "Kanał {{provider}} został podłączony. Możesz już zamknąć to okno.",
   "select_the_page_or_account": "Wybierz stronę lub konto {{provider}}, które chcesz podłączyć.",
   "no_matching_integrations": "Nie znaleziono kanałów {{provider}}. Najpierw dodaj taki kanał.",
-  "logout_from_postra": "Wyloguj się z Postry"
+  "logout_from_postra": "Wyloguj się z Postry",
+  "switch_to_light_mode": "Przełącz na jasny motyw",
+  "switch_to_dark_mode": "Przełącz na ciemny motyw",
+  "set_plug": "Ustaw wtyczkę",
+  "edit_plug": "Edytuj wtyczkę",
+  "post_editor": "Edytor posta"
 }

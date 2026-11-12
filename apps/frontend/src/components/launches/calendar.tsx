@@ -234,7 +234,7 @@ const usePostActions = (onMutate?: () => void) => {
         : Fragment;
       modal.openModal({
         id: 'add-edit-modal',
-        ariaLabel: 'Post editor',
+        ariaLabel: t('post_editor', 'Post editor'),
         closeOnClickOutside: false,
         removeLayout: true,
         closeOnEscape: false,
@@ -973,7 +973,7 @@ export const CalendarColumn: FC<{
 
     modal.openModal({
       id: 'add-edit-modal',
-      ariaLabel: 'Post editor',
+      ariaLabel: t('post_editor', 'Post editor'),
       closeOnClickOutside: false,
       removeLayout: true,
       closeOnEscape: false,

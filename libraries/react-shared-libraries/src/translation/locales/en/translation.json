@@ -1990,5 +1990,10 @@
   "channel_connected_description": "Your {{provider}} channel has been successfully connected. You can close this window now.",
   "select_the_page_or_account": "Select the {{provider}} page or account you want to connect.",
   "no_matching_integrations": "No {{provider}} integrations found. Add one first.",
-  "logout_from_postra": "Logout from Postra"
+  "logout_from_postra": "Logout from Postra",
+  "switch_to_light_mode": "Switch to light mode",
+  "switch_to_dark_mode": "Switch to dark mode",
+  "set_plug": "Set Plug",
+  "edit_plug": "Edit Plug",
+  "post_editor": "Post editor"
 }
