@@ -32,3 +32,10 @@ it('gives up quietly when the page cannot be read', async () => {
   const service = Object.create(AutopostService.prototype) as any;
   await expect(service.loadUrl('https://blog.example/post')).resolves.toBe('');
 });
+
+// `res.text()` buffered whatever the page behind a feed item sent.
+it('stops reading an article that never ends', async () => {
+  fetchMock.mockResolvedValue(new Response('<p>' + 'x'.repeat(3 * 1024 * 1024 + 10) + '</p>'));
+  const service = Object.create(AutopostService.prototype) as any;
+  await expect(service.loadUrl('https://blog.example/huge')).resolves.toBe('');
+});

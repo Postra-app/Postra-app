@@ -6,6 +6,7 @@ import {
 import { HttpException, Injectable } from '@nestjs/common';
 import { fetch } from 'undici';
 import { readResponseCapped } from '@gitroom/nestjs-libraries/media/fetch.media.buffer';
+import { ARTICLE_MAX_BYTES } from '@gitroom/nestjs-libraries/media/article.reader';
 import { ssrfSafeDispatcher } from '@gitroom/nestjs-libraries/dtos/webhooks/ssrf.safe.dispatcher';
 import { isSafePublicHttpsUrl } from '@gitroom/nestjs-libraries/dtos/webhooks/webhook.url.validator';
 import { AutopostRepository } from '@gitroom/nestjs-libraries/database/prisma/autopost/autopost.repository';
@@ -396,13 +397,18 @@ export class AutopostService {
       if (!(await isSafePublicHttpsUrl(url))) {
         return '';
       }
+      // Read with a ceiling, like the feed itself: a link in a feed is
+      // whatever the feed's author put there.
       const loadDom = new JSDOM(
-        await (
-          await fetch(url, {
-            dispatcher: ssrfSafeDispatcher,
-            signal: AbortSignal.timeout(10000),
-          })
-        ).text()
+        (
+          await readResponseCapped(
+            (await fetch(url, {
+              dispatcher: ssrfSafeDispatcher,
+              signal: AbortSignal.timeout(10000),
+            })) as any,
+            ARTICLE_MAX_BYTES
+          )
+        ).toString('utf8')
       );
       loadDom.window.document
         .querySelectorAll('script')
@@ -504,7 +510,9 @@ export class AutopostService {
         signal: AbortSignal.timeout(5000),
       });
       if (!response.ok) return null;
-      const html = await response.text();
+      const html = (
+        await readResponseCapped(response as any, ARTICLE_MAX_BYTES)
+      ).toString('utf8');
       const ogMatch = html.match(
         /<meta[^>]*property=["']og:image["'][^>]*content=["']([^"']+)["']/i
       );

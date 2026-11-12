@@ -47,8 +47,10 @@ export const AiGeneratePanel: FC<Props> = ({ canvas }) => {
   const upcoming = getUpcomingHolidays(holidays, 4, 365);
   const brandKit = useBrandKit();
   const [slidesCount, setSlidesCount] = useState(1);
+  // An article to build the design from; the prompt then becomes a note.
+  const [sourceUrl, setSourceUrl] = useState('');
   // Prompt parked while the user decides whether to replace a non-empty canvas.
-  const [confirmPrompt, setConfirmPrompt] = useState<string | null>(null);
+  const [confirmPrompt, setConfirmPrompt] = useState<{ prompt: string; link: string } | null>(null);
 
   // No abort when the panel closes: the credit is spent on the server either
   // way, so a design asked for and paid for still lands on the canvas when the
@@ -57,17 +59,31 @@ export const AiGeneratePanel: FC<Props> = ({ canvas }) => {
 
   // promptOverride lets the occasion chips generate in one click — the chip
   // passes its prompt directly because setAiPrompt hasn't re-rendered yet.
-  const generate = useCallback(async (promptOverride?: string, skipConfirm = false) => {
+  const generate = useCallback(async (promptOverride?: string, skipConfirm = false, linkOverride?: string) => {
     const prompt = (promptOverride ?? aiPrompt).trim();
+    // An occasion chip is its own brief and passes '' here: the link belongs
+    // to the typed prompt.
+    const link = (linkOverride ?? sourceUrl).trim();
     if (!canvas.current || isGenerating) return;
-    if (!prompt) {
+    if (!prompt && !link) {
+      toaster.show(t('ai_prompt_required', 'Describe what you want to generate'), 'warning');
+      return;
+    }
+    if (link && !/^https:\/\/[^\s.]+\.[^\s]+$/i.test(link)) {
+      toaster.show(
+        t('ai_source_url_invalid', 'Enter a full link that starts with https://'),
+        'warning'
+      );
+      return;
+    }
+    if (prompt && prompt.length < 3) {
       toaster.show(t('ai_prompt_required', 'Describe what you want to generate'), 'warning');
       return;
     }
 
     // Generation replaces the whole canvas — if there's work on it, ask first.
     if (!skipConfirm && canvas.current.getObjects().length > 0) {
-      setConfirmPrompt(prompt);
+      setConfirmPrompt({ prompt, link });
       return;
     }
     setConfirmPrompt(null);
@@ -85,11 +101,15 @@ export const AiGeneratePanel: FC<Props> = ({ canvas }) => {
         .startsWith('pl')
         ? 'Polish'
         : 'English';
+      const brief = {
+        ...(prompt ? { prompt } : {}),
+        ...(link ? { sourceUrl: link } : {}),
+      };
       const res = isCarousel
         ? await fetch('/media/generate-carousel-design', {
             method: 'POST',
             body: JSON.stringify({
-              prompt,
+              ...brief,
               platform: platform.key,
               slidesCount,
               languageFallback,
@@ -98,7 +118,7 @@ export const AiGeneratePanel: FC<Props> = ({ canvas }) => {
         : await fetch('/media/generate-post-design', {
             method: 'POST',
             body: JSON.stringify({
-              prompt,
+              ...brief,
               platform: platform.key,
               languageFallback,
             }),
@@ -180,7 +200,7 @@ export const AiGeneratePanel: FC<Props> = ({ canvas }) => {
     } finally {
       setGenerating(false);
     }
-  }, [canvas, aiPrompt, platform, isGenerating, fetch, toaster, t, setGenerating, slidesCount, i18n]);
+  }, [canvas, aiPrompt, platform, isGenerating, fetch, toaster, t, setGenerating, slidesCount, i18n, sourceUrl]);
 
   if (!allowed) {
     return (
@@ -263,7 +283,7 @@ export const AiGeneratePanel: FC<Props> = ({ canvas }) => {
                   <button
                     onClick={() => {
                       setAiPrompt(occasionPrompt);
-                      generate(occasionPrompt);
+                      generate(occasionPrompt, false, '');
                     }}
                     disabled={isGenerating}
                     title={t('holiday_generate_now', 'Generate a design for this occasion now')}
@@ -295,6 +315,27 @@ export const AiGeneratePanel: FC<Props> = ({ canvas }) => {
           </p>
         </div>
       )}
+      <label className="flex flex-col gap-1">
+        <span className="text-[11px] uppercase tracking-wide text-textColor/60">
+          {t('ai_source_url_label', 'From a link (optional)')}
+        </span>
+        <input
+          type="url"
+          inputMode="url"
+          value={sourceUrl}
+          onChange={(e) => setSourceUrl(e.target.value)}
+          placeholder={t('ai_source_url_placeholder', 'https://your-site.com/blog/article')}
+          disabled={isGenerating}
+          maxLength={2000}
+          className="text-xs p-2 rounded bg-newColColor border border-newBorder text-textColor placeholder-textColor/60 focus:outline-none focus:border-forth disabled:opacity-50"
+        />
+        <span className="text-[11px] text-textColor/65 leading-snug normal-case">
+          {t(
+            'ai_source_url_hint',
+            'Paste a blog post or article and AI turns it into slides. Use the box below to say what to focus on.'
+          )}
+        </span>
+      </label>
       <textarea
         value={aiPrompt}
         onChange={(e) => setAiPrompt(e.target.value)}
@@ -346,7 +387,7 @@ export const AiGeneratePanel: FC<Props> = ({ canvas }) => {
           </p>
           <div className="flex gap-2">
             <button
-              onClick={() => generate(confirmPrompt, true)}
+              onClick={() => generate(confirmPrompt.prompt, true, confirmPrompt.link)}
               className="text-[11px] px-2 py-1 rounded bg-newAccent text-[#06222e] font-[600] hover:brightness-110 transition-all"
             >
               {t('ai_replace_confirm_btn', 'Replace & generate')}

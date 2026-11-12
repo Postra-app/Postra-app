@@ -4,8 +4,10 @@ import {
   IsObject,
   IsOptional,
   IsString,
+  IsUrl,
   MaxLength,
   MinLength,
+  ValidateIf,
   ValidateNested,
 } from 'class-validator';
 import { Type } from 'class-transformer';
@@ -52,11 +54,22 @@ export class BrandKitDto {
 }
 
 export class GeneratePostDesignDto {
+  // With a link the article is the brief and the prompt is an optional note.
+  // Only an absent note is let through: `false` or `0` is a wrong type and
+  // gets the 400 any other wrong type gets.
+  @ValidateIf((o) => !o.sourceUrl || (o.prompt ?? '') !== '')
   @IsString()
   @IsDefined()
   @MinLength(3)
   @MaxLength(500)
   prompt: string;
+
+  // A public article to build the design from (Studio "From a link"). The
+  // server reads it through the SSRF-pinned dispatcher; see article.reader.ts.
+  @IsOptional()
+  @IsUrl({ protocols: ['https'], require_protocol: true })
+  @MaxLength(2000)
+  sourceUrl?: string;
 
   @IsString()
   @IsDefined()

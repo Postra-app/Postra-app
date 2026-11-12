@@ -16,6 +16,7 @@ import {
   GeneratePostDesignDto,
   PostDesignPlatform,
 } from '@gitroom/nestjs-libraries/dtos/media/generate.post.design.dto';
+import { articlePrompt, readArticle } from '@gitroom/nestjs-libraries/media/article.reader';
 import { GeneratePostCarouselDto } from '@gitroom/nestjs-libraries/dtos/media/generate.post.carousel.dto';
 import { BrandKitService } from '@gitroom/nestjs-libraries/database/prisma/brand-kit/brand-kit.service';
 import { buildBrandContext } from '@gitroom/nestjs-libraries/openai/brand-prompt';
@@ -244,7 +245,7 @@ export class MediaService {
       dto.brandKit ?? (await this._brandKitService.getNormalized(org.id)) ?? undefined;
 
     const spec = await this._openAi.generatePostDesign(
-      dto.prompt,
+      await this.designBrief(dto),
       dto.platform,
       brandKit,
       dto.language,
@@ -366,6 +367,14 @@ export class MediaService {
     };
   }
 
+  // What the designer works from: the user's prompt, or the article behind a
+  // link with the prompt as a note. Called after the storage and credit
+  // checks, so an account that cannot generate does not make the server fetch.
+  private async designBrief(dto: { prompt?: string; sourceUrl?: string }) {
+    if (!dto.sourceUrl) return dto.prompt ?? '';
+    return articlePrompt(await readArticle(dto.sourceUrl), dto.prompt);
+  }
+
   async generatePostCarousel(org: Organization, dto: GeneratePostCarouselDto) {
     // A full library stops here, before any credit or model time is spent
     // on a file that could not be kept.
@@ -382,7 +391,7 @@ export class MediaService {
       dto.brandKit ?? (await this._brandKitService.getNormalized(org.id)) ?? undefined;
 
     const carousel = await this._openAi.generatePostCarousel(
-      dto.prompt,
+      await this.designBrief(dto),
       dto.platform,
       dto.slidesCount,
       brandKit,
