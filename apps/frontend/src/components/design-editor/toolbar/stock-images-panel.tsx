@@ -314,14 +314,16 @@ export const StockImagesPanel: FC<Props> = ({ canvas, defaultQuery }) => {
                   href={hit.userURL || hit.pageURL}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="text-[10px] text-textColor/60 hover:underline truncate"
+                  className="text-[10px] leading-tight text-textColor/60 hover:underline break-words"
                 >
                   {t('image_stock_pexels_credit', 'Photo by {{user}} on Pexels', { user: hit.user })}
                 </a>
               )}
               {source === 'unsplash' && (
-                // Unsplash: the photographer and Unsplash, each linked.
-                <span className="text-[10px] text-textColor/60 truncate">
+                // Unsplash: the photographer and Unsplash, each linked. The
+                // line wraps: cut at the column width it hid "on Unsplash"
+                // and its link, which the Unsplash API guidelines require.
+                <span className="text-[10px] leading-tight text-textColor/60 break-words">
                   {t('image_stock_photo_by', 'Photo by')}{' '}
                   <a href={hit.userURL} target="_blank" rel="noopener noreferrer" className="hover:underline">
                     {hit.user}

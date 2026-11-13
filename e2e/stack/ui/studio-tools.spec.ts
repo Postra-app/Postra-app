@@ -189,6 +189,12 @@ test('Stock photos: search shows results', async ({ page }) => {
   await page.keyboard.press('Enter');
   await expect(page.getByRole('link', { name: 'Unsplash', exact: true }).first()).toBeVisible();
   await expect(page.getByText('Photo by')).toBeVisible();
+  // The credit has to show "on Unsplash" with its link, not cut it off at the
+  // column edge: toBeVisible() above passes for a link clipped by overflow.
+  const credit = page.locator('span', { hasText: /^Photo by .* on Unsplash$/ }).first();
+  const link = credit.getByRole('link', { name: 'Unsplash', exact: true });
+  const [creditBox, linkBox] = [await credit.boundingBox(), await link.boundingBox()];
+  expect(linkBox!.x + linkBox!.width).toBeLessThanOrEqual(creditBox!.x + creditBox!.width + 1);
   await s.clean();
 });
 
