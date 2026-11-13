@@ -49,6 +49,7 @@ model Organization {
   oauthAuthorizations OAuthAuthorization[]
   brandKit            BrandKit?
   mobilePushTokens    MobilePushToken[]
+  pendingGrants       PendingGrant[]
 
   @@index([apiKey])
   @@index([streakSince])
@@ -394,8 +395,10 @@ model Subscription {
 }
 
 // A comp promised to an email address before its account exists: the
-// organization created at sign-up gets the plan at once, so the person never
-// meets the plan page. Used once; the row stays as a record.
+// organization created at sign-up gets the plan once the address is proven,
+// so the person never meets the plan page. Used once; the row stays as a record while the
+// organization it went to exists, and goes with it (right to erasure: the
+// row holds the person's email).
 model PendingGrant {
   id             String           @id @default(cuid())
   email          String
@@ -406,8 +409,10 @@ model PendingGrant {
   createdAt      DateTime         @default(now())
   consumedAt     DateTime?
   organizationId String?
+  organization   Organization?    @relation(fields: [organizationId], references: [id], onDelete: Cascade)
 
   @@index([email])
+  @@index([organizationId])
 }
 
 model Customer {

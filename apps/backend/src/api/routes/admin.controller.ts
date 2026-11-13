@@ -384,8 +384,8 @@ export class AdminController {
 
   /**
    * Promise a comp to an email before its account exists: the organization
-   * created at sign-up gets the plan at once (influencers send only their
-   * address and never meet the plan page).
+   * created at sign-up gets the plan once the address is proven (influencers
+   * send only their address and never meet the plan page).
    */
   @Post('/pending-grants')
   async createPendingGrant(
