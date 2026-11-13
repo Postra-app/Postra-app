@@ -77,3 +77,34 @@ test('the invite page names the platform properly', async ({ page }) => {
     ).toBeVisible();
   }
 });
+
+// Meta's platforms show their checklist on the invite page too. Its "Done -
+// continue" was still a button with a click handler, so the fix above never
+// reached the invites sent most often: a client who tapped before the page
+// hydrated stayed where they were.
+test('"Done - continue" on a Facebook invite works before the page has hydrated', async ({
+  page,
+  context,
+}) => {
+  const a = await signedIn('a');
+  const { url } = await (await a.get('/integrations/social/facebook?invite=true')).json();
+  await a.dispose();
+
+  // Leaving for facebook.com is the end of our part; stop there.
+  let reachedMeta = '';
+  await context.route(/facebook\.com/, (route) => {
+    reachedMeta = route.request().url();
+    return route.abort();
+  });
+  await page.route('**/_next/static/chunks/**', (route) => route.abort());
+
+  await page.goto(new URL(url).pathname);
+  await expect(
+    page.getByRole('heading', { name: `${USERS.a.org} invited you to connect Facebook` })
+  ).toBeVisible();
+  await expect(page.getByText('Facebook only lets apps publish to Pages.')).toBeVisible();
+  // Nowhere to go back to on this page, so no "Not yet".
+  await expect(page.getByText('Not yet - show me how')).toHaveCount(0);
+  await page.getByRole('link', { name: 'Done - continue' }).click();
+  await expect.poll(() => reachedMeta, { timeout: 15_000 }).toContain('facebook.com');
+});

@@ -16,8 +16,8 @@ type Invite = { organization: string | null };
 
 /**
  * Checks an invite token and finds who sent it. Returns null when the backend
- * cannot answer (it is unreachable for a minute or two on every deploy —
- * single EC2, no blue-green) so a transient 502 reads as "try again" rather than
+ * cannot answer (a restart or an outage) so a transient 502 reads as "try
+ * again" rather than
  * as an expired link, and undefined when the token is genuinely gone.
  */
 const loadInvite = async (

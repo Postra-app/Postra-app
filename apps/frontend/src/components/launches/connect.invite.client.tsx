@@ -33,7 +33,13 @@ export const ConnectInviteClient: FC<{
   }, [goUrl]);
 
   if (hasMetaChecklist(provider)) {
-    return <MetaConnectChecklist provider={provider} onConfirm={go} />;
+    return (
+      <MetaConnectChecklist
+        provider={provider}
+        onConfirm={go}
+        confirmHref={goUrl}
+      />
+    );
   }
 
   return (
