@@ -1,4 +1,4 @@
-import { getErrorMessage } from './subscription.exception';
+import { getErrorMessage, SubscriptionExceptionFilter } from './subscription.exception';
 import {
   AuthorizationActions,
   PermissionDeniedException,
@@ -57,7 +57,6 @@ describe('permission denials', () => {
 // "Go to billing" led to a page they cannot use. A web session says whether
 // the member can act on it; API key and OAuth requests carry no member.
 describe('who can act on a 402', () => {
-  const { SubscriptionExceptionFilter } = require('./subscription.exception');
   const run = (org: any) => {
     const json = jest.fn();
     const host: any = {
