@@ -1,4 +1,4 @@
-import { getErrorMessage } from './subscription.exception';
+import { getErrorMessage, SubscriptionExceptionFilter } from './subscription.exception';
 import {
   AuthorizationActions,
   PermissionDeniedException,
@@ -50,5 +50,38 @@ describe('permission denials', () => {
     expect(
       new SubscriptionException({ ...denial, section: Sections.CHANNEL }).getStatus()
     ).toBe(402);
+  });
+});
+
+// Billing is for admins (BILLING_ADMIN), so a 402 that sent a plain member to
+// "Go to billing" led to a page they cannot use. A web session says whether
+// the member can act on it; API key and OAuth requests carry no member.
+describe('who can act on a 402', () => {
+  const run = (org: any) => {
+    const json = jest.fn();
+    const host: any = {
+      switchToHttp: () => ({
+        getResponse: () => ({ status: () => ({ json }) }),
+        getRequest: () => ({ org }),
+      }),
+    };
+    new SubscriptionExceptionFilter().catch(
+      new SubscriptionException({ section: Sections.CHANNEL, action: AuthorizationActions.Create }),
+      host
+    );
+    return json.mock.calls[0][0];
+  };
+
+  it('tells the page a plain member cannot open billing', () => {
+    expect(run({ users: [{ role: 'USER' }] }).canManageBillingUi).toBe(false);
+  });
+
+  it('lets admins and the owner go to billing', () => {
+    expect(run({ users: [{ role: 'ADMIN' }] }).canManageBillingUi).toBe(true);
+    expect(run({ users: [{ role: 'SUPERADMIN' }] }).canManageBillingUi).toBe(true);
+  });
+
+  it('adds nothing when there is no member (API key, OAuth)', () => {
+    expect(run(undefined)).not.toHaveProperty('canManageBillingUi');
   });
 });

@@ -2001,5 +2001,7 @@
   "switch_to_dark_mode": "Switch to dark mode",
   "set_plug": "Set Plug",
   "edit_plug": "Edit Plug",
-  "post_editor": "Post editor"
+  "post_editor": "Post editor",
+  "payment_required_ask_admin": "Ask an admin of this organization to change the plan.",
+  "no_ai_credits_ask_admin": "You have no AI credits left. Ask an admin of this organization to change the plan."
 }

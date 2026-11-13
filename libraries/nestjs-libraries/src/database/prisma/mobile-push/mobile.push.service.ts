@@ -113,6 +113,10 @@ export class MobilePushService {
       body,
       sound: 'default',
       priority: 'high',
+      // The Android channel the app creates (HIGH importance, named "Postra").
+      // Apps that predate it have no such channel and Android falls back to
+      // Expo's default one, as before.
+      channelId: 'postra-alerts',
       data: screen ? { type, screen } : { type },
     }));
 

@@ -2001,5 +2001,7 @@
   "switch_to_dark_mode": "Przełącz na ciemny motyw",
   "set_plug": "Ustaw wtyczkę",
   "edit_plug": "Edytuj wtyczkę",
-  "post_editor": "Edytor posta"
+  "post_editor": "Edytor posta",
+  "payment_required_ask_admin": "Poproś administratora tej organizacji o zmianę planu.",
+  "no_ai_credits_ask_admin": "Nie masz już kredytów AI. Poproś administratora tej organizacji o zmianę planu."
 }
