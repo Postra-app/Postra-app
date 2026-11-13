@@ -104,3 +104,18 @@ describe('notifyOrg tells the app which screen a tap opens', () => {
     expect(await sent()).toEqual({ type: 'success' });
   });
 });
+
+// Without a channelId every push on Android landed in Expo's fallback channel,
+// so turning off "Postra" in the system settings silenced nothing.
+describe('notifyOrg names the Android channel', () => {
+  it('sends channelId postra-alerts, the channel the app creates', async () => {
+    const { service, model } = makeService();
+    model.findMany.mockResolvedValue([{ token: 'ExponentPushToken[a]' }]);
+    const send = jest.spyOn(service as any, 'send').mockResolvedValue(undefined);
+    await service.notifyOrg('orgA', 'title', 'body');
+    expect((send.mock.calls[0][0] as any[])[0]).toMatchObject({
+      channelId: 'postra-alerts',
+      priority: 'high',
+    });
+  });
+});
