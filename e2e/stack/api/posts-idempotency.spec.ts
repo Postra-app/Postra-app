@@ -1,5 +1,6 @@
-import { APIRequestContext, expect, test } from '@playwright/test';
-import { database, draftBody, listPosts, signedIn, throwawayOrg } from '../helpers';
+import { APIRequestContext, expect, request, test } from '@playwright/test';
+import { BACKEND_URL, channelOf, database, draftBody, listPosts, signedIn, throwawayOrg } from '../helpers';
+import { USERS } from '../seed';
 
 // A phone on a slow connection timed out on "Save", retried, and the post was
 // saved twice. A retry with the same Idempotency-Key gets the first answer.
@@ -74,6 +75,46 @@ test('the retry of the post that used the last of the allowance gets its answer,
     expect(await prisma.post.count({ where: { organizationId: org.orgId, deletedAt: null } })).toBe(400);
   } finally {
     await org.remove();
+    await prisma.$disconnect();
+  }
+});
+
+// The public API is where retries come from most (scripts, Zapier, n8n),
+// and it ignored the header: a retry saved the post a second time.
+test('the public API: a retry with the same Idempotency-Key saves the post once', async () => {
+  const prisma = database();
+  const keyed = await request.newContext({
+    baseURL: `${BACKEND_URL}/public/v1/`,
+    extraHTTPHeaders: { authorization: USERS.a.apiKey },
+  });
+  const content = `[stack] public idempotent ${Date.now()}`;
+  try {
+    const body = {
+      type: 'draft',
+      shortLink: false,
+      date: new Date(Date.now() + 2 * 86_400_000).toISOString(),
+      tags: [],
+      posts: [{ integration: { id: channelOf('a') }, value: [{ content, image: [] }], settings: { __type: 'bluesky' } }],
+    };
+    const key = `stack-${Date.now()}-public`;
+    const first = await keyed.post('posts', { data: body, headers: { 'Idempotency-Key': key } });
+    expect(first.status(), await first.text()).toBe(201);
+    const again = await keyed.post('posts', { data: body, headers: { 'Idempotency-Key': key } });
+    expect(again.status(), await again.text()).toBe(201);
+    expect(await again.json()).toEqual(await first.json());
+    expect(await prisma.post.count({ where: { content: { contains: content }, deletedAt: null } })).toBe(1);
+
+    const other = await keyed.post('posts', {
+      data: { ...body, posts: [{ ...body.posts[0], value: [{ content: `${content} changed`, image: [] }] }] },
+      headers: { 'Idempotency-Key': key },
+    });
+    expect(other.status()).toBe(422);
+    const bad = await keyed.post('posts', { data: body, headers: { 'Idempotency-Key': 'short' } });
+    expect(bad.status()).toBe(400);
+  } finally {
+    const left = await prisma.post.findMany({ where: { content: { contains: content } }, select: { group: true } });
+    for (const { group } of left) await keyed.delete(`posts/group/${group}`);
+    await keyed.dispose();
     await prisma.$disconnect();
   }
 });

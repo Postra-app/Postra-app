@@ -79,13 +79,12 @@ export class PoliciesGuard implements CanActivate {
         (request.body?.type === undefined && request.body?.status === 'draft');
     // A retry of a saved POST /posts (same Idempotency-Key and body) gets the
     // stored answer and creates nothing; the last post of the month must not
-    // turn its retry into a 402.
+    // turn its retry into a 402. The public API keeps its own scope.
     const replay =
-      !publicApi &&
       request.method === 'POST' &&
       /(^|\/)posts\/?$/.test(path) &&
       (await isStoredReplay(
-        'posts',
+        publicApi ? 'public-posts' : 'posts',
         org.id,
         request.headers['idempotency-key'] as string | undefined,
         request.body
