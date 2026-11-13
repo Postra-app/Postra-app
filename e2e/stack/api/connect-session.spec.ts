@@ -92,3 +92,37 @@ test('one free slot, two channels connected at once: only one is added', async (
     await prisma.$disconnect();
   }
 });
+
+// The app opens the consent page in a browser tab and finishes the exchange
+// itself. When the app was not running, the tab stayed behind; going back to
+// it, the page found the state spent and said "Could not add provider",
+// though the channel was connected. It now learns the flow
+// finished, for as long as a state lives.
+test('a consent tab left open after the app connected the channel hears it is connected', async () => {
+  const prisma = database();
+  const org = await throwawayOrg(prisma, { tier: 'PRO', totalChannels: 5, channels: 0 });
+  const stranger = await anonymous();
+  try {
+    const res = await org.api.get(`/integrations/social/mastodon?redirectUrl=${encodeURIComponent('postra://integrations')}`);
+    expect(res.status(), await res.text()).toBe(200);
+    const state = new URL((await res.json()).url).searchParams.get('state')!;
+
+    const before = await stranger.get(`/integrations/social-connect/mastodon/handoff?state=${state}`);
+    expect(await before.json()).toEqual({ handoff: true, url: 'postra://integrations' });
+
+    const done = await connect(org.api, state, `tab${Date.now()}`);
+    expect(done.status(), await done.text()).toBeLessThan(300);
+
+    const after = await stranger.get(`/integrations/social-connect/mastodon/handoff?state=${state}`);
+    expect(await after.json()).toEqual({ handoff: false, connected: true });
+
+    // A state nobody used says nothing of the kind.
+    const other = await stranger.get(`/integrations/social-connect/mastodon/handoff?state=never-${Date.now()}`);
+    expect(await other.json()).toEqual({ handoff: false });
+  } finally {
+    await stranger.dispose();
+    await prisma.integration.deleteMany({ where: { organizationId: org.orgId } });
+    await org.remove();
+    await prisma.$disconnect();
+  }
+});

@@ -4,6 +4,7 @@ import {
   Controller,
   Delete,
   Get,
+  Headers,
   HttpCode,
   HttpException,
   Param,
@@ -16,6 +17,7 @@ import {
   NotFoundException,
   UseGuards,
 } from '@nestjs/common';
+import { withIdempotencyKey } from '@gitroom/backend/services/posts/idempotency';
 import { pricing } from '@gitroom/nestjs-libraries/database/prisma/subscriptions/pricing';
 import { CustomFileValidationPipe } from '@gitroom/nestjs-libraries/upload/custom.upload.validation';
 import { Throttle } from '@nestjs/throttler';
@@ -215,9 +217,23 @@ export class PublicIntegrationsController {
   @CheckPolicies([AuthorizationActions.Create, Sections.POSTS_PER_MONTH])
   async createPost(
     @GetOrgFromRequest() org: Organization,
-    @Body() rawBody: any
+    @Body() rawBody: any,
+    // Scripts and automations retry on a timeout; without the key a retry
+    // saved the post a second time. Same rules as POST /posts in
+    // the app, under its own scope (the bodies differ).
+    @Headers('idempotency-key') idempotencyKey?: string
   ) {
     Sentry.metrics.count('public_api-request', 1);
+    return withIdempotencyKey(
+      'public-posts',
+      org.id,
+      idempotencyKey,
+      rawBody,
+      () => this.createPostOnce(org, rawBody)
+    );
+  }
+
+  private async createPostOnce(org: Organization, rawBody: any) {
     const body = await this._postsService.mapTypeToPost(
       {
         ...rawBody,

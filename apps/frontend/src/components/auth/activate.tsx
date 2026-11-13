@@ -1,6 +1,7 @@
 'use client';
 
 import { useT } from '@gitroom/react/translation/get.transation.service.client';
+import { undeliverableText } from '@gitroom/frontend/components/auth/undeliverable.text';
 import { FormProvider, SubmitHandler, useForm } from 'react-hook-form';
 import { useFetch } from '@gitroom/helpers/utils/custom.fetch';
 import { isFetchHandledError } from '@gitroom/helpers/utils/fetch.errors';
@@ -53,6 +54,8 @@ export function Activate() {
         setCooldown(COOLDOWN_SECONDS);
       } else if (result.message === 'Account is already activated') {
         setStatus('already_activated');
+      } else if (result.reason === 'undeliverable') {
+        form.setError('email', { message: undeliverableText(t) });
       } else {
         form.setError('email', {
           message:

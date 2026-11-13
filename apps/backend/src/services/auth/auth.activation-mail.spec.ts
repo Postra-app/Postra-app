@@ -1,5 +1,11 @@
 jest.mock('isomorphic-dompurify', () => ({ __esModule: true, default: { sanitize: (v: string) => v } }));
 jest.mock('nostr-tools', () => ({ getPublicKey: jest.fn(), Relay: class {}, finalizeEvent: jest.fn(), SimplePool: class {} }));
+// Addresses SES drops mail to. The rest is the real module.
+const bouncing = new Set<string>();
+jest.mock('@gitroom/nestjs-libraries/emails/undeliverable.address', () => ({
+  ...jest.requireActual('@gitroom/nestjs-libraries/emails/undeliverable.address'),
+  isUndeliverable: async (email: string) => bouncing.has(email),
+}));
 
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const { sendActivationMail } = require('./auth.service');
@@ -57,6 +63,46 @@ describe('forgot password', () => {
     expect(await service.forgot('a@b.co')).toEqual({ forgot: false, reason: 'send_failed' });
     const { service: throwing } = make(local, jest.fn().mockRejectedValue(new Error('SMTP down')));
     expect(await throwing.forgot('a@b.co')).toEqual({ forgot: false, reason: 'send_failed' });
+  });
+});
+
+// SES drops mail to an address on its suppression list and the form said
+// "sent". It says the address bounces, and sends nothing.
+describe('an address mail cannot reach', () => {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const { AuthService } = require('./auth.service');
+  const text = "Emails to this address are bouncing, so we can't send you the link. Check it for typos or use a different address. Need help? Write to hello@postra.co.uk.";
+  afterEach(() => bouncing.clear());
+  const make = (user: unknown) => {
+    const service = Object.create(AuthService.prototype);
+    const sendEmailSync = jest.fn().mockResolvedValue(true);
+    Object.assign(service, {
+      _userService: { getUserByEmail: async () => user },
+      _emailService: { sendEmailSync },
+      activationToken: () => 'jwt',
+    });
+    process.env.JWT_SECRET = process.env.JWT_SECRET || 'test-secret';
+    return { service, sendEmailSync };
+  };
+
+  it('forgot password says so instead of sending', async () => {
+    bouncing.add('typo@b.co');
+    const { service, sendEmailSync } = make({ id: 'u1', email: 'typo@b.co', providerName: 'LOCAL', tokenVersion: 1 });
+    expect(await service.forgot('typo@b.co')).toEqual({ forgot: false, reason: 'undeliverable' });
+    expect(sendEmailSync).not.toHaveBeenCalled();
+  });
+
+  it('resending the activation says so instead of sending', async () => {
+    bouncing.add('typo@b.co');
+    const { service, sendEmailSync } = make({ id: 'u1', email: 'typo@b.co', providerName: 'LOCAL', activated: false });
+    await expect(service.resendActivationEmail('typo@b.co')).rejects.toMatchObject({ reason: 'undeliverable', message: text });
+    expect(sendEmailSync).not.toHaveBeenCalled();
+  });
+
+  it('an address that is not on the list gets its mail', async () => {
+    const { service, sendEmailSync } = make({ id: 'u1', email: 'ok@b.co', providerName: 'LOCAL', activated: false });
+    await expect(service.resendActivationEmail('ok@b.co')).resolves.toBe(true);
+    expect(sendEmailSync).toHaveBeenCalledTimes(1);
   });
 });
 

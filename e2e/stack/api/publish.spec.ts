@@ -282,7 +282,10 @@ test('a channel that needs reconnecting: the post fails as "Refresh channel need
   try {
     await run.state().toBe('ERROR');
     expect(await run.error()).toBe('Refresh channel needed');
-    expect(await run.notifications()).toContain('you need to reconnect it');
+    // Reconnecting is the fix, not enabling it; the platform by its name.
+    expect(await run.notifications()).toContain('Mastodon');
+    expect(await run.notifications()).toContain('needs to be reconnected. Open its menu, choose Reconnect channel');
+    expect(await run.notifications()).not.toContain('enable it');
     expect((await received()).some((r) => r.status === run.content)).toBe(false);
   } finally {
     await run.done();

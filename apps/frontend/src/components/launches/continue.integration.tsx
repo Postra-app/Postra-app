@@ -171,7 +171,18 @@ export const ContinueIntegration: FC<{
         );
         if (!response.ok) return false;
 
-        const { handoff, url } = await response.json();
+        const { handoff, url, connected } = await response.json();
+        // The app connected the channel already; this is the tab it opened,
+        // left behind. Nothing to do here.
+        if (connected) {
+          setSuccessState({
+            message: t(
+              'channel_already_connected_app',
+              'This channel is already connected. You can go back to the Postra app.'
+            ),
+          });
+          return true;
+        }
         if (!handoff || !url) return false;
 
         query.set('provider', provider);
@@ -185,7 +196,7 @@ export const ContinueIntegration: FC<{
         return false;
       }
     },
-    [fetch, provider]
+    [fetch, provider, t]
   );
 
   useEffect(() => {

@@ -112,6 +112,38 @@ test('a plan promised to an email is on the organization the moment it signs up'
   }
 });
 
+// Right to erasure: a used promise still holds the person's email and points
+// at their organization. Deleting the account deleted the organization but
+// left the promise behind, with the address and no end date.
+test('deleting the account deletes the used promise with its email', async () => {
+  test.setTimeout(120_000);
+  const staff = await throwawayOrg(prisma, { tier: 'STANDARD', totalChannels: 3, channels: 0 });
+  const email = `erased-${process.pid}-${Date.now()}@example.com`;
+  try {
+    const staffUser = await prisma.userOrganization.findFirstOrThrow({ where: { organizationId: staff.orgId } });
+    await makeAdministrator(prisma, { api: staff.api, userId: staffUser.userId });
+    await expect.poll(async () => (await staff.api.get('/admin/stats')).status(), { timeout: 60_000 }).toBe(200);
+
+    const promised = await staff.api.post('/admin/pending-grants', {
+      data: { email, subscription: 'PRO', months: 1, reason: 'tester' },
+    });
+    expect(promised.status(), await promised.text()).toBe(201);
+    const grant = await promised.json();
+    expect((await signUp(email)).status).toBeLessThan(300);
+    const user = await prisma.user.findFirstOrThrow({ where: { email } });
+    expect((await prisma.pendingGrant.findUniqueOrThrow({ where: { id: grant.id } })).consumedAt).not.toBeNull();
+
+    const erased = await staff.api.post('/admin/delete-user', { data: { userId: user.id } });
+    expect(erased.status(), await erased.text()).toBe(201);
+    expect(await prisma.user.count({ where: { email } })).toBe(0);
+    expect(await prisma.pendingGrant.count({ where: { email } })).toBe(0);
+  } finally {
+    await prisma.pendingGrant.deleteMany({ where: { email } });
+    await removeUser(email);
+    await staff.remove();
+  }
+});
+
 test('a waiting grant can be deleted, and a deleted one gives nothing at sign-up', async () => {
   test.setTimeout(120_000);
   const staff = await throwawayOrg(prisma, { tier: 'STANDARD', totalChannels: 3, channels: 0 });

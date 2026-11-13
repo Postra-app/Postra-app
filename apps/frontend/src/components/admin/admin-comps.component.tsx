@@ -217,7 +217,7 @@ export const AdminCompsComponent = () => {
         <div className="text-[13px] text-newTextColor/70">
           {t(
             'admin_pending_grant_help',
-            'For someone without an account yet: when this email signs up, its organization gets the plan at once and never sees the plan page. For an existing account, use Comp a plan in Users.'
+            'For someone without an account yet: when this email signs up, its organization gets the plan once the address is confirmed and never sees the plan page. For an existing account, use Comp a plan in Users.'
           )}
         </div>
         {/* While sign-ups are closed the sign-up page is reachable only
