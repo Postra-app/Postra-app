@@ -11,6 +11,7 @@ import { useT } from '@gitroom/react/translation/get.transation.service.client';
 import { useToaster } from '@gitroom/react/toaster/toaster';
 import { useLaunchStore } from '@gitroom/frontend/components/new-launch/store';
 import { uniqBy } from 'lodash';
+import { describeAllowed } from '@gitroom/frontend/components/media/describe-allowed';
 
 // Shrunk to at most 2048 px in the browser before upload (see the size
 // check). 1000 px was below Instagram's 1080 and soft everywhere, so 2048.
@@ -67,16 +68,6 @@ export const UploadCancelButton = ({ uppy }: { uppy: Uppy<any, any> }) => {
   );
 };
 
-/** "image/*,video/mp4" in words a person uses. */
-const describeAllowed = (allowed: string) => {
-  const kinds = allowed.split(',').map((t) => t.trim());
-  const images = kinds.some((t) => t.startsWith('image/'));
-  const videos = kinds.some((t) => t.startsWith('video/'));
-  if (images && videos) return 'Upload an image or an MP4 video.';
-  if (videos) return 'Upload an MP4 video.';
-  if (images) return 'Upload an image (JPG, PNG, WebP or GIF).';
-  return '';
-};
 
 export function useUppyUploader(props: {
   // @ts-expect-error UploadResult is generic; Uppy's types require its 2 type args
