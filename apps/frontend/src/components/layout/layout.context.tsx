@@ -123,21 +123,26 @@ function LayoutContextInner(params: { children: ReactNode }) {
       }
 
       if (response.status === 402) {
-        if (
-          await deleteDialog(
-            // clone(): on Cancel the caller still reads this response, and
-            // a consumed body threw "body already used"; a non-JSON 402 must
-            // not throw either (upstream d727ac0b, 971aa369).
-            (
-              await response
-                .clone()
-                .json()
-                .catch(() => ({}))
-            ).message,
-            'Go to billing',
-            'Payment required'
-          )
-        ) {
+        // clone(): on Cancel the caller still reads this response, and a
+        // consumed body threw "body already used"; a non-JSON 402 must not
+        // throw either (upstream d727ac0b, 971aa369).
+        const { message, canManageBillingUi } = await response
+          .clone()
+          .json()
+          .catch(() => ({} as { message?: string; canManageBillingUi?: boolean }));
+        // Billing is for admins: a plain member is told who can act instead
+        // of being sent to a page they cannot open (upstream 4c557f114).
+        if (canManageBillingUi === false) {
+          toaster.show(
+            `${message || ''} ${t(
+              'payment_required_ask_admin',
+              'Ask an admin of this organization to change the plan.'
+            )}`.trim(),
+            'warning'
+          );
+          return false;
+        }
+        if (await deleteDialog(message, 'Go to billing', 'Payment required')) {
           window.open('/billing', '_blank');
           return false;
         }

@@ -22,11 +22,19 @@ export class SubscriptionExceptionFilter implements ExceptionFilter {
       exception.getResponse() as any;
 
     const message = getErrorMessage(error);
+    // Billing is for admins (BILLING_ADMIN): a plain member sent to it lands
+    // on a page they cannot use. A web session says whether the member can
+    // act on the 402; API key and OAuth requests carry no member and get
+    // nothing new (upstream 4c557f114).
+    const role = ctx.getRequest()?.org?.users?.[0]?.role;
 
     response.status(status).json({
       statusCode: status,
       message,
       url: process.env.FRONTEND_URL + '/billing',
+      ...(role
+        ? { canManageBillingUi: role === 'SUPERADMIN' || role === 'ADMIN' }
+        : {}),
     });
   }
 }
