@@ -1638,6 +1638,7 @@
   "connect_post": "Połącz post",
   "channel_removed": "Kanał usunięty",
   "channel_connected_elsewhere_trial": "Ten kanał był już podłączony do innego konta Postry, więc nie można go dodać w okresie próbnym.",
+  "channel_already_connected_app": "Ten kanał jest już podłączony. Możesz wrócić do aplikacji Postra.",
   "channel_connected": "Kanał podłączony!",
   "configure_your_channel": "Skonfiguruj kanał",
   "back_to_app": "Wróć do aplikacji",

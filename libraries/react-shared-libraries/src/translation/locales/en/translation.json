@@ -1638,6 +1638,7 @@
   "connect_post": "Connect Post",
   "channel_removed": "Channel removed",
   "channel_connected_elsewhere_trial": "This channel was already connected to another Postra account, so it cannot be added during a free trial.",
+  "channel_already_connected_app": "This channel is already connected. You can go back to the Postra app.",
   "channel_connected": "Channel Connected!",
   "configure_your_channel": "Configure Your Channel",
   "back_to_app": "Back to the app",

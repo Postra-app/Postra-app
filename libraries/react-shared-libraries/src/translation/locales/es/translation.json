@@ -1634,6 +1634,7 @@
   "connect_post": "Conectar publicación",
   "channel_removed": "Canal eliminado",
   "channel_connected_elsewhere_trial": "Este canal ya estaba conectado a otra cuenta de Postra, así que no se puede agregar durante una prueba gratuita.",
+  "channel_already_connected_app": "Este canal ya está conectado. Puedes volver a la app de Postra.",
   "channel_connected": "¡Canal conectado!",
   "configure_your_channel": "Configura tu canal",
   "back_to_app": "Volver a la aplicación",

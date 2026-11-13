@@ -188,6 +188,13 @@ export class NoAuthIntegrationsController {
 
     const redirectUrl = await ioRedis.get(`redirect:${state}`);
     if (!redirectUrl) {
+      // The app finished this flow already, and the consent tab it opened
+      // was left behind (the app was not running to close it). Going back to
+      // the tab said "Could not add provider" for a channel that was
+      // connected. It only says a state the caller holds is spent.
+      if (await ioRedis.get(`connected:${state}`)) {
+        return { handoff: false, connected: true };
+      }
       return noHandoff;
     }
 
@@ -729,6 +736,11 @@ export class NoAuthIntegrationsController {
     const returnURL = await ioRedis.get(`redirect:${body.state}`);
     if (returnURL) {
       await ioRedis.del(`redirect:${body.state}`);
+      // For the consent tab an app-started flow leaves behind (see
+      // getConnectHandoff); as long as a connection attempt lives.
+      if (returnURL.startsWith(`${APP_SCHEME}://`)) {
+        await ioRedis.set(`connected:${body.state}`, '1', 'EX', 600);
+      }
     }
 
     // For the browser extension to send back with fresh cookies. It names

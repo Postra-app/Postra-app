@@ -65,6 +65,16 @@ describe('GET /integrations/social-connect/:integration/handoff', () => {
     });
   });
 
+  // The consent tab the app opened, left behind after the app
+  // finished the connection.
+  it('says connected for a state an app-started flow already used', async () => {
+    store.set('connected:st-9', '1');
+    await expect(build().getConnectHandoff('st-9')).resolves.toEqual({
+      handoff: false,
+      connected: true,
+    });
+  });
+
   it('says no when the flow stored no return url at all', async () => {
     await expect(build().getConnectHandoff('st-unknown')).resolves.toEqual({
       handoff: false,

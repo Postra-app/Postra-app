@@ -1634,6 +1634,7 @@
   "connect_post": "Relier la publication",
   "channel_removed": "Canal supprimé",
   "channel_connected_elsewhere_trial": "Ce canal était déjà connecté à un autre compte Postra, il ne peut donc pas être ajouté pendant un essai gratuit.",
+  "channel_already_connected_app": "Ce canal est déjà connecté. Vous pouvez revenir à l’application Postra.",
   "channel_connected": "Canal connecté !",
   "configure_your_channel": "Configurez votre canal",
   "back_to_app": "Retour à l'application",
