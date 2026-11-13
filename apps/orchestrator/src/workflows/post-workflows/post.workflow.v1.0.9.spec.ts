@@ -244,6 +244,37 @@ describe('postWorkflowV109 — the platform by its name', () => {
   });
 });
 
+describe('postWorkflowV109 — a channel that cannot post', () => {
+  // A channel that needs reconnecting told the customer to "enable it", which
+  // is the advice for a disabled one; enabling does nothing.
+  it('asks to reconnect a channel that needs reconnecting', async () => {
+    const stale = { ...integration, providerIdentifier: 'tiktok', refreshNeeded: true };
+    activities.getPostsList.mockResolvedValue([{ ...post, integration: stale }]);
+
+    await run();
+
+    const [, subject, body] = activities.inAppNotification.mock.calls[0];
+    expect(subject).toBe("We couldn't post to TikTok for Postra");
+    expect(body).toBe(
+      "We couldn't post to TikTok for Postra because the channel needs to be reconnected. Open its menu, choose Reconnect channel and try again."
+    );
+    expect(activities.postSocial).not.toHaveBeenCalled();
+  });
+
+  it('asks to enable a disabled channel', async () => {
+    const off = { ...integration, providerIdentifier: 'linkedin-page', disabled: true };
+    activities.getPostsList.mockResolvedValue([{ ...post, integration: off }]);
+
+    await run();
+
+    const [, subject, body] = activities.inAppNotification.mock.calls[0];
+    expect(subject).toBe("We couldn't post to LinkedIn Page for Postra");
+    expect(body).toBe(
+      "We couldn't post to LinkedIn Page for Postra because it's disabled. Please enable it and try again."
+    );
+  });
+});
+
 describe('postWorkflowV109 — plug checks', () => {
   // Every delay is counted from the publish, but
   // each sleep was the full delay again, so a plug checking every 6 h ran at

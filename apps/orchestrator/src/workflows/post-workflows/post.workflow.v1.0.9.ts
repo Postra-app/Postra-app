@@ -192,12 +192,16 @@ export async function postWorkflowV109({
     return;
   }
 
-  // if refresh is needed from last time, let's inform the user
+  // if refresh is needed from last time, let's inform the user. It said
+  // "Please enable it", the advice for a disabled channel; enabling does
+  // nothing here. Only the text changes: replay compares the
+  // activities scheduled, not their arguments.
   if (post.integration?.refreshNeeded) {
+    const platform = platformName(post.integration.providerIdentifier);
     await inAppNotification(
       post.organizationId,
-      `We couldn't post to ${post.integration?.providerIdentifier} for ${post?.integration?.name}`,
-      `We couldn't post to ${post.integration?.providerIdentifier} for ${post?.integration?.name} because you need to reconnect it. Please enable it and try again.`,
+      `We couldn't post to ${platform} for ${post?.integration?.name}`,
+      `We couldn't post to ${platform} for ${post?.integration?.name} because the channel needs to be reconnected. Open its menu, choose Reconnect channel and try again.`,
       true,
       false,
       'info'
@@ -214,10 +218,11 @@ export async function postWorkflowV109({
 
   // if it's disabled, inform the user
   if (post.integration?.disabled) {
+    const platform = platformName(post.integration.providerIdentifier);
     await inAppNotification(
       post.organizationId,
-      `We couldn't post to ${post.integration?.providerIdentifier} for ${post?.integration?.name}`,
-      `We couldn't post to ${post.integration?.providerIdentifier} for ${post?.integration?.name} because it's disabled. Please enable it and try again.`,
+      `We couldn't post to ${platform} for ${post?.integration?.name}`,
+      `We couldn't post to ${platform} for ${post?.integration?.name} because it's disabled. Please enable it and try again.`,
       true,
       false,
       'info'
