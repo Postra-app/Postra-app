@@ -1,7 +1,7 @@
 'use client';
 
 import { FC } from 'react';
-import { Button } from '@gitroom/frontend/components/ui/button';
+import { Button, buttonClass } from '@gitroom/frontend/components/ui/button';
 import { useT } from '@gitroom/react/translation/get.transation.service.client';
 
 /**
@@ -117,11 +117,17 @@ export const MetaConnectChecklist: FC<{
   provider: MetaChecklistProvider;
   onConfirm: () => void;
   /**
+   * Where "Done - continue" leads, when that is a plain address (the invite
+   * page). It is then a link, which works before the page has hydrated; a
+   * click handler does nothing until then.
+   */
+  confirmHref?: string;
+  /**
    * Omitted on the invite page: someone who is not ready there has nowhere to
    * go back to, so the checklist stays on screen instead of offering an exit.
    */
   onCancel?: () => void;
-}> = ({ provider, onConfirm, onCancel }) => {
+}> = ({ provider, onConfirm, confirmHref, onCancel }) => {
   const t = useT();
   const checklist = metaChecklists[provider];
   return (
@@ -138,9 +144,15 @@ export const MetaConnectChecklist: FC<{
         {t(checklist.note.key, checklist.note.text)}
       </p>
       <div className="flex gap-[10px] mt-[8px]">
-        <Button type="button" className="flex-1" onClick={onConfirm}>
-          {t('meta_precheck_continue', 'Done - continue')}
-        </Button>
+        {confirmHref ? (
+          <a href={confirmHref} className={`${buttonClass()} flex-1`}>
+            {t('meta_precheck_continue', 'Done - continue')}
+          </a>
+        ) : (
+          <Button type="button" className="flex-1" onClick={onConfirm}>
+            {t('meta_precheck_continue', 'Done - continue')}
+          </Button>
+        )}
         {!!onCancel && (
           <Button
             type="button"
