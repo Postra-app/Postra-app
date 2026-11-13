@@ -403,6 +403,8 @@ export class AuthController {
       return {
         success: false,
         message: e.message,
+        // The page says it in the reader's language.
+        ...(e?.reason === 'undeliverable' ? { reason: 'undeliverable' } : {}),
       };
     }
   }

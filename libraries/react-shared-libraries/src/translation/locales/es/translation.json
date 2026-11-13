@@ -8,6 +8,7 @@
   "team_remove_failed": "No se pudo eliminar al miembro del equipo",
   "settings_update_failed": "No se pudo actualizar la configuración",
   "forgot_password_failed": "No se pudo enviar el correo de restablecimiento. Inténtalo de nuevo.",
+  "email_undeliverable": "Los correos a esta dirección rebotan, así que no podemos enviarte el enlace. Comprueba que no tenga errores o usa otra dirección. ¿Necesitas ayuda? Escribe a hello@postra.co.uk.",
   "forgot_no_account": "No hay ninguna cuenta de Postra con este correo electrónico.",
   "forgot_create_account": "Crear una cuenta",
   "forgot_provider_account": "Esta cuenta inicia sesión con {{provider}}, así que no tiene contraseña de Postra. Vuelve atrás y usa Continuar con {{provider}}.",

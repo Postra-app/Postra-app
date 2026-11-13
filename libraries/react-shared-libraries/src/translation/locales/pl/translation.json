@@ -8,6 +8,7 @@
   "team_remove_failed": "Nie udało się usunąć członka zespołu",
   "settings_update_failed": "Nie udało się zaktualizować ustawień",
   "forgot_password_failed": "Nie udało się wysłać e-maila resetującego. Spróbuj ponownie.",
+  "email_undeliverable": "Maile na ten adres wracają, więc nie możemy wysłać Ci linku. Sprawdź, czy nie ma w nim literówki, albo użyj innego adresu. Potrzebujesz pomocy? Napisz na hello@postra.co.uk.",
   "forgot_no_account": "Nie ma konta Postra z tym adresem e-mail.",
   "forgot_create_account": "Załóż konto",
   "forgot_provider_account": "To konto loguje się przez {{provider}}, więc nie ma hasła do Postry. Wróć i wybierz Kontynuuj przez {{provider}}.",

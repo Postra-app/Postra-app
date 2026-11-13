@@ -8,6 +8,7 @@
   "team_remove_failed": "Could not remove the team member",
   "settings_update_failed": "Could not update settings",
   "forgot_password_failed": "Could not send the reset email. Please try again.",
+  "email_undeliverable": "Emails to this address are bouncing, so we can't send you the link. Check it for typos or use a different address. Need help? Write to hello@postra.co.uk.",
   "forgot_no_account": "There is no Postra account with this email address.",
   "forgot_create_account": "Create an account",
   "forgot_provider_account": "This account signs in with {{provider}}, so it has no Postra password. Go back and use Continue with {{provider}}.",

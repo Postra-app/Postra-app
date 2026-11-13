@@ -8,6 +8,7 @@
   "team_remove_failed": "Impossible de retirer le membre de l'équipe",
   "settings_update_failed": "Impossible de mettre à jour les paramètres",
   "forgot_password_failed": "Impossible d'envoyer l'e-mail de réinitialisation. Veuillez réessayer.",
+  "email_undeliverable": "Les e-mails envoyés à cette adresse sont renvoyés, nous ne pouvons donc pas vous envoyer le lien. Vérifiez qu’elle ne contient pas de faute de frappe ou utilisez une autre adresse. Besoin d’aide ? Écrivez à hello@postra.co.uk.",
   "forgot_no_account": "Aucun compte Postra n'est associé à cette adresse e-mail.",
   "forgot_create_account": "Créer un compte",
   "forgot_provider_account": "Ce compte se connecte avec {{provider}}, il n'a donc pas de mot de passe Postra. Revenez en arrière et utilisez Continuer avec {{provider}}.",

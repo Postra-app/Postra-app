@@ -10,6 +10,7 @@ import { useMemo, useState } from 'react';
 import { classValidatorResolver } from '@hookform/resolvers/class-validator';
 import { ForgotPasswordDto } from '@gitroom/nestjs-libraries/dtos/auth/forgot.password.dto';
 import { useT } from '@gitroom/react/translation/get.transation.service.client';
+import { undeliverableText } from '@gitroom/frontend/components/auth/undeliverable.text';
 import { useVariables } from '@gitroom/react/helpers/variable.context';
 type Inputs = {
   email: string;
@@ -79,6 +80,11 @@ export function Forgot() {
       }
       if (result.reason === 'no_account' || result.reason === 'provider') {
         setProblem({ reason: result.reason, provider: result.provider });
+        return;
+      }
+      // The mail server drops mail to this address.
+      if (result.reason === 'undeliverable') {
+        form.setError('email', { message: undeliverableText(t) });
         return;
       }
       form.setError('email', {

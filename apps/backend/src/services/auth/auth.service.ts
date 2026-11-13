@@ -1,3 +1,7 @@
+import {
+  isUndeliverable,
+  UndeliverableAddressError,
+} from '@gitroom/nestjs-libraries/emails/undeliverable.address';
 import { Injectable, Logger } from '@nestjs/common';
 import { Provider, User } from '@prisma/client';
 import { CreateOrgUserDto } from '@gitroom/nestjs-libraries/dtos/auth/create.org.user.dto';
@@ -58,7 +62,7 @@ export const sendActivationMail = async (
 /** What "forgot password" did, for the form to say it. */
 export type ForgotResult =
   | { forgot: true }
-  | { forgot: false; reason: 'no_account' | 'send_failed' }
+  | { forgot: false; reason: 'no_account' | 'send_failed' | 'undeliverable' }
   | { forgot: false; reason: 'provider'; provider: string };
 
 export const ACTIVATION_LINK_INVALID =
@@ -411,6 +415,12 @@ export class AuthService {
     // Awaited, so a mail that could not be sent is an error on the form, not
     // a silent "sent". Equal answer times would hide nothing now that the
     // answer names its reason.
+    // SES would take the mail and drop it; the form said "sent" and nothing
+    // came.
+    if (await isUndeliverable(user.email)) {
+      return { forgot: false, reason: 'undeliverable' };
+    }
+
     const reset = authEmails.resetPassword[lang];
     const sent = await this._emailService
       .sendEmailSync(
@@ -555,6 +565,12 @@ export class AuthService {
 
     if (user.activated) {
       throw new Error('Account is already activated');
+    }
+
+    // A typo in the sign-up address bounces the first activation mail and
+    // SES drops every later one; say so instead of "sent".
+    if (await isUndeliverable(user.email)) {
+      throw new UndeliverableAddressError();
     }
 
     const jwt = this.activationToken(user);
