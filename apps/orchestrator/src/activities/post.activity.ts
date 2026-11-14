@@ -144,6 +144,14 @@ export class PostActivity {
   async searchForMissingThreeHoursPosts() {
     const list = await this._postService.searchForMissingThreeHoursPosts();
     for (const post of list) {
+      // The list is loaded once and can be long: a post published (or
+      // deleted) since then would start a new run, and the workflow marks a
+      // post that is no longer in QUEUE as ERROR "Already posted"
+      // (upstream 7b18262a1, 7d69dfe88).
+      const current = await this._postService.getCurrentState(post.id);
+      if (current?.state !== 'QUEUE') {
+        continue;
+      }
       await this._temporalService.client
         .getRawClient()
         .workflow.signalWithStart('postWorkflowV109', {
