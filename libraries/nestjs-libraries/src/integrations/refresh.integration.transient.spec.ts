@@ -30,6 +30,7 @@ const setup = (failure: unknown) => {
     informAboutRefreshError: jest.fn(),
     disconnectChannel: jest.fn(),
     createOrUpdateIntegration: jest.fn(),
+    saveRefreshedTokens: jest.fn(),
   };
   const provider = { refreshToken: jest.fn().mockRejectedValue(failure) };
   const service = new RefreshIntegrationService(
@@ -71,6 +72,7 @@ it('a channel removed during the refresh is not written back', async () => {
     informAboutRefreshError: jest.fn(),
     disconnectChannel: jest.fn(),
     createOrUpdateIntegration: jest.fn(),
+    saveRefreshedTokens: jest.fn(),
     getIntegrationById: jest.fn().mockResolvedValue(null),
   };
   const provider = { refreshToken: jest.fn().mockResolvedValue({ accessToken: 'new', refreshToken: 'r2', expiresIn: 3600 }) };
@@ -80,6 +82,7 @@ it('a channel removed during the refresh is not written back', async () => {
     {} as any
   );
   expect(await service.refresh(integration)).toBe(false);
+  expect(integrations.saveRefreshedTokens).not.toHaveBeenCalled();
   expect(integrations.createOrUpdateIntegration).not.toHaveBeenCalled();
 });
 

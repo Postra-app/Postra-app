@@ -219,6 +219,34 @@ export class IntegrationService {
     );
   }
 
+  // A token refresh writes new tokens back onto a channel that is already
+  // connected. It is not a connect: the stored avatar stays (passing it on
+  // made createOrUpdateIntegration download our own copy and upload it again,
+  // a new file on every refresh) and nothing goes to the audit log as
+  // `integration.connect`.
+  saveRefreshedTokens(
+    integration: Pick<
+      Integration,
+      'organizationId' | 'name' | 'internalId' | 'providerIdentifier'
+    >,
+    oneTimeToken: boolean,
+    tokens: { accessToken: string; refreshToken?: string; expiresIn?: number }
+  ) {
+    return this._integrationRepository.createOrUpdateIntegration(
+      undefined,
+      oneTimeToken,
+      integration.organizationId,
+      integration.name,
+      undefined,
+      'social',
+      integration.internalId,
+      integration.providerIdentifier,
+      tokens.accessToken,
+      tokens.refreshToken,
+      tokens.expiresIn
+    );
+  }
+
   // Meta echoes the offending access token back inside its error messages
   // ("Malformed access token EAA…"), and this report is printed to a console
   // whose output lands in deploy logs and SSM results. Strip anything
@@ -551,7 +579,17 @@ export class IntegrationService {
           integration.internalId
         );
         if (!alive) {
-          await this._integrationRepository.refreshNeeded(org, integration.id);
+          // Tell the customer, like a failed token refresh does: the red "!"
+          // only shows to someone looking at the channel list, and scheduled
+          // posts on this channel will fail until it is connected again.
+          // Only when this check flagged it, so a flagged channel is told once.
+          const flagged = await this._integrationRepository.refreshNeeded(
+            org,
+            integration.id
+          );
+          if (flagged) {
+            await this.informAboutRefreshError(org, integration as Integration);
+          }
         }
       } catch {
         // Never flag a channel on an unexpected error.
@@ -645,19 +683,11 @@ export class IntegrationService {
 
       const { refreshToken, accessToken, expiresIn } = data;
 
-      await this.createOrUpdateIntegration(
-        undefined,
-        !!provider.oneTimeToken,
-        integration.organizationId,
-        integration.name,
-        undefined,
-        'social',
-        integration.internalId,
-        integration.providerIdentifier,
+      await this.saveRefreshedTokens(integration, !!provider.oneTimeToken, {
         accessToken,
         refreshToken,
-        expiresIn
-      );
+        expiresIn,
+      });
 
       refreshed.push(describe);
     }
