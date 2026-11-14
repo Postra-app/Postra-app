@@ -579,7 +579,17 @@ export class IntegrationService {
           integration.internalId
         );
         if (!alive) {
-          await this._integrationRepository.refreshNeeded(org, integration.id);
+          // Tell the customer, like a failed token refresh does: the red "!"
+          // only shows to someone looking at the channel list, and scheduled
+          // posts on this channel will fail until it is connected again.
+          // Only when this check flagged it, so a flagged channel is told once.
+          const flagged = await this._integrationRepository.refreshNeeded(
+            org,
+            integration.id
+          );
+          if (flagged) {
+            await this.informAboutRefreshError(org, integration as Integration);
+          }
         }
       } catch {
         // Never flag a channel on an unexpected error.
