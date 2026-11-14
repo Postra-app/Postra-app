@@ -105,6 +105,27 @@ describe('backend /metrics with two workers', () => {
     servers.push(nextPeer);
   });
 
+  it('a slow AI request lands in a finite bucket, so its p95 is measurable', async () => {
+    // AI generation takes tens of seconds by nature. With 5 s as the top
+    // bucket every such request fell into +Inf and histogram_quantile could
+    // only ever say "5 s", so no alert could tell slow from stuck.
+    delete process.env.BACKEND_PROCESSES;
+    delete process.env.NODE_APP_INSTANCE;
+    const only = worker();
+    const labels = { method: 'POST', route: '/media/generate-image-with-prompt', status_code: '201' };
+    only.metrics.httpRequestDuration.observe(labels, 45);
+    only.metrics.httpRequestDuration.observe(labels, 100);
+    const text = await only.metrics.instanceMetrics(port);
+    const bucket = (le: string) =>
+      value(
+        text,
+        `http_request_duration_seconds_bucket{le="${le}",method="POST",route="/media/generate-image-with-prompt",status_code="201"}`
+      );
+    expect(bucket('5')).toBe(0);
+    expect(bucket('60')).toBe(1);
+    expect(bucket('120')).toBe(2);
+  });
+
   it('a single process serves its own registry, as before', async () => {
     delete process.env.BACKEND_PROCESSES;
     delete process.env.NODE_APP_INSTANCE;
