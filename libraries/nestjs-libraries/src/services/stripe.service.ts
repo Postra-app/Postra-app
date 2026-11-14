@@ -169,8 +169,11 @@ export class StripeService {
         this._logger.error(
           `Card check failed for customer ${event.data.object.customer}: payment intent ${paymentIntent.status}`
         );
-        await stripe.paymentMethods.detach(latestMethod.id);
-        await stripe.subscriptions.cancel(event.data.object.id as string);
+        await this.endFailedTrialAttempt(
+          stripe,
+          event.data.object.id as string,
+          latestMethod.id
+        );
         return false;
       }
 
@@ -206,13 +209,42 @@ export class StripeService {
       ) {
         throw err;
       }
-      try {
-        await stripe.paymentMethods.detach(latestMethod.id);
-        await stripe.subscriptions.cancel(event.data.object.id as string);
-      } catch (err) {
-        /*dont do anything*/
-      }
+      await this.endFailedTrialAttempt(
+        stripe,
+        event.data.object.id as string,
+        latestMethod.id
+      );
       return false;
+    }
+  }
+
+  // A card that failed the check ends the attempt: the subscription first,
+  // then the card, each on its own. Detach ran first, in the same try as the
+  // cancel, so a failed detach left a live Stripe subscription with no plan
+  // behind it (silently, or as a 500 that Stripe retried with a new £1 hold).
+  // Upstream ecfd943ae.
+  private async endFailedTrialAttempt(
+    stripe: Stripe,
+    subscriptionId: string,
+    paymentMethodId: string
+  ) {
+    try {
+      await stripe.subscriptions.cancel(subscriptionId);
+    } catch (err) {
+      this._logger.error(
+        `Card check: cancelling subscription ${subscriptionId} failed: ${
+          (err as Error)?.message || err
+        }`
+      );
+    }
+    try {
+      await stripe.paymentMethods.detach(paymentMethodId);
+    } catch (err) {
+      this._logger.error(
+        `Card check: detaching the card of subscription ${subscriptionId} failed: ${
+          (err as Error)?.message || err
+        }`
+      );
     }
   }
 
