@@ -1212,19 +1212,25 @@ export class StripeService {
     // only the first kept the other one charging (upstream 28e71678).
     const all = currentUserSubscription.data;
 
-    if (cancel === true && sub.cancel_at_period_end) {
+    // Every live subscription counts: with a duplicate, or after a cancel
+    // that failed half-way, one can be set to cancel and another not. Such a
+    // state is never "unchanged"; the request brings all of them to what it
+    // asks for.
+    const cancelling = all.filter((s) => s.cancel_at_period_end);
+    if (cancel === true && cancelling.length === all.length) {
       return {
         id,
         cancel_at: sub.cancel_at ? new Date(sub.cancel_at * 1000) : undefined,
         unchanged: true,
       };
     }
-    if (cancel === false && !sub.cancel_at_period_end) {
+    if (cancel === false && !cancelling.length) {
       return { id, cancel_at: undefined, unchanged: true };
     }
 
-    // Un-cancelling: just remove the cancel
-    if (sub.cancel_at_period_end) {
+    // Un-cancelling: just remove the cancel. Without an intent the first
+    // subscription decides, as before.
+    if (cancel === false || (cancel === undefined && sub.cancel_at_period_end)) {
       let cancel_at: number | null = null;
       for (const s of all) {
         const updated = await stripe.subscriptions.update(s.id, {

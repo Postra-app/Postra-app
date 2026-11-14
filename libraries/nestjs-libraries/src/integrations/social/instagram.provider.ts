@@ -1,3 +1,4 @@
+import { NO_PAGE_PERMISSION } from '@gitroom/nestjs-libraries/integrations/social/page.permission';
 import { exchangeMetaUserToken, verifyMetaSdkToken } from '@gitroom/nestjs-libraries/integrations/social/meta.sdk.token';
 import { META_GRAPH_API_VERSION } from '@gitroom/nestjs-libraries/integrations/social/meta.graph.version';
 import { Logger } from '@nestjs/common';
@@ -829,9 +830,7 @@ export class InstagramProvider
     // without a page token: the channel was saved with the token
     // "undefined___<user token>" and every publish failed (upstream #1719).
     if (!access_token) {
-      throw new Error(
-        'Your Facebook user has no permission to manage this page. Ask a page admin for full content access, then reconnect the channel'
-      );
+      throw new Error(NO_PAGE_PERMISSION);
     }
 
     const { id, name, profile_picture_url, username } = await (

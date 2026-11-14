@@ -1,3 +1,4 @@
+import { NO_PAGE_PERMISSION } from '@gitroom/nestjs-libraries/integrations/social/page.permission';
 import { channelsInUse } from '@gitroom/nestjs-libraries/database/prisma/subscriptions/pricing';
 import { META_GRAPH_API_VERSION } from '@gitroom/nestjs-libraries/integrations/social/meta.graph.version';
 import {
@@ -817,10 +818,16 @@ export class IntegrationService {
       );
     }
 
-    const getIntegrationInformation = await provider.fetchPageInformation(
-      getIntegration.token,
-      data
-    );
+    const getIntegrationInformation = await provider
+      .fetchPageInformation(getIntegration.token, data)
+      .catch((err: Error) => {
+        // The one refusal with a reason the customer can act on: without
+        // this it left as a 500 and the window said "Internal server error".
+        if (err?.message === NO_PAGE_PERMISSION) {
+          throw new HttpException(NO_PAGE_PERMISSION, HttpStatus.BAD_REQUEST);
+        }
+        throw err;
+      });
 
     // Instagram through a Page only learns the account id here.
     const accountLock = await this.lockSameAccount(

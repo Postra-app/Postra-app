@@ -72,4 +72,26 @@ describe('setToCancel with an intent', () => {
     await service.setToCancel('org-1');
     expect(updateSubscription).toHaveBeenCalledWith('sub_1', expect.objectContaining({ cancel_at_period_end: false }));
   });
+
+  // Two live subscriptions, one already set to cancel (a duplicate, or a
+  // cancel that failed half-way): "unchanged" left the other one charging.
+  it('a cancel with one subscription still renewing cancels every one', async () => {
+    listSubscriptions.mockResolvedValue({ data: [live(true), { ...live(false), id: 'sub_2' }] });
+    const result = await service.setToCancel('org-1', true);
+    expect(result).not.toHaveProperty('unchanged');
+    expect(updateSubscription.mock.calls.map((c) => [c[0], c[1].cancel_at_period_end])).toEqual([
+      ['sub_1', true],
+      ['sub_2', true],
+    ]);
+  });
+
+  it('a re-activate with one subscription still set to cancel re-activates every one', async () => {
+    listSubscriptions.mockResolvedValue({ data: [live(false), { ...live(true), id: 'sub_2' }] });
+    const result = await service.setToCancel('org-1', false);
+    expect(result).not.toHaveProperty('unchanged');
+    expect(updateSubscription.mock.calls.map((c) => [c[0], c[1].cancel_at_period_end])).toEqual([
+      ['sub_1', false],
+      ['sub_2', false],
+    ]);
+  });
 });
