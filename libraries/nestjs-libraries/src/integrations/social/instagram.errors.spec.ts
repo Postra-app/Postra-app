@@ -61,3 +61,19 @@ describe('InstagramProvider.failedContainer', () => {
     ).toThrow('Video too long');
   });
 });
+
+// Upstream 38cbaeb44: "The media is not ready for publishing" (2207027) comes
+// right after the container stopped reporting IN_PROGRESS; nothing went out.
+// It failed the post at once with "Unknown error" instead of retrying.
+describe('InstagramProvider.handleErrors (media not ready)', () => {
+  it('retries when the media is not ready yet (2207027)', () => {
+    const res = new InstagramProvider().handleErrors(
+      JSON.stringify({ error: { code: 9007, error_subcode: 2207027 } }),
+      400
+    );
+    expect(res).toEqual({
+      type: 'retry',
+      value: 'Instagram media was not ready for publishing, please try again',
+    });
+  });
+});

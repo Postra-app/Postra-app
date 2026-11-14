@@ -440,10 +440,14 @@ export class InstagramProvider
       }
     }
 
+    // "The media is not ready for publishing, please wait for a moment":
+    // Instagram says it right after the container stopped reporting
+    // IN_PROGRESS, and nothing was published. Retry, like 2207052, instead of
+    // failing the post at once (upstream 38cbaeb44).
     if (body.indexOf('2207027') > -1) {
       return {
-        type: 'bad-body' as const,
-        value: 'Unknown error, please try again later or contact support',
+        type: 'retry' as const,
+        value: 'Instagram media was not ready for publishing, please try again',
       };
     }
 
