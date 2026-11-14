@@ -24,6 +24,25 @@ const fixAcceptHeader = (req: Request) => {
   }
 };
 
+// Only POST carries MCP here. The server keeps no sessions, so a GET has no
+// stream to listen on, yet the transport opened one and left it open until
+// the load balancer cut it (3 minutes), one idle connection and one server
+// instance per request (upstream #1850). The protocol's answer for a server
+// without that stream is 405. Called after authorization, so a request
+// without a token still gets the 401 an OAuth client discovers us by.
+export const refuseNonPost = (req: Request, res: Response) => {
+  if (req.method === 'POST') {
+    return false;
+  }
+  res.setHeader('Allow', 'POST');
+  res.status(405).json({
+    jsonrpc: '2.0',
+    id: null,
+    error: { code: -32000, message: 'Method not allowed.' },
+  });
+  return true;
+};
+
 export const startMcp = async (app: INestApplication) => {
   const mastraService = app.get(MastraService, { strict: false });
   const organizationService = app.get(OrganizationService, { strict: false });
@@ -234,6 +253,10 @@ export const startMcp = async (app: INestApplication) => {
       return;
     }
 
+    if (refuseNonPost(req, res)) {
+      return;
+    }
+
     if (!(await readBody(req, res))) {
       return;
     }
@@ -303,6 +326,10 @@ export const startMcp = async (app: INestApplication) => {
     // @ts-ignore
     if (await mcpRateLimited(req.auth.id)) {
       res.status(429).send('Too many requests');
+      return;
+    }
+
+    if (refuseNonPost(req, res)) {
       return;
     }
 
