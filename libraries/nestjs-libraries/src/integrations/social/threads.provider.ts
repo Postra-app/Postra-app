@@ -69,6 +69,16 @@ export class ThreadsProvider extends SocialAbstract implements SocialProvider {
       };
     }
 
+    // Threads refuses a link it cannot attach (upstream fb6f29c9b): the
+    // customer got Meta's generic error.
+    if (body.includes('4279047')) {
+      return {
+        type: 'bad-body',
+        value:
+          'Threads rejected the link in this post as an invalid link attachment, please check the link and try again',
+      };
+    }
+
     if (body.includes('4279013')) {
       return {
         type: 'bad-body',

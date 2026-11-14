@@ -16,3 +16,15 @@ describe('Threads errors', () => {
     expect(provider.handleErrors('Error validating access token: Session has expired')?.type).toBe('refresh-token');
   });
 });
+
+// Upstream fb6f29c9b: a link Threads cannot attach (4279047) reached the
+// customer as Meta's generic error.
+it('says Threads refused the link attachment (4279047)', () => {
+  const res = new ThreadsProvider().handleErrors(
+    JSON.stringify({ error: { code: 100, error_subcode: 4279047, message: 'Invalid parameter' } })
+  );
+  expect(res).toEqual({
+    type: 'bad-body',
+    value: expect.stringMatching(/invalid link attachment/),
+  });
+});
