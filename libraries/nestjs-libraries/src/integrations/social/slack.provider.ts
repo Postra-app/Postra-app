@@ -21,11 +21,14 @@ export class SlackProvider extends SocialAbstract implements SocialProvider {
   name = 'Slack';
   isBetweenSteps = false;
   editor = 'normal' as const;
+  // No groups:read: everyone in a Postra organisation sees the same channel
+  // list, and Slack's privacy model forbids showing private channel names to
+  // people who are not in them (Slack Marketplace refused upstream for it,
+  // upstream 85a0246b6). Public channels only.
   scopes = [
     'channels:read',
     'chat:write',
     'users:read',
-    'groups:read',
     'channels:join',
     'chat:write.customize',
   ];
@@ -99,7 +102,7 @@ export class SlackProvider extends SocialAbstract implements SocialProvider {
             ? 'https://redirectmeto.com/'
             : ''
         }${process?.env?.FRONTEND_URL}/integrations/social/slack`
-      )}&scope=channels:read,chat:write,users:read,groups:read,channels:join,chat:write.customize&state=${state}`,
+      )}&scope=channels:read,chat:write,users:read,channels:join,chat:write.customize&state=${state}`,
       codeVerifier: makeSecureId(10),
       state,
     };
@@ -168,7 +171,7 @@ export class SlackProvider extends SocialAbstract implements SocialProvider {
         response_metadata?: { next_cursor?: string };
       }>('conversations.list', accessToken, {
         query: {
-          types: 'public_channel,private_channel',
+          types: 'public_channel',
           exclude_archived: 'true',
           limit: '1000',
           ...(cursor ? { cursor } : {}),

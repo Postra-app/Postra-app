@@ -111,6 +111,10 @@ export class PostsService {
     private _refreshIntegrationService: RefreshIntegrationService
   ) {}
 
+  getCurrentState(id: string) {
+    return this._postRepository.getCurrentState(id);
+  }
+
   searchForMissingThreeHoursPosts() {
     return this._postRepository.searchForMissingThreeHoursPosts();
   }

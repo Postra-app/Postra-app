@@ -54,10 +54,10 @@ export default {
   ],
   coveragePathIgnorePatterns: ['/node_modules/', '/\\.next/', '/dist/', '/coverage/'],
   // A ratchet, not a target: the floor sits just under what the suite covers
-  // today (2026-10-31, Jest 30: lines 23.01, statements 23.43, functions
-  // 16.22, branches 19.63), so deleting tests fails CI. Raise it whenever
+  // today (2026-11-14, Jest 30: lines 27.80, statements 28.22, functions
+  // 20.73, branches 23.99), so deleting tests fails CI. Raise it whenever
   // coverage goes up.
   coverageThreshold: {
-    global: { lines: 23, statements: 23, functions: 16, branches: 19 },
+    global: { lines: 27, statements: 28, functions: 20, branches: 23 },
   },
 };

@@ -35,3 +35,40 @@ describe('POST /billing/cancel', () => {
     expect(await run('Acme', undefined)).toContain('Acme');
   });
 });
+
+// The confirmation said "You keep full access until <today>" when a failed
+// payment had just ended the plan, and a failed operator mail skipped it.
+describe('POST /billing/cancel: the customer confirmation', () => {
+  const run = async (result: object, operatorFails = false) => {
+    const sendEmail = jest.fn(async (to: string, ..._rest: unknown[]) => {
+      if (operatorFails && to !== 'owner@example.com') throw new Error('SES down');
+    });
+    const controller = new BillingController(
+      {} as any,
+      { setToCancel: jest.fn().mockResolvedValue(result) } as any,
+      { sendEmail } as any,
+      { record: jest.fn() } as any
+    );
+    await controller.cancel(
+      { id: 'org-1', name: 'Acme' } as any,
+      { id: 'user-1', email: 'owner@example.com' } as any,
+      { feedback: 'x' } as any
+    );
+    return sendEmail.mock.calls.find((c) => c[0] === 'owner@example.com')?.[2] as string | undefined;
+  };
+
+  it('a plan ended at once says so, not "full access until today"', async () => {
+    const text = await run({ cancel_at: new Date(), immediate: true });
+    expect(text).toMatch(/your plan ended today/);
+    expect(text).not.toMatch(/full access until/);
+  });
+
+  it('a plan ending later gives the date in UTC', async () => {
+    const text = await run({ cancel_at: new Date('2026-12-14T23:30:00Z') });
+    expect(text).toContain('You keep full access until 14 December 2026 (UTC).');
+  });
+
+  it('reaches the customer when the operator mail fails', async () => {
+    expect(await run({ cancel_at: new Date('2026-12-14T12:00:00Z') }, true)).toContain('14 December 2026');
+  });
+});

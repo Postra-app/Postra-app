@@ -62,6 +62,16 @@ export class PostsRepository {
 
   // The window is the last 2 days, whatever the name says. The name matches the
   // Temporal activity in PostActivity, which must keep it (workflow history).
+  // The state of one post right now, for the missing-post sweep: its list is
+  // loaded once, and a post can be published or deleted before the loop
+  // reaches it. A deleted post reads as null.
+  getCurrentState(id: string) {
+    return this._post.model.post.findFirst({
+      where: { id, deletedAt: null },
+      select: { state: true },
+    });
+  }
+
   searchForMissingThreeHoursPosts() {
     return this._post.model.post.findMany({
       where: {

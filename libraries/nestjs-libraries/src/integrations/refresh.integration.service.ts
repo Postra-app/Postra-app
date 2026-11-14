@@ -8,6 +8,7 @@ import {
   SocialProvider,
 } from '@gitroom/nestjs-libraries/integrations/social/social.integrations.interface';
 import { TemporalService } from 'nestjs-temporal-core';
+import { timer } from '@gitroom/helpers/utils/timer';
 
 const TRANSIENT_CODES = new Set([
   'ECONNRESET',
@@ -42,6 +43,11 @@ export const isTransientRefreshError = (err: any): boolean => {
 
 @Injectable()
 export class RefreshIntegrationService {
+  // Tokens another flow already stored (renewedByAnotherFlow): handed out,
+  // never written again. A third flow may have renewed them since, and
+  // writing this pair back would overwrite the newer one.
+  private readonly alreadyStored = new WeakSet<object>();
+
   constructor(
     private _integrationManager: IntegrationManager,
     @Inject(forwardRef(() => IntegrationService))
@@ -69,6 +75,10 @@ export class RefreshIntegrationService {
       ))
     ) {
       return false as const;
+    }
+
+    if (this.alreadyStored.has(refresh)) {
+      return refresh;
     }
 
     await this._integrationService.saveRefreshedTokens(
@@ -104,6 +114,66 @@ export class RefreshIntegrationService {
       });
   }
 
+  // Waits for a refresh running in another flow to store its tokens (it does
+  // so only after the provider answered), then hands them out instead of
+  // flagging the channel. Only a renewal of the same account counts: a
+  // different refresh token and access token than this flow started with,
+  // not yet expired, on a channel that is not flagged, deleted or between
+  // steps. Tokens are stored encrypted with a random IV, so they are compared
+  // decrypted. Anything else takes the failure path, a few seconds later.
+  private async renewedByAnotherFlow(
+    integration: Integration
+  ): Promise<AuthTokenDetails | false> {
+    const started = {
+      token: AuthService.decryptIntegrationToken(integration.token),
+      refreshToken: AuthService.decryptIntegrationToken(integration.refreshToken),
+    };
+    for (let attempt = 0; attempt < 3; attempt++) {
+      const stored = await this._integrationService.getIntegrationById(
+        integration.organizationId,
+        integration.id
+      );
+      if (
+        !stored ||
+        stored.refreshNeeded ||
+        stored.inBetweenSteps ||
+        stored.deletedAt
+      ) {
+        return false;
+      }
+      const token = AuthService.decryptIntegrationToken(stored.token);
+      const refreshToken = AuthService.decryptIntegrationToken(
+        stored.refreshToken
+      );
+      if (
+        stored.internalId === integration.internalId &&
+        stored.providerIdentifier === integration.providerIdentifier &&
+        token &&
+        refreshToken &&
+        refreshToken !== started.refreshToken &&
+        token !== started.token &&
+        stored.tokenExpiration &&
+        new Date(stored.tokenExpiration).getTime() > Date.now()
+      ) {
+        return {
+          id: stored.internalId,
+          name: stored.name,
+          username: stored.profile || '',
+          picture: stored.picture || '',
+          accessToken: token,
+          refreshToken,
+          expiresIn: Math.floor(
+            (new Date(stored.tokenExpiration).getTime() - Date.now()) / 1000
+          ),
+        };
+      }
+      if (attempt < 2) {
+        await timer(1000 * (attempt + 1));
+      }
+    }
+    return false;
+  }
+
   private async refreshProcess(
     integration: Integration,
     socialProvider: SocialProvider,
@@ -137,6 +207,17 @@ export class RefreshIntegrationService {
     }
 
     if (!refresh || !refresh.accessToken) {
+      // Two flows can refresh one channel at once (two posts at the same
+      // minute, a post and analytics). A provider that replaces the refresh
+      // token on every refresh (TikTok) accepts the first and rejects the
+      // second, which flagged a channel the first flow had just renewed and
+      // told the customer to reconnect (upstream 878636e82).
+      const renewed = await this.renewedByAnotherFlow(integration);
+      if (renewed) {
+        this.alreadyStored.add(renewed);
+        return renewed;
+      }
+
       // A provider that returns no token without throwing left no trace.
       if (!refreshError) {
         console.error(

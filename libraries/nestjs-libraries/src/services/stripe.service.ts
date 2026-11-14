@@ -169,8 +169,11 @@ export class StripeService {
         this._logger.error(
           `Card check failed for customer ${event.data.object.customer}: payment intent ${paymentIntent.status}`
         );
-        await stripe.paymentMethods.detach(latestMethod.id);
-        await stripe.subscriptions.cancel(event.data.object.id as string);
+        await this.endFailedTrialAttempt(
+          stripe,
+          event.data.object.id as string,
+          latestMethod.id
+        );
         return false;
       }
 
@@ -206,13 +209,49 @@ export class StripeService {
       ) {
         throw err;
       }
-      try {
-        await stripe.paymentMethods.detach(latestMethod.id);
-        await stripe.subscriptions.cancel(event.data.object.id as string);
-      } catch (err) {
-        /*dont do anything*/
-      }
+      await this.endFailedTrialAttempt(
+        stripe,
+        event.data.object.id as string,
+        latestMethod.id
+      );
       return false;
+    }
+  }
+
+  // A card that failed the check ends the attempt: the subscription first,
+  // then the card, each on its own. Detach ran first, in the same try as the
+  // cancel, so a failed detach left a live Stripe subscription with no plan
+  // behind it (silently, or as a 500 that Stripe retried with a new £1 hold).
+  // Upstream ecfd943ae.
+  private async endFailedTrialAttempt(
+    stripe: Stripe,
+    subscriptionId: string,
+    paymentMethodId: string
+  ) {
+    let cancelError: unknown;
+    try {
+      await stripe.subscriptions.cancel(subscriptionId);
+    } catch (err) {
+      cancelError = err;
+      this._logger.error(
+        `Card check: cancelling subscription ${subscriptionId} failed: ${
+          (err as Error)?.message || err
+        }`
+      );
+    }
+    try {
+      await stripe.paymentMethods.detach(paymentMethodId);
+    } catch (err) {
+      this._logger.error(
+        `Card check: detaching the card of subscription ${subscriptionId} failed: ${
+          (err as Error)?.message || err
+        }`
+      );
+    }
+    // A subscription still live must not be answered with a 200: the webhook
+    // fails and Stripe sends it again, which cancels it then.
+    if (cancelError) {
+      throw cancelError;
     }
   }
 
@@ -698,8 +737,69 @@ export class StripeService {
     );
   }
 
+  // An unpaid invoice of a cancelled subscription stays payable on Stripe's
+  // invoice page: a customer could pay for a period they no longer get.
+  // Void them, only for our own subscriptions (the Stripe account is shared
+  // with other businesses). Never throws; one failed invoice does not stop
+  // the others (upstream 79a3edcc3).
+  async voidUnpaidInvoices(customer?: string | null) {
+    try {
+      if (!customer || !customer.startsWith('cus_')) {
+        return;
+      }
+      const cancelled = new Set(
+        (
+          await stripe.subscriptions.list({
+            customer,
+            status: 'canceled',
+            limit: 100,
+          })
+        ).data
+          .filter((f) => f.metadata?.service === 'gitroom')
+          .map((f) => f.id)
+      );
+      if (!cancelled.size) {
+        return;
+      }
+      for (const status of ['open', 'uncollectible'] as const) {
+        const invoices = await stripe.invoices.list({
+          customer,
+          status,
+          limit: 100,
+        });
+        for (const invoice of invoices.data) {
+          const subscription =
+            invoice.parent?.subscription_details?.subscription;
+          const subscriptionId =
+            typeof subscription === 'string' ? subscription : subscription?.id;
+          if (!subscriptionId || !cancelled.has(subscriptionId) || !invoice.id) {
+            continue;
+          }
+          try {
+            await stripe.invoices.voidInvoice(invoice.id);
+          } catch (err) {
+            this._logger.error(
+              `Voiding unpaid invoice ${invoice.id} of ${customer} failed: ${
+                (err as Error)?.message || err
+              }`
+            );
+          }
+        }
+      }
+    } catch (err) {
+      this._logger.error(
+        `Voiding unpaid invoices of ${customer} failed: ${
+          (err as Error)?.message || err
+        }`
+      );
+    }
+  }
+
   async deleteSubscription(event: Stripe.CustomerSubscriptionDeletedEvent) {
     const customer = event.data.object.customer as string;
+    // Every way a subscription ends (Stripe's retries running out, a cancel
+    // here, an account deletion) comes through this event.
+    await this.voidUnpaidInvoices(customer);
     // The plan row is per customer, not per Stripe subscription. If the
     // customer already bought again, this deletion is for the old one.
     const stillLive = (
@@ -1144,10 +1244,13 @@ export class StripeService {
         await stripe.subscriptions.cancel(s.id);
       }
       await this._subscriptionService.deleteSubscription(customer);
+      await this.voidUnpaidInvoices(customer);
 
       return {
         id,
         cancel_at: new Date(),
+        // Ended now, not at the period end: the confirmation says so.
+        immediate: true,
       };
     }
 
@@ -1890,6 +1993,11 @@ export class StripeService {
     if (!subscriptionId || event.data.object.amount_paid <= 0) {
       return { ok: true };
     }
+    // The first payment of a new subscription makes the unpaid invoices of
+    // the cancelled ones obsolete.
+    if (event.data.object.billing_reason === 'subscription_create') {
+      await this.voidUnpaidInvoices(event.data.object.customer as string);
+    }
     const subscription = await stripe.subscriptions.retrieve(
       typeof subscriptionId === 'string' ? subscriptionId : subscriptionId.id
     );
@@ -2020,6 +2128,7 @@ export class StripeService {
       await stripe.subscriptions.cancel(subscription.id);
     }
     await this._subscriptionService.deleteSubscription(customer);
+    await this.voidUnpaidInvoices(customer);
 
     return { cancelled: true };
   }
@@ -2047,5 +2156,6 @@ export class StripeService {
       await this.releaseSchedule(subscription);
       await stripe.subscriptions.cancel(subscription.id);
     }
+    await this.voidUnpaidInvoices(org.paymentId);
   }
 }
