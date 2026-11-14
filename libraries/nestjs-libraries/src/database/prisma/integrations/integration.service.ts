@@ -243,7 +243,14 @@ export class IntegrationService {
       integration.providerIdentifier,
       tokens.accessToken,
       tokens.refreshToken,
-      tokens.expiresIn
+      tokens.expiresIn,
+      undefined,
+      // A refresh says nothing about the page selection: a channel still
+      // waiting for its page was written back as finished and looked
+      // connected, with the account id where the page id belongs
+      // (upstream #2072). `refresh` leaves inBetweenSteps as stored.
+      false,
+      'true'
     );
   }
 
