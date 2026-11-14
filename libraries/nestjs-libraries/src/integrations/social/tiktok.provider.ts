@@ -635,6 +635,16 @@ export class TiktokProvider extends SocialAbstract implements SocialProvider {
                 auto_add_music: firstPost.settings.autoAddMusic === 'yes',
               }
             : {}),
+          // The cover frame belongs here: TikTok's Direct Post reference
+          // lists video_cover_timestamp_ms under post_info. Sent in
+          // source_info it was ignored and the cover was always the first
+          // frame (upstream #1450).
+          ...(!isPhoto && firstPost?.media?.[0]?.thumbnailTimestamp
+            ? {
+                video_cover_timestamp_ms:
+                  firstPost.media[0].thumbnailTimestamp,
+              }
+            : {}),
         },
       };
     }
@@ -672,7 +682,9 @@ export class TiktokProvider extends SocialAbstract implements SocialProvider {
       source_info: {
         source: 'PULL_FROM_URL',
         video_url: firstPost?.media?.[0]?.path!,
-        ...(firstPost?.media?.[0]?.thumbnailTimestamp!
+        // Direct Post takes the cover frame in post_info (above).
+        ...(firstPost?.settings?.content_posting_method !== 'DIRECT_POST' &&
+        firstPost?.media?.[0]?.thumbnailTimestamp!
           ? {
               video_cover_timestamp_ms:
                 firstPost?.media?.[0]?.thumbnailTimestamp!,
