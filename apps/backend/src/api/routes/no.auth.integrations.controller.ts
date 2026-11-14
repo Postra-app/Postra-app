@@ -650,7 +650,10 @@ export class NoAuthIntegrationsController {
           expiresIn,
           username,
           refresh ? false : integrationProvider.isBetweenSteps,
-          body.refresh,
+          // The reconnect known to the server counts, not only the one the
+          // browser repeats: without it a reconnect of a channel still
+          // waiting for its page saved it as finished (upstream #2051).
+          refresh || body.refresh,
           body.timezone,
           details
             ? AuthService.encryptSecret(details)
@@ -689,9 +692,13 @@ export class NoAuthIntegrationsController {
         Logger.error('Refresh workflow failed', err);
       });
 
-    // Fetch pages if this is a two-step provider and not a refresh
+    // Fetch pages if this is a two-step provider and not a refresh, or a
+    // reconnect of a channel that never finished choosing its page
     let pages: any[] = [];
-    if (integrationProvider.isBetweenSteps && !refresh) {
+    if (
+      integrationProvider.isBetweenSteps &&
+      (!refresh || createUpdate.inBetweenSteps)
+    ) {
       try {
         // Check which method the provider uses (pages or companies)
         const fetchMethod =
