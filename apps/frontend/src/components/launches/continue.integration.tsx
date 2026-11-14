@@ -542,7 +542,6 @@ export const ContinueIntegration: FC<{
             >
               <Provider
                 onSave={onSave}
-                existingId={[]}
                 initialData={twoStepState.pages}
                 isSaving={isSaving}
                 // Deleting needs the session; the public connect page (mobile /
