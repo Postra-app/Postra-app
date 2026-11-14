@@ -71,18 +71,10 @@ export class RefreshIntegrationService {
       return false as const;
     }
 
-    await this._integrationService.createOrUpdateIntegration(
-      undefined,
+    await this._integrationService.saveRefreshedTokens(
+      integration,
       !!socialProvider.oneTimeToken,
-      integration.organizationId,
-      integration.name,
-      integration.picture!,
-      'social',
-      integration.internalId,
-      integration.providerIdentifier,
-      refresh.accessToken,
-      refresh.refreshToken,
-      refresh.expiresIn
+      refresh
     );
 
     return refresh;

@@ -50,7 +50,7 @@ const build = (channels: any[], failing: string[]) => {
         : { refreshToken: 'r', accessToken: 'a', expiresIn: 3600 }
     );
   jest
-    .spyOn(service, 'createOrUpdateIntegration')
+    .spyOn(service, 'saveRefreshedTokens')
     .mockResolvedValue(undefined as any);
   jest
     .spyOn(service as any, 'informAboutRefreshError')
@@ -106,7 +106,7 @@ describe('refreshTokens', () => {
     const report = await service.refreshTokens(false);
 
     expect(service.refreshToken).not.toHaveBeenCalled();
-    expect(service.createOrUpdateIntegration).not.toHaveBeenCalled();
+    expect(service.saveRefreshedTokens).not.toHaveBeenCalled();
     expect(repository.refreshNeeded).not.toHaveBeenCalled();
     expect(report.total).toBe(2);
   });

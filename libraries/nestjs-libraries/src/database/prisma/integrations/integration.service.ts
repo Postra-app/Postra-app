@@ -219,6 +219,34 @@ export class IntegrationService {
     );
   }
 
+  // A token refresh writes new tokens back onto a channel that is already
+  // connected. It is not a connect: the stored avatar stays (passing it on
+  // made createOrUpdateIntegration download our own copy and upload it again,
+  // a new file on every refresh) and nothing goes to the audit log as
+  // `integration.connect`.
+  saveRefreshedTokens(
+    integration: Pick<
+      Integration,
+      'organizationId' | 'name' | 'internalId' | 'providerIdentifier'
+    >,
+    oneTimeToken: boolean,
+    tokens: { accessToken: string; refreshToken?: string; expiresIn?: number }
+  ) {
+    return this._integrationRepository.createOrUpdateIntegration(
+      undefined,
+      oneTimeToken,
+      integration.organizationId,
+      integration.name,
+      undefined,
+      'social',
+      integration.internalId,
+      integration.providerIdentifier,
+      tokens.accessToken,
+      tokens.refreshToken,
+      tokens.expiresIn
+    );
+  }
+
   // Meta echoes the offending access token back inside its error messages
   // ("Malformed access token EAA…"), and this report is printed to a console
   // whose output lands in deploy logs and SSM results. Strip anything
@@ -645,19 +673,11 @@ export class IntegrationService {
 
       const { refreshToken, accessToken, expiresIn } = data;
 
-      await this.createOrUpdateIntegration(
-        undefined,
-        !!provider.oneTimeToken,
-        integration.organizationId,
-        integration.name,
-        undefined,
-        'social',
-        integration.internalId,
-        integration.providerIdentifier,
+      await this.saveRefreshedTokens(integration, !!provider.oneTimeToken, {
         accessToken,
         refreshToken,
-        expiresIn
-      );
+        expiresIn,
+      });
 
       refreshed.push(describe);
     }
