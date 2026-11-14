@@ -12,6 +12,7 @@ import { Readable } from 'stream';
 // interoperates with an Agent from the same undici instance.
 import { fetch } from 'undici';
 import { fromBuffer } from '@gitroom/nestjs-libraries/upload/file.type';
+import { originalNameFromUrl } from '@gitroom/nestjs-libraries/upload/original.name';
 
 // Where a file this tool cannot fetch goes instead (upstream 0992c460).
 const PRIVATE_FILES =
@@ -127,7 +128,9 @@ so the attachment passes the upload-domain validation. Returns the hosted media 
           org.id,
           getFile.originalname,
           getFile.path,
-          undefined,
+          // The name the file had at its URL, as the public API keeps it: the
+          // library search looks at this name only (upstream #2024).
+          originalNameFromUrl(inputData.url, detected.ext),
           false,
           buffer.length
         );

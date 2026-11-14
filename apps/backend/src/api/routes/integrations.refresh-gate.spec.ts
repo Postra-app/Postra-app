@@ -166,6 +166,18 @@ describe('POST /integrations/social-connect/:integration with refresh', () => {
     ]);
     expect(integrations.createOrUpdateIntegration).toHaveBeenCalled();
   });
+
+  // The browser did not repeat `refresh` in the body here; only the server
+  // knew this was a reconnect. The channel was then saved with
+  // inBetweenSteps = false: a channel still waiting for its page came out of
+  // a reconnect as finished (upstream #2051).
+  it('a reconnect is saved as a reconnect, so the page-selection state stays', async () => {
+    const { integrations } = await connect([
+      { providerIdentifier: 'discord', internalId: GUILD },
+    ]);
+    const args = (integrations.createOrUpdateIntegration as jest.Mock).mock.calls[0];
+    expect(args[13]).toBe(GUILD);
+  });
 });
 
 /**

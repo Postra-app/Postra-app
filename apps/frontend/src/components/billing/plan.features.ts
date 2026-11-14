@@ -32,8 +32,8 @@ export const PLATFORM_NAMES: Record<string, string> = {
 // Platforms a plan includes but not yet offered (kept out of
 // enabledProviders in integration.manager.ts): only a super admin sees their
 // tile in Add Channel and their card in Help. The plan cards leave them out,
-// like the landing ("6 channels on 10 platforms" for Pro since Pinterest
-// joined on 2026-10-27): only what a customer can connect today. They appear once they are enabled.
+// like the landing (Pro lists 10 platforms since Pinterest joined on
+// 2026-10-27): only what a customer can connect today. They appear once they are enabled.
 export const SOON_PLATFORMS = new Set(['linkedin-page']);
 
 const UNLIMITED = 10000;

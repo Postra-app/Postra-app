@@ -110,7 +110,8 @@ export class GmbProvider extends SocialAbstract implements SocialProvider {
       };
     }
 
-    if (body.includes('NOT_FOUND')) {
+    // A wrong resource path gets Google's HTML 404 page, not a JSON error.
+    if (body.includes('NOT_FOUND') || body.includes('Error 404 (Not Found)')) {
       return {
         type: 'bad-body',
         value: 'Business location not found. It may have been deleted.',
@@ -419,6 +420,18 @@ export class GmbProvider extends SocialAbstract implements SocialProvider {
   ): Promise<PostResponse[]> {
     const [firstPost] = postDetails;
     const { settings } = firstPost;
+
+    // A channel that never got its location still carries the Google user
+    // id: v4/<user id>/localPosts is not a resource, and Google's HTML 404
+    // reached the customer as "Unknown Error" (upstream #2051).
+    if (!String(id).startsWith('accounts/')) {
+      throw new BadBody(
+        this.identifier,
+        JSON.stringify({ id }),
+        '{}',
+        'This channel has no business location chosen. Reconnect it and choose a location.'
+      );
+    }
 
     // Build the local post request body
     const postBody: any = {

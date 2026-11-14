@@ -48,7 +48,8 @@ const build = (provider: any) => {
     {} as any,
     {} as any,
     {} as any,
-    { refresh } as any
+    // Reads take a failed refresh as no data (refreshForRead).
+    { refreshForRead: refresh } as any
   );
   return { service, refresh };
 };

@@ -1,3 +1,4 @@
+import { NO_PAGE_PERMISSION } from '@gitroom/nestjs-libraries/integrations/social/page.permission';
 import { exchangeMetaUserToken, verifyMetaSdkToken } from '@gitroom/nestjs-libraries/integrations/social/meta.sdk.token';
 import { META_GRAPH_API_VERSION } from '@gitroom/nestjs-libraries/integrations/social/meta.graph.version';
 import { Logger } from '@nestjs/common';
@@ -476,6 +477,34 @@ export class InstagramProvider
   // the /media edge does not list stories, so its newest item would be some
   // other post. The media is matched by its caption among the newest few:
   // the newest alone may be a post published in between.
+  // Called once the post is live: a failure here must not fail the publish.
+  // It marked a published post as failed, mailed the customer about it and
+  // sent the activity into a retry (upstream #1681). Without a permalink the
+  // post links to the profile.
+  async permalinkOf(
+    type: string,
+    mediaId: string,
+    token: string,
+    integration?: Pick<Integration, 'profile'>
+  ): Promise<string> {
+    const fallback = `https://www.instagram.com/${integration?.profile || ''}`;
+    try {
+      const { permalink } = await (
+        await this.fetch(
+          `https://${type}/v20.0/${mediaId}?fields=permalink&access_token=${token}`
+        )
+      ).json();
+      return permalink || fallback;
+    } catch (err) {
+      this._logger.warn(
+        `Published ${mediaId}, permalink not available: ${
+          (err as Error)?.message || err
+        }`
+      );
+      return fallback;
+    }
+  }
+
   async publishContainer(
     type: string,
     igId: string,
@@ -797,6 +826,13 @@ export class InstagramProvider
       )
     ).json();
 
+    // A page reached through a business the user has no role on comes back
+    // without a page token: the channel was saved with the token
+    // "undefined___<user token>" and every publish failed (upstream #1719).
+    if (!access_token) {
+      throw new Error(NO_PAGE_PERMISSION);
+    }
+
     const { id, name, profile_picture_url, username } = await (
       await fetch(
         `https://graph.facebook.com/${META_GRAPH_API_VERSION}/${accountId}?fields=username,name,profile_picture_url&access_token=${accessToken}`
@@ -975,13 +1011,12 @@ export class InstagramProvider
         ).json();
         lastMediaId = mediaId;
 
-        const { permalink } = await (
-          await this.fetch(
-            `https://${type}/v20.0/${mediaId}?fields=permalink&access_token=${
-              userToken || accessToken
-            }`
-          )
-        ).json();
+        const permalink = await this.permalinkOf(
+        type,
+        mediaId,
+        userToken || accessToken,
+        integration
+      );
         lastPermalink = permalink;
       }
 
@@ -1014,13 +1049,12 @@ export class InstagramProvider
             firstPost.message
           );
 
-      const { permalink } = await (
-        await this.fetch(
-          `https://${type}/v20.0/${mediaId}?fields=permalink&access_token=${
-            userToken || accessToken
-          }`
-        )
-      ).json();
+      const permalink = await this.permalinkOf(
+        type,
+        mediaId,
+        userToken || accessToken,
+        integration
+      );
 
       return [
         {
@@ -1078,13 +1112,12 @@ export class InstagramProvider
         firstPost?.message || ''
       );
 
-      const { permalink } = await (
-        await this.fetch(
-          `https://${type}/v20.0/${mediaId}?fields=permalink&access_token=${
-            userToken || accessToken
-          }`
-        )
-      ).json();
+      const permalink = await this.permalinkOf(
+        type,
+        mediaId,
+        userToken || accessToken,
+        integration
+      );
 
       return [
         {

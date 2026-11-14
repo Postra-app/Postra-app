@@ -12,8 +12,14 @@ export class PublicAuthMiddleware implements NestMiddleware {
     private _oauthService: OAuthService
   ) {}
   async use(req: Request, res: Response, next: NextFunction) {
-    const auth = (req.headers.authorization ||
-      req.headers.Authorization) as string;
+    // `Authorization: Bearer <key>` is what HTTP clients and agent tools send
+    // by default, and what /mcp already accepts; here it answered "Invalid API
+    // key" (upstream #1990). The bare key works as before.
+    const auth = String(
+      req.headers.authorization || req.headers.Authorization || ''
+    )
+      .replace(/^Bearer\s+/i, '')
+      .trim();
     if (!auth) {
       res.status(HttpStatus.UNAUTHORIZED).json({ msg: 'No API Key found' });
       return;

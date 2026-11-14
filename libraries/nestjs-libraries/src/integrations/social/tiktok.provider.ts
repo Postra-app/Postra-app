@@ -308,6 +308,17 @@ export class TiktokProvider extends SocialAbstract implements SocialProvider {
     return undefined;
   }
 
+  // How long the access token is good for: what TikTok says, never more than
+  // the 23 hours we stored for every token before, and 23 hours when it says
+  // nothing. With a fixed 23 hours, a shorter lifetime on TikTok's side
+  // would leave analytics reading with a dead token until our own clock ran
+  // out, as they refresh by the stored expiry only (upstream #2429).
+  static tokenLifetime(expiresIn: unknown) {
+    const day = 23 * 60 * 60;
+    const said = Number(expiresIn);
+    return Number.isFinite(said) && said > 0 ? Math.min(said, day) : day;
+  }
+
   async refreshToken(refreshToken: string): Promise<AuthTokenDetails> {
     const value = {
       client_key: process.env.TIKTOK_CLIENT_ID!,
@@ -326,7 +337,7 @@ export class TiktokProvider extends SocialAbstract implements SocialProvider {
         body: new URLSearchParams(value).toString(),
       })
     );
-    const { access_token, refresh_token } = tokens;
+    const { access_token, refresh_token, expires_in } = tokens;
 
     // A refused refresh (revoked, expired, already used) answers with an
     // error and no tokens. Reading the user below then failed with a
@@ -365,7 +376,7 @@ export class TiktokProvider extends SocialAbstract implements SocialProvider {
 
     return {
       refreshToken: refresh_token,
-      expiresIn: dayjs().add(23, 'hours').unix() - dayjs().unix(),
+      expiresIn: TiktokProvider.tokenLifetime(expires_in),
       accessToken: access_token,
       id: open_id.replace(/-/g, ''),
       name: display_name,
@@ -404,7 +415,7 @@ export class TiktokProvider extends SocialAbstract implements SocialProvider {
       redirect_uri: tiktokRedirectUri(),
     };
 
-    const { access_token, refresh_token, scope } = await (
+    const { access_token, refresh_token, scope, expires_in } = await (
       await fetch('https://open.tiktokapis.com/v2/oauth/token/', {
         headers: {
           'Content-Type': 'application/x-www-form-urlencoded',
@@ -437,7 +448,7 @@ export class TiktokProvider extends SocialAbstract implements SocialProvider {
       name: display_name,
       accessToken: access_token,
       refreshToken: refresh_token,
-      expiresIn: dayjs().add(23, 'hours').unix() - dayjs().unix(),
+      expiresIn: TiktokProvider.tokenLifetime(expires_in),
       picture: avatar_url,
       username: username,
     };
@@ -624,6 +635,16 @@ export class TiktokProvider extends SocialAbstract implements SocialProvider {
                 auto_add_music: firstPost.settings.autoAddMusic === 'yes',
               }
             : {}),
+          // The cover frame belongs here: TikTok's Direct Post reference
+          // lists video_cover_timestamp_ms under post_info. Sent in
+          // source_info it was ignored and the cover was always the first
+          // frame (upstream #1450).
+          ...(!isPhoto && firstPost?.media?.[0]?.thumbnailTimestamp
+            ? {
+                video_cover_timestamp_ms:
+                  firstPost.media[0].thumbnailTimestamp,
+              }
+            : {}),
         },
       };
     }
@@ -661,7 +682,9 @@ export class TiktokProvider extends SocialAbstract implements SocialProvider {
       source_info: {
         source: 'PULL_FROM_URL',
         video_url: firstPost?.media?.[0]?.path!,
-        ...(firstPost?.media?.[0]?.thumbnailTimestamp!
+        // Direct Post takes the cover frame in post_info (above).
+        ...(firstPost?.settings?.content_posting_method !== 'DIRECT_POST' &&
+        firstPost?.media?.[0]?.thumbnailTimestamp!
           ? {
               video_cover_timestamp_ms:
                 firstPost?.media?.[0]?.thumbnailTimestamp!,
