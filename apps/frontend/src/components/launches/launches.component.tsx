@@ -278,9 +278,12 @@ export const MenuComponent: FC<
         {(integration.inBetweenSteps || integration.refreshNeeded) && (
           <div
             className="absolute start-0 top-0 w-[39px] h-[46px] cursor-pointer"
+            // A channel to reconnect: the row around this badge already
+            // reconnects on click. Both did, so one click asked for two
+            // authorization URLs and raced two redirects (upstream 3101654fe).
             onClick={
               integration.refreshNeeded
-                ? refreshChannel(integration)
+                ? undefined
                 : continueIntegration(integration)
             }
           >
