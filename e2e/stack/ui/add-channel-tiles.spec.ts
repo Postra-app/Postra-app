@@ -54,7 +54,9 @@ test('the preview organisation sees Google Business Profile and no other "Soon" 
     tier: 'STANDARD',
     totalChannels: 3,
     channels: 0,
-    id: 'stack-preview-org',
+    // Its own id (stack.env): api/plan-limits.spec runs alongside with
+    // stack-preview-org, and two organisations cannot share an id.
+    id: 'stack-preview-org-ui',
   });
   try {
     await signIn(page, reviewer);
