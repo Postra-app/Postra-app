@@ -110,7 +110,7 @@ export const pricing: PricingInterface = {
     current: 'STANDARD',
     month_price: 19,
     year_price: 190,
-    channel: 3,
+    channel: 4,
     allowedProviders: STARTER_PROVIDERS,
     posts_per_month: 400,
     image_generation_count: 75,
@@ -123,7 +123,7 @@ export const pricing: PricingInterface = {
     autoPostLimit: 2,
     generate_videos: 15,
     agent_messages: AGENT_FAIR_USE_MESSAGES,
-    media_storage_gb: 10,
+    media_storage_gb: 20,
   },
   // Legacy, not purchasable (removed from BillingSubscribeDto). Kept so any
   // existing/grandfathered TEAM subscription still resolves.
@@ -150,7 +150,7 @@ export const pricing: PricingInterface = {
     current: 'PRO',
     month_price: 29,
     year_price: 290,
-    channel: 6,
+    channel: 8,
     allowedProviders: PRO_PROVIDERS,
     posts_per_month: 1000000,
     image_generation_count: 200,
@@ -163,7 +163,7 @@ export const pricing: PricingInterface = {
     autoPostLimit: 3,
     generate_videos: 30,
     agent_messages: AGENT_FAIR_USE_MESSAGES,
-    media_storage_gb: 25,
+    media_storage_gb: 50,
   },
   ULTIMATE: {
     current: 'ULTIMATE',

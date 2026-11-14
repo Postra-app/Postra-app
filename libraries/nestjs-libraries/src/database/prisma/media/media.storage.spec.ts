@@ -7,12 +7,12 @@ import {
   storageLimit,
 } from './media.storage';
 
-// Media storage per plan. Starter 10 GB, Pro 25 GB,
+// Media storage per plan. Starter 20 GB, Pro 50 GB (K. 14 XI, were 10 and 25),
 // Business 100 GB, a trial (and no plan) 2 GB; off while billing is off.
 describe('storageLimit', () => {
   it('follows the plan, and a trial is held to 2 GB whatever it runs on', () => {
-    expect(storageLimit('STANDARD', false, true)).toBe(10 * GB);
-    expect(storageLimit('PRO', false, true)).toBe(25 * GB);
+    expect(storageLimit('STANDARD', false, true)).toBe(20 * GB);
+    expect(storageLimit('PRO', false, true)).toBe(50 * GB);
     expect(storageLimit('ULTIMATE', false, true)).toBe(100 * GB);
     expect(storageLimit('ULTIMATE', true, true)).toBe(2 * GB);
     expect(storageLimit(null, false, true)).toBe(2 * GB);

@@ -415,9 +415,9 @@ export const MainBillingComponent: FC<{
   const moveToCheckout = useCallback(
     (billing: 'STANDARD' | 'PRO' | 'FREE', reactivate = false) =>
       async () => {
-        // /billing/cancel toggles: a second press (Enter while the first
-        // request runs) cancelled the subscription again under a
-        // "reactivated" message. Checked before the try: returning inside it
+        // A second press (Enter while the first request runs) cancelled the
+        // subscription again under a "reactivated" message; the request now
+        // also carries the intent. Checked before the try: returning inside it
         // ran the finally below, which released the first press's guard, so
         // a third press went through.
         if (reactivate && reactivating.current) return;
@@ -429,6 +429,7 @@ export const MainBillingComponent: FC<{
               method: 'POST',
               body: JSON.stringify({
                 feedback: '',
+                cancel: false,
               }),
               headers: {
                 'Content-Type': 'application/json',
@@ -530,6 +531,7 @@ export const MainBillingComponent: FC<{
                 method: 'POST',
                 body: JSON.stringify({
                   feedback: info,
+                  cancel: true,
                 }),
                 headers: {
                   'Content-Type': 'application/json',

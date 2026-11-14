@@ -67,3 +67,24 @@ describe('TikTok refreshToken', () => {
     });
   });
 });
+
+// The stored expiry was a fixed 23 hours whatever TikTok answered. Analytics
+// refresh by the stored expiry only, so a shorter lifetime on TikTok's side
+// would leave them reading with a dead token (upstream #2429).
+describe('TikTok access token lifetime', () => {
+  const user = { data: { user: { open_id: 'abc', display_name: 'Postra', avatar_url: 'p', username: 'postra' } } };
+  const refreshed = async (expires_in?: unknown) => {
+    answer({ access_token: 'at', refresh_token: 'rt2', expires_in }, user);
+    return (await new TiktokProvider().refreshToken('rt')).expiresIn;
+  };
+
+  it('follows a shorter lifetime TikTok reports', async () => {
+    expect(await refreshed(7200)).toBe(7200);
+  });
+
+  it("stays at 23 hours for today's 24-hour answer, and when TikTok says nothing", async () => {
+    expect(await refreshed(86400)).toBe(23 * 3600);
+    expect(await refreshed()).toBe(23 * 3600);
+    expect(await refreshed('soon')).toBe(23 * 3600);
+  });
+});

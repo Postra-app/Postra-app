@@ -19,7 +19,6 @@ const SWR_OPTIONS = {
 
 export interface ContinueProviderProps {
   onSave: (data: any) => Promise<void>;
-  existingId: string[];
   initialData?: any[];
   isSaving?: boolean;
   /**
@@ -74,7 +73,7 @@ export function withContinueProvider<TItem, TSelection>(
   } = config;
 
   return function ContinueProviderComponent(props: ContinueProviderProps) {
-    const { onSave, existingId, initialData, isSaving, onDiscard } = props;
+    const { onSave, initialData, isSaving, onDiscard } = props;
     const call = useCustomProviderFunction();
     const t = useT();
     const [selection, setSelection] = useState<TSelection | null>(null);
@@ -113,13 +112,10 @@ export function withContinueProvider<TItem, TSelection>(
       }
     }, [onSave, selection]);
 
-    const filteredData = useMemo(() => {
-      return (
-        (resolvedData as TItem[])?.filter(
-          (item) => !existingId.includes(getItemId(item))
-        ) || []
-      );
-    }, [resolvedData, existingId]);
+    const items = useMemo(
+      () => (resolvedData as TItem[]) || [],
+      [resolvedData]
+    );
 
     if (!isLoading && !resolvedData?.length) {
       return (
@@ -164,7 +160,7 @@ export function withContinueProvider<TItem, TSelection>(
           )}
         </div>
         <div className="grid grid-cols-3 justify-items-center select-none cursor-pointer gap-[10px]">
-          {filteredData.map((item) => (
+          {items.map((item) => (
             <div
               key={getItemId(item)}
               className={clsx(

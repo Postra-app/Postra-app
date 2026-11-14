@@ -221,14 +221,18 @@ export class BillingController {
   async cancel(
     @GetOrgFromRequest() org: Organization,
     @GetUserFromRequest() user: User,
-    @Body() body: { feedback: string }
+    @Body() body: { feedback: string; cancel?: boolean }
   ) {
-    const result = await this._stripeService.setToCancel(org.id);
+    const result = await this._stripeService.setToCancel(
+      org.id,
+      typeof body?.cancel === 'boolean' ? body.cancel : undefined
+    );
 
-    // setToCancel is a toggle — cancel_at is only set on an actual
-    // cancellation, not when the user re-activates. Emails are best-effort:
-    // the cancellation itself must not 500 on an SES hiccup.
-    if (result?.cancel_at) {
+    // cancel_at is only set on a cancellation, not when the user
+    // re-activates; a request that changed nothing (already cancelled) sends
+    // no second mail. Emails are best-effort: the cancellation itself must
+    // not 500 on an SES hiccup.
+    if (result?.cancel_at && !(result as { unchanged?: boolean }).unchanged) {
       // Written confirmation for the customer (chargeback evidence + the
       // upcoming UK DMCCA cancellation-confirmation requirement). Sent
       // first and on its own: a failed operator mail skipped it. A failed

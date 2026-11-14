@@ -5,7 +5,13 @@ import {
   VideoAbstract,
 } from '@gitroom/nestjs-libraries/videos/video.interface';
 import { timer } from '@gitroom/helpers/utils/timer';
-import { ArrayMaxSize, IsArray, IsString, ValidateNested } from 'class-validator';
+import {
+  ArrayMaxSize,
+  IsArray,
+  IsOptional,
+  IsString,
+  ValidateNested,
+} from 'class-validator';
 import { Type } from 'class-transformer';
 import { fetch } from 'undici';
 
@@ -20,11 +26,16 @@ class Veo3Params {
   @IsString()
   prompt: string;
 
+  // Optional: the clip is made from the description alone as well. The
+  // composer always sends the list; the public API and the MCP tool with a
+  // prompt only were refused with "images must be an array" (the same defect
+  // upstream fixed for its Seedance model, #2291).
+  @IsOptional()
   @Type(() => Image)
   @ValidateNested({ each: true })
   @IsArray()
   @ArrayMaxSize(3)
-  images: Image[];
+  images?: Image[];
 }
 
 // Veo 3.1 Fast through kie.ai's Market API (docs.kie.ai/veo3-api): 8 seconds

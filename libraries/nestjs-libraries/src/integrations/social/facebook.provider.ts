@@ -1,3 +1,4 @@
+import { NO_PAGE_PERMISSION } from '@gitroom/nestjs-libraries/integrations/social/page.permission';
 import { exchangeMetaUserToken, verifyMetaSdkToken } from '@gitroom/nestjs-libraries/integrations/social/meta.sdk.token';
 import { META_GRAPH_API_VERSION } from '@gitroom/nestjs-libraries/integrations/social/meta.graph.version';
 import {
@@ -577,9 +578,7 @@ export class FacebookProvider extends SocialAbstract implements SocialProvider {
     }
 
     if (foundWithoutToken) {
-      throw new Error(
-        'Your Facebook user has no permission to manage this page. Ask a page admin for full content access, then reconnect the channel'
-      );
+      throw new Error(NO_PAGE_PERMISSION);
     }
 
     throw new Error('Page not found in your accounts');

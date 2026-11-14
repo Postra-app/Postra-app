@@ -134,3 +134,30 @@ test('MCP integrationList leaves out disabled channels', async () => {
     await prisma.$disconnect();
   }
 });
+
+// The server keeps no sessions, so there is no stream for a GET to listen
+// on; the transport opened one anyway and held the connection until the load
+// balancer cut it. Without a token the answer stays 401 (OAuth discovery).
+test('MCP answers GET and DELETE with 405 instead of an open stream', async () => {
+  const prisma = database();
+  const org = await throwawayOrg(prisma, { tier: 'PRO', totalChannels: 6, channels: 0 });
+  const { apiKey } = (await prisma.organization.findUniqueOrThrow({ where: { id: org.orgId } }))!;
+  const api = await pwRequest.newContext({ baseURL: BACKEND_URL });
+  const headers = { accept: 'application/json, text/event-stream', authorization: `Bearer ${apiKey}` };
+  try {
+    for (const method of ['GET', 'DELETE'] as const) {
+      const res = await api.fetch('/mcp', { method, headers, timeout: 10_000 });
+      expect(res.status(), method).toBe(405);
+      expect(res.headers()['allow']).toBe('POST');
+    }
+    expect((await api.get('/mcp', { headers: { accept: 'text/event-stream' }, timeout: 10_000 })).status()).toBe(401);
+    const oauth = await api.get('/mcp-oauth', { headers: { accept: 'text/event-stream' }, timeout: 10_000 });
+    expect(oauth.status()).toBe(401);
+    expect(oauth.headers()['www-authenticate']).toBeTruthy();
+    expect((await api.post('/mcp', { headers: { ...headers, 'content-type': 'application/json' }, data: init })).status()).toBe(200);
+  } finally {
+    await api.dispose();
+    await org.remove();
+    await prisma.$disconnect();
+  }
+});

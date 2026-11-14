@@ -29,14 +29,14 @@ describe('Help text matches the app', () => {
 describe('Help tells the limits', () => {
   it('Media names the storage of every plan and the trial', () => {
     const media = APP_TABS.find((t) => t.id === 'media')!.description;
-    for (const part of ['10 GB on Starter', '25 GB on Pro', '100 GB on Business', '2 GB during the free trial']) {
+    for (const part of ['20 GB on Starter', '50 GB on Pro', '100 GB on Business', '2 GB during the free trial']) {
       expect(media).toContain(part);
     }
   });
 
   it('the FAQ answers how much storage there is', () => {
     const faq = FAQ_ITEMS.find((f) => /storage/.test(f.question))!;
-    expect(faq.answer).toContain('10 GB on Starter');
+    expect(faq.answer).toContain('20 GB on Starter');
   });
 
   it('the mobile app section has the 10 minute / 1 GB video limit and what stays on the web', () => {

@@ -39,3 +39,25 @@ describe('Business Profile publish result', () => {
     expect(result.releaseURL).toBe('https://local.google.com/place?id=1&use=posts&lpsid=9');
   });
 });
+
+// A channel without a location carried the Google user id: the post went to
+// v4/<user id>/localPosts and Google's HTML 404 came back as "Unknown Error"
+// (upstream #2051).
+describe('Business Profile channel without a location', () => {
+  it('is refused before anything is sent to Google', async () => {
+    const provider = new GmbProvider();
+    const fetch = jest.fn();
+    (provider as any).fetch = fetch;
+    await expect(
+      provider.post('108123456789', 'token', [{ id: 'p1', message: 'Open on Sunday', settings: {}, media: [] }] as any)
+    ).rejects.toThrow('no business location chosen');
+    expect(fetch).not.toHaveBeenCalled();
+  });
+
+  it("Google's HTML 404 reads as a missing location, not an unknown error", () => {
+    expect(new GmbProvider().handleErrors('<title>Error 404 (Not Found)!!1</title>')).toMatchObject({
+      type: 'bad-body',
+      value: expect.stringContaining('Business location not found'),
+    });
+  });
+});
