@@ -19,7 +19,7 @@ describe('planFeatures', () => {
       '75 AI images a month',
       '15 AI videos a month',
       'Studio image editor',
-      '10 GB media storage',
+      '20 GB media storage',
       'Blog to posts from 2 RSS feeds',
       'Public API and 2 webhooks',
     ]);
@@ -40,7 +40,7 @@ describe('planFeatures', () => {
     expect(pro).toContain('2 people');
     expect(pro).toContain('30 AI videos a month');
     expect(texts('ULTIMATE')).toContain('60 AI videos a month');
-    expect(pro).toContain('25 GB media storage');
+    expect(pro).toContain('50 GB media storage');
     expect(texts('ULTIMATE')).toContain('100 GB media storage');
   });
 

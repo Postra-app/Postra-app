@@ -385,10 +385,12 @@ describe('planLimits', () => {
     });
   });
 
-  // Media storage per plan, 2 GB while trialing.
-  it('media storage: Starter 10 GB, Pro 25 GB, Business 100 GB, trial and no plan 2 GB', () => {
-    expect(planLimits('STANDARD').media_storage_gb).toBe(10);
-    expect(planLimits('PRO').media_storage_gb).toBe(25);
+  // Media storage per plan, 2 GB while trialing. K. 14 XI: Starter 20, Pro 50
+  // (were 10 and 25): the step to Business was x4; a full Pro library costs
+  // about 3% of its price on S3.
+  it('media storage: Starter 20 GB, Pro 50 GB, Business 100 GB, trial and no plan 2 GB', () => {
+    expect(planLimits('STANDARD').media_storage_gb).toBe(20);
+    expect(planLimits('PRO').media_storage_gb).toBe(50);
     expect(planLimits('ULTIMATE').media_storage_gb).toBe(100);
     expect(planLimits('TEAM').media_storage_gb).toBe(25);
     expect(planLimits('FREE').media_storage_gb).toBe(2);

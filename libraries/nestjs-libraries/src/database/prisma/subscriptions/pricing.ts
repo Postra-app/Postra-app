@@ -123,7 +123,7 @@ export const pricing: PricingInterface = {
     autoPostLimit: 2,
     generate_videos: 15,
     agent_messages: AGENT_FAIR_USE_MESSAGES,
-    media_storage_gb: 10,
+    media_storage_gb: 20,
   },
   // Legacy, not purchasable (removed from BillingSubscribeDto). Kept so any
   // existing/grandfathered TEAM subscription still resolves.
@@ -163,7 +163,7 @@ export const pricing: PricingInterface = {
     autoPostLimit: 3,
     generate_videos: 30,
     agent_messages: AGENT_FAIR_USE_MESSAGES,
-    media_storage_gb: 25,
+    media_storage_gb: 50,
   },
   ULTIMATE: {
     current: 'ULTIMATE',
