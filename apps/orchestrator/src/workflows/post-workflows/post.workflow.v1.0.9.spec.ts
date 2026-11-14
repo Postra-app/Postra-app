@@ -6,6 +6,8 @@
  */
 const activities: Record<string, jest.Mock> = {};
 const sleeps: unknown[] = [];
+// Patches a run does NOT have: a run that began before the patch shipped.
+const unpatched = new Set<string>();
 jest.mock('@temporalio/workflow', () => {
   const common = jest.requireActual('@temporalio/common');
   return {
@@ -20,7 +22,7 @@ jest.mock('@temporalio/workflow', () => {
       return Promise.resolve();
     },
     startChild: jest.fn(),
-    patched: () => true,
+    patched: (id: string) => !unpatched.has(id),
   };
 });
 
@@ -55,6 +57,7 @@ const run = () =>
 beforeEach(() => {
   for (const fn of Object.values(activities)) fn.mockReset();
   sleeps.length = 0;
+  unpatched.clear();
   const a = (name: string) => (activities[name] ||= jest.fn());
   a('getPost').mockResolvedValue(post);
   a('getPostsList').mockResolvedValue([post]);
@@ -275,6 +278,70 @@ describe('postWorkflowV109 — a channel that cannot post', () => {
   });
 });
 
+describe('postWorkflowV109 — a post edited while its run was waiting', () => {
+  // An edit ends the old run only if Temporal answers at that moment. When it
+  // did not, the old run woke at the old time and published a post its
+  // author had turned back into a draft or moved to a later date.
+  const untouched = () => {
+    expect(activities.postSocial).not.toHaveBeenCalled();
+    expect(activities.changeState).not.toHaveBeenCalled();
+    expect(activities.inAppNotification).not.toHaveBeenCalled();
+    expect(activities.sendWebhooks).not.toHaveBeenCalled();
+  };
+
+  it('does not publish a post that became a draft during the wait', async () => {
+    activities.getPostsList.mockResolvedValue([{ ...post, state: 'DRAFT' }]);
+
+    await run();
+
+    untouched();
+  });
+
+  it('does not publish a post that was moved to a later date during the wait', async () => {
+    const later = new Date(Date.now() + 3 * 60 * 60 * 1000).toISOString();
+    activities.getPostsList.mockResolvedValue([{ ...post, publishDate: later }]);
+
+    await run();
+
+    untouched();
+  });
+
+  it('publishes a post that is due, a few seconds early included', async () => {
+    const dueNow = new Date(Date.now() + 5000).toISOString();
+    activities.getPostsList.mockResolvedValue([{ ...post, publishDate: dueNow }]);
+    activities.postSocial = jest.fn().mockResolvedValue(published);
+
+    await run();
+
+    expect(activities.postSocial).toHaveBeenCalledTimes(1);
+  });
+
+  it('a repeat of a published post still goes out', async () => {
+    activities.getPost.mockResolvedValue({ ...post, state: 'PUBLISHED' });
+    activities.getPostsList.mockResolvedValue([{ ...post, state: 'PUBLISHED' }]);
+    activities.postSocial = jest.fn().mockResolvedValue(published);
+
+    await postWorkflowV109({
+      taskQueue: 'telegram',
+      postId: 'p1',
+      organizationId: 'org-1',
+      postNow: true,
+    });
+
+    expect(activities.postSocial).toHaveBeenCalledTimes(1);
+  });
+
+  it('a run from before this check replays as it ran', async () => {
+    unpatched.add('recheck-post-after-wait');
+    activities.getPostsList.mockResolvedValue([{ ...post, state: 'DRAFT' }]);
+    activities.postSocial = jest.fn().mockResolvedValue(published);
+
+    await run();
+
+    expect(activities.postSocial).toHaveBeenCalledTimes(1);
+  });
+});
+
 describe('postWorkflowV109 — plug checks', () => {
   // Every delay is counted from the publish, but
   // each sleep was the full delay again, so a plug checking every 6 h ran at
@@ -309,6 +376,68 @@ describe('postWorkflowV109 — plug checks', () => {
       temporal.sleep = realSleep;
       jest.useRealTimers();
     }
+  });
+});
+
+describe('postWorkflowV109 — a plug whose outcome is unknown', () => {
+  // An automatic comment or repost that failed after its request may have
+  // reached the platform used to be tried again, up to five times here on top
+  // of the SDK's three: a second comment under the customer's post.
+  const unknown = (activity: string) =>
+    failure(
+      ApplicationFailure.create({ type: 'publish_unknown', nonRetryable: true, message: 'fetch failed' }),
+      activity
+    );
+  beforeEach(() => {
+    activities.postSocial = jest.fn().mockResolvedValue(published);
+  });
+
+  it('does not repeat a comment from another channel', async () => {
+    activities.internalPlugs.mockResolvedValue([
+      { type: 'internal-plug', delay: 0, integration: 'i2', plugName: 'comment' },
+    ]);
+    activities.processInternalPlug = jest.fn().mockRejectedValue(unknown('processInternalPlug'));
+
+    await run();
+
+    expect(activities.processInternalPlug).toHaveBeenCalledTimes(1);
+  });
+
+  it('does not repeat a plug of the channel itself', async () => {
+    activities.globalPlugs.mockResolvedValue([
+      { type: 'global', delay: 0, totalRuns: 1, plugId: 'pl1', integration: 'i1' },
+    ]);
+    activities.processPlug = jest.fn().mockRejectedValue(unknown('processPlug'));
+
+    await run();
+
+    expect(activities.processPlug).toHaveBeenCalledTimes(1);
+  });
+
+  it('still repeats a plug the platform never received', async () => {
+    activities.internalPlugs.mockResolvedValue([
+      { type: 'internal-plug', delay: 0, integration: 'i2', plugName: 'comment' },
+    ]);
+    activities.processInternalPlug = jest
+      .fn()
+      .mockRejectedValueOnce(failure(ApplicationFailure.create({ message: 'ECONNREFUSED' }), 'processInternalPlug'))
+      .mockResolvedValueOnce(undefined);
+
+    await run();
+
+    expect(activities.processInternalPlug).toHaveBeenCalledTimes(2);
+  });
+
+  it('a run from before this change replays its retries', async () => {
+    unpatched.add('plug-outcome-unknown');
+    activities.internalPlugs.mockResolvedValue([
+      { type: 'internal-plug', delay: 0, integration: 'i2', plugName: 'comment' },
+    ]);
+    activities.processInternalPlug = jest.fn().mockRejectedValue(unknown('processInternalPlug'));
+
+    await run();
+
+    expect(activities.processInternalPlug).toHaveBeenCalledTimes(5);
   });
 });
 

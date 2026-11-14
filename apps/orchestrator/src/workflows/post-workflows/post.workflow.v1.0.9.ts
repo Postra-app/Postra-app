@@ -106,6 +106,17 @@ const poke = defineSignal('poke');
 
 const iterate = Array.from({ length: 5 });
 
+// A plug (an automatic comment or repost) whose request may have reached the
+// platform before it failed: integration.service marks it like a publish, and
+// the failure arrives as publish_unknown. Trying again could comment twice,
+// so the plug stops here. Behind a patch: a run already past a plug failure
+// replays the retries it recorded.
+const plugOutcomeUnknown = (err: unknown) =>
+  err instanceof ActivityFailure &&
+  err.cause instanceof ApplicationFailure &&
+  err.cause.type === 'publish_unknown' &&
+  patched('plug-outcome-unknown');
+
 // v1.0.9 (restart-safe publishing): postSocial / postComment heartbeat
 // and have a 3-minute heartbeatTimeout with no SDK retries; the workflow
 // retries a publish only when it is known not to have reached the platform
@@ -189,6 +200,23 @@ export async function postWorkflowV109({
 
   if (!post) {
     await changeState(postId, 'ERROR', 'No Post');
+    return;
+  }
+
+  // The post as it is now, after the wait, not as it was when this run
+  // started. An edit ends the run of the old schedule (posts.service
+  // startWorkflow), but only if Temporal answers at that moment: when it did
+  // not, this run woke at the old time and published a post its author had
+  // turned back into a draft, or had moved to a later date. Nothing is
+  // marked failed: a draft stays a draft, and a post moved later is
+  // published by the run started for its new time (or by the sweep for
+  // missed posts, once that time has passed).
+  if (
+    patched('recheck-post-after-wait') &&
+    !postNow &&
+    (post.state !== 'QUEUE' ||
+      dayjs(post.publishDate).isAfter(dayjs().add(1, 'minute')))
+  ) {
     return;
   }
 
@@ -597,6 +625,10 @@ export async function postWorkflowV109({
             break;
           }
 
+          if (plugOutcomeUnknown(err)) {
+            break;
+          }
+
           continue;
         }
         break;
@@ -648,6 +680,10 @@ export async function postWorkflowV109({
             err.cause instanceof ApplicationFailure &&
             err.cause.type === 'bad_body'
           ) {
+            break;
+          }
+
+          if (plugOutcomeUnknown(err)) {
             break;
           }
 
