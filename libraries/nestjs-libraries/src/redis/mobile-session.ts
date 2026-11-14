@@ -1,4 +1,7 @@
-import { ioRedis } from '@gitroom/nestjs-libraries/redis/redis.service';
+import {
+  ioRedis,
+  redisReady,
+} from '@gitroom/nestjs-libraries/redis/redis.service';
 
 /**
  * Revocable sessions for the native app.
@@ -42,7 +45,8 @@ const revokedKey = (sid: string) => `mobilesession:revoked:${sid}`;
 export const revokeMobileSession = (
   sid: string,
   ttlSeconds: number = MOBILE_TOKEN_TTL_SECONDS
-) => ioRedis.set(revokedKey(sid), '1', 'EX', ttlSeconds).catch((): null => null);
+) =>
+  ioRedis.set(revokedKey(sid), '1', 'EX', ttlSeconds).catch((): null => null);
 
 /**
  * Fails open, deliberately. Treating an unreachable Redis as "revoked" would
@@ -54,6 +58,7 @@ export const revokeMobileSession = (
  * (see auth-context.cache); this keeps that property.
  */
 export const isMobileSessionRevoked = async (sid: string): Promise<boolean> => {
+  if (!redisReady()) return false;
   try {
     return (await ioRedis.exists(revokedKey(sid))) === 1;
   } catch {

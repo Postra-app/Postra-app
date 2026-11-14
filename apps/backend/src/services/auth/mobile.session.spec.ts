@@ -13,6 +13,7 @@ jest.mock('@gitroom/nestjs-libraries/redis/redis.service', () => ({
     }),
     exists: jest.fn(async (k: string) => (store.has(k) ? 1 : 0)),
   },
+  redisReady: () => true,
 }));
 
 import {

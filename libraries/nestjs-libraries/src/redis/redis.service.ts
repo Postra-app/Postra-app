@@ -135,7 +135,10 @@ class MockRedis {
       .map(([member]) => member);
     const at = args.map((a) => String(a).toUpperCase()).indexOf('LIMIT');
     return at >= 0
-      ? members.slice(Number(args[at + 1]), Number(args[at + 1]) + Number(args[at + 2]))
+      ? members.slice(
+          Number(args[at + 1]),
+          Number(args[at + 1]) + Number(args[at + 2])
+        )
       : members;
   }
 
@@ -159,10 +162,59 @@ class MockRedis {
   // Add other Redis methods as needed for your tests
 }
 
+// How long one command may take. Redis answers in under a millisecond; a
+// command that has waited this long is not going to be answered.
+export const REDIS_COMMAND_TIMEOUT_MS = 2000;
+// A connection that owes an answer and has delivered nothing for this long is
+// dropped and reopened: the other end is gone without saying so (the host
+// died, a firewall dropped the flow) and the kernel would keep the socket for
+// minutes. Reconnecting moves the client out of "ready", which redisReady()
+// shows to callers, instead of every command paying the full timeout.
+export const REDIS_SOCKET_TIMEOUT_MS = 5000;
+
+/**
+ * The client retries a command forever (`maxRetriesPerRequest: null`) and
+ * queues commands while it is disconnected, so without a time limit a command
+ * sent while Redis is down never settles: not resolved, not rejected. Every
+ * `.catch()` written to "fail open" was dead code, and with Redis stopped
+ * every signed-in request hung until the load balancer gave up, while the
+ * liveness check stayed green. With the limit a command rejects after
+ * REDIS_COMMAND_TIMEOUT_MS and each caller's own handling decides: caches
+ * fall back to the database, locks and rate limits refuse.
+ */
+export const redisOptions = {
+  maxRetriesPerRequest: null as null,
+  connectTimeout: 10000,
+  commandTimeout: REDIS_COMMAND_TIMEOUT_MS,
+  socketTimeout: REDIS_SOCKET_TIMEOUT_MS,
+};
+
+const connect = (url: string) => {
+  const client = new Redis(url, redisOptions);
+  // One line per outage, not one per retry (and never the URL: it carries
+  // the password).
+  let down = false;
+  client.on('error', (err: Error) => {
+    if (down) return;
+    down = true;
+    console.error(`[redis] connection error: ${err?.message || err}`);
+  });
+  client.on('ready', () => {
+    if (down) console.log('[redis] connection restored');
+    down = false;
+  });
+  return client;
+};
+
 // Use real Redis if REDIS_URL is defined, otherwise use MockRedis
 export const ioRedis = process.env.REDIS_URL
-  ? new Redis(process.env.REDIS_URL, {
-      maxRetriesPerRequest: null,
-      connectTimeout: 10000,
-    })
+  ? connect(process.env.REDIS_URL)
   : (new MockRedis() as unknown as Redis); // Type cast to Redis to maintain interface compatibility
+
+/**
+ * False while the client knows it has no connection. For paths that can do
+ * without Redis (the auth context cache, the last-seen stamp): they skip it
+ * at once instead of waiting out the command timeout on every request.
+ */
+export const redisReady = () =>
+  !process.env.REDIS_URL || ioRedis.status === 'ready';
