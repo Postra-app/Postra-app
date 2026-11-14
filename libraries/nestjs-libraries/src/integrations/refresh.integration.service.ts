@@ -90,6 +90,18 @@ export class RefreshIntegrationService {
     return refresh;
   }
 
+  // For reads (analytics): a channel whose token refreshed but whose page
+  // could not be found again (YouTube "Channel not found") made every
+  // analytics request a 500 (upstream #2048). Publishing keeps the throwing
+  // refresh(): it tells the customer the reason and asks for a reconnect.
+  public async refreshForRead(integration: Integration) {
+    try {
+      return await this.refresh(integration);
+    } catch (err) {
+      return false as const;
+    }
+  }
+
   public async setBetweenSteps(integration: Integration, cause = '') {
     await this._integrationService.setBetweenRefreshSteps(integration.id);
     await this._integrationService.informAboutRefreshError(

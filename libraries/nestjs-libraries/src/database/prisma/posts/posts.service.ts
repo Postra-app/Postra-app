@@ -159,7 +159,7 @@ export class PostsService {
       dayjs(getIntegration?.tokenExpiration).isBefore(dayjs()) ||
       forceRefresh
     ) {
-      const data = await this._refreshIntegrationService.refresh(
+      const data = await this._refreshIntegrationService.refreshForRead(
         getIntegration
       );
       if (!data) {
@@ -275,7 +275,7 @@ export class PostsService {
       dayjs(getIntegration?.tokenExpiration).isBefore(dayjs()) ||
       forceRefresh
     ) {
-      const data = await this._refreshIntegrationService.refresh(
+      const data = await this._refreshIntegrationService.refreshForRead(
         getIntegration
       );
       if (!data) {
