@@ -40,7 +40,7 @@ describe('POST /billing/cancel', () => {
 // payment had just ended the plan, and a failed operator mail skipped it.
 describe('POST /billing/cancel: the customer confirmation', () => {
   const run = async (result: object, operatorFails = false) => {
-    const sendEmail = jest.fn(async (to: string) => {
+    const sendEmail = jest.fn(async (to: string, ..._rest: unknown[]) => {
       if (operatorFails && to !== 'owner@example.com') throw new Error('SES down');
     });
     const controller = new BillingController(
