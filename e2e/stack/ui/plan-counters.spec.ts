@@ -2,7 +2,7 @@ import { expect, test } from '@playwright/test';
 import { signedIn, stateFile } from '../helpers';
 
 // Nine platform tiles in Add Channel read as nine channels on Pro. The window
-// says how many channels are used of the plan's limit, and Teams says how many
+// says how many social accounts are connected of the plan's limit, and Teams says how many
 // seats are used.
 test('Add Channel says how many of the plan’s channels are used', async ({ page }) => {
   const api = await signedIn('a');
@@ -14,11 +14,12 @@ test('Add Channel says how many of the plan’s channels are used', async ({ pag
 
   await page.goto('/launches');
   await page.getByRole('button', { name: 'Add Channel' }).first().click();
+  // One number, social accounts, as the landing counts them: the second
+  // number ("pick any of the 10 platforms below") read as more channels.
   await expect(
-    page.getByText(new RegExp(`^${used} of ${self.totalChannels} channels used · Pro`))
+    page.getByText(`${used} of ${self.totalChannels} social accounts connected · Pro`, { exact: true })
   ).toBeVisible();
-  // Pro: 10 platforms since Pinterest joined every plan (2026-10-27).
-  await expect(page.getByText(/pick any of the 10 platforms below/)).toBeVisible();
+  await expect(page.getByText(/platforms below/)).toHaveCount(0);
 });
 
 test('Teams says how many seats are used', async ({ page }) => {

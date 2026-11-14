@@ -29,8 +29,9 @@ export const PLATFORM_NAMES: Record<string, string> = {
   wordpress: 'WordPress',
 };
 
-// Platforms a plan includes but the picker still shows as "Soon" (kept out of
-// enabledProviders in integration.manager.ts). The plan cards leave them out,
+// Platforms a plan includes but not yet offered (kept out of
+// enabledProviders in integration.manager.ts): only a super admin sees their
+// tile in Add Channel and their card in Help. The plan cards leave them out,
 // like the landing ("6 channels on 10 platforms" for Pro since Pinterest
 // joined on 2026-10-27): only what a customer can connect today. They appear once they are enabled.
 export const SOON_PLATFORMS = new Set(['linkedin-page']);

@@ -36,7 +36,7 @@ test('after a plan change Add Channel locks what the new plan does not have', as
   await page.getByRole('link', { name: 'Calendar' }).first().click();
   await page.getByRole('button', { name: 'Add Channel' }).first().click();
   const dialog = page.getByRole('dialog', { name: 'Add Channel' });
-  await expect(dialog).toContainText('3 of 3 channels used');
+  await expect(dialog).toContainText('3 of 3 social accounts connected');
   await expect(dialog).toContainText(/YouTube\s*🔒\s*Pro/);
   await expect(dialog).toContainText(/X\s*🔒\s*Business/);
 });
@@ -67,6 +67,6 @@ test('a tab left open picks up a plan changed elsewhere when it is back in focus
   });
   await page.getByRole('button', { name: 'Add Channel' }).first().click();
   const dialog = page.getByRole('dialog', { name: 'Add Channel' });
-  await expect(dialog).toContainText(/\d+ of 3 channels used/);
+  await expect(dialog).toContainText(/\d+ of 3 social accounts connected/);
   await expect(dialog).toContainText(/YouTube\s*🔒\s*Pro/);
 });
