@@ -72,3 +72,26 @@ describe('POST /billing/cancel: the customer confirmation', () => {
     expect(await run({ cancel_at: new Date('2026-12-14T12:00:00Z') }, true)).toContain('14 December 2026');
   });
 });
+
+// A second cancel from a stale tab changes nothing, so it must not send the
+// customer a second "cancelled" mail, and the intent reaches the service.
+describe('POST /billing/cancel: the intent', () => {
+  const run = async (result: object, body: object) => {
+    const sendEmail = jest.fn().mockResolvedValue(undefined);
+    const setToCancel = jest.fn().mockResolvedValue(result);
+    const controller = new BillingController({} as any, { setToCancel } as any, { sendEmail } as any, { record: jest.fn() } as any);
+    await controller.cancel({ id: 'org-1', name: 'Acme' } as any, { id: 'user-1', email: 'owner@example.com' } as any, body as any);
+    return { sendEmail, setToCancel };
+  };
+
+  it('passes cancel: true / false on, and nothing else as an intent', async () => {
+    expect((await run({}, { feedback: 'x', cancel: true })).setToCancel).toHaveBeenCalledWith('org-1', true);
+    expect((await run({}, { feedback: '', cancel: false })).setToCancel).toHaveBeenCalledWith('org-1', false);
+    expect((await run({}, { feedback: 'x', cancel: 'false' })).setToCancel).toHaveBeenCalledWith('org-1', undefined);
+  });
+
+  it('sends no mail when nothing changed', async () => {
+    const { sendEmail } = await run({ cancel_at: new Date('2026-12-14T12:00:00Z'), unchanged: true }, { feedback: 'x', cancel: true });
+    expect(sendEmail).not.toHaveBeenCalled();
+  });
+});

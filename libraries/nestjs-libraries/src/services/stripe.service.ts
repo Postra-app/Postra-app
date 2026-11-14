@@ -1180,7 +1180,13 @@ export class StripeService {
     };
   }
 
-  async setToCancel(organizationId: string) {
+  // `cancel` is what the caller wants: true to cancel, false to re-activate.
+  // Without it the call toggled, so a second "cancel" (a stale second tab, a
+  // second admin, a repeated press) re-activated the subscription and it
+  // renewed (upstream #2428). A request that is already satisfied changes
+  // nothing and says so (`unchanged`). Left out, it toggles as before: pages
+  // loaded before this deploy send no intent.
+  async setToCancel(organizationId: string, cancel?: boolean) {
     const id = makeId(10);
     const org = await this._organizationService.getOrgById(organizationId);
     const customer = await this.createOrGetCustomer(org!);
@@ -1206,7 +1212,18 @@ export class StripeService {
     // only the first kept the other one charging (upstream 28e71678).
     const all = currentUserSubscription.data;
 
-    // If the user is toggling back (un-cancelling), just remove the cancel
+    if (cancel === true && sub.cancel_at_period_end) {
+      return {
+        id,
+        cancel_at: sub.cancel_at ? new Date(sub.cancel_at * 1000) : undefined,
+        unchanged: true,
+      };
+    }
+    if (cancel === false && !sub.cancel_at_period_end) {
+      return { id, cancel_at: undefined, unchanged: true };
+    }
+
+    // Un-cancelling: just remove the cancel
     if (sub.cancel_at_period_end) {
       let cancel_at: number | null = null;
       for (const s of all) {
