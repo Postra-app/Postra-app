@@ -30,10 +30,12 @@ describe('pricing matrix', () => {
     }
   });
 
-  it('keeps channel slots at FREE=3, Starter=3, Pro=6, Business=15', () => {
+  // K. 14 XI: Starter 4 (a small business wants Facebook, Instagram, TikTok
+  // and LinkedIn, 4 of its 5 platforms), Pro 8 (were 3 and 6).
+  it('keeps channel slots at FREE=3, Starter=4, Pro=8, Business=15', () => {
     expect(pricing.FREE.channel).toBe(3);
-    expect(pricing.STANDARD.channel).toBe(3);
-    expect(pricing.PRO.channel).toBe(6);
+    expect(pricing.STANDARD.channel).toBe(4);
+    expect(pricing.PRO.channel).toBe(8);
     expect(pricing.ULTIMATE.channel).toBe(15);
   });
 

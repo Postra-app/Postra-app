@@ -11,7 +11,7 @@ const texts = (tier: string) => planFeatures(tier).map(planFeatureText);
 describe('planFeatures', () => {
   it('lists Starter as the customer sees it', () => {
     expect(texts('STANDARD')).toEqual([
-      '3 channels',
+      '4 channels',
       'On Facebook, Instagram, TikTok, LinkedIn, Pinterest',
       '400 posts a month',
       '1 person',
@@ -32,6 +32,9 @@ describe('planFeatures', () => {
       // "6 channels on 10 platforms" (no "(soon)").
       'On Facebook, Instagram, TikTok, LinkedIn, Pinterest, YouTube, Threads, Bluesky, Mastodon, Telegram'
     );
+    // K. 14 XI: Starter 4, Pro 8, Business 15 (were 3, 6, 15).
+    expect(pro).toContain('8 channels');
+    expect(texts('ULTIMATE')).toContain('15 channels');
     expect(pro).toContain('Blog to posts from 3 RSS feeds');
     expect(pro).toContain('Unlimited posts');
     expect(pro).toContain('2 people');
