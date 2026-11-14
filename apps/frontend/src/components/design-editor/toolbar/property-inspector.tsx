@@ -13,12 +13,15 @@ import {
 import * as fabric from 'fabric';
 import { useEditorStore } from '../editor.store';
 import { TextReadability } from './text-readability';
+import { NumberField } from './number-field';
 import { STUDIO_FONTS, findFontByFamily } from '../fonts';
 import { ensureFontsLoaded } from '../utils/font-loading';
 import {
   readBox,
   scaleForSize,
   clampSize,
+  MIN_SIZE,
+  MAX_SIZE,
   clampCornerRadius,
   cornerRadiusOf,
 } from '../utils/object-geometry';
@@ -46,6 +49,15 @@ const LETTER_SPACING_MAX = 600;
 const TEXT_OUTLINE_MAX = 20;
 const TEXT_SHADOW = { color: 'rgba(0,0,0,0.45)', blur: 12, offsetX: 0, offsetY: 4 };
 const HIGHLIGHT_DEFAULT = '#0a0e1a';
+
+interface PositionField {
+  key: string;
+  label: string;
+  value: number;
+  min?: number;
+  max?: number;
+  onChange: (v: number) => void;
+}
 const FONT_SIZE_MAX = 300;
 const STROKE_WIDTH_MAX = 40;
 const DEFAULT_STROKE = '#ffffff';
@@ -387,19 +399,12 @@ export const PropertyInspector: FC<Props> = ({ canvas }) => {
                 className="flex-1 h-1.5 accent-forth cursor-pointer"
                 aria-label={t('props_font_size', 'Font size')}
               />
-              <input
-                type="number"
+              <NumberField
                 min={FONT_SIZE_MIN}
                 max={FONT_SIZE_MAX}
                 value={fontSize}
-                onChange={(e) => {
-                  const v = parseInt(e.target.value, 10);
-                  if (!Number.isNaN(v))
-                    applyToTexts({
-                      fontSize: Math.min(FONT_SIZE_MAX, Math.max(FONT_SIZE_MIN, v)),
-                    });
-                }}
-                onBlur={commit}
+                onChange={(v) => applyToTexts({ fontSize: v })}
+                onCommit={commit}
                 className="w-14 text-xs px-1.5 py-1 rounded bg-newColColor text-textColor border border-newBorder focus:outline-none focus:border-forth tabular-nums"
                 aria-label={t('props_font_size', 'Font size')}
               />
@@ -624,7 +629,8 @@ export const PropertyInspector: FC<Props> = ({ canvas }) => {
           {t('props_position_section', 'Position & size')}
         </span>
         <div className="grid grid-cols-2 gap-1.5">
-          {[
+          {(
+            [
             {
               key: 'x',
               label: t('props_pos_x', 'X'),
@@ -641,27 +647,30 @@ export const PropertyInspector: FC<Props> = ({ canvas }) => {
               key: 'w',
               label: t('props_pos_w', 'W'),
               value: box.width,
+              min: MIN_SIZE,
+              max: MAX_SIZE,
               onChange: (v: number) => applySize(v, box.height),
             },
             {
               key: 'h',
               label: t('props_pos_h', 'H'),
               value: box.height,
+              min: MIN_SIZE,
+              max: MAX_SIZE,
               onChange: (v: number) => applySize(box.width, v),
             },
-          ].map((field) => (
+            ] as PositionField[]
+          ).map((field) => (
             <label key={field.key} className="flex items-center gap-1.5">
               <span className="w-4 text-[11px] text-textColor/60">
                 {field.label}
               </span>
-              <input
-                type="number"
+              <NumberField
                 value={field.value}
-                onChange={(e) => {
-                  const v = parseInt(e.target.value, 10);
-                  if (!Number.isNaN(v)) field.onChange(v);
-                }}
-                onBlur={commit}
+                min={field.min}
+                max={field.max}
+                onChange={field.onChange}
+                onCommit={commit}
                 className="w-full text-xs px-1.5 py-1 rounded bg-newColColor text-textColor border border-newBorder focus:outline-none focus:border-forth tabular-nums"
                 aria-label={field.label}
               />
@@ -733,16 +742,12 @@ export const PropertyInspector: FC<Props> = ({ canvas }) => {
             className="flex-1 h-1.5 accent-forth cursor-pointer"
             aria-label={t('props_rotation', 'Rotation')}
           />
-          <input
-            type="number"
+          <NumberField
             min={0}
             max={359}
             value={angle}
-            onChange={(e) => {
-              const v = parseInt(e.target.value, 10);
-              if (!Number.isNaN(v)) applyRotation(v);
-            }}
-            onBlur={commit}
+            onChange={applyRotation}
+            onCommit={commit}
             className="w-14 text-xs px-1.5 py-1 rounded bg-newColColor text-textColor border border-newBorder focus:outline-none focus:border-forth tabular-nums"
             aria-label={t('props_rotation', 'Rotation')}
           />

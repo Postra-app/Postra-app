@@ -124,6 +124,20 @@ test('Images: smart crop keeps the format, not the old box', async ({ page }) =>
   await s.clean();
 });
 
+// Typed key by key, as a customer types: the field showed the clamped value
+// after every key, so "1320" became 4320 (the "1" raised to the minimum 4).
+test('Inspector: a width typed into W is the width the image gets', { tag: '@safari' }, async ({ page }) => {
+  const s = await studio(page);
+  await s.uploadPhoto();
+  const w = page.getByRole('spinbutton', { name: 'W', exact: true });
+  await w.click();
+  await w.press('ControlOrMeta+a');
+  await page.keyboard.type('1320', { delay: 50 });
+  await page.keyboard.press('Enter');
+  await expect.poll(() => inspectorValue(page, 'W')).toBe(1320);
+  await s.clean();
+});
+
 test('Images: remove background puts a library cut-out on the canvas', async ({ page }) => {
   const s = await studio(page);
   await s.uploadPhoto();

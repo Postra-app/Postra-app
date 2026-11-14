@@ -13,11 +13,13 @@ import {
 collectDefaultMetrics();
 
 // RED histogram — observed by HttpMetricsInterceptor on every HTTP request.
+// The buckets above 5 s are for AI generation, which takes tens of seconds:
+// without them its p95 could never read above 5 s.
 export const httpRequestDuration = new Histogram({
   name: 'http_request_duration_seconds',
   help: 'HTTP request duration in seconds, labelled by method/route/status',
   labelNames: ['method', 'route', 'status_code'],
-  buckets: [0.01, 0.05, 0.1, 0.2, 0.5, 1, 2, 5],
+  buckets: [0.01, 0.05, 0.1, 0.2, 0.5, 1, 2, 5, 10, 30, 60, 120],
 });
 
 type Snapshot = MetricObjectWithValues<MetricValue<string>>[];
