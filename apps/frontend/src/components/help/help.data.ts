@@ -344,7 +344,7 @@ export const CHANNEL_GUIDES: ChannelGuide[] = [
     ],
     gotchas: [
       'You may need to be a Slack admin, or ask one, to add apps to the workspace.',
-      'Public channels work straight away. For a private channel, invite the app first: type /invite @Postra in that channel.',
+      'Postra lists the public channels of your workspace. Private channels are not offered: their names stay with the people in them.',
       'Each Slack workspace is one channel in Postra; you pick the Slack channel per post.',
     ],
     composer: [

@@ -69,6 +69,20 @@ describe('SlackProvider', () => {
     expect(calls[1]).toContain('cursor=abc');
   });
 
+  // Everyone in a Postra organisation sees the same channel list: private
+  // channel names reached people who are not in them (upstream 85a0246b6).
+  it('lists public channels only and does not ask for groups:read', async () => {
+    const calls = slackAnswers({
+      'conversations.list': [{ ok: true, channels: [], response_metadata: { next_cursor: '' } }],
+    });
+    await new SlackProvider().channels('t', {}, 'i');
+    expect(calls[0]).toContain('types=public_channel');
+    expect(calls[0]).not.toContain('private_channel');
+    const provider = new SlackProvider();
+    expect(provider.scopes).not.toContain('groups:read');
+    expect((await provider.generateAuthUrl()).url).not.toContain('groups:read');
+  });
+
   it('keeps a message within the 3,000 characters Slack takes in one section', () => {
     expect(new SlackProvider().maxLength()).toBe(3000);
   });
