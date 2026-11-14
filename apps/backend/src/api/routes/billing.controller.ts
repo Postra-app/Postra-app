@@ -29,7 +29,10 @@ import {
 } from '@gitroom/nestjs-libraries/services/auth/permission.exception.class';
 import { bustAuthContextCache } from '@gitroom/backend/services/auth/auth.middleware';
 import dayjs from 'dayjs';
+import utc from 'dayjs/plugin/utc';
 import { escapeHtml } from '@gitroom/helpers/utils/escape.html';
+
+dayjs.extend(utc);
 
 // Billing mutations change what the org's card is charged — restrict to org
 // admins/owner (ADMIN section = ADMIN/SUPERADMIN role). A regular invited
@@ -226,6 +229,26 @@ export class BillingController {
     // cancellation, not when the user re-activates. Emails are best-effort:
     // the cancellation itself must not 500 on an SES hiccup.
     if (result?.cancel_at) {
+      // Written confirmation for the customer (chargeback evidence + the
+      // upcoming UK DMCCA cancellation-confirmation requirement). Sent
+      // first and on its own: a failed operator mail skipped it. A failed
+      // payment ends the plan at once (`immediate`), and "You keep full
+      // access until <today>" was wrong; the date is the server's, in UTC.
+      try {
+        await this._notificationService.sendEmail(
+          user.email,
+          'Your Postra subscription is cancelled',
+          (result as { immediate?: boolean }).immediate
+            ? 'Your subscription has been cancelled and you will not be charged again. As the last payment did not go through, your plan ended today. You can choose a plan again any time from Billing.'
+            : `Your subscription has been cancelled and you will not be charged again. You keep full access until ${dayjs
+                .utc(result.cancel_at)
+                .format(
+                  'D MMMM YYYY'
+                )} (UTC). Changed your mind? You can re-activate any time from Billing.`
+        );
+      } catch (e) {
+        /* the subscription is cancelled either way */
+      }
       try {
         // Operator notification (cancellation feedback). Must go to a
         // monitored inbox — EMAIL_FROM_ADDRESS (no-reply@) has no mailbox and
@@ -238,18 +261,6 @@ export class BillingController {
             String(body?.feedback ?? '').slice(0, 2000)
           )}`,
           user.email
-        );
-
-        // Written confirmation for the customer (chargeback evidence + the
-        // upcoming UK DMCCA cancellation-confirmation requirement).
-        await this._notificationService.sendEmail(
-          user.email,
-          'Your Postra subscription is cancelled',
-          `Your subscription has been cancelled and you will not be charged again. You keep full access until ${dayjs(
-            result.cancel_at
-          ).format(
-            'D MMMM YYYY'
-          )}. Changed your mind? You can re-activate any time from Billing.`
         );
       } catch (e) {
         /* the subscription is cancelled either way */
