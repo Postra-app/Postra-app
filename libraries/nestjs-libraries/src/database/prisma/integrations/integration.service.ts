@@ -37,10 +37,7 @@ import {
   isTransientRefreshError,
 } from '@gitroom/nestjs-libraries/integrations/refresh.integration.service';
 import { TemporalService } from 'nestjs-temporal-core';
-import {
-  afterPublishing,
-  markPublishing,
-} from '@gitroom/nestjs-libraries/temporal/temporal.heartbeat';
+import { afterPublishing } from '@gitroom/nestjs-libraries/temporal/temporal.heartbeat';
 import { fetch } from 'undici';
 import { AuthService } from '@gitroom/helpers/auth/auth.service';
 import {
@@ -1015,12 +1012,13 @@ export class IntegrationService {
       getIntegration.providerIdentifier
     );
 
-    // A plug comments or reposts in public. From here an error with no
-    // verdict from the platform (a lost answer, a timeout) leaves the outcome
-    // unknown, and running it again could put a second comment under the
-    // post: it used to be tried up to 15 times. Marked the way a publish is
-    // (temporal.heartbeat.ts), so such an error is not retried.
-    markPublishing(`${getIntegration.providerIdentifier} plug`);
+    // A plug comments or reposts in public. Once its request may have
+    // reached the platform (the provider marks that moment, the way a
+    // publish does: temporal.heartbeat.ts), an error with no verdict (a lost
+    // answer, a timeout) leaves the outcome unknown, and running it again
+    // could put a second comment under the post: it used to be tried up to
+    // 15 times. Such an error is not retried; one from before that moment
+    // (reading the likes, signing in) still is.
     try {
       // @ts-ignore
       await getSocialIntegration?.[getAllInternalPlugs.methodName]?.(
@@ -1061,7 +1059,6 @@ export class IntegrationService {
     );
 
     // Same guard as processInternalPlug: this may comment or repost.
-    markPublishing(`${getPlugById.integration.providerIdentifier} plug`);
     let process: unknown;
     try {
       // @ts-ignore

@@ -231,7 +231,11 @@ export class AuthService {
       );
       if (!user || !passwordMatches) {
         const total = await ioRedis.incr(failuresKey);
-        if (total === 1) {
+        // The first failure starts the window. A count found with no expiry
+        // gets one too: its first increment reached Redis but the answer did
+        // not come back, so nothing set it, and a count that never expires
+        // locks the address out for good once it reaches the limit.
+        if (total === 1 || (await ioRedis.ttl(failuresKey)) < 0) {
           await ioRedis.expire(failuresKey, LOGIN_LOCKOUT_WINDOW_SECONDS);
         }
         throw new Error('Invalid user name or password');

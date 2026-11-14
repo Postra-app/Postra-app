@@ -22,6 +22,7 @@ jest.mock('isomorphic-dompurify', () => ({
 }));
 
 import { ApplicationFailure } from '@temporalio/activity';
+import { markPublishing } from '@gitroom/nestjs-libraries/temporal/temporal.heartbeat';
 import { IntegrationService } from '@gitroom/nestjs-libraries/database/prisma/integrations/integration.service';
 
 const channel = {
@@ -76,6 +77,14 @@ beforeEach(() => {
   };
 });
 
+// A provider's plug: it reads first (likes, its own account), marks the
+// moment its request may reach the platform, then writes.
+const lostAnswer = () =>
+  jest.fn(async () => {
+    markPublishing('x plug');
+    throw new TypeError('fetch failed');
+  });
+
 describe('a plug that fails with no answer from the platform', () => {
   it.each([
     ['of the channel itself', (s: IntegrationService) => s.processPlugs(run)],
@@ -83,15 +92,35 @@ describe('a plug that fails with no answer from the platform', () => {
       'from another channel',
       (s: IntegrationService) => s.processInternalPlug(internal),
     ],
-  ])('%s is not retried', async (_name, call) => {
-    const plug = jest.fn().mockRejectedValue(new TypeError('fetch failed'));
+  ])(
+    '%s is not retried once its request may have arrived',
+    async (_name, call) => {
+      const plug = lostAnswer();
 
-    await expect(call(service(plug))).rejects.toMatchObject({
-      type: 'publish_unknown',
-      nonRetryable: true,
-    });
-    expect(plug).toHaveBeenCalledTimes(1);
-  });
+      await expect(call(service(plug))).rejects.toMatchObject({
+        type: 'publish_unknown',
+        nonRetryable: true,
+      });
+      expect(plug).toHaveBeenCalledTimes(1);
+    }
+  );
+
+  it.each([
+    ['of the channel itself', (s: IntegrationService) => s.processPlugs(run)],
+    [
+      'from another channel',
+      (s: IntegrationService) => s.processInternalPlug(internal),
+    ],
+  ])(
+    '%s fails as it was, to be retried, when only its reading failed',
+    async (_name, call) => {
+      const reading = new TypeError('fetch failed');
+
+      await expect(
+        call(service(jest.fn().mockRejectedValue(reading)))
+      ).rejects.toBe(reading);
+    }
+  );
 
   it("keeps the platform's own verdict", async () => {
     const refresh = ApplicationFailure.create({

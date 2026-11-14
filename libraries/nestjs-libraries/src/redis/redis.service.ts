@@ -178,8 +178,9 @@ export const REDIS_SOCKET_TIMEOUT_MS = 5000;
  * sent while Redis is down never settles: not resolved, not rejected. Every
  * `.catch()` written to "fail open" was dead code, and with Redis stopped
  * every signed-in request hung until the load balancer gave up, while the
- * liveness check stayed green. With the limit a command rejects after
- * REDIS_COMMAND_TIMEOUT_MS and each caller's own handling decides: caches
+ * liveness check stayed green. Now a command without a connection rejects
+ * at once, one on a connection that stopped answering after
+ * REDIS_COMMAND_TIMEOUT_MS, and each caller's own handling decides: caches
  * fall back to the database, locks and rate limits refuse.
  */
 export const redisOptions = {
@@ -187,10 +188,23 @@ export const redisOptions = {
   connectTimeout: 10000,
   commandTimeout: REDIS_COMMAND_TIMEOUT_MS,
   socketTimeout: REDIS_SOCKET_TIMEOUT_MS,
+  // A command sent while there is no connection is refused at once and never
+  // queued. Queued, it was only *reported* failed when its time ran out: the
+  // client still sent it once Redis was back. An INCR its caller had given
+  // up on then ran with nobody left to set its expiry or to take it back (a
+  // counter of failed sign-ins or of running jobs, stuck for good).
+  enableOfflineQueue: false,
 };
 
-const connect = (url: string) => {
-  const client = new Redis(url, redisOptions);
+export const connectRedis = (url: string, options = redisOptions) => {
+  // Until the first connection is up, commands wait for it as they always
+  // did: code that runs right after import (a script, a spec) must not be
+  // refused for being a few milliseconds early. From then on a command
+  // without a connection is refused (see enableOfflineQueue above).
+  const client = new Redis(url, { ...options, enableOfflineQueue: true });
+  client.once('ready', () => {
+    client.options.enableOfflineQueue = options.enableOfflineQueue;
+  });
   // One line per outage, not one per retry (and never the URL: it carries
   // the password).
   let down = false;
@@ -208,7 +222,7 @@ const connect = (url: string) => {
 
 // Use real Redis if REDIS_URL is defined, otherwise use MockRedis
 export const ioRedis = process.env.REDIS_URL
-  ? connect(process.env.REDIS_URL)
+  ? connectRedis(process.env.REDIS_URL)
   : (new MockRedis() as unknown as Redis); // Type cast to Redis to maintain interface compatibility
 
 /**

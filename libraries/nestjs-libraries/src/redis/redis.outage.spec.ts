@@ -2,6 +2,7 @@ import { createServer, Server, Socket } from 'net';
 import { AddressInfo } from 'net';
 import { Redis } from 'ioredis';
 import {
+  connectRedis,
   redisOptions,
   REDIS_COMMAND_TIMEOUT_MS,
   REDIS_SOCKET_TIMEOUT_MS,
@@ -12,7 +13,12 @@ import {
 // comes back, which is what a dead host looks like from the client.
 const fakeRedis = async () => {
   // `silent` drops the answers; `late` holds them back until speak().
-  const state = { silent: false, late: false, connections: 0 };
+  const state = {
+    silent: false,
+    late: false,
+    connections: 0,
+    commands: [] as string[],
+  };
   const held: (() => void)[] = [];
   const sockets = new Set<Socket>();
   const server: Server = createServer((socket) => {
@@ -26,6 +32,7 @@ const fakeRedis = async () => {
       for (let i = 0; i < lines.length; i += 1) {
         if (!lines[i].startsWith('*')) continue;
         const name = (lines[i + 2] || '').toLowerCase();
+        state.commands.push(name);
         const answer = () =>
           socket.write(
             name === 'info'
@@ -87,16 +94,55 @@ describe('Redis client during an outage', () => {
     expect(REDIS_SOCKET_TIMEOUT_MS).toBeGreaterThan(REDIS_COMMAND_TIMEOUT_MS);
   });
 
-  it('rejects a command when nothing listens, instead of leaving it pending', async () => {
+  it('refuses a command at once when nothing listens, instead of leaving it pending', async () => {
     // A port that was open a moment ago and is closed now.
     const gone = await fakeRedis();
     await gone.close();
     const client = connectTo(gone.port);
     try {
-      const { outcome } = await settled(client.get('key'), 1500);
-      expect(outcome).toBe('rejected: Command timed out');
+      const { outcome, ms } = await settled(client.get('key'), 1500);
+      expect(outcome).toMatch(/^rejected: /);
+      expect(ms).toBeLessThan(150);
     } finally {
       client.disconnect();
+    }
+  });
+
+  it('never sends, once Redis is back, a command it refused while Redis was away', async () => {
+    const server = await fakeRedis();
+    const client = connectTo(server.port);
+    try {
+      await new Promise((resolve) => client.once('ready', resolve));
+      expect(await client.set('key', '1')).toBe('OK');
+      // The connection drops and stays down for a moment.
+      server.state.silent = true;
+      await settled(client.get('key'), 1500);
+      await new Promise((resolve) => client.once('close', resolve));
+
+      const { outcome } = await settled(client.incr('failed-sign-ins'), 1500);
+      expect(outcome).toMatch(/^rejected: /);
+
+      server.state.silent = false;
+      await new Promise((resolve) => client.once('ready', resolve));
+      expect(await client.set('key', '2')).toBe('OK');
+      expect(server.state.commands).not.toContain('incr');
+    } finally {
+      client.disconnect();
+      await server.close();
+    }
+  });
+
+  it('the app client takes a command sent before its first connection is up', async () => {
+    const server = await fakeRedis();
+    const client = connectRedis(`redis://127.0.0.1:${server.port}`);
+    client.on('error', () => undefined);
+    try {
+      // No waiting for "ready": what a script or a spec does right after import.
+      expect(await client.set('key', '1')).toBe('OK');
+      expect(client.options.enableOfflineQueue).toBe(false);
+    } finally {
+      client.disconnect();
+      await server.close();
     }
   });
 
@@ -104,6 +150,7 @@ describe('Redis client during an outage', () => {
     const server = await fakeRedis();
     const client = connectTo(server.port);
     try {
+      await new Promise((resolve) => client.once('ready', resolve));
       expect(await client.set('key', '1')).toBe('OK');
       expect(server.state.connections).toBe(1);
 
@@ -130,6 +177,7 @@ describe('Redis client during an outage', () => {
     const server = await fakeRedis();
     const client = connectTo(server.port);
     try {
+      await new Promise((resolve) => client.once('ready', resolve));
       for (let i = 0; i < 3; i += 1) {
         server.state.late = true;
         expect((await settled(client.get('key'), 1500)).outcome).toBe(

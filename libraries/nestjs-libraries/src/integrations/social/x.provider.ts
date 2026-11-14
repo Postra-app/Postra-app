@@ -33,6 +33,7 @@ import { stripLinks as removeLinks } from '@gitroom/helpers/utils/strip.links';
 import { XDto } from '@gitroom/nestjs-libraries/dtos/posts/providers-settings/x.dto';
 import { Rules } from '@gitroom/nestjs-libraries/chat/rules.description.decorator';
 import { hasExtension } from '@gitroom/helpers/utils/has.extension';
+import { markPublishing } from '@gitroom/nestjs-libraries/temporal/temporal.heartbeat';
 
 // One APPEND per megabyte, as client.v2.uploadMedia does.
 const X_PART = 1024 * 1024;
@@ -274,6 +275,8 @@ export class XProvider extends SocialAbstract implements SocialProvider {
 
     if ((await this.likeCount(client, id)) >= +fields.likesAmount) {
       await timer(2000);
+      // From here the platform may receive it (temporal.heartbeat.ts).
+      markPublishing(`${this.identifier} plug`);
       await client.v2.retweet(integration.internalId, id);
       return true;
     }
@@ -317,6 +320,8 @@ export class XProvider extends SocialAbstract implements SocialProvider {
     } = await client.v2.me();
 
     try {
+      // From here the platform may receive it (temporal.heartbeat.ts).
+      markPublishing(`${this.identifier} plug`);
       await client.v2.retweet(id, postId);
     } catch (err) {
       /** nothing **/
@@ -365,6 +370,8 @@ export class XProvider extends SocialAbstract implements SocialProvider {
 
     if ((await this.likeCount(client, id)) >= +fields.likesAmount) {
       await timer(2000);
+      // From here the platform may receive it (temporal.heartbeat.ts).
+      markPublishing(`${this.identifier} plug`);
 
       const plugText = stripHtmlValidation('normal', fields.post, true);
       await client.v2.tweet({

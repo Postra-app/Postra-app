@@ -3,6 +3,7 @@ export {};
 jest.mock('isomorphic-dompurify', () => ({ __esModule: true, default: { sanitize: (v: string) => v } }));
 jest.mock('nostr-tools', () => ({ getPublicKey: jest.fn(), Relay: class {}, finalizeEvent: jest.fn(), SimplePool: class {} }));
 const counters = new Map<string, number>();
+const expiring = new Set<string>();
 jest.mock('@gitroom/nestjs-libraries/redis/redis.service', () => ({
   ioRedis: {
     get: jest.fn(async (k: string) => (counters.has(k) ? String(counters.get(k)) : null)),
@@ -10,8 +11,15 @@ jest.mock('@gitroom/nestjs-libraries/redis/redis.service', () => ({
       counters.set(k, (counters.get(k) || 0) + 1);
       return counters.get(k);
     }),
-    expire: jest.fn(async () => 1),
-    del: jest.fn(async (k: string) => counters.delete(k)),
+    expire: jest.fn(async (k: string) => {
+      expiring.add(k);
+      return 1;
+    }),
+    ttl: jest.fn(async (k: string) => (!counters.has(k) ? -2 : expiring.has(k) ? 600 : -1)),
+    del: jest.fn(async (k: string) => {
+      expiring.delete(k);
+      return counters.delete(k);
+    }),
   },
 }));
 
@@ -30,7 +38,10 @@ describe('login lockout', () => {
   beforeAll(() => {
     process.env.JWT_SECRET = process.env.JWT_SECRET || 'test-secret';
   });
-  beforeEach(() => counters.clear());
+  beforeEach(() => {
+    counters.clear();
+    expiring.clear();
+  });
 
   const service = () => {
     const s = Object.create(AuthService.prototype);
@@ -62,6 +73,17 @@ describe('login lockout', () => {
       await expect(login(s, 'wrong')).rejects.toThrow('Invalid user name or password');
     }
     await expect(login(s, 'right-password')).rejects.toThrow(/Too many failed login attempts/);
+  });
+
+  // An increment can reach Redis while its answer is lost (a timeout): the
+  // count is then 1 with no expiry, and nothing ever set one afterwards.
+  it('a count left without an expiry gets one at the next failure, so the lock ends', async () => {
+    counters.set('login_failures:owner@example.com', 1);
+    const s = service();
+
+    await expect(login(s, 'wrong')).rejects.toThrow('Invalid user name or password');
+
+    expect(expiring.has('login_failures:owner@example.com')).toBe(true);
   });
 
   it('a successful login clears the count', async () => {
