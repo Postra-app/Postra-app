@@ -27,6 +27,7 @@ const integration = {
 const setup = (failure: unknown) => {
   const integrations = {
     refreshNeeded: jest.fn().mockResolvedValue(true),
+    getIntegrationById: jest.fn().mockResolvedValue(null),
     informAboutRefreshError: jest.fn(),
     disconnectChannel: jest.fn(),
     createOrUpdateIntegration: jest.fn(),

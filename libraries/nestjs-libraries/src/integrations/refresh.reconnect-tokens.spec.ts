@@ -36,7 +36,7 @@ describe('a failed token refresh', () => {
     const service = Object.create(IntegrationService.prototype) as IntegrationService;
     Object.assign(service, {
       _auditService: { record: jest.fn() },
-      _integrationRepository: { disconnectChannel: jest.fn(), refreshNeeded: jest.fn().mockResolvedValue(true) },
+      _integrationRepository: { disconnectChannel: jest.fn(), refreshNeeded: jest.fn().mockResolvedValue(true), getIntegrationById: jest.fn().mockResolvedValue(null) },
       _notificationService: {
         inAppNotification: jest.fn(async (_org: string, _subject: string, message: string) => notifications.push(message)),
       },
@@ -75,7 +75,7 @@ describe('a YouTube refresh refused by a Workspace session policy', () => {
     const service = Object.create(IntegrationService.prototype) as IntegrationService;
     Object.assign(service, {
       _auditService: { record: jest.fn() },
-      _integrationRepository: { disconnectChannel: jest.fn(), refreshNeeded: jest.fn().mockResolvedValue(true) },
+      _integrationRepository: { disconnectChannel: jest.fn(), refreshNeeded: jest.fn().mockResolvedValue(true), getIntegrationById: jest.fn().mockResolvedValue(null) },
       _notificationService: {
         inAppNotification: jest.fn(async (_org: string, _subject: string, message: string) => notifications.push(message)),
       },
