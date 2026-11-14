@@ -2,6 +2,8 @@
 
 import { FC, ReactNode, useEffect, useMemo, useState } from 'react';
 import { useT } from '@gitroom/react/translation/get.transation.service.client';
+import { useUser } from '@gitroom/frontend/components/layout/user.context';
+import { SOON_PLATFORMS } from '@gitroom/frontend/components/billing/plan.features';
 import {
   APP_TABS,
   CHANNEL_GUIDES,
@@ -87,12 +89,22 @@ export const HelpComponent = () => {
   // not do is answer "is there anything here about captions / Pinterest" for
   // someone who does not know which section owns the topic.
   const query = filter.trim().toLowerCase();
+  // The same platforms the Add Channel window shows: a "Soon" platform has no
+  // tile for a customer, so no guide either; a super admin sees both.
+  const user = useUser();
+  const channelGuides = useMemo(
+    () =>
+      CHANNEL_GUIDES.filter(
+        (c) => !SOON_PLATFORMS.has(c.identifier) || !!user?.isSuperAdmin
+      ),
+    [user?.isSuperAdmin]
+  );
   const matchingChannels = useMemo(
     () =>
       query
-        ? CHANNEL_GUIDES.filter((c) => c.name.toLowerCase().includes(query))
-        : CHANNEL_GUIDES,
-    [query]
+        ? channelGuides.filter((c) => c.name.toLowerCase().includes(query))
+        : channelGuides,
+    [query, channelGuides]
   );
   const visibleToc = useMemo(
     () =>
@@ -179,7 +191,7 @@ export const HelpComponent = () => {
           title={t('help_connecting_channels', 'Connecting channels')}
         >
           <div className="flex flex-col gap-[12px]">
-            {CHANNEL_GUIDES.map((channel) => (
+            {channelGuides.map((channel) => (
               <div
                 key={channel.identifier}
                 id={`channel-${channel.identifier}`}

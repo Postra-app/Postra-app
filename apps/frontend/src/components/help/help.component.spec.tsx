@@ -26,3 +26,26 @@ describe('Help contents list', () => {
     expect(tocIds).toEqual(sectionIds);
   });
 });
+
+// A "Soon" platform (LinkedIn Page) has no tile in Add Channel for a
+// customer, so Help has no card for it either; a super admin sees both.
+describe('Help channel cards', () => {
+  const { UserContext } = jest.requireActual('@gitroom/frontend/components/layout/user.context');
+  const render = (isSuperAdmin: boolean) =>
+    renderToStaticMarkup(
+      <UserContext.Provider value={{ isSuperAdmin } as any}>
+        <HelpComponent />
+      </UserContext.Provider>
+    );
+
+  it('a customer gets no card for a platform still coming', () => {
+    const html = render(false);
+    expect(html).toContain('id="channel-linkedin"');
+    expect(html).not.toContain('id="channel-linkedin-page"');
+    expect(html).not.toMatch(/Coming soon: new LinkedIn Page connections/);
+  });
+
+  it('a super admin still gets it', () => {
+    expect(render(true)).toContain('id="channel-linkedin-page"');
+  });
+});

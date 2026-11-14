@@ -32,7 +32,7 @@ import {
   pricing,
   planLabel,
 } from '@gitroom/nestjs-libraries/database/prisma/subscriptions/pricing';
-import { platformOf } from '@gitroom/nestjs-libraries/integrations/same.account';
+import { visibleProviderTiles } from '@gitroom/frontend/components/launches/add.provider.tiles';
 const resolver = classValidatorResolver(ApiKeyDto);
 
 export const useAddProvider = (update?: () => void, invite?: boolean) => {
@@ -778,36 +778,26 @@ export const AddProviderComponent: FC<{
 
   const t = useT();
 
+  // Customers see only what they can connect (add.provider.tiles.ts).
   const sortedSocial = useMemo(
     () =>
-      social
-        .filter((item) => !item.adminOnly || !!user?.previewChannels)
-        .sort((a, b) => {
-          const ae = a.enabled !== false ? 1 : 0;
-          const be = b.enabled !== false ? 1 : 0;
-          return be - ae;
-        }),
-    [social, user?.previewChannels]
+      visibleProviderTiles(
+        social,
+        {
+          isSuperAdmin: user?.isSuperAdmin,
+          previewChannels: user?.previewChannels,
+        },
+        props.invite
+      ),
+    [social, user?.isSuperAdmin, user?.previewChannels, props.invite]
   );
 
-  // Nine platform tiles read as nine channels on Pro: say how
-  // many of the plan's channels are used, and on how many platforms.
+  // Platform tiles read as channels ("9 channels on Pro?"): one number,
+  // social accounts connected of the plan's limit, as the landing says it.
   const channelLimit = channelLimitFor({
     isTrailing: user?.isTrailing,
     subscription: { totalChannels: user?.totalChannels || 0 },
   });
-  // Platforms, not tiles: both Instagram tiles are one platform.
-  const platformCount = allowedProviders
-    ? new Set(
-        social
-          .filter(
-            (item) =>
-              item.enabled !== false &&
-              allowedProviders.includes(item.identifier)
-          )
-          .map((item) => platformOf(item.identifier))
-      ).size
-    : 0;
   const showCounter =
     !props.invite &&
     !!allowedProviders &&
@@ -823,17 +813,16 @@ export const AddProviderComponent: FC<{
           {channelsFull
             ? t(
                 'channels_used_full',
-                '{{used}} of {{limit}} channels used - upgrade to add more.',
+                '{{used}} of {{limit}} social accounts connected. Upgrade your plan to add more.',
                 { used: props.channelsUsed, limit: channelLimit }
               )
             : t(
                 'channels_used_counter',
-                '{{used}} of {{limit}} channels used · {{plan}} - pick any of the {{platforms}} platforms below.',
+                '{{used}} of {{limit}} social accounts connected · {{plan}}',
                 {
                   used: props.channelsUsed,
                   limit: channelLimit,
                   plan: planLabel(user?.tier?.current),
-                  platforms: platformCount,
                 }
               )}
         </div>
