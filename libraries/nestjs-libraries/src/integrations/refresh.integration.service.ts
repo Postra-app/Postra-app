@@ -43,6 +43,11 @@ export const isTransientRefreshError = (err: any): boolean => {
 
 @Injectable()
 export class RefreshIntegrationService {
+  // Tokens another flow already stored (renewedByAnotherFlow): handed out,
+  // never written again. A third flow may have renewed them since, and
+  // writing this pair back would overwrite the newer one.
+  private readonly alreadyStored = new WeakSet<object>();
+
   constructor(
     private _integrationManager: IntegrationManager,
     @Inject(forwardRef(() => IntegrationService))
@@ -70,6 +75,10 @@ export class RefreshIntegrationService {
       ))
     ) {
       return false as const;
+    }
+
+    if (this.alreadyStored.has(refresh)) {
+      return refresh;
     }
 
     await this._integrationService.saveRefreshedTokens(
@@ -205,6 +214,7 @@ export class RefreshIntegrationService {
       // told the customer to reconnect (upstream 878636e82).
       const renewed = await this.renewedByAnotherFlow(integration);
       if (renewed) {
+        this.alreadyStored.add(renewed);
         return renewed;
       }
 

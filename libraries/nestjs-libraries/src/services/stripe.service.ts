@@ -228,9 +228,11 @@ export class StripeService {
     subscriptionId: string,
     paymentMethodId: string
   ) {
+    let cancelError: unknown;
     try {
       await stripe.subscriptions.cancel(subscriptionId);
     } catch (err) {
+      cancelError = err;
       this._logger.error(
         `Card check: cancelling subscription ${subscriptionId} failed: ${
           (err as Error)?.message || err
@@ -245,6 +247,11 @@ export class StripeService {
           (err as Error)?.message || err
         }`
       );
+    }
+    // A subscription still live must not be answered with a 200: the webhook
+    // fails and Stripe sends it again, which cancels it then.
+    if (cancelError) {
+      throw cancelError;
     }
   }
 

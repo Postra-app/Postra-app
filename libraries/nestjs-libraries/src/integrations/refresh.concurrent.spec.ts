@@ -73,6 +73,8 @@ it('takes the tokens another flow stored instead of flagging the channel', async
   expect(result).toMatchObject({ accessToken: 'new-access', refreshToken: 'new-refresh' });
   expect(integrations.refreshNeeded).not.toHaveBeenCalled();
   expect(integrations.disconnectChannel).not.toHaveBeenCalled();
+  // Not written back: a third flow may have renewed them since.
+  expect(integrations.saveRefreshedTokens).not.toHaveBeenCalled();
 });
 
 it('still flags the channel when nobody renewed it', async () => {

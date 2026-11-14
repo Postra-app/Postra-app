@@ -86,4 +86,16 @@ describe('card check before a first subscription', () => {
     await expect((service as any).checkValidCard(event)).resolves.toBe(false);
     expect(cancelSubscription).toHaveBeenCalledWith('sub_1');
   });
+
+  // Codex on the port: the cancel failing (a Stripe outage) must still fail
+  // the webhook, so Stripe sends it again and the subscription gets
+  // cancelled; the card is detached either way.
+  it('a failed cancel fails the webhook for a retry, and the card is still detached', async () => {
+    createIntent.mockResolvedValueOnce({ id: 'pi_1', status: 'requires_payment_method' });
+    cancelSubscription.mockRejectedValueOnce(
+      StripeError.generate({ type: 'api_error', message: 'Stripe is down', statusCode: 500 })
+    );
+    await expect((service as any).checkValidCard(event)).rejects.toThrow('Stripe is down');
+    expect(detachMethod).toHaveBeenCalledWith('pm_1');
+  });
 });
