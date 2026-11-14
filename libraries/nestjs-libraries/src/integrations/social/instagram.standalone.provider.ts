@@ -157,6 +157,22 @@ export class InstagramStandaloneProvider
       })
     ).json();
 
+    // A refused code (expired, used twice, wrong redirect) came back without
+    // a token, the exchange below then ran with access_token=undefined, and
+    // the customer read "Not enough scopes" with nothing logged. Say what
+    // Instagram said instead (upstream 21a57a2bf). The message only, never
+    // the request.
+    if (!getAccessToken?.access_token) {
+      console.error(
+        `[instagram-standalone] code exchange failed: ${
+          getAccessToken?.error_type || ''
+        } ${getAccessToken?.error_message || 'no access token'}`
+      );
+      throw new Error(
+        getAccessToken?.error_message || 'Instagram token exchange failed'
+      );
+    }
+
     const { access_token, expires_in, ...all } = await (
       await fetch(
         'https://graph.instagram.com/access_token' +
@@ -167,7 +183,18 @@ export class InstagramStandaloneProvider
       )
     ).json();
 
-    this.checkScopes(this.scopes, getAccessToken.permissions);
+    try {
+      this.checkScopes(this.scopes, getAccessToken.permissions);
+    } catch (err) {
+      // Which permissions Instagram granted, so a refused scope can be told
+      // apart from a bug (upstream d5ab6a9cd).
+      console.error(
+        `[instagram-standalone] scope check failed, granted: ${JSON.stringify(
+          getAccessToken.permissions
+        )}`
+      );
+      throw err;
+    }
 
     const { user_id, name, username, profile_picture_url } = await (
       await fetch(
