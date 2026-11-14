@@ -1,6 +1,6 @@
 'use client';
 
-import { FC, useEffect, useRef, useState } from 'react';
+import { FC, useEffect, useState } from 'react';
 
 interface NumberFieldProps {
   value: number;
@@ -20,7 +20,8 @@ interface NumberFieldProps {
  * what is being typed: when it showed the object's value instead, every
  * keystroke was clamped and the next digit landed after the clamped one, so
  * "1320" typed as a width became 4320 (the first "1" raised to the minimum 4)
- * and a negative position could not be typed at all.
+ * and a negative position could not be typed at all. Enter and Escape leave
+ * the field; one undo step takes the change back.
  */
 export const NumberField: FC<NumberFieldProps> = ({
   value,
@@ -32,11 +33,6 @@ export const NumberField: FC<NumberFieldProps> = ({
   'aria-label': ariaLabel,
 }) => {
   const [draft, setDraft] = useState<string | null>(null);
-  // Escape puts back the value the field had when it was entered (the
-  // design already follows the keystrokes); set before blur, which runs
-  // before a state update would.
-  const discard = useRef(false);
-  const start = useRef(value);
 
   // A new object or an undo changes the value under a field nobody edits.
   useEffect(() => {
@@ -49,13 +45,10 @@ export const NumberField: FC<NumberFieldProps> = ({
   };
 
   const finish = () => {
-    if (discard.current) {
-      if (value !== start.current) onChange(start.current);
-    } else if (draft !== null) {
+    if (draft !== null) {
       const v = parse(draft);
       if (v !== null) onChange(Math.min(max, Math.max(min, v)));
     }
-    discard.current = false;
     setDraft(null);
     onCommit?.();
   };
@@ -73,14 +66,10 @@ export const NumberField: FC<NumberFieldProps> = ({
         if (v !== null && v >= min && v <= max) onChange(v);
       }}
       onKeyDown={(e) => {
-        if (e.key === 'Enter') e.currentTarget.blur();
-        if (e.key === 'Escape') {
-          discard.current = true;
-          e.currentTarget.blur();
-        }
-      }}
-      onFocus={() => {
-        start.current = value;
+        // Escape too: the field holds one value for a whole selection
+        // (texts of 24 and 48 show 24), so it cannot put each one back;
+        // Ctrl+Z does.
+        if (e.key === 'Enter' || e.key === 'Escape') e.currentTarget.blur();
       }}
       onBlur={finish}
       className={className}

@@ -77,12 +77,34 @@ describe('Studio number field', () => {
     expect(onCommit).toHaveBeenCalledTimes(1);
   });
 
-  it('Escape puts back the value the field had', () => {
-    render(<Inspector start={1080} min={4} max={10000} />);
+  // The field holds one value for a whole selection (font size of two texts,
+  // 24 and 48, shows 24). Putting "its" value back on Escape set both texts to
+  // 24 and recorded it; Escape leaves the field like Enter, Ctrl+Z undoes.
+  it('Escape does not write the field value back over the selection', () => {
+    const applied: number[] = [];
+    // Like the inspector: the field shows the first text's size, which
+    // follows the keystrokes; every value goes to the whole selection.
+    const Selection = () => {
+      const [first, setFirst] = useState(24);
+      return (
+        <NumberField
+          value={first}
+          min={8}
+          max={300}
+          onChange={(v) => {
+            applied.push(v);
+            setFirst(v);
+          }}
+          aria-label="field"
+        />
+      );
+    };
+    render(<Selection />);
     const input = screen.getByLabelText('field') as HTMLInputElement;
-    typeOver(input, '600');
+    typeOver(input, '60');
     fireEvent.keyDown(input, { key: 'Escape' });
     fireEvent.blur(input);
-    expect(design()).toBe(1080);
+    expect(applied).not.toContain(24);
+    expect(applied[applied.length - 1]).toBe(60);
   });
 });
