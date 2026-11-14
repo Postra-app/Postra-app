@@ -44,7 +44,7 @@ import { useToaster } from '@gitroom/react/toaster/toaster';
 import { useUser } from '@gitroom/frontend/components/layout/user.context';
 import isSameOrAfter from 'dayjs/plugin/isSameOrAfter';
 import isSameOrBefore from 'dayjs/plugin/isSameOrBefore';
-import { groupBy, sortBy } from 'lodash';
+import { groupBy, sortBy, uniqBy } from 'lodash';
 import SafeImage from '@gitroom/react/helpers/safe.image';
 import { extend } from 'dayjs';
 import { isUSCitizen } from './helpers/isuscitizen.utils';
@@ -400,7 +400,13 @@ const DaySlotColumn: FC<{ option: any[]; startDate: string; tz: string }> =
       <CalendarContext.Provider
         value={{
           ...calendar,
-          integrations: option.flatMap((p) => p.integration),
+          // One icon per channel: two posts on one channel at the same
+          // minute listed it twice (duplicate React keys, and the duplicate
+          // list went into the new-post window). Upstream 4eafd2102.
+          integrations: uniqBy(
+            option.flatMap((p) => p.integration),
+            (p: any) => p.id
+          ),
         }}
       >
         <CalendarColumn getDate={slotDate(startDate, option[0].time, tz)} />
@@ -1157,7 +1163,9 @@ export const CalendarColumn: FC<{
                   {integrations.map((selectedIntegrations) => (
                     <div
                       className="relative"
-                      key={selectedIntegrations.identifier}
+                      // By channel: two channels of one platform shared
+                      // the platform's key (upstream d36b23c95).
+                      key={selectedIntegrations.id}
                     >
                       <div
                         className={clsx(
