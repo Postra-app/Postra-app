@@ -12,6 +12,35 @@ const maskEmail = (address: string) => {
   return `${local.slice(0, 1)}***@${domain}`;
 };
 
+/**
+ * A failure worth another try later: the provider could not be reached, or
+ * answered "not now" (SMTP 4xx: throttling, a temporary fault). A refusal of
+ * this message (SMTP 5xx: bad address, suppression list) or of our
+ * credentials is not: repeating it changes nothing and would only hold up
+ * the mails queued behind it.
+ */
+export const isTransientMailError = (err: unknown): boolean => {
+  const { code, responseCode } = (err || {}) as {
+    code?: string;
+    responseCode?: number;
+  };
+  if (typeof responseCode === 'number') {
+    return responseCode >= 400 && responseCode < 500;
+  }
+  return [
+    'ECONNECTION',
+    'ECONNRESET',
+    'ECONNREFUSED',
+    'ETIMEDOUT',
+    'ESOCKET',
+    'EDNS',
+    'ENOTFOUND',
+    'EAI_AGAIN',
+  ].includes(code || '');
+};
+
+export type MailOutcome = { sent: boolean; transient: boolean };
+
 @Injectable()
 export class EmailService {
   private readonly _logger = new Logger(EmailService.name);
@@ -70,15 +99,29 @@ export class EmailService {
     replyTo?: string,
     footer?: string
   ): Promise<boolean> {
+    return (await this.deliver(to, subject, html, replyTo, footer)).sent;
+  }
+
+  // The same send, saying also whether a failure was the provider being
+  // unavailable. The mail queue (orchestrator, email.activity) asks, so that
+  // an outage delays the queued mails instead of dropping them.
+  async deliver(
+    to: string,
+    subject: string,
+    html: string,
+    replyTo?: string,
+    footer?: string
+  ): Promise<MailOutcome> {
+    const notSent = { sent: false, transient: false };
     if (to.indexOf('@') === -1) {
-      return false;
+      return notSent;
     }
 
     if (!process.env.EMAIL_FROM_ADDRESS || !process.env.EMAIL_FROM_NAME) {
       this._logger.error(
         'Email sender information not found in environment variables'
       );
-      return false;
+      return notSent;
     }
 
     const modifiedHtml = `
@@ -152,7 +195,7 @@ export class EmailService {
           // nobody.
           replyTo || process.env.EMAIL_REPLY_TO || undefined
         );
-        return true;
+        return { sent: true, transient: false };
       } catch (err) {
         lastErr = err;
         this._logger.warn(
@@ -170,6 +213,6 @@ export class EmailService {
         (lastErr as Error)?.message ?? lastErr
       }`
     );
-    return false;
+    return { sent: false, transient: isTransientMailError(lastErr) };
   }
 }

@@ -10,6 +10,13 @@ const transporter = nodemailer.createTransport({
     user: process.env.EMAIL_USER,
     pass: process.env.EMAIL_PASS,
   },
+  // nodemailer waits 2 minutes for a connection and 10 for a silent socket by
+  // default. Activation and password-reset mails are sent inside the request
+  // (auth.service), three tries each: a mail server that stopped answering
+  // held those requests for minutes.
+  connectionTimeout: 10000,
+  greetingTimeout: 10000,
+  socketTimeout: 30000,
 });
 
 export class NodeMailerProvider implements EmailInterface {

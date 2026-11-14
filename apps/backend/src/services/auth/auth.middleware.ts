@@ -1,4 +1,9 @@
-import { HttpException, Injectable, NestMiddleware, Optional } from '@nestjs/common';
+import {
+  HttpException,
+  Injectable,
+  NestMiddleware,
+  Optional,
+} from '@nestjs/common';
 import { AuditService } from '@gitroom/nestjs-libraries/database/prisma/audit/audit.service';
 import { Request, Response, NextFunction } from 'express';
 import { AuthService } from '@gitroom/helpers/auth/auth.service';
@@ -6,7 +11,10 @@ import { User } from '@prisma/client';
 import { OrganizationService } from '@gitroom/nestjs-libraries/database/prisma/organizations/organization.service';
 import { UsersService } from '@gitroom/nestjs-libraries/database/prisma/users/users.service';
 import { HttpForbiddenException } from '@gitroom/nestjs-libraries/services/exception.filter';
-import { ioRedis } from '@gitroom/nestjs-libraries/redis/redis.service';
+import {
+  ioRedis,
+  redisReady,
+} from '@gitroom/nestjs-libraries/redis/redis.service';
 import {
   AUTH_CACHE_TTL_SECONDS,
   authContextCacheKey,
@@ -58,7 +66,6 @@ class ImpersonationForbiddenException extends HttpException {
 
 // Re-exported so existing callers keep importing the buster from the middleware.
 export { authContextCacheKey, bustAuthContextCache };
-
 
 // Audit rows had no ip and no userAgent on any action; the columns
 // existed and nothing filled them. The ip is the last X-Forwarded-For entry
@@ -132,7 +139,11 @@ export class AuthMiddleware implements NestMiddleware {
         .catch((): undefined => undefined);
 
       const cacheKey = authContextCacheKey(payload.id);
-      const cached = await ioRedis.get(cacheKey).catch((): null => null);
+      // Without a connection the cache is skipped, not waited for: the
+      // database below answers the same question.
+      const cached = redisReady()
+        ? await ioRedis.get(cacheKey).catch((): null => null)
+        : null;
       let user: User | null = null;
       let organization: any[] | null = null;
       if (cached) {
@@ -261,14 +272,16 @@ export class AuthMiddleware implements NestMiddleware {
       delete user.password;
       if (!organization) {
         organization = await this._organizationService.getOrgsByUserId(user.id);
-        await ioRedis
-          .set(
-            cacheKey,
-            JSON.stringify({ user, organization }),
-            'EX',
-            AUTH_CACHE_TTL_SECONDS
-          )
-          .catch(() => {});
+        if (redisReady()) {
+          await ioRedis
+            .set(
+              cacheKey,
+              JSON.stringify({ user, organization }),
+              'EX',
+              AUTH_CACHE_TTL_SECONDS
+            )
+            .catch(() => {});
+        }
       }
       organization = organization.filter((f: any) => !f.users[0].disabled);
       const setOrg =

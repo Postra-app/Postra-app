@@ -37,6 +37,7 @@ import {
   isTransientRefreshError,
 } from '@gitroom/nestjs-libraries/integrations/refresh.integration.service';
 import { TemporalService } from 'nestjs-temporal-core';
+import { afterPublishing } from '@gitroom/nestjs-libraries/temporal/temporal.heartbeat';
 import { fetch } from 'undici';
 import { AuthService } from '@gitroom/helpers/auth/auth.service';
 import {
@@ -1011,13 +1012,24 @@ export class IntegrationService {
       getIntegration.providerIdentifier
     );
 
-    // @ts-ignore
-    await getSocialIntegration?.[getAllInternalPlugs.methodName]?.(
-      getIntegration,
-      originalIntegration,
-      data.post,
-      data.information
-    );
+    // A plug comments or reposts in public. Once its request may have
+    // reached the platform (the provider marks that moment, the way a
+    // publish does: temporal.heartbeat.ts), an error with no verdict (a lost
+    // answer, a timeout) leaves the outcome unknown, and running it again
+    // could put a second comment under the post: it used to be tried up to
+    // 15 times. Such an error is not retried; one from before that moment
+    // (reading the likes, signing in) still is.
+    try {
+      // @ts-ignore
+      await getSocialIntegration?.[getAllInternalPlugs.methodName]?.(
+        getIntegration,
+        originalIntegration,
+        data.post,
+        data.information
+      );
+    } catch (err) {
+      throw afterPublishing(err);
+    }
 
     return;
   }
@@ -1046,15 +1058,21 @@ export class IntegrationService {
       getPlugById.integration.providerIdentifier
     );
 
-    // @ts-ignore
-    const process = await integration[getPlugById.plugFunction](
-      getPlugById.integration,
-      data.postId,
-      JSON.parse(getPlugById.data).reduce((all: any, current: any) => {
-        all[current.name] = current.value;
-        return all;
-      }, {})
-    );
+    // Same guard as processInternalPlug: this may comment or repost.
+    let process: unknown;
+    try {
+      // @ts-ignore
+      process = await integration[getPlugById.plugFunction](
+        getPlugById.integration,
+        data.postId,
+        JSON.parse(getPlugById.data).reduce((all: any, current: any) => {
+          all[current.name] = current.value;
+          return all;
+        }, {})
+      );
+    } catch (err) {
+      throw afterPublishing(err);
+    }
 
     if (process) {
       return true;

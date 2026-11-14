@@ -12,10 +12,19 @@ import {
   sendEmailSignal,
 } from '@gitroom/orchestrator/signals/send.email.signal';
 
+// sendEmail fails only when the mail provider cannot be reached
+// (email.activity): tried again after 30 s, 1, 2, 4, 8 and 16 minutes, about
+// half an hour in all, then given up on and logged below. The mails behind
+// it wait meanwhile, which is right: they would fail the same way.
 const { sendEmail } = proxyActivities<EmailActivity>({
   startToCloseTimeout: '10 minute',
   taskQueue: 'main',
   cancellationType: 'ABANDON',
+  retry: {
+    initialInterval: '30 seconds',
+    backoffCoefficient: 2,
+    maximumAttempts: 7,
+  },
 });
 
 const RATE_LIMIT_MS = 700;

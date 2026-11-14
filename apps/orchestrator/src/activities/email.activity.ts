@@ -13,12 +13,39 @@ export class EmailActivity {
 
   @ActivityMethod()
   async sendEmail(to: string, subject: string, html: string, replyTo?: string) {
-    return this._emailService.sendEmailSync(to, subject, html, replyTo);
+    const outcome = await this._emailService.deliver(
+      to,
+      subject,
+      html,
+      replyTo
+    );
+    // The mail has already left the queue (send.email.workflow). Answering
+    // "done" for one the provider could not take right now dropped it: an
+    // outage of the mail provider longer than the ~1.4 s of tries in
+    // EmailService lost every notification queued in that time. Failing the
+    // activity has Temporal try it again later; a mail the provider refused
+    // for good is not retried.
+    if (!outcome.sent && outcome.transient) {
+      throw new Error('The mail provider is unavailable');
+    }
+    return outcome.sent;
   }
 
   @ActivityMethod()
-  async sendEmailAsync(to: string, subject: string, html: string, sendTo: 'top' | 'bottom', replyTo?: string) {
-    return await this._emailService.sendEmail(to, subject, html, sendTo, replyTo);
+  async sendEmailAsync(
+    to: string,
+    subject: string,
+    html: string,
+    sendTo: 'top' | 'bottom',
+    replyTo?: string
+  ) {
+    return await this._emailService.sendEmail(
+      to,
+      subject,
+      html,
+      sendTo,
+      replyTo
+    );
   }
 
   @ActivityMethod()

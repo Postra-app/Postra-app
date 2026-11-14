@@ -19,6 +19,7 @@ import { Integration } from '@prisma/client';
 import { stripHtmlValidation } from '@gitroom/helpers/utils/strip.html.validation';
 import { hasExtension } from '@gitroom/helpers/utils/has.extension';
 import { percentageChangeFromSeries } from '@gitroom/nestjs-libraries/integrations/social/analytics.utils';
+import { markPublishing } from '@gitroom/nestjs-libraries/temporal/temporal.heartbeat';
 
 export class ThreadsProvider extends SocialAbstract implements SocialProvider {
   private readonly _logger = new Logger(ThreadsProvider.name);
@@ -570,6 +571,8 @@ export class ThreadsProvider extends SocialAbstract implements SocialProvider {
 
     if (value.value >= fields.likesAmount) {
       await timer(2000);
+      // From here the platform may receive it (temporal.heartbeat.ts).
+      markPublishing(`${this.identifier} plug`);
 
       const form = new FormData();
       form.append('media_type', 'TEXT');

@@ -32,6 +32,7 @@ import { fetchMediaBuffer } from '@gitroom/nestjs-libraries/media/fetch.media.bu
 import { stripHtmlValidation } from '@gitroom/helpers/utils/strip.html.validation';
 import { Rules } from '@gitroom/nestjs-libraries/chat/rules.description.decorator';
 import { hasExtension } from '@gitroom/helpers/utils/has.extension';
+import { markPublishing } from '@gitroom/nestjs-libraries/temporal/temporal.heartbeat';
 
 const logger = new Logger('BlueskyProvider');
 
@@ -579,6 +580,8 @@ export class BlueskyProvider extends SocialAbstract implements SocialProvider {
     // @ts-ignore
     if (getThread.data.thread.post?.likeCount >= +fields.likesAmount) {
       await timer(2000);
+      // From here the platform may receive it (temporal.heartbeat.ts).
+      markPublishing(`${this.identifier} plug`);
       await agent.repost(
         // @ts-ignore
         getThread.data.thread.post?.uri,
@@ -641,6 +644,8 @@ export class BlueskyProvider extends SocialAbstract implements SocialProvider {
     // @ts-ignore
     if (getThread.data.thread.post?.likeCount >= +fields.likesAmount) {
       await timer(2000);
+      // From here the platform may receive it (temporal.heartbeat.ts).
+      markPublishing(`${this.identifier} plug`);
       const rt = new RichText({
         text: stripHtmlValidation('normal', fields.post, true),
       });

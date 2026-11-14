@@ -28,6 +28,7 @@ import { LinkedinDto } from '@gitroom/nestjs-libraries/dtos/posts/providers-sett
 import imageToPDF from 'image-to-pdf';
 import { Readable } from 'stream';
 import { Rules } from '@gitroom/nestjs-libraries/chat/rules.description.decorator';
+import { markPublishing } from '@gitroom/nestjs-libraries/temporal/temporal.heartbeat';
 
 // Video parts, the same 2 MB the upload used before.
 const LINKEDIN_PART = 1024 * 1024 * 2;
@@ -943,6 +944,8 @@ export class LinkedinProvider extends SocialAbstract implements SocialProvider {
     information: any,
     isPersonal = true
   ) {
+    // From here the platform may receive it (temporal.heartbeat.ts).
+    markPublishing(`${this.identifier} plug`);
     return this.comment(
       integration.internalId,
       postId,
@@ -977,6 +980,8 @@ export class LinkedinProvider extends SocialAbstract implements SocialProvider {
     information: any,
     isPersonal = true
   ) {
+    // From here the platform may receive it (temporal.heartbeat.ts).
+    markPublishing(`${this.identifier} plug`);
     await this.fetch(`https://api.linkedin.com/rest/posts`, {
       body: JSON.stringify({
         author:

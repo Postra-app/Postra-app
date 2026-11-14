@@ -21,6 +21,7 @@ import {
   weightedAverage,
 } from '@gitroom/nestjs-libraries/integrations/social/analytics.utils';
 import { Rules } from '@gitroom/nestjs-libraries/chat/rules.description.decorator';
+import { markPublishing } from '@gitroom/nestjs-libraries/temporal/temporal.heartbeat';
 
 @Rules(
   'LinkedIn can have maximum one attachment when selecting video, when choosing a carousel on LinkedIn minimum amount of attachment must be two, and only pictures, if uploading a video, LinkedIn can have only one attachment'
@@ -634,6 +635,8 @@ export class LinkedinPageProvider
 
     if (totalLikes >= +fields.likesAmount) {
       await timer(2000);
+      // From here the platform may receive it (temporal.heartbeat.ts).
+      markPublishing(`${this.identifier} plug`);
       await this.fetch(`https://api.linkedin.com/rest/posts`, {
         body: JSON.stringify({
           author: `urn:li:organization:${integration.internalId}`,
@@ -712,6 +715,8 @@ export class LinkedinPageProvider
 
     if (totalLikes >= fields.likesAmount) {
       await timer(2000);
+      // From here the platform may receive it (temporal.heartbeat.ts).
+      markPublishing(`${this.identifier} plug`);
       await this.fetch(
         `https://api.linkedin.com/v2/socialActions/${decodeURIComponent(
           id

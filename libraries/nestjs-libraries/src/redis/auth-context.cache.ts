@@ -1,4 +1,7 @@
-import { ioRedis } from '@gitroom/nestjs-libraries/redis/redis.service';
+import {
+  ioRedis,
+  redisReady,
+} from '@gitroom/nestjs-libraries/redis/redis.service';
 
 // user+orgs resolution runs on EVERY authenticated request (two joined
 // queries); auth.middleware caches it per user for a short window. The key +
@@ -33,6 +36,7 @@ const lastOnlineKey = (userId: string) => `lastonline:${userId}`;
 
 /** True when this user has not been marked online inside the window. */
 export const claimLastOnlineWrite = async (userId: string) => {
+  if (!redisReady()) return false;
   try {
     const claimed = await ioRedis.set(
       lastOnlineKey(userId),
