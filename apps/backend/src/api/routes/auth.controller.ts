@@ -24,6 +24,7 @@ import {
   authCookieOptions,
   setSessionCookie,
 } from '@gitroom/backend/services/auth/session.cookie';
+import { clearSessionCookies } from '@gitroom/nestjs-libraries/services/auth/remove.auth';
 import { EmailService } from '@gitroom/nestjs-libraries/services/email.service';
 import { RealIP } from 'nestjs-real-ip';
 import { UserAgent } from '@gitroom/nestjs-libraries/user/user.agent';
@@ -50,6 +51,9 @@ const oauthStateCookieOptions = () => ({
 });
 
 @ApiTags('Auth')
+// The native app names itself; it gets its token in the body.
+const isAppClient = (req: Request) => req.headers?.['x-client'] === 'mobile';
+
 @Controller('/auth')
 export class AuthController {
   constructor(
@@ -106,18 +110,30 @@ export class AuthController {
         return;
       }
 
-      setSessionCookie(response, jwt);
+      // The app keeps its own short token in the Keychain and never sends
+      // cookies on purpose; the 30-day web cookie it used to get here sat in
+      // the phone's cookie store, outside the Keychain and untouched by the
+      // app's sign-out. No cookie for the app, and the ones older versions
+      // were given are expired.
+      const forApp = isAppClient(req);
+      if (forApp) {
+        clearSessionCookies(response, ['auth', 'showorg']);
+      } else {
+        setSessionCookie(response, jwt);
+      }
 
       if (process.env.NOT_SECURED) {
         response.header('auth', jwt);
       }
 
       if (typeof addedOrg === 'object' && addedOrg?.organizationId) {
-        response.cookie(
-          'showorg',
-          addedOrg.organizationId,
-          authCookieOptions()
-        );
+        if (!forApp) {
+          response.cookie(
+            'showorg',
+            addedOrg.organizationId,
+            authCookieOptions()
+          );
+        }
 
         if (process.env.NOT_SECURED) {
           response.header('showorg', addedOrg.organizationId);
@@ -131,7 +147,7 @@ export class AuthController {
       response.status(200).json({
         register: true,
         // The mobile client cannot read an httpOnly cookie — return the token in the body.
-        ...(req.headers['x-client'] === 'mobile'
+        ...(forApp
           ? {
               token: this._authService.mobileJwt(jwt),
               org:
@@ -182,18 +198,30 @@ export class AuthController {
         metadata: { email: body.email, provider: body.provider },
       });
 
-      setSessionCookie(response, jwt);
+      // The app keeps its own short token in the Keychain and never sends
+      // cookies on purpose; the 30-day web cookie it used to get here sat in
+      // the phone's cookie store, outside the Keychain and untouched by the
+      // app's sign-out. No cookie for the app, and the ones older versions
+      // were given are expired.
+      const forApp = isAppClient(req);
+      if (forApp) {
+        clearSessionCookies(response, ['auth', 'showorg']);
+      } else {
+        setSessionCookie(response, jwt);
+      }
 
       if (process.env.NOT_SECURED) {
         response.header('auth', jwt);
       }
 
       if (typeof addedOrg === 'object' && addedOrg?.organizationId) {
-        response.cookie(
-          'showorg',
-          addedOrg.organizationId,
-          authCookieOptions()
-        );
+        if (!forApp) {
+          response.cookie(
+            'showorg',
+            addedOrg.organizationId,
+            authCookieOptions()
+          );
+        }
 
         if (process.env.NOT_SECURED) {
           response.header('showorg', addedOrg.organizationId);
@@ -208,7 +236,7 @@ export class AuthController {
         // The native client cannot read an httpOnly cookie, so it gets the
         // token in the body — but not the same one. The app's token is short
         // and revocable; see AuthService.mobileJwt.
-        ...(req.headers['x-client'] === 'mobile'
+        ...(forApp
           ? {
               token: this._authService.mobileJwt(jwt),
               org:
