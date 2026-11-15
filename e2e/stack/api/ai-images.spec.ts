@@ -97,6 +97,38 @@ test('an organisation without a plan gets 402 from every AI route, and OpenAI he
   }
 });
 
+// A carousel can outlast the browser's wait. Asked again (a timeout, a second
+// click), it was designed again from nothing and every picture paid twice.
+test('the same carousel asked for twice is made and paid for once', async () => {
+  test.setTimeout(90_000);
+  const pro = await throwawayOrg(prisma, { tier: 'PRO', totalChannels: 6, channels: 0 });
+  try {
+    const before = await imagesLeft(pro.api);
+    const data = { prompt: `Two tips for a quiet office ${Date.now()}`, platform: 'instagram-feed', slidesCount: 2 };
+    const [first, second] = await Promise.all([
+      pro.api.post('/media/generate-carousel-design', { data }),
+      pro.api.post('/media/generate-carousel-design', { data }),
+    ]);
+    expect(first.status(), await first.text()).toBe(201);
+    expect(second.status(), await second.text()).toBe(201);
+    const spent = before - (await imagesLeft(pro.api));
+    expect(spent).toBeGreaterThan(0);
+    expect(spent).toBeLessThanOrEqual(2);
+
+    const again = await pro.api.post('/media/generate-carousel-design', { data });
+    expect(again.status()).toBe(201);
+    const slides: { backgroundUrl: string; cacheHit: boolean }[] = (await again.json()).slides;
+    expect(slides).toHaveLength(2);
+    expect(slides.every((slide) => slide.cacheHit)).toBe(true);
+    expect((await first.json()).slides.map((slide: { backgroundUrl: string }) => slide.backgroundUrl)).toEqual(
+      slides.map((slide) => slide.backgroundUrl)
+    );
+    expect(before - (await imagesLeft(pro.api))).toBe(spent);
+  } finally {
+    await pro.remove();
+  }
+});
+
 // Studio "From a link": an address that is not a public https page is refused
 // before the server fetches anything, and costs nothing.
 test('a design from a link to an internal address is refused and costs no credit', async () => {

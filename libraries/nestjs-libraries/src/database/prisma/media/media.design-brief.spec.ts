@@ -6,7 +6,11 @@ jest.mock('@gitroom/nestjs-libraries/media/article.reader', () => ({
   readArticle: (...a: unknown[]) => readArticle(...a),
 }));
 jest.mock('@gitroom/nestjs-libraries/redis/redis.service', () => ({
-  ioRedis: { get: jest.fn().mockResolvedValue('https://cdn.example/bg.png'), set: jest.fn() },
+  ioRedis: {
+    get: jest.fn().mockResolvedValue('https://cdn.example/bg.png'),
+    set: jest.fn().mockResolvedValue('OK'),
+    del: jest.fn().mockResolvedValue(1),
+  },
 }));
 
 import { MediaService } from './media.service';
