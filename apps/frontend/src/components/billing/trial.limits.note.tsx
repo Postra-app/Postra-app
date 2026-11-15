@@ -2,9 +2,10 @@
 
 import { FC } from 'react';
 import {
-  pricing,
   TRIAL_CHANNEL_CAP,
   TRIAL_LIMITS,
+  TRIAL_AGENT_MESSAGES,
+  TRIAL_AI_IMAGES,
   TRIAL_VIDEO_CLIPS,
 } from '@gitroom/nestjs-libraries/database/prisma/subscriptions/pricing';
 import { useT } from '@gitroom/react/translation/get.transation.service.client';
@@ -21,13 +22,15 @@ export const TrialLimitsNote: FC<{ endTrialLink?: boolean }> = ({
     <div className="text-[14px] text-newTextColor/70 max-w-[760px]">
       {t(
         'billing_trial_limits',
-        "During the 7-day trial you can connect up to {{channels}} channels, schedule up to {{posts}} posts, add {{webhooks}} webhook and {{feeds}} Auto Post feed, use Starter's AI allowance ({{images}} AI images, {{videos}} AI video) and keep up to {{storage}} GB of photos and videos. The trial is for one person, so team invites open with your plan. Your full plan unlocks with the first payment, or straight away if you end the trial early.",
+        "During the 7-day trial you can connect up to {{channels}} channels, schedule up to {{posts}} posts, add {{webhooks}} webhook and {{feeds}} Auto Post feed, try AI with {{images}} AI images, {{videos}} AI video and {{questions}} questions to the AI assistant, and keep up to {{storage}} GB of photos and videos. The trial is for one person, so team invites open with your plan. Your full plan unlocks with the first payment, or straight away if you end the trial early.",
+
         {
           channels: TRIAL_CHANNEL_CAP,
           posts: TRIAL_LIMITS.posts_per_month,
           webhooks: TRIAL_LIMITS.webhooks,
           feeds: TRIAL_LIMITS.autoPostLimit,
-          images: pricing.STANDARD.image_generation_count,
+          images: TRIAL_AI_IMAGES,
+          questions: TRIAL_AGENT_MESSAGES,
           videos: TRIAL_VIDEO_CLIPS,
           storage: TRIAL_LIMITS.media_storage_gb,
         }

@@ -26,11 +26,12 @@ describe('AI cost', () => {
     const { usd } = costOfUsage([
       { model: 'gpt-image-2', unit: 'images', inputAmount: 10 },
       { model: 'veo3_fast', unit: 'videos', inputAmount: 2 },
+      { model: 'veo3_lite', unit: 'videos', inputAmount: 2 },
       { model: 'whisper-1', unit: 'seconds', inputAmount: 600 },
       { model: 'message', unit: 'messages', inputAmount: 500 },
     ]);
-    // 10 × 0.053 + 2 × 0.325 + 10 min × 0.006
-    expect(usd).toBeCloseTo(0.53 + 0.65 + 0.06, 6);
+    // 10 × 0.053 + 2 × 0.325 (Fast) + 2 × 0.175 (Lite) + 10 min × 0.006
+    expect(usd).toBeCloseTo(0.53 + 0.65 + 0.35 + 0.06, 6);
   });
 
   it("prices Studio's background removal at kie.ai's price, not gpt-image's", () => {

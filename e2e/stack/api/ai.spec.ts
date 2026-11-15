@@ -67,13 +67,20 @@ test('the post Creator (LangChain graph) streams a result and is metered', async
     timeout: 80_000,
   });
   expect(res.status(), (await res.text()).slice(0, 500)).toBe(201);
-  const events = (await res.text()).trim().split('\n').map((line) => JSON.parse(line));
-  // The whole graph ran, not just its first step.
-  const nodes = new Set(events.map((e) => e.metadata?.langgraph_node));
-  for (const node of ['find-category', 'generate-hook', 'generate-content', 'post-time']) {
-    expect(nodes.has(node), node).toBe(true);
+  const text = await res.text();
+  const lines = text.trim().split('\n').map((line) => JSON.parse(line));
+  // The whole graph ran, not just its first step, and the browser is sent
+  // step names and the posts, not the graph's state on every event.
+  const steps = lines.map((l) => l.name);
+  for (const step of ['find-category', 'generate-hook', 'generate-content', 'post-time', 'done']) {
+    expect(steps, step).toContain(step);
   }
-  expect(JSON.stringify(events)).not.toMatch(/"error"|Error:/);
+  expect(steps).not.toContain('error');
+  expect(text.length).toBeLessThan(5_000);
+  const { hook, content, date } = lines.at(-1).data.output;
+  expect(hook).toBeTruthy();
+  expect(content[0].content).toBeTruthy();
+  expect(date).toBeTruthy();
 
   const after = await prisma.aiUsage.count({
     where: { organizationId: org.id, engine: 'generate-posts' },

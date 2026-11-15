@@ -1539,7 +1539,7 @@
   "autopost_upsell_cta": "Voir les forfaits",
   "autopost_feeds_used": "{{used}} flux RSS utilisés sur {{limit}}",
   "autopost_deleted": "Flux Auto Post supprimé",
-  "billing_trial_limits": "Pendant l'essai de 7 jours, vous pouvez connecter jusqu'à {{channels}} canaux, programmer jusqu'à {{posts}} publications, ajouter {{webhooks}} webhook et {{feeds}} flux Auto Post, utiliser le quota IA de Starter ({{images}} images IA, {{videos}} vidéo IA) et conserver jusqu'à {{storage}} Go de photos et de vidéos. L'essai est pour une seule personne, les invitations d'équipe s'ouvrent donc avec votre forfait. Votre forfait complet se débloque au premier paiement, ou immédiatement si vous mettez fin à l'essai plus tôt.",
+  "billing_trial_limits": "Pendant l'essai de 7 jours, vous pouvez connecter jusqu'à {{channels}} canaux, programmer jusqu'à {{posts}} publications, ajouter {{webhooks}} webhook et {{feeds}} flux Auto Post, essayer l'IA ({{images}} images IA, {{videos}} vidéo IA et {{questions}} questions à l'assistant IA) et conserver jusqu'à {{storage}} Go de photos et de vidéos. L'essai est pour une seule personne, les invitations d'équipe s'ouvrent donc avec votre forfait. Votre forfait complet se débloque au premier paiement, ou immédiatement si vous mettez fin à l'essai plus tôt.",
   "billing_end_trial_now": "Mettre fin à l'essai maintenant",
   "channels_still_disabled": "Certains canaux sont encore désactivés",
   "channels_still_disabled_description": "Votre forfait ne couvre pas tous vos canaux connectés, certains restent donc désactivés. Activez ceux que vous voulez depuis le menu de chaque canal, dans la limite de votre forfait, ou passez à un forfait supérieur pour tous les utiliser.",

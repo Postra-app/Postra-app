@@ -1,6 +1,12 @@
 import { AsyncLocalStorage } from 'async_hooks';
 import { recordAiUsage } from '@gitroom/nestjs-libraries/services/ai-usage.record';
 import { getAuth } from '@gitroom/nestjs-libraries/chat/async.storage';
+import {
+  AiCallOutcome,
+  aiCallOutcome,
+  observeAiCall,
+  timeAiCall,
+} from '@gitroom/nestjs-libraries/ai-cost/ai-call.metric';
 
 // The Mastra agent's model is built once at boot, but usage must be attributed
 // per request. The copilot controller runs the request inside this ALS scope;
@@ -51,22 +57,64 @@ export function meterLanguageModel<
       return model.supportedUrls;
     },
     doGenerate: async (options: any) => {
-      const result = await model.doGenerate(options);
+      const result = await timeAiCall(engine, model.modelId, () =>
+        Promise.resolve(model.doGenerate(options))
+      );
       record(result?.usage);
       return result;
     },
     doStream: async (options: any) => {
-      const result = await model.doStream(options);
-      const stream: ReadableStream<any> = result.stream.pipeThrough(
-        new TransformStream({
-          transform(part, controller) {
-            if (part?.type === 'finish') {
-              record(part.usage);
-            }
-            controller.enqueue(part);
-          },
-        })
-      );
+      // From the request to the last part of the answer: what the person
+      // waits for on one step of a run.
+      const startedAt = Date.now();
+      let result: any;
+      try {
+        result = await model.doStream(options);
+      } catch (err) {
+        observeAiCall(engine, model.modelId, aiCallOutcome(err), startedAt);
+        throw err;
+      }
+      // One observation per call, whatever the stream does: an error part
+      // followed by a finish part is a failed call, not a failed one and a
+      // good one, and a stream that breaks or ends without finishing is
+      // failed too. A reader that walks away (the chat was closed) is not
+      // counted: the call did not end, it was left.
+      let observed = false;
+      const settle = (outcome: AiCallOutcome) => {
+        if (observed) return;
+        observed = true;
+        observeAiCall(engine, model.modelId, outcome, startedAt);
+      };
+      const reader = (result.stream as ReadableStream<any>).getReader();
+      const stream = new ReadableStream<any>({
+        async pull(controller) {
+          let step: ReadableStreamReadResult<any>;
+          try {
+            step = await reader.read();
+          } catch (err) {
+            settle(aiCallOutcome(err));
+            controller.error(err);
+            return;
+          }
+          if (step.done) {
+            settle('error');
+            controller.close();
+            return;
+          }
+          const part = step.value;
+          if (part?.type === 'error') {
+            settle(aiCallOutcome(part.error));
+          } else if (part?.type === 'finish') {
+            record(part.usage);
+            settle('ok');
+          }
+          controller.enqueue(part);
+        },
+        cancel(reason) {
+          observed = true;
+          return reader.cancel(reason);
+        },
+      });
       return { ...result, stream };
     },
   } as unknown as T;

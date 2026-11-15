@@ -27,7 +27,10 @@
 //   POST /api/v1/jobs/createTask  a task id; a prompt with "stack-kie-fail"
 //                                 ends in state "fail", one with
 //                                 "stack-kie-slow" reports "generating" on
-//                                 its first poll
+//                                 its first poll, one with "stack-kie-blip"
+//                                 answers its first poll with 429 (an
+//                                 answer that did not arrive, not a failed
+//                                 clip)
 //   GET  /api/v1/jobs/recordInfo  the task's state; a finished clip is a
 //                                 tiny MP4 as a data: URL (the app's
 //                                 uploader refuses local http URLs), in the
@@ -238,6 +241,7 @@ createServer((req, res) => {
       kieTasks.set(taskId, {
         fail: prompt.includes('stack-kie-fail'),
         pending: prompt.includes('stack-kie-slow') ? 1 : 0,
+        blip: prompt.includes('stack-kie-blip') ? 1 : 0,
         cutout: body.model === 'recraft/remove-background',
       });
       return json(res, 200, { code: 200, msg: 'success', data: { taskId } });
@@ -247,6 +251,10 @@ createServer((req, res) => {
       const taskId = new URL(req.url, 'http://fake').searchParams.get('taskId');
       const task = kieTasks.get(taskId);
       if (!task) return json(res, 200, { code: 422, msg: 'recordInfo is null' });
+      if (task.blip > 0) {
+        task.blip--;
+        return json(res, 200, { code: 429, msg: 'Too many requests' });
+      }
       if (task.pending > 0) {
         task.pending--;
         return json(res, 200, { code: 200, data: { taskId, state: 'generating' } });

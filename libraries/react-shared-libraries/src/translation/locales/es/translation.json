@@ -1539,7 +1539,7 @@
   "autopost_upsell_cta": "Ver planes",
   "autopost_feeds_used": "{{used}} de {{limit}} feeds RSS usados",
   "autopost_deleted": "Feed de Auto Post eliminado",
-  "billing_trial_limits": "Durante la prueba de 7 días puedes conectar hasta {{channels}} canales, programar hasta {{posts}} publicaciones, agregar {{webhooks}} webhook y {{feeds}} feed de Auto Post, usar la asignación de IA de Starter ({{images}} imágenes de IA, {{videos}} video de IA) y guardar hasta {{storage}} GB de fotos y videos. La prueba es para una persona, así que las invitaciones al equipo se activan con tu plan. Tu plan completo se desbloquea con el primer pago, o de inmediato si terminas la prueba antes.",
+  "billing_trial_limits": "Durante la prueba de 7 días puedes conectar hasta {{channels}} canales, programar hasta {{posts}} publicaciones, agregar {{webhooks}} webhook y {{feeds}} feed de Auto Post, probar la IA ({{images}} imágenes de IA, {{videos}} video de IA y {{questions}} preguntas al asistente de IA) y guardar hasta {{storage}} GB de fotos y videos. La prueba es para una persona, así que las invitaciones al equipo se activan con tu plan. Tu plan completo se desbloquea con el primer pago, o de inmediato si terminas la prueba antes.",
   "billing_end_trial_now": "Terminar la prueba ahora",
   "channels_still_disabled": "Algunos canales siguen desactivados",
   "channels_still_disabled_description": "Tu plan no cubre todos tus canales conectados, así que algunos siguen desactivados. Activa los que quieras desde el menú de cada canal, hasta el límite de tu plan, o mejora tu plan para usarlos todos.",

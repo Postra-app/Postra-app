@@ -38,15 +38,26 @@ class Veo3Params {
   images?: Image[];
 }
 
-// Veo 3.1 Fast through kie.ai's Market API (docs.kie.ai/veo3-api): 8 seconds
-// with sound, 1080p, about $0.33 a clip (65 credits at $0.005, 2026-10-08).
-// The older /api/v1/veo/* endpoints were Veo 3 at $0.40 and reported a failed
-// clip only by never finishing, so a refused prompt held the request for ten
-// minutes. KIEAI_API_URL points the stack tests at a fake.
-const KIE_MODEL = 'veo3_fast';
+// Veo 3.1 Lite through kie.ai's Market API (docs.kie.ai/veo3-api): 8 seconds
+// with sound, 1080p, about $0.18 a clip (35 credits at $0.005, kie.ai/pricing
+// 2026-11-14). Fast is the same call at 65 credits; Lite takes the reference
+// pictures too. The older /api/v1/veo/* endpoints were Veo 3 at $0.40 and
+// reported a failed clip only by never finishing, so a refused prompt held
+// the request for ten minutes. KIEAI_API_URL points the stack tests at a fake.
+const KIE_MODEL = 'veo3_lite';
 const POLL_MS = 10_000;
-// ~10 minutes; kie.ai usually finishes in one to three.
-const MAX_POLLS = 60;
+// ~20 minutes. kie.ai usually finishes in one to three, but says some clips
+// take longer than ten and to keep asking; a clip given up on is still made
+// and charged there.
+const MAX_POLLS = 120;
+// One answer that did not arrive (a timeout, a 429, a gateway page) is not
+// the clip failing: it used to end the job, hand the credit back and leave
+// kie.ai making a clip nobody would collect. Only this many in a row do.
+const MAX_POLL_ERRORS = 6;
+// kie.ai does not queue a task it refused with 429 (20 new tasks in 10 s per
+// account), so it is asked again.
+const CREATE_ATTEMPTS = 3;
+const CREATE_RETRY_MS = 3_000;
 
 const kieUrl = (path: string) =>
   `${(process.env.KIEAI_API_URL || 'https://api.kie.ai').replace(/\/+$/, '')}${path}`;
@@ -116,27 +127,37 @@ export class Veo3 extends VideoAbstract<Veo3Params> {
     customParams: Veo3Params
   ): Promise<string> {
     const images = (customParams?.images || []).map((p) => p.path);
-    const created = (await (
-      await fetch(kieUrl('/api/v1/jobs/createTask'), {
-        headers: kieHeaders(),
-        method: 'POST',
-        body: JSON.stringify({
-          model: 'veo-3-1',
-          input: {
-            prompt: customParams.prompt,
-            model: KIE_MODEL,
-            // The pictures are what the clip is about (a product, a place),
-            // not its first and last frame.
-            ...(images.length
-              ? { image_urls: images, generation_type: 'REFERENCE_2_VIDEO' }
-              : { generation_type: 'TEXT_2_VIDEO' }),
-            aspect_ratio: output === 'horizontal' ? '16:9' : '9:16',
-            resolution: '1080p',
-          },
-        }),
-        signal: AbortSignal.timeout(60_000),
-      })
-    ).json()) as any;
+    const body = JSON.stringify({
+      model: 'veo-3-1',
+      input: {
+        prompt: customParams.prompt,
+        model: KIE_MODEL,
+        // The pictures are what the clip is about (a product, a place),
+        // not its first and last frame.
+        ...(images.length
+          ? { image_urls: images, generation_type: 'REFERENCE_2_VIDEO' }
+          : { generation_type: 'TEXT_2_VIDEO' }),
+        aspect_ratio: output === 'horizontal' ? '16:9' : '9:16',
+        resolution: '1080p',
+      },
+    });
+
+    let created: any;
+    for (let attempt = 1; attempt <= CREATE_ATTEMPTS; attempt++) {
+      // kie.ai answers errors with HTTP 200 and the code in the body.
+      created = (await (
+        await fetch(kieUrl('/api/v1/jobs/createTask'), {
+          headers: kieHeaders(),
+          method: 'POST',
+          body,
+          signal: AbortSignal.timeout(60_000),
+        })
+      ).json()) as any;
+      if (created?.code !== 429 || attempt === CREATE_ATTEMPTS) {
+        break;
+      }
+      await timer(CREATE_RETRY_MS * attempt);
+    }
 
     if (created?.code !== 200 || !created?.data?.taskId) {
       // 401/402/429 are ours to fix (key, balance, rate) — the customer can
@@ -155,20 +176,38 @@ export class Veo3 extends VideoAbstract<Veo3Params> {
 
   /** Waits for a kie.ai task and returns where the clip is. */
   override async finish(taskId: string): Promise<URL> {
+    let pollErrors = 0;
     for (let poll = 0; poll < MAX_POLLS; poll++) {
       if (poll) {
         await timer(POLL_MS);
       }
-      const info = (await (
-        await fetch(
-          kieUrl(`/api/v1/jobs/recordInfo?taskId=${encodeURIComponent(taskId)}`),
-          { headers: kieHeaders(), signal: AbortSignal.timeout(30_000) }
-        )
-      ).json()) as any;
-
-      if (info?.code !== 200) {
-        throw new Error(`kie.ai recordInfo ${info?.code}: ${info?.msg}`);
+      let info: any;
+      let problem = '';
+      try {
+        info = await (
+          await fetch(
+            kieUrl(`/api/v1/jobs/recordInfo?taskId=${encodeURIComponent(taskId)}`),
+            { headers: kieHeaders(), signal: AbortSignal.timeout(30_000) }
+          )
+        ).json();
+        if (info?.code !== 200) {
+          problem = `${info?.code}: ${info?.msg}`;
+        }
+      } catch (err) {
+        problem = (err as Error)?.name || 'no answer';
       }
+
+      if (problem) {
+        pollErrors++;
+        if (pollErrors >= MAX_POLL_ERRORS) {
+          throw new Error(
+            `kie.ai recordInfo for task ${taskId} failed ${pollErrors} times in a row (${problem})`
+          );
+        }
+        this._logger.warn(`kie.ai recordInfo for task ${taskId}: ${problem}`);
+        continue;
+      }
+      pollErrors = 0;
 
       const state = info?.data?.state;
       if (state === 'fail') {

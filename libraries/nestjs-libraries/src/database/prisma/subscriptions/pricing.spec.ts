@@ -7,6 +7,9 @@ import {
   pricing,
   TRIAL_CHANNEL_CAP,
   trialAiAllowance,
+  agentLimitMessage,
+  TRIAL_AI_IMAGES,
+  TRIAL_AGENT_MESSAGES,
   AGENT_FAIR_USE_MESSAGES,
   TRIAL_VIDEO_CLIPS,
   TRIAL_LIMITS,
@@ -301,13 +304,23 @@ describe('channelLimitFor', () => {
 });
 
 describe('trialAiAllowance', () => {
-  it('runs a trial on Starter’s AI pool, whatever the tier', () => {
-    expect(
-      trialAiAllowance(pricing.ULTIMATE.image_generation_count, true, 'image_generation_count')
-    ).toBe(pricing.STANDARD.image_generation_count);
-    expect(
-      trialAiAllowance(pricing.PRO.agent_messages, true, 'agent_messages')
-    ).toBe(pricing.STANDARD.agent_messages);
+  // A trial has its own allowance, smaller than any plan's monthly pool.
+  it('gives a trial 20 images and 200 questions to the assistant, whatever the tier', () => {
+    expect(TRIAL_AI_IMAGES).toBe(20);
+    expect(TRIAL_AGENT_MESSAGES).toBe(200);
+    for (const tier of ['STANDARD', 'PRO', 'ULTIMATE'] as const) {
+      expect(
+        trialAiAllowance(pricing[tier].image_generation_count, true, 'image_generation_count')
+      ).toBe(20);
+      expect(trialAiAllowance(pricing[tier].agent_messages, true, 'agent_messages')).toBe(200);
+    }
+  });
+
+  it('says which limit was reached: the trial allowance or the monthly fair use', () => {
+    expect(agentLimitMessage(true)).toContain('200 questions');
+    expect(agentLimitMessage(true)).toContain('trial');
+    expect(agentLimitMessage(false)).toContain('2,200 questions');
+    expect(agentLimitMessage(undefined)).not.toContain('trial');
   });
 
   it('gives a trial one AI video clip, whatever the tier', () => {

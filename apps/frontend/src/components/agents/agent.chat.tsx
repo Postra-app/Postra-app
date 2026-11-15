@@ -89,11 +89,17 @@ export const AgentChat: FC = () => {
             {t('agent_limit_title', 'Monthly AI assistant limit reached')}
           </div>
           <div className="text-[13.5px] text-newTextColor/70">
-            {t(
-              'agent_fair_use_description',
-              "You have asked the AI assistant {{questions}} questions this month - the fair-use limit, the same on every plan. It resets with your next billing month.",
-              { questions: AGENT_FAIR_USE_MESSAGES.toLocaleString('en-GB') }
-            )}
+            {agentCredits.limit < AGENT_FAIR_USE_MESSAGES
+              ? t(
+                  'agent_trial_limit_description',
+                  "You have used the {{questions}} questions to the AI assistant included in the trial. Your plan's full allowance opens with the first payment, or straight away if you end the trial early in Billing.",
+                  { questions: agentCredits.limit }
+                )
+              : t(
+                  'agent_fair_use_description',
+                  "You have asked the AI assistant {{questions}} questions this month - the fair-use limit, the same on every plan. It resets with your next billing month.",
+                  { questions: AGENT_FAIR_USE_MESSAGES.toLocaleString('en-GB') }
+                )}
           </div>
         </div>
       </div>

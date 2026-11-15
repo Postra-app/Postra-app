@@ -119,6 +119,18 @@ const VIDEO_LEASE_SECONDS = 60;
 const VIDEO_LEASE_REFRESH_MS = 20_000;
 const VIDEO_WAIT_POLL_MS = 2_000;
 const VIDEO_FAILED_MESSAGE = 'Could not generate the video, please try again.';
+// See generatePostCarousel: how long a carousel being made holds its key, how
+// long a finished one is answered without making it again, and how long a
+// second request waits for the first (under the load balancer's three minutes).
+const CAROUSEL_KEY_PREFIX = 'ai-carousel:';
+const CAROUSEL_PENDING = 'pending';
+const CAROUSEL_PENDING_SECONDS = 10 * 60;
+const CAROUSEL_REUSE_SECONDS = 10 * 60;
+const CAROUSEL_WAIT_MS = 150_000;
+const CAROUSEL_WAIT_POLL_MS = 2_000;
+// Carousels this process is making, by request: a second identical request
+// in the same process gets the same promise.
+const carouselRuns = new Map<string, Promise<any>>();
 const VIDEO_READY_SUBJECT = 'Your AI video is ready';
 const VIDEO_READY_MESSAGE =
   'Your AI video is ready. You will find it in your media library.';
@@ -375,7 +387,105 @@ export class MediaService {
     return articlePrompt(await readArticle(dto.sourceUrl), dto.prompt);
   }
 
+  /**
+   * One carousel per request, however often it is asked for. A carousel is up
+   * to ten pictures and can take longer than the browser (or the load
+   * balancer) waits; asked again after a timeout or a second click, it used
+   * to be designed again from nothing and every picture paid for again. The
+   * same request now joins the carousel being made, and a finished one is
+   * answered from Redis for CAROUSEL_REUSE_SECONDS. The work never depends on
+   * the connection that asked: it finishes and is kept even when nobody is
+   * waiting any more.
+   */
   async generatePostCarousel(org: Organization, dto: GeneratePostCarouselDto) {
+    await this.assertStorage(org.id, 0);
+    const key = `${CAROUSEL_KEY_PREFIX}${createHash('sha256')
+      .update(
+        JSON.stringify([
+          org.id,
+          dto.prompt ?? '',
+          dto.sourceUrl ?? '',
+          dto.platform,
+          dto.slidesCount,
+          dto.language ?? '',
+          dto.languageFallback ?? '',
+          dto.brandKit ?? null,
+        ])
+      )
+      .digest('hex')}`;
+
+    const running = carouselRuns.get(key);
+    if (running) {
+      return running;
+    }
+    // Kept before the first await, so a request arriving meanwhile joins it.
+    const run = this.carouselOnce(org, dto, key);
+    carouselRuns.set(key, run);
+    const forget = () => carouselRuns.delete(key);
+    run.then(forget, forget);
+    return run;
+  }
+
+  private async carouselOnce(
+    org: Organization,
+    dto: GeneratePostCarouselDto,
+    key: string
+  ) {
+    let claimed: boolean;
+    try {
+      claimed =
+        (await ioRedis.set(key, CAROUSEL_PENDING, 'EX', CAROUSEL_PENDING_SECONDS, 'NX')) ===
+        'OK';
+    } catch {
+      // Redis away: make it, as before.
+      return this.makePostCarousel(org, dto);
+    }
+
+    if (!claimed) {
+      return this.waitForCarousel(key);
+    }
+
+    try {
+      const result = await this.makePostCarousel(org, dto);
+      await ioRedis
+        .set(key, JSON.stringify(result), 'EX', CAROUSEL_REUSE_SECONDS)
+        .catch((): undefined => undefined);
+      return result;
+    } catch (err) {
+      // A failure is not kept: the next try starts again.
+      await ioRedis.del(key).catch((): undefined => undefined);
+      throw err;
+    }
+  }
+
+  /** The carousel another request (or another process) is making, or made. */
+  private async waitForCarousel(key: string) {
+    const deadline = Date.now() + CAROUSEL_WAIT_MS;
+    for (;;) {
+      const value = await ioRedis.get(key);
+      if (!value) {
+        // The run it was waiting for failed.
+        throw new HttpException(
+          'The carousel could not be made. Try again in a moment.',
+          502
+        );
+      }
+      if (value !== CAROUSEL_PENDING) {
+        const made = JSON.parse(value) as { slides: Record<string, unknown>[] };
+        // Nothing was generated or paid for by this request.
+        return { ...made, slides: made.slides.map((s) => ({ ...s, cacheHit: true })) };
+      }
+      if (Date.now() >= deadline) {
+        throw new HttpException(
+          'Your carousel is still being made. Try again in a minute and it will be ready.',
+          503
+        );
+      }
+      await timer(CAROUSEL_WAIT_POLL_MS);
+    }
+  }
+
+  private async makePostCarousel(org: Organization, dto: GeneratePostCarouselDto) {
     // A full library stops here, before any credit or model time is spent
     // on a file that could not be kept.
     await this.assertStorage(org.id, 0);

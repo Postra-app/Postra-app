@@ -245,12 +245,15 @@ export const postsCycleWindow = (
   };
 };
 
-// A trial shows AI video with one clip (~$0.33 at kie.ai), whatever the plan.
+// A trial shows AI video with one clip (~$0.18 at kie.ai), whatever the plan.
 export const TRIAL_VIDEO_CLIPS = 1;
 
-// AI allowances follow the same rule as channels: a trial runs on Starter's
-// pool, so a Business trial cannot burn 600 images before the first charge.
-// Video is the exception: one clip.
+// What AI a 7-day trial may use, whatever the plan: enough to try every AI
+// feature on the trial's 30 posts, not a paid month's pool before the first
+// payment. The full pool opens with the first payment or "End the trial now".
+export const TRIAL_AI_IMAGES = 20;
+export const TRIAL_AGENT_MESSAGES = 200;
+
 export const trialAiAllowance = (
   allowance: number,
   isTrailing: boolean | undefined,
@@ -262,9 +265,18 @@ export const trialAiAllowance = (
   const cap =
     type === 'generate_videos'
       ? TRIAL_VIDEO_CLIPS
-      : pricing.STANDARD[type] || 0;
+      : type === 'agent_messages'
+      ? TRIAL_AGENT_MESSAGES
+      : TRIAL_AI_IMAGES;
   return Math.min(allowance, cap);
 };
+
+// What the assistant says when its questions are used up: the month's fair
+// use on a plan, the trial's allowance on a trial.
+export const agentLimitMessage = (isTrailing: boolean | undefined): string =>
+  isTrailing
+    ? `You have used the ${TRIAL_AGENT_MESSAGES} questions to the AI assistant included in the trial. Your plan's full allowance opens with the first payment, or straight away if you end the trial early in Billing.`
+    : `You have reached this month's fair-use limit for the AI assistant (${AGENT_FAIR_USE_MESSAGES.toLocaleString('en-GB')} questions, the same on every plan). It resets with your next billing month.`;
 
 // What a 7-day trial may use whatever plan it runs on: the
 // plan's own limits apply only from the first payment, so a Business trial is

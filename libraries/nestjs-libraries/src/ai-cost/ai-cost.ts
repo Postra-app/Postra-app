@@ -7,8 +7,8 @@ import { pricing } from '@gitroom/nestjs-libraries/database/prisma/subscriptions
  *
  * Text prices per 1M tokens from developers.openai.com/api/docs/pricing
  * (2026-10-08, standard tier). Per unit: an image ≈ $0.053 (OpenAI's image
- * calculator, the plan's analysis), a Veo 3.1 Fast clip at 1080p 65 kie.ai
- * credits = $0.325, Whisper $0.006 a minute. Change a price here and in the
+ * calculator, the plan's analysis), a Veo 3.1 Lite clip at 1080p 35 kie.ai
+ * credits = $0.175 (Fast: 65 credits = $0.325), Whisper $0.006 a minute. Change a price here and in the
  * spec together.
  */
 export const AI_PRICES_USD: Record<string, { input: number; cached: number; output: number }> = {
@@ -32,7 +32,8 @@ const PER_UNIT_USD: Record<string, (model: string) => number> = {
   // Recraft's background removal through kie.ai (1 credit); every other
   // image is gpt-image.
   images: (model) => (model === 'recraft-remove-background' ? 0.005 : 0.053),
-  videos: (model) => (model === 'veo3_fast' ? 0.325 : 0.4),
+  videos: (model) =>
+    model === 'veo3_lite' ? 0.175 : model === 'veo3_fast' ? 0.325 : 0.4,
   seconds: () => 0.006 / 60,
   messages: () => 0,
 };

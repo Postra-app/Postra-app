@@ -1,5 +1,5 @@
 import { recordAgentMessage } from '@gitroom/nestjs-libraries/services/ai-usage.record';
-import { AGENT_FAIR_USE_MESSAGES } from '@gitroom/nestjs-libraries/database/prisma/subscriptions/pricing';
+import { agentLimitMessage } from '@gitroom/nestjs-libraries/database/prisma/subscriptions/pricing';
 import { lacksSubscription } from '@gitroom/nestjs-libraries/database/prisma/subscriptions/lacks.subscription';
 import { INestApplication } from '@nestjs/common';
 import { json, Request, Response } from 'express';
@@ -53,8 +53,6 @@ export const startMcp = async (app: INestApplication) => {
   // fair use (pricing.agent_messages) as the chat, and like the chat it is checked before a run
   // starts; the run itself re-checks only every few steps.
   // Answered as a tool error, which MCP clients show to the person.
-  const AGENT_LIMIT =
-    `You have reached this month's fair-use limit for the AI assistant (${AGENT_FAIR_USE_MESSAGES.toLocaleString('en-GB')} questions, the same on every plan). It resets with your next billing month.`;
   const agentCalls = (body: unknown) =>
     (Array.isArray(body) ? body : [body]).filter(
       (m: any) => m?.method === 'tools/call' && m?.params?.name === 'ask_postra'
@@ -103,7 +101,7 @@ export const startMcp = async (app: INestApplication) => {
           'ai_agent'
         );
         if (credits <= 0) {
-          return AGENT_LIMIT;
+          return agentLimitMessage(auth?.isTrailing);
         }
       } catch {
         // Same as the run's own check: never refuse because a check failed.

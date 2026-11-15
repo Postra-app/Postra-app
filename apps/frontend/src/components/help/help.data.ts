@@ -7,6 +7,8 @@ import {
   pricing,
   TRIAL_CHANNEL_CAP,
   TRIAL_LIMITS,
+  TRIAL_AGENT_MESSAGES,
+  TRIAL_AI_IMAGES,
   TRIAL_VIDEO_CLIPS,
 } from '@gitroom/nestjs-libraries/database/prisma/subscriptions/pricing';
 
@@ -708,7 +710,7 @@ export const FAQ_ITEMS: FaqItem[] = [
   {
     question: 'How does the trial work?',
     answer:
-      `Paid plans start with a 7-day free trial. During the trial you can connect up to ${TRIAL_CHANNEL_CAP} channels, schedule up to ${TRIAL_LIMITS.posts_per_month} posts, add ${TRIAL_LIMITS.webhooks} webhook and ${TRIAL_LIMITS.autoPostLimit} Auto Post feed, use Starter's AI allowance with one AI video, and keep up to ${TRIAL_LIMITS.media_storage_gb} GB of photos and videos. The trial is for one person; team invites open with your plan. Cancel any time in Billing before the trial ends and you won't be charged.`,
+      `Paid plans start with a 7-day free trial. During the trial you can connect up to ${TRIAL_CHANNEL_CAP} channels, schedule up to ${TRIAL_LIMITS.posts_per_month} posts, add ${TRIAL_LIMITS.webhooks} webhook and ${TRIAL_LIMITS.autoPostLimit} Auto Post feed, try AI with ${TRIAL_AI_IMAGES} AI images, one AI video and ${TRIAL_AGENT_MESSAGES} questions to the AI assistant, and keep up to ${TRIAL_LIMITS.media_storage_gb} GB of photos and videos. The trial is for one person; team invites open with your plan. Cancel any time in Billing before the trial ends and you won't be charged.`,
   },
   {
     question: 'How do AI videos work?',

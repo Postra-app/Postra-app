@@ -23,6 +23,7 @@ import {
 } from '@gitroom/nestjs-libraries/openai/language-rule';
 import { deepWithoutLongDashes } from '@gitroom/helpers/utils/long.dashes';
 import { withImageSlot } from '@gitroom/nestjs-libraries/openai/image-concurrency';
+import { timeAiCall } from '@gitroom/nestjs-libraries/ai-cost/ai-call.metric';
 import { safeDesignColors } from '@gitroom/nestjs-libraries/studio/post-design-spec';
 import {
   ImageOrientation,
@@ -143,7 +144,7 @@ export class OpenaiService {
     }
     // Segments with their confidence, not ready-made SRT: on a clip without
     // speech Whisper makes a line up, and only the confidence shows it.
-    const result = (await openai.audio.transcriptions.create({
+    const result = (await timeAiCall('whisper', 'whisper-1', () => openai.audio.transcriptions.create({
       file: createReadStream(audioFilePath),
       model: 'whisper-1',
       response_format: 'verbose_json',
@@ -152,7 +153,7 @@ export class OpenaiService {
       // that into the multipart form as `language=`, which the API rejects.
       // Omitting the field is what auto-detect actually means.
       language: language?.trim() || undefined,
-    })) as unknown as { duration?: number; segments?: WhisperSegment[] };
+    }))) as unknown as { duration?: number; segments?: WhisperSegment[] };
     const srt = segmentsToSrt(result.segments ?? []);
     // Whisper bills per audio minute; verbose_json says how long the audio was.
     if (result.duration) {
@@ -193,7 +194,8 @@ export class OpenaiService {
     try {
       generate = (
         await withImageSlot(() =>
-          openai.images.generate({
+          // Timed inside the slot: the model's time, not the queue for it.
+          timeAiCall(meta?.engine ?? 'media', model, () => openai.images.generate({
             prompt,
             model,
             size: sizeForOrientation(normalizeOrientation(orientation)) as
@@ -208,7 +210,7 @@ export class OpenaiService {
             // documented setting for fewer false refusals; its usage policies
             // still apply.
             moderation: 'low',
-          })
+          }))
         )
       ).data?.[0];
     } catch (err) {

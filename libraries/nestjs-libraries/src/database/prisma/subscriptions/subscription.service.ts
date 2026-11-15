@@ -695,6 +695,9 @@ export class SubscriptionService {
 
     return {
       credits: allowance - totalUse,
+      // The pool these are left of, so the app can name the right number
+      // (a trial's is smaller than the plan's).
+      limit: allowance,
     };
   }
 

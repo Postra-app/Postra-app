@@ -14,7 +14,10 @@ import {
   Query,
   Res,
   UseGuards,
+  Logger,
 } from '@nestjs/common';
+import { isAiOutage } from '@gitroom/nestjs-libraries/openai/ai-outage';
+import { AI_UNAVAILABLE } from '@gitroom/backend/api/routes/ai.unavailable.exception';
 import { PostsService } from '@gitroom/nestjs-libraries/database/prisma/posts/posts.service';
 import { GetOrgFromRequest } from '@gitroom/nestjs-libraries/user/org.from.request';
 import { Organization, User } from '@prisma/client';
@@ -284,8 +287,27 @@ export class PostsController {
     @Res({ passthrough: false }) res: Response
   ) {
     res.setHeader('Content-Type', 'application/json; charset=utf-8');
-    for await (const event of this._agentGraphService.start(org.id, body)) {
-      res.write(JSON.stringify(event) + '\n');
+    try {
+      for await (const line of this._agentGraphService.run(org.id, body)) {
+        res.write(JSON.stringify(line) + '\n');
+      }
+    } catch (err) {
+      // Nothing sent yet: the usual filters answer (503 when AI is down).
+      if (!res.headersSent) {
+        throw err;
+      }
+      // Mid-stream the status is already 201; say it in the stream, or the
+      // modal only sees a response that stopped.
+      Logger.error(
+        `Post generator failed mid-stream: ${(err as Error)?.message}`,
+        'PostsController'
+      );
+      res.write(
+        JSON.stringify({
+          name: 'error',
+          message: isAiOutage(err) ? AI_UNAVAILABLE : '',
+        }) + '\n'
+      );
     }
 
     res.end();

@@ -31,6 +31,10 @@ const AddEditModal = dynamic(
   { ssr: false }
 );
 import { useToaster } from '@gitroom/react/toaster/toaster';
+import {
+  GeneratorError,
+  readGeneratorStream,
+} from '@gitroom/frontend/components/launches/generator/generator.stream';
 
 const FirstStep: FC = (props) => {
   const { integrations, reloadCalendarView } = useCalendar();
@@ -55,77 +59,30 @@ const FirstStep: FC = (props) => {
   });
   const [research, isPicture] = form.watch(['research', 'isPicture']);
   const generateStep = useCallback(
-    async (reader: ReadableStreamDefaultReader) => {
-      const decoder = new TextDecoder('utf-8');
-      let lastResponse = {} as any;
-      // eslint-disable-next-line no-constant-condition
-      while (true) {
-        const { done, value } = await reader.read();
-        // the stream can end without a valid chunk (e.g. server error mid-stream)
-        if (done) return lastResponse?.data?.output;
-
-        // Convert chunked binary data to string
-        const chunkStr = decoder.decode(value, {
-          stream: true,
-        });
-        for (const chunk of chunkStr
-          .split('\n')
-          .filter((f) => f && f.indexOf('{') > -1)) {
-          try {
-            const data = JSON.parse(chunk);
-            switch (data.name) {
-              case 'agent':
-                setShowStep(t('agent_starting', 'Agent starting'));
-                break;
-              case 'research':
-                setShowStep(
-                  t('researching_your_content', 'Researching your content...')
-                );
-                break;
-              case 'find-category':
-                setShowStep(
-                  t(
-                    'understanding_the_category',
-                    'Understanding the category...'
-                  )
-                );
-                break;
-              case 'find-topic':
-                setShowStep(t('finding_the_topic', 'Finding the topic...'));
-                break;
-              case 'find-popular-posts':
-                setShowStep(
-                  t(
-                    'finding_popular_posts_to_match_with',
-                    'Finding popular posts to match with...'
-                  )
-                );
-                break;
-              case 'generate-hook':
-                setShowStep(t('generating_hook', 'Generating hook...'));
-                break;
-              case 'generate-content':
-                setShowStep(t('generating_content', 'Generating content...'));
-                break;
-              case 'generate-picture':
-                setShowStep(t('generating_pictures', 'Generating pictures...'));
-                break;
-              case 'upload-pictures':
-                setShowStep(t('uploading_pictures', 'Uploading pictures...'));
-                break;
-              case 'post-time':
-                setShowStep(
-                  t('finding_time_to_post', 'Finding time to post...')
-                );
-                break;
-            }
-            lastResponse = data;
-          } catch (e) {
-            /** don't do anything **/
-          }
+    (reader: ReadableStreamDefaultReader) =>
+      readGeneratorStream(reader, (name) => {
+        const labels: Record<string, string> = {
+          agent: t('agent_starting', 'Agent starting'),
+          research: t('researching_your_content', 'Researching your content...'),
+          'find-category': t(
+            'understanding_the_category',
+            'Understanding the category...'
+          ),
+          'find-topic': t('finding_the_topic', 'Finding the topic...'),
+          'find-popular-posts': t(
+            'finding_popular_posts_to_match_with',
+            'Finding popular posts to match with...'
+          ),
+          'generate-hook': t('generating_hook', 'Generating hook...'),
+          'generate-content': t('generating_content', 'Generating content...'),
+          'generate-picture': t('generating_pictures', 'Generating pictures...'),
+          'upload-pictures': t('uploading_pictures', 'Uploading pictures...'),
+          'post-time': t('finding_time_to_post', 'Finding time to post...'),
+        };
+        if (labels[name]) {
+          setShowStep(labels[name]);
         }
-      }
-    },
+      }),
     [t]
   );
   const onSubmit: SubmitHandler<{
@@ -167,6 +124,20 @@ const FirstStep: FC = (props) => {
           };
         });
         setShowStep('');
+        if (load.imagesSkipped) {
+          toaster.show(
+            load.imagesSkipped === 'credits'
+              ? t(
+                  'generator_no_pictures_credits',
+                  'Your posts are ready, without pictures: your image credits for this billing cycle are used up.'
+                )
+              : t(
+                  'generator_no_pictures_failed',
+                  'Your posts are ready, but the pictures could not be made. You can add them in the editor.'
+                ),
+            'warning'
+          );
+        }
         modal.openModal({
           id: 'add-edit-modal',
           ariaLabel: 'Post editor',
@@ -198,10 +169,11 @@ const FirstStep: FC = (props) => {
       } catch (e) {
         console.error('[Postra:generator] failed', e);
         toaster.show(
-          t(
-            'generator_failed',
-            'Could not generate the post, please try again.'
-          ),
+          (e instanceof GeneratorError && e.message) ||
+            t(
+              'generator_failed',
+              'Could not generate the post, please try again.'
+            ),
           'warning'
         );
       } finally {

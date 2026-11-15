@@ -59,12 +59,12 @@ test('a clip costs one credit, lands in the library as AI-made and is metered', 
     expect(media.organizationId).toBe(starter.orgId);
     expect(media.aiGenerated).toBe(true);
 
-    // What kie.ai was asked for: Veo 3.1 Fast, vertical, text only.
+    // What kie.ai was asked for: Veo 3.1 Lite, vertical, text only.
     const [task] = await kieTasks(starter.api, prompt);
     expect(task.model).toBe('veo-3-1');
     expect(task.input).toMatchObject({
       prompt,
-      model: 'veo3_fast',
+      model: 'veo3_lite',
       aspect_ratio: '9:16',
       generation_type: 'TEXT_2_VIDEO',
     });
@@ -73,7 +73,7 @@ test('a clip costs one credit, lands in the library as AI-made and is metered', 
       where: { organizationId: starter.orgId, engine: 'video' },
     });
     expect(usage).toHaveLength(1);
-    expect(usage[0]).toMatchObject({ model: 'veo3_fast', unit: 'videos', inputAmount: 1 });
+    expect(usage[0]).toMatchObject({ model: 'veo3_lite', unit: 'videos', inputAmount: 1 });
   } finally {
     await starter.remove();
   }
@@ -109,6 +109,23 @@ test('a clip kie.ai fails: 422 with a reason, the credit is kept, nothing metere
     expect(await videosLeft(pro.api)).toBe(30);
     expect(await prisma.media.count({ where: { organizationId: pro.orgId } })).toBe(0);
     expect(await prisma.aiUsage.count({ where: { organizationId: pro.orgId, engine: 'video' } })).toBe(0);
+  } finally {
+    await pro.remove();
+  }
+});
+
+// One poll kie.ai did not answer (a 429, a timeout) is not the clip failing:
+// it ended the job, handed the credit back and left kie.ai making a clip
+// that was charged and never collected.
+test('one poll kie.ai refuses does not lose the clip', async () => {
+  test.setTimeout(60_000);
+  const pro = await throwawayOrg(prisma, { tier: 'PRO', totalChannels: 6, channels: 0 });
+  try {
+    const res = await generate(pro.api, `stack-kie-blip A market in Norwich ${Date.now()}`);
+    expect(res.status(), await res.text()).toBe(201);
+    expect((await res.json()).path).toMatch(/\.mp4$/);
+    expect(await videosLeft(pro.api)).toBe(29);
+    expect(await prisma.aiUsage.count({ where: { organizationId: pro.orgId, engine: 'video' } })).toBe(1);
   } finally {
     await pro.remove();
   }
