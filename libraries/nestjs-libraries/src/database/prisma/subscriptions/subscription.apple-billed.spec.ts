@@ -85,10 +85,49 @@ describe('a plan billed by Apple', () => {
     );
   });
 
+  // The row used to be marked ended first. A failure while switching the
+  // channels off then left nothing for the retry to find, and the paid
+  // plan's channels stayed on.
+  it('the limits come off before the plan is marked ended, so a failed attempt can be repeated', async () => {
+    const { service, repository, integrationService } = build(APPLE);
+    integrationService.getIntegrationsList.mockRejectedValueOnce(new Error('db down'));
+    await expect(
+      service.endAppleSubscription('org-1', APPLE.appleOriginalTransactionId, new Date())
+    ).rejects.toThrow('db down');
+    expect(repository.endAppleSubscription).not.toHaveBeenCalled();
+
+    await expect(
+      service.endAppleSubscription('org-1', APPLE.appleOriginalTransactionId, new Date())
+    ).resolves.toEqual({ revoked: true });
+    expect(repository.endAppleSubscription).toHaveBeenCalledTimes(1);
+  });
+
   it('ending a purchase whose plan was since replaced changes nothing', async () => {
-    const { service, auditService, integrationService } = build(APPLE, { revoked: false });
-    await service.endAppleSubscription('org-1', 'other', new Date());
+    const { service, repository, auditService, integrationService } = build(APPLE);
+    await expect(service.endAppleSubscription('org-1', 'other', new Date())).resolves.toEqual({ revoked: false });
     expect(integrationService.getIntegrationsList).not.toHaveBeenCalled();
+    expect(repository.endAppleSubscription).not.toHaveBeenCalled();
     expect(auditService.record).not.toHaveBeenCalled();
+  });
+
+  // A Stripe checkout opened before the purchase in the app and paid after.
+  it('a Stripe plan written over it is recorded, so the double billing is seen', async () => {
+    const { service, repository, auditService } = build(APPLE);
+    await service.createOrUpdateSubscription(false, 'sub_1', '', 8, 'PRO', 'MONTHLY', null, undefined, 'org-1');
+    expect(auditService.record).toHaveBeenCalledWith(
+      expect.objectContaining({ action: 'subscription.apple.overwritten', organizationId: 'org-1' })
+    );
+    expect(repository.createOrUpdateSubscription).toHaveBeenCalledTimes(1);
+  });
+
+  it('Apple\'s own writes over its plan are not', async () => {
+    const { service, auditService } = build(APPLE);
+    await service.createOrUpdateSubscription(
+      false, APPLE.appleOriginalTransactionId, '', 8, 'PRO', 'MONTHLY', null, undefined, 'org-1', undefined, undefined,
+      { originalTransactionId: APPLE.appleOriginalTransactionId, signedAt: new Date() }
+    );
+    expect(auditService.record).not.toHaveBeenCalledWith(
+      expect.objectContaining({ action: 'subscription.apple.overwritten' })
+    );
   });
 });

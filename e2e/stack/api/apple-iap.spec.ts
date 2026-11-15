@@ -252,6 +252,69 @@ test('Apple’s notifications keep the plan in step: paid, cancelled, upgraded, 
   }
 });
 
+// After a refund, the transaction the app was first given is still validly
+// signed and not expired. It must not buy a plan again, in the same
+// organisation or another, whether or not the refund found an owner.
+test('a refunded purchase cannot be replayed into a plan', async () => {
+  const first = await withoutPlan();
+  const second = await withoutPlan();
+  const apple = await anonymous();
+  try {
+    // Handed over, then refunded.
+    const id = purchase();
+    const original = transaction(id, { signedDate: Date.now() - 60_000 });
+    expect((await first.api.post('/billing/apple/transaction', { data: { signedTransaction: original } })).status()).toBe(201);
+    expect(
+      (await apple.post('/apple/notifications', { data: notification('REFUND', id, { tx: { revocationDate: Date.now() } }) })).status()
+    ).toBe(200);
+    expect((await first.self()).tier).toBe('FREE');
+
+    for (const org of [first, second]) {
+      const res = await org.api.post('/billing/apple/transaction', { data: { signedTransaction: original } });
+      expect(res.status(), await res.text()).toBe(409);
+      expect((await org.self()).tier).toBe('FREE');
+    }
+    expect(await prisma.subscription.count({ where: { organizationId: second.orgId } })).toBe(0);
+
+    // Refunded before the app ever handed it over.
+    const early = purchase();
+    const neverAttached = transaction(early, { signedDate: Date.now() - 60_000 });
+    expect(
+      (await apple.post('/apple/notifications', { data: notification('REFUND', early, { tx: { revocationDate: Date.now() } }) })).status()
+    ).toBe(200);
+    const late = await second.api.post('/billing/apple/transaction', { data: { signedTransaction: neverAttached } });
+    expect(late.status(), await late.text()).toBe(409);
+    expect((await second.self()).tier).toBe('FREE');
+
+    // Subscribing again later is a newer transaction, and is taken.
+    const again = await second.api.post('/billing/apple/transaction', {
+      data: { signedTransaction: transaction(early, { signedDate: Date.now() + 1000 }) },
+    });
+    expect(again.status(), await again.text()).toBe(201);
+    expect(await second.self()).toMatchObject({ tier: 'PRO', appleBilled: true });
+  } finally {
+    await apple.dispose();
+    await first.remove();
+    await second.remove();
+  }
+});
+
+test('two purchases handed over for one organisation at once: one becomes the plan', async () => {
+  const org = await withoutPlan();
+  try {
+    const [a, b] = [purchase(), purchase()];
+    const results = await Promise.all(
+      [a, b].map((id) => org.api.post('/billing/apple/transaction', { data: { signedTransaction: transaction(id) } }))
+    );
+    expect(results.map((r) => r.status()).sort()).toEqual([201, 409]);
+    const row = await prisma.subscription.findUniqueOrThrow({ where: { organizationId: org.orgId } });
+    const winner = results[0].status() === 201 ? a : b;
+    expect(row.appleOriginalTransactionId).toBe(winner);
+  } finally {
+    await org.remove();
+  }
+});
+
 test('the notification address answers 400 to anything Apple did not send', async () => {
   const apple = await anonymous();
   try {

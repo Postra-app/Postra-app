@@ -13,8 +13,36 @@ import { ioRedis } from '@gitroom/nestjs-libraries/redis/redis.service';
 @Injectable()
 export class AppleNotificationStore {
   constructor(
-    private _notifications: PrismaRepository<'appleProcessedNotification'>
+    private _notifications: PrismaRepository<'appleProcessedNotification'>,
+    private _ended: PrismaRepository<'appleEndedPurchase'>
   ) {}
+
+  /**
+   * Apple said this purchase is over, at `signedAt`. Kept whether or not the
+   * purchase is tied to an organisation: a refund can arrive before the app
+   * has handed the purchase over, and a purchase can be moved after it ended.
+   * Only ever moves forward in time.
+   */
+  async markEnded(originalTransactionId: string, signedAt: Date): Promise<void> {
+    const known = await this.endedAt(originalTransactionId);
+    if (known && known >= signedAt) {
+      return;
+    }
+    await this._ended.model.appleEndedPurchase.upsert({
+      where: { originalTransactionId },
+      create: { originalTransactionId, signedAt },
+      update: { signedAt },
+    });
+  }
+
+  /** When Apple last said this purchase was over, if it ever did. */
+  async endedAt(originalTransactionId: string): Promise<Date | null> {
+    const row = await this._ended.model.appleEndedPurchase.findUnique({
+      where: { originalTransactionId },
+      select: { signedAt: true },
+    });
+    return row?.signedAt ?? null;
+  }
 
   async isDone(id: string): Promise<boolean> {
     return !!(await this._notifications.model.appleProcessedNotification.findUnique(
@@ -39,11 +67,14 @@ export class AppleNotificationStore {
   // from the app handing over its transaction.
   waitMs = 10_000;
 
-  async lease(originalTransactionId: string, holder: string): Promise<boolean> {
+  // `of` is a purchase's original transaction id, or `org:<id>` for an
+  // organisation: two purchases handed over for one organisation at the same
+  // moment must not both find it without a plan.
+  async lease(of: string, holder: string): Promise<boolean> {
     const until = Date.now() + this.waitMs;
     while (
       (await ioRedis.set(
-        `apple-transaction:${originalTransactionId}`,
+        `apple-transaction:${of}`,
         holder,
         'EX',
         5 * 60,
@@ -58,8 +89,8 @@ export class AppleNotificationStore {
     return true;
   }
 
-  async release(originalTransactionId: string, holder: string): Promise<void> {
-    const key = `apple-transaction:${originalTransactionId}`;
+  async release(of: string, holder: string): Promise<void> {
+    const key = `apple-transaction:${of}`;
     if ((await ioRedis.get(key).catch((): null => null)) === holder) {
       await ioRedis.del(key).catch((): undefined => undefined);
     }

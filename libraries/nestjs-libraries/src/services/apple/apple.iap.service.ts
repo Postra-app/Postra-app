@@ -12,6 +12,7 @@ import {
 } from '@gitroom/nestjs-libraries/services/apple/apple.iap';
 import { AppleIapVerifier } from '@gitroom/nestjs-libraries/services/apple/apple.iap.verifier';
 import { AppleNotificationStore } from '@gitroom/nestjs-libraries/services/apple/apple.notification.store';
+import { StripeOpenCheckouts } from '@gitroom/nestjs-libraries/services/apple/stripe.open.checkouts';
 
 /**
  * Plans bought in the iOS app and billed by Apple.
@@ -29,7 +30,8 @@ export class AppleIapService {
     private _verifier: AppleIapVerifier,
     private _store: AppleNotificationStore,
     private _subscriptionService: SubscriptionService,
-    private _subscriptionRepository: SubscriptionRepository
+    private _subscriptionRepository: SubscriptionRepository,
+    private _openCheckouts: StripeOpenCheckouts
   ) {}
 
   /** The app's purchase, or its "restore purchases", for the signed-in organisation. */
@@ -60,13 +62,34 @@ export class AppleIapService {
       );
     }
 
+    // One write at a time for the purchase and for the organisation: two
+    // different purchases handed over for one organisation in the same moment
+    // would otherwise both find it without a plan, and the second would
+    // overwrite the first while Apple billed both.
     const holder = randomUUID();
+    const orgLease = `org:${organizationId}`;
     if (!(await this._store.lease(id, holder))) {
+      throw new HttpException('This purchase is being processed.', 409);
+    }
+    if (!(await this._store.lease(orgLease, holder))) {
+      await this._store.release(id, holder);
       throw new HttpException('This purchase is being processed.', 409);
     }
     try {
       const state = appleStateOf(transaction, undefined, Date.now());
       if (state.state === 'ended') {
+        throw new HttpException(
+          'This App Store subscription is no longer active.',
+          409
+        );
+      }
+
+      // A refunded purchase leaves the transaction the app first received
+      // validly signed and unexpired. Apple has since said it is over; what
+      // was signed before that is not a plan any more, here or anywhere.
+      const signedAt = new Date(transaction.signedDate || 0);
+      const endedAt = await this._store.endedAt(id);
+      if (endedAt && endedAt >= signedAt) {
         throw new HttpException(
           'This App Store subscription is no longer active.',
           409
@@ -107,8 +130,23 @@ export class AppleIapService {
         undefined,
         transaction.signedDate
       );
+
+      // A Stripe checkout opened before this purchase must not be paid after
+      // it. Not worth failing the purchase over: it is logged and the plan
+      // stands.
+      try {
+        await this._openCheckouts.expire(
+          await this._subscriptionRepository.getPaymentId(organizationId)
+        );
+      } catch (err) {
+        Logger.error(
+          `Open Stripe checkouts of ${organizationId} were not expired after an App Store purchase`,
+          err instanceof Error ? err.stack : String(err)
+        );
+      }
       return { ok: true, tier: state.tier, isTrailing: state.isTrailing };
     } finally {
+      await this._store.release(orgLease, holder);
       await this._store.release(id, holder);
     }
   }
@@ -160,6 +198,15 @@ export class AppleIapService {
       const owner = await this._subscriptionRepository.findByAppleTransaction(
         id
       );
+      // Kept even when nobody has handed the purchase over: a refund that
+      // outruns the app must still stop the original transaction from
+      // becoming a plan later.
+      if (appleStateOf(transaction, renewal, Date.now()).state === 'ended') {
+        await this._store.markEnded(
+          id,
+          new Date(notification.signedDate || Date.now())
+        );
+      }
       if (owner) {
         await this.apply(
           owner.organizationId,

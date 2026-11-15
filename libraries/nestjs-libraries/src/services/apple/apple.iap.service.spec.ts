@@ -33,6 +33,8 @@ const build = (opts: {
   owner?: any;
   current?: any;
   done?: boolean;
+  endedAt?: Date | null;
+  paymentId?: string | null;
 } = {}) => {
   const verifier = {
     transaction: opts.invalid
@@ -48,7 +50,10 @@ const build = (opts: {
     markDone: jest.fn(async (id: string) => void done.add(id)),
     lease: jest.fn().mockResolvedValue(true),
     release: jest.fn().mockResolvedValue(undefined),
+    endedAt: jest.fn().mockResolvedValue(opts.endedAt ?? null),
+    markEnded: jest.fn().mockResolvedValue(undefined),
   };
+  const openCheckouts = { expire: jest.fn().mockResolvedValue(0) };
   const subscriptions = {
     createOrUpdateSubscription: jest.fn().mockResolvedValue(undefined),
     endAppleSubscription: jest.fn().mockResolvedValue({ revoked: true }),
@@ -57,14 +62,16 @@ const build = (opts: {
     findByAppleTransaction: jest.fn().mockResolvedValue(opts.owner ?? null),
     releaseEndedAppleTransaction: jest.fn().mockResolvedValue(true),
     getSubscriptionByOrgId: jest.fn().mockResolvedValue(opts.current ?? null),
+    getPaymentId: jest.fn().mockResolvedValue(opts.paymentId ?? null),
   };
   const service = new AppleIapService(
     verifier as any,
     store as any,
     subscriptions as any,
-    repository as any
+    repository as any,
+    openCheckouts as any
   );
-  return { service, verifier, store, subscriptions, repository };
+  return { service, verifier, store, subscriptions, repository, openCheckouts };
 };
 
 const written = (subscriptions: any) => {
@@ -204,6 +211,61 @@ describe('AppleIapService', () => {
       expect(subscriptions.createOrUpdateSubscription).toHaveBeenCalledTimes(1);
     });
 
+    // After a refund the transaction the app first received is still
+    // validly signed and not yet expired.
+    it('refuses a transaction signed before Apple said the purchase was over', async () => {
+      const signedDate = Date.now() - 3 * DAY;
+      for (const owner of [null, { id: 's', organizationId: 'org-other', deletedAt: new Date(), appleSignedAt: new Date() }]) {
+        const { service, subscriptions, repository } = build({
+          transaction: tx({ signedDate }),
+          endedAt: new Date(Date.now() - DAY),
+          owner,
+        });
+        await expect(service.attach(ORG, 'a.b.c')).rejects.toMatchObject({ status: 409 });
+        expect(repository.releaseEndedAppleTransaction).not.toHaveBeenCalled();
+        expect(subscriptions.createOrUpdateSubscription).not.toHaveBeenCalled();
+      }
+    });
+
+    it('takes a transaction signed after it (the same Apple ID subscribed again)', async () => {
+      const { service, subscriptions } = build({
+        transaction: tx({ signedDate: Date.now() }),
+        endedAt: new Date(Date.now() - DAY),
+      });
+      await service.attach(ORG, 'a.b.c');
+      expect(subscriptions.createOrUpdateSubscription).toHaveBeenCalledTimes(1);
+    });
+
+    it('holds the organisation as well as the purchase, and lets both go', async () => {
+      const { service, store } = build();
+      await service.attach(ORG, 'a.b.c');
+      expect(store.lease.mock.calls.map((c: any[]) => c[0])).toEqual([ID, `org:${ORG}`]);
+      expect(store.release.mock.calls.map((c: any[]) => c[0]).sort()).toEqual([ID, `org:${ORG}`].sort());
+    });
+
+    it('a second purchase for the organisation waits its turn; refused if the first is still running', async () => {
+      const { service, store, subscriptions } = build();
+      store.lease.mockImplementation(async (of: string) => !of.startsWith('org:'));
+      await expect(service.attach(ORG, 'a.b.c')).rejects.toMatchObject({ status: 409 });
+      expect(store.release).toHaveBeenCalledWith(ID, expect.any(String));
+      expect(subscriptions.createOrUpdateSubscription).not.toHaveBeenCalled();
+    });
+
+    it('closes Stripe checkouts the organisation left open, after the plan is written', async () => {
+      const { service, openCheckouts, subscriptions } = build({ paymentId: 'cus_1' });
+      await service.attach(ORG, 'a.b.c');
+      expect(openCheckouts.expire).toHaveBeenCalledWith('cus_1');
+      expect(subscriptions.createOrUpdateSubscription.mock.invocationCallOrder[0]).toBeLessThan(
+        openCheckouts.expire.mock.invocationCallOrder[0]
+      );
+    });
+
+    it('a failure to close them does not undo the purchase', async () => {
+      const { service, openCheckouts } = build({ paymentId: 'cus_1' });
+      openCheckouts.expire.mockRejectedValue(new Error('stripe down'));
+      await expect(service.attach(ORG, 'a.b.c')).resolves.toMatchObject({ ok: true });
+    });
+
     it('answers 409 while another write of the purchase is running', async () => {
       const { service, store, subscriptions } = build();
       store.lease.mockResolvedValue(false);
@@ -324,6 +386,29 @@ describe('AppleIapService', () => {
       expect(subscriptions.endAppleSubscription).toHaveBeenCalledWith(ORG, ID, expect.any(Date));
       expect(subscriptions.createOrUpdateSubscription).not.toHaveBeenCalled();
       expect(store.markDone).toHaveBeenCalled();
+    });
+
+    it('an ended purchase is remembered as ended, with the time Apple signed it', async () => {
+      const signedDate = Date.now() - 1000;
+      const { store } = await run(
+        notification('REFUND', undefined, { signedDate, transaction: tx({ revocationDate: signedDate }) })
+      );
+      expect(store.markEnded).toHaveBeenCalledWith(ID, new Date(signedDate));
+    });
+
+    // A refund can outrun the app handing the purchase over.
+    it('and so is one that nobody has handed over yet', async () => {
+      const built = build({
+        notification: notification('REFUND', undefined, { transaction: tx({ revocationDate: Date.now() - 1 }) }),
+      });
+      await expect(built.service.notify('a.b.c')).resolves.toEqual({ ok: true, unknown: true });
+      expect(built.store.markEnded).toHaveBeenCalledWith(ID, expect.any(Date));
+      expect(built.store.markDone).toHaveBeenCalled();
+    });
+
+    it('a purchase in force is not marked ended', async () => {
+      const { store } = await run(notification('DID_RENEW'));
+      expect(store.markEnded).not.toHaveBeenCalled();
     });
 
     it('a redelivery is answered 200 and not applied twice', async () => {

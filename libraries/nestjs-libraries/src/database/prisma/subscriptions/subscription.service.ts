@@ -445,6 +445,27 @@ export class SubscriptionService {
       // the new 100-channel plan.
       await this.modifySubscriptionByOrg(org, totalChannels, billing, isTrailing);
     }
+    // A plan Apple bills is being replaced by one it does not (a Stripe
+    // checkout opened earlier and paid now). The payment has been taken, so
+    // the write stands, but Apple goes on billing a plan this server no
+    // longer follows: someone has to cancel or refund one of the two.
+    if (!apple && org) {
+      const current = await this._subscriptionRepository.getSubscriptionByOrgId(
+        org
+      );
+      if (current?.appleOriginalTransactionId) {
+        Logger.error(
+          `Organisation ${org} is billed by Apple and now also by ${
+            customerId ? 'Stripe' : 'a grant'
+          }: the App Store subscription is no longer followed`
+        );
+        this._auditService.record({
+          action: 'subscription.apple.overwritten',
+          organizationId: org,
+          metadata: { customerId, billing },
+        });
+      }
+    }
     this._auditService.record({
       action: 'subscription.change',
       organizationId: org,
@@ -775,13 +796,28 @@ export class SubscriptionService {
     originalTransactionId: string,
     signedAt: Date
   ) {
+    const current = await this._subscriptionRepository.getSubscriptionByOrgId(
+      orgId
+    );
+    if (current?.appleOriginalTransactionId !== originalTransactionId) {
+      return { revoked: false };
+    }
+    // Limits first, the row last. The other way round, a failure while
+    // switching channels off left the plan marked ended and the retry found
+    // nothing to do, so the paid plan's channels stayed on for good. In this
+    // order a retry finds the plan still in force and does all of it again.
+    await this.modifySubscriptionByOrg(orgId, pricing.FREE.channel || 0, 'FREE');
     const result = await this._subscriptionRepository.endAppleSubscription(
       orgId,
       originalTransactionId,
       signedAt
     );
+    await this.bustMembersAuthCache(orgId, undefined);
     if (result.revoked) {
-      await this.backToFree(orgId, 'subscription.apple.ended');
+      this._auditService.record({
+        action: 'subscription.apple.ended',
+        organizationId: orgId,
+      });
     }
     return result;
   }

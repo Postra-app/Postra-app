@@ -1220,3 +1220,14 @@ model AppleProcessedNotification {
 
   @@index([createdAt])
 }
+
+// An App Store purchase Apple has said is over (refunded, revoked, expired),
+// and when it said so. The transaction the app was first given stays validly
+// signed and unexpired after a refund, so it is checked against this before
+// it can become a plan, here or in another organisation.
+model AppleEndedPurchase {
+  originalTransactionId String   @id
+  signedAt              DateTime
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+}

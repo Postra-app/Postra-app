@@ -13,3 +13,14 @@ CREATE TABLE "AppleProcessedNotification" (
     CONSTRAINT "AppleProcessedNotification_pkey" PRIMARY KEY ("id")
 );
 CREATE INDEX "AppleProcessedNotification_createdAt_idx" ON "AppleProcessedNotification"("createdAt");
+
+-- Purchases Apple has reported as over, so a transaction signed before that
+-- cannot be turned into a plan afterwards.
+CREATE TABLE "AppleEndedPurchase" (
+    "originalTransactionId" TEXT NOT NULL,
+    "signedAt" TIMESTAMP(3) NOT NULL,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "AppleEndedPurchase_pkey" PRIMARY KEY ("originalTransactionId")
+);
