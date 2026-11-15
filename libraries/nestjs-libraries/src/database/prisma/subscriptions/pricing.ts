@@ -245,7 +245,7 @@ export const postsCycleWindow = (
   };
 };
 
-// A trial shows AI video with one clip (~$0.33 at kie.ai), whatever the plan.
+// A trial shows AI video with one clip (~$0.18 at kie.ai), whatever the plan.
 export const TRIAL_VIDEO_CLIPS = 1;
 
 // AI allowances follow the same rule as channels: a trial runs on Starter's
