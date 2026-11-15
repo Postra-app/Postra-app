@@ -20,6 +20,9 @@ import { NotificationsRepository } from '@gitroom/nestjs-libraries/database/pris
 import { EmailService } from '@gitroom/nestjs-libraries/services/email.service';
 import { StripeService } from '@gitroom/nestjs-libraries/services/stripe.service';
 import { StripeEventStore } from '@gitroom/nestjs-libraries/services/stripe.event.store';
+import { AppleIapService } from '@gitroom/nestjs-libraries/services/apple/apple.iap.service';
+import { AppleIapVerifier } from '@gitroom/nestjs-libraries/services/apple/apple.iap.verifier';
+import { AppleNotificationStore } from '@gitroom/nestjs-libraries/services/apple/apple.notification.store';
 import { OpenaiService } from '@gitroom/nestjs-libraries/openai/openai.service';
 import { TrackService } from '@gitroom/nestjs-libraries/track/track.service';
 import { ShortLinkService } from '@gitroom/nestjs-libraries/short-linking/short.link.service';
@@ -79,6 +82,9 @@ import { AiUsageService } from '@gitroom/nestjs-libraries/database/prisma/ai-usa
     PostsRepository,
     StripeService,
     StripeEventStore,
+    AppleIapService,
+    AppleIapVerifier,
+    AppleNotificationStore,
     SignatureRepository,
     AutopostRepository,
     AutopostService,

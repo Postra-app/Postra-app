@@ -5,6 +5,7 @@ import {
   Controller,
   ForbiddenException,
   Get,
+  HttpException,
   Logger,
   Param,
   Post,
@@ -12,6 +13,12 @@ import {
 } from '@nestjs/common';
 import { SubscriptionService } from '@gitroom/nestjs-libraries/database/prisma/subscriptions/subscription.service';
 import { StripeService } from '@gitroom/nestjs-libraries/services/stripe.service';
+import { AppleIapService } from '@gitroom/nestjs-libraries/services/apple/apple.iap.service';
+import {
+  appleIapEnabled,
+  applePlans,
+} from '@gitroom/nestjs-libraries/services/apple/apple.iap';
+import { BillingAppleTransactionDto } from '@gitroom/nestjs-libraries/dtos/billing/billing.apple.transaction.dto';
 import { GetOrgFromRequest } from '@gitroom/nestjs-libraries/user/org.from.request';
 import { Organization, User } from '@prisma/client';
 import { BillingSubscribeDto } from '@gitroom/nestjs-libraries/dtos/billing/billing.subscribe.dto';
@@ -42,6 +49,18 @@ const BILLING_ADMIN = [AuthorizationActions.Create, Sections.ADMIN] as [
   Sections
 ];
 
+// A plan Apple bills cannot also be bought through Stripe: the organisation
+// would pay twice and the two would overwrite each other's plan.
+const refuseAppleBilled = (org: Organization) => {
+  // @ts-ignore the request's organisation is loaded with its subscription
+  if (org?.subscription?.appleOriginalTransactionId) {
+    throw new HttpException(
+      'This account subscribes through the App Store. Manage the plan in your Apple ID settings.',
+      409
+    );
+  }
+};
+
 @ApiTags('Billing')
 @Controller('/billing')
 export class BillingController {
@@ -49,7 +68,8 @@ export class BillingController {
     private _subscriptionService: SubscriptionService,
     private _stripeService: StripeService,
     private _notificationService: NotificationService,
-    private _auditService: AuditService
+    private _auditService: AuditService,
+    private _appleIapService: AppleIapService
   ) {}
 
   @Get('/check/:id')
@@ -151,6 +171,7 @@ export class BillingController {
     @Body() body: BillingSubscribeDto,
     @Req() req: Request
   ) {
+    refuseAppleBilled(org);
     const uniqueId = req?.cookies?.track;
     return this._stripeService.embedded(
       uniqueId,
@@ -170,6 +191,7 @@ export class BillingController {
     @Body() body: BillingSubscribeDto,
     @Req() req: Request
   ) {
+    refuseAppleBilled(org);
     const uniqueId = req?.cookies?.track;
     return this._stripeService.subscribe(
       uniqueId,
@@ -202,6 +224,29 @@ export class BillingController {
     return {
       portal: url,
     };
+  }
+
+  // The plans the iOS app may sell, by App Store product id. The app asks
+  // the store for the price and shows these only to an organisation that has
+  // no plan.
+  @Get('/apple/plans')
+  applePlans() {
+    if (!appleIapEnabled()) {
+      throw new HttpException('Not found', 404);
+    }
+    return { plans: applePlans() };
+  }
+
+  // The app's purchase (or "restore purchases"): the transaction as StoreKit
+  // signed it, for the organisation that is signed in.
+  @Post('/apple/transaction')
+  @CheckPolicies(BILLING_ADMIN)
+  @Throttle({ default: { ttl: 300_000, limit: 20 } })
+  appleTransaction(
+    @GetOrgFromRequest() org: Organization,
+    @Body() body: BillingAppleTransactionDto
+  ) {
+    return this._appleIapService.attach(org.id, body.signedTransaction);
   }
 
   // A lower plan waiting for the next billing period.

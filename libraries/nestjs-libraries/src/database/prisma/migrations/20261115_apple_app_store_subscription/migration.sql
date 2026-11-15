@@ -1,0 +1,15 @@
+-- A plan billed by Apple is found by the purchase's original transaction id.
+-- Additive: existing rows keep both columns empty.
+ALTER TABLE "Subscription" ADD COLUMN "appleOriginalTransactionId" TEXT;
+ALTER TABLE "Subscription" ADD COLUMN "appleSignedAt" TIMESTAMP(3);
+CREATE UNIQUE INDEX "Subscription_appleOriginalTransactionId_key" ON "Subscription"("appleOriginalTransactionId");
+
+-- Notifications already handled, so a redelivery is not applied twice.
+CREATE TABLE "AppleProcessedNotification" (
+    "id" TEXT NOT NULL,
+    "type" TEXT NOT NULL,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT "AppleProcessedNotification_pkey" PRIMARY KEY ("id")
+);
+CREATE INDEX "AppleProcessedNotification_createdAt_idx" ON "AppleProcessedNotification"("createdAt");

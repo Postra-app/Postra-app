@@ -2298,5 +2298,8 @@
   "help_settings_intro": "To, które sekcje widzisz, zależy od Twojego planu.",
   "help_contact_email": "Nie możesz znaleźć tego, czego szukasz? Napisz do nas na",
   "help_contact_reply": "- zwykle odpowiadamy w ciągu jednego dnia roboczego.",
-  "help_contact_status": "Status usługi:"
+  "help_contact_status": "Status usługi:",
+  "billing_app_store_subscribed": "Subskrypcja kupiona w App Store",
+  "billing_app_store_manage": "Ten plan rozlicza Apple. Aby go zmienić lub anulować, otwórz Ustawienia na iPhonie, dotknij swojego imienia i wybierz Subskrypcje.",
+  "billing_app_store_ends": "Ten plan kończy się"
 }

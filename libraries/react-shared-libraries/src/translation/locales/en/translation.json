@@ -2298,5 +2298,8 @@
   "help_settings_intro": "Which sections you see depends on your plan.",
   "help_contact_email": "Can't find what you need? Email us at",
   "help_contact_reply": "- we usually reply within one business day.",
-  "help_contact_status": "Service status:"
+  "help_contact_status": "Service status:",
+  "billing_app_store_subscribed": "Subscribed through the App Store",
+  "billing_app_store_manage": "Apple bills this plan. To change or cancel it, open Settings on your iPhone, tap your name, then Subscriptions.",
+  "billing_app_store_ends": "This plan ends on"
 }

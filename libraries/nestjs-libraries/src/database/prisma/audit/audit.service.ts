@@ -30,6 +30,7 @@ export type AuditAction =
   | 'subscription.comp'
   | 'subscription.revoke'
   | 'subscription.comp.expired'
+  | 'subscription.apple.ended'
   | 'subscription.pending-grant'
   | 'subscription.pending-grant.applied'
   | 'subscription.change'

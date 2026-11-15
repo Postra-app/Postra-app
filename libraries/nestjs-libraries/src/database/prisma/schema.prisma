@@ -381,6 +381,13 @@ model Subscription {
   periodAnchor     DateTime?
   // A plan given without a payment (an admin comp): why, and when it ends.
   // The daily housekeeping run takes it back after compEndsAt. Empty on
+  // Set when the plan is billed by Apple (an App Store subscription bought in
+  // the iOS app): the id every renewal of that purchase carries, and how
+  // Apple's notifications find the row. Empty on Stripe plans and comps.
+  appleOriginalTransactionId String? @unique
+  // When Apple signed the state this row was last written from. A delivery
+  // signed earlier is stale and is not applied over it.
+  appleSignedAt    DateTime?
   // every plan Stripe bills.
   compReason       String?
   compEndsAt       DateTime?
@@ -1197,6 +1204,16 @@ model AuditLog {
 // dropped. A claim whose handler then threw is released, otherwise a transient
 // failure would permanently swallow the event on Stripe's retry.
 model StripeProcessedEvent {
+  id        String   @id
+  type      String
+  createdAt DateTime @default(now())
+
+  @@index([createdAt])
+}
+
+// App Store Server Notifications arrive at least once. A row here means the
+// notification with that id was handled to the end.
+model AppleProcessedNotification {
   id        String   @id
   type      String
   createdAt DateTime @default(now())
