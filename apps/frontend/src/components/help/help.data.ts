@@ -44,7 +44,7 @@ export interface FaqItem {
 
 // Channels with a non-standard connect flow (bot dialog, credentials form)
 // come first — they generate the most confusion.
-export const CHANNEL_GUIDES: ChannelGuide[] = [
+const CHANNEL_SOURCE: ChannelGuide[] = [
   {
     identifier: 'telegram',
     name: 'Telegram',
@@ -380,7 +380,7 @@ export const CHANNEL_GUIDES: ChannelGuide[] = [
   },
 ];
 
-export const APP_TABS: AppTabGuide[] = [
+const TAB_SOURCE: AppTabGuide[] = [
   {
     id: 'calendar',
     name: 'Calendar',
@@ -414,7 +414,7 @@ export const APP_TABS: AppTabGuide[] = [
     id: 'media',
     name: 'Media',
     description:
-      `Every image and video you've uploaded or made in Postra, ready to reuse in any post. Pictures can be up to 30 MB (GIFs 10 MB) and videos (MP4) up to 1 GB. The library has a storage limit set by your plan: ${pricing.STANDARD.media_storage_gb} GB on Starter, ${pricing.PRO.media_storage_gb} GB on Pro and ${pricing.ULTIMATE.media_storage_gb} GB on Business (${TRIAL_LIMITS.media_storage_gb} GB during the free trial). The bar at the top of Media shows how much you use. Deleting a file frees its space at once.`,
+      'Every image and video you\'ve uploaded or made in Postra, ready to reuse in any post. Pictures can be up to 30 MB (GIFs 10 MB) and videos (MP4) up to 1 GB. The library has a storage limit set by your plan: {{starterGb}} GB on Starter, {{proGb}} GB on Pro and {{businessGb}} GB on Business ({{trialGb}} GB during the free trial). The bar at the top of Media shows how much you use. Deleting a file frees its space at once.',
   },
   {
     id: 'plugs',
@@ -437,7 +437,7 @@ export const APP_TABS: AppTabGuide[] = [
 
 // The phone app (App Store, Google Play). Facts come from the mobile app's
 // code; keep in sync when a release adds or moves a feature.
-export const MOBILE_APP = {
+const MOBILE_SOURCE = {
   intro:
     'Postra for iPhone and Android covers the everyday basics, so you can post without a computer. Sign in with your Postra email and password. An account made with Google signs in with the Google button on Android; on iPhone, Google sign-in is on the web only for now.',
   canDo: [
@@ -468,7 +468,7 @@ export interface StudioToolGuide {
 
 // Studio → Graphics, tool by tool (left-toolbar order, then saving/export).
 // Facts come from the design-editor code — keep in sync when tools change.
-export const STUDIO_GRAPHICS_TOOLS: StudioToolGuide[] = [
+const GRAPHICS_SOURCE: StudioToolGuide[] = [
   {
     name: 'AI Generate',
     description:
@@ -598,7 +598,7 @@ export const studioPhotoGuide = (t: Translate) => ({
 
 // Studio → Video, in goal-screen / tab order. Facts come from the
 // video-studio code — keep in sync when tools change.
-export const STUDIO_VIDEO_TOOLS: StudioToolGuide[] = [
+const VIDEO_SOURCE: StudioToolGuide[] = [
   {
     name: 'Start screen & loading a clip',
     description:
@@ -641,7 +641,7 @@ export const STUDIO_VIDEO_TOOLS: StudioToolGuide[] = [
   },
 ];
 
-export const SETTINGS_SECTIONS: SettingsSectionGuide[] = [
+const SETTINGS_SOURCE: SettingsSectionGuide[] = [
   {
     name: 'Global Settings',
     availability: 'All plans',
@@ -656,7 +656,7 @@ export const SETTINGS_SECTIONS: SettingsSectionGuide[] = [
   },
   {
     name: 'Webhooks',
-    availability: `All paid plans (Starter ${pricing.STANDARD.webhooks}, Pro ${pricing.PRO.webhooks}, Business unlimited webhooks), admins only`,
+    availability: 'All paid plans (Starter {{starterWebhooks}}, Pro {{proWebhooks}}, Business unlimited webhooks), admins only',
     description:
       'Get an HTTP call to your own endpoint whenever posts publish - for connecting Postra to your own tools.',
   },
@@ -691,16 +691,16 @@ export const SETTINGS_SECTIONS: SettingsSectionGuide[] = [
   },
 ];
 
-export const FAQ_ITEMS: FaqItem[] = [
+const FAQ_SOURCE: FaqItem[] = [
   {
     question: 'How much storage do I get for my media?',
     answer:
-      `Your media library can hold ${pricing.STANDARD.media_storage_gb} GB on Starter, ${pricing.PRO.media_storage_gb} GB on Pro and ${pricing.ULTIMATE.media_storage_gb} GB on Business, and ${TRIAL_LIMITS.media_storage_gb} GB during the free trial. That is room for thousands of photos or dozens of long videos. Media shows how much you use. When the library is full, new uploads stop with a message: delete files you no longer need (the space is free again at once) or upgrade your plan. Posts that already use a file are not affected when you delete it.`,
+      'Your media library can hold {{starterGb}} GB on Starter, {{proGb}} GB on Pro and {{businessGb}} GB on Business, and {{trialGb}} GB during the free trial. That is room for thousands of photos or dozens of long videos. Media shows how much you use. When the library is full, new uploads stop with a message: delete files you no longer need (the space is free again at once) or upgrade your plan. Posts that already use a file are not affected when you delete it.',
   },
   {
     question: "Why can't I add more channels?",
     answer:
-      `Each plan includes a fixed number of channels (${pricing.STANDARD.channel}, ${pricing.PRO.channel} or ${pricing.ULTIMATE.channel}, depending on the plan; trials are capped at ${TRIAL_CHANNEL_CAP}). Upgrade in Billing to unlock more. A channel waiting to be reconnected keeps its slot; disabling or deleting a channel frees it.`,
+      'Each plan includes a fixed number of channels ({{starterChannels}}, {{proChannels}} or {{businessChannels}}, depending on the plan; trials are capped at {{trialChannels}}). Upgrade in Billing to unlock more. A channel waiting to be reconnected keeps its slot; disabling or deleting a channel frees it.',
   },
   {
     question: 'A post failed to publish - what should I do?',
@@ -710,12 +710,12 @@ export const FAQ_ITEMS: FaqItem[] = [
   {
     question: 'How does the trial work?',
     answer:
-      `Paid plans start with a 7-day free trial. During the trial you can connect up to ${TRIAL_CHANNEL_CAP} channels, schedule up to ${TRIAL_LIMITS.posts_per_month} posts, add ${TRIAL_LIMITS.webhooks} webhook and ${TRIAL_LIMITS.autoPostLimit} Auto Post feed, try AI with ${TRIAL_AI_IMAGES} AI images, one AI video and ${TRIAL_AGENT_MESSAGES} questions to the AI assistant, and keep up to ${TRIAL_LIMITS.media_storage_gb} GB of photos and videos. The trial is for one person; team invites open with your plan. Cancel any time in Billing before the trial ends and you won't be charged.`,
+      'Paid plans start with a 7-day free trial. During the trial you can connect up to {{trialChannels}} channels, schedule up to {{trialPosts}} posts, add {{trialWebhooks}} webhook and {{trialFeeds}} Auto Post feed, try AI with {{trialImages}} AI images, one AI video and {{trialQuestions}} questions to the AI assistant, and keep up to {{trialGb}} GB of photos and videos. The trial is for one person; team invites open with your plan. Cancel any time in Billing before the trial ends and you won\'t be charged.',
   },
   {
     question: 'How do AI videos work?',
     answer:
-      `In the post editor, click AI Video (on a computer or tablet), describe the scene, pick vertical (Stories, Reels) or horizontal, and optionally add up to 3 of your images for the video to feature. Google's Veo 3.1 model makes an 8-second clip with sound in one to three minutes; it is attached to your post and saved in your media library. Each clip uses one video credit: ${pricing.STANDARD.generate_videos} a month on Starter, ${pricing.PRO.generate_videos} on Pro and ${pricing.ULTIMATE.generate_videos} on Business, and ${TRIAL_VIDEO_CLIPS} during the trial. A clip that fails costs nothing, and asking for exactly the same clip again within 10 minutes returns the one already made instead of using another credit.`,
+      'In the post editor, click AI Video (on a computer or tablet), describe the scene, pick vertical (Stories, Reels) or horizontal, and optionally add up to 3 of your images for the video to feature. Google\'s Veo 3.1 model makes an 8-second clip with sound in one to three minutes; it is attached to your post and saved in your media library. Each clip uses one video credit: {{starterVideos}} a month on Starter, {{proVideos}} on Pro and {{businessVideos}} on Business, and {{trialVideos}} during the trial. A clip that fails costs nothing, and asking for exactly the same clip again within 10 minutes returns the one already made instead of using another credit.',
   },
   {
     question: 'Can I post to multiple channels at once?',
@@ -763,3 +763,114 @@ export const FAQ_ITEMS: FaqItem[] = [
       'Your API key gives full access to your workspace, so treat it like a password: keep it on your own server or in your AI tool\'s settings, never in a website\'s code or a public repository. If it ever leaks, press Rotate in Settings → Developers - the old key stops working at once. Only workspace owners and admins can see the key. Apps you signed in to with your Postra account are listed in Settings → Approved apps, where you can revoke them. Webhook messages carry no passwords or channel tokens, only the post details listed above, and each is signed so your server can tell it came from Postra.',
   },
 ];
+
+// Help in every loaded language. The English
+// sources above are the default text of each key; a key is the place of the
+// sentence (section, item, field, position), so the catalogue entry for it
+// must match the source word for word - help.data.spec.ts fails otherwise and
+// a changed English sentence cannot leave a stale Polish one behind silently.
+// Plan numbers stay {{placeholders}} in every language and are filled from
+// the plans here, never typed into a catalogue.
+export type HelpTranslate = (
+  key: string,
+  fallback: string,
+  values?: Record<string, string | number>
+) => string;
+
+export const HELP_VALUES: Record<string, number> = {
+  starterGb: pricing.STANDARD.media_storage_gb,
+  proGb: pricing.PRO.media_storage_gb,
+  businessGb: pricing.ULTIMATE.media_storage_gb,
+  trialGb: TRIAL_LIMITS.media_storage_gb,
+  starterChannels: pricing.STANDARD.channel,
+  proChannels: pricing.PRO.channel,
+  businessChannels: pricing.ULTIMATE.channel,
+  trialChannels: TRIAL_CHANNEL_CAP,
+  trialPosts: TRIAL_LIMITS.posts_per_month,
+  trialWebhooks: TRIAL_LIMITS.webhooks,
+  trialFeeds: TRIAL_LIMITS.autoPostLimit,
+  trialImages: TRIAL_AI_IMAGES,
+  trialQuestions: TRIAL_AGENT_MESSAGES,
+  starterVideos: pricing.STANDARD.generate_videos,
+  proVideos: pricing.PRO.generate_videos,
+  businessVideos: pricing.ULTIMATE.generate_videos,
+  trialVideos: TRIAL_VIDEO_CLIPS,
+  starterWebhooks: pricing.STANDARD.webhooks,
+  proWebhooks: pricing.PRO.webhooks,
+};
+
+const fill = (text: string, values?: Record<string, string | number>) =>
+  values
+    ? text.replace(/\{\{\s*(\w+)\s*\}\}/g, (all, name) =>
+        name in values ? String(values[name]) : all
+      )
+    : text;
+
+/** The English text, with the plan numbers filled in. */
+export const english: HelpTranslate = (_key, fallback, values) =>
+  fill(fallback, values);
+
+const slug = (id: string) => id.replace(/[^a-z0-9]+/g, '_');
+
+export const channelGuides = (t: HelpTranslate): ChannelGuide[] =>
+  CHANNEL_SOURCE.map((c) => {
+    const k = `help_ch_${slug(c.identifier)}`;
+    return {
+      ...c,
+      // The name is the platform's, as on its Add Channel tile.
+      steps: c.steps.map((s, i) => t(`${k}_step_${i}`, s, HELP_VALUES)),
+      gotchas: c.gotchas.map((s, i) => t(`${k}_gotcha_${i}`, s, HELP_VALUES)),
+      composer: c.composer?.map((s, i) =>
+        t(`${k}_composer_${i}`, s, HELP_VALUES)
+      ),
+    };
+  });
+
+export const appTabs = (t: HelpTranslate): AppTabGuide[] =>
+  TAB_SOURCE.map((tab) => ({
+    id: tab.id,
+    name: t(`help_tab_${slug(tab.id)}_name`, tab.name),
+    description: t(`help_tab_${slug(tab.id)}_desc`, tab.description, HELP_VALUES),
+  }));
+
+export const mobileApp = (t: HelpTranslate) => ({
+  intro: t('help_mobile_intro', MOBILE_SOURCE.intro, HELP_VALUES),
+  canDo: MOBILE_SOURCE.canDo.map((s, i) => t(`help_mobile_can_${i}`, s, HELP_VALUES)),
+  webOnly: MOBILE_SOURCE.webOnly.map((s, i) =>
+    t(`help_mobile_web_${i}`, s, HELP_VALUES)
+  ),
+  limits: MOBILE_SOURCE.limits.map((s, i) =>
+    t(`help_mobile_limit_${i}`, s, HELP_VALUES)
+  ),
+});
+
+const tools = (prefix: string, source: StudioToolGuide[]) => (t: HelpTranslate) =>
+  source.map((tool, i) => ({
+    name: t(`${prefix}_${i}_name`, tool.name),
+    description: t(`${prefix}_${i}_desc`, tool.description, HELP_VALUES),
+  }));
+
+export const studioGraphicsTools = tools('help_gfx', GRAPHICS_SOURCE);
+export const studioVideoTools = tools('help_vid', VIDEO_SOURCE);
+
+export const settingsSections = (t: HelpTranslate): SettingsSectionGuide[] =>
+  SETTINGS_SOURCE.map((s, i) => ({
+    name: t(`help_set_${i}_name`, s.name),
+    availability: t(`help_set_${i}_avail`, s.availability, HELP_VALUES),
+    description: t(`help_set_${i}_desc`, s.description, HELP_VALUES),
+  }));
+
+export const faqItems = (t: HelpTranslate): FaqItem[] =>
+  FAQ_SOURCE.map((f, i) => ({
+    question: t(`help_faq_${i}_q`, f.question),
+    answer: t(`help_faq_${i}_a`, f.answer, HELP_VALUES),
+  }));
+
+// The English content, for the guards and anything that needs plain text.
+export const CHANNEL_GUIDES = channelGuides(english);
+export const APP_TABS = appTabs(english);
+export const MOBILE_APP = mobileApp(english);
+export const STUDIO_GRAPHICS_TOOLS = studioGraphicsTools(english);
+export const STUDIO_VIDEO_TOOLS = studioVideoTools(english);
+export const SETTINGS_SECTIONS = settingsSections(english);
+export const FAQ_ITEMS = faqItems(english);

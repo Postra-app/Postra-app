@@ -5,28 +5,32 @@ import { useT } from '@gitroom/react/translation/get.transation.service.client';
 import { useUser } from '@gitroom/frontend/components/layout/user.context';
 import { SOON_PLATFORMS } from '@gitroom/frontend/components/billing/plan.features';
 import {
-  APP_TABS,
-  CHANNEL_GUIDES,
+  appTabs,
+  channelGuides as localChannelGuides,
   ChannelConnectType,
-  FAQ_ITEMS,
-  MOBILE_APP,
-  SETTINGS_SECTIONS,
-  STUDIO_GRAPHICS_TOOLS,
-  STUDIO_VIDEO_TOOLS,
+  faqItems,
+  HelpTranslate,
+  mobileApp,
+  settingsSections,
+  studioGraphicsTools,
+  studioVideoTools,
   studioPhotoGuide,
 } from '@gitroom/frontend/components/help/help.data';
 
-const CONNECT_LABELS: Record<ChannelConnectType, string> = {
-  oauth: 'One-click connect',
-  credentials: 'Connects with login details',
-  bot: 'Connects through a bot',
+const CONNECT_LABELS: Record<ChannelConnectType, [string, string]> = {
+  oauth: ['help_connect_oauth', 'One-click connect'],
+  credentials: ['help_connect_credentials', 'Connects with login details'],
+  bot: ['help_connect_bot', 'Connects through a bot'],
 };
 
-const ComingSoon = () => (
-  <div className="text-[13px] italic text-newTextColor/40">
-    Content coming soon.
-  </div>
-);
+const ComingSoon = () => {
+  const t = useT();
+  return (
+    <div className="text-[13px] italic text-newTextColor/40">
+      {t('help_content_soon', 'Content coming soon.')}
+    </div>
+  );
+};
 
 // The full step-by-step user guide on postra.co.uk. Help keeps the short
 // answers next to the work; each section links to its page there.
@@ -59,7 +63,17 @@ const Section: FC<{
 
 export const HelpComponent = () => {
   const t = useT();
-  const photoGuide = studioPhotoGuide(t);
+  // Every text of the page in the reader's language (help.data.ts).
+  const ht: HelpTranslate = (key, fallback, values) =>
+    values ? t(key, fallback, values) : t(key, fallback);
+  const photoGuide = studioPhotoGuide(ht);
+  const tabs = appTabs(ht);
+  const mobile = mobileApp(ht);
+  const graphicsTools = studioGraphicsTools(ht);
+  const videoTools = studioVideoTools(ht);
+  const settings = settingsSections(ht);
+  const faq = faqItems(ht);
+  const allChannelGuides = localChannelGuides(ht);
   const [filter, setFilter] = useState('');
 
   // The sections render on the client, after the browser has already tried
@@ -94,10 +108,12 @@ export const HelpComponent = () => {
   const user = useUser();
   const channelGuides = useMemo(
     () =>
-      CHANNEL_GUIDES.filter(
+      allChannelGuides.filter(
         (c) => !SOON_PLATFORMS.has(c.identifier) || !!user?.isSuperAdmin
       ),
-    [user?.isSuperAdmin]
+    // allChannelGuides changes only with the language, and t with it.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [user?.isSuperAdmin, t]
   );
   const matchingChannels = useMemo(
     () =>
@@ -179,9 +195,9 @@ export const HelpComponent = () => {
           title={t('help_getting_started', 'Getting started')}
         >
           <ol className="flex flex-col gap-[8px] text-[14px] list-decimal ps-[20px]">
-            <li>Add a channel from the Calendar page ("Add Channel").</li>
-            <li>Create a post yourself, or let the Agent draft one for you.</li>
-            <li>Schedule it - it appears on the calendar and publishes automatically.</li>
+            <li>{t('help_start_step_0', 'Add a channel from the Calendar page ("Add Channel").')}</li>
+            <li>{t('help_start_step_1', 'Create a post yourself, or let the Agent draft one for you.')}</li>
+            <li>{t('help_start_step_2', 'Schedule it - it appears on the calendar and publishes automatically.')}</li>
           </ol>
         </Section>
 
@@ -207,7 +223,7 @@ export const HelpComponent = () => {
                     {channel.name}
                   </div>
                   <div className="text-[11px] px-[10px] py-[3px] rounded-full border border-sky-300/25 text-sky-300 whitespace-nowrap">
-                    {CONNECT_LABELS[channel.connectType]}
+                    {t(...CONNECT_LABELS[channel.connectType])}
                   </div>
                 </div>
                 {channel.steps.length ? (
@@ -245,7 +261,7 @@ export const HelpComponent = () => {
 
         <Section id="tabs" title={t('help_app_tabs', 'App tabs')} guide="app-map">
           <div className="grid grid-cols-2 phone:grid-cols-1 gap-[12px]">
-            {APP_TABS.map((tab) => (
+            {tabs.map((tab) => (
               <div
                 key={tab.id}
                 id={`tab-${tab.id}`}
@@ -276,7 +292,7 @@ export const HelpComponent = () => {
             )}
           </div>
           <div className="flex flex-col gap-[12px]">
-            {STUDIO_GRAPHICS_TOOLS.map((tool) => (
+            {graphicsTools.map((tool) => (
               <div
                 key={tool.name}
                 className="flex flex-col gap-[8px] rounded-[12px] border border-white/10 bg-white/[0.02] p-[16px]"
@@ -302,7 +318,7 @@ export const HelpComponent = () => {
             )}
           </div>
           <div className="flex flex-col gap-[12px]">
-            {STUDIO_VIDEO_TOOLS.map((tool) => (
+            {videoTools.map((tool) => (
               <div
                 key={tool.name}
                 className="flex flex-col gap-[8px] rounded-[12px] border border-white/10 bg-white/[0.02] p-[16px]"
@@ -354,12 +370,12 @@ export const HelpComponent = () => {
         </Section>
 
         <Section id="mobile-app" title={t('help_mobile_app', 'Mobile app')} guide="mobile-app">
-          <div className="text-[14px] text-newTextColor/70">{MOBILE_APP.intro}</div>
+          <div className="text-[14px] text-newTextColor/70">{mobile.intro}</div>
           {(
             [
-              ['help_mobile_can', 'On your phone', MOBILE_APP.canDo],
-              ['help_mobile_web_only', 'On the web only', MOBILE_APP.webOnly],
-              ['help_mobile_limits', 'Limits on the phone', MOBILE_APP.limits],
+              ['help_mobile_can', 'On your phone', mobile.canDo],
+              ['help_mobile_web_only', 'On the web only', mobile.webOnly],
+              ['help_mobile_limits', 'Limits on the phone', mobile.limits],
             ] as const
           ).map(([key, title, items]) => (
             <div
@@ -382,10 +398,10 @@ export const HelpComponent = () => {
           title={t('help_settings_explained', 'Settings explained')}
         >
           <div className="text-[13px] text-newTextColor/70">
-            Which sections you see depends on your plan.
+            {t('help_settings_intro', 'Which sections you see depends on your plan.')}
           </div>
           <div className="flex flex-col gap-[12px]">
-            {SETTINGS_SECTIONS.map((section) => (
+            {settings.map((section) => (
               <div
                 key={section.name}
                 className="flex flex-col gap-[8px] rounded-[12px] border border-white/10 bg-white/[0.02] p-[16px]"
@@ -412,7 +428,7 @@ export const HelpComponent = () => {
 
         <Section id="faq" title={t('help_faq', 'FAQ')} guide="troubleshooting">
           <div className="flex flex-col gap-[12px]">
-            {FAQ_ITEMS.map((item) => (
+            {faq.map((item) => (
               <div
                 key={item.question}
                 className="flex flex-col gap-[8px] rounded-[12px] border border-white/10 bg-white/[0.02] p-[16px]"
@@ -433,17 +449,17 @@ export const HelpComponent = () => {
         <Section id="contact" title={t('help_contact', 'Contact')}>
           <div className="flex flex-col gap-[8px] text-[14px]">
             <div>
-              Can't find what you need? Email us at{' '}
+              {t('help_contact_email', "Can't find what you need? Email us at")}{' '}
               <a
                 href="mailto:hello@postra.co.uk"
                 className="text-sky-300 hover:underline"
               >
                 hello@postra.co.uk
               </a>{' '}
-              - we usually reply within one business day.
+              {t('help_contact_reply', '- we usually reply within one business day.')}
             </div>
             <div>
-              Service status:{' '}
+              {t('help_contact_status', 'Service status:')}{' '}
               <a
                 href="https://status.postra.co.uk"
                 target="_blank"

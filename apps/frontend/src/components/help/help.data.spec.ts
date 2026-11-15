@@ -216,3 +216,74 @@ describe('Help names only what the app has', () => {
     expect(en.profile_description).toBe('Your name and picture.');
   });
 });
+
+// Help was English only, so a Polish customer read every card in English.
+// Each sentence now goes through t()
+// with a key built from its place; the catalogues must keep up with the
+// sources, and the plan numbers stay placeholders filled from the plans.
+describe('Help in every loaded language', () => {
+  const { pricing } = jest.requireActual<
+    typeof import('@gitroom/nestjs-libraries/database/prisma/subscriptions/pricing')
+  >('@gitroom/nestjs-libraries/database/prisma/subscriptions/pricing');
+  const read = (lang: string): Record<string, string> =>
+    JSON.parse(
+      fs.readFileSync(
+        path.join(
+          __dirname,
+          '../../../../../libraries/react-shared-libraries/src/translation/locales',
+          lang,
+          'translation.json'
+        ),
+        'utf8'
+      )
+    );
+  const catalogue = { en: read('en'), pl: read('pl') };
+  const sources = new Map<string, string>();
+  const record: help.HelpTranslate = (key, fallback) => {
+    sources.set(key, fallback);
+    return fallback;
+  };
+  for (const section of [
+    help.channelGuides,
+    help.appTabs,
+    help.mobileApp,
+    help.studioGraphicsTools,
+    help.studioVideoTools,
+    help.settingsSections,
+    help.faqItems,
+    help.studioPhotoGuide,
+  ]) {
+    section(record);
+  }
+  // Names that are the same in Polish: the platform's, the tab's, the tool's.
+  const sameInPolish = new Set(['Agent', 'Studio', 'Media', 'Brand Kit', 'Stock B-roll']);
+
+  it('covers every card of the page', () => {
+    expect(sources.size).toBeGreaterThan(280);
+  });
+
+  it('the English catalogue holds each source word for word', () => {
+    const stale = [...sources].filter(([key, text]) => catalogue.en[key] !== text);
+    expect(stale.map(([key]) => key)).toEqual([]);
+  });
+
+  it('Polish has every sentence, translated', () => {
+    const missing = [...sources.keys()].filter((key) => !catalogue.pl[key]);
+    expect(missing).toEqual([]);
+    const english = [...sources].filter(
+      ([key, text]) => catalogue.pl[key] === text && !sameInPolish.has(text)
+    );
+    expect(english.map(([key]) => key)).toEqual([]);
+  });
+
+  it('Polish fills the plan numbers from the plans', () => {
+    const polish: help.HelpTranslate = (key, fallback, values) =>
+      help.english(key, catalogue.pl[key] ?? fallback, values);
+    const storage = help.faqItems(polish)[0].answer;
+    expect(storage).toContain(`${pricing.STANDARD.media_storage_gb} GB w Starter`);
+    expect(storage).toContain(`${pricing.ULTIMATE.media_storage_gb} GB w Business`);
+    expect(storage).not.toContain('{{');
+    const webhooks = help.settingsSections(polish).find((s) => s.name === 'Webhooki')!;
+    expect(webhooks.availability).toContain(`Starter ${pricing.STANDARD.webhooks}`);
+  });
+});
