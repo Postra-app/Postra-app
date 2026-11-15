@@ -50,10 +50,10 @@ const oauthStateCookieOptions = () => ({
   secure: !process.env.NOT_SECURED,
 });
 
-@ApiTags('Auth')
 // The native app names itself; it gets its token in the body.
 const isAppClient = (req: Request) => req.headers?.['x-client'] === 'mobile';
 
+@ApiTags('Auth')
 @Controller('/auth')
 export class AuthController {
   constructor(

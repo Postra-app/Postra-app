@@ -16,11 +16,11 @@ describe('Google access token at sign-in', () => {
   beforeEach(() => {
     process.env.YOUTUBE_CLIENT_ID = WEB_CLIENT;
     process.env.FRONTEND_URL = 'https://app.example.com';
-    request = jest
-      .spyOn(google.auth.OAuth2.prototype, 'request')
-      .mockResolvedValue({
+    request = (
+      jest.spyOn(google.auth.OAuth2.prototype, 'request') as jest.SpyInstance
+    ).mockResolvedValue({
         data: { id: '1234567890', email: 'someone@example.com', verified_email: true },
-      } as any);
+      });
   });
   afterEach(() => {
     tokenInfo?.mockRestore();
