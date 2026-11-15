@@ -1539,7 +1539,7 @@
   "autopost_upsell_cta": "Tarife ansehen",
   "autopost_feeds_used": "{{used}} von {{limit}} RSS-Feeds belegt",
   "autopost_deleted": "Auto-Post-Feed gelöscht",
-  "billing_trial_limits": "Während der 7-tägigen Testphase können Sie bis zu {{channels}} Kanäle verbinden, bis zu {{posts}} Beiträge planen, {{webhooks}} Webhook und {{feeds}} Auto-Post-Feed hinzufügen, das KI-Kontingent von Starter nutzen ({{images}} KI-Bilder, {{videos}} KI-Video) und bis zu {{storage}} GB an Fotos und Videos speichern. Die Testphase gilt für eine Person, Team-Einladungen werden mit Ihrem Tarif freigeschaltet. Ihr vollständiger Tarif wird mit der ersten Zahlung freigeschaltet oder sofort, wenn Sie die Testphase vorzeitig beenden.",
+  "billing_trial_limits": "Während der 7-tägigen Testphase können Sie bis zu {{channels}} Kanäle verbinden, bis zu {{posts}} Beiträge planen, {{webhooks}} Webhook und {{feeds}} Auto-Post-Feed hinzufügen, KI ausprobieren ({{images}} KI-Bilder, {{videos}} KI-Video und {{questions}} Fragen an den KI-Assistenten) und bis zu {{storage}} GB an Fotos und Videos speichern. Die Testphase gilt für eine Person, Team-Einladungen werden mit Ihrem Tarif freigeschaltet. Ihr vollständiger Tarif wird mit der ersten Zahlung freigeschaltet oder sofort, wenn Sie die Testphase vorzeitig beenden.",
   "billing_end_trial_now": "Testphase jetzt beenden",
   "channels_still_disabled": "Einige Kanäle sind noch deaktiviert",
   "channels_still_disabled_description": "Ihr Tarif deckt nicht alle verbundenen Kanäle ab, daher bleiben einige deaktiviert. Aktivieren Sie die gewünschten Kanäle im Menü des jeweiligen Kanals bis zum Limit Ihres Tarifs oder wechseln Sie zu einem höheren Tarif, um alle zu nutzen.",

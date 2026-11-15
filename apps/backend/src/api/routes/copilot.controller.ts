@@ -34,7 +34,7 @@ import { PostsService } from '@gitroom/nestjs-libraries/database/prisma/posts/po
 import { Request, Response } from 'express';
 import { RequestContext } from '@mastra/core/di';
 import { recordAgentMessage } from '@gitroom/nestjs-libraries/services/ai-usage.record';
-import { AGENT_FAIR_USE_MESSAGES } from '@gitroom/nestjs-libraries/database/prisma/subscriptions/pricing';
+import { agentLimitMessage } from '@gitroom/nestjs-libraries/database/prisma/subscriptions/pricing';
 import { CheckPolicies } from '@gitroom/backend/services/auth/permissions/permissions.ability';
 import { AuthorizationActions, Sections } from '@gitroom/nestjs-libraries/services/auth/permission.exception.class';
 import { OpenaiService } from '@gitroom/nestjs-libraries/openai/openai.service';
@@ -177,8 +177,7 @@ export class CopilotController {
       );
       if (credits <= 0) {
         res.status(402).json({
-          error:
-            `You have reached this month's fair-use limit for the AI assistant (${AGENT_FAIR_USE_MESSAGES.toLocaleString('en-GB')} questions, the same on every plan). It resets with your next billing month.`,
+          error: agentLimitMessage(organization.isTrailing),
         });
         return;
       }
