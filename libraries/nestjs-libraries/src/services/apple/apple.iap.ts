@@ -17,11 +17,24 @@ export const appleAppId = () => {
 
 export type AppleTier = 'STANDARD' | 'PRO' | 'ULTIMATE';
 
-// Product ids as created in App Store Connect. Monthly only.
-export const APPLE_PRODUCTS: Record<string, AppleTier> = {
+// Product ids as created in App Store Connect. Monthly only, and each plan
+// twice: once with the free week as its introductory offer and once without.
+// Apple decides who gets an introductory offer by Apple ID and knows nothing
+// of a trial already taken on the web, so an organisation that has had its
+// trial is offered the products that have none.
+const WITH_TRIAL: Record<string, AppleTier> = {
   'uk.co.postra.app.starter.monthly': 'STANDARD',
   'uk.co.postra.app.pro.monthly': 'PRO',
   'uk.co.postra.app.business.monthly': 'ULTIMATE',
+};
+const WITHOUT_TRIAL: Record<string, AppleTier> = {
+  'uk.co.postra.app.starter.monthly.notrial': 'STANDARD',
+  'uk.co.postra.app.pro.monthly.notrial': 'PRO',
+  'uk.co.postra.app.business.monthly.notrial': 'ULTIMATE',
+};
+export const APPLE_PRODUCTS: Record<string, AppleTier> = {
+  ...WITH_TRIAL,
+  ...WITHOUT_TRIAL,
 };
 
 export const appleTierOf = (productId?: string | null): AppleTier | null =>
@@ -30,12 +43,16 @@ export const appleTierOf = (productId?: string | null): AppleTier | null =>
     APPLE_PRODUCTS[productId]) ||
   null;
 
-export const applePlans = () =>
-  Object.entries(APPLE_PRODUCTS).map(([productId, tier]) => ({
-    productId,
-    tier,
-    channels: pricing[tier].channel,
-  }));
+// The plans to show an organisation: with the free week only while it may
+// still have a trial, by the same rule the web's plan page goes by.
+export const applePlans = (trial: boolean) =>
+  Object.entries(trial ? WITH_TRIAL : WITHOUT_TRIAL).map(
+    ([productId, tier]) => ({
+      productId,
+      tier,
+      channels: pricing[tier].channel,
+    })
+  );
 
 // Purchases made in Apple's test environment (TestFlight, a sandbox tester,
 // an app reviewer) are real plans to this server. They are accepted only for

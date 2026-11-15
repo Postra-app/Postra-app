@@ -230,11 +230,28 @@ export class BillingController {
   // the store for the price and shows these only to an organisation that has
   // no plan.
   @Get('/apple/plans')
-  applePlans() {
+  async applePlans(
+    @GetOrgFromRequest() org: Organization,
+    @GetUserFromRequest() user: User
+  ) {
     if (!appleIapEnabled()) {
       throw new HttpException('Not found', 404);
     }
-    return { plans: applePlans() };
+    // One trial, wherever it is taken. The offer the web's plan page reads
+    // (the organisation's, and not for an email that already had a trial)
+    // decides whether the app shows the products with the free week or the
+    // ones without. A plan bought in the app ends the offer in turn.
+    const trial =
+      !!org.allowTrial &&
+      // @ts-ignore the request's organisation is loaded with its subscription
+      !org.subscription &&
+      !!(await this._stripeService.trialOffered(
+        org.id,
+        org.paymentId,
+        user.email,
+        true
+      ));
+    return { plans: applePlans(trial), trial };
   }
 
   // The app's purchase (or "restore purchases"): the transaction as StoreKit

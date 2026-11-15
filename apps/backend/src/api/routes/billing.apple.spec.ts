@@ -12,6 +12,7 @@ describe('billing: plans bought in the iOS app', () => {
     const stripe = {
       subscribe: jest.fn().mockResolvedValue({ url: 'https://checkout' }),
       embedded: jest.fn().mockResolvedValue({ client_secret: 'cs' }),
+      trialOffered: jest.fn().mockResolvedValue(true),
     };
     const apple = { attach: jest.fn().mockResolvedValue({ ok: true, tier: 'PRO' }) };
     const controller = new BillingController(
@@ -52,20 +53,44 @@ describe('billing: plans bought in the iOS app', () => {
     }
   );
 
-  it('GET /billing/apple/plans is 404 while the feature is off', () => {
+  const person = { id: 'u', email: 'owner@example.com' } as any;
+
+  it('GET /billing/apple/plans is 404 while the feature is off', async () => {
     delete process.env.APPLE_IAP_ENABLED;
-    expect(() => build().controller.applePlans()).toThrow(expect.objectContaining({ status: 404 }));
+    await expect(build().controller.applePlans(webOrg, person)).rejects.toMatchObject({ status: 404 });
   });
 
-  it('GET /billing/apple/plans lists the three monthly products with their plans', () => {
+  it('an organisation that may still have a trial is shown the products with the free week', async () => {
     process.env.APPLE_IAP_ENABLED = '1';
-    expect(build().controller.applePlans()).toEqual({
+    const { controller, stripe } = build();
+    await expect(controller.applePlans(webOrg, person)).resolves.toEqual({
+      trial: true,
       plans: [
         { productId: 'uk.co.postra.app.starter.monthly', tier: 'STANDARD', channels: 4 },
         { productId: 'uk.co.postra.app.pro.monthly', tier: 'PRO', channels: 8 },
         { productId: 'uk.co.postra.app.business.monthly', tier: 'ULTIMATE', channels: 15 },
       ],
     });
+    expect(stripe.trialOffered).toHaveBeenCalledWith('org-2', undefined, 'owner@example.com', true);
+  });
+
+  // One trial, wherever it was taken: on the web (the organisation's offer is
+  // spent), or by this email before (Stripe says so).
+  it.each([
+    ['the organisation has had its trial', { allowTrial: false }, true],
+    ['the email had a trial elsewhere', { allowTrial: true }, false],
+  ])('%s: the products without a free week', async (_, over, offered) => {
+    process.env.APPLE_IAP_ENABLED = '1';
+    const { controller, stripe } = build();
+    stripe.trialOffered.mockResolvedValue(offered);
+    const result = await controller.applePlans({ ...webOrg, ...over }, person);
+    expect(result.trial).toBe(false);
+    expect(result.plans.map((p: any) => p.productId)).toEqual([
+      'uk.co.postra.app.starter.monthly.notrial',
+      'uk.co.postra.app.pro.monthly.notrial',
+      'uk.co.postra.app.business.monthly.notrial',
+    ]);
+    expect(result.plans.map((p: any) => p.tier)).toEqual(['STANDARD', 'PRO', 'ULTIMATE']);
   });
 
   it('POST /billing/apple/transaction hands the signed transaction over for the signed-in organisation', async () => {

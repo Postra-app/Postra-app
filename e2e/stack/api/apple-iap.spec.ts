@@ -72,9 +72,13 @@ test('the plans the app may sell are listed, signed in only', async () => {
   const org = await withoutPlan();
   const anon = await anonymous();
   try {
+    // A new organisation may still have its trial.
+    await prisma.organization.update({ where: { id: org.orgId }, data: { allowTrial: true } });
     const res = await org.api.get('/billing/apple/plans');
     expect(res.status()).toBe(200);
-    expect((await res.json()).plans).toEqual([
+    const listed = await res.json();
+    expect(listed.trial).toBe(true);
+    expect(listed.plans).toEqual([
       { productId: 'uk.co.postra.app.starter.monthly', tier: 'STANDARD', channels: 4 },
       { productId: 'uk.co.postra.app.pro.monthly', tier: 'PRO', channels: 8 },
       { productId: 'uk.co.postra.app.business.monthly', tier: 'ULTIMATE', channels: 15 },
@@ -249,6 +253,64 @@ test('Apple’s notifications keep the plan in step: paid, cancelled, upgraded, 
   } finally {
     await apple.dispose();
     await org.remove();
+  }
+});
+
+// One free trial, wherever it is taken.
+test('a trial taken on the web is not offered again in the app, and one taken in the app not again on the web', async () => {
+  const usedOnWeb = await withoutPlan();
+  const fresh = await withoutPlan();
+  const ids = async (org: typeof fresh) => {
+    const body = await (await org.api.get('/billing/apple/plans')).json();
+    return { trial: body.trial, ids: body.plans.map((p: { productId: string }) => p.productId) };
+  };
+  try {
+    // The web trial was had and ended: the organisation's offer is spent.
+    await prisma.organization.update({ where: { id: usedOnWeb.orgId }, data: { allowTrial: false } });
+    await expect.poll(async () => (await usedOnWeb.self()).allowTrial).toBe(false);
+    expect(await ids(usedOnWeb)).toEqual({
+      trial: false,
+      ids: [
+        'uk.co.postra.app.starter.monthly.notrial',
+        'uk.co.postra.app.pro.monthly.notrial',
+        'uk.co.postra.app.business.monthly.notrial',
+      ],
+    });
+    // Buying one of those is a paid plan from the first day.
+    const paid = await usedOnWeb.api.post('/billing/apple/transaction', {
+      data: { signedTransaction: transaction(purchase(), { productId: 'uk.co.postra.app.pro.monthly.notrial' }) },
+    });
+    expect(paid.status(), await paid.text()).toBe(201);
+    expect(await usedOnWeb.self()).toMatchObject({ tier: 'PRO', isTrailing: false, appleBilled: true });
+
+    // The other way round: the free week is taken in the app...
+    await prisma.organization.update({ where: { id: fresh.orgId }, data: { allowTrial: true } });
+    await expect.poll(async () => (await fresh.self()).allowTrial).toBe(true);
+    expect((await ids(fresh)).trial).toBe(true);
+    const id = purchase();
+    expect(
+      (
+        await fresh.api.post('/billing/apple/transaction', {
+          data: { signedTransaction: transaction(id, { offerDiscountType: 'FREE_TRIAL' }) },
+        })
+      ).status()
+    ).toBe(201);
+    // ...and cancelled before it was paid for.
+    const apple = await anonymous();
+    await apple.post('/apple/notifications', {
+      data: notification('EXPIRED', id, { subtype: 'VOLUNTARY', tx: { expiresDate: Date.now() - 1000 } }),
+    });
+    await apple.dispose();
+    const after = await fresh.self();
+    expect(after).toMatchObject({ tier: 'FREE', isTrailing: false });
+    // The web no longer promises a trial, and neither does the app.
+    expect(after.allowTrial).toBe(false);
+    expect((await ids(fresh)).trial).toBe(false);
+    const row = await prisma.organization.findUniqueOrThrow({ where: { id: fresh.orgId } });
+    expect(row.allowTrial).toBe(false);
+  } finally {
+    await usedOnWeb.remove();
+    await fresh.remove();
   }
 });
 

@@ -20,6 +20,10 @@ describe('App Store product ids', () => {
     expect(appleTierOf('uk.co.postra.app.starter.monthly')).toBe('STANDARD');
     expect(appleTierOf('uk.co.postra.app.pro.monthly')).toBe('PRO');
     expect(appleTierOf('uk.co.postra.app.business.monthly')).toBe('ULTIMATE');
+    // The same three without the free week.
+    expect(appleTierOf('uk.co.postra.app.starter.monthly.notrial')).toBe('STANDARD');
+    expect(appleTierOf('uk.co.postra.app.pro.monthly.notrial')).toBe('PRO');
+    expect(appleTierOf('uk.co.postra.app.business.monthly.notrial')).toBe('ULTIMATE');
     expect(appleTierOf('uk.co.postra.app.team.monthly')).toBeNull();
     expect(appleTierOf('__proto__')).toBeNull();
     expect(appleTierOf(undefined)).toBeNull();
