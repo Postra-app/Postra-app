@@ -14,16 +14,20 @@
  * try to replay the initial migration over existing tables and fail (P3009).
  * So this script baselines first, exactly once:
  *
- *   1. `_prisma_migrations` missing + application tables present  → mark every
- *      migration as already applied (the schema is already there), then deploy.
+ *   1. `_prisma_migrations` missing + application tables present  → mark the
+ *      squashed init migration as already applied (the schema is already
+ *      there), then deploy the rest.
  *   2. `_prisma_migrations` missing + empty database (fresh env)  → deploy
  *      everything from scratch.
  *   3. `_prisma_migrations` present (normal boot)                  → deploy
  *      whatever is pending; a no-op when there is nothing new.
  *
- * Idempotent: safe to run on every boot, every replica.
+ * Idempotent: safe to run on every boot, every replica. Prisma lets one
+ * `migrate deploy` in at a time (an advisory lock) and the others give up
+ * after 10 seconds, so an instance that boots while another one migrates
+ * waits its turn here instead of failing its boot.
  */
-import { execFileSync } from 'node:child_process';
+import { execFileSync, spawnSync } from 'node:child_process';
 import { existsSync, readdirSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -46,7 +50,9 @@ const migrationsDir = join(dirname(schema), 'migrations');
       console.error(`DATABASE_CA_FILE ${ca} does not exist`);
       process.exit(1);
     }
-    process.env.DATABASE_URL = `${url}${url.includes('?') ? '&' : '?'}sslaccept=strict&sslcert=${ca}`;
+    process.env.DATABASE_URL = `${url}${
+      url.includes('?') ? '&' : '?'
+    }sslaccept=strict&sslcert=${ca}`;
   }
 }
 
@@ -105,7 +111,11 @@ if (!hasMigrationsTable && hasApplicationTables) {
     process.exit(1);
   }
   console.log(
-    `[db-migrate] existing database without migration history — baselining ${toBaseline.length} squash migration(s); ${migrations.length - toBaseline.length} additive migration(s) will deploy next`
+    `[db-migrate] existing database without migration history — baselining ${
+      toBaseline.length
+    } squash migration(s); ${
+      migrations.length - toBaseline.length
+    } additive migration(s) will deploy next`
   );
   for (const name of toBaseline) {
     prisma(['migrate', 'resolve', '--schema', schema, '--applied', name]);
@@ -116,5 +126,37 @@ if (!hasMigrationsTable && hasApplicationTables) {
   console.log('[db-migrate] applying pending migrations (if any)');
 }
 
-prisma(['migrate', 'deploy', '--schema', schema]);
+// Each attempt waits 10 seconds for the lock inside Prisma: 30 of them cover
+// a migration of five minutes on the instance that got there first.
+const LOCK_ATTEMPTS = 30;
+
+for (let attempt = 1; ; attempt++) {
+  const run = spawnSync(
+    'pnpm',
+    ['exec', 'prisma', 'migrate', 'deploy', '--schema', schema],
+    {
+      cwd: root,
+      stdio: ['inherit', 'pipe', 'pipe'],
+      env: process.env,
+      encoding: 'utf8',
+    }
+  );
+  process.stdout.write(run.stdout ?? '');
+  process.stderr.write(run.stderr ?? '');
+  if (run.status === 0) {
+    break;
+  }
+  const lockHeld = /advisory lock/i.test(`${run.stdout}${run.stderr}`);
+  if (!lockHeld || attempt === LOCK_ATTEMPTS) {
+    console.error(
+      lockHeld
+        ? `[db-migrate] the migration lock was still held after ${attempt} attempts — refusing to boot`
+        : '[db-migrate] migrate deploy failed — refusing to boot'
+    );
+    process.exit(1);
+  }
+  console.log(
+    `[db-migrate] another instance is migrating — waiting for it (attempt ${attempt} of ${LOCK_ATTEMPTS})`
+  );
+}
 console.log('[db-migrate] database is up to date');
