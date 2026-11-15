@@ -77,4 +77,72 @@ describe('AI call duration', () => {
     await model.doGenerate({});
     expect(await counts()).toEqual({ 'agent/gpt-5.6-luna/ok': 2 });
   });
+
+  const streamed = (source: ReadableStream) =>
+    meterLanguageModel(
+      {
+        specificationVersion: 'v2',
+        provider: 'openai',
+        modelId: 'gpt-5.6-luna',
+        supportedUrls: {},
+        doGenerate: async () => ({ usage: {} }),
+        doStream: async () => ({ stream: source }),
+      },
+      'agent'
+    ).doStream({});
+  const drain = async (stream: ReadableStream) => {
+    const reader = stream.getReader();
+    while (!(await reader.read()).done);
+  };
+
+  // An error part followed by a finish part counted the same call as failed
+  // and as answered.
+  it('a streamed call that reports an error and then finishes is one failed call', async () => {
+    const { stream } = await streamed(
+      new ReadableStream({
+        start(controller) {
+          controller.enqueue({ type: 'error', error: { statusCode: 503 } });
+          controller.enqueue({ type: 'finish', usage: {} });
+          controller.close();
+        },
+      })
+    );
+    await drain(stream);
+    expect(await counts()).toEqual({ 'agent/gpt-5.6-luna/outage': 1 });
+  });
+
+  it('a stream that breaks, or ends without finishing, is one failed call', async () => {
+    const broken = await streamed(
+      new ReadableStream({
+        pull(controller) {
+          controller.error(Object.assign(new Error('reset'), { statusCode: 500 }));
+        },
+      })
+    );
+    await expect(drain(broken.stream)).rejects.toThrow('reset');
+    const cut = await streamed(
+      new ReadableStream({
+        start(controller) {
+          controller.enqueue({ type: 'text-delta' });
+          controller.close();
+        },
+      })
+    );
+    await drain(cut.stream);
+    expect(await counts()).toEqual({ 'agent/gpt-5.6-luna/outage': 1, 'agent/gpt-5.6-luna/error': 1 });
+  });
+
+  it('a reader that walks away is not counted as a call that ended', async () => {
+    const { stream } = await streamed(
+      new ReadableStream({
+        start(controller) {
+          controller.enqueue({ type: 'text-delta' });
+        },
+      })
+    );
+    const reader = (stream as ReadableStream).getReader();
+    await reader.read();
+    await reader.cancel();
+    expect(await counts()).toEqual({});
+  });
 });

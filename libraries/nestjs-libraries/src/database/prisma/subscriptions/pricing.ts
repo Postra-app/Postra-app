@@ -250,8 +250,7 @@ export const TRIAL_VIDEO_CLIPS = 1;
 
 // What AI a 7-day trial may use, whatever the plan: enough to try every AI
 // feature on the trial's 30 posts, not a paid month's pool before the first
-// payment (Starter's 75 images and 2,200 questions were up to ~$4 a trial).
-// The full pool opens with the first payment or "End the trial now".
+// payment. The full pool opens with the first payment or "End the trial now".
 export const TRIAL_AI_IMAGES = 20;
 export const TRIAL_AGENT_MESSAGES = 200;
 

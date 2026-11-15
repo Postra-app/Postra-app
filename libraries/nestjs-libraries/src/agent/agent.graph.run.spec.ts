@@ -65,9 +65,9 @@ const run = async (svc: AgentGraphService, body: any) => {
 describe('the post Creator run', () => {
   beforeEach(() => (asked.length = 0));
 
-  // Production has no search key and no popular posts: two of the four model
-  // calls of every run asked for nothing (a "research" answer that was thrown
-  // away, a category out of an empty list).
+  // With no search tool and no categories to choose from, two of the four
+  // model calls asked for nothing: an answer that was thrown away and a
+  // category out of an empty list.
   it('without a search tool or categories asks the model only for the hook and the content', async () => {
     const lines = await run(service(), { research: 'Five tips', isPicture: false, format: 'one_short', tone: 'company' });
     expect(asked).toEqual(['hook', 'content']);

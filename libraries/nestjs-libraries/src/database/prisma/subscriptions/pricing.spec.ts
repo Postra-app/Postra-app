@@ -304,8 +304,7 @@ describe('channelLimitFor', () => {
 });
 
 describe('trialAiAllowance', () => {
-  // Starter's pool (75 images, 2,200 questions) was up to ~$4 of AI on a
-  // trial that may never pay; a trial has its own, smaller allowance.
+  // A trial has its own allowance, smaller than any plan's monthly pool.
   it('gives a trial 20 images and 200 questions to the assistant, whatever the tier', () => {
     expect(TRIAL_AI_IMAGES).toBe(20);
     expect(TRIAL_AGENT_MESSAGES).toBe(200);
