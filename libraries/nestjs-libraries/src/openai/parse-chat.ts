@@ -4,6 +4,7 @@ import {
   AiUsageEvent,
   recordAiUsage,
 } from '@gitroom/nestjs-libraries/services/ai-usage.record';
+import { timeAiCall } from '@gitroom/nestjs-libraries/ai-cost/ai-call.metric';
 
 /**
  * openai-node 6.x: `chat.completions.parse()` rejects `response_format`
@@ -26,7 +27,11 @@ export async function parseChat(
 ): Promise<{
   choices: Array<{ message: { parsed: any; content: string | null } }>;
 }> {
-  const completion = (await openai.chat.completions.create(body)) as unknown as {
+  const completion = (await timeAiCall(
+    meter?.engine ?? 'unmetered',
+    body?.model ?? 'unknown',
+    () => openai.chat.completions.create(body)
+  )) as unknown as {
     choices: Array<{ message: { content: string | null } }>;
     usage?: {
       prompt_tokens?: number;

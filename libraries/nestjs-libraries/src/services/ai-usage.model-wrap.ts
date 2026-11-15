@@ -1,6 +1,11 @@
 import { AsyncLocalStorage } from 'async_hooks';
 import { recordAiUsage } from '@gitroom/nestjs-libraries/services/ai-usage.record';
 import { getAuth } from '@gitroom/nestjs-libraries/chat/async.storage';
+import {
+  aiCallOutcome,
+  observeAiCall,
+  timeAiCall,
+} from '@gitroom/nestjs-libraries/ai-cost/ai-call.metric';
 
 // The Mastra agent's model is built once at boot, but usage must be attributed
 // per request. The copilot controller runs the request inside this ALS scope;
@@ -51,17 +56,31 @@ export function meterLanguageModel<
       return model.supportedUrls;
     },
     doGenerate: async (options: any) => {
-      const result = await model.doGenerate(options);
+      const result = await timeAiCall(engine, model.modelId, () =>
+        Promise.resolve(model.doGenerate(options))
+      );
       record(result?.usage);
       return result;
     },
     doStream: async (options: any) => {
-      const result = await model.doStream(options);
+      // From the request to the last part of the answer: what the person
+      // waits for on one step of a run.
+      const startedAt = Date.now();
+      let result: any;
+      try {
+        result = await model.doStream(options);
+      } catch (err) {
+        observeAiCall(engine, model.modelId, aiCallOutcome(err), startedAt);
+        throw err;
+      }
       const stream: ReadableStream<any> = result.stream.pipeThrough(
         new TransformStream({
           transform(part, controller) {
             if (part?.type === 'finish') {
               record(part.usage);
+              observeAiCall(engine, model.modelId, 'ok', startedAt);
+            } else if (part?.type === 'error') {
+              observeAiCall(engine, model.modelId, aiCallOutcome(part.error), startedAt);
             }
             controller.enqueue(part);
           },
