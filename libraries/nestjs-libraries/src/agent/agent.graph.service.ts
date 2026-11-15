@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { HttpException, Injectable } from '@nestjs/common';
 import { wrapUntrusted } from '@gitroom/nestjs-libraries/openai/untrusted-source';
 import {
   BaseMessage,
@@ -64,7 +64,38 @@ interface WorkflowChannelsState {
   /** Brand Kit rendered once per run — voice for the copy, palette for the picture. */
   brandVoice?: string;
   brandVisual?: string;
+  /** Why the posts came back without pictures, when they did. */
+  imagesSkipped?: 'credits' | 'failed';
 }
+
+// What the browser is told while the graph runs: the step that started, then
+// one last line with the posts. The graph's own events carry its whole state
+// with every step (the prompts, the research, each picture as base64 several
+// times over), and the modal only ever read the step name and the result.
+export type GeneratorLine =
+  | { name: string }
+  | {
+      name: 'done';
+      data: {
+        output: Pick<
+          WorkflowChannelsState,
+          'hook' | 'content' | 'date' | 'imagesSkipped'
+        >;
+      };
+    };
+
+const GENERATOR_STEPS = new Set([
+  'agent',
+  'research',
+  'find-category',
+  'find-topic',
+  'find-popular-posts',
+  'generate-hook',
+  'generate-content',
+  'generate-picture',
+  'upload-pictures',
+  'post-time',
+]);
 
 @Injectable()
 export class AgentGraphService {
@@ -109,6 +140,7 @@ export class AgentGraphService {
         isPicture: null,
         brandVoice: null,
         brandVisual: null,
+        imagesSkipped: null,
       },
     });
 
@@ -145,6 +177,11 @@ export class AgentGraphService {
 
   async findCategories(state: WorkflowChannelsState) {
     const allCategories = await this._postsService.findAllExistingCategories();
+    // Nothing to choose from (the table of popular posts is empty): the model
+    // was asked to pick a category out of an empty list on every run.
+    if (allCategories.length === 0) {
+      return { category: null };
+    }
     const structuredOutput = model.withStructuredOutput(category);
     const { category: outputCategory } = await ChatPromptTemplate.fromTemplate(
       `
@@ -156,7 +193,7 @@ export class AgentGraphService {
       .pipe(structuredOutput)
       .invoke({
         categories: allCategories.map((p) => p.category).join(', '),
-        text: state.fresearch,
+        text: state.fresearch || state.messages[0].content,
       });
 
     return {
@@ -165,8 +202,11 @@ export class AgentGraphService {
   }
 
   async findTopic(state: WorkflowChannelsState) {
+    if (!state.category) {
+      return { topic: null };
+    }
     const allTopics = await this._postsService.findAllExistingTopicsOfCategory(
-      state?.category!
+      state.category
     );
     if (allTopics.length === 0) {
       return { topic: null };
@@ -183,7 +223,7 @@ export class AgentGraphService {
       .pipe(structuredOutput)
       .invoke({
         topics: allTopics.map((p) => p.topic).join(', '),
-        text: state.fresearch,
+        text: state.fresearch || state.messages[0].content,
       });
 
     return {
@@ -192,6 +232,9 @@ export class AgentGraphService {
   }
 
   async findPopularPosts(state: WorkflowChannelsState) {
+    if (!state.category) {
+      return { popularPosts: [] };
+    }
     const popularPosts = await this._postsService.findPopularPosts(
       state.category!,
       state.topic
@@ -234,8 +277,8 @@ export class AgentGraphService {
       .pipe(structuredOutput)
       .invoke({
         request: state.messages[0].content,
-        hooks: state.popularPosts!.map((p) => p.hook).join('\n'),
-        text: state.fresearch,
+        hooks: (state.popularPosts || []).map((p) => p.hook).join('\n'),
+        text: state.fresearch || '',
         brand: state.brandVoice || '',
         language: languageRule({ follow: "the user's request" }),
       });
@@ -290,7 +333,7 @@ export class AgentGraphService {
       .invoke({
         hook: state.hook,
         request: state.messages[0].content,
-        information: state.fresearch,
+        information: state.fresearch || '',
         brand: state.brandVoice || '',
         language: languageRule({ follow: "the user's request" }),
       });
@@ -318,29 +361,43 @@ export class AgentGraphService {
     // OpenaiService.generateImage = gpt-image-2 (DallEAPIWrapper pointed at
     // 'chatgpt-image-latest', which our key cannot call), pLimit-bounded, and
     // metered: each image burns an ai_images credit like every other AI image.
+    // Out of image credits, the signup hour, or the image model failing: the
+    // posts are written by now, so they go back without the picture and the
+    // modal says why. It used to throw here, which cut the stream and lost
+    // the text as well.
+    let imagesSkipped: 'credits' | 'failed' | undefined;
     const newContent = await Promise.all(
       (state.content || []).map(async (p) => {
         const prompt = state.brandVisual
           ? `${p.prompt!}\n\n${state.brandVisual}`
           : p.prompt!;
-        const image = await this._subscriptionService.useCreditByOrgId(
-          state.orgId,
-          'ai_images',
-          () =>
-            this._openaiService.generateImage(prompt, true, false, {
-              orgId: state.orgId,
-              engine: 'generate-posts',
-            })
-        );
-        return {
-          ...p,
-          image,
-        };
+        try {
+          const image = await this._subscriptionService.useCreditByOrgId(
+            state.orgId,
+            'ai_images',
+            () =>
+              this._openaiService.generateImage(prompt, true, false, {
+                orgId: state.orgId,
+                engine: 'generate-posts',
+              })
+          );
+          return {
+            ...p,
+            image,
+          };
+        } catch (err) {
+          const credits =
+            err instanceof HttpException &&
+            [402, 403].includes(err.getStatus());
+          imagesSkipped = credits ? 'credits' : imagesSkipped || 'failed';
+          return p;
+        }
       })
     );
 
     return {
       content: newContent,
+      ...(imagesSkipped ? { imagesSkipped } : {}),
     };
   }
 
@@ -384,6 +441,10 @@ export class AgentGraphService {
   }
 
   start(orgId: string, body: GeneratorDto) {
+    // Without a search tool the first model call had nothing to call: its
+    // answer was thrown away and "research" was an empty list. The two steps
+    // only exist when there is a tool to run.
+    const withResearch = tools.length > 0;
     const state = AgentGraphService.state();
     const workflow = state
       .addNode('load-brand', this.loadBrand.bind(this))
@@ -400,7 +461,7 @@ export class AgentGraphService {
       .addNode('upload-pictures', this.uploadPictures.bind(this))
       .addNode('post-time', this.postDateTime.bind(this))
       .addEdge(START, 'load-brand')
-      .addEdge('load-brand', 'agent')
+      .addEdge('load-brand', withResearch ? 'agent' : 'find-category')
       .addEdge('agent', 'research')
       .addEdge('research', 'save-research')
       .addEdge('save-research', 'find-category')
@@ -441,5 +502,36 @@ export class AgentGraphService {
         ],
       }
     );
+  }
+
+  /** The run as the modal needs it: each step as it starts, then the posts. */
+  async *run(orgId: string, body: GeneratorDto): AsyncGenerator<GeneratorLine> {
+    const output: Record<string, unknown> = {};
+    let step = '';
+    for await (const event of this.start(orgId, body)) {
+      // A node's own run is named after the node; the prompt and the model
+      // inside it carry the node only in their metadata.
+      if (event.metadata?.langgraph_node !== event.name) {
+        continue;
+      }
+      if (event.event === 'on_chain_start') {
+        if (GENERATOR_STEPS.has(event.name) && event.name !== step) {
+          step = event.name;
+          yield { name: step };
+        }
+        continue;
+      }
+      if (event.event === 'on_chain_end') {
+        const update = event.data?.output;
+        if (update && typeof update === 'object' && !Array.isArray(update)) {
+          for (const key of ['hook', 'content', 'date', 'imagesSkipped']) {
+            if (key in update) {
+              output[key] = (update as Record<string, unknown>)[key];
+            }
+          }
+        }
+      }
+    }
+    yield { name: 'done', data: { output } };
   }
 }

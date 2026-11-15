@@ -1349,6 +1349,8 @@
   "subscription_canceled": "Subskrypcja ustawiona do anulowania",
   "subscription_updated": "Subskrypcja zaktualizowana",
   "generator_failed": "Nie udało się wygenerować posta, spróbuj ponownie.",
+  "generator_no_pictures_credits": "Posty są gotowe, bez grafik: kredyty na obrazy w tym okresie rozliczeniowym zostały wykorzystane.",
+  "generator_no_pictures_failed": "Posty są gotowe, ale grafik nie udało się wygenerować. Możesz dodać je w edytorze.",
   "settings_save_failed": "Nie udało się zapisać ustawień, spróbuj ponownie.",
   "image_generation_failed": "Nie udało się wygenerować obrazu, spróbuj ponownie.",
   "close_menu": "Zamknij menu",

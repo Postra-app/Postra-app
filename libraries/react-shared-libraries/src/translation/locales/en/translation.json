@@ -1349,6 +1349,8 @@
   "subscription_canceled": "Subscription set to canceled successfully",
   "subscription_updated": "Subscription updated successfully",
   "generator_failed": "Could not generate the post, please try again.",
+  "generator_no_pictures_credits": "Your posts are ready, without pictures: your image credits for this billing cycle are used up.",
+  "generator_no_pictures_failed": "Your posts are ready, but the pictures could not be made. You can add them in the editor.",
   "settings_save_failed": "Could not save the settings, please try again.",
   "image_generation_failed": "Could not generate the image, please try again.",
   "close_menu": "Close menu",
