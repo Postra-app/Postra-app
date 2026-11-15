@@ -764,7 +764,7 @@ const FAQ_SOURCE: FaqItem[] = [
   },
 ];
 
-// Help in every loaded language (Polish since 15 XI 2026). The English
+// Help in every loaded language. The English
 // sources above are the default text of each key; a key is the place of the
 // sentence (section, item, field, position), so the catalogue entry for it
 // must match the source word for word - help.data.spec.ts fails otherwise and

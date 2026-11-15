@@ -217,8 +217,8 @@ describe('Help names only what the app has', () => {
   });
 });
 
-// Help was English only, so a Polish customer read every card in English
-// (K. 12 XI: Help in Polish before 23 XI). Each sentence now goes through t()
+// Help was English only, so a Polish customer read every card in English.
+// Each sentence now goes through t()
 // with a key built from its place; the catalogues must keep up with the
 // sources, and the plan numbers stay placeholders filled from the plans.
 describe('Help in every loaded language', () => {

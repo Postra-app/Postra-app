@@ -3,7 +3,7 @@
  */
 // The Help page for a reader whose language is Polish: t() answers from the
 // Polish catalogue, the way i18next does, placeholders filled. No card may
-// stay in English (Help was English only until 15 XI 2026).
+// stay in English (Help used to be English for every reader).
 import pl from '@gitroom/react/translation/locales/pl/translation.json';
 
 jest.mock('@gitroom/react/translation/get.transation.service.client', () => {
