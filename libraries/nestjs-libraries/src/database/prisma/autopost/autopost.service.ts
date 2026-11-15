@@ -34,6 +34,8 @@ import { UploadFactory } from '@gitroom/nestjs-libraries/upload/upload.factory';
 import { makeId } from '@gitroom/nestjs-libraries/services/make.is';
 import { toInstagramSafeAspect } from '@gitroom/nestjs-libraries/integrations/social/instagram.aspect';
 import { TemporalService } from 'nestjs-temporal-core';
+import { createHash } from 'crypto';
+import { ioRedis } from '@gitroom/nestjs-libraries/redis/redis.service';
 import { TypedSearchAttributes } from '@temporalio/common';
 import {
   organizationId,
@@ -352,8 +354,37 @@ export class AutopostService {
     }
   }
 
-  private async notifyFailure(getPost: AutoPost, err: any) {
+  // A feed that cannot post an article (no image for Instagram, credits used
+  // up) tries again every hour, and said so every hour: up to 24 identical
+  // notices a day until the billing cycle turned. One a day per article.
+  static readonly FAILURE_NOTICE_SECONDS = 24 * 60 * 60;
+
+  private async failureAlreadyNotified(getPost: AutoPost, url: string) {
     try {
+      const key = `autopost-failed:${getPost.id}:${createHash('sha256')
+        .update(url)
+        .digest('hex')
+        .slice(0, 32)}`;
+      return (
+        (await ioRedis.set(
+          key,
+          '1',
+          'EX',
+          AutopostService.FAILURE_NOTICE_SECONDS,
+          'NX'
+        )) !== 'OK'
+      );
+    } catch {
+      // Redis away: a repeated notice is better than none.
+      return false;
+    }
+  }
+
+  private async notifyFailure(getPost: AutoPost, err: any, url = '') {
+    try {
+      if (await this.failureAlreadyNotified(getPost, url)) {
+        return;
+      }
       await this._notificationService.inAppNotification(
         getPost.organizationId,
         'Autopost failed',
@@ -571,7 +602,8 @@ export class AutopostService {
           this._openaiService.generateImage(
             generatedTextToBeSentToDallE,
             true,
-            false,
+            // The prompt above asks for 16:9; the picture was made square.
+            'landscape',
             { orgId: state.body.organizationId, engine: 'autopost' }
           )
       ) || '';
@@ -861,7 +893,7 @@ export class AutopostService {
           postsWithoutImage++;
         }
       } catch (err) {
-        await this.notifyFailure(getPost, err);
+        await this.notifyFailure(getPost, err, load.url);
         break;
       }
     }
