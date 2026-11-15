@@ -9,13 +9,8 @@ import 'multer';
 import { makeId } from '@gitroom/nestjs-libraries/services/make.is';
 import { IUploadProvider, StoredObject } from './upload.interface';
 import { isSafePublicHttpsUrl } from '@gitroom/nestjs-libraries/dtos/webhooks/webhook.url.validator';
-import { ssrfSafeDispatcher } from '@gitroom/nestjs-libraries/dtos/webhooks/ssrf.safe.dispatcher';
 import { parseDataUrl } from '@gitroom/nestjs-libraries/upload/data.url';
-// Use undici's fetch (not Node's global fetch): the `dispatcher` option only
-// interoperates with an Agent from the same undici instance. Passing our
-// undici@8 Agent to the global fetch of Node's own bundled undici throws
-// "invalid onRequestStart method", so every remote upload silently failed.
-import { fetch } from 'undici';
+import { downloadForStorage } from '@gitroom/nestjs-libraries/upload/download.capped';
 import { fromBuffer } from '@gitroom/nestjs-libraries/upload/file.type';
 import { ownMediaHosts } from '@gitroom/helpers/utils/own.media.url';
 
@@ -75,11 +70,7 @@ export class S3Storage implements IUploadProvider {
       if (!(await isSafePublicHttpsUrl(path))) {
         throw new Error('Unsafe URL');
       }
-      const res = await fetch(path, {
-        // @ts-ignore — undici option, not in lib.dom fetch types
-        dispatcher: ssrfSafeDispatcher,
-      });
-      body = Buffer.from(await res.arrayBuffer());
+      body = await downloadForStorage(path);
     }
 
     const detected = await fromBuffer(body);

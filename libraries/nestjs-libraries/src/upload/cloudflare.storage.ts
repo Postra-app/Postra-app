@@ -7,11 +7,8 @@ import { getExtension } from 'mime';
 import { IUploadProvider } from './upload.interface';
 import axios from 'axios';
 import { isSafePublicHttpsUrl } from '@gitroom/nestjs-libraries/dtos/webhooks/webhook.url.validator';
-import { ssrfSafeDispatcher } from '@gitroom/nestjs-libraries/dtos/webhooks/ssrf.safe.dispatcher';
 import { parseDataUrl } from '@gitroom/nestjs-libraries/upload/data.url';
-// Use undici's fetch (not Node's global fetch): the `dispatcher` option only
-// interoperates with an Agent from the same undici instance.
-import { fetch } from 'undici';
+import { downloadForStorage } from '@gitroom/nestjs-libraries/upload/download.capped';
 import { fromBuffer } from '@gitroom/nestjs-libraries/upload/file.type';
 
 const ALLOWED_MIME_TYPES = new Set<string>([
@@ -89,11 +86,7 @@ class CloudflareStorage implements IUploadProvider {
       if (!(await isSafePublicHttpsUrl(path))) {
         throw new Error('Unsafe URL');
       }
-      const loadImage = await fetch(path, {
-        // @ts-ignore — undici option, not in lib.dom fetch types
-        dispatcher: ssrfSafeDispatcher,
-      });
-      body = Buffer.from(await loadImage.arrayBuffer());
+      body = await downloadForStorage(path);
     }
     const detected = await fromBuffer(body);
     if (!detected || !ALLOWED_MIME_TYPES.has(detected.mime)) {
