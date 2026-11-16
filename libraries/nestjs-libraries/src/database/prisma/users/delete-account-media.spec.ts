@@ -29,7 +29,10 @@ const build = (
       return clause.some((c: any) => used(typeof c === 'string' ? c : c.contains ?? c.equals)) ? 1 : 0;
     });
   const tx = {
-    organization: { delete: jest.fn().mockResolvedValue({}) },
+    organization: {
+      delete: jest.fn().mockResolvedValue({}),
+      update: jest.fn().mockResolvedValue({}),
+    },
     user: { delete: jest.fn().mockResolvedValue({}) },
     userOrganization: {
       count: jest.fn().mockResolvedValue(1),
@@ -261,6 +264,10 @@ describe('the owner leaving an organisation that stays', () => {
       expect.objectContaining({ orderBy: [{ role: 'asc' }, { createdAt: 'asc' }] })
     );
     expect(tx.userOrganization.update).toHaveBeenCalledWith({ where: { id: 'uo-heir' }, data: { role: 'SUPERADMIN' } });
+    // The owner saw the team's API key: it is replaced (E2E-11-362).
+    expect(tx.organization.update).toHaveBeenCalledWith(
+      expect.objectContaining({ where: { id: 'org-1' } })
+    );
   });
 
   it('leaves the roles alone when another owner stays', async () => {

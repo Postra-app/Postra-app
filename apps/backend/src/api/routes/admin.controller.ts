@@ -54,6 +54,11 @@ import { redactSecretsInJson } from '@gitroom/nestjs-libraries/services/redact.s
 import { isScreenshotFile, signScreenshot } from '@gitroom/backend/api/routes/problem.report.screenshot';
 import { SuperAdminGuard } from '@gitroom/backend/services/auth/super-admin.guard';
 import { countPostsSince } from '@gitroom/nestjs-libraries/database/prisma/posts/posts-published.count';
+import {
+  replaceApiKeyIn,
+  ROLES_THAT_SEE_THE_API_KEY,
+} from '@gitroom/nestjs-libraries/database/prisma/organizations/organization.repository';
+import { OrganizationService } from '@gitroom/nestjs-libraries/database/prisma/organizations/organization.service';
 
 @ApiTags('Admin')
 @Controller('/admin')
@@ -68,7 +73,8 @@ export class AdminController {
     private _aiUsageService: AiUsageService,
     private _stripeService: StripeService,
     private _userService: UsersService,
-    private _integrationManager: IntegrationManager
+    private _integrationManager: IntegrationManager,
+    private _organizationService?: OrganizationService
   ) {}
 
   private assertSuperAdmin(user: User) {
@@ -543,7 +549,10 @@ export class AdminController {
   // user cannot sign in and every session ends at once: tokenVersion is
   // bumped, as on a password reset. Their organisations, posts and channels
   // are left as they are; to stop an organisation publishing, disable its
-  // channels in the Channels tab.
+  // channels in the Channels tab. Apps they approved stop with the account
+  // (OAuthService.getOrgByOAuthToken), and the API key of every organisation
+  // where they could see it is replaced in the same transaction: the key
+  // they copied kept the public API and MCP open to them (E2E-11-362).
   @Post('/suspend-user')
   async suspendUser(
     @GetUserFromRequest() user: User,
@@ -571,17 +580,35 @@ export class AdminController {
     }
 
     if (suspend !== !!target.suspendedAt) {
-      await this._prisma.user.update({
-        where: { id: userId },
-        data: suspend
-          ? {
-              suspendedAt: new Date(),
-              suspendedReason: reason?.trim().slice(0, 500) || null,
-              tokenVersion: { increment: 1 },
-            }
-          : { suspendedAt: null, suspendedReason: null },
+      const keyReplacedIn = await this._prisma.$transaction(async (tx) => {
+        await tx.user.update({
+          where: { id: userId },
+          data: suspend
+            ? {
+                suspendedAt: new Date(),
+                suspendedReason: reason?.trim().slice(0, 500) || null,
+                tokenVersion: { increment: 1 },
+              }
+            : { suspendedAt: null, suspendedReason: null },
+        });
+        if (!suspend) return [] as string[];
+        const seen = await tx.userOrganization.findMany({
+          where: { userId, role: { in: ROLES_THAT_SEE_THE_API_KEY } },
+          select: { organizationId: true },
+        });
+        for (const { organizationId } of seen) {
+          await replaceApiKeyIn(tx, organizationId);
+        }
+        return seen.map((m) => m.organizationId);
       });
       await bustAuthContextCache(userId);
+      if (keyReplacedIn.length) {
+        await this._organizationService?.afterApiKeyReplaced(
+          keyReplacedIn,
+          'admin-suspended',
+          userId
+        );
+      }
       this._auditService.record({
         action: suspend ? 'admin.suspend-user' : 'admin.unsuspend-user',
         userId: user.id,

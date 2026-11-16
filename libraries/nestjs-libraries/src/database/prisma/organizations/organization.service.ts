@@ -3,7 +3,9 @@ import {
   BadRequestException,
   ForbiddenException,
   Injectable,
+  Logger,
   NotFoundException,
+  Optional,
 } from '@nestjs/common';
 import { OrganizationRepository } from '@gitroom/nestjs-libraries/database/prisma/organizations/organization.repository';
 import { NotificationService } from '@gitroom/nestjs-libraries/database/prisma/notifications/notification.service';
@@ -14,13 +16,83 @@ import { makeId } from '@gitroom/nestjs-libraries/services/make.is';
 import { Organization, Role, ShortLinkPreference } from '@prisma/client';
 import { AutopostService } from '@gitroom/nestjs-libraries/database/prisma/autopost/autopost.service';
 import { bustAuthContextCacheForUsers } from '@gitroom/nestjs-libraries/redis/auth-context.cache';
+import { AuditService } from '@gitroom/nestjs-libraries/database/prisma/audit/audit.service';
+
+// Why the key was replaced, as the mail and the audit trail say it.
+export type ApiKeyReplacedReason =
+  | 'admin-removed'
+  | 'admin-demoted'
+  | 'admin-suspended'
+  | 'admin-left'
+  | 'seat-disabled';
+
+const REPLACED_BECAUSE: Record<ApiKeyReplacedReason, string> = {
+  'admin-removed': 'An admin was removed from your Postra organisation.',
+  'admin-demoted': 'An admin of your Postra organisation became a member.',
+  'admin-suspended': 'An admin of your Postra organisation was suspended.',
+  'admin-left': 'An admin of your Postra organisation deleted their account.',
+  'seat-disabled': "An admin's seat in your Postra organisation was turned off.",
+};
 
 @Injectable()
 export class OrganizationService {
   constructor(
     private _organizationRepository: OrganizationRepository,
-    private _notificationsService: NotificationService
+    private _notificationsService: NotificationService,
+    @Optional() private _auditService?: AuditService
   ) {}
+
+  /**
+   * The key was replaced in the transaction that ended someone's access
+   * (organization.repository.ts `replaceApiKeyIn`). What follows cannot undo
+   * it, so nothing here throws: one audit row per organisation, the cached
+   * `/user/self` of everyone who sees the key dropped so the page shows the
+   * new one, and one mail to each of them, because the organisation's
+   * integrations stopped working and they are the ones who can fix them.
+   * The mail never carries the key.
+   */
+  async afterApiKeyReplaced(
+    orgIds: string[],
+    reason: ApiKeyReplacedReason,
+    target: string | string[]
+  ) {
+    const who = Array.isArray(target)
+      ? { targetUserIds: target }
+      : { targetUserId: target };
+    for (const organizationId of orgIds) {
+      try {
+        this._auditService?.record({
+          action: 'security.apikey.rotate',
+          organizationId,
+          metadata: { automatic: true, reason, ...who },
+        });
+        const holders =
+          await this._organizationRepository.getApiKeyHolders(organizationId);
+        await bustAuthContextCacheForUsers(holders.map((h) => h.id));
+        for (const holder of holders) {
+          await this._notificationsService
+            .sendEmail(
+              holder.email,
+              'Your Postra API key was replaced',
+              `${REPLACED_BECAUSE[reason]} They could see the organisation's API key, so Postra replaced it and the old key no longer works.<br /><br />If you use the Postra API, MCP or an integration such as Zapier, n8n or Make with the key, copy the new key from Settings, Developers and update it there.`
+            )
+            .catch((e: unknown) =>
+              Logger.warn(
+                `API key replaced in ${organizationId}, mail not sent: ${
+                  e instanceof Error ? e.message : e
+                }`
+              )
+            );
+        }
+      } catch (e) {
+        Logger.warn(
+          `API key replaced in ${organizationId}, follow-up failed: ${
+            e instanceof Error ? e.message : e
+          }`
+        );
+      }
+    }
+  }
   async createOrgAndUser(
     body: Omit<CreateOrgUserDto, 'providerToken'> & { providerId?: string },
     ip: string,
@@ -199,8 +271,14 @@ export class OrganizationService {
     userId: string,
     role: 'USER' | 'ADMIN'
   ) {
-    const { from } = await this.roleChange(org, myId, userId, role, 'change roles');
-    return { from, to: role };
+    const { from, keyReplaced } = await this.roleChange(
+      org,
+      myId,
+      userId,
+      role,
+      'change roles'
+    );
+    return { from, to: role, keyReplaced };
   }
 
   async transferOwnership(org: Organization, myId: string, userId: string) {
@@ -228,7 +306,10 @@ export class OrganizationService {
     // Subscription downgrade/cancel and admin bulk-disable both land here — bust
     // the members' 30s auth-context cache so the permission change is immediate.
     await bustAuthContextCacheForUsers(affectedUserIds);
-    return result;
+    if (result.adminsDisabled.length) {
+      await this.afterApiKeyReplaced([orgId], 'seat-disabled', result.adminsDisabled);
+    }
+    return { count: result.count };
   }
 
   getActiveMemberCount(orgId: string) {
@@ -268,15 +349,24 @@ export class OrganizationService {
         false
       );
     }
-    if (toDisable.length) {
-      await this._organizationRepository.setMembersDisabled(
-        orgId,
-        toDisable,
-        true
-      );
-    }
+    const disabled = toDisable.length
+      ? await this._organizationRepository.setMembersDisabled(
+          orgId,
+          toDisable,
+          true
+        )
+      : { adminsDisabled: [] as string[] };
     // Bust the 30s auth-context cache for anyone whose access just changed.
     await bustAuthContextCacheForUsers([...toEnable, ...toDisable]);
+    // An admin turned off by the downgrade took the API key with them: it was
+    // replaced with the seat change (E2E-11-362).
+    if (disabled.adminsDisabled.length) {
+      await this.afterApiKeyReplaced(
+        [orgId],
+        'seat-disabled',
+        disabled.adminsDisabled
+      );
+    }
   }
 
   getShortlinkPreference(orgId: string) {

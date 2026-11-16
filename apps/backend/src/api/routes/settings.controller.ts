@@ -65,6 +65,11 @@ export class SettingsController {
       organizationId: org.id,
       metadata: { targetUserId: id },
     });
+    // An admin or owner who leaves takes the API key they could see: it was
+    // replaced with the removal (E2E-11-362), the team is told here.
+    if (result?.keyReplaced) {
+      await this._organizationService.afterApiKeyReplaced([org.id], 'admin-removed', id);
+    }
     return result;
   }
 
@@ -90,10 +95,13 @@ export class SettingsController {
       this._auditService.record({
         action: 'team.role.change',
         organizationId: org.id,
-        metadata: { targetUserId: id, ...change },
+        metadata: { targetUserId: id, from: change.from, to: change.to },
       });
     }
-    return { role: change.to };
+    if (change.keyReplaced) {
+      await this._organizationService.afterApiKeyReplaced([org.id], 'admin-demoted', id);
+    }
+    return { role: change.to, keyReplaced: change.keyReplaced };
   }
 
   // The owner hands the organisation to a member and stays on as an admin.

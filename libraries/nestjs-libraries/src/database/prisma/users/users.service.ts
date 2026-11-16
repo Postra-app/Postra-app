@@ -4,7 +4,12 @@ import { Provider } from '@prisma/client';
 import { UserDetailDto } from '@gitroom/nestjs-libraries/dtos/users/user.details.dto';
 import { EmailNotificationsDto } from '@gitroom/nestjs-libraries/dtos/users/email-notifications.dto';
 import { TimezoneDto } from '@gitroom/nestjs-libraries/dtos/users/timezone.dto';
-import { OrganizationRepository } from '@gitroom/nestjs-libraries/database/prisma/organizations/organization.repository';
+import {
+  OrganizationRepository,
+  replaceApiKeyIn,
+  ROLES_THAT_SEE_THE_API_KEY,
+} from '@gitroom/nestjs-libraries/database/prisma/organizations/organization.repository';
+import { OrganizationService } from '@gitroom/nestjs-libraries/database/prisma/organizations/organization.service';
 import { PrismaService } from '@gitroom/nestjs-libraries/database/prisma/prisma.service';
 import { UploadFactory } from '@gitroom/nestjs-libraries/upload/upload.factory';
 import { Logger, Optional } from '@nestjs/common';
@@ -19,7 +24,8 @@ export class UsersService {
     private _usersRepository: UsersRepository,
     private _organizationRepository: OrganizationRepository,
     private _prisma: PrismaService,
-    @Optional() private _grants?: ProviderGrantsService
+    @Optional() private _grants?: ProviderGrantsService,
+    @Optional() private _organizationService?: OrganizationService
   ) {}
 
   touchLastOnline(id: string) {
@@ -133,6 +139,7 @@ export class UsersService {
     }
 
     const deletedOrgIds = new Set<string>();
+    const keyReplacedIn: string[] = [];
     await this._prisma.$transaction(async (tx) => {
       for (const id of soleOrgIds) {
         // Counted again under the organisation's row lock: someone accepting
@@ -180,8 +187,27 @@ export class UsersService {
         }
       }
 
+      // An admin or owner leaving a team that stays takes the API key they
+      // could see (E2E-11-362): replaced before the membership goes.
+      const sawTheKey = await tx.userOrganization.findMany({
+        where: { userId, role: { in: ROLES_THAT_SEE_THE_API_KEY } },
+        select: { organizationId: true },
+      });
+      for (const { organizationId } of sawTheKey) {
+        if (deletedOrgIds.has(organizationId)) continue;
+        await replaceApiKeyIn(tx, organizationId);
+        keyReplacedIn.push(organizationId);
+      }
+
       await tx.user.delete({ where: { id: userId } });
     });
+    if (keyReplacedIn.length) {
+      await this._organizationService?.afterApiKeyReplaced(
+        keyReplacedIn,
+        'admin-left',
+        userId
+      );
+    }
 
     await this.removeStoredFiles(
       media.filter((m) => deletedOrgIds.has(m.organizationId)),
