@@ -93,6 +93,11 @@ export function Activate() {
           'please_check_your_email_to_activate_your_account',
           'Please check your email to activate your account.'
         )}
+        <br />
+        {t(
+          'activation_check_spam',
+          "Can't find it? Check your spam or junk folder."
+        )}
       </div>
 
       <div className="mt-8 border-t border-white/8 pt-6">

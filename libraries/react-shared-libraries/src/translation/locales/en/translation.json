@@ -2319,5 +2319,6 @@
   "activate_sign_in_title": "Email confirmed",
   "activate_sign_in_subtitle": "Sign in with the password you chose when you signed up to finish activating your account.",
   "activate_password_required": "Enter your password.",
-  "activate_choose_new_password": "I didn't sign up, or forgot my password"
+  "activate_choose_new_password": "I didn't sign up, or forgot my password",
+  "activation_check_spam": "Can't find it? Check your spam or junk folder."
 }
