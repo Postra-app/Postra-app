@@ -68,6 +68,10 @@ export class UsersService {
     return this._usersRepository.updatePassword(id, password, tokenVersion);
   }
 
+  activateWithCheckedPassword(id: string, passwordHash: string) {
+    return this._usersRepository.activateWithCheckedPassword(id, passwordHash);
+  }
+
   activateWithoutPassword(id: string, unusable: string) {
     return this._usersRepository.activateWithoutPassword(id, unusable);
   }

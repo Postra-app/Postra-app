@@ -1998,5 +1998,9 @@
   "switch_to_dark_mode": "Zum dunklen Modus wechseln",
   "set_plug": "Plug festlegen",
   "edit_plug": "Plug bearbeiten",
-  "post_editor": "Beitragseditor"
+  "post_editor": "Beitragseditor",
+  "activate_sign_in_title": "E-Mail bestätigt",
+  "activate_sign_in_subtitle": "Melde dich mit dem Passwort an, das du bei der Registrierung gewählt hast, um die Aktivierung abzuschließen.",
+  "activate_password_required": "Gib dein Passwort ein.",
+  "activate_choose_new_password": "Ich habe mich nicht registriert oder mein Passwort vergessen"
 }
