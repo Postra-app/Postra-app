@@ -38,6 +38,7 @@ describe('appleStateOf', () => {
       isTrailing: false,
       cancelAt: null,
       periodAnchor: new Date(NOW - DAY),
+      endsAt: new Date(NOW + 29 * DAY),
     });
   });
 
@@ -71,17 +72,42 @@ describe('appleStateOf', () => {
     const lapsed = tx({ expiresDate: NOW - DAY });
     expect(
       appleStateOf(lapsed, { gracePeriodExpiresDate: NOW + 2 * DAY }, NOW)
-    ).toMatchObject({ state: 'active', tier: 'PRO' });
+    ).toMatchObject({
+      state: 'active',
+      tier: 'PRO',
+      // Housekeeping waits for the grace period, not the lapsed period.
+      endsAt: new Date(NOW + 2 * DAY),
+    });
     expect(
       appleStateOf(lapsed, { gracePeriodExpiresDate: NOW - 1 }, NOW)
     ).toEqual({ state: 'ended', reason: 'expired' });
   });
 
-  it('a refund or a revoke ends it whatever the dates say', () => {
+  it('a refund or a revoke of the period in force ends it', () => {
     expect(appleStateOf(tx({ revocationDate: NOW - 1000 }), undefined, NOW)).toEqual({
       state: 'ended',
       reason: 'revoked',
     });
+    // Even with auto-renew on and a grace period running.
+    expect(
+      appleStateOf(
+        tx({ revocationDate: NOW - 1000 }),
+        { autoRenewStatus: 1, gracePeriodExpiresDate: NOW + DAY },
+        NOW
+      )
+    ).toEqual({ state: 'ended', reason: 'revoked' });
+  });
+
+  // Security review 15 XI (E2E-11-367): Apple signs a refund of an earlier
+  // renewal with that renewal's dates. The period paid for now stands.
+  it('a refund of an earlier, finished period says nothing about the plan', () => {
+    expect(
+      appleStateOf(
+        tx({ expiresDate: NOW - 10 * DAY, revocationDate: NOW - 1000 }),
+        undefined,
+        NOW
+      )
+    ).toEqual({ state: 'stale' });
   });
 
   it('a product this server does not sell grants nothing', () => {

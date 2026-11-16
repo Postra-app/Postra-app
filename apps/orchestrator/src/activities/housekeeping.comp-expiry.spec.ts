@@ -26,7 +26,8 @@ const activity = (expired: unknown[], send: jest.Mock) =>
     {} as any,
     { sendEmailSync: send } as any,
     { user: { findMany: async () => [{ email: 'admin@example.com' }] } } as any,
-    { expireComps: async () => expired } as any
+    { expireComps: async () => expired } as any,
+    {} as any
   );
 
 it('mails the administrators the comps that ended, with names escaped', async () => {

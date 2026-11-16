@@ -66,8 +66,21 @@ export const appleSandboxAllowedFor = (organizationId: string) => {
   return list.includes('*') || list.includes(organizationId);
 };
 
+// The purchase is bound to the organisation it was made for: the app passes
+// the organisation's id (a UUID) to StoreKit as the appAccountToken, and
+// Apple signs it into every transaction of that purchase.
+export const appleAccountTokenFor = (organizationId: string) =>
+  organizationId.toLowerCase();
+
+// How long past the end of the paid period (or Apple's billing grace period)
+// a plan stays when no notification has said it renewed. Apple retries a
+// notification it could not deliver, and a late renewal or the app's next
+// sync brings the plan back, so this only bounds a plan nobody pays for.
+export const APPLE_EXPIRY_MARGIN_MS = 24 * 60 * 60 * 1000;
+
 export type AppleTransaction = {
   originalTransactionId?: string;
+  appAccountToken?: string;
   productId?: string;
   purchaseDate?: number;
   expiresDate?: number;
@@ -85,6 +98,9 @@ export type AppleRenewal = {
 
 export type AppleState =
   | { state: 'ended'; reason: 'revoked' | 'expired' | 'unknown-product' }
+  // A transaction for a period that is already over and was refunded since:
+  // it says nothing about the plan in force, which a later period pays for.
+  | { state: 'stale' }
   | {
       state: 'active';
       tier: AppleTier;
@@ -93,6 +109,9 @@ export type AppleState =
       // has turned auto-renew off: the plan ends when the paid period does.
       cancelAt: number | null;
       periodAnchor: Date | undefined;
+      // The end of the paid period, or of Apple's billing grace period when
+      // that is later. Housekeeping ends a plan nothing has renewed by then.
+      endsAt: Date | null;
     };
 
 /**
@@ -104,20 +123,26 @@ export type AppleState =
  * refund or a family-sharing revoke sets revocationDate; a lapsed plan has an
  * expiresDate in the past, unless Apple is still retrying the payment inside
  * a billing grace period.
+ *
+ * A refund ends the plan only when it takes back the period in force. Apple
+ * signs a refund of an earlier renewal with that renewal's own dates, which
+ * are over; the period being paid for now is still paid for.
  */
 export const appleStateOf = (
   transaction: AppleTransaction,
   renewal: AppleRenewal | undefined,
   now: number
 ): AppleState => {
+  const expires = transaction.expiresDate || 0;
   if (transaction.revocationDate) {
-    return { state: 'ended', reason: 'revoked' };
+    return expires && expires <= now
+      ? { state: 'stale' }
+      : { state: 'ended', reason: 'revoked' };
   }
   const tier = appleTierOf(transaction.productId);
   if (!tier) {
     return { state: 'ended', reason: 'unknown-product' };
   }
-  const expires = transaction.expiresDate || 0;
   const grace = renewal?.gracePeriodExpiresDate || 0;
   if (expires <= now && grace <= now) {
     return { state: 'ended', reason: 'expired' };
@@ -133,6 +158,7 @@ export const appleStateOf = (
     periodAnchor: transaction.purchaseDate
       ? new Date(transaction.purchaseDate)
       : undefined,
+    endsAt: expires || grace ? new Date(Math.max(expires, grace)) : null,
   };
 };
 

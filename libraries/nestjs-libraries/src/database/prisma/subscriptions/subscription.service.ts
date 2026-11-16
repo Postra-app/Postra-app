@@ -414,7 +414,11 @@ export class SubscriptionService {
     // An admin comp's reason and end date; every other write clears them.
     comp?: { reason: string; endsAt: Date | null },
     // An App Store purchase; see AppleIapService.
-    apple?: { originalTransactionId: string; signedAt: Date }
+    apple?: {
+      originalTransactionId: string;
+      signedAt: Date;
+      expiresAt: Date | null;
+    }
   ) {
     if (!code) {
       // Addressed by org (an admin comp) rather than by Stripe customer:

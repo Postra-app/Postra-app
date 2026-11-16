@@ -36,6 +36,7 @@ const activity = (send: jest.Mock) =>
     { marginReport: async () => report } as any,
     { sendEmailSync: send } as any,
     { user: { findMany: async () => [{ email: 'admin@example.com' }] } } as any,
+    {} as any,
     {} as any
   );
 

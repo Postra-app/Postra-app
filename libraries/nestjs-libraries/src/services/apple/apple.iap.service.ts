@@ -4,6 +4,8 @@ import { SubscriptionService } from '@gitroom/nestjs-libraries/database/prisma/s
 import { SubscriptionRepository } from '@gitroom/nestjs-libraries/database/prisma/subscriptions/subscription.repository';
 import { pricing } from '@gitroom/nestjs-libraries/database/prisma/subscriptions/pricing';
 import {
+  APPLE_EXPIRY_MARGIN_MS,
+  appleAccountTokenFor,
   appleIapEnabled,
   AppleRenewal,
   appleSandboxAllowedFor,
@@ -34,8 +36,16 @@ export class AppleIapService {
     private _openCheckouts: StripeOpenCheckouts
   ) {}
 
-  /** The app's purchase, or its "restore purchases", for the signed-in organisation. */
-  async attach(organizationId: string, signedTransaction: string) {
+  /**
+   * The app's purchase, or its "restore purchases", for the signed-in
+   * organisation. `trialAllowed` is the rule the app's plan list went by:
+   * whether this organisation may still have a free trial.
+   */
+  async attach(
+    organizationId: string,
+    signedTransaction: string,
+    { trialAllowed }: { trialAllowed: boolean }
+  ) {
     if (!appleIapEnabled()) {
       throw new HttpException('Not found', 404);
     }
@@ -61,6 +71,20 @@ export class AppleIapService {
         403
       );
     }
+    // Bought for another organisation: on a shared device, or by someone
+    // signed in to two accounts, the Apple ID's subscription must not end up
+    // paying for an organisation it was not bought for. A purchase without a
+    // token (an offer code redeemed in the App Store) is not bound to one.
+    if (
+      transaction.appAccountToken &&
+      transaction.appAccountToken.toLowerCase() !==
+        appleAccountTokenFor(organizationId)
+    ) {
+      throw new HttpException(
+        'This App Store subscription belongs to another Postra account.',
+        409
+      );
+    }
 
     // One write at a time for the purchase and for the organisation: two
     // different purchases handed over for one organisation in the same moment
@@ -77,7 +101,7 @@ export class AppleIapService {
     }
     try {
       const state = appleStateOf(transaction, undefined, Date.now());
-      if (state.state === 'ended') {
+      if (state.state !== 'active') {
         throw new HttpException(
           'This App Store subscription is no longer active.',
           409
@@ -109,6 +133,22 @@ export class AppleIapService {
           );
         }
         await this._subscriptionRepository.releaseEndedAppleTransaction(id);
+      }
+
+      // One trial, wherever it is taken. The app is given the products with
+      // the free week only while the organisation may have one; a free week
+      // bought anyway (an old plan list, a tampered request) is not a plan
+      // here. A purchase already tied to this organisation was counted when
+      // it was first handed over, so restoring it again is fine.
+      if (
+        state.isTrailing &&
+        !trialAllowed &&
+        owner?.organizationId !== organizationId
+      ) {
+        throw new HttpException(
+          'This account has already had its free trial.',
+          409
+        );
       }
 
       // Billed by one or the other: a plan from Stripe, a comp or a lifetime
@@ -201,6 +241,8 @@ export class AppleIapService {
       // Kept even when nobody has handed the purchase over: a refund that
       // outruns the app must still stop the original transaction from
       // becoming a plan later.
+      // A refund of an earlier, finished period ('stale') is not the end of
+      // the purchase: the period in force is still paid for.
       if (appleStateOf(transaction, renewal, Date.now()).state === 'ended') {
         await this._store.markEnded(
           id,
@@ -255,6 +297,9 @@ export class AppleIapService {
     }
 
     const state = appleStateOf(transaction, renewal, Date.now());
+    if (state.state === 'stale') {
+      return;
+    }
     if (state.state === 'ended') {
       await this._subscriptionService.endAppleSubscription(
         organizationId,
@@ -289,7 +334,62 @@ export class AppleIapService {
       organizationId,
       state.periodAnchor,
       undefined,
-      { originalTransactionId, signedAt }
+      { originalTransactionId, signedAt, expiresAt: state.endsAt }
     );
+  }
+
+  /**
+   * Plans whose paid period (and grace period) ended more than a day ago
+   * with nothing from Apple to say they renewed. Normally the EXPIRED
+   * notification ends them; this is for when it never arrives (the
+   * notification address misconfigured, a long outage). Run daily by
+   * housekeeping. Nothing is recorded as ended for the purchase itself, and
+   * the row keeps the date Apple last signed: a renewal delivered late, or
+   * the app's next sync, brings the plan back.
+   */
+  async expireLapsed(now = new Date()) {
+    if (!appleIapEnabled()) {
+      return [];
+    }
+    const cutoff = new Date(now.getTime() - APPLE_EXPIRY_MARGIN_MS);
+    const due = await this._subscriptionRepository.listLapsedApple(cutoff);
+    const ended: string[] = [];
+    for (const row of due) {
+      const id = row.appleOriginalTransactionId!;
+      const holder = randomUUID();
+      // A notification being handled for this purchase decides; next run.
+      if (!(await this._store.lease(id, holder))) {
+        continue;
+      }
+      try {
+        // Read again under the lease: a renewal written since moved the date.
+        const current = await this._subscriptionRepository.getSubscriptionByOrgId(
+          row.organizationId
+        );
+        if (
+          current?.appleOriginalTransactionId !== id ||
+          !current.appleExpiresAt ||
+          current.appleExpiresAt > cutoff
+        ) {
+          continue;
+        }
+        const { revoked } = await this._subscriptionService.endAppleSubscription(
+          row.organizationId,
+          id,
+          current.appleSignedAt || new Date(0)
+        );
+        if (revoked) {
+          ended.push(row.organizationId);
+        }
+      } catch (err) {
+        Logger.error(
+          `Lapsed App Store plan of ${row.organizationId} was not ended`,
+          err instanceof Error ? err.stack : String(err)
+        );
+      } finally {
+        await this._store.release(id, holder);
+      }
+    }
+    return ended;
   }
 }

@@ -2,6 +2,9 @@
 -- Additive: existing rows keep both columns empty.
 ALTER TABLE "Subscription" ADD COLUMN "appleOriginalTransactionId" TEXT;
 ALTER TABLE "Subscription" ADD COLUMN "appleSignedAt" TIMESTAMP(3);
+-- End of the paid period (and grace period) Apple last reported, so a plan
+-- whose expiry notification never arrives still ends.
+ALTER TABLE "Subscription" ADD COLUMN "appleExpiresAt" TIMESTAMP(3);
 CREATE UNIQUE INDEX "Subscription_appleOriginalTransactionId_key" ON "Subscription"("appleOriginalTransactionId");
 
 -- Notifications already handled, so a redelivery is not applied twice.

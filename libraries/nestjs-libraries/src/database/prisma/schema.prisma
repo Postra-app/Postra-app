@@ -381,6 +381,9 @@ model Subscription {
   periodAnchor     DateTime?
   // A plan given without a payment (an admin comp): why, and when it ends.
   // The daily housekeeping run takes it back after compEndsAt. Empty on
+  // every plan Stripe bills.
+  compReason       String?
+  compEndsAt       DateTime?
   // Set when the plan is billed by Apple (an App Store subscription bought in
   // the iOS app): the id every renewal of that purchase carries, and how
   // Apple's notifications find the row. Empty on Stripe plans and comps.
@@ -388,9 +391,10 @@ model Subscription {
   // When Apple signed the state this row was last written from. A delivery
   // signed earlier is stale and is not applied over it.
   appleSignedAt    DateTime?
-  // every plan Stripe bills.
-  compReason       String?
-  compEndsAt       DateTime?
+  // The end of the period Apple was last known to be paid for (with its
+  // billing grace period). The daily housekeeping run ends a plan a day
+  // past it when no notification has said it renewed.
+  appleExpiresAt   DateTime?
   createdAt        DateTime         @default(now())
   updatedAt        DateTime         @updatedAt
   deletedAt        DateTime?

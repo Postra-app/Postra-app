@@ -237,11 +237,17 @@ export class BillingController {
     if (!appleIapEnabled()) {
       throw new HttpException('Not found', 404);
     }
-    // One trial, wherever it is taken. The offer the web's plan page reads
-    // (the organisation's, and not for an email that already had a trial)
-    // decides whether the app shows the products with the free week or the
-    // ones without. A plan bought in the app ends the offer in turn.
-    const trial =
+    const trial = await this.appleTrialAllowed(org, user);
+    return { plans: applePlans(trial), trial };
+  }
+
+  // One trial, wherever it is taken. The offer the web's plan page reads
+  // (the organisation's, and not for an email that already had a trial)
+  // decides whether the app shows the products with the free week or the
+  // ones without, and whether a free week bought in the app is accepted. A
+  // plan bought in the app ends the offer in turn.
+  private async appleTrialAllowed(org: Organization, user: User) {
+    return (
       !!org.allowTrial &&
       // @ts-ignore the request's organisation is loaded with its subscription
       !org.subscription &&
@@ -250,8 +256,8 @@ export class BillingController {
         org.paymentId,
         user.email,
         true
-      ));
-    return { plans: applePlans(trial), trial };
+      ))
+    );
   }
 
   // The app's purchase (or "restore purchases"): the transaction as StoreKit
@@ -259,11 +265,17 @@ export class BillingController {
   @Post('/apple/transaction')
   @CheckPolicies(BILLING_ADMIN)
   @Throttle({ default: { ttl: 300_000, limit: 20 } })
-  appleTransaction(
+  async appleTransaction(
     @GetOrgFromRequest() org: Organization,
+    @GetUserFromRequest() user: User,
     @Body() body: BillingAppleTransactionDto
   ) {
-    return this._appleIapService.attach(org.id, body.signedTransaction);
+    if (!appleIapEnabled()) {
+      throw new HttpException('Not found', 404);
+    }
+    return this._appleIapService.attach(org.id, body.signedTransaction, {
+      trialAllowed: await this.appleTrialAllowed(org, user),
+    });
   }
 
   // A lower plan waiting for the next billing period.

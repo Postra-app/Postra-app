@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test';
+import { Client, Connection } from '@temporalio/client';
 import { PrismaClient } from '@prisma/client';
 import { anonymous, database, throwawayOrg } from '../helpers';
 
@@ -59,12 +60,16 @@ const notification = (
   }),
 });
 
-// An organisation with no plan, as one that signed up and never chose one.
-const withoutPlan = async () => {
+// An organisation with no plan, as one that signed up and never chose one:
+// its free trial is still on offer, unless `trial: false` (it had one). Set
+// before the first request, which caches the organisation for a while.
+const withoutPlan = async ({ trial = true }: { trial?: boolean } = {}) => {
   const org = await throwawayOrg(prisma, { tier: 'STANDARD', totalChannels: 4, channels: 0 });
   await prisma.subscription.deleteMany({ where: { organizationId: org.orgId } });
+  await prisma.organization.update({ where: { id: org.orgId }, data: { allowTrial: trial } });
   // The request's organisation is cached per user; sign-in happened with the plan.
   const self = async () => (await (await org.api.get('/user/self')).json()) as Record<string, unknown>;
+  await expect.poll(async () => (await self()).allowTrial).toBe(trial);
   return { ...org, self };
 };
 
@@ -258,7 +263,7 @@ test('Apple’s notifications keep the plan in step: paid, cancelled, upgraded, 
 
 // One free trial, wherever it is taken.
 test('a trial taken on the web is not offered again in the app, and one taken in the app not again on the web', async () => {
-  const usedOnWeb = await withoutPlan();
+  const usedOnWeb = await withoutPlan({ trial: false });
   const fresh = await withoutPlan();
   const ids = async (org: typeof fresh) => {
     const body = await (await org.api.get('/billing/apple/plans')).json();
@@ -266,7 +271,6 @@ test('a trial taken on the web is not offered again in the app, and one taken in
   };
   try {
     // The web trial was had and ended: the organisation's offer is spent.
-    await prisma.organization.update({ where: { id: usedOnWeb.orgId }, data: { allowTrial: false } });
     await expect.poll(async () => (await usedOnWeb.self()).allowTrial).toBe(false);
     expect(await ids(usedOnWeb)).toEqual({
       trial: false,
@@ -393,5 +397,122 @@ test('the notification address answers 400 to anything Apple did not send', asyn
     expect((await apple.post('/apple/notifications', { data: { signedPayload: other } })).status()).toBe(400);
   } finally {
     await apple.dispose();
+  }
+});
+
+// Security review 15 XI (E2E-11-367), the four fixes over HTTP and the real
+// database.
+test('a free week is not a plan for an organisation that has had its trial', async () => {
+  const org = await withoutPlan({ trial: false });
+  try {
+    const res = await org.api.post('/billing/apple/transaction', {
+      data: { signedTransaction: transaction(purchase(), { offerDiscountType: 'FREE_TRIAL' }) },
+    });
+    expect(res.status(), await res.text()).toBe(409);
+    expect((await res.json()).message).toBe('This account has already had its free trial.');
+    expect((await org.self()).tier).toBe('FREE');
+    expect(await prisma.subscription.count({ where: { organizationId: org.orgId } })).toBe(0);
+  } finally {
+    await org.remove();
+  }
+});
+
+test('a purchase bought for another organisation is not taken by this one', async () => {
+  const buyer = await withoutPlan();
+  const other = await withoutPlan();
+  try {
+    const id = purchase();
+    // StoreKit signs the organisation the app named into the purchase.
+    const bought = transaction(id, { appAccountToken: buyer.orgId.toUpperCase() });
+    const stolen = await other.api.post('/billing/apple/transaction', { data: { signedTransaction: bought } });
+    expect(stolen.status(), await stolen.text()).toBe(409);
+    expect((await other.self()).tier).toBe('FREE');
+
+    const own = await buyer.api.post('/billing/apple/transaction', { data: { signedTransaction: bought } });
+    expect(own.status(), await own.text()).toBe(201);
+    expect(await buyer.self()).toMatchObject({ tier: 'PRO', appleBilled: true });
+  } finally {
+    await buyer.remove();
+    await other.remove();
+  }
+});
+
+test('a refund of an earlier month leaves the month being paid for', async () => {
+  const org = await withoutPlan();
+  const apple = await anonymous();
+  try {
+    const id = purchase();
+    const expiresDate = Date.now() + 20 * DAY;
+    expect(
+      (
+        await org.api.post('/billing/apple/transaction', {
+          data: { signedTransaction: transaction(id, { expiresDate, signedDate: Date.now() - 60_000 }) },
+        })
+      ).status()
+    ).toBe(201);
+    const refund = await apple.post('/apple/notifications', {
+      data: notification('REFUND', id, {
+        tx: { purchaseDate: Date.now() - 40 * DAY, expiresDate: Date.now() - 10 * DAY, revocationDate: Date.now() },
+      }),
+    });
+    expect(refund.status()).toBe(200);
+    expect(await org.self()).toMatchObject({ tier: 'PRO', appleBilled: true });
+    expect(await prisma.appleEndedPurchase.count({ where: { originalTransactionId: id } })).toBe(0);
+    const row = await prisma.subscription.findUniqueOrThrow({ where: { organizationId: org.orgId } });
+    expect(row.deletedAt).toBeNull();
+    // The end of the period paid for is kept for housekeeping.
+    expect(row.appleExpiresAt?.getTime()).toBe(expiresDate);
+  } finally {
+    await apple.dispose();
+    await org.remove();
+  }
+});
+
+test('housekeeping ends an App Store plan whose expiry notification never came, and a late renewal brings it back', async () => {
+  const org = await withoutPlan();
+  const apple = await anonymous();
+  const connection = await Connection.connect({ address: process.env.TEMPORAL_ADDRESS || 'localhost:57233' });
+  const temporal = new Client({ connection, namespace: 'default' });
+  let handle: Awaited<ReturnType<typeof temporal.workflow.start>> | undefined;
+  try {
+    const id = purchase();
+    expect(
+      (
+        await org.api.post('/billing/apple/transaction', {
+          data: { signedTransaction: transaction(id, { signedDate: Date.now() - 60_000 }) },
+        })
+      ).status()
+    ).toBe(201);
+    // The period ended two days ago and Apple's EXPIRED never arrived.
+    await prisma.subscription.update({
+      where: { organizationId: org.orgId },
+      data: { appleExpiresAt: new Date(Date.now() - 2 * DAY) },
+    });
+    handle = await temporal.workflow.start('housekeepingWorkflow', {
+      workflowId: `housekeeping-apple-${Date.now()}`,
+      taskQueue: 'main',
+    });
+    await expect
+      .poll(
+        async () =>
+          (await prisma.subscription.findUniqueOrThrow({ where: { organizationId: org.orgId } })).deletedAt,
+        { timeout: 60_000 }
+      )
+      .not.toBeNull();
+    expect((await org.self()).tier).toBe('FREE');
+    // Not recorded as ended: the purchase may still renew.
+    expect(await prisma.appleEndedPurchase.count({ where: { originalTransactionId: id } })).toBe(0);
+
+    // The renewal Apple could not deliver arrives late.
+    const renewed = await apple.post('/apple/notifications', {
+      data: notification('DID_RENEW', id, { tx: { expiresDate: Date.now() + 30 * DAY } }),
+    });
+    expect(renewed.status()).toBe(200);
+    expect(await org.self()).toMatchObject({ tier: 'PRO', appleBilled: true });
+  } finally {
+    await handle?.terminate().catch(() => undefined);
+    await connection.close();
+    await apple.dispose();
+    await org.remove();
   }
 });

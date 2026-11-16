@@ -7,6 +7,7 @@ const purgeOldRecords = jest.fn();
 const checkAiMargins = jest.fn();
 const expireComps = jest.fn();
 const fillVideoPosters = jest.fn();
+const expireAppleSubscriptions = jest.fn();
 const housekeepingStarted = jest.fn();
 const housekeepingFinished = jest.fn();
 const sleep = jest.fn().mockResolvedValue(undefined);
@@ -20,6 +21,7 @@ jest.mock('@temporalio/workflow', () => ({
     checkAiMargins,
     expireComps,
     fillVideoPosters,
+    expireAppleSubscriptions,
     housekeepingStarted,
     housekeepingFinished,
   }),
@@ -37,6 +39,7 @@ beforeEach(() => {
   checkAiMargins.mockResolvedValue({});
   expireComps.mockResolvedValue({ expired: 0 });
   fillVideoPosters.mockResolvedValue({ filled: 0, none: 0, failed: 0 });
+  expireAppleSubscriptions.mockResolvedValue({ ended: 0 });
   housekeepingStarted.mockResolvedValue('check-in-1');
   housekeepingFinished.mockResolvedValue(undefined);
 });
@@ -58,6 +61,24 @@ describe('housekeepingWorkflow', () => {
     await housekeepingWorkflow();
     expect(fillVideoPosters).not.toHaveBeenCalled();
     expect(continueAsNew).toHaveBeenCalledTimes(1);
+  });
+
+  it('ends lapsed App Store plans behind its own patch; a run started before skips it', async () => {
+    await housekeepingWorkflow();
+    expect(patched).toHaveBeenCalledWith('housekeeping-apple-expiry');
+    expect(expireAppleSubscriptions).toHaveBeenCalledTimes(1);
+    jest.clearAllMocks();
+    patches = { 'housekeeping-apple-expiry': false };
+    await housekeepingWorkflow();
+    expect(expireAppleSubscriptions).not.toHaveBeenCalled();
+    expect(continueAsNew).toHaveBeenCalledTimes(1);
+  });
+
+  it('a failed App Store expiry marks the day as failed and still fills posters', async () => {
+    expireAppleSubscriptions.mockRejectedValueOnce(new Error('db down'));
+    await housekeepingWorkflow();
+    expect(fillVideoPosters).toHaveBeenCalledTimes(1);
+    expect(housekeepingFinished).toHaveBeenCalledWith('check-in-1', false);
   });
 
   it('a run started before comp expiry skips it', async () => {

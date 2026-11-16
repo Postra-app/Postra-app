@@ -13,6 +13,9 @@ import { AppleIapService } from '@gitroom/nestjs-libraries/services/apple/apple.
 const DAY = 86_400_000;
 const ID = '2000000000000001';
 const ORG = 'org-1';
+// The organisation may still have a free trial (the rule of the app's plan list).
+const TRIAL = { trialAllowed: true };
+const NO_TRIAL = { trialAllowed: false };
 
 // A purchase as Apple signs it, dated around the real clock: the service
 // reads "now" itself.
@@ -63,6 +66,7 @@ const build = (opts: {
     releaseEndedAppleTransaction: jest.fn().mockResolvedValue(true),
     getSubscriptionByOrgId: jest.fn().mockResolvedValue(opts.current ?? null),
     getPaymentId: jest.fn().mockResolvedValue(opts.paymentId ?? null),
+    listLapsedApple: jest.fn().mockResolvedValue([]),
   };
   const service = new AppleIapService(
     verifier as any,
@@ -111,7 +115,7 @@ describe('AppleIapService', () => {
     it('answers 404 and touches nothing', async () => {
       delete process.env.APPLE_IAP_ENABLED;
       const { service, verifier } = build();
-      await expect(service.attach(ORG, 'a.b.c')).rejects.toMatchObject({ status: 404 });
+      await expect(service.attach(ORG, 'a.b.c', TRIAL)).rejects.toMatchObject({ status: 404 });
       await expect(service.notify('a.b.c')).rejects.toMatchObject({ status: 404 });
       expect(verifier.transaction).not.toHaveBeenCalled();
       expect(verifier.notification).not.toHaveBeenCalled();
@@ -121,7 +125,7 @@ describe('AppleIapService', () => {
   describe('attach (the purchase from the app)', () => {
     it('writes the plan of the product for the organisation, addressed without a Stripe customer', async () => {
       const { service, subscriptions } = build();
-      await expect(service.attach(ORG, 'a.b.c')).resolves.toEqual({
+      await expect(service.attach(ORG, 'a.b.c', TRIAL)).resolves.toEqual({
         ok: true,
         tier: 'PRO',
         isTrailing: false,
@@ -139,39 +143,42 @@ describe('AppleIapService', () => {
         comp: undefined,
         apple: { originalTransactionId: ID },
       });
+      // The end of the paid period, for housekeeping to end it if Apple's
+      // expiry notification never comes.
+      expect(written(subscriptions).apple.expiresAt).toBeInstanceOf(Date);
     });
 
     it('the free week is written as a trial, so the web trial limits apply', async () => {
       const { service, subscriptions } = build({
         transaction: tx({ offerDiscountType: 'FREE_TRIAL' }),
       });
-      await service.attach(ORG, 'a.b.c');
+      await service.attach(ORG, 'a.b.c', TRIAL);
       expect(written(subscriptions).isTrailing).toBe(true);
     });
 
     it('refuses what the App Store did not sign', async () => {
       const { service, subscriptions } = build({ invalid: true });
-      await expect(service.attach(ORG, 'a.b.c')).rejects.toMatchObject({ status: 400 });
+      await expect(service.attach(ORG, 'a.b.c', TRIAL)).rejects.toMatchObject({ status: 400 });
       expect(subscriptions.createOrUpdateSubscription).not.toHaveBeenCalled();
     });
 
     it('refuses a test-environment purchase for an organisation that is not named', async () => {
       const { service, subscriptions } = build({ transaction: tx({ environment: 'Sandbox' }) });
-      await expect(service.attach(ORG, 'a.b.c')).rejects.toMatchObject({ status: 403 });
+      await expect(service.attach(ORG, 'a.b.c', TRIAL)).rejects.toMatchObject({ status: 403 });
       expect(subscriptions.createOrUpdateSubscription).not.toHaveBeenCalled();
     });
 
     it('takes a test-environment purchase for a named organisation', async () => {
       process.env.APPLE_IAP_SANDBOX_ORGS = `other,${ORG}`;
       const { service, subscriptions } = build({ transaction: tx({ environment: 'Sandbox' }) });
-      await service.attach(ORG, 'a.b.c');
+      await service.attach(ORG, 'a.b.c', TRIAL);
       expect(subscriptions.createOrUpdateSubscription).toHaveBeenCalledTimes(1);
     });
 
     it('refuses an expired or refunded purchase', async () => {
       for (const over of [{ expiresDate: Date.now() - 1 }, { revocationDate: Date.now() - 1 }]) {
         const { service, subscriptions } = build({ transaction: tx(over) });
-        await expect(service.attach(ORG, 'a.b.c')).rejects.toMatchObject({ status: 409 });
+        await expect(service.attach(ORG, 'a.b.c', TRIAL)).rejects.toMatchObject({ status: 409 });
         expect(subscriptions.createOrUpdateSubscription).not.toHaveBeenCalled();
       }
     });
@@ -180,7 +187,7 @@ describe('AppleIapService', () => {
       const { service, subscriptions, repository } = build({
         owner: owner({ organizationId: 'org-other' }),
       });
-      await expect(service.attach(ORG, 'a.b.c')).rejects.toMatchObject({ status: 409 });
+      await expect(service.attach(ORG, 'a.b.c', TRIAL)).rejects.toMatchObject({ status: 409 });
       expect(repository.releaseEndedAppleTransaction).not.toHaveBeenCalled();
       expect(subscriptions.createOrUpdateSubscription).not.toHaveBeenCalled();
     });
@@ -189,7 +196,7 @@ describe('AppleIapService', () => {
       const { service, subscriptions, repository } = build({
         owner: owner({ organizationId: 'org-other', deletedAt: new Date(), appleSignedAt: null }),
       });
-      await service.attach(ORG, 'a.b.c');
+      await service.attach(ORG, 'a.b.c', TRIAL);
       expect(repository.releaseEndedAppleTransaction).toHaveBeenCalledWith(ID);
       expect(written(subscriptions).org).toBe(ORG);
     });
@@ -198,7 +205,7 @@ describe('AppleIapService', () => {
       const { service, subscriptions } = build({
         current: { id: 'sub-9', appleOriginalTransactionId: null },
       });
-      await expect(service.attach(ORG, 'a.b.c')).rejects.toMatchObject({ status: 409 });
+      await expect(service.attach(ORG, 'a.b.c', TRIAL)).rejects.toMatchObject({ status: 409 });
       expect(subscriptions.createOrUpdateSubscription).not.toHaveBeenCalled();
     });
 
@@ -207,7 +214,7 @@ describe('AppleIapService', () => {
         owner: owner(),
         current: { id: 'sub-1', appleOriginalTransactionId: ID },
       });
-      await service.attach(ORG, 'a.b.c');
+      await service.attach(ORG, 'a.b.c', TRIAL);
       expect(subscriptions.createOrUpdateSubscription).toHaveBeenCalledTimes(1);
     });
 
@@ -221,7 +228,7 @@ describe('AppleIapService', () => {
           endedAt: new Date(Date.now() - DAY),
           owner,
         });
-        await expect(service.attach(ORG, 'a.b.c')).rejects.toMatchObject({ status: 409 });
+        await expect(service.attach(ORG, 'a.b.c', TRIAL)).rejects.toMatchObject({ status: 409 });
         expect(repository.releaseEndedAppleTransaction).not.toHaveBeenCalled();
         expect(subscriptions.createOrUpdateSubscription).not.toHaveBeenCalled();
       }
@@ -232,13 +239,13 @@ describe('AppleIapService', () => {
         transaction: tx({ signedDate: Date.now() }),
         endedAt: new Date(Date.now() - DAY),
       });
-      await service.attach(ORG, 'a.b.c');
+      await service.attach(ORG, 'a.b.c', TRIAL);
       expect(subscriptions.createOrUpdateSubscription).toHaveBeenCalledTimes(1);
     });
 
     it('holds the organisation as well as the purchase, and lets both go', async () => {
       const { service, store } = build();
-      await service.attach(ORG, 'a.b.c');
+      await service.attach(ORG, 'a.b.c', TRIAL);
       expect(store.lease.mock.calls.map((c: any[]) => c[0])).toEqual([ID, `org:${ORG}`]);
       expect(store.release.mock.calls.map((c: any[]) => c[0]).sort()).toEqual([ID, `org:${ORG}`].sort());
     });
@@ -246,14 +253,14 @@ describe('AppleIapService', () => {
     it('a second purchase for the organisation waits its turn; refused if the first is still running', async () => {
       const { service, store, subscriptions } = build();
       store.lease.mockImplementation(async (of: string) => !of.startsWith('org:'));
-      await expect(service.attach(ORG, 'a.b.c')).rejects.toMatchObject({ status: 409 });
+      await expect(service.attach(ORG, 'a.b.c', TRIAL)).rejects.toMatchObject({ status: 409 });
       expect(store.release).toHaveBeenCalledWith(ID, expect.any(String));
       expect(subscriptions.createOrUpdateSubscription).not.toHaveBeenCalled();
     });
 
     it('closes Stripe checkouts the organisation left open, after the plan is written', async () => {
       const { service, openCheckouts, subscriptions } = build({ paymentId: 'cus_1' });
-      await service.attach(ORG, 'a.b.c');
+      await service.attach(ORG, 'a.b.c', TRIAL);
       expect(openCheckouts.expire).toHaveBeenCalledWith('cus_1');
       expect(subscriptions.createOrUpdateSubscription.mock.invocationCallOrder[0]).toBeLessThan(
         openCheckouts.expire.mock.invocationCallOrder[0]
@@ -263,14 +270,66 @@ describe('AppleIapService', () => {
     it('a failure to close them does not undo the purchase', async () => {
       const { service, openCheckouts } = build({ paymentId: 'cus_1' });
       openCheckouts.expire.mockRejectedValue(new Error('stripe down'));
-      await expect(service.attach(ORG, 'a.b.c')).resolves.toMatchObject({ ok: true });
+      await expect(service.attach(ORG, 'a.b.c', TRIAL)).resolves.toMatchObject({ ok: true });
     });
 
     it('answers 409 while another write of the purchase is running', async () => {
       const { service, store, subscriptions } = build();
       store.lease.mockResolvedValue(false);
-      await expect(service.attach(ORG, 'a.b.c')).rejects.toMatchObject({ status: 409 });
+      await expect(service.attach(ORG, 'a.b.c', TRIAL)).rejects.toMatchObject({ status: 409 });
       expect(subscriptions.createOrUpdateSubscription).not.toHaveBeenCalled();
+    });
+
+    // Security review 15 XI (E2E-11-367): the purchase is bound to the
+    // organisation it was bought for.
+    it('refuses a purchase bought for another organisation (appAccountToken)', async () => {
+      const { service, subscriptions } = build({
+        transaction: tx({ appAccountToken: '7d0f5a52-1111-4c3e-9a51-0e3b2d5c9f10' }),
+      });
+      await expect(service.attach(ORG, 'a.b.c', TRIAL)).rejects.toMatchObject({ status: 409 });
+      expect(subscriptions.createOrUpdateSubscription).not.toHaveBeenCalled();
+    });
+
+    it('takes a purchase bought for this organisation, whatever the case of the token', async () => {
+      const org = '7d0f5a52-1111-4c3e-9a51-0e3b2d5c9f10';
+      const { service, subscriptions } = build({
+        transaction: tx({ appAccountToken: org.toUpperCase() }),
+      });
+      await expect(service.attach(org, 'a.b.c', TRIAL)).resolves.toMatchObject({ ok: true });
+      expect(written(subscriptions).org).toBe(org);
+    });
+
+    it('takes a purchase with no token (an offer code redeemed in the App Store)', async () => {
+      const { service } = build({ transaction: tx() });
+      await expect(service.attach(ORG, 'a.b.c', TRIAL)).resolves.toMatchObject({ ok: true });
+    });
+
+    // One trial, wherever it is taken: a free week bought by an organisation
+    // whose trial is spent is refused, as the plan list would not offer it.
+    it('refuses the free week for an organisation that has had its trial', async () => {
+      const { service, subscriptions } = build({
+        transaction: tx({ offerDiscountType: 'FREE_TRIAL' }),
+      });
+      await expect(service.attach(ORG, 'a.b.c', NO_TRIAL)).rejects.toMatchObject({
+        status: 409,
+        message: 'This account has already had its free trial.',
+      });
+      expect(subscriptions.createOrUpdateSubscription).not.toHaveBeenCalled();
+    });
+
+    it('a paid period is taken even when the trial is spent', async () => {
+      const { service } = build({ transaction: tx() });
+      await expect(service.attach(ORG, 'a.b.c', NO_TRIAL)).resolves.toMatchObject({ ok: true });
+    });
+
+    it('the free week already tied to this organisation may be restored', async () => {
+      const { service, subscriptions } = build({
+        transaction: tx({ offerDiscountType: 'FREE_TRIAL' }),
+        owner: owner(),
+        current: { id: 'sub-1', appleOriginalTransactionId: ID },
+      });
+      await expect(service.attach(ORG, 'a.b.c', NO_TRIAL)).resolves.toMatchObject({ isTrailing: true });
+      expect(written(subscriptions).isTrailing).toBe(true);
     });
   });
 
@@ -461,6 +520,99 @@ describe('AppleIapService', () => {
       await expect(built.service.notify('a.b.c')).rejects.toMatchObject({ status: 500 });
       expect(built.store.markDone).not.toHaveBeenCalled();
       expect(built.store.release).toHaveBeenCalledWith(ID, 'uuid-1');
+    });
+    // Security review 15 XI: a refund of an earlier renewal does not take
+    // back the period being paid for now.
+    it('REFUND of an earlier, finished period leaves the plan and the purchase alone', async () => {
+      const { subscriptions, store } = await run(
+        notification('REFUND', undefined, {
+          transaction: tx({
+            purchaseDate: Date.now() - 40 * DAY,
+            expiresDate: Date.now() - 10 * DAY,
+            revocationDate: Date.now() - 1000,
+          }),
+        })
+      );
+      expect(subscriptions.endAppleSubscription).not.toHaveBeenCalled();
+      expect(subscriptions.createOrUpdateSubscription).not.toHaveBeenCalled();
+      expect(store.markEnded).not.toHaveBeenCalled();
+      expect(store.markDone).toHaveBeenCalled();
+    });
+
+    it('a renewal records the end of the new period, or of the grace period when later', async () => {
+      const expiresDate = Date.now() - DAY;
+      const grace = Date.now() + 2 * DAY;
+      const { subscriptions } = await run(
+        notification('DID_FAIL_TO_RENEW', 'GRACE_PERIOD', {
+          transaction: tx({ expiresDate }),
+          renewal: { autoRenewStatus: 1, gracePeriodExpiresDate: grace },
+        })
+      );
+      expect(written(subscriptions).apple.expiresAt).toEqual(new Date(grace));
+    });
+  });
+
+  // Security review 15 XI (E2E-11-367): a plan must end even when Apple's
+  // expiry notification never arrives.
+  describe('expireLapsed (daily housekeeping)', () => {
+    const lapsed = (over: any = {}) => ({
+      id: 'sub-1',
+      organizationId: ORG,
+      appleOriginalTransactionId: ID,
+      appleExpiresAt: new Date(Date.now() - 2 * DAY),
+      appleSignedAt: new Date(Date.now() - 32 * DAY),
+      ...over,
+    });
+
+    it('ends a plan a day past its period, keeping the date Apple last signed', async () => {
+      const row = lapsed();
+      const built = build({ current: row });
+      built.repository.listLapsedApple.mockResolvedValue([row]);
+      const now = new Date();
+      await expect(built.service.expireLapsed(now)).resolves.toEqual([ORG]);
+      expect(built.repository.listLapsedApple).toHaveBeenCalledWith(
+        new Date(now.getTime() - DAY)
+      );
+      // The same date: a renewal Apple signed later still applies over it.
+      expect(built.subscriptions.endAppleSubscription).toHaveBeenCalledWith(ORG, ID, row.appleSignedAt);
+      expect(built.store.markEnded).not.toHaveBeenCalled();
+      expect(built.store.release).toHaveBeenCalledWith(ID, expect.any(String));
+    });
+
+    it('leaves a plan renewed since the list was read', async () => {
+      const built = build({ current: lapsed({ appleExpiresAt: new Date(Date.now() + 29 * DAY) }) });
+      built.repository.listLapsedApple.mockResolvedValue([lapsed()]);
+      await expect(built.service.expireLapsed()).resolves.toEqual([]);
+      expect(built.subscriptions.endAppleSubscription).not.toHaveBeenCalled();
+    });
+
+    it('leaves it for tomorrow while a notification of the purchase is handled', async () => {
+      const built = build({ current: lapsed() });
+      built.repository.listLapsedApple.mockResolvedValue([lapsed()]);
+      built.store.lease.mockResolvedValue(false);
+      await expect(built.service.expireLapsed()).resolves.toEqual([]);
+      expect(built.subscriptions.endAppleSubscription).not.toHaveBeenCalled();
+    });
+
+    it('one failure does not stop the others', async () => {
+      const other = lapsed({ organizationId: 'org-2', appleOriginalTransactionId: 'X2' });
+      const built = build();
+      built.repository.listLapsedApple.mockResolvedValue([lapsed(), other]);
+      built.repository.getSubscriptionByOrgId.mockImplementation(async (org: string) =>
+        org === ORG ? lapsed() : other
+      );
+      built.subscriptions.endAppleSubscription
+        .mockRejectedValueOnce(new Error('db down'))
+        .mockResolvedValueOnce({ revoked: true });
+      await expect(built.service.expireLapsed()).resolves.toEqual(['org-2']);
+      expect(built.store.release).toHaveBeenCalledTimes(2);
+    });
+
+    it('does nothing while the feature is off', async () => {
+      delete process.env.APPLE_IAP_ENABLED;
+      const built = build();
+      await expect(built.service.expireLapsed()).resolves.toEqual([]);
+      expect(built.repository.listLapsedApple).not.toHaveBeenCalled();
     });
   });
 });

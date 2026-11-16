@@ -401,7 +401,11 @@ export class SubscriptionRepository {
     // Set only when Apple bills the plan. Every other write clears it, so a
     // plan later paid through Stripe or granted as a comp is no longer
     // answered for by App Store notifications.
-    apple?: { originalTransactionId: string; signedAt: Date }
+    apple?: {
+      originalTransactionId: string;
+      signedAt: Date;
+      expiresAt: Date | null;
+    }
   ) {
     const findOrg =
       org || (await this.getOrganizationByCustomerId(customerId))!;
@@ -440,6 +444,7 @@ export class SubscriptionRepository {
         compEndsAt: comp?.endsAt ?? null,
         appleOriginalTransactionId: apple?.originalTransactionId ?? null,
         appleSignedAt: apple?.signedAt ?? null,
+        appleExpiresAt: apple?.expiresAt ?? null,
         deletedAt: null,
       },
       create: {
@@ -455,6 +460,7 @@ export class SubscriptionRepository {
         compEndsAt: comp?.endsAt ?? null,
         appleOriginalTransactionId: apple?.originalTransactionId ?? null,
         appleSignedAt: apple?.signedAt ?? null,
+        appleExpiresAt: apple?.expiresAt ?? null,
         deletedAt: null,
       },
       })
@@ -509,6 +515,18 @@ export class SubscriptionRepository {
         deletedAt: true,
         appleSignedAt: true,
       },
+    });
+  }
+
+  // Plans billed by Apple whose paid period ended before `cutoff`.
+  listLapsedApple(cutoff: Date) {
+    return this._subscription.model.subscription.findMany({
+      where: {
+        deletedAt: null,
+        appleOriginalTransactionId: { not: null },
+        appleExpiresAt: { lte: cutoff },
+      },
+      select: { organizationId: true, appleOriginalTransactionId: true },
     });
   }
 
