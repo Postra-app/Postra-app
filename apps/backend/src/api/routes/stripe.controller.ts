@@ -39,14 +39,18 @@ export class StripeController {
       throw new BadRequestException('Invalid Stripe signature');
     }
 
-    // Maybe it comes from another stripe webhook
+    // Maybe it comes from another stripe webhook. Invoices, charges and
+    // disputes carry no service tag: their handlers find the organisation by
+    // the Stripe customer and leave everything else alone.
     if (
       // eslint-disable-next-line @typescript-eslint/ban-ts-comment
       // @ts-ignore
       event?.data?.object?.metadata?.service !== 'gitroom' &&
       event.type !== 'invoice.payment_succeeded' &&
       event.type !== 'invoice.payment_failed' &&
-      event.type !== 'invoice.payment_action_required'
+      event.type !== 'invoice.payment_action_required' &&
+      event.type !== 'charge.dispute.created' &&
+      event.type !== 'charge.refunded'
     ) {
       return { ok: true };
     }
@@ -65,6 +69,9 @@ export class StripeController {
           return this._stripeService.paymentFailed(event);
         case 'invoice.payment_action_required':
           return this._stripeService.paymentActionRequired(event);
+        case 'charge.dispute.created':
+        case 'charge.refunded':
+          return this._stripeService.paymentReversed(event);
         default:
           return undefined;
       }

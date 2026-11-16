@@ -182,3 +182,39 @@ describe('Stripe webhook: one run per event, and a crash is not "done"', () => {
     expect(keys.has('stripe-event:evt_d')).toBe(false);
   });
 });
+
+// E2E-11-363: a chargeback or a full refund carries no service tag (charges
+// and disputes have no Postra metadata), so the filter above answered "ok"
+// and the plan stayed with the money gone.
+describe('Stripe webhook: disputes and refunds reach the handler', () => {
+  it.each(['charge.dispute.created', 'charge.refunded'])(
+    '%s without a service tag is handled',
+    async (type) => {
+      rows.clear();
+      keys.clear();
+      const delivered = {
+        id: `evt_${type}`,
+        type,
+        data: { object: { id: 'ch_1', customer: 'cus_9' } },
+      };
+      const { stripe, deliver } = setup(async () => undefined, delivered);
+      (stripe as any).paymentReversed = jest.fn(async () => ({ ok: true, ended: ['sub_1'] }));
+      const res = await deliver();
+      expect(res.status).toBe(200);
+      expect((stripe as any).paymentReversed).toHaveBeenCalledWith(delivered);
+    }
+  );
+
+  it('another untagged charge event is still ignored', async () => {
+    rows.clear();
+    keys.clear();
+    const { stripe, deliver } = setup(async () => undefined, {
+      id: 'evt_x',
+      type: 'charge.succeeded',
+      data: { object: { id: 'ch_2' } },
+    });
+    (stripe as any).paymentReversed = jest.fn();
+    expect((await deliver()).body).toEqual({ ok: true });
+    expect((stripe as any).paymentReversed).not.toHaveBeenCalled();
+  });
+});
