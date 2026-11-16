@@ -1,5 +1,5 @@
 import { Injectable, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
-import { PrismaClient } from '@prisma/client';
+import { Prisma, PrismaClient } from '@prisma/client';
 import { existsSync } from 'fs';
 
 // With sslmode=require Prisma encrypts but does not check the server's
@@ -62,6 +62,16 @@ export class PrismaRepository<T extends keyof PrismaService> {
     this.model = this._prismaService;
   }
 }
+
+// A list with a relation is two queries for Prisma: the rows, then what they
+// point at. A row deleted in between (an account being deleted while the
+// list loads) left a required relation empty, and the whole request failed
+// with "Inconsistent query result" - a 500. Read inside one snapshot, both
+// queries see the same rows. Read-only, so nothing can fail to serialise.
+export const readInOneSnapshot = <T>(
+  prisma: Pick<PrismaService, '$transaction'>,
+  read: (tx: Prisma.TransactionClient) => Promise<T>
+): Promise<T> => prisma.$transaction(read, { isolationLevel: 'RepeatableRead' });
 
 @Injectable()
 export class PrismaTransaction {

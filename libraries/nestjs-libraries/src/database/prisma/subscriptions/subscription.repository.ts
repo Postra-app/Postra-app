@@ -2,6 +2,7 @@ import { HttpException, Injectable } from '@nestjs/common';
 import {
   PrismaRepository,
   PrismaTransaction,
+  readInOneSnapshot,
 } from '@gitroom/nestjs-libraries/database/prisma/prisma.service';
 import dayjs from 'dayjs';
 import { Organization, Role } from '@prisma/client';
@@ -181,29 +182,32 @@ export class SubscriptionRepository {
   // older comps from before the reason was kept (a non-lifetime plan on an
   // organization without a Stripe customer can only be one).
   listComps() {
-    return this._subscription.model.subscription.findMany({
-      where: {
-        deletedAt: null,
-        isLifetime: false,
-        // Apple bills these; they sit on organisations without a Stripe
-        // customer and would otherwise be listed as comps.
-        appleOriginalTransactionId: null,
-        OR: [
-          { compReason: { not: null } },
-          { organization: { paymentId: null } },
-          { organization: { NOT: { paymentId: { startsWith: 'cus_' } } } },
-        ],
-      },
-      orderBy: [{ compEndsAt: { sort: 'asc', nulls: 'last' } }, { createdAt: 'desc' }],
-      select: {
-        organizationId: true,
-        subscriptionTier: true,
-        compReason: true,
-        compEndsAt: true,
-        createdAt: true,
-        organization: { select: { name: true } },
-      },
-    });
+    // Organisations come and go while this list is read (readInOneSnapshot).
+    return readInOneSnapshot(this._prismaTransaction.model, (tx) =>
+      tx.subscription.findMany({
+        where: {
+          deletedAt: null,
+          isLifetime: false,
+          // Apple bills these; they sit on organisations without a Stripe
+          // customer and would otherwise be listed as comps.
+          appleOriginalTransactionId: null,
+          OR: [
+            { compReason: { not: null } },
+            { organization: { paymentId: null } },
+            { organization: { NOT: { paymentId: { startsWith: 'cus_' } } } },
+          ],
+        },
+        orderBy: [{ compEndsAt: { sort: 'asc', nulls: 'last' } }, { createdAt: 'desc' }],
+        select: {
+          organizationId: true,
+          subscriptionTier: true,
+          compReason: true,
+          compEndsAt: true,
+          createdAt: true,
+          organization: { select: { name: true } },
+        },
+      })
+    );
   }
 
   findOpenPendingGrant(email: string) {
