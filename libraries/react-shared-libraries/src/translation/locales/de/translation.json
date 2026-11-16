@@ -1338,6 +1338,7 @@
   "too_many_requests": "Zu viele Anfragen - bitte warten Sie einen Moment und versuchen Sie es erneut.",
   "server_unavailable_try_again": "Der Server ist vorübergehend nicht verfügbar - bitte versuchen Sie es gleich noch einmal.",
   "could_not_load_channels": "Die Kanalliste konnte nicht geladen werden - bitte versuchen Sie es erneut.",
+  "add_channel_admin_only": "Nur ein Admin dieser Organisation kann einen Kanal hinzufügen. Bitten Sie einen Admin, ihn hinzuzufügen oder Ihre Rolle zu ändern.",
   "discount_failed": "Der Rabatt konnte nicht angewendet werden, bitte versuchen Sie es erneut.",
   "billing_portal_failed": "Das Abrechnungsportal konnte nicht geöffnet werden, bitte versuchen Sie es erneut.",
   "billing_action_failed": "Etwas ist schiefgelaufen, bitte versuchen Sie es erneut.",

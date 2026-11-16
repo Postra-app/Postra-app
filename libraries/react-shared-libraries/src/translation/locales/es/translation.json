@@ -1338,6 +1338,7 @@
   "too_many_requests": "Demasiadas solicitudes - espera un momento y vuelve a intentarlo.",
   "server_unavailable_try_again": "El servidor no está disponible temporalmente - inténtalo de nuevo en un momento.",
   "could_not_load_channels": "No se pudo cargar la lista de canales - inténtalo de nuevo.",
+  "add_channel_admin_only": "Solo un administrador de esta organización puede añadir un canal. Pide a un administrador que lo añada o que cambie tu rol.",
   "discount_failed": "No se pudo aplicar el descuento, inténtalo de nuevo.",
   "billing_portal_failed": "No se pudo abrir el portal de facturación, inténtalo de nuevo.",
   "billing_action_failed": "Algo ha fallado, inténtalo de nuevo.",

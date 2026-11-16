@@ -28,7 +28,7 @@ function controller(addedOrg: any = false) {
   };
   const email = { hasProvider: jest.fn(() => false) };
   const audit = { record: jest.fn() };
-  return new AuthController(auth as any, email as any, audit as any);
+  return new AuthController(auth as any, email as any, audit as any, {} as any);
 }
 
 const request = (client?: string) =>
@@ -83,7 +83,7 @@ describe('activation link that fails', () => {
       }),
     };
     const res = fakeResponse();
-    await new AuthController(auth as any, {} as any, { record: jest.fn() } as any).activate(
+    await new AuthController(auth as any, {} as any, { record: jest.fn() } as any, {} as any).activate(
       { cookies: {}, headers: {} } as any,
       'code',
       '',

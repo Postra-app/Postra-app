@@ -50,6 +50,8 @@ import {
 } from '@gitroom/backend/services/auth/impersonate.cookie';
 import { bustAuthContextCache } from '@gitroom/backend/services/auth/auth.middleware';
 import { StripeService } from '@gitroom/nestjs-libraries/services/stripe.service';
+import { AccountDeletionService } from '@gitroom/backend/services/auth/account.deletion.service';
+import { pickEmailLang } from '@gitroom/backend/services/auth/auth.emails';
 import { NotificationService } from '@gitroom/nestjs-libraries/database/prisma/notifications/notification.service';
 import { isPreviewOrganization } from '@gitroom/nestjs-libraries/integrations/integration.manager';
 
@@ -65,7 +67,8 @@ export class UsersController {
     private _mobilePush: MobilePushService,
     private _auditService: AuditService,
     private _stripeService: StripeService,
-    private _notificationService: NotificationService
+    private _notificationService: NotificationService,
+    private _accountDeletion: AccountDeletionService
   ) {}
 
   // Register/refresh an Expo push token for the Postra Mobile app.
@@ -467,48 +470,34 @@ export class UsersController {
     response.status(200).send();
   }
 
-  // GDPR / RODO right to erasure + Meta data-deletion. Permanently deletes the
-  // signed-in user and the organizations they solely own (see UsersService.
-  // deleteAccount), then clears the session cookies.
+  // GDPR / RODO right to erasure + Meta data-deletion. A session alone does
+  // not delete: with the account's password it goes now (200 {deleted}),
+  // without one we email a confirmation link (202 {confirm: 'email'}) and
+  // /auth/delete-account finishes it. The apps already in the stores send no
+  // body and treat any 2xx as done, so they get the email and sign out.
   @Post('/delete')
   @Throttle({ default: { ttl: 3_600_000, limit: 5 } })
   async deleteSelf(
     @GetUserFromRequest() user: User,
+    @Req() req: Request,
+    @Body('password') password: unknown,
     @Res({ passthrough: true }) response: Response
   ) {
-    // Cancel Stripe billing before the DB rows (and with them the customer
-    // lookup) are gone. Orchestrated here because StripeService itself injects
-    // UsersService — the reverse dependency would be circular.
-    const soleOrgIds = await this._userService.getSoleOwnedOrganizations(
-      user.id
+    const result = await this._accountDeletion.request(
+      user.id,
+      password,
+      pickEmailLang(req)
     );
-    for (const organizationId of soleOrgIds) {
-      await this._stripeService.cancelAllSubscriptionsForDeletedAccount(
-        organizationId
-      );
-    }
-
-    await this._userService.deleteAccount(user.id);
-    // Another device signed in as this user kept reading the shared org for
-    // up to the 30 s the auth context is cached.
-    await bustAuthContextCache(user.id);
-
-    // GDPR art. 12: confirm the erasure to the data subject, in writing.
-    // Best-effort — the deletion already happened and must not fail on email.
-    try {
-      await this._notificationService.sendEmail(
-        user.email,
-        'Your Postra account has been deleted',
-        'Your Postra account and its data - connected channels, scheduled posts and media - have been permanently deleted, and any active subscription was cancelled. Billing records required by law are retained in line with our privacy policy. Thanks for trying Postra.'
-      );
-    } catch (e) {
-      /* the account is gone either way */
+    if ('confirm' in result) {
+      response.status(202);
+      return result;
     }
 
     response.header('logout', 'true');
     clearSessionCookies(response);
 
-    response.status(200).json({ deleted: true });
+    response.status(200);
+    return result;
   }
 
   @Post('/t')

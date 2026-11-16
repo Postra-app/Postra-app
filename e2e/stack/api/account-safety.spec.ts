@@ -38,7 +38,7 @@ test('a deleted account is signed out on every device at once', async () => {
     expect((await phone.post('/auth/login', { data: { email, password: 'Stack-tests-T-1', provider: 'LOCAL' } })).status()).toBe(200);
     expect((await phone.get('/integrations/list')).status()).toBe(200); // warms the cache
 
-    expect((await member.api.post('/user/delete', { data: {} })).status()).toBeLessThan(300);
+    expect((await member.api.post('/user/delete', { data: { password: 'Stack-tests-T-1' } })).status()).toBeLessThan(300);
     expect((await phone.get('/integrations/list')).status()).toBe(401);
   } finally {
     await phone.dispose();

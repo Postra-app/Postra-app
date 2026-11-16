@@ -1338,6 +1338,7 @@
   "too_many_requests": "Trop de requêtes - veuillez patienter un instant et réessayer.",
   "server_unavailable_try_again": "Le serveur est temporairement indisponible - veuillez réessayer dans un instant.",
   "could_not_load_channels": "Impossible de charger la liste des canaux - veuillez réessayer.",
+  "add_channel_admin_only": "Seul un administrateur de cette organisation peut ajouter un canal. Demandez à un administrateur de l'ajouter ou de modifier votre rôle.",
   "discount_failed": "Impossible d'appliquer la remise, veuillez réessayer.",
   "billing_portal_failed": "Impossible d'ouvrir le portail de facturation, veuillez réessayer.",
   "billing_action_failed": "Une erreur est survenue, veuillez réessayer.",

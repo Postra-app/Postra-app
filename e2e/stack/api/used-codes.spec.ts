@@ -14,7 +14,7 @@ test('a redeemed lifetime code stays used after the account is deleted', async (
   try {
     await prisma.usedCodes.create({ data: { code, orgId: org.orgId } });
 
-    expect((await org.api.post('/user/delete', { data: {} })).status()).toBeLessThan(300);
+    expect((await org.api.post('/user/delete', { data: { password: 'Stack-tests-T-1' } })).status()).toBeLessThan(300);
     expect(await prisma.organization.count({ where: { id: org.orgId } })).toBe(0);
 
     const used = await prisma.usedCodes.findUnique({ where: { code } });
