@@ -27,10 +27,22 @@ export const sameOriginGuard =
     if (req.path === CSP_REPORT_PATH) {
       return next();
     }
+    const origin = req.headers.origin;
+    // Signing in sets the session rather than riding it, so the test below
+    // does not see it: a form on another site, posted to /auth/login with
+    // the other site's own account, signed this browser in as them, and
+    // what the person then connected, uploaded or paid for went into that
+    // account. A page that is not ours does not sign a browser in or up.
+    if (
+      origin &&
+      (req.path === '/auth' || req.path.startsWith('/auth/')) &&
+      !allowedOrigins.includes(origin)
+    ) {
+      return res.status(403).json({ message: 'Cross-site request refused' });
+    }
     if (!req.cookies?.auth || req.headers.auth) {
       return next();
     }
-    const origin = req.headers.origin;
     if (!origin || allowedOrigins.includes(origin)) {
       return next();
     }
