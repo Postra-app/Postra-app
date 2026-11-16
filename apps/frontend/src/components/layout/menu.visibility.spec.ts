@@ -81,3 +81,22 @@ describe('the ordinary rules', () => {
     expect(canSeeMenuEntry(posts, customer, true)).toBe(true);
   });
 });
+
+// Auto Post is for admins: the server refuses a member's changes, but the
+// member still had the entry, the list of feeds and their buttons.
+describe('the Auto Post entry', () => {
+  const autopost = { path: '/autopost' };
+
+  it('is hidden from a member', () => {
+    expect(canSeeMenuEntry(autopost, { role: 'USER' }, true)).toBe(false);
+  });
+
+  it('is shown to an admin and to the owner', () => {
+    expect(canSeeMenuEntry(autopost, { role: 'ADMIN' }, true)).toBe(true);
+    expect(canSeeMenuEntry(autopost, { role: 'SUPERADMIN' }, true)).toBe(true);
+  });
+
+  it('a member still sees the calendar', () => {
+    expect(canSeeMenuEntry(posts, { role: 'USER' }, true)).toBe(true);
+  });
+});

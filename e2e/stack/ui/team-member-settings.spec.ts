@@ -38,3 +38,23 @@ test('Settings as a team member: every tab shown opens without a refused request
   }
   expect(refused).toEqual([]);
 });
+
+// A member saw Auto Post in the menu and, on the page, every feed with its
+// Edit and Delete buttons, though only an admin may change feeds. And someone
+// who signed up through an invitation was greeted with "Connect your
+// channels", where every tile answered "you do not have permission".
+test('a team member has no Auto Post and no "connect your channels" welcome', async ({ page }) => {
+  await page.goto('/launches');
+  await expect(page.getByRole('button', { name: 'Create Post' })).toBeVisible();
+  await expect(page.getByRole('link', { name: 'Auto Post' })).toHaveCount(0);
+  await expect(page.getByRole('link', { name: 'Media' }).first()).toBeVisible();
+
+  await page.goto('/autopost');
+  await page.waitForURL(/\/launches/);
+  await expect(page.getByText('Add an Auto Post feed')).toHaveCount(0);
+
+  await page.goto('/launches?onboarding=true');
+  await page.waitForURL((url) => url.pathname === '/launches' && !url.search.includes('onboarding'));
+  await expect(page.getByText('Connect Your Channels')).toHaveCount(0);
+  await expect(page.getByRole('button', { name: 'Create Post' })).toBeVisible();
+});

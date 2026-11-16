@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { useModals } from '@gitroom/frontend/components/layout/new-modal';
 import { useT } from '@gitroom/react/translation/get.transation.service.client';
 import { OnboardingModal } from '@gitroom/frontend/components/onboarding/onboarding.modal';
+import { useUser } from '@gitroom/frontend/components/layout/user.context';
 
 export const Onboarding: FC = () => {
   const query = useSearchParams();
@@ -12,6 +13,10 @@ export const Onboarding: FC = () => {
   const router = useRouter();
   const modalOpen = useRef(false);
   const t = useT();
+  // Someone who signed up through an invitation lands in the inviting
+  // organisation as a member. "Connect your channels" is not theirs to do
+  // there: every tile answered "you do not have permission".
+  const member = useUser()?.role === 'USER';
 
   const handleClose = useCallback(() => {
     modal.closeAll();
@@ -30,6 +35,10 @@ export const Onboarding: FC = () => {
     if (modalOpen.current) {
       return;
     }
+    if (member) {
+      router.replace('/launches');
+      return;
+    }
     modalOpen.current = true;
     modal.openModal({
       // title: t('onboarding', 'Welcome to Postra'),
@@ -41,7 +50,7 @@ export const Onboarding: FC = () => {
       onClose: handleClose,
       children: <OnboardingModal onClose={handleClose} />,
     });
-  }, [query, handleClose, t]);
+  }, [query, handleClose, t, member]);
   
   return null;
 };
