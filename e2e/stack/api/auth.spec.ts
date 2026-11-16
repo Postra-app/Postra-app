@@ -169,8 +169,13 @@ test("someone else's activation link does not replace the session in this browse
     const code = sign({ id: pending.id, email: pending.email, activated: false, purpose: 'activate' }, process.env.JWT_SECRET!);
     const res = await signedInA.post('/auth/activate', { data: { code } });
     expect(res.status()).toBe(200);
-    expect(await res.json()).toMatchObject({ can: true, kept: true });
-    expect(res.headers()['set-cookie'] ?? '').not.toContain('auth=');
+    // This browser did not make the sign-up: the account is activated
+    // without the password it was made with, and the link's holder is sent
+    // to choose one. No session either way.
+    const body = await res.json();
+    expect(body).toMatchObject({ can: true });
+    expect(typeof body.setPassword).toBe('string');
+    expect(res.headers()['set-cookie'] ?? '').not.toMatch(/(^|[ ,])auth=[^;]/);
     expect((await prisma.user.findUniqueOrThrow({ where: { id: pending.id } })).activated).toBe(true);
     expect((await (await signedInA.get('/user/self')).json()).email).toBe(USERS.a.email);
   } finally {
