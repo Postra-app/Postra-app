@@ -40,7 +40,22 @@ export const useAddProvider = (update?: () => void, invite?: boolean) => {
   const fetch = useFetch();
   const toaster = useToaster();
   const t = useT();
+  const user = useUser();
+  const isMember = user?.role === 'USER';
   return useCallback(async () => {
+    // Adding a channel and invite links are for admins; the API refuses a
+    // member with 403. Every way into the dialog (the calendar too) says so
+    // here instead of opening a list whose every tile would fail.
+    if (isMember) {
+      toaster.show(
+        t(
+          'add_channel_admin_only',
+          'Only an admin of this organization can add a channel. Ask an admin to add it or to change your role.'
+        ),
+        'warning'
+      );
+      return;
+    }
     // Nothing awaits this handler, so an unhandled rejection here is invisible:
     // the button just stops working. Every failure has to end in a message.
     try {
@@ -84,7 +99,8 @@ export const useAddProvider = (update?: () => void, invite?: boolean) => {
         'warning'
       );
     }
-  }, []);
+    // The role arrives after the first render; the check must see it.
+  }, [isMember]);
 };
 export const AddProviderButton: FC<{
   update?: () => void;
@@ -93,6 +109,10 @@ export const AddProviderButton: FC<{
   const add = useAddProvider(update);
   const invite = useAddProvider(update, true);
   const t = useT();
+  // Members cannot add channels or send invite links (admins only).
+  if (useUser()?.role === 'USER') {
+    return null;
+  }
 
   return (
     <div className="flex group-[.sidebar]:block gap-[8px]">
