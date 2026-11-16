@@ -632,7 +632,10 @@ export class AuthController {
         code,
         redirect_uri,
         state,
-        req.cookies?.[OAUTH_STATE_COOKIE]
+        req.cookies?.[OAUTH_STATE_COOKIE],
+        // An invitation to a team waiting in this browser: its address may
+        // sign up while sign-ups are closed.
+        this._authService.getOrgFromCookie(req.cookies?.org)
       );
     } catch (e: any) {
       const message =

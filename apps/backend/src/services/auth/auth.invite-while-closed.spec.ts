@@ -1,4 +1,5 @@
 import { ioRedis } from '@gitroom/nestjs-libraries/redis/redis.service';
+import { CreateOrgUserDto } from '@gitroom/nestjs-libraries/dtos/auth/create.org.user.dto';
 import { AuthService } from './auth.service';
 
 // While sign-ups are closed (before launch), people an admin promised a
@@ -158,6 +159,130 @@ describe('sign-ups closed: only an address with a promised plan gets in', () => 
     } finally {
       redis.getdel = original;
     }
+  });
+});
+
+// A workspace owner invites a colleague to the team while sign-ups are
+// closed. The colleague has no account yet and was told "Sign-ups are
+// closed", so nobody could join a team until launch. The invitation lets in
+// the address it was written to, and only that one.
+describe('sign-ups closed: an invitation to a team lets its own address in', () => {
+  const INVITED = 'colleague@example.com';
+  const invite = (email?: string) => ({
+    email,
+    orgId: 'org-team',
+    role: 'USER' as const,
+    id: 'inv-1',
+  });
+  // `null`: a provider that does not say whether the address is verified.
+  const google = (email: string, verified: boolean | null = true) => ({
+    _providerManager: {
+      getProvider: () => ({
+        getToken: async () => 'access',
+        getUser: async () => ({ id: 'g-team', email, ...(verified === null ? {} : { verified }) }),
+      }),
+    },
+  });
+  const signUp = (s: any, withInvite: unknown) =>
+    s.loginOrRegisterProvider(
+      'GOOGLE',
+      { providerToken: 'tok', company: 'Colleague', termsAccepted: true } as any,
+      '1.2.3.4',
+      'ua',
+      withInvite
+    );
+
+  const before = process.env.DISABLE_REGISTRATION;
+  beforeEach(() => {
+    process.env.DISABLE_REGISTRATION = 'true';
+  });
+  afterAll(() => {
+    process.env.DISABLE_REGISTRATION = before;
+  });
+
+  it('the invited address may register, by password or with Google', async () => {
+    const { s } = service();
+    expect(await s.canRegister('LOCAL', INVITED, invite(INVITED))).toBe(true);
+    expect(await s.canRegister('GOOGLE', INVITED, invite(INVITED))).toBe(true);
+    // The same Gmail mailbox written with dots.
+    expect(
+      await s.canRegister('GOOGLE', 'colleague.name@gmail.com', invite('colleaguename@gmail.com'))
+    ).toBe(true);
+  });
+
+  it('another address, a link without an address, or no invitation stays out', async () => {
+    const { s } = service();
+    expect(await s.canRegister('GOOGLE', 'someone@example.com', invite(INVITED))).toBe(false);
+    expect(await s.canRegister('GOOGLE', INVITED, invite())).toBe(false);
+    expect(await s.canRegister('GOOGLE', INVITED, false)).toBe(false);
+    expect(await s.canRegister('GOOGLE', INVITED)).toBe(false);
+    // A +tag is another address, as for a promised plan.
+    expect(await s.canRegister('GOOGLE', 'colleague+x@example.com', invite(INVITED))).toBe(false);
+  });
+
+  it('a new Google account with the invited, verified address is made', async () => {
+    const { s, created, applied } = service(google(INVITED));
+    await signUp(s, invite(INVITED));
+    expect(created).toEqual([INVITED]);
+    // No plan was promised: nothing to claim but the call is harmless.
+    expect(applied).toEqual([['org-new', INVITED]]);
+  });
+
+  it('an address Google has not verified, or a different one, is refused', async () => {
+    for (const provider of [google(INVITED, false), google(INVITED, null), google('someone@example.com')]) {
+      const { s, created } = service(provider);
+      await expect(signUp(s, invite(INVITED))).rejects.toThrow('Registration is disabled');
+      expect(created).toEqual([]);
+    }
+  });
+
+  it('the sign-up page is told the invited Google address may register', async () => {
+    const redis = ioRedis as any;
+    const original = redis.getdel;
+    redis.getdel = async () => 'nonce-1';
+    const exists = (s: any, withInvite?: unknown) =>
+      s.checkExists('google', 'code', undefined, 'state-1', 'nonce-1', withInvite);
+    try {
+      expect(await exists(service(google(INVITED)).s, invite(INVITED))).toEqual({ token: 'access', canRegister: true });
+      expect(await exists(service(google(INVITED)).s)).toEqual({ token: 'access', canRegister: false });
+      expect(await exists(service(google('someone@example.com')).s, invite(INVITED))).toEqual({ token: 'access', canRegister: false });
+    } finally {
+      redis.getdel = original;
+    }
+  });
+
+  it('a password sign-up with the invited address is let in and joins the team', async () => {
+    const joined: unknown[][] = [];
+    const { s, created } = service({
+      _organizationService: {
+        getCount: async () => 4,
+        createOrgAndUser: async (body: { email: string }) => {
+          created.push(body.email);
+          return { id: 'org-new', users: [{ user: { id: 'user-new', activated: false } }] };
+        },
+        addUserToOrg: async (...args: unknown[]) => {
+          joined.push(args);
+          return { organizationId: 'org-team' };
+        },
+      },
+      _emailService: { sendEmailSync: async (): Promise<void> => undefined },
+      jwt: async () => 'jwt',
+      rememberWhoRegistered: async () => 'proof',
+      activationToken: () => 'token',
+    });
+    const body = Object.assign(new CreateOrgUserDto(), {
+      email: INVITED,
+      password: 'long-enough-1',
+      company: 'Colleague',
+      provider: 'LOCAL',
+      termsAccepted: true,
+    });
+    const other = Object.assign(new CreateOrgUserDto(), { ...body, email: 'someone@example.com' });
+    await expect(s.routeAuth('LOCAL', other, '1.2.3.4', 'ua', invite(INVITED))).rejects.toThrow('Registration is disabled');
+    const result = await s.routeAuth('LOCAL', body, '1.2.3.4', 'ua', invite(INVITED));
+    expect(created).toEqual([INVITED]);
+    expect(joined).toEqual([['user-new', 'inv-1', 'org-team', 'USER']]);
+    expect(result.addedOrg).toEqual({ organizationId: 'org-team' });
   });
 });
 

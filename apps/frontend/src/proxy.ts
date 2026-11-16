@@ -245,7 +245,17 @@ export async function proxy(request: NextRequest) {
     : {};
   if (nextUrl.pathname.startsWith('/auth') && !authCookie) {
     if (org) {
-      const redirect = NextResponse.redirect(new URL(`/`, nextUrl.href));
+      // While sign-ups are closed the login page has no sign-up link; someone
+      // invited to a team and without an account needs one (`invited`), and
+      // the backend lets in only the address the invitation was written to.
+      const redirect = NextResponse.redirect(
+        new URL(
+          process.env.DISABLE_REGISTRATION === 'true'
+            ? '/auth/login?invited=1'
+            : '/',
+          nextUrl.href
+        )
+      );
       redirect.cookies.set('org', org, {
         ...orgCookieOptions,
         // As long as the invitation link itself (1 hour,
