@@ -202,7 +202,7 @@ test('a scheduled downgrade gives way to an upgrade, or to cancelling', async ()
   // Deleting the account stops the subscription at once, schedule or not.
   const gone = await payingOrg('PRO');
   expect((await subscribe(gone.api, 'STANDARD')).status()).toBe(201);
-  const deleted = await gone.api.post('/user/delete');
+  const deleted = await gone.api.post('/user/delete', { data: { password: 'Stack-tests-T-1' } });
   expect(deleted.status(), await deleted.text()).toBe(200);
   expect((await stripe.subscriptions.retrieve(gone.sub)).status).toBe('canceled');
 });

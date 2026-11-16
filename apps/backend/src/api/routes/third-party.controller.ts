@@ -60,7 +60,10 @@ export class ThirdPartyController {
     );
   }
 
+  // Saving and removing a service's API key is for admins;
+  // members keep using the saved ones.
   @Delete('/:id')
+  @CheckPolicies([AuthorizationActions.Create, Sections.ADMIN])
   deleteById(
     @GetOrgFromRequest() organization: Organization,
     @Param('id') id: string
@@ -194,6 +197,7 @@ export class ThirdPartyController {
   }
 
   @Post('/:identifier')
+  @CheckPolicies([AuthorizationActions.Create, Sections.ADMIN])
   @Throttle({ default: { ttl: 300_000, limit: 20 } })
   async addApiKey(
     @GetOrgFromRequest() organization: Organization,

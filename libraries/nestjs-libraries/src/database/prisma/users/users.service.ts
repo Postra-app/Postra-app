@@ -4,7 +4,12 @@ import { Provider } from '@prisma/client';
 import { UserDetailDto } from '@gitroom/nestjs-libraries/dtos/users/user.details.dto';
 import { EmailNotificationsDto } from '@gitroom/nestjs-libraries/dtos/users/email-notifications.dto';
 import { TimezoneDto } from '@gitroom/nestjs-libraries/dtos/users/timezone.dto';
-import { OrganizationRepository } from '@gitroom/nestjs-libraries/database/prisma/organizations/organization.repository';
+import {
+  OrganizationRepository,
+  replaceApiKeyIn,
+  ROLES_THAT_SEE_THE_API_KEY,
+} from '@gitroom/nestjs-libraries/database/prisma/organizations/organization.repository';
+import { OrganizationService } from '@gitroom/nestjs-libraries/database/prisma/organizations/organization.service';
 import { PrismaService } from '@gitroom/nestjs-libraries/database/prisma/prisma.service';
 import { UploadFactory } from '@gitroom/nestjs-libraries/upload/upload.factory';
 import { Logger, Optional } from '@nestjs/common';
@@ -13,13 +18,22 @@ import {
   ProviderGrantsService,
 } from '@gitroom/nestjs-libraries/integrations/provider-grants.service';
 
+// The account changed (password reset, suspension, sign-out everywhere)
+// after the deletion was asked for: nothing was deleted.
+export class AccountChangedError extends Error {
+  constructor() {
+    super('account changed since the deletion was requested');
+  }
+}
+
 @Injectable()
 export class UsersService {
   constructor(
     private _usersRepository: UsersRepository,
     private _organizationRepository: OrganizationRepository,
     private _prisma: PrismaService,
-    @Optional() private _grants?: ProviderGrantsService
+    @Optional() private _grants?: ProviderGrantsService,
+    @Optional() private _organizationService?: OrganizationService
   ) {}
 
   touchLastOnline(id: string) {
@@ -112,7 +126,12 @@ export class UsersService {
   // exercised their right to erasure, every photo and video they had uploaded
   // was still a working URL. Postra is registered with the ICO, so that is an
   // obligation, not a tidy-up.
-  async deleteAccount(userId: string) {
+  // `expectedTokenVersion`: the session or link that asked for the deletion
+  // was issued at this version. It is checked again under the user's row lock
+  // inside the deleting transaction, so a password reset or a suspension that
+  // lands while the deletion runs either happens first (nothing is deleted)
+  // or waits for it.
+  async deleteAccount(userId: string, expectedTokenVersion?: number) {
     const soleOrgIds = await this.getSoleOwnedOrganizations(userId);
 
     // Collected before the delete: the rows cascade away with the org, and
@@ -133,7 +152,14 @@ export class UsersService {
     }
 
     const deletedOrgIds = new Set<string>();
+    const keyReplacedIn: string[] = [];
     await this._prisma.$transaction(async (tx) => {
+      if (expectedTokenVersion !== undefined) {
+        const [row] = await tx.$queryRaw<{ tokenVersion: number }[]>`SELECT "tokenVersion" FROM "User" WHERE "id" = ${userId} FOR UPDATE`;
+        if (!row || row.tokenVersion !== expectedTokenVersion) {
+          throw new AccountChangedError();
+        }
+      }
       for (const id of soleOrgIds) {
         // Counted again under the organisation's row lock: someone accepting
         // an invitation between the first count and here had their new
@@ -180,8 +206,27 @@ export class UsersService {
         }
       }
 
+      // An admin or owner leaving a team that stays takes the API key they
+      // could see: replaced before the membership goes.
+      const sawTheKey = await tx.userOrganization.findMany({
+        where: { userId, role: { in: ROLES_THAT_SEE_THE_API_KEY } },
+        select: { organizationId: true },
+      });
+      for (const { organizationId } of sawTheKey) {
+        if (deletedOrgIds.has(organizationId)) continue;
+        await replaceApiKeyIn(tx, organizationId);
+        keyReplacedIn.push(organizationId);
+      }
+
       await tx.user.delete({ where: { id: userId } });
     });
+    if (keyReplacedIn.length) {
+      await this._organizationService?.afterApiKeyReplaced(
+        keyReplacedIn,
+        'admin-left',
+        userId
+      );
+    }
 
     await this.removeStoredFiles(
       media.filter((m) => deletedOrgIds.has(m.organizationId)),

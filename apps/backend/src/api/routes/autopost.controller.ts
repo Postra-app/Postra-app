@@ -39,8 +39,13 @@ export class AutopostController {
     return this._autopostsService.getAutoposts(org.id);
   }
 
+  // Feeds publish to the organisation's channels on their own: managing them
+  // is for admins. Listing them stays open to every member.
   @Post('/')
-  @CheckPolicies([AuthorizationActions.Create, Sections.AUTOPOST])
+  @CheckPolicies(
+    [AuthorizationActions.Create, Sections.ADMIN],
+    [AuthorizationActions.Create, Sections.AUTOPOST]
+  )
   async createAutopost(
     @GetOrgFromRequest() org: Organization,
     @Body() body: AutopostDto
@@ -63,7 +68,10 @@ export class AutopostController {
   }
 
   @Put('/:id')
-  @CheckPolicies([AuthorizationActions.Update, Sections.AUTOPOST])
+  @CheckPolicies(
+    [AuthorizationActions.Create, Sections.ADMIN],
+    [AuthorizationActions.Update, Sections.AUTOPOST]
+  )
   async updateAutopost(
     @GetOrgFromRequest() org: Organization,
     @Body() body: AutopostDto,
@@ -78,6 +86,7 @@ export class AutopostController {
   }
 
   @Delete('/:id')
+  @CheckPolicies([AuthorizationActions.Create, Sections.ADMIN])
   async deleteAutopost(
     @GetOrgFromRequest() org: Organization,
     @Param('id') id: string
@@ -86,6 +95,7 @@ export class AutopostController {
   }
 
   @Post('/:id/active')
+  @CheckPolicies([AuthorizationActions.Create, Sections.ADMIN])
   async changeActive(
     @GetOrgFromRequest() org: Organization,
     @Param('id') id: string,
@@ -143,7 +153,9 @@ export class AutopostController {
     }
   }
 
+  // Reads a feed for the create dialog: part of adding one.
   @Post('/send')
+  @CheckPolicies([AuthorizationActions.Create, Sections.ADMIN])
   @Throttle({ default: { ttl: 300_000, limit: 10 } })
   async sendWebhook(@Query() query: OnlyURL) {
     return this._autopostsService.loadXML(query.url);

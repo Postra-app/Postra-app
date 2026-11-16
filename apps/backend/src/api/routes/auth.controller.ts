@@ -40,6 +40,11 @@ import { Provider } from '@prisma/client';
 import * as Sentry from '@sentry/nestjs';
 import { pickEmailLang } from '@gitroom/backend/services/auth/auth.emails';
 import { AuditService } from '@gitroom/nestjs-libraries/database/prisma/audit/audit.service';
+import {
+  AccountDeletionService,
+  DELETE_LINK_INVALID,
+} from '@gitroom/backend/services/auth/account.deletion.service';
+import { AuthService as AuthChecker } from '@gitroom/helpers/auth/auth.service';
 
 // The invitation an `/auth?org=…` link left behind (frontend proxy.ts), with
 // the attributes it was set with.
@@ -69,7 +74,8 @@ export class AuthController {
   constructor(
     private _authService: AuthService,
     private _emailService: EmailService,
-    private _auditService: AuditService
+    private _auditService: AuditService,
+    private _accountDeletion: AccountDeletionService
   ) {}
 
   @Get('/can-register')
@@ -306,6 +312,38 @@ export class AuthController {
     } catch (e: any) {
       throw new HttpException(e.message, 400);
     }
+  }
+
+  // The link from the "Confirm deleting your Postra account" email. The page
+  // posts only when the person presses the button, never on load, so a mail
+  // scanner opening the link deletes nothing. No session needed: the link
+  // went to the address, and a Google or Apple account on the phone may have
+  // no web session to open it in.
+  @Post('/delete-account')
+  @Throttle({ default: { ttl: 900000, limit: 5 } })
+  async deleteAccount(
+    @Req() req: Request,
+    @Body('token') token: unknown,
+    @Res({ passthrough: true }) response: Response
+  ) {
+    const deletedId = await this._accountDeletion.confirm(token);
+    if (!deletedId) {
+      throw new HttpException(DELETE_LINK_INVALID, 400);
+    }
+    // Sign out this browser only if it was the deleted account's session;
+    // someone else's link opened in my browser must not sign me out.
+    try {
+      const session = req.cookies?.auth
+        ? (AuthChecker.verifyJWT(req.cookies.auth) as { id?: string })
+        : undefined;
+      if (session?.id === deletedId) {
+        response.header('logout', 'true');
+        clearSessionCookies(response);
+      }
+    } catch {
+      /* not a session of the deleted account */
+    }
+    return { deleted: true };
   }
 
   // Sign-in with Google in the mobile app: the native sign-in on the phone
