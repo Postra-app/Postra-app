@@ -74,7 +74,9 @@ export class IntegrationSchedulePostTool implements AgentToolInterface {
         annotations: {
           title: 'Schedule Social Media Post',
           readOnlyHint: false,
-          destructiveHint: false,
+          // It can publish at once, in public, under the customer's name:
+          // a client decides by this hint what to run without asking.
+          destructiveHint: true,
           idempotentHint: false,
           openWorldHint: true,
         },
