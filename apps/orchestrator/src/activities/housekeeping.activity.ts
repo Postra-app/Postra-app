@@ -9,6 +9,7 @@ import { ioRedis } from '@gitroom/nestjs-libraries/redis/redis.service';
 import { marginAlertMail } from '@gitroom/nestjs-libraries/ai-cost/margin-alert.mail';
 import * as Sentry from '@sentry/nestjs';
 import { SubscriptionService } from '@gitroom/nestjs-libraries/database/prisma/subscriptions/subscription.service';
+import { AppleIapService } from '@gitroom/nestjs-libraries/services/apple/apple.iap.service';
 import { compExpiredMail } from '@gitroom/nestjs-libraries/database/prisma/subscriptions/comp-expired.mail';
 
 // Sentry's cron monitor of the daily run. The operator's monitoring setup
@@ -24,7 +25,8 @@ export class HousekeepingActivity {
     private _aiUsage: AiUsageService,
     private _email: EmailService,
     private _prisma: PrismaService,
-    private _subscriptions: SubscriptionService
+    private _subscriptions: SubscriptionService,
+    private _apple: AppleIapService
   ) {}
 
   // The daily run reports to Sentry's cron monitor: a day without an "ok", or
@@ -104,6 +106,19 @@ export class HousekeepingActivity {
       await this._email.sendEmailSync(admin.email, subject, html);
     }
     return { expired: expired.length };
+  }
+
+  // App Store plans whose paid period ended with no word from Apple that they
+  // renewed (the expiry notification lost). See AppleIapService.expireLapsed.
+  @ActivityMethod()
+  async expireAppleSubscriptions() {
+    const ended = await this._apple.expireLapsed();
+    if (ended.length) {
+      this._logger.warn(
+        `App Store expiry: ${ended.length} organisation(s) back on Free without an expiry notification`
+      );
+    }
+    return { ended: ended.length };
   }
 
   // The margin guard, daily: Postra administrators get one mail when an

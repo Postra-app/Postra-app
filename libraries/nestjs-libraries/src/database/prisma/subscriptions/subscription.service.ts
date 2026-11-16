@@ -412,7 +412,13 @@ export class SubscriptionService {
     // Stripe's billing_cycle_anchor (webhooks only).
     periodAnchor?: Date,
     // An admin comp's reason and end date; every other write clears them.
-    comp?: { reason: string; endsAt: Date | null }
+    comp?: { reason: string; endsAt: Date | null },
+    // An App Store purchase; see AppleIapService.
+    apple?: {
+      originalTransactionId: string;
+      signedAt: Date;
+      expiresAt: Date | null;
+    }
   ) {
     if (!code) {
       // Addressed by org (an admin comp) rather than by Stripe customer:
@@ -443,6 +449,27 @@ export class SubscriptionService {
       // the new 100-channel plan.
       await this.modifySubscriptionByOrg(org, totalChannels, billing, isTrailing);
     }
+    // A plan Apple bills is being replaced by one it does not (a Stripe
+    // checkout opened earlier and paid now). The payment has been taken, so
+    // the write stands, but Apple goes on billing a plan this server no
+    // longer follows: someone has to cancel or refund one of the two.
+    if (!apple && org) {
+      const current = await this._subscriptionRepository.getSubscriptionByOrgId(
+        org
+      );
+      if (current?.appleOriginalTransactionId) {
+        Logger.error(
+          `Organisation ${org} is billed by Apple and now also by ${
+            customerId ? 'Stripe' : 'a grant'
+          }: the App Store subscription is no longer followed`
+        );
+        this._auditService.record({
+          action: 'subscription.apple.overwritten',
+          organizationId: org,
+          metadata: { customerId, billing },
+        });
+      }
+    }
     this._auditService.record({
       action: 'subscription.change',
       organizationId: org,
@@ -460,7 +487,8 @@ export class SubscriptionService {
         code,
         org ? { id: org } : undefined,
         periodAnchor,
-        comp
+        comp,
+        apple
       );
     await this.bustMembersAuthCache(org, customerId);
     return result;
@@ -734,6 +762,7 @@ export class SubscriptionService {
         400
       );
     }
+    await this.refuseAppleBilled(orgId);
 
     const result = await this._subscriptionRepository.softDeleteSubscriptionByOrg(
       orgId
@@ -746,11 +775,65 @@ export class SubscriptionService {
     return result;
   }
 
+  // Apple bills the plan and its notifications keep writing the row: a comp
+  // or a revoke from the panel would be overwritten at the next renewal, and
+  // the customer would go on paying Apple for a plan taken away here.
+  private async refuseAppleBilled(orgId: string) {
+    const current = await this._subscriptionRepository.getSubscriptionByOrgId(
+      orgId
+    );
+    if (current?.appleOriginalTransactionId) {
+      throw new HttpException(
+        'This organization subscribes through the App Store - the plan can only be changed or cancelled there.',
+        400
+      );
+    }
+  }
+
+  /**
+   * An App Store subscription ended (expired, refunded or revoked): the
+   * organisation goes back to FREE as after a revoke. Does nothing when the
+   * plan in force is no longer the one that purchase billed.
+   */
+  async endAppleSubscription(
+    orgId: string,
+    originalTransactionId: string,
+    signedAt: Date
+  ) {
+    const current = await this._subscriptionRepository.getSubscriptionByOrgId(
+      orgId
+    );
+    if (current?.appleOriginalTransactionId !== originalTransactionId) {
+      return { revoked: false };
+    }
+    // Limits first, the row last. The other way round, a failure while
+    // switching channels off left the plan marked ended and the retry found
+    // nothing to do, so the paid plan's channels stayed on for good. In this
+    // order a retry finds the plan still in force and does all of it again.
+    await this.modifySubscriptionByOrg(orgId, pricing.FREE.channel || 0, 'FREE');
+    const result = await this._subscriptionRepository.endAppleSubscription(
+      orgId,
+      originalTransactionId,
+      signedAt
+    );
+    await this.bustMembersAuthCache(orgId, undefined);
+    if (result.revoked) {
+      this._auditService.record({
+        action: 'subscription.apple.ended',
+        organizationId: orgId,
+      });
+    }
+    return result;
+  }
+
   // Back to the free tier: channels over the cap are disabled and team seats
   // reconciled, exactly as a downgrade does.
   private async backToFree(
     orgId: string,
-    action: 'subscription.revoke' | 'subscription.comp.expired',
+    action:
+      | 'subscription.revoke'
+      | 'subscription.comp.expired'
+      | 'subscription.apple.ended',
     actorUserId?: string
   ) {
     await this.modifySubscriptionByOrg(orgId, pricing.FREE.channel || 0, 'FREE');
@@ -817,6 +900,8 @@ export class SubscriptionService {
         400
       );
     }
+
+    await this.refuseAppleBilled(orgId);
 
     this._auditService.record({
       action: 'subscription.comp',

@@ -185,6 +185,9 @@ export class SubscriptionRepository {
       where: {
         deletedAt: null,
         isLifetime: false,
+        // Apple bills these; they sit on organisations without a Stripe
+        // customer and would otherwise be listed as comps.
+        appleOriginalTransactionId: null,
         OR: [
           { compReason: { not: null } },
           { organization: { paymentId: null } },
@@ -394,7 +397,15 @@ export class SubscriptionRepository {
     // Set only by an admin comp. Every other write (a Stripe webhook, a
     // lifetime grant) clears it: a plan the customer now pays for must not be
     // taken back on a comp's end date.
-    comp?: { reason: string; endsAt: Date | null }
+    comp?: { reason: string; endsAt: Date | null },
+    // Set only when Apple bills the plan. Every other write clears it, so a
+    // plan later paid through Stripe or granted as a comp is no longer
+    // answered for by App Store notifications.
+    apple?: {
+      originalTransactionId: string;
+      signedAt: Date;
+      expiresAt: Date | null;
+    }
   ) {
     const findOrg =
       org || (await this.getOrganizationByCustomerId(customerId))!;
@@ -431,6 +442,9 @@ export class SubscriptionRepository {
         ...(periodAnchor ? { periodAnchor } : {}),
         compReason: comp?.reason ?? null,
         compEndsAt: comp?.endsAt ?? null,
+        appleOriginalTransactionId: apple?.originalTransactionId ?? null,
+        appleSignedAt: apple?.signedAt ?? null,
+        appleExpiresAt: apple?.expiresAt ?? null,
         deletedAt: null,
       },
       create: {
@@ -444,6 +458,9 @@ export class SubscriptionRepository {
         ...(periodAnchor ? { periodAnchor } : {}),
         compReason: comp?.reason ?? null,
         compEndsAt: comp?.endsAt ?? null,
+        appleOriginalTransactionId: apple?.originalTransactionId ?? null,
+        appleSignedAt: apple?.signedAt ?? null,
+        appleExpiresAt: apple?.expiresAt ?? null,
         deletedAt: null,
       },
       })
@@ -485,6 +502,74 @@ export class SubscriptionRepository {
     // A Stripe webhook write must be all-or-nothing: a crash between the
     // subscription upsert and the org update left paying orgs marked trialing.
     await this._prismaTransaction.model.$transaction(writes);
+  }
+
+  // The row an App Store purchase was last written to, live or ended: an
+  // ended row keeps the id so a late notification still finds its date.
+  findByAppleTransaction(originalTransactionId: string) {
+    return this._subscription.model.subscription.findUnique({
+      where: { appleOriginalTransactionId: originalTransactionId },
+      select: {
+        id: true,
+        organizationId: true,
+        deletedAt: true,
+        appleSignedAt: true,
+      },
+    });
+  }
+
+  // Plans billed by Apple whose paid period ended before `cutoff`.
+  listLapsedApple(cutoff: Date) {
+    return this._subscription.model.subscription.findMany({
+      where: {
+        deletedAt: null,
+        appleOriginalTransactionId: { not: null },
+        appleExpiresAt: { lte: cutoff },
+      },
+      select: { organizationId: true, appleOriginalTransactionId: true },
+    });
+  }
+
+  // An ended plan lets go of the purchase, so the same Apple ID can subscribe
+  // again from another organisation.
+  async releaseEndedAppleTransaction(originalTransactionId: string) {
+    const { count } = await this._subscription.model.subscription.updateMany({
+      where: {
+        appleOriginalTransactionId: originalTransactionId,
+        deletedAt: { not: null },
+      },
+      data: { appleOriginalTransactionId: null },
+    });
+    return count === 1;
+  }
+
+  // Only the plan that purchase is billing: a comp or a Stripe plan written
+  // over it since is not Apple's to end.
+  async endAppleSubscription(
+    orgId: string,
+    originalTransactionId: string,
+    signedAt: Date
+  ) {
+    const [{ count }] = await this._prismaTransaction.model.$transaction([
+      this._subscription.model.subscription.updateMany({
+        where: {
+          organizationId: orgId,
+          appleOriginalTransactionId: originalTransactionId,
+          deletedAt: null,
+        },
+        data: { deletedAt: new Date(), appleSignedAt: signedAt },
+      }),
+      this._organization.model.organization.updateMany({
+        where: {
+          id: orgId,
+          subscription: {
+            appleOriginalTransactionId: originalTransactionId,
+          },
+        },
+        data: { isTrailing: false },
+      }),
+    ]);
+    return { revoked: count > 0 };
   }
 
   getSubscriptionByIdentifier(identifier: string) {

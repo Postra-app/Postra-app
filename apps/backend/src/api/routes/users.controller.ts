@@ -120,6 +120,10 @@ export class UsersController {
       role: organization?.users[0]?.role,
       // @ts-ignore
       isLifetime: !!organization?.subscription?.isLifetime,
+      // The plan is billed by Apple (bought in the iOS app): it is changed
+      // and cancelled in the customer's Apple ID settings, not here.
+      // @ts-ignore
+      appleBilled: !!organization?.subscription?.appleOriginalTransactionId,
       admin: !!user.isSuperAdmin,
       // Preview platforms in the channel picker: a super admin's, or a
       // preview organisation's (a platform reviewer's login).

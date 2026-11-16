@@ -1,7 +1,13 @@
 import { continueAsNew, patched, proxyActivities, sleep } from '@temporalio/workflow';
 import type { HousekeepingActivity } from '@gitroom/orchestrator/activities/housekeeping.activity';
 
-const { purgeOldRecords, checkAiMargins, expireComps, fillVideoPosters } = proxyActivities<HousekeepingActivity>({
+const {
+  purgeOldRecords,
+  checkAiMargins,
+  expireComps,
+  fillVideoPosters,
+  expireAppleSubscriptions,
+} = proxyActivities<HousekeepingActivity>({
   startToCloseTimeout: '30 minute',
   retry: {
     maximumAttempts: 3,
@@ -62,6 +68,14 @@ export async function housekeepingWorkflow() {
       await expireComps();
     } catch (err) {
       // Next run tomorrow; the comp stays a day longer.
+      ok = false;
+    }
+  }
+  if (patched('housekeeping-apple-expiry')) {
+    try {
+      await expireAppleSubscriptions();
+    } catch (err) {
+      // Next run tomorrow; the lapsed App Store plan stays a day longer.
       ok = false;
     }
   }

@@ -193,6 +193,9 @@ export class OrganizationRepository {
                 createdAt: true,
                 periodAnchor: true,
                 deletedAt: true,
+                // Who bills the plan: /user/self and the Stripe checkout
+                // routes read it from the request's organisation.
+                appleOriginalTransactionId: true,
               },
             },
           },
@@ -303,6 +306,10 @@ export class OrganizationRepository {
             // The AI credit month follows Stripe's billing anchor.
             periodAnchor: true,
             deletedAt: true,
+            // Who bills the plan: /user/self and the Stripe checkout routes
+            // read it from the request's organisation. Left out, a plan
+            // Apple bills looked like any other and Stripe checkout opened.
+            appleOriginalTransactionId: true,
           },
         },
       },

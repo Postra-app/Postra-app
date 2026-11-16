@@ -384,6 +384,17 @@ model Subscription {
   // every plan Stripe bills.
   compReason       String?
   compEndsAt       DateTime?
+  // Set when the plan is billed by Apple (an App Store subscription bought in
+  // the iOS app): the id every renewal of that purchase carries, and how
+  // Apple's notifications find the row. Empty on Stripe plans and comps.
+  appleOriginalTransactionId String? @unique
+  // When Apple signed the state this row was last written from. A delivery
+  // signed earlier is stale and is not applied over it.
+  appleSignedAt    DateTime?
+  // The end of the period Apple was last known to be paid for (with its
+  // billing grace period). The daily housekeeping run ends a plan a day
+  // past it when no notification has said it renewed.
+  appleExpiresAt   DateTime?
   createdAt        DateTime         @default(now())
   updatedAt        DateTime         @updatedAt
   deletedAt        DateTime?
@@ -1202,4 +1213,25 @@ model StripeProcessedEvent {
   createdAt DateTime @default(now())
 
   @@index([createdAt])
+}
+
+// App Store Server Notifications arrive at least once. A row here means the
+// notification with that id was handled to the end.
+model AppleProcessedNotification {
+  id        String   @id
+  type      String
+  createdAt DateTime @default(now())
+
+  @@index([createdAt])
+}
+
+// An App Store purchase Apple has said is over (refunded, revoked, expired),
+// and when it said so. The transaction the app was first given stays validly
+// signed and unexpired after a refund, so it is checked against this before
+// it can become a plan, here or in another organisation.
+model AppleEndedPurchase {
+  originalTransactionId String   @id
+  signedAt              DateTime
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
 }

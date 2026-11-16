@@ -33,6 +33,7 @@ it('the housekeeping workflow can reach the margin guard', () => {
   // expireComps takes back comps whose end date has passed.
   expect([...methods.keys()].sort()).toEqual([
     'checkAiMargins',
+    'expireAppleSubscriptions',
     'expireComps',
     'fillVideoPosters',
     'housekeepingFinished',
