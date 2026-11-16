@@ -10,6 +10,14 @@ export default async function Auth(params: {
   params: Promise<{
     token: string;
   }>;
+  searchParams: Promise<{
+    confirmed?: string;
+  }>;
 }) {
-  return <ForgotReturn token={(await params.params).token} />;
+  return (
+    <ForgotReturn
+      token={(await params.params).token}
+      confirmed={(await params.searchParams)?.confirmed === '1'}
+    />
+  );
 }

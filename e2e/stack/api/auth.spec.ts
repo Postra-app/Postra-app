@@ -1,4 +1,5 @@
 import { expect, request, test } from '@playwright/test';
+import { hashSync } from 'bcrypt';
 import { sign } from 'jsonwebtoken';
 import { BACKEND_URL, anonymous, database, signedIn, throwawayOrg } from '../helpers';
 import { USERS } from '../seed';
@@ -169,13 +170,73 @@ test("someone else's activation link does not replace the session in this browse
     const code = sign({ id: pending.id, email: pending.email, activated: false, purpose: 'activate' }, process.env.JWT_SECRET!);
     const res = await signedInA.post('/auth/activate', { data: { code } });
     expect(res.status()).toBe(200);
-    expect(await res.json()).toMatchObject({ can: true, kept: true });
-    expect(res.headers()['set-cookie'] ?? '').not.toContain('auth=');
-    expect((await prisma.user.findUniqueOrThrow({ where: { id: pending.id } })).activated).toBe(true);
+    // This browser did not make the sign-up: nothing is activated yet, the
+    // page asks for the sign-up password. No session, this browser stays A.
+    const body = await res.json();
+    expect(body).toEqual({ can: true, signIn: true, email: pending.email });
+    expect(res.headers()['set-cookie'] ?? '').not.toMatch(/(^|[ ,])auth=[^;]/);
+    expect((await prisma.user.findUniqueOrThrow({ where: { id: pending.id } })).activated).toBe(false);
     expect((await (await signedInA.get('/user/self')).json()).email).toBe(USERS.a.email);
   } finally {
     await prisma.user.deleteMany({ where: { id: pending.id } });
     await signedInA.dispose();
+    await prisma.$disconnect();
+  }
+});
+
+test('the activation link in another browser: the sign-up password activates and signs in, a new one replaces it', async () => {
+  const prisma = database();
+  const make = (tag: string) =>
+    prisma.user.create({
+      data: {
+        email: `activate-${tag}-${Date.now()}@example.com`,
+        password: hashSync('Sign-up-pass-1', 10),
+        providerName: 'LOCAL',
+        name: 'Pending',
+        lastName: 'User',
+        timezone: 0,
+        activated: false,
+      },
+    });
+  const owner = await make('owner');
+  const stranger = await make('stranger');
+  const codeOf = (u: { id: string; email: string }) =>
+    sign({ id: u.id, email: u.email, activated: false, purpose: 'activate' }, process.env.JWT_SECRET!);
+  const browser = await anonymous();
+  try {
+    // The password alone is not enough, and a wrong one activates nothing.
+    const wrong = await browser.post('/auth/activate/sign-in', { data: { code: codeOf(owner), password: 'Guess-pass-1' } });
+    expect(wrong.status()).toBe(400);
+    expect(wrong.headers()['set-cookie'] ?? '').not.toMatch(/(^|[\s,])auth=[^;]/);
+    expect((await prisma.user.findUniqueOrThrow({ where: { id: owner.id } })).activated).toBe(false);
+    const noLink = await browser.post('/auth/activate/sign-in', { data: { code: 'not-a-link', password: 'Sign-up-pass-1' } });
+    expect(noLink.status()).toBe(400);
+
+    // The link with the sign-up password: active and signed in, password kept.
+    const right = await browser.post('/auth/activate/sign-in', { data: { code: codeOf(owner), password: 'Sign-up-pass-1' } });
+    expect(right.status(), await right.text()).toBe(200);
+    expect(right.headers()['set-cookie'] ?? '').toMatch(/(^|[\s,])auth=[^;]/);
+    expect((await prisma.user.findUniqueOrThrow({ where: { id: owner.id } })).activated).toBe(true);
+    const again = await anonymous();
+    const login = await again.post('/auth/login', { data: { provider: 'LOCAL', email: owner.email, password: 'Sign-up-pass-1' } });
+    expect(login.status()).toBe(200);
+    await again.dispose();
+
+    // The owner of an address a stranger signed up with chooses a new
+    // password through the link: the stranger's one stops working.
+    const holder = await anonymous();
+    const reset = await holder.post('/auth/activate/reset', { data: { code: codeOf(stranger) } });
+    expect(reset.status()).toBe(200);
+    expect(typeof (await reset.json()).setPassword).toBe('string');
+    expect(reset.headers()['set-cookie'] ?? '').not.toMatch(/(^|[\s,])auth=[^;]/);
+    const late = await holder.post('/auth/activate/sign-in', { data: { code: codeOf(stranger), password: 'Sign-up-pass-1' } });
+    expect(await late.json()).toEqual({ can: false });
+    const strangerLogin = await holder.post('/auth/login', { data: { provider: 'LOCAL', email: stranger.email, password: 'Sign-up-pass-1' } });
+    expect(strangerLogin.status()).toBe(400);
+    await holder.dispose();
+  } finally {
+    await prisma.user.deleteMany({ where: { id: { in: [owner.id, stranger.id] } } });
+    await browser.dispose();
     await prisma.$disconnect();
   }
 });

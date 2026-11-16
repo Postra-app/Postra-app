@@ -1338,6 +1338,7 @@
   "too_many_requests": "Trop de requêtes - veuillez patienter un instant et réessayer.",
   "server_unavailable_try_again": "Le serveur est temporairement indisponible - veuillez réessayer dans un instant.",
   "could_not_load_channels": "Impossible de charger la liste des canaux - veuillez réessayer.",
+  "add_channel_admin_only": "Seul un administrateur de cette organisation peut ajouter un canal. Demandez à un administrateur de l'ajouter ou de modifier votre rôle.",
   "discount_failed": "Impossible d'appliquer la remise, veuillez réessayer.",
   "billing_portal_failed": "Impossible d'ouvrir le portail de facturation, veuillez réessayer.",
   "billing_action_failed": "Une erreur est survenue, veuillez réessayer.",
@@ -1997,5 +1998,10 @@
   "switch_to_dark_mode": "Passer en mode sombre",
   "set_plug": "Définir le plug",
   "edit_plug": "Modifier le plug",
-  "post_editor": "Éditeur de publication"
+  "post_editor": "Éditeur de publication",
+  "activate_sign_in_title": "Adresse e-mail confirmée",
+  "activate_sign_in_subtitle": "Connectez-vous avec le mot de passe choisi lors de l'inscription pour finir d'activer votre compte.",
+  "activate_password_required": "Saisissez votre mot de passe.",
+  "activate_choose_new_password": "Je ne me suis pas inscrit ou j'ai oublié mon mot de passe",
+  "activation_check_spam": "Vous ne le trouvez pas ? Vérifiez votre dossier spam ou courrier indésirable."
 }

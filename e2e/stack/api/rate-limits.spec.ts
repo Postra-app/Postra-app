@@ -56,37 +56,12 @@ test('the public API is limited per key: the 31st missing-content call is 429, a
   await b.dispose();
 });
 
-// Every page load of the app asks the AI runtime which agents exist
-// (CopilotKit's `info`) on POST /copilot/chat. Counted toward the
-// 30-per-5-minutes AI limit, a team clicking around used up its organisation's
-// AI allowance in minutes, and every later page load and suggestion got 429.
-// The metadata request costs nothing; anything else on the route still counts.
-const AVAILABLE_AGENTS = { method: 'info' };
-
-test('page loads asking which AI agents exist do not use up the AI limit', async () => {
-  test.setTimeout(60_000);
+test('there is no ungated chat route beside the assistant', async () => {
   const first = await org();
-  for (let i = 0; i < 35; i++) {
-    const res = await first.api.post('/copilot/chat', { data: AVAILABLE_AGENTS });
-    expect(res.status(), `metadata query ${i + 1}`).not.toBe(429);
-  }
-});
-
-test('a run dressed up as the metadata request is still limited', async () => {
-  test.setTimeout(60_000);
-  const first = await org();
-  const disguised = {
-    method: 'agent/run',
-    params: { agentId: 'default' },
-    operationName: 'availableAgents',
-    body: {},
-  };
-  const statuses: number[] = [];
-  for (let i = 0; i < 31; i++) {
-    statuses.push((await first.api.post('/copilot/chat', { data: disguised })).status());
-  }
-  expect(statuses.slice(0, 30)).not.toContain(429);
-  expect(statuses[30]).toBe(429);
+  const res = await first.api.post('/copilot/chat', {
+    data: { method: 'agent/run', params: { agentId: 'default' }, body: {} },
+  });
+  expect(res.status()).toBe(404);
 });
 
 // Sign-ups are limited per IP per day; 3 cut off a household trying

@@ -6,6 +6,7 @@ import { AuthMiddleware } from '@gitroom/backend/services/auth/auth.middleware';
 import { StripeController } from '@gitroom/backend/api/routes/stripe.controller';
 import { AppleController } from '@gitroom/backend/api/routes/apple.controller';
 import { StripeService } from '@gitroom/nestjs-libraries/services/stripe.service';
+import { AccountDeletionService } from '@gitroom/backend/services/auth/account.deletion.service';
 import { AnalyticsController } from '@gitroom/backend/api/routes/analytics.controller';
 import { PoliciesGuard } from '@gitroom/backend/services/auth/permissions/permissions.guard';
 import { PermissionsService } from '@gitroom/backend/services/auth/permissions/permissions.service';
@@ -91,6 +92,7 @@ const authenticatedController = [
     AiVideoJobsService,
     MobilePushReceiptsService,
     AuthService,
+    AccountDeletionService,
     AdminMfaService,
     StripeService,
     OpenaiService,

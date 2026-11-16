@@ -1,4 +1,8 @@
 import { Logger } from '@nestjs/common';
+import {
+  blueskyDidIsHostedAt,
+  instanceFetch,
+} from '@gitroom/nestjs-libraries/integrations/instance.fetch';
 import { assertSafeInstanceUrl } from '@gitroom/nestjs-libraries/dtos/webhooks/webhook.url.validator';
 import {
   AuthTokenDetails,
@@ -292,6 +296,7 @@ export class BlueskyProvider extends SocialAbstract implements SocialProvider {
 
     try {
       const agent = new BskyAgent({
+        fetch: instanceFetch,
         service,
       });
 
@@ -301,6 +306,10 @@ export class BlueskyProvider extends SocialAbstract implements SocialProvider {
         identifier: blueskyLoginIdentifier(body.identifier),
         password: body.password,
       });
+
+      if (!(await blueskyDidIsHostedAt(did, service))) {
+        return 'This Bluesky account is not hosted on that service. Check the service address and try again.';
+      }
 
       const profile = await agent.getProfile({
         actor: did,
@@ -326,6 +335,7 @@ export class BlueskyProvider extends SocialAbstract implements SocialProvider {
       AuthService.decryptSecret(integration.customInstanceDetails!)
     );
     const agent = new BskyAgent({
+      fetch: instanceFetch,
       service: body.service,
     });
 
@@ -564,6 +574,7 @@ export class BlueskyProvider extends SocialAbstract implements SocialProvider {
       AuthService.decryptSecret(integration.customInstanceDetails!)
     );
     const agent = new BskyAgent({
+      fetch: instanceFetch,
       service: body.service,
     });
 
@@ -628,6 +639,7 @@ export class BlueskyProvider extends SocialAbstract implements SocialProvider {
       AuthService.decryptSecret(integration.customInstanceDetails!)
     );
     const agent = new BskyAgent({
+      fetch: instanceFetch,
       service: body.service,
     });
 
@@ -687,6 +699,7 @@ export class BlueskyProvider extends SocialAbstract implements SocialProvider {
     );
 
     const agent = new BskyAgent({
+      fetch: instanceFetch,
       service: body.service,
     });
 

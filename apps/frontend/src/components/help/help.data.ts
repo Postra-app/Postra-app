@@ -760,7 +760,7 @@ const FAQ_SOURCE: FaqItem[] = [
   {
     question: 'Are the API, MCP and webhooks safe to use?',
     answer:
-      'Your API key gives full access to your workspace, so treat it like a password: keep it on your own server or in your AI tool\'s settings, never in a website\'s code or a public repository. If it ever leaks, press Rotate in Settings → Developers - the old key stops working at once. Only workspace owners and admins can see the key. Apps you signed in to with your Postra account are listed in Settings → Approved apps, where you can revoke them. Webhook messages carry no passwords or channel tokens, only the post details listed above, and each is signed so your server can tell it came from Postra.',
+      'Your API key gives full access to your workspace, so treat it like a password: keep it on your own server or in your AI tool\'s settings, never in a website\'s code or a public repository. If it ever leaks, press Rotate in Settings → Developers - the old key stops working at once. Only workspace owners and admins can see the key, so when one of them leaves the team, becomes a member or is suspended, Postra replaces the key by itself and emails the owners and admins. Apps you signed in to with your Postra account are listed in Settings → Approved apps, where you can revoke them. Webhook messages carry no passwords or channel tokens, only the post details listed above, and each is signed so your server can tell it came from Postra.',
   },
 ];
 

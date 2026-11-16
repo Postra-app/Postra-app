@@ -42,6 +42,7 @@ import { TelegramProvider } from '@gitroom/nestjs-libraries/integrations/social/
 import { MoltbookProvider } from '@gitroom/nestjs-libraries/integrations/social/moltbook.provider';
 import {
   AuthorizationActions,
+  PermissionDeniedException,
   Sections,
 } from '@gitroom/nestjs-libraries/services/auth/permission.exception.class';
 import { uniqBy } from 'lodash';
@@ -304,6 +305,22 @@ export class IntegrationsController {
       // `{"statusCode":500,"message":"Internal server error"}`.
       // The tier check a few lines below already does this properly.
       throw new HttpException(`Unknown platform: ${integration}`, 400);
+    }
+
+    // Adding a channel, or handing a client a link to add one, is for admins
+    // because a channel takes a paid slot and posts in the
+    // organisation's name. A member may still re-authenticate a channel the
+    // organisation already has (`refresh` without `invite`), so a team of
+    // members is not stuck when a token expires.
+    const role = (org as { users?: { role?: string }[] })?.users?.[0]?.role;
+    if (
+      (!refresh || invite === 'true') &&
+      !['ADMIN', 'SUPERADMIN'].includes(role || '')
+    ) {
+      throw new PermissionDeniedException({
+        section: Sections.ADMIN,
+        action: AuthorizationActions.Create,
+      });
     }
 
     // `refresh` skips the plan gates below, so it has to name a channel this

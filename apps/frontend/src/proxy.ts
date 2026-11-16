@@ -221,14 +221,17 @@ export async function proxy(request: NextRequest) {
   }
 
   // If the url is /auth and the cookie exists, redirect to / — EXCEPT the
-  // email-token pages (password reset + account activation). Those links are
+  // email-token pages (password reset, account activation, account deletion). Those links are
   // opened from an inbox and must work even when another session is already
   // live in the browser; otherwise this blanket rule bounces the user straight
   // into whatever account that cookie belongs to. The reset/activate token is
   // bound server-side to its own user id, so a stray cookie can't retarget it.
+  // The account-deletion link is one too: opened in the account's own
+  // browser it would otherwise land in the calendar instead of the button.
   const isEmailTokenPage =
     nextUrl.pathname.startsWith('/auth/forgot') ||
-    nextUrl.pathname.startsWith('/auth/activate');
+    nextUrl.pathname.startsWith('/auth/activate') ||
+    nextUrl.pathname.startsWith('/auth/delete-account');
   if (nextUrl.pathname.startsWith('/auth') && !isEmailTokenPage && authCookie) {
     return NextResponse.redirect(new URL(`/${url}`, nextUrl.href));
   }

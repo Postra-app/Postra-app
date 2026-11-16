@@ -1338,6 +1338,7 @@
   "too_many_requests": "Zu viele Anfragen - bitte warten Sie einen Moment und versuchen Sie es erneut.",
   "server_unavailable_try_again": "Der Server ist vorübergehend nicht verfügbar - bitte versuchen Sie es gleich noch einmal.",
   "could_not_load_channels": "Die Kanalliste konnte nicht geladen werden - bitte versuchen Sie es erneut.",
+  "add_channel_admin_only": "Nur ein Admin dieser Organisation kann einen Kanal hinzufügen. Bitten Sie einen Admin, ihn hinzuzufügen oder Ihre Rolle zu ändern.",
   "discount_failed": "Der Rabatt konnte nicht angewendet werden, bitte versuchen Sie es erneut.",
   "billing_portal_failed": "Das Abrechnungsportal konnte nicht geöffnet werden, bitte versuchen Sie es erneut.",
   "billing_action_failed": "Etwas ist schiefgelaufen, bitte versuchen Sie es erneut.",
@@ -1997,5 +1998,10 @@
   "switch_to_dark_mode": "Zum dunklen Modus wechseln",
   "set_plug": "Plug festlegen",
   "edit_plug": "Plug bearbeiten",
-  "post_editor": "Beitragseditor"
+  "post_editor": "Beitragseditor",
+  "activate_sign_in_title": "E-Mail bestätigt",
+  "activate_sign_in_subtitle": "Melde dich mit dem Passwort an, das du bei der Registrierung gewählt hast, um die Aktivierung abzuschließen.",
+  "activate_password_required": "Gib dein Passwort ein.",
+  "activate_choose_new_password": "Ich habe mich nicht registriert oder mein Passwort vergessen",
+  "activation_check_spam": "Nicht gefunden? Sieh in deinem Spam- oder Junk-Ordner nach."
 }

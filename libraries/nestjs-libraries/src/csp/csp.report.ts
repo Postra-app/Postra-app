@@ -24,10 +24,14 @@ const withoutQuery = (url: unknown) => {
     const parsed = new URL(url);
     return `${parsed.origin}${parsed.pathname}`;
   } catch {
-    // "inline", "eval", "data" and the like are not URLs.
-    return url.slice(0, 100);
+    // "inline", "eval", "data" and the like are not URLs. Anyone can post a
+    // report: nothing in it starts a line of its own in the log.
+    return oneLine(url.slice(0, 100));
   }
 };
+
+// eslint-disable-next-line no-control-regex
+const oneLine = (text: string) => text.replace(/[\u0000-\u001f\u007f\u2028\u2029]/g, ' ');
 
 const pathOf = (url: unknown) => {
   try {
@@ -48,7 +52,7 @@ const one = (r: Record<string, any>): CspViolation | undefined => {
   // and the endpoint answered 500.
   const line = Number.isFinite(rawLine) ? rawLine : undefined;
   return {
-    directive: directive.split(' ')[0].slice(0, 60),
+    directive: oneLine(directive.split(' ')[0].slice(0, 60)),
     blocked: withoutQuery(r['blocked-uri'] || r.blockedURL),
     page: pathOf(r['document-uri'] || r.documentURL),
     source: file ? `${file}${line ? `:${line}` : ''}` : '',

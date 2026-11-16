@@ -185,6 +185,19 @@ describe('a session that is impersonating', () => {
     expect(next).not.toHaveBeenCalled();
   });
 
+  // The router matches /User/delete as /user/delete.
+  it.each(['/User/delete', '/USER/DELETE', '/Settings/transfer-ownership/u2', '/Billing/add-subscription'])(
+    'cannot reach %s by spelling it in another case',
+    async (path) => {
+      const { middleware } = build(impersonatedTarget);
+      const next = jest.fn();
+      await expect(
+        middleware.use(request(path) as any, response() as any, next)
+      ).rejects.toMatchObject({ status: 403 });
+      expect(next).not.toHaveBeenCalled();
+    }
+  );
+
   it('renews its own window on activity instead of running for a year', async () => {
     const { middleware } = build(impersonatedTarget);
     const res = response();

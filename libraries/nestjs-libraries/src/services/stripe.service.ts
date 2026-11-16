@@ -10,7 +10,7 @@ import { SubscriptionService } from '@gitroom/nestjs-libraries/database/prisma/s
 import { OrganizationService } from '@gitroom/nestjs-libraries/database/prisma/organizations/organization.service';
 import { makeId } from '@gitroom/nestjs-libraries/services/make.is';
 import { BillingSubscribeDto } from '@gitroom/nestjs-libraries/dtos/billing/billing.subscribe.dto';
-import { pricing } from '@gitroom/nestjs-libraries/database/prisma/subscriptions/pricing';
+import { planLabel, pricing } from '@gitroom/nestjs-libraries/database/prisma/subscriptions/pricing';
 import { TrackService } from '@gitroom/nestjs-libraries/track/track.service';
 import { NotificationService } from '@gitroom/nestjs-libraries/database/prisma/notifications/notification.service';
 import { UsersService } from '@gitroom/nestjs-libraries/database/prisma/users/users.service';
@@ -28,6 +28,9 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || 'sk_nothing');
 
 // Pence → "£29.00" for messages to the customer.
 const formatAmount = (pence: number) => `£${(pence / 100).toFixed(2)}`;
+// "£19" for a whole amount, "£19.50" otherwise: how prices read on the site.
+const formatWholeAmount = (pence: number) =>
+  formatAmount(pence).replace(/\.00$/, '');
 
 // A subscription that can be charged or cancelled. `incomplete` (first
 // payment never went through) and `incomplete_expired` are not: listed first,
@@ -482,12 +485,62 @@ export class StripeService {
     };
   }
 
+  // The plan a subscription pays for is the product of the price Stripe
+  // charges. The metadata only says what was asked for at checkout, and it
+  // can be edited in the Dashboard or by an API call with the price left
+  // alone: read first, it kept a Business tier on a Starter price. It
+  // stays the answer only when the price names no plan (a subscription made
+  // by hand with a product of its own), and that is logged.
+  private planOfSubscription(current: Stripe.Subscription): {
+    billing?: 'STANDARD' | 'TEAM' | 'PRO' | 'ULTIMATE';
+    period?: 'MONTHLY' | 'YEARLY';
+  } {
+    const meta = (current.metadata || {}) as {
+      billing?: 'STANDARD' | 'TEAM' | 'PRO' | 'ULTIMATE';
+      period?: 'MONTHLY' | 'YEARLY';
+    };
+    const price = current.items?.data?.[0]?.price;
+    const product =
+      price && typeof price.product === 'object' && price.product
+        ? (price.product as Stripe.Product | Stripe.DeletedProduct)
+        : null;
+    const named =
+      product && !('deleted' in product && product.deleted)
+        ? (product as Stripe.Product).metadata?.tier ||
+          (product as Stripe.Product).name?.toUpperCase()
+        : undefined;
+    const tier =
+      named && named !== 'FREE' && pricing[named]
+        ? (named as 'STANDARD' | 'TEAM' | 'PRO' | 'ULTIMATE')
+        : undefined;
+    const interval = price?.recurring?.interval;
+    const pricePeriod =
+      interval === 'year' ? 'YEARLY' : interval === 'month' ? 'MONTHLY' : undefined;
+
+    if (!tier) {
+      if (price) {
+        this._logger.warn(
+          `Subscription ${current.id}: price ${price.id} names no plan, using the metadata (${meta.billing})`
+        );
+      }
+      return { billing: meta.billing, period: pricePeriod || meta.period };
+    }
+    if (meta.billing && meta.billing !== tier) {
+      this._logger.warn(
+        `Subscription ${current.id}: metadata says ${meta.billing}, the price is ${tier}; writing ${tier}`
+      );
+    }
+    return { billing: tier, period: pricePeriod || meta.period };
+  }
+
   private async syncSubscription(
     event:
       | Stripe.CustomerSubscriptionCreatedEvent
       | Stripe.CustomerSubscriptionUpdatedEvent
   ) {
-    const current = await stripe.subscriptions.retrieve(event.data.object.id);
+    const current = await stripe.subscriptions.retrieve(event.data.object.id, {
+      expand: ['items.data.price.product'],
+    });
     // A retry after a rejection that failed part-way finishes it, also once
     // the subscription is cancelled.
     const rejected = current.metadata?.trial_rejected;
@@ -530,11 +583,8 @@ export class StripeService {
       return { ok: true, skipped: current.status };
     }
 
-    const { uniqueId, billing, period } = current.metadata as {
-      billing: 'STANDARD' | 'TEAM' | 'PRO' | 'ULTIMATE';
-      period: 'MONTHLY' | 'YEARLY';
-      uniqueId: string;
-    };
+    const { uniqueId } = current.metadata as { uniqueId: string };
+    const { billing, period } = this.planOfSubscription(current);
 
     // A subscription created by hand in the Stripe dashboard can carry
     // service metadata with a missing/invalid billing tier — indexing
@@ -657,8 +707,21 @@ export class StripeService {
     // the metadata, and writing it here granted the upgrade before the money.
     const kept =
       current.status === 'past_due' ? await this.currentTier(current) : null;
+    // A trial whose first charge failed is past_due with nothing paid yet. It
+    // stopped being "trialing" for Stripe, and written as a paid plan it had
+    // the whole tier without the trial's limits for as long as Stripe kept
+    // retrying, again with the next card and address. It stays a trial here
+    // until a charge goes through (the subscription turns active) or Stripe
+    // gives up (deleted, unpaid).
+    const unpaidTrial =
+      current.status === 'past_due' &&
+      !!(
+        await this._organizationService.getOrgByCustomerId(
+          current.customer as string
+        )
+      )?.isTrailing;
     return this._subscriptionService.createOrUpdateSubscription(
-      current.status === 'trialing',
+      current.status === 'trialing' || unpaidTrial,
       uniqueId,
       current.customer as string,
       pricing[kept?.billing || billing].channel!,
@@ -719,6 +782,124 @@ export class StripeService {
     );
 
     return { ok: true };
+  }
+
+  // Stripe announces the end of a trial three days ahead. The reminder is
+  // ours, not Stripe's: Stripe's own reminder carries the name of the shared
+  // account, and it went out within seconds of a trial that was then refused.
+  // Read again, not from the event: a trial cancelled, refused or ended since
+  // gets no mail saying the card will be charged.
+  async trialWillEnd(event: Stripe.CustomerSubscriptionTrialWillEndEvent) {
+    const current = await stripe.subscriptions.retrieve(event.data.object.id, {
+      expand: [
+        'items.data.price.product',
+        'default_payment_method',
+        'customer.invoice_settings.default_payment_method',
+      ],
+    });
+    if (
+      current.status !== 'trialing' ||
+      !current.trial_end ||
+      current.metadata?.trial_rejected ||
+      current.cancel_at_period_end ||
+      current.cancel_at
+    ) {
+      return { ok: true, skipped: 'not a trial that will be charged' };
+    }
+    const customerId =
+      typeof current.customer === 'string'
+        ? current.customer
+        : current.customer.id;
+    const org = await this._organizationService.getOrgByCustomerId(customerId);
+    if (!org) {
+      return { ok: true, skipped: 'no organisation' };
+    }
+
+    const { billing, period } = this.planOfSubscription(current);
+    const ends = new Intl.DateTimeFormat('en-GB', {
+      day: 'numeric',
+      month: 'long',
+      timeZone: 'Europe/London',
+    }).format(new Date(current.trial_end * 1000));
+    const amount = await this.firstChargeAfterTrial(current, customerId);
+    const last4 = this.cardOfSubscription(current);
+    const charged =
+      amount === null
+        ? last4
+          ? `your card ending ${last4} will be charged`
+          : 'you will be charged'
+        : last4
+        ? `your card ending ${last4} will be charged ${amount}`
+        : `you will be charged ${amount}`;
+    const yearly = period === 'YEARLY';
+    const every =
+      amount === null
+        ? yearly
+          ? 'every year'
+          : 'every month'
+        : yearly
+        ? 'a year'
+        : 'a month';
+
+    await this._notificationService.inAppNotification(
+      org.id,
+      `Your Postra trial ends on ${ends}`,
+      `Your free trial of Postra ${planLabel(
+        billing
+      )} ends on ${ends}. After that, ${charged} ${every}. Want to keep going? There is nothing to do. To cancel or change your plan, open Billing: ${
+        process.env.FRONTEND_URL
+      }/billing`,
+      true,
+      false,
+      'info'
+    );
+    return { ok: true };
+  }
+
+  // What the first invoice after the trial asks for, from Stripe's preview
+  // (a discount or tax changes it); the price itself when the preview fails.
+  private async firstChargeAfterTrial(
+    current: Stripe.Subscription,
+    customerId: string
+  ): Promise<string | null> {
+    try {
+      const preview = await stripe.invoices.createPreview({
+        customer: customerId,
+        subscription: current.id,
+      });
+      if (typeof preview.amount_due === 'number') {
+        return formatWholeAmount(preview.amount_due);
+      }
+    } catch (err) {
+      this._logger.warn(
+        `Subscription ${current.id}: no invoice preview for the trial reminder (${
+          err instanceof Error ? err.message : String(err)
+        })`
+      );
+    }
+    const item = current.items?.data?.[0];
+    const unit = item?.price?.unit_amount;
+    return typeof unit === 'number'
+      ? formatWholeAmount(unit * (item?.quantity || 1))
+      : null;
+  }
+
+  // The card the trial will be charged to: the subscription's own payment
+  // method, else the customer's default for invoices.
+  private cardOfSubscription(current: Stripe.Subscription): string | null {
+    const own = current.default_payment_method;
+    if (own && typeof own === 'object' && own.card?.last4) {
+      return own.card.last4;
+    }
+    const customer = current.customer;
+    if (customer && typeof customer === 'object' && !('deleted' in customer && customer.deleted)) {
+      const fallback = (customer as Stripe.Customer).invoice_settings
+        ?.default_payment_method;
+      if (fallback && typeof fallback === 'object' && fallback.card?.last4) {
+        return fallback.card.last4;
+      }
+    }
+    return null;
   }
 
   /**
@@ -818,6 +999,124 @@ export class StripeService {
       event.data.object.metadata?.uniqueId
     );
     return { ok: true };
+  }
+
+  // A chargeback, or a refund of the whole payment, takes back the money a
+  // subscription was paid with, and the plan used to stay: the organisation
+  // kept the tier for free until the period ran out, then renewed on the same
+  // card. The subscription that payment paid for ends at once, as a cancel
+  // does. Only that one: a refund of a cancelled duplicate, a partial refund,
+  // the released £1 card check, a charge of another business on this shared
+  // account, or one that paid no subscription change nothing.
+  async paymentReversed(
+    event: Stripe.ChargeDisputeCreatedEvent | Stripe.ChargeRefundedEvent
+  ) {
+    const ref = (v?: string | { id: string } | null) =>
+      typeof v === 'string' ? v : v?.id;
+    const reason = event.type === 'charge.dispute.created' ? 'dispute' : 'refund';
+
+    let charge: Stripe.Charge;
+    if (event.type === 'charge.dispute.created') {
+      const chargeId = ref(event.data.object.charge);
+      if (!chargeId) {
+        return { ok: true, skipped: 'dispute without a charge' };
+      }
+      charge = await stripe.charges.retrieve(chargeId);
+    } else {
+      charge = event.data.object;
+      if (!charge.refunded) {
+        this._logger.log(
+          `Partial refund of ${charge.id} (${charge.amount_refunded} of ${charge.amount}): plan unchanged`
+        );
+        return { ok: true, skipped: 'partial refund' };
+      }
+    }
+
+    const customer = ref(charge.customer);
+    const paymentIntent = ref(charge.payment_intent);
+    if (!customer || !paymentIntent) {
+      return { ok: true, skipped: 'no customer or payment intent' };
+    }
+    const org = await this._organizationService.getOrgByCustomerId(customer);
+    if (!org) {
+      return { ok: true, skipped: 'not a Postra customer' };
+    }
+
+    if (reason === 'refund') {
+      // refundDuplicate gives back the payment of a second subscription it
+      // cancels; the customer's plan is the other one and stays.
+      const refunds = await stripe.refunds.list({ charge: charge.id, limit: 10 });
+      if (
+        refunds.data.length &&
+        refunds.data.every((r) => r.reason === 'duplicate')
+      ) {
+        return { ok: true, skipped: 'refund of a duplicate subscription' };
+      }
+    }
+
+    const payments = await stripe.invoicePayments.list({
+      payment: { type: 'payment_intent', payment_intent: paymentIntent },
+      limit: 10,
+    });
+    const subscriptionIds = new Set<string>();
+    for (const payment of payments.data) {
+      const invoiceId = ref(payment.invoice as string | { id: string } | null);
+      if (!invoiceId) continue;
+      const invoice = await stripe.invoices.retrieve(invoiceId);
+      const subscriptionId = ref(
+        invoice.parent?.subscription_details?.subscription
+      );
+      if (subscriptionId) subscriptionIds.add(subscriptionId);
+    }
+    if (!subscriptionIds.size) {
+      return { ok: true, skipped: 'payment of no subscription' };
+    }
+
+    const ended: string[] = [];
+    for (const subscriptionId of subscriptionIds) {
+      const subscription = await stripe.subscriptions.retrieve(subscriptionId);
+      if (
+        subscription.metadata?.service !== 'gitroom' ||
+        !isLiveSubscription(subscription)
+      ) {
+        continue;
+      }
+      await this.releaseSchedule(subscription);
+      await stripe.subscriptions.cancel(subscription.id);
+      ended.push(subscription.id);
+      this._logger.warn(
+        `Subscription ${subscription.id} of ${customer} (org ${org.id}) cancelled: ${reason} of charge ${charge.id}`
+      );
+      const otherLive = (
+        await stripe.subscriptions.list({ customer, status: 'all', limit: 100 })
+      ).data.some(
+        (s) =>
+          s.id !== subscription.id &&
+          ['active', 'trialing', 'past_due'].includes(s.status)
+      );
+      if (!otherLive) {
+        // Audited there (`subscription.delete`); a comp given since is kept.
+        await this._subscriptionService.deleteSubscription(
+          customer,
+          subscription.metadata?.uniqueId
+        );
+      }
+    }
+    if (!ended.length) {
+      return { ok: true, skipped: 'subscription already ended' };
+    }
+    await this.voidUnpaidInvoices(customer);
+    await this._notificationService.inAppNotification(
+      org.id,
+      'Subscription ended',
+      reason === 'dispute'
+        ? `Your bank opened a dispute on your latest payment, so your subscription has ended. If this was a mistake, contact us at hello@postra.co.uk.`
+        : `Your latest payment was refunded in full, so your subscription has ended. You can subscribe again at any time from ${process.env.FRONTEND_URL}/billing.`,
+      true,
+      false,
+      'info'
+    );
+    return { ok: true, ended };
   }
 
   // Billing history: the organisation's invoices, newest first. No Stripe

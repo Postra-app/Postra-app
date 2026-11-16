@@ -2,11 +2,11 @@ import { expect, test } from '@playwright/test';
 import { addMember, database, throwawayOrg } from '../helpers';
 
 // In the browser: Settings → Teams lets the owner change a member's
-// role and hand the organisation over. Taking an admin's role or seat away
-// offers to rotate the API key they could see (never by itself: that would
-// break the organisation's integrations). Its own organisation: roles change.
+// role and hand the organisation over. Taking an admin's role or removing
+// them replaces the API key they could see, at once, and says so. Its own
+// organisation: roles change.
 
-test('the owner changes roles, rotates the key after an admin, and hands the organisation over', async ({
+test('the owner changes roles, the key is replaced after an admin, and the organisation is handed over', async ({
   page,
   context,
 }) => {
@@ -39,28 +39,29 @@ test('the owner changes roles, rotates the key after an admin, and hands the org
     await expect(page.getByText('Role changed').first()).toBeVisible();
     await expect.poll(() => roleOf(member.userId)).toBe('ADMIN');
 
-    // Admin → User: they saw the key; "Not now" leaves it as it is.
+    // Admin → User: they saw the key, so it is replaced and the page says so.
     const keyBefore = await apiKeyHash();
     await memberRole.selectOption('USER');
     await expect(
-      page.getByText('This person could see your API key. Rotate it in Settings → Developers.')
+      page.getByText('They could see your API key, so it was replaced.', { exact: false })
     ).toBeVisible();
-    await page.getByRole('button', { name: 'Not now' }).click();
     await expect.poll(() => roleOf(member.userId)).toBe('USER');
-    expect(await apiKeyHash()).toBe(keyBefore);
+    await expect.poll(() => apiKeyHash()).not.toBe(keyBefore);
+    const keyAfterDemotion = await apiKeyHash();
 
-    // Removing an admin: the same offer, and "Rotate" gives a new key.
+    // Removing an admin: warned before confirming, and the key is replaced again.
     const adminRow = page.locator('div.flex.items-center', {
       has: page.locator(`select[aria-label="Role of ${admin.email}"]`),
     });
     await adminRow.getByRole('button', { name: 'Remove' }).click();
+    await expect(
+      page.getByText('They could see your API key, so it will be replaced', { exact: false })
+    ).toBeVisible();
     await page.getByRole('button', { name: 'Yes, delete it!' }).click();
     await expect(
-      page.getByText('This person could see your API key. Rotate it in Settings → Developers.')
+      page.getByText('They could see your API key, so it was replaced.', { exact: false }).first()
     ).toBeVisible();
-    await page.getByRole('button', { name: 'Rotate', exact: true }).click();
-    await expect(page.getByText('API Key rotated successfully')).toBeVisible();
-    expect(await apiKeyHash()).not.toBe(keyBefore);
+    await expect.poll(() => apiKeyHash()).not.toBe(keyAfterDemotion);
 
     // Hand the organisation over: the member becomes the owner, I stay an admin
     // and the role controls go away.

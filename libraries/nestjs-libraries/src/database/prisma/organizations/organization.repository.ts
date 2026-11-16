@@ -56,6 +56,22 @@ const storedApiKey = () => {
   return { apiKey, apiKeyHash };
 };
 
+// The key is shown to owners and admins only (users.controller `publicApi`),
+// so one of them leaving the organisation, losing the admin role or being
+// suspended takes the key with them: it is replaced in the same transaction
+// as the change that ends their access. Only a key they had seen is replaced:
+// a plain member never saw it, and replacing it breaks every integration.
+export const ROLES_THAT_SEE_THE_API_KEY: Role[] = [Role.SUPERADMIN, Role.ADMIN];
+export const replaceApiKeyIn = (
+  tx: { organization: { update: (args: any) => Promise<unknown> } },
+  orgId: string
+) =>
+  tx.organization.update({
+    where: { id: orgId },
+    data: { ...storedApiKey() },
+    select: { id: true },
+  });
+
 @Injectable()
 export class OrganizationRepository {
   constructor(
@@ -633,17 +649,50 @@ export class OrganizationRepository {
     });
   }
 
-  disableOrEnableNonSuperAdminUsers(orgId: string, disable: boolean) {
-    return this._userOrg.model.userOrganization.updateMany({
+  // Who can see the API key today, to be told it was replaced: owners and
+  // admins with a working seat and an account that is not suspended.
+  async getApiKeyHolders(orgId: string) {
+    const rows = await this._userOrg.model.userOrganization.findMany({
       where: {
         organizationId: orgId,
-        role: {
-          not: Role.SUPERADMIN,
-        },
+        role: { in: ROLES_THAT_SEE_THE_API_KEY },
+        disabled: false,
+        user: { suspendedAt: null },
       },
-      data: {
-        disabled: disable,
-      },
+      select: { user: { select: { id: true, email: true } } },
+    });
+    return rows.map((r) => r.user);
+  }
+
+  disableOrEnableNonSuperAdminUsers(orgId: string, disable: boolean) {
+    return this.setSeats(orgId, undefined, disable);
+  }
+
+  // Turns seats off or on, never the owner's. An admin whose seat is turned
+  // off can no longer use the organisation but kept the API key they had seen
+  //: the key is replaced in the same transaction. Turning seats
+  // back on replaces nothing. `userIds` undefined = every member but the owner.
+  // Returns the admins whose seat was turned off.
+  private setSeats(orgId: string, userIds: string[] | undefined, disabled: boolean) {
+    const where = {
+      organizationId: orgId,
+      ...(userIds ? { userId: { in: userIds } } : {}),
+      // Never disable the owner — the seat cap always keeps SUPERADMIN.
+      role: { not: Role.SUPERADMIN },
+    };
+    return this._transaction.model.$transaction(async (tx) => {
+      const admins = disabled
+        ? await tx.userOrganization.findMany({
+            where: { ...where, role: Role.ADMIN, disabled: false },
+            select: { userId: true },
+          })
+        : [];
+      const { count } = await tx.userOrganization.updateMany({
+        where,
+        data: { disabled },
+      });
+      if (admins.length) await replaceApiKeyIn(tx, orgId);
+      return { count, adminsDisabled: admins.map((a) => a.userId) };
     });
   }
 
@@ -697,7 +746,7 @@ export class OrganizationRepository {
     targetId: string,
     role: 'USER' | 'ADMIN' | 'OWNER'
   ): Promise<
-    | { ok: true; from: Role }
+    | { ok: true; from: Role; keyReplaced: boolean }
     | { ok: false; reason: 'not-owner' | 'self' | 'not-member' | 'already-owner' | 'unavailable' }
   > {
     return this.lockedTeamChange(orgId, actorId, targetId, async (tx, actor, target) => {
@@ -718,8 +767,18 @@ export class OrganizationRepository {
         await tx.userOrganization.update({ where: where(actorId), data: { role: Role.ADMIN } });
       } else if (target.role !== role) {
         await tx.userOrganization.update({ where: where(targetId), data: { role } });
+        if (role === 'USER' && ROLES_THAT_SEE_THE_API_KEY.includes(target.role)) {
+          // A token of an app they approved acts as an admin of the
+          // organisation (public.auth.middleware): it goes with the role.
+          await tx.oAuthAuthorization.updateMany({
+            where: { organizationId: orgId, userId: targetId, revokedAt: null },
+            data: { revokedAt: new Date() },
+          });
+          await replaceApiKeyIn(tx, orgId);
+          return { ok: true, from: target.role, keyReplaced: true } as const;
+        }
       }
-      return { ok: true, from: target.role } as const;
+      return { ok: true, from: target.role, keyReplaced: false } as const;
     });
   }
 
@@ -727,7 +786,10 @@ export class OrganizationRepository {
     orgId: string,
     actorId: string,
     targetId: string
-  ): Promise<{ ok: true } | { ok: false; reason: 'not-member' | 'forbidden' | 'last-owner' }> {
+  ): Promise<
+    | { ok: true; keyReplaced: boolean }
+    | { ok: false; reason: 'not-member' | 'forbidden' | 'last-owner' }
+  > {
     const level = (role?: Role) =>
       role === Role.SUPERADMIN ? 2 : role === Role.ADMIN ? 1 : 0;
     return this.lockedTeamChange(orgId, actorId, targetId, async (tx, actor, target) => {
@@ -751,7 +813,9 @@ export class OrganizationRepository {
       await tx.userOrganization.delete({
         where: { userId_organizationId: { userId: targetId, organizationId: orgId } },
       });
-      return { ok: true } as const;
+      const keyReplaced = ROLES_THAT_SEE_THE_API_KEY.includes(target.role);
+      if (keyReplaced) await replaceApiKeyIn(tx, orgId);
+      return { ok: true, keyReplaced } as const;
     });
   }
 
@@ -769,15 +833,7 @@ export class OrganizationRepository {
   }
 
   setMembersDisabled(orgId: string, userIds: string[], disabled: boolean) {
-    return this._userOrg.model.userOrganization.updateMany({
-      where: {
-        organizationId: orgId,
-        userId: { in: userIds },
-        // Never disable the owner — the seat cap always keeps SUPERADMIN.
-        role: { not: Role.SUPERADMIN },
-      },
-      data: { disabled },
-    });
+    return this.setSeats(orgId, userIds, disabled);
   }
 
   getShortlinkPreference(orgId: string) {

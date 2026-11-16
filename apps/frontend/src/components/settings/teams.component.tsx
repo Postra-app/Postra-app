@@ -179,32 +179,20 @@ export const TeamsComponent = () => {
   const nameOf = (email: string) =>
     capitalize(email.split('@')[0]).split('.')[0];
 
-  // An admin sees the organisation's API key (Settings, Developers), and
-  // removing them or making them a plain member leaves that key working. It is
-  // not rotated by itself: that would silently break the organisation's
-  // integrations (n8n, Zapier, MCP with the key). Offer it instead.
-  const offerKeyRotation = useCallback(async () => {
-    const rotate = await areYouSure({
-      title: t('rotate_api_key', 'Rotate API Key?'),
-      description: t(
-        'team_rotate_api_key_hint',
-        'This person could see your API key. Rotate it in Settings → Developers.'
-      ),
-      approveLabel: t('rotate', 'Rotate'),
-      cancelLabel: t('not_now', 'Not now'),
-    });
-    if (!rotate) return;
-    const response = await fetch('/user/api-key/rotate', { method: 'POST' });
-    if (!response.ok) {
-      toast.show(
-        `${t('api_key_rotate_failed', 'Could not rotate the API key')}: ${await readResponseError(response)}`,
-        'warning'
-      );
-      return;
-    }
+  // An admin sees the organisation's API key (Settings, Developers). Removing
+  // them or making them a plain member replaces the key on the server in the
+  // same step; the owners and admins also get a mail. This only
+  // says so and shows the new key, so the integrations can be updated.
+  const keyReplacedNote = useCallback(async () => {
     await mutateGlobal('/user/self');
-    toast.show(t('api_key_rotated', 'API Key rotated successfully'), 'success');
-  }, [t, fetch, mutateGlobal, toast]);
+    toast.show(
+      t(
+        'team_api_key_replaced',
+        'They could see your API key, so it was replaced. Update your integrations with the new key from Settings, Developers.'
+      ),
+      'success'
+    );
+  }, [t, mutateGlobal, toast]);
 
   const changeRole = useCallback(
     (member: { role: string; user: { id: string } }, role: 'USER' | 'ADMIN') =>
@@ -220,13 +208,14 @@ export const TeamsComponent = () => {
           );
           return;
         }
+        const { keyReplaced } = await response.json().catch(() => ({}));
         await mutate();
         toast.show(t('team_role_changed', 'Role changed'), 'success');
-        if (member.role === 'ADMIN' && role === 'USER') {
-          await offerKeyRotation();
+        if (keyReplaced) {
+          await keyReplacedNote();
         }
       },
-    [t, fetch, mutate, offerKeyRotation, toast]
+    [t, fetch, mutate, keyReplacedNote, toast]
   );
 
   const makeOwner = useCallback(
@@ -275,7 +264,12 @@ export const TeamsComponent = () => {
       async () => {
         if (
           !(await deleteDialog(
-            t('are_you_sure_remove_team_member', 'Are you sure you want to remove this team member?')
+            toRemove.role === 'USER'
+              ? t('are_you_sure_remove_team_member', 'Are you sure you want to remove this team member?')
+              : t(
+                  'are_you_sure_remove_team_admin',
+                  'Remove this team member? They could see your API key, so it will be replaced and your integrations will need the new one.'
+                )
           ))
         ) {
           return;
@@ -294,9 +288,10 @@ export const TeamsComponent = () => {
             );
             return;
           }
+          const { keyReplaced } = await response.json().catch(() => ({}));
           await mutate();
-          if (toRemove.role !== 'USER') {
-            await offerKeyRotation();
+          if (keyReplaced) {
+            await keyReplacedNote();
           }
         } catch (e) {
           console.error('[Postra:teams] remove failed', e);
@@ -306,7 +301,7 @@ export const TeamsComponent = () => {
           );
         }
       },
-    [t, fetch, mutate, offerKeyRotation, toast]
+    [t, fetch, mutate, keyReplacedNote, toast]
   );
 
   return (

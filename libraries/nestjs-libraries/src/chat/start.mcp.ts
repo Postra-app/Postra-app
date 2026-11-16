@@ -1,3 +1,8 @@
+import {
+  mcpBatchRefusal,
+  mcpBatchRefusalAnswer,
+  toolCallsIn,
+} from '@gitroom/nestjs-libraries/chat/mcp.batch';
 import { recordAgentMessage } from '@gitroom/nestjs-libraries/services/ai-usage.record';
 import { agentLimitMessage } from '@gitroom/nestjs-libraries/database/prisma/subscriptions/pricing';
 import { lacksSubscription } from '@gitroom/nestjs-libraries/database/prisma/subscriptions/lacks.subscription';
@@ -137,6 +142,33 @@ export const startMcp = async (app: INestApplication) => {
     }
   };
 
+  // The request itself was counted above; the rest of the calls it carries
+  // are counted here, so a batch costs what its calls would have one by one.
+  const mcpCallsOverLimit = async (orgId: string, body: unknown) => {
+    const extra = toolCallsIn(body).length - 1;
+    if (extra <= 0) {
+      return false;
+    }
+    try {
+      return (await ioRedis.incrby(`mcp-rate:${orgId}`, extra)) > MCP_RATE_LIMIT;
+    } catch {
+      return false;
+    }
+  };
+  // True when the request was answered here instead of being run.
+  const refusedBatch = async (orgId: string, req: Request, res: Response) => {
+    const tooMany = mcpBatchRefusal(req.body);
+    if (tooMany) {
+      res.status(200).json(mcpBatchRefusalAnswer(req.body, tooMany));
+      return true;
+    }
+    if (await mcpCallsOverLimit(orgId, req.body)) {
+      res.status(429).send('Too many requests');
+      return true;
+    }
+    return false;
+  };
+
   const resolveAuth = async (token: string) => {
     if (token.startsWith('pos_')) {
       const authorization = await oauthService.getOrgByOAuthToken(token);
@@ -258,6 +290,9 @@ export const startMcp = async (app: INestApplication) => {
     if (!(await readBody(req, res))) {
       return;
     }
+    if (await refusedBatch(auth.id, req, res)) {
+      return;
+    }
     const refusal = await agentRunRefusal(auth, req.body);
     if (refusal) {
       refuseAgentRun(req, res, refusal);
@@ -332,6 +367,10 @@ export const startMcp = async (app: INestApplication) => {
     }
 
     if (!(await readBody(req, res))) {
+      return;
+    }
+    // @ts-ignore
+    if (await refusedBatch(req.auth.id, req, res)) {
       return;
     }
     // @ts-ignore

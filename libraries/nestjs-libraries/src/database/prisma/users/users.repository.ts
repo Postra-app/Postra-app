@@ -6,6 +6,9 @@ import { UserDetailDto } from '@gitroom/nestjs-libraries/dtos/users/user.details
 import { EmailNotificationsDto } from '@gitroom/nestjs-libraries/dtos/users/email-notifications.dto';
 import { TimezoneDto } from '@gitroom/nestjs-libraries/dtos/users/timezone.dto';
 
+export const sameAddress = (stored?: string | null, typed?: string | null) =>
+  !!stored && !!typed && stored.toLowerCase() === typed.toLowerCase();
+
 @Injectable()
 export class UsersRepository {
   constructor(
@@ -75,19 +78,26 @@ export class UsersRepository {
     // The case-insensitive fallback covers accounts saved before registration
     // lower-cased emails: the DTOs now lower-case what people type, which on
     // its own would lock those accounts out.
-    return (
-      (await this._user.model.user.findFirst({
-        where: { email, providerName: Provider.LOCAL },
-        include,
-      })) ??
-      this._user.model.user.findFirst({
-        where: {
-          email: { equals: email, mode: 'insensitive' },
-          providerName: Provider.LOCAL,
-        },
-        include,
-      })
-    );
+    const exact = await this._user.model.user.findFirst({
+      where: { email, providerName: Provider.LOCAL },
+      include,
+    });
+    if (exact) {
+      return exact;
+    }
+    const anyCase = await this._user.model.user.findFirst({
+      where: {
+        email: { equals: email, mode: 'insensitive' },
+        providerName: Provider.LOCAL,
+      },
+      include,
+    });
+    // The database compares case-insensitively with a pattern match, where
+    // "_" and "%" in what was typed stand for any character: "v_ctim@x.com"
+    // found victim@x.com under another name, past the lockout that counts
+    // failures per typed address, and "%@gmail.com" sent a reset mail to
+    // whoever came first. Only the same address in another case counts.
+    return sameAddress(anyCase?.email, email) ? anyCase : null;
   }
 
   getUserByNormalizedEmail(normalizedEmail: string) {
@@ -141,6 +151,42 @@ export class UsersRepository {
       },
     });
     return count;
+  }
+
+  /**
+   * Activation by someone who did not type the account's password: active
+   * and without that password in one write, or neither. Null when the
+   * account was already active (the link was opened twice at once), so only
+   * one of them hands out the link to choose a password.
+   */
+  async activateWithoutPassword(id: string, unusable: string) {
+    const { count } = await this._user.model.user.updateMany({
+      where: { id, activated: false },
+      data: {
+        activated: true,
+        password: AuthService.hashPassword(unusable),
+        tokenVersion: { increment: 1 },
+      },
+    });
+    if (!count) {
+      return null;
+    }
+    const user = await this._user.model.user.findUnique({
+      where: { id },
+      select: { tokenVersion: true },
+    });
+    return user?.tokenVersion ?? null;
+  }
+
+  // Activation by someone who typed the sign-up password: only while the
+  // account is still inactive and the password is the one that was checked,
+  // so a reset through the same link at the same moment wins.
+  async activateWithCheckedPassword(id: string, passwordHash: string) {
+    const { count } = await this._user.model.user.updateMany({
+      where: { id, activated: false, password: passwordHash },
+      data: { activated: true },
+    });
+    return count > 0;
   }
 
   changeAudienceSize(userId: string, audience: number) {

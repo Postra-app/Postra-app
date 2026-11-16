@@ -8,13 +8,20 @@ import {
   Query,
   Req,
   Res,
+  Logger,
 } from '@nestjs/common';
 import { Throttle } from '@nestjs/throttler';
 import { Response, Request } from 'express';
 
 import { CreateOrgUserDto } from '@gitroom/nestjs-libraries/dtos/auth/create.org.user.dto';
 import { LoginUserDto } from '@gitroom/nestjs-libraries/dtos/auth/login.user.dto';
-import { AuthService } from '@gitroom/backend/services/auth/auth.service';
+import {
+  ACTIVATION_LINK_INVALID,
+  ACTIVATION_WRONG_PASSWORD,
+  AuthService,
+  LOGIN_LOCKED_OUT,
+  REGISTRATION_PROOF_TTL_SECONDS,
+} from '@gitroom/backend/services/auth/auth.service';
 import { ForgotReturnPasswordDto } from '@gitroom/nestjs-libraries/dtos/auth/forgot-return.password.dto';
 import { ForgotPasswordDto } from '@gitroom/nestjs-libraries/dtos/auth/forgot.password.dto';
 import { ResendActivationDto } from '@gitroom/nestjs-libraries/dtos/auth/resend-activation.dto';
@@ -24,6 +31,10 @@ import {
   authCookieOptions,
   setSessionCookie,
 } from '@gitroom/backend/services/auth/session.cookie';
+import {
+  clearSessionCookies,
+  sessionCookieOptions,
+} from '@gitroom/nestjs-libraries/services/auth/remove.auth';
 import { EmailService } from '@gitroom/nestjs-libraries/services/email.service';
 import { RealIP } from 'nestjs-real-ip';
 import { UserAgent } from '@gitroom/nestjs-libraries/user/user.agent';
@@ -31,6 +42,11 @@ import { Provider } from '@prisma/client';
 import * as Sentry from '@sentry/nestjs';
 import { pickEmailLang } from '@gitroom/backend/services/auth/auth.emails';
 import { AuditService } from '@gitroom/nestjs-libraries/database/prisma/audit/audit.service';
+import {
+  AccountDeletionService,
+  DELETE_LINK_INVALID,
+} from '@gitroom/backend/services/auth/account.deletion.service';
+import { AuthService as AuthChecker } from '@gitroom/helpers/auth/auth.service';
 
 // The invitation an `/auth?org=…` link left behind (frontend proxy.ts), with
 // the attributes it was set with.
@@ -49,13 +65,19 @@ const oauthStateCookieOptions = () => ({
   secure: !process.env.NOT_SECURED,
 });
 
+// The native app names itself; it gets its token in the body.
+const REGISTRATION_PROOF_COOKIE = 'postra_reg';
+
+const isAppClient = (req: Request) => req.headers?.['x-client'] === 'mobile';
+
 @ApiTags('Auth')
 @Controller('/auth')
 export class AuthController {
   constructor(
     private _authService: AuthService,
     private _emailService: EmailService,
-    private _auditService: AuditService
+    private _auditService: AuditService,
+    private _accountDeletion: AccountDeletionService
   ) {}
 
   @Get('/can-register')
@@ -81,7 +103,7 @@ export class AuthController {
         req?.cookies?.org
       );
 
-      const { jwt, addedOrg } = await this._authService.routeAuth(
+      const signedUp = await this._authService.routeAuth(
         body.provider,
         body,
         ip,
@@ -89,6 +111,9 @@ export class AuthController {
         getOrgFromCookie,
         pickEmailLang(req)
       );
+      const { jwt, addedOrg } = signedUp;
+      const registrationProof =
+        'registrationProof' in signedUp ? signedUp.registrationProof : undefined;
 
       this._auditService.record({
         action: 'auth.register',
@@ -101,23 +126,43 @@ export class AuthController {
         body.provider === 'LOCAL' && this._emailService.hasProvider();
 
       if (activationRequired) {
+        // Marks this browser as the one the password was typed in; see
+        // AuthService.activate.
+        if (registrationProof) {
+          response.cookie(REGISTRATION_PROOF_COOKIE, registrationProof, {
+            ...sessionCookieOptions(),
+            maxAge: REGISTRATION_PROOF_TTL_SECONDS * 1000,
+          });
+        }
         response.header('activate', 'true');
         response.status(200).json({ activate: true });
         return;
       }
 
-      setSessionCookie(response, jwt);
+      // The app keeps its own short token in the Keychain and never sends
+      // cookies on purpose; the 30-day web cookie it used to get here sat in
+      // the phone's cookie store, outside the Keychain and untouched by the
+      // app's sign-out. No cookie for the app, and the ones older versions
+      // were given are expired.
+      const forApp = isAppClient(req);
+      if (forApp) {
+        clearSessionCookies(response, ['auth', 'showorg']);
+      } else {
+        setSessionCookie(response, jwt);
+      }
 
       if (process.env.NOT_SECURED) {
         response.header('auth', jwt);
       }
 
       if (typeof addedOrg === 'object' && addedOrg?.organizationId) {
-        response.cookie(
-          'showorg',
-          addedOrg.organizationId,
-          authCookieOptions()
-        );
+        if (!forApp) {
+          response.cookie(
+            'showorg',
+            addedOrg.organizationId,
+            authCookieOptions()
+          );
+        }
 
         if (process.env.NOT_SECURED) {
           response.header('showorg', addedOrg.organizationId);
@@ -131,7 +176,7 @@ export class AuthController {
       response.status(200).json({
         register: true,
         // The mobile client cannot read an httpOnly cookie — return the token in the body.
-        ...(req.headers['x-client'] === 'mobile'
+        ...(forApp
           ? {
               token: this._authService.mobileJwt(jwt),
               org:
@@ -182,18 +227,30 @@ export class AuthController {
         metadata: { email: body.email, provider: body.provider },
       });
 
-      setSessionCookie(response, jwt);
+      // The app keeps its own short token in the Keychain and never sends
+      // cookies on purpose; the 30-day web cookie it used to get here sat in
+      // the phone's cookie store, outside the Keychain and untouched by the
+      // app's sign-out. No cookie for the app, and the ones older versions
+      // were given are expired.
+      const forApp = isAppClient(req);
+      if (forApp) {
+        clearSessionCookies(response, ['auth', 'showorg']);
+      } else {
+        setSessionCookie(response, jwt);
+      }
 
       if (process.env.NOT_SECURED) {
         response.header('auth', jwt);
       }
 
       if (typeof addedOrg === 'object' && addedOrg?.organizationId) {
-        response.cookie(
-          'showorg',
-          addedOrg.organizationId,
-          authCookieOptions()
-        );
+        if (!forApp) {
+          response.cookie(
+            'showorg',
+            addedOrg.organizationId,
+            authCookieOptions()
+          );
+        }
 
         if (process.env.NOT_SECURED) {
           response.header('showorg', addedOrg.organizationId);
@@ -208,7 +265,7 @@ export class AuthController {
         // The native client cannot read an httpOnly cookie, so it gets the
         // token in the body — but not the same one. The app's token is short
         // and revocable; see AuthService.mobileJwt.
-        ...(req.headers['x-client'] === 'mobile'
+        ...(forApp
           ? {
               token: this._authService.mobileJwt(jwt),
               org:
@@ -257,6 +314,38 @@ export class AuthController {
     } catch (e: any) {
       throw new HttpException(e.message, 400);
     }
+  }
+
+  // The link from the "Confirm deleting your Postra account" email. The page
+  // posts only when the person presses the button, never on load, so a mail
+  // scanner opening the link deletes nothing. No session needed: the link
+  // went to the address, and a Google or Apple account on the phone may have
+  // no web session to open it in.
+  @Post('/delete-account')
+  @Throttle({ default: { ttl: 900000, limit: 5 } })
+  async deleteAccount(
+    @Req() req: Request,
+    @Body('token') token: unknown,
+    @Res({ passthrough: true }) response: Response
+  ) {
+    const deletedId = await this._accountDeletion.confirm(token);
+    if (!deletedId) {
+      throw new HttpException(DELETE_LINK_INVALID, 400);
+    }
+    // Sign out this browser only if it was the deleted account's session;
+    // someone else's link opened in my browser must not sign me out.
+    try {
+      const session = req.cookies?.auth
+        ? (AuthChecker.verifyJWT(req.cookies.auth) as { id?: string })
+        : undefined;
+      if (session?.id === deletedId) {
+        response.header('logout', 'true');
+        clearSessionCookies(response);
+      }
+    } catch {
+      /* not a session of the deleted account */
+    }
+    return { deleted: true };
   }
 
   // Sign-in with Google in the mobile app: the native sign-in on the phone
@@ -355,16 +444,35 @@ export class AuthController {
     @Body('datafast_visitor_id') datafast_visitor_id: string,
     @Res({ passthrough: false }) response: Response
   ) {
-    let activate: string | false;
+    let activate: Awaited<ReturnType<AuthService['activate']>>;
     try {
-      activate = await this._authService.activate(code, datafast_visitor_id);
+      activate = await this._authService.activate(
+        code,
+        datafast_visitor_id,
+        req.cookies?.[REGISTRATION_PROOF_COOKIE]
+      );
     } catch (e: any) {
       // The page shows "invalid or expired" for any non-2xx; `can: false`
-      // stays for a link that was already used.
-      return response.status(400).type('text/plain').send(e.message);
+      // stays for a link that was already used. The answer is that sentence
+      // and nothing else: an exception from the database or Redis named
+      // hosts and queries to whoever opened a link.
+      if (e?.message !== ACTIVATION_LINK_INVALID) {
+        Logger.error(`activation failed: ${e?.message}`);
+      }
+      return response.status(400).type('text/plain').send(ACTIVATION_LINK_INVALID);
     }
     if (!activate) {
       return response.status(200).json({ can: false });
+    }
+    response.clearCookie(REGISTRATION_PROOF_COOKIE, sessionCookieOptions());
+
+    // Opened somewhere other than the browser that signed up: nothing is
+    // activated yet. The page asks for the password chosen at sign-up
+    // (/activate/sign-in), or offers to choose a new one (/activate/reset).
+    if (typeof activate !== 'string') {
+      return response
+        .status(200)
+        .json({ can: true, signIn: true, email: activate.signIn });
     }
 
     // The page posts on open, so someone else's activation link signed the
@@ -383,6 +491,101 @@ export class AuthController {
     response.header('onboarding', 'true');
 
     return response.status(200).json({ can: true });
+  }
+
+  // The activation link opened in another browser, with the password chosen
+  // at sign-up: activates and signs this browser in. Throttled as signing in.
+  @Post('/activate/sign-in')
+  @Throttle({ default: { ttl: 900000, limit: 5 } })
+  async activateSignIn(
+    @Body('code') code: string,
+    @Body('password') password: string,
+    @Body('datafast_visitor_id') datafast_visitor_id: string,
+    @Res({ passthrough: false }) response: Response,
+    @RealIP() ip: string,
+    @UserAgent() userAgent: string
+  ) {
+    let jwt: string | false;
+    try {
+      jwt = await this._authService.activateWithPassword(
+        code,
+        password,
+        datafast_visitor_id
+      );
+    } catch (e: any) {
+      const message = String(e?.message || '');
+      if (message === ACTIVATION_WRONG_PASSWORD) {
+        this._auditService.record({
+          action: 'auth.login.failed',
+          ip,
+          userAgent,
+          metadata: { via: 'activation', reason: 'wrong_password' },
+        });
+        return response
+          .status(400)
+          .type('text/plain')
+          .send(ACTIVATION_WRONG_PASSWORD);
+      }
+      if (message === LOGIN_LOCKED_OUT) {
+        return response.status(429).type('text/plain').send(LOGIN_LOCKED_OUT);
+      }
+      if (message !== ACTIVATION_LINK_INVALID) {
+        Logger.error(`activation sign-in failed: ${message}`);
+      }
+      return response.status(400).type('text/plain').send(ACTIVATION_LINK_INVALID);
+    }
+    if (!jwt) {
+      return response.status(200).json({ can: false });
+    }
+    response.clearCookie(REGISTRATION_PROOF_COOKIE, sessionCookieOptions());
+    const userId = (AuthChecker.verifyJWT(jwt) as { id?: string })?.id;
+    this._auditService.record({
+      action: 'auth.login',
+      userId,
+      ip,
+      userAgent,
+      metadata: { provider: 'LOCAL', via: 'activation' },
+    });
+    // A browser signed in to another account was asked to switch by typing
+    // this account's password: its organisation choice goes with it.
+    clearSessionCookies(response, ['showorg']);
+    setSessionCookie(response, jwt);
+    if (process.env.NOT_SECURED) {
+      response.header('auth', jwt);
+    }
+    response.header('onboarding', 'true');
+    return response.status(200).json({ can: true });
+  }
+
+  // The activation link opened by someone who did not sign up, or does not
+  // remember the password: the account is activated without that password
+  // and the page sends the holder of the link to choose theirs.
+  @Post('/activate/reset')
+  @Throttle({ default: { ttl: 3600000, limit: 10 } })
+  async activateReset(
+    @Body('code') code: string,
+    @Body('datafast_visitor_id') datafast_visitor_id: string,
+    @Res({ passthrough: false }) response: Response
+  ) {
+    let result: Awaited<ReturnType<AuthService['activateAndChoosePassword']>>;
+    try {
+      result = await this._authService.activateAndChoosePassword(
+        code,
+        datafast_visitor_id
+      );
+    } catch (e: any) {
+      if (e?.message !== ACTIVATION_LINK_INVALID) {
+        Logger.error(`activation reset failed: ${e?.message}`);
+      }
+      return response.status(400).type('text/plain').send(ACTIVATION_LINK_INVALID);
+    }
+    if (!result) {
+      return response.status(200).json({ can: false });
+    }
+    response.clearCookie(REGISTRATION_PROOF_COOKIE, sessionCookieOptions());
+    return response
+      .status(200)
+      .json({ can: true, setPassword: result.setPassword });
   }
 
   @Post('/resend-activation')

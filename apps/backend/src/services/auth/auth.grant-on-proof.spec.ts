@@ -61,6 +61,10 @@ const service = (users: Record<string, any> = {}) => {
         return u;
       },
       updatePassword: async () => 1,
+      activateWithoutPassword: async (id: string) => {
+        activated.push(id);
+        return 1;
+      },
     },
     _emailService: { sendEmailSync: async () => true, sendEmail: async () => true },
     _track: async (): Promise<void> => undefined,
@@ -111,7 +115,13 @@ describe('a promised plan goes to the account only once the address is proven', 
     const users = { [PROMISED]: { id: 'u1', email: PROMISED, activated: false } };
     const { s, applied, activated } = service(users);
     const code = AuthChecker.signJWT({ id: 'u1', email: PROMISED, activated: false, purpose: 'activate' });
-    await expect(s.activate(code, '')).resolves.toBe('session');
+    // No sign-up was made in this browser: opening the link writes nothing
+    // yet. Choosing a password through it proves the address, and the plan
+    // arrives.
+    await expect(s.activate(code, '')).resolves.toEqual({ signIn: PROMISED });
+    expect(activated).toEqual([]);
+    expect(applied).toEqual([]);
+    await expect(s.activateAndChoosePassword(code, '')).resolves.toEqual({ setPassword: expect.any(String) });
     expect(activated).toEqual(['u1']);
     expect(applied).toEqual([['org-of-u1', PROMISED]]);
   });

@@ -24,7 +24,7 @@ function controller(result: any) {
   };
   const audit = { record: jest.fn() };
   return {
-    ctrl: new AuthController(auth as any, {} as any, audit as any),
+    ctrl: new AuthController(auth as any, {} as any, audit as any, {} as any),
     auth,
     audit,
   };

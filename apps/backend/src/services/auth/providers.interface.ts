@@ -7,7 +7,9 @@ export abstract class AuthProviderAbstract {
   // says so); such an address does not count as owned.
   abstract getUser(
     providerToken: string
-  ): Promise<{ email: string; id: string; verified?: boolean }> | false;
+  ):
+    | Promise<{ email: string; id: string; verified?: boolean } | false>
+    | false;
   // Only Google: the ID token from the mobile app's native sign-in.
   verifyIdToken?(
     idToken: string

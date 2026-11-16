@@ -83,8 +83,21 @@ export class GoogleProvider extends AuthProviderAbstract {
     }
   }
 
+  // The token arrives in the request body at sign-in and sign-up, so "whose
+  // token is it" is not enough: a token the same person gave to any other
+  // site with a Google button answers that question just as well. Google
+  // says which app a token was issued to; only this app's tokens are taken,
+  // and the question of whose it is is not asked for any other.
   async getUser(providerToken: string) {
+    const audience = process.env.YOUTUBE_CLIENT_ID;
+    if (!audience || !providerToken) return false;
     const client = makeClient(defaultRedirect());
+    try {
+      const info = await client.getTokenInfo(providerToken);
+      if (info.aud !== audience) return false;
+    } catch {
+      return false;
+    }
     client.setCredentials({ access_token: providerToken });
     const { data } = await google
       .oauth2({ version: 'v2', auth: client })
@@ -94,8 +107,9 @@ export class GoogleProvider extends AuthProviderAbstract {
       id: data.id!,
       email: data.email!,
       // An address Google has not verified is not proof of owning it: it
-      // must not claim a plan promised to that address.
-      verified: data.verified_email !== false,
+      // must not claim a plan promised to that address. Only a positive
+      // answer counts, as everywhere else.
+      verified: data.verified_email === true,
     };
   }
 }

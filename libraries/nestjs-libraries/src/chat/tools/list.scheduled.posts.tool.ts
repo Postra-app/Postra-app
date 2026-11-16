@@ -83,7 +83,7 @@ export class ListScheduledPostsTool implements AgentToolInterface {
                 ? p.content
                 : JSON.stringify(p.content ?? '')
             )
-              .replace(/<[^>]*>/g, ' ')
+              .replace(/<[^<>]*>/g, ' ')
               .replace(/\s+/g, ' ')
               .trim()
               .slice(0, 160),

@@ -103,7 +103,8 @@ export const SettingsPopup: FC<{
     if (user?.tier?.webhooks && user?.role !== 'USER') {
       arr.push({ tab: 'webhooks', label: t('webhooks_1', 'Webhooks') });
     }
-    if (user?.tier?.autoPost) {
+    // Feeds post to the channels on their own; managing them is for admins.
+    if (user?.tier?.autoPost && user?.role !== 'USER') {
       arr.push({ tab: 'autopost', label: t('auto_post', 'Auto Post') });
     }
     if (user?.tier.current !== 'FREE') {
@@ -196,7 +197,7 @@ export const SettingsPopup: FC<{
                 </div>
               )}
 
-              {tab === 'autopost' && !!user?.tier?.autoPost && (
+              {tab === 'autopost' && !!user?.tier?.autoPost && user?.role !== 'USER' && (
                 <div>
                   <Autopost />
                 </div>

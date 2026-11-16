@@ -30,7 +30,6 @@ import useCookie from 'react-use-cookie';
 type Inputs = {
   email: string;
   password: string;
-  confirmPassword: string;
   company: string;
   providerToken: string;
   provider: string;
@@ -231,17 +230,10 @@ export function RegisterAfter({
     { label: t('password_strong', 'Strong'), color: '#34d399' },
   ][strength];
   const onSubmit: SubmitHandler<Inputs> = async (data) => {
-    // confirmPassword is a client-only UX guard (not part of CreateOrgUserDto).
-    if (!isAfterProvider && data.password !== data.confirmPassword) {
-      form.setError('confirmPassword', {
-        message: t('passwords_do_not_match', 'Passwords do not match'),
-      });
-      return;
-    }
     setLoading(true);
     const region =
       searchParams?.get('region')?.toUpperCase() || regionCookie || '';
-    const { confirmPassword, ...payload } = data;
+    const payload = data;
     await fetchData('/auth/register', {
       method: 'POST',
       body: JSON.stringify({
@@ -387,19 +379,6 @@ export function RegisterAfter({
                         </span>
                       </div>
                     )}
-                    <Input
-                      label="Confirm Password"
-                      translationKey="label_confirm_password"
-                      {...form.register('confirmPassword', {
-                        onChange: () => form.clearErrors('confirmPassword'),
-                      })}
-                      autoComplete="new-password"
-                      type="password"
-                      placeholder={t(
-                        'label_confirm_password',
-                        'Confirm Password'
-                      )}
-                    />
                   </>
                 )}
                 <Input
