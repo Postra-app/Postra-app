@@ -8,6 +8,7 @@ import {
   Query,
   Req,
   Res,
+  Logger,
 } from '@nestjs/common';
 import { Throttle } from '@nestjs/throttler';
 import { Response, Request } from 'express';
@@ -15,6 +16,7 @@ import { Response, Request } from 'express';
 import { CreateOrgUserDto } from '@gitroom/nestjs-libraries/dtos/auth/create.org.user.dto';
 import { LoginUserDto } from '@gitroom/nestjs-libraries/dtos/auth/login.user.dto';
 import {
+  ACTIVATION_LINK_INVALID,
   AuthService,
   REGISTRATION_PROOF_TTL_SECONDS,
 } from '@gitroom/backend/services/auth/auth.service';
@@ -411,8 +413,13 @@ export class AuthController {
       );
     } catch (e: any) {
       // The page shows "invalid or expired" for any non-2xx; `can: false`
-      // stays for a link that was already used.
-      return response.status(400).type('text/plain').send(e.message);
+      // stays for a link that was already used. The answer is that sentence
+      // and nothing else: an exception from the database or Redis named
+      // hosts and queries to whoever opened a link.
+      if (e?.message !== ACTIVATION_LINK_INVALID) {
+        Logger.error(`activation failed: ${e?.message}`);
+      }
+      return response.status(400).type('text/plain').send(ACTIVATION_LINK_INVALID);
     }
     if (!activate) {
       return response.status(200).json({ can: false });

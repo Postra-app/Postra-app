@@ -74,3 +74,23 @@ describe('session cookie at sign-in', () => {
     expect(liveCookies(res)).toEqual([]);
   });
 });
+
+describe('activation link that fails', () => {
+  it('answers the one sentence the page shows, never the error behind it', async () => {
+    const auth = {
+      activate: jest.fn(async () => {
+        throw new Error('Can\'t reach database server at `db.internal:5432`');
+      }),
+    };
+    const res = fakeResponse();
+    await new AuthController(auth as any, {} as any, { record: jest.fn() } as any).activate(
+      { cookies: {}, headers: {} } as any,
+      'code',
+      '',
+      res
+    );
+    expect(res.statusCode).toBe(400);
+    expect(res.body).not.toContain('db.internal');
+    expect(res.body).toMatch(/invalid or (has )?expired/i);
+  });
+});
