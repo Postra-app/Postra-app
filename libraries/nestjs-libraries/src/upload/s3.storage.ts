@@ -12,7 +12,10 @@ import { isSafePublicHttpsUrl } from '@gitroom/nestjs-libraries/dtos/webhooks/we
 import { parseDataUrl } from '@gitroom/nestjs-libraries/upload/data.url';
 import { downloadForStorage } from '@gitroom/nestjs-libraries/upload/download.capped';
 import { fromBuffer } from '@gitroom/nestjs-libraries/upload/file.type';
-import { ownMediaHosts } from '@gitroom/helpers/utils/own.media.url';
+import {
+  isOwnMediaUrl,
+  ownMediaHosts,
+} from '@gitroom/helpers/utils/own.media.url';
 
 const ALLOWED_MIME_TYPES = new Set<string>([
   'image/jpeg',
@@ -185,6 +188,11 @@ export class S3Storage implements IUploadProvider {
   async removeFile(filePath: string): Promise<void> {
     try {
       const url = new URL(filePath);
+      // The key is the path alone: a URL on another host must not name an
+      // object here.
+      if (!isOwnMediaUrl(filePath)) {
+        return;
+      }
       const key = url.pathname.replace(/^\//, '');
       await this._client.send(
         new DeleteObjectCommand({

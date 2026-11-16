@@ -4,6 +4,7 @@ import { UploadFactory } from '@gitroom/nestjs-libraries/upload/upload.factory';
 import type { StoredObject } from '@gitroom/nestjs-libraries/upload/upload.interface';
 import { posterFor } from '@gitroom/nestjs-libraries/videos/poster/video.poster';
 import dayjs from 'dayjs';
+import { isOwnMediaUrl } from '@gitroom/helpers/utils/own.media.url';
 
 /**
  * Housekeeping that nothing else does.
@@ -273,12 +274,18 @@ export class MaintenanceService {
     // work out the full set of objects to drop before touching the bucket.
     const keep = new Set<string>();
     const drop = new Map<string, string[]>();
+    // Rows that name nothing in our storage: only the row goes.
+    const nothingStored: string[] = [];
 
     for (const row of candidates) {
-      const paths = [row.path, row.thumbnail].filter(Boolean) as string[];
+      // What is on someone else's host is not ours to delete, and what the
+      // row says about it is not a reason to touch our own storage.
+      const paths = ([row.path, row.thumbnail].filter(Boolean) as string[]).filter(
+        (path) => !namesForeignHost(path)
+      );
       const isReferenced =
         referenced.ids.has(row.id) ||
-        paths.some((path) => referenced.paths.has(path));
+        paths.some((path) => referenced.paths.has(storedObjectOf(path)));
 
       if (isReferenced) {
         report.stillReferenced++;
@@ -290,6 +297,9 @@ export class MaintenanceService {
 
       for (const path of paths) {
         drop.set(path, [...(drop.get(path) ?? []), row.id]);
+      }
+      if (!paths.length) {
+        nothingStored.push(row.id);
       }
     }
 
@@ -304,7 +314,10 @@ export class MaintenanceService {
     if (apply && drop.size) {
       const now = await this.collectLiveReferences();
       for (const [path, ids] of [...drop]) {
-        if (now.paths.has(path) || ids.some((id) => now.ids.has(id))) {
+        if (
+          now.paths.has(storedObjectOf(path)) ||
+          ids.some((id) => now.ids.has(id))
+        ) {
           drop.delete(path);
           report.stillReferenced += ids.length;
         }
@@ -324,6 +337,12 @@ export class MaintenanceService {
         report.failed++;
         notRemoved.add(path);
       }
+    }
+
+    if (apply && nothingStored.length) {
+      await this._prisma.model.media.deleteMany({
+        where: { id: { in: nothingStored } },
+      });
     }
 
     if (apply && report.removed) {
@@ -527,6 +546,8 @@ export class MaintenanceService {
       ),
     ];
 
+    const pendingObjects = [...new Set(pendingPaths.map(storedObjectOf))];
+
     // A substring match, deliberately blunt: a false positive keeps a file, a
     // false negative deletes one that is still in use.
     const addPathsFrom = (text: string | null | undefined) => {
@@ -536,6 +557,11 @@ export class MaintenanceService {
       for (const path of pendingPaths) {
         if (text.includes(path)) {
           paths.add(path);
+        }
+      }
+      for (const object of pendingObjects) {
+        if (text.includes(object)) {
+          paths.add(object);
         }
       }
     };
@@ -621,8 +647,8 @@ export class MaintenanceService {
       }
       mediaCursor = live[live.length - 1].id;
       for (const row of live) {
-        if (row.path) paths.add(row.path);
-        if (row.thumbnail) paths.add(row.thumbnail);
+        if (row.path) paths.add(storedObjectOf(row.path));
+        if (row.thumbnail) paths.add(storedObjectOf(row.thumbnail));
         addPathsFrom(row.canvasJson);
         addPathsFrom(
           row.designSpec ? JSON.stringify(row.designSpec) : null
@@ -650,3 +676,28 @@ const UUID = /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/gi;
 
 /** Every uuid appearing in a blob of text — a post's image list holds them. */
 const extractIds = (text: string): string[] => text.match(UUID) ?? [];
+
+/**
+ * The stored object a URL names: its path, whatever host it was written
+ * with. Storage deletes by this alone, so references are compared by it too.
+ * A thumbnail is a URL its owner sets: the same file under another host was
+ * "a different path nothing refers to", and the sweep deleted a file that
+ * belonged to another organisation.
+ */
+export const storedObjectOf = (path: string): string => {
+  try {
+    return new URL(path).pathname;
+  } catch {
+    return path;
+  }
+};
+
+/** A URL on a host that is not ours names nothing in our storage. */
+const namesForeignHost = (path: string): boolean => {
+  try {
+    new URL(path);
+  } catch {
+    return false;
+  }
+  return !isOwnMediaUrl(path);
+};
