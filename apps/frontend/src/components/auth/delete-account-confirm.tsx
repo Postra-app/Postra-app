@@ -70,7 +70,7 @@ export function DeleteAccountConfirm({ token }: { token: string }) {
         <p className="text-[15px] text-textColor/70" data-testid="delete-account-done">
           {t(
             'delete_account_done_text',
-            'Your account and its data are gone, and any subscription was cancelled. We have sent you an email to confirm it.'
+            'Your account and its data are gone, and a subscription paid on this website was cancelled. A subscription bought in the App Store goes on until you cancel it in Settings on your iPhone. We have sent you an email to confirm it.'
           )}
         </p>
       ) : (
@@ -78,7 +78,7 @@ export function DeleteAccountConfirm({ token }: { token: string }) {
           <p className="text-[15px] text-textColor/70">
             {t(
               'delete_account_confirm_text',
-              'This erases your data, connected channels, scheduled posts and media, and cancels any subscription. It cannot be undone.'
+              'This erases your data, connected channels, scheduled posts and media, and cancels a subscription paid on this website. A subscription bought in the App Store is not cancelled: cancel it in Settings on your iPhone. It cannot be undone.'
             )}
           </p>
           {error ? (

@@ -1264,7 +1264,7 @@
   "account_deleted": "Tu cuenta se ha eliminado",
   "account_delete_failed": "No se pudo eliminar la cuenta. Inténtalo de nuevo.",
   "danger_zone": "Zona de peligro",
-  "delete_account_description": "Al eliminar tu cuenta de forma permanente se borran tus datos, los canales conectados (incluidos los tokens de acceso), las publicaciones programadas y los archivos multimedia. Las organizaciones en las que seas el único miembro se eliminarán por completo, y cualquier suscripción activa se cancelará de inmediato. Esta acción no se puede deshacer. Los registros de facturación exigidos por ley se conservan de acuerdo con nuestra política de privacidad.",
+  "delete_account_description": "Al eliminar tu cuenta de forma permanente se borran tus datos, los canales conectados (incluidos los tokens de acceso), las publicaciones programadas y los archivos multimedia. Las organizaciones en las que seas el único miembro se eliminarán por completo, y la suscripción pagada en este sitio web se cancelará de inmediato. Una suscripción comprada en la App Store no se cancela: cancélala en los Ajustes de tu iPhone. Esta acción no se puede deshacer. Los registros de facturación exigidos por ley se conservan de acuerdo con nuestra política de privacidad.",
   "type_to_confirm_2": "para confirmar",
   "delete_my_account": "Eliminar mi cuenta",
   "global_settings_sub": "Preferencias de cuenta, notificaciones y enlaces",

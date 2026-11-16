@@ -81,6 +81,8 @@ export const APPLE_EXPIRY_MARGIN_MS = 24 * 60 * 60 * 1000;
 export type AppleTransaction = {
   originalTransactionId?: string;
   appAccountToken?: string;
+  // PURCHASED, or FAMILY_SHARED for a family member of the buyer.
+  inAppOwnershipType?: string;
   productId?: string;
   purchaseDate?: number;
   expiresDate?: number;

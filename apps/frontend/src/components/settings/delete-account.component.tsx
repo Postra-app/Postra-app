@@ -76,7 +76,7 @@ const DeleteAccountComponent = () => {
       <div className="text-[13px] text-newTextColor/70 max-w-[560px]">
         {t(
           'delete_account_description',
-          'Permanently deleting your account erases your data, connected channels (including access tokens), scheduled posts and media. Organizations where you are the only member will be deleted entirely, and any active subscription is cancelled immediately. This action cannot be undone. Billing records required by law are retained in line with our privacy policy.'
+          'Permanently deleting your account erases your data, connected channels (including access tokens), scheduled posts and media. Organizations where you are the only member will be deleted entirely, and a subscription paid on this website is cancelled immediately. A subscription bought in the App Store is not cancelled: cancel it in Settings on your iPhone. This action cannot be undone. Billing records required by law are retained in line with our privacy policy.'
         )}
       </div>
       {emailed ? (

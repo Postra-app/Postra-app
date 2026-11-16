@@ -71,6 +71,15 @@ export class AppleIapService {
         403
       );
     }
+    // Family Sharing is off for every product in App Store Connect; should it
+    // ever be switched on, a family member's copy of someone else's purchase
+    // is not a plan of its own here.
+    if (transaction.inAppOwnershipType === 'FAMILY_SHARED') {
+      throw new HttpException(
+        'This App Store subscription is shared with you by a family member and cannot be used here.',
+        409
+      );
+    }
     // Bought for another organisation: on a shared device, or by someone
     // signed in to two accounts, the Apple ID's subscription must not end up
     // paying for an organisation it was not bought for. A purchase without a

@@ -62,12 +62,12 @@ export const authEmails = {
     en: {
       subject: 'Confirm deleting your Postra account',
       html: (url: string) =>
-        `We received a request to delete your Postra account. Deleting it erases your data, connected channels, scheduled posts and media, and cancels any subscription. It cannot be undone. The link expires in 1 hour.<br /><br />${button(url, 'Delete my account')}<br /><br />${linkLine(url, 'If the button does not work, paste this link into your browser:')}<br /><br />If you did not ask for this, ignore this email and your account stays as it is. Someone signed in to your account made the request, so sign out of devices you do not recognise.`,
+        `We received a request to delete your Postra account. Deleting it erases your data, connected channels, scheduled posts and media, and cancels a subscription paid on the Postra website. A subscription bought in the App Store is not cancelled: cancel it in Settings on your iPhone. It cannot be undone. The link expires in 1 hour.<br /><br />${button(url, 'Delete my account')}<br /><br />${linkLine(url, 'If the button does not work, paste this link into your browser:')}<br /><br />If you did not ask for this, ignore this email and your account stays as it is. Someone signed in to your account made the request, so sign out of devices you do not recognise.`,
     },
     pl: {
       subject: 'Potwierdź usunięcie konta w Postrze',
       html: (url: string) =>
-        `Otrzymaliśmy prośbę o usunięcie Twojego konta w Postrze. Usunięcie kasuje Twoje dane, podłączone kanały, zaplanowane posty i media oraz anuluje subskrypcję. Nie da się tego cofnąć. Link wygaśnie za 1 godzinę.<br /><br />${button(url, 'Usuń moje konto')}<br /><br />${linkLine(url, 'Jeśli przycisk nie działa, wklej ten link do przeglądarki:')}<br /><br />Jeśli to nie Ty, zignoruj tę wiadomość, a konto zostanie bez zmian. Prośbę wysłał ktoś zalogowany na Twoje konto, więc wyloguj urządzenia, których nie znasz.`,
+        `Otrzymaliśmy prośbę o usunięcie Twojego konta w Postrze. Usunięcie kasuje Twoje dane, podłączone kanały, zaplanowane posty i media oraz anuluje subskrypcję opłaconą na stronie Postry. Subskrypcji kupionej w App Store to nie anuluje: anuluj ją w Ustawieniach iPhone’a. Nie da się tego cofnąć. Link wygaśnie za 1 godzinę.<br /><br />${button(url, 'Usuń moje konto')}<br /><br />${linkLine(url, 'Jeśli przycisk nie działa, wklej ten link do przeglądarki:')}<br /><br />Jeśli to nie Ty, zignoruj tę wiadomość, a konto zostanie bez zmian. Prośbę wysłał ktoś zalogowany na Twoje konto, więc wyloguj urządzenia, których nie znasz.`,
     },
   },
 };

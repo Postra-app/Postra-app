@@ -299,6 +299,19 @@ describe('AppleIapService', () => {
       expect(written(subscriptions).org).toBe(org);
     });
 
+    it('refuses a family member\'s shared copy of a purchase', async () => {
+      const { service, subscriptions } = build({
+        transaction: tx({ inAppOwnershipType: 'FAMILY_SHARED' }),
+      });
+      await expect(service.attach(ORG, 'a.b.c', TRIAL)).rejects.toMatchObject({ status: 409 });
+      expect(subscriptions.createOrUpdateSubscription).not.toHaveBeenCalled();
+    });
+
+    it('takes the buyer\'s own purchase (PURCHASED)', async () => {
+      const { service } = build({ transaction: tx({ inAppOwnershipType: 'PURCHASED' }) });
+      await expect(service.attach(ORG, 'a.b.c', TRIAL)).resolves.toMatchObject({ ok: true });
+    });
+
     it('takes a purchase with no token (an offer code redeemed in the App Store)', async () => {
       const { service } = build({ transaction: tx() });
       await expect(service.attach(ORG, 'a.b.c', TRIAL)).resolves.toMatchObject({ ok: true });
