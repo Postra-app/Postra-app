@@ -98,7 +98,7 @@ describe('appleStateOf', () => {
     ).toEqual({ state: 'ended', reason: 'revoked' });
   });
 
-  // Security review 15 XI (E2E-11-367): Apple signs a refund of an earlier
+  // Security review: Apple signs a refund of an earlier
   // renewal with that renewal's dates. The period paid for now stands.
   it('a refund of an earlier, finished period says nothing about the plan', () => {
     expect(

@@ -280,7 +280,7 @@ describe('AppleIapService', () => {
       expect(subscriptions.createOrUpdateSubscription).not.toHaveBeenCalled();
     });
 
-    // Security review 15 XI (E2E-11-367): the purchase is bound to the
+    // Security review: the purchase is bound to the
     // organisation it was bought for.
     it('refuses a purchase bought for another organisation (appAccountToken)', async () => {
       const { service, subscriptions } = build({
@@ -521,7 +521,7 @@ describe('AppleIapService', () => {
       expect(built.store.markDone).not.toHaveBeenCalled();
       expect(built.store.release).toHaveBeenCalledWith(ID, 'uuid-1');
     });
-    // Security review 15 XI: a refund of an earlier renewal does not take
+    // Security review: a refund of an earlier renewal does not take
     // back the period being paid for now.
     it('REFUND of an earlier, finished period leaves the plan and the purchase alone', async () => {
       const { subscriptions, store } = await run(
@@ -552,7 +552,7 @@ describe('AppleIapService', () => {
     });
   });
 
-  // Security review 15 XI (E2E-11-367): a plan must end even when Apple's
+  // Security review: a plan must end even when Apple's
   // expiry notification never arrives.
   describe('expireLapsed (daily housekeeping)', () => {
     const lapsed = (over: any = {}) => ({

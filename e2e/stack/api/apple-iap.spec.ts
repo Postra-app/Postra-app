@@ -400,7 +400,7 @@ test('the notification address answers 400 to anything Apple did not send', asyn
   }
 });
 
-// Security review 15 XI (E2E-11-367), the four fixes over HTTP and the real
+// Security review, the four fixes over HTTP and the real
 // database.
 test('a free week is not a plan for an organisation that has had its trial', async () => {
   const org = await withoutPlan({ trial: false });
