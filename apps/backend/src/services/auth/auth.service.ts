@@ -65,6 +65,10 @@ export type ForgotResult =
   | { forgot: false; reason: 'no_account' | 'send_failed' | 'undeliverable' }
   | { forgot: false; reason: 'provider'; provider: string };
 
+export const ACTIVATION_WRONG_PASSWORD =
+  'That is not the password you signed up with. Try again, or choose a new password below.';
+export const LOGIN_LOCKED_OUT =
+  'Too many failed login attempts. Please try again in a few minutes.';
 export const ACTIVATION_LINK_INVALID =
   'This activation link is invalid or has expired.';
 
@@ -224,7 +228,7 @@ export class AuthService {
       const failures = Number((await ioRedis.get(failuresKey)) || 0);
       if (failures >= MAX_LOGIN_FAILURES) {
         throw new Error(
-          'Too many failed login attempts. Please try again in a few minutes.'
+          LOGIN_LOCKED_OUT
         );
       }
 
@@ -551,25 +555,21 @@ export class AuthService {
     );
   }
 
-  async activate(
-    code: string,
-    tracking: string,
-    proof?: string
-  ): Promise<string | false | { setPassword: string }> {
+  // The account an activation link names, still waiting to be activated.
+  // `false`: already active (a plan that did not arrive the first time gets
+  // another chance). Throws ACTIVATION_LINK_INVALID for anything else.
+  private async activationTarget(code: string): Promise<User | false> {
     // A mangled activation code must read as "this link is not valid", not as
-    // a server error. verifyJWT throws on a bad signature, and mail clients do
-    // mangle links — wrapping, tracking rewrites — so this is a real person
-    // meeting a 500 instead of being told to request a new one
-    //. getOrgFromCookie in this same file already
-    // handles the same call this way.
-    let user: {
+    // a server error: verifyJWT throws on a bad signature, and mail clients do
+    // mangle links (wrapping, tracking rewrites).
+    let claims: {
       id: string;
       activated: boolean;
       email: string;
       purpose?: string;
     };
     try {
-      user = AuthChecker.verifyJWT(code) as typeof user;
+      claims = AuthChecker.verifyJWT(code) as typeof claims;
     } catch (err) {
       // Distinct from "already activated" (false): the page told everyone
       // with a mangled or expired link that their account was active.
@@ -577,57 +577,132 @@ export class AuthService {
     }
     // Only an activation link activates: a session or reset token carries no
     // `activated` and read as one.
-    if (user.purpose !== 'activate') {
+    if (claims.purpose !== 'activate') {
       throw new Error(ACTIVATION_LINK_INVALID);
     }
-    if (user.id && !user.activated) {
-      const getUserAgain = await this._userService.getUserByEmail(user.email);
-      // A link minted for another account that once had this address (gone,
-      // signed up again) activates nothing.
-      if (!getUserAgain || getUserAgain.id !== user.id) {
-        throw new Error(ACTIVATION_LINK_INVALID);
-      }
-      if (getUserAgain.activated) {
-        // Opened again: a plan that did not arrive the first time (the
-        // database failed after the activation) gets another chance.
-        await this.applyGrantOnProof(user.id, getUserAgain.email);
-        return false;
-      }
-      const typedHere = await this.registeredInThisBrowser(user.id, proof);
-      // The link proves who owns the address, not who typed the password.
-      // Anyone can sign up with someone else's address and their own
-      // password; the owner, expecting our mail (an invitation, a plan
-      // promised to them), opens the link, and the account they then use
-      // still opened with the stranger's password. Opened in the browser the
-      // sign-up was made in, it is one person. Anywhere else the account
-      // becomes active and loses that password in the same write, and the
-      // person holding the link chooses theirs.
-      if (!typedHere) {
-        const tokenVersion = await this._userService.activateWithoutPassword(
-          user.id,
-          randomBytes(32).toString('hex')
-        );
-        if (tokenVersion === null) {
-          // Opened twice at once: the other one has the link.
-          return false;
-        }
-        await bustAuthContextCache(user.id);
-        await this.applyGrantOnProof(user.id, getUserAgain.email);
-        this._track('register', user.email, tracking).catch((err) => {});
-        return { setPassword: this.resetToken({ id: user.id, tokenVersion }) };
-      }
-      await this._userService.activateUser(user.id);
-      await this.applyGrantOnProof(user.id, getUserAgain.email);
-      this._track('register', user.email, tracking).catch((err) => {});
-      // No newsletter auto-enroll: marketing email needs its own opt-in
-      // consent (UK GDPR/PECR) — registration alone is not that consent.
-      // Sign the DB user, not the decoded activation token — the decoded
-      // payload carries exp/iat and jsonwebtoken refuses to re-sign it
-      // with expiresIn (every activation 500ed since signJWT got a TTL).
-      return this.jwt({ ...getUserAgain, activated: true });
+    if (!claims.id || claims.activated) {
+      return false;
     }
+    const user = await this._userService.getUserByEmail(claims.email);
+    // A link minted for another account that once had this address (gone,
+    // signed up again) activates nothing.
+    if (!user || user.id !== claims.id) {
+      throw new Error(ACTIVATION_LINK_INVALID);
+    }
+    if (user.activated) {
+      // Opened again: a plan that did not arrive the first time (the
+      // database failed after the activation) gets another chance.
+      await this.applyGrantOnProof(user.id, user.email);
+      return false;
+    }
+    return user;
+  }
 
-    return false;
+  // The link proves who owns the address, not who typed the password. Anyone
+  // can sign up with someone else's address and their own password; the
+  // owner, expecting our mail (an invitation, a plan promised to them), opens
+  // the link, and the account they then use would open with the stranger's
+  // password. Opened in the browser the sign-up was made in, it is one
+  // person: the account is activated and signed in. Anywhere else nothing is
+  // written yet: the page asks for the password chosen at sign-up
+  // (activateWithPassword), or lets the holder of the link choose a new one
+  // (activateAndChoosePassword). The link alone, or the password alone,
+  // never activates the account with a password someone else chose.
+  async activate(
+    code: string,
+    tracking: string,
+    proof?: string
+  ): Promise<string | false | { signIn: string }> {
+    const user = await this.activationTarget(code);
+    if (!user) {
+      return false;
+    }
+    if (!(await this.registeredInThisBrowser(user.id, proof))) {
+      return { signIn: user.email };
+    }
+    await this._userService.activateUser(user.id);
+    await this.applyGrantOnProof(user.id, user.email);
+    this._track('register', user.email, tracking).catch((err) => {});
+    // No newsletter auto-enroll: marketing email needs its own opt-in
+    // consent (UK GDPR/PECR); registration alone is not that consent.
+    // Sign the DB user, not the decoded activation token: the decoded
+    // payload carries exp/iat and jsonwebtoken refuses to re-sign it
+    // with expiresIn.
+    return this.jwt({ ...user, activated: true });
+  }
+
+  // The link opened in another browser, with the password chosen at sign-up:
+  // activates and signs in. Counts towards the same lockout as signing in.
+  async activateWithPassword(
+    code: string,
+    password: string,
+    tracking: string
+  ): Promise<string | false> {
+    const user = await this.activationTarget(code);
+    if (!user) {
+      return false;
+    }
+    const failuresKey = `login_failures:${user.email.toLowerCase()}`;
+    const failures = Number((await ioRedis.get(failuresKey)) || 0);
+    if (failures >= MAX_LOGIN_FAILURES) {
+      throw new Error(
+        LOGIN_LOCKED_OUT
+      );
+    }
+    const matches =
+      typeof password === 'string' &&
+      password.length > 0 &&
+      (await AuthChecker.comparePassword(
+        password,
+        user.password || unknownUserHash()
+      ));
+    if (!matches || !user.password) {
+      const total = await ioRedis.incr(failuresKey);
+      if (total === 1 || (await ioRedis.ttl(failuresKey)) < 0) {
+        await ioRedis.expire(failuresKey, LOGIN_LOCKOUT_WINDOW_SECONDS);
+      }
+      throw new Error(ACTIVATION_WRONG_PASSWORD);
+    }
+    if (
+      !(await this._userService.activateWithCheckedPassword(
+        user.id,
+        user.password
+      ))
+    ) {
+      // A new password was chosen through the link at the same moment.
+      throw new Error(ACTIVATION_WRONG_PASSWORD);
+    }
+    await ioRedis.del(failuresKey);
+    await bustAuthContextCache(user.id);
+    await this.applyGrantOnProof(user.id, user.email);
+    this._track('register', user.email, tracking).catch((err) => {});
+    return this.jwt({ ...user, activated: true });
+  }
+
+  // The link opened in another browser by someone who did not sign up, or
+  // does not remember the password: the account becomes active, loses the
+  // password it was created with in the same write, and the holder of the
+  // link chooses theirs.
+  async activateAndChoosePassword(
+    code: string,
+    tracking: string
+  ): Promise<false | { setPassword: string }> {
+    const user = await this.activationTarget(code);
+    if (!user) {
+      return false;
+    }
+    const tokenVersion = await this._userService.activateWithoutPassword(
+      user.id,
+      randomBytes(32).toString('hex')
+    );
+    if (tokenVersion === null) {
+      // Opened twice at once: the other one has the link.
+      return false;
+    }
+    await bustAuthContextCache(user.id);
+    await this.applyGrantOnProof(user.id, user.email);
+    this._track('register', user.email, tracking).catch((err) => {});
+    return { setPassword: this.resetToken({ id: user.id, tokenVersion }) };
   }
 
   async resendActivationEmail(email: string, lang: EmailLang = 'en') {

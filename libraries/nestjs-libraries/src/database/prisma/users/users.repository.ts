@@ -178,6 +178,17 @@ export class UsersRepository {
     return user?.tokenVersion ?? null;
   }
 
+  // Activation by someone who typed the sign-up password: only while the
+  // account is still inactive and the password is the one that was checked,
+  // so a reset through the same link at the same moment wins.
+  async activateWithCheckedPassword(id: string, passwordHash: string) {
+    const { count } = await this._user.model.user.updateMany({
+      where: { id, activated: false, password: passwordHash },
+      data: { activated: true },
+    });
+    return count > 0;
+  }
+
   changeAudienceSize(userId: string, audience: number) {
     return this._user.model.user.update({
       where: {

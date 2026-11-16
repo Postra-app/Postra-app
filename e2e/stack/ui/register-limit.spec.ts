@@ -18,7 +18,6 @@ test('a sign-up over the daily limit says so and frees the button', async ({ pag
   await page.goto('/auth/register');
   await page.getByPlaceholder('Email Address').fill(`limit-${Date.now()}@example.com`);
   await page.getByPlaceholder('Password', { exact: true }).fill('Stack-tests-T-1');
-  await page.getByPlaceholder('Confirm Password').fill('Stack-tests-T-1');
   await page.getByPlaceholder('Company').fill('Stack sign-up limit');
   await page.getByRole('checkbox', { name: /I accept the Terms of Service/ }).click();
   const submit = page.getByRole('button', { name: 'Create Account' });
@@ -29,4 +28,12 @@ test('a sign-up over the daily limit says so and frees the button', async ({ pag
   ).toBeVisible();
   await expect(page.getByText(/Unexpected error|FetchHandledError/)).toHaveCount(0);
   await expect(submit).toBeEnabled();
+});
+
+// One password field, with the eye to check what was typed: a second
+// "confirm" field asked for the same password twice.
+test('the sign-up form asks for the password once', async ({ page }) => {
+  await page.goto('/auth/register');
+  await expect(page.locator('input[type="password"]')).toHaveCount(1);
+  await expect(page.getByPlaceholder('Confirm Password')).toHaveCount(0);
 });

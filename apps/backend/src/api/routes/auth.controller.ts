@@ -17,7 +17,9 @@ import { CreateOrgUserDto } from '@gitroom/nestjs-libraries/dtos/auth/create.org
 import { LoginUserDto } from '@gitroom/nestjs-libraries/dtos/auth/login.user.dto';
 import {
   ACTIVATION_LINK_INVALID,
+  ACTIVATION_WRONG_PASSWORD,
   AuthService,
+  LOGIN_LOCKED_OUT,
   REGISTRATION_PROOF_TTL_SECONDS,
 } from '@gitroom/backend/services/auth/auth.service';
 import { ForgotReturnPasswordDto } from '@gitroom/nestjs-libraries/dtos/auth/forgot-return.password.dto';
@@ -464,12 +466,13 @@ export class AuthController {
     }
     response.clearCookie(REGISTRATION_PROOF_COOKIE, sessionCookieOptions());
 
-    // Activated from somewhere other than the browser that signed up: no
-    // session, the page sends the person to choose their password.
+    // Opened somewhere other than the browser that signed up: nothing is
+    // activated yet. The page asks for the password chosen at sign-up
+    // (/activate/sign-in), or offers to choose a new one (/activate/reset).
     if (typeof activate !== 'string') {
       return response
         .status(200)
-        .json({ can: true, setPassword: activate.setPassword });
+        .json({ can: true, signIn: true, email: activate.signIn });
     }
 
     // The page posts on open, so someone else's activation link signed the
@@ -488,6 +491,101 @@ export class AuthController {
     response.header('onboarding', 'true');
 
     return response.status(200).json({ can: true });
+  }
+
+  // The activation link opened in another browser, with the password chosen
+  // at sign-up: activates and signs this browser in. Throttled as signing in.
+  @Post('/activate/sign-in')
+  @Throttle({ default: { ttl: 900000, limit: 5 } })
+  async activateSignIn(
+    @Body('code') code: string,
+    @Body('password') password: string,
+    @Body('datafast_visitor_id') datafast_visitor_id: string,
+    @Res({ passthrough: false }) response: Response,
+    @RealIP() ip: string,
+    @UserAgent() userAgent: string
+  ) {
+    let jwt: string | false;
+    try {
+      jwt = await this._authService.activateWithPassword(
+        code,
+        password,
+        datafast_visitor_id
+      );
+    } catch (e: any) {
+      const message = String(e?.message || '');
+      if (message === ACTIVATION_WRONG_PASSWORD) {
+        this._auditService.record({
+          action: 'auth.login.failed',
+          ip,
+          userAgent,
+          metadata: { via: 'activation', reason: 'wrong_password' },
+        });
+        return response
+          .status(400)
+          .type('text/plain')
+          .send(ACTIVATION_WRONG_PASSWORD);
+      }
+      if (message === LOGIN_LOCKED_OUT) {
+        return response.status(429).type('text/plain').send(LOGIN_LOCKED_OUT);
+      }
+      if (message !== ACTIVATION_LINK_INVALID) {
+        Logger.error(`activation sign-in failed: ${message}`);
+      }
+      return response.status(400).type('text/plain').send(ACTIVATION_LINK_INVALID);
+    }
+    if (!jwt) {
+      return response.status(200).json({ can: false });
+    }
+    response.clearCookie(REGISTRATION_PROOF_COOKIE, sessionCookieOptions());
+    const userId = (AuthChecker.verifyJWT(jwt) as { id?: string })?.id;
+    this._auditService.record({
+      action: 'auth.login',
+      userId,
+      ip,
+      userAgent,
+      metadata: { provider: 'LOCAL', via: 'activation' },
+    });
+    // A browser signed in to another account was asked to switch by typing
+    // this account's password: its organisation choice goes with it.
+    clearSessionCookies(response, ['showorg']);
+    setSessionCookie(response, jwt);
+    if (process.env.NOT_SECURED) {
+      response.header('auth', jwt);
+    }
+    response.header('onboarding', 'true');
+    return response.status(200).json({ can: true });
+  }
+
+  // The activation link opened by someone who did not sign up, or does not
+  // remember the password: the account is activated without that password
+  // and the page sends the holder of the link to choose theirs.
+  @Post('/activate/reset')
+  @Throttle({ default: { ttl: 3600000, limit: 10 } })
+  async activateReset(
+    @Body('code') code: string,
+    @Body('datafast_visitor_id') datafast_visitor_id: string,
+    @Res({ passthrough: false }) response: Response
+  ) {
+    let result: Awaited<ReturnType<AuthService['activateAndChoosePassword']>>;
+    try {
+      result = await this._authService.activateAndChoosePassword(
+        code,
+        datafast_visitor_id
+      );
+    } catch (e: any) {
+      if (e?.message !== ACTIVATION_LINK_INVALID) {
+        Logger.error(`activation reset failed: ${e?.message}`);
+      }
+      return response.status(400).type('text/plain').send(ACTIVATION_LINK_INVALID);
+    }
+    if (!result) {
+      return response.status(200).json({ can: false });
+    }
+    response.clearCookie(REGISTRATION_PROOF_COOKIE, sessionCookieOptions());
+    return response
+      .status(200)
+      .json({ can: true, setPassword: result.setPassword });
   }
 
   @Post('/resend-activation')

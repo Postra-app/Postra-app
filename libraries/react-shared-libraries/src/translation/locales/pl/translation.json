@@ -2315,5 +2315,9 @@
   "delete_account_check_email": "Sprawdź pocztę, aby potwierdzić. Wysłaliśmy link na {{email}}. Wygaśnie za 1 godzinę, a nic nie zostanie usunięte, dopóki nie klikniesz przycisku na tej stronie.",
   "delete_account_password_label": "Twoje hasło",
   "delete_account_password_hint": "Nie masz hasła albo go nie pamiętasz? Zostaw puste, a wyślemy Ci link do potwierdzenia.",
-  "delete_account_email_note": "Aby potwierdzić, wyślemy Ci link e-mailem. Konto zostanie usunięte dopiero, gdy go otworzysz i klikniesz przycisk."
+  "delete_account_email_note": "Aby potwierdzić, wyślemy Ci link e-mailem. Konto zostanie usunięte dopiero, gdy go otworzysz i klikniesz przycisk.",
+  "activate_sign_in_title": "Adres e-mail potwierdzony",
+  "activate_sign_in_subtitle": "Zaloguj się hasłem, które podałeś przy rejestracji, aby dokończyć aktywację konta.",
+  "activate_password_required": "Wpisz hasło.",
+  "activate_choose_new_password": "To nie ja zakładałem konto albo nie pamiętam hasła"
 }

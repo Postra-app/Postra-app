@@ -1998,5 +1998,9 @@
   "switch_to_dark_mode": "Cambiar a modo oscuro",
   "set_plug": "Configurar Plug",
   "edit_plug": "Editar Plug",
-  "post_editor": "Editor de publicaciones"
+  "post_editor": "Editor de publicaciones",
+  "activate_sign_in_title": "Correo confirmado",
+  "activate_sign_in_subtitle": "Inicia sesión con la contraseña que elegiste al registrarte para terminar de activar tu cuenta.",
+  "activate_password_required": "Introduce tu contraseña.",
+  "activate_choose_new_password": "No me registré o he olvidado mi contraseña"
 }

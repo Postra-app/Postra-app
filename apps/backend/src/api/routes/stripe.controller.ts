@@ -65,6 +65,8 @@ export class StripeController {
           return this._stripeService.updateSubscription(event);
         case 'customer.subscription.deleted':
           return this._stripeService.deleteSubscription(event);
+        case 'customer.subscription.trial_will_end':
+          return this._stripeService.trialWillEnd(event);
         case 'invoice.payment_failed':
           return this._stripeService.paymentFailed(event);
         case 'invoice.payment_action_required':

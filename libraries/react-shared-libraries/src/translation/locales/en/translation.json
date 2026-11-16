@@ -2315,5 +2315,9 @@
   "delete_account_check_email": "Check your email to confirm. We have sent a link to {{email}}. It expires in 1 hour, and nothing is deleted until you press the button on that page.",
   "delete_account_password_label": "Your password",
   "delete_account_password_hint": "No password, or forgot it? Leave this empty and we will email you a link to confirm.",
-  "delete_account_email_note": "To confirm, we will email you a link. Your account is deleted only after you open it and press the button."
+  "delete_account_email_note": "To confirm, we will email you a link. Your account is deleted only after you open it and press the button.",
+  "activate_sign_in_title": "Email confirmed",
+  "activate_sign_in_subtitle": "Sign in with the password you chose when you signed up to finish activating your account.",
+  "activate_password_required": "Enter your password.",
+  "activate_choose_new_password": "I didn't sign up, or forgot my password"
 }
