@@ -7,10 +7,12 @@ import React, {
   useMemo,
   useState,
   useRef,
+  useEffect,
 } from 'react';
 import { refusalMessage } from '@gitroom/frontend/components/layout/response.error';
 import { useFetch } from '@gitroom/helpers/utils/custom.fetch';
 import useSWR from 'swr';
+import { useRouter } from 'next/navigation';
 import { Button } from '@gitroom/frontend/components/ui/button';
 import { useModals } from '@gitroom/frontend/components/layout/new-modal';
 import { Input } from '@gitroom/react/form/input';
@@ -31,7 +33,21 @@ import { EmptyState } from '@gitroom/frontend/components/ui/empty-state';
 import { useUser } from '@gitroom/frontend/components/layout/user.context';
 import { pricing } from '@gitroom/nestjs-libraries/database/prisma/subscriptions/pricing';
 import { autopostAccess } from '@gitroom/frontend/components/autopost/autopost.access';
+// A member opening /autopost by its address: the feeds are an admin's to
+// change (the server refuses a member), so the page is not shown to them.
 export const Autopost: FC = () => {
+  const user = useUser();
+  const router = useRouter();
+  const member = user?.role === 'USER';
+  useEffect(() => {
+    if (member) {
+      router.replace('/launches');
+    }
+  }, [member, router]);
+  return member ? null : <AutopostFeeds />;
+};
+
+const AutopostFeeds: FC = () => {
   const fetch = useFetch();
   const t = useT();
   const modal = useModals();

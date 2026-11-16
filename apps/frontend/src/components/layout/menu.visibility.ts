@@ -60,6 +60,13 @@ export const canSeeMenuEntry = (
     return false;
   }
 
+  // Feeds publish in the organisation's name and only an admin may change
+  // them (the server refuses a member). A member saw the entry, the whole
+  // list and its Edit and Delete buttons, none of which worked for them.
+  if (entry.path === '/autopost' && viewer?.role === 'USER') {
+    return false;
+  }
+
   if (entry.role) {
     return entry.role.includes(viewer?.role!);
   }
