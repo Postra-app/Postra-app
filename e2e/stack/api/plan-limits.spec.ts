@@ -11,6 +11,10 @@ test('Starter cannot connect Pro or Business platforms', async () => {
   for (const platform of ['youtube', 'threads', 'linkedin-page', 'bluesky', 'mastodon', 'telegram', 'x', 'discord']) {
     expect((await starter.get(connect(platform))).status(), platform).toBe(402);
   }
+  // The message names the platform as the picker does, not by its identifier
+  // ("The youtube channel…").
+  expect(await (await starter.get(connect('youtube'))).text()).toContain("The YouTube channel isn't included in your plan");
+  expect(await (await starter.get(connect('linkedin-page'))).text()).toContain('The LinkedIn Page channel');
   await starter.dispose();
 });
 

@@ -262,6 +262,15 @@ export class IntegrationManager {
     );
   }
 
+  // The platform as people know it ("YouTube", "LinkedIn Page"), for a
+  // message someone reads: messages named it by its identifier ("The youtube
+  // channel isn't included in your plan"). The first line of the name only;
+  // Instagram's second line tells its two logins apart in the picker.
+  label(identifier: string) {
+    const name = socialIntegrationList.find((i) => i.identifier === identifier)?.name;
+    return name?.split('\n')[0].trim() || identifier;
+  }
+
   getAllowedSocialsIntegrations() {
     return socialIntegrationList.map((p) => p.identifier);
   }

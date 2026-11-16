@@ -9,6 +9,7 @@ import {
 import { useFetch } from '@gitroom/helpers/utils/custom.fetch';
 import { isFetchHandledError } from '@gitroom/helpers/utils/fetch.errors';
 import Link from 'next/link';
+import { useSearchParams } from 'next/navigation';
 import { Button } from '@gitroom/frontend/components/ui/button';
 import { Input } from '@gitroom/react/form/input';
 import { useMemo, useState } from 'react';
@@ -30,6 +31,9 @@ export function Login() {
   const [loading, setLoading] = useState(false);
   const [notActivated, setNotActivated] = useState(false);
   const { isGeneral, genericOauth, disableRegistration } = useVariables();
+  // Sent here by an invitation to a team while sign-ups are closed (proxy.ts):
+  // the sign-up link is back, and opens the form (`?invite`).
+  const invited = !!useSearchParams()?.has('invited');
   const resolver = useMemo(() => {
     // The DTO class validates the same fields; since @hookform/resolvers 5 the
     // resolver is typed by that class, which is wider than the form's own type.
@@ -194,11 +198,15 @@ export function Login() {
                     {t('sign_in_1', 'Sign in')}
                   </Button>
                 </div>
-                {!disableRegistration && (
+                {(!disableRegistration || invited) && (
                   <p className="mt-4 text-sm text-textColor/66">
                     {t('don_t_have_an_account', "Don't Have An Account?")}&nbsp;
                     <Link
-                      href="/auth/register"
+                      href={
+                        disableRegistration
+                          ? '/auth/register?invite'
+                          : '/auth/register'
+                      }
                       className="underline underline-offset-4 cursor-pointer text-textColor hover:text-[#38bdf8]"
                     >
                       {t('sign_up', 'Sign Up')}

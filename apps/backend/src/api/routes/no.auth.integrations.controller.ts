@@ -430,7 +430,7 @@ export class NoAuthIntegrationsController {
       !this._integrationManager.isOffered(integration)
     ) {
       throw new HttpException(
-        `The ${integration} channel isn't available yet.`,
+        `The ${this._integrationManager.label(integration)} channel isn't available yet.`,
         403
       );
     }

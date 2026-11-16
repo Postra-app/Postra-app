@@ -79,6 +79,7 @@ const provider = {
 
 const manager = {
   getAllowedSocialsIntegrations: () => ['discord'],
+  label: (identifier: string) => identifier,
   getSocialIntegration: () => provider,
 };
 
@@ -223,6 +224,7 @@ describe('reconnect through a provider with pages keeps the sign-in tokens', () 
     const controller = new NoAuthIntegrationsController(
       {
         getAllowedSocialsIntegrations: () => ['youtube'],
+        label: (identifier: string) => identifier,
         getSocialIntegration: () => youtube,
       } as any,
       integrations as any,

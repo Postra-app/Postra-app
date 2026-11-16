@@ -1,5 +1,8 @@
 import { Injectable } from '@nestjs/common';
-import { PrismaService } from '@gitroom/nestjs-libraries/database/prisma/prisma.service';
+import {
+  PrismaService,
+  readInOneSnapshot,
+} from '@gitroom/nestjs-libraries/database/prisma/prisma.service';
 import {
   AiUsageEvent,
   setAiUsageSink,
@@ -94,15 +97,18 @@ export class AiUsageService {
       costUsdByOrg[org] = cost.usd;
       cost.unknownModels.forEach((m) => unknownModels.add(m));
     }
-    const subscriptions = await this._prisma.subscription.findMany({
-      where: { deletedAt: null, organizationId: { in: Object.keys(byOrg) } },
-      select: {
-        subscriptionTier: true,
-        period: true,
-        isLifetime: true,
-        organization: { select: { id: true, name: true, isTrailing: true } },
-      },
-    });
+    // Organisations come and go while this is read (readInOneSnapshot).
+    const subscriptions = await readInOneSnapshot(this._prisma, (tx) =>
+      tx.subscription.findMany({
+        where: { deletedAt: null, organizationId: { in: Object.keys(byOrg) } },
+        select: {
+          subscriptionTier: true,
+          period: true,
+          isLifetime: true,
+          organization: { select: { id: true, name: true, isTrailing: true } },
+        },
+      })
+    );
     const settings = marginSettings();
     return {
       days,

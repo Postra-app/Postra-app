@@ -90,6 +90,15 @@ describe('proxy - sign-ups closed', () => {
     expect(res.headers.get('location')).toBeNull();
   });
 
+  // The login page has no sign-up link while sign-ups are closed, so someone
+  // invited to a team and without an account had nowhere to go.
+  it('an invitation to a team lands on the login page that offers sign-up', async () => {
+    const res = await signedOut('/auth?org=invite-token');
+    const location = new URL(res.headers.get('location')!);
+    expect(location.pathname + location.search).toBe('/auth/login?invited=1');
+    expect(res.cookies.get('org')?.value).toBe('invite-token');
+  });
+
   it('lets the way back from Google through, code and all', async () => {
     const res = await signedOut(
       '/auth/register?provider=google&code=4%2Fabc&state=s1'

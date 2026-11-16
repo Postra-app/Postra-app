@@ -78,6 +78,31 @@ const ACCOUNT_SUSPENDED =
 // How long the browser a sign-up was made in is remembered as such.
 export const REGISTRATION_PROOF_TTL_SECONDS = 7 * 24 * 60 * 60;
 
+// What routeAuth is given from the invitation cookie: the invitation read by
+// getOrgFromCookie, or nothing.
+type TeamInvite =
+  | boolean
+  | { orgId: string; role: 'USER' | 'ADMIN'; id: string; email?: string };
+
+// An invitation counts for the address it was written to and no other: a
+// link copied without an address, or passed on to someone else, opens
+// nothing while sign-ups are closed. Matched like a promised plan: exactly,
+// or as the same mailbox (Gmail dots) when neither side carries a +tag.
+const invitedAddress = (invite: TeamInvite | undefined, email?: string | null) => {
+  if (!invite || typeof invite === 'boolean' || !invite.email || !email) {
+    return false;
+  }
+  const invited = invite.email.trim().toLowerCase();
+  const address = email.trim().toLowerCase();
+  if (invited === address) return true;
+  const tagged = (a: string) => a.split('@')[0].includes('+');
+  return (
+    !tagged(invited) &&
+    !tagged(address) &&
+    normalizeEmail(invited) === normalizeEmail(address)
+  );
+};
+
 @Injectable()
 export class AuthService {
   constructor(
@@ -91,11 +116,14 @@ export class AuthService {
   ) {}
   // While sign-ups are closed, an address an admin promised a plan to
   // (influencers before launch) can still sign up, by password or with a
-  // provider that verified the address; nobody else can.
+  // provider that verified the address; nobody else can. An invitation to a
+  // team lets its own address in the same way: the owner of a workspace
+  // could invite a colleague, who was then told sign-ups are closed.
   private async registrationGate(
     provider: string,
-    email?: string | null
-  ): Promise<'open' | 'invited' | 'closed'> {
+    email?: string | null,
+    invite?: TeamInvite
+  ): Promise<'open' | 'promised' | 'team' | 'closed'> {
     if (
       process.env.DISABLE_REGISTRATION !== 'true' ||
       provider === Provider.GENERIC ||
@@ -104,13 +132,20 @@ export class AuthService {
       return 'open';
     }
     if (email && (await this._subscriptionService?.hasPendingGrant(email))) {
-      return 'invited';
+      return 'promised';
+    }
+    if (invitedAddress(invite, email)) {
+      return 'team';
     }
     return 'closed';
   }
 
-  async canRegister(provider: string, email?: string | null) {
-    return (await this.registrationGate(provider, email)) !== 'closed';
+  async canRegister(
+    provider: string,
+    email?: string | null,
+    invite?: TeamInvite
+  ) {
+    return (await this.registrationGate(provider, email, invite)) !== 'closed';
   }
 
   // Makes the account (and claims the promise) only if the gate lets it in.
@@ -120,13 +155,14 @@ export class AuthService {
   private async admit<T>(
     provider: string,
     email: string | null | undefined,
-    create: () => Promise<T>
+    create: () => Promise<T>,
+    invite?: TeamInvite
   ): Promise<T> {
-    const gate = await this.registrationGate(provider, email);
+    const gate = await this.registrationGate(provider, email, invite);
     if (gate === 'closed') {
       throw new Error('Registration is disabled');
     }
-    if (gate === 'open') {
+    if (gate === 'open' || gate === 'team') {
       return create();
     }
     const lock = `register-invite:${normalizeEmail(email!)}`;
@@ -148,7 +184,7 @@ export class AuthService {
     body: CreateOrgUserDto | LoginUserDto,
     ip: string,
     userAgent: string,
-    addToOrg?: boolean | { orgId: string; role: 'USER' | 'ADMIN'; id: string },
+    addToOrg?: TeamInvite,
     lang: EmailLang = 'en'
   ) {
     if (provider === Provider.LOCAL) {
@@ -189,7 +225,7 @@ export class AuthService {
             await this._subscriptionService?.applyPendingGrant(made.id, body.email);
           }
           return made;
-        });
+        }, addToOrg);
 
         const addedOrg =
           addToOrg && typeof addToOrg !== 'boolean'
@@ -263,7 +299,8 @@ export class AuthService {
       provider,
       body as CreateOrgUserDto,
       ip,
-      userAgent
+      userAgent,
+      addToOrg
     );
 
     const addedOrg =
@@ -311,7 +348,8 @@ export class AuthService {
     provider: Provider,
     body: CreateOrgUserDto,
     ip: string,
-    userAgent: string
+    userAgent: string,
+    invite?: TeamInvite
   ) {
     const providerInstance = this._providerManager.getProvider(provider);
     const providerUser = await providerInstance.getUser(body.providerToken);
@@ -354,7 +392,7 @@ export class AuthService {
       );
       await this._subscriptionService?.applyPendingGrant(made.id, ownedEmail);
       return made;
-    });
+    }, invite);
 
     this._track('register', providerUser.email, body.datafast_visitor_id).catch(
       (err) => {}
@@ -764,7 +802,8 @@ export class AuthService {
     code: string,
     redirectUri?: string,
     state?: string,
-    nonce?: string
+    nonce?: string,
+    invite?: TeamInvite
   ) {
     // GETDEL: read and consume in one step. A get followed by a del let two
     // requests racing with the same state both through (2.2.11).
@@ -796,7 +835,8 @@ export class AuthService {
       token,
       canRegister: await this.canRegister(
         provider,
-        user.verified === true ? user.email : null
+        user.verified === true ? user.email : null,
+        invite
       ),
     };
   }

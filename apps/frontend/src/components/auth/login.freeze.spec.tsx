@@ -1,6 +1,10 @@
 /**
  * @jest-environment jsdom
  */
+let query = new URLSearchParams();
+jest.mock('next/navigation', () => ({
+  useSearchParams: () => query,
+}));
 jest.mock('@gitroom/react/helpers/variable.context', () => ({
   useVariables: () => ({
     isGeneral: true,
@@ -26,5 +30,14 @@ describe('login while sign-ups are closed', () => {
     expect(html).toContain('Continue With');
     expect(html).toContain('Google');
     expect(html).not.toContain('/auth/register');
+  });
+
+  // Someone invited to a team who has no account yet: the invitation link
+  // brings them here with `invited`, and they need a way to the form.
+  it('offers the sign-up form to someone who came from a team invitation', () => {
+    query = new URLSearchParams('invited=1');
+    const html = renderToStaticMarkup(<Login />);
+    expect(html).toContain('href="/auth/register?invite"');
+    query = new URLSearchParams();
   });
 });

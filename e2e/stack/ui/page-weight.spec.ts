@@ -43,9 +43,16 @@ test('the calendar paints without the AI assistant library or the uploader', asy
   // component may mention.
   const markers = { CopilotKit: 'wrap your app in a `<CopilotKit>`', Uppy: 'youCanOnlyUploadX' };
   const found: string[] = [];
-  let painted = false;
+  // The menu prefetches every route once it hydrates, and a prefetched route
+  // brings its own chunks: /media the uploader, /agents the assistant. That
+  // started about 100 ms after the button below appeared, sometimes before
+  // it, so a flag set "after paint" raced with it and the test failed now
+  // and then. Without the prefetches, whatever still loads is the calendar's
+  // own, and the page can be left to settle.
+  await page.route('**/*', (route) =>
+    route.request().headers()['next-router-prefetch'] ? route.abort() : route.continue()
+  );
   page.on('response', async (res) => {
-    if (painted) return; // idle-time prefetch of the menu routes may load /agents
     if (res.request().resourceType() !== 'script' || !res.url().includes('/_next/')) return;
     const body = await res.text().catch(() => '');
     for (const [name, marker] of Object.entries(markers)) {
@@ -54,6 +61,6 @@ test('the calendar paints without the AI assistant library or the uploader', asy
   });
   await page.goto('/launches');
   await expect(page.getByRole('button', { name: 'Create Post' })).toBeVisible();
-  painted = true;
+  await page.waitForLoadState('networkidle');
   expect(found).toEqual([]);
 });

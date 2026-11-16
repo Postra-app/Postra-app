@@ -358,7 +358,7 @@ export class IntegrationsController {
         pricing[tier]?.allowedProviders || pricing.FREE.allowedProviders;
       if (!allowed.includes(integration)) {
         throw new HttpException(
-          `The ${integration} channel isn't included in your plan - upgrade to connect it.`,
+          `The ${this._integrationManager.label(integration)} channel isn't included in your plan - upgrade to connect it.`,
           402
         );
       }
@@ -372,7 +372,7 @@ export class IntegrationsController {
       !this._integrationManager.isOffered(integration)
     ) {
       throw new HttpException(
-        `The ${integration} channel isn't available yet.`,
+        `The ${this._integrationManager.label(integration)} channel isn't available yet.`,
         403
       );
     }
@@ -642,7 +642,7 @@ export class IntegrationsController {
         pricing[tier]?.allowedProviders || pricing.FREE.allowedProviders;
       if (integration && !allowed.includes(integration.providerIdentifier)) {
         throw new HttpException(
-          `The ${integration.providerIdentifier} channel isn't included in your plan - upgrade to enable it.`,
+          `The ${this._integrationManager.label(integration.providerIdentifier)} channel isn't included in your plan - upgrade to enable it.`,
           402
         );
       }
