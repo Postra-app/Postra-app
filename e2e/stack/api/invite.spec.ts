@@ -22,8 +22,18 @@ const invite = async (agency: APIRequestContext) => {
 
 // Follows "Continue" on the invite page; returns the provider URL's state.
 const follow = async (browser: APIRequestContext, token: string) => {
+  // Sent as a bare link it goes back to the page that names the organisation
+  // and marks nothing.
+  const bare = await browser.get(`/integrations/invite/${token}/go?provider=mastodon`, {
+    maxRedirects: 0,
+  });
+  expect(bare.status()).toBe(302);
+  expect(bare.headers()['location']).toMatch(new RegExp(`/connect/mastodon/${token}$`));
+  expect(bare.headers()['set-cookie'] ?? '').toBe('');
+
   const res = await browser.get(`/integrations/invite/${token}/go?provider=mastodon`, {
     maxRedirects: 0,
+    headers: { referer: `${process.env.FRONTEND_URL}/connect/mastodon/${token}` },
   });
   expect(res.status()).toBe(302);
   const location = res.headers()['location'];

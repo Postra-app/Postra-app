@@ -67,6 +67,44 @@ const readInvite = async (token: string): Promise<StoredInvite | null> => {
   }
 };
 
+const originOf = (url?: string) => {
+  try {
+    return new URL(String(url)).origin;
+  } catch {
+    return null;
+  }
+};
+
+// The invitee's cookie is what lets a connection finish without a member's
+// session, and the reason given for trusting it is that they came through
+// our page, which names the organisation they are connecting to. This
+// address is a plain link, though: sent to someone directly, it set the
+// cookie and went on to the platform, which gives a person who has already
+// authorised Postra straight back with a code. Their channel was then
+// connected to the sender's organisation without the page ever being seen.
+// So it only works as the invite page's own "Continue".
+export const cameFromInvitePage = (req: Request) => {
+  const app = originOf(process.env.FRONTEND_URL);
+  let from: URL;
+  try {
+    from = new URL(String(req.headers?.referer || ''));
+  } catch {
+    return false;
+  }
+  if (!app || from.origin !== app) {
+    return false;
+  }
+  if (from.pathname.startsWith('/connect/')) {
+    return true;
+  }
+  // With the API on another origin than the app (development), the browser
+  // names only the origin it came from.
+  return (
+    from.pathname === '/' &&
+    originOf(process.env.NEXT_PUBLIC_BACKEND_URL) !== app
+  );
+};
+
 @ApiTags('Integrations')
 @Controller('/integrations')
 export class NoAuthIntegrationsController {
@@ -129,11 +167,13 @@ export class NoAuthIntegrationsController {
   async followInvite(
     @Param('token') token: string,
     @Query('provider') provider: string,
+    @Req() req: Request,
     @Res() res: Response
   ) {
     const invite = await readInvite(token);
-    if (!invite) {
-      // Back to the invite page, which says the link has expired.
+    // Back to the invite page: it says an expired link has expired, and it
+    // is where a link that did not come from it has to start.
+    if (!invite || !cameFromInvitePage(req)) {
       const name = /^[a-z0-9-]{1,40}$/.test(provider || '') ? provider : 'channel';
       return res.redirect(
         302,
