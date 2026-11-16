@@ -1,3 +1,4 @@
+import { ogImageOf } from '@gitroom/nestjs-libraries/database/prisma/autopost/og.image';
 import { AiUsageCallbackHandler } from '@gitroom/nestjs-libraries/services/ai-usage.langchain';
 import {
   UNTRUSTED_SOURCE_RULE,
@@ -544,14 +545,7 @@ export class AutopostService {
       const html = (
         await readResponseCapped(response as any, ARTICLE_MAX_BYTES)
       ).toString('utf8');
-      const ogMatch = html.match(
-        /<meta[^>]*property=["']og:image["'][^>]*content=["']([^"']+)["']/i
-      );
-      if (ogMatch?.[1]) return ogMatch[1];
-      const twitterMatch = html.match(
-        /<meta[^>]*name=["']twitter:image["'][^>]*content=["']([^"']+)["']/i
-      );
-      return twitterMatch?.[1] || null;
+      return ogImageOf(html);
     } catch {
       return null;
     }
