@@ -19,6 +19,7 @@ import {
   ACTIVATION_LINK_INVALID,
   ACTIVATION_WRONG_PASSWORD,
   AuthService,
+  LOGIN_LOCKED_OUT,
   REGISTRATION_PROOF_TTL_SECONDS,
 } from '@gitroom/backend/services/auth/auth.service';
 import { ForgotReturnPasswordDto } from '@gitroom/nestjs-libraries/dtos/auth/forgot-return.password.dto';
@@ -520,10 +521,13 @@ export class AuthController {
           userAgent,
           metadata: { via: 'activation', reason: 'wrong_password' },
         });
-        return response.status(400).type('text/plain').send(message);
+        return response
+          .status(400)
+          .type('text/plain')
+          .send(ACTIVATION_WRONG_PASSWORD);
       }
-      if (message.startsWith('Too many failed login attempts')) {
-        return response.status(429).type('text/plain').send(message);
+      if (message === LOGIN_LOCKED_OUT) {
+        return response.status(429).type('text/plain').send(LOGIN_LOCKED_OUT);
       }
       if (message !== ACTIVATION_LINK_INVALID) {
         Logger.error(`activation sign-in failed: ${message}`);

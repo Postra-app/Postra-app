@@ -67,6 +67,8 @@ export type ForgotResult =
 
 export const ACTIVATION_WRONG_PASSWORD =
   'That is not the password you signed up with. Try again, or choose a new password below.';
+export const LOGIN_LOCKED_OUT =
+  'Too many failed login attempts. Please try again in a few minutes.';
 export const ACTIVATION_LINK_INVALID =
   'This activation link is invalid or has expired.';
 
@@ -226,7 +228,7 @@ export class AuthService {
       const failures = Number((await ioRedis.get(failuresKey)) || 0);
       if (failures >= MAX_LOGIN_FAILURES) {
         throw new Error(
-          'Too many failed login attempts. Please try again in a few minutes.'
+          LOGIN_LOCKED_OUT
         );
       }
 
@@ -644,7 +646,7 @@ export class AuthService {
     const failures = Number((await ioRedis.get(failuresKey)) || 0);
     if (failures >= MAX_LOGIN_FAILURES) {
       throw new Error(
-        'Too many failed login attempts. Please try again in a few minutes.'
+        LOGIN_LOCKED_OUT
       );
     }
     const matches =
