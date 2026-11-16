@@ -2319,5 +2319,6 @@
   "activate_sign_in_title": "Adres e-mail potwierdzony",
   "activate_sign_in_subtitle": "Zaloguj się hasłem, które podałeś przy rejestracji, aby dokończyć aktywację konta.",
   "activate_password_required": "Wpisz hasło.",
-  "activate_choose_new_password": "To nie ja zakładałem konto albo nie pamiętam hasła"
+  "activate_choose_new_password": "To nie ja zakładałem konto albo nie pamiętam hasła",
+  "activation_check_spam": "Nie widzisz go? Sprawdź folder spam lub wiadomości-śmieci."
 }

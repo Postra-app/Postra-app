@@ -7,11 +7,39 @@ import { ssrfSafeDispatcher } from '@gitroom/nestjs-libraries/dtos/webhooks/ssrf
 // itself after login, led wherever that server said, hosts inside our
 // network included. This fetch checks the address of every connection it
 // opens, on every hop.
-export const instanceFetch = ((input: any, init?: any) =>
-  undiciFetch(input, {
+//
+// Clients such as the Bluesky one build a Request and pass it in. That
+// Request belongs to the runtime's own fetch, and the undici package does not
+// recognise it: it read it as the string "[object Request]" and every call
+// failed with an invalid URL. Its parts are passed instead.
+export const instanceFetch = (async (input: any, init?: any) => {
+  if (
+    input &&
+    typeof input === 'object' &&
+    !(input instanceof URL) &&
+    typeof input.url === 'string' &&
+    typeof input.method === 'string'
+  ) {
+    const method = input.method.toUpperCase();
+    const body =
+      method === 'GET' || method === 'HEAD' || input.body === null
+        ? undefined
+        : Buffer.from(await input.arrayBuffer());
+    return undiciFetch(input.url, {
+      method,
+      headers: [...input.headers],
+      body,
+      redirect: input.redirect,
+      signal: input.signal,
+      ...init,
+      dispatcher: ssrfSafeDispatcher,
+    });
+  }
+  return undiciFetch(input, {
     ...init,
     dispatcher: ssrfSafeDispatcher,
-  })) as unknown as typeof globalThis.fetch;
+  });
+}) as unknown as typeof globalThis.fetch;
 
 const BLUESKY_OWN = /(^|\.)(bsky\.social|bsky\.network)$/i;
 

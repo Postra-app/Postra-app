@@ -41,7 +41,10 @@ jobs:
           NODE_OPTIONS: '--max-old-space-size=4096'
 
       - name: Test
-        timeout-minutes: 5
+        # A full run takes 4 to 4.5 minutes; on a slower runner the same run
+        # passed 5 minutes with every suite still finishing steadily. 10 keeps
+        # a real hang from holding the runner without failing a healthy run.
+        timeout-minutes: 10
         run: pnpm test --passWithNoTests
 
   # Lint and type-check gate. `pnpm build` is not a type gate (Next skips files
