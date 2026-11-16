@@ -154,20 +154,28 @@ export class UsersRepository {
   }
 
   /**
-   * The password an account was made with stops working, and with it every
-   * session and reset link issued so far. Answers the new token version, for
-   * the link that lets the owner of the address choose their own.
+   * Activation by someone who did not type the account's password: active
+   * and without that password in one write, or neither. Null when the
+   * account was already active (the link was opened twice at once), so only
+   * one of them hands out the link to choose a password.
    */
-  async discardPassword(id: string, unusable: string) {
-    const user = await this._user.model.user.update({
-      where: { id },
+  async activateWithoutPassword(id: string, unusable: string) {
+    const { count } = await this._user.model.user.updateMany({
+      where: { id, activated: false },
       data: {
+        activated: true,
         password: AuthService.hashPassword(unusable),
         tokenVersion: { increment: 1 },
       },
+    });
+    if (!count) {
+      return null;
+    }
+    const user = await this._user.model.user.findUnique({
+      where: { id },
       select: { tokenVersion: true },
     });
-    return user.tokenVersion;
+    return user?.tokenVersion ?? null;
   }
 
   changeAudienceSize(userId: string, audience: number) {

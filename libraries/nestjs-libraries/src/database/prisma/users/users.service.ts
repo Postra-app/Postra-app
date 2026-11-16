@@ -54,8 +54,8 @@ export class UsersService {
     return this._usersRepository.updatePassword(id, password, tokenVersion);
   }
 
-  discardPassword(id: string, unusable: string) {
-    return this._usersRepository.discardPassword(id, unusable);
+  activateWithoutPassword(id: string, unusable: string) {
+    return this._usersRepository.activateWithoutPassword(id, unusable);
   }
 
   getPersonal(userId: string) {

@@ -594,24 +594,31 @@ export class AuthService {
         return false;
       }
       const typedHere = await this.registeredInThisBrowser(user.id, proof);
-      await this._userService.activateUser(user.id);
-      await this.applyGrantOnProof(user.id, getUserAgain.email);
-      this._track('register', user.email, tracking).catch((err) => {});
       // The link proves who owns the address, not who typed the password.
       // Anyone can sign up with someone else's address and their own
       // password; the owner, expecting our mail (an invitation, a plan
       // promised to them), opens the link, and the account they then use
       // still opened with the stranger's password. Opened in the browser the
-      // sign-up was made in, it is one person. Anywhere else the password
-      // goes and the person holding the link chooses theirs.
+      // sign-up was made in, it is one person. Anywhere else the account
+      // becomes active and loses that password in the same write, and the
+      // person holding the link chooses theirs.
       if (!typedHere) {
-        const tokenVersion = await this._userService.discardPassword(
+        const tokenVersion = await this._userService.activateWithoutPassword(
           user.id,
           randomBytes(32).toString('hex')
         );
+        if (tokenVersion === null) {
+          // Opened twice at once: the other one has the link.
+          return false;
+        }
         await bustAuthContextCache(user.id);
+        await this.applyGrantOnProof(user.id, getUserAgain.email);
+        this._track('register', user.email, tracking).catch((err) => {});
         return { setPassword: this.resetToken({ id: user.id, tokenVersion }) };
       }
+      await this._userService.activateUser(user.id);
+      await this.applyGrantOnProof(user.id, getUserAgain.email);
+      this._track('register', user.email, tracking).catch((err) => {});
       // No newsletter auto-enroll: marketing email needs its own opt-in
       // consent (UK GDPR/PECR) — registration alone is not that consent.
       // Sign the DB user, not the decoded activation token — the decoded

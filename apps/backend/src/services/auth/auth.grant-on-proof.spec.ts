@@ -61,7 +61,10 @@ const service = (users: Record<string, any> = {}) => {
         return u;
       },
       updatePassword: async () => 1,
-      discardPassword: async () => 1,
+      activateWithoutPassword: async (id: string) => {
+        activated.push(id);
+        return 1;
+      },
     },
     _emailService: { sendEmailSync: async () => true, sendEmail: async () => true },
     _track: async (): Promise<void> => undefined,

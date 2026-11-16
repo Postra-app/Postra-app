@@ -71,8 +71,10 @@ const world = () => {
         const u: any = Object.values(users).find((x: any) => x.id === id);
         u.activated = true;
       },
-      discardPassword: async (id: string, unusable: string) => {
+      activateWithoutPassword: async (id: string, unusable: string) => {
         const u: any = Object.values(users).find((x: any) => x.id === id);
+        if (u.activated) return null;
+        u.activated = true;
         u.password = AuthChecker.hashPassword(unusable);
         u.tokenVersion += 1;
         return u.tokenVersion;
@@ -150,6 +152,28 @@ describe('activation link and the password the account was made with', () => {
     await expect(s.forgotReturn(choose)).resolves.toBe(true);
     expect(await AuthChecker.comparePassword('Owner-pass-2', users[ADDRESS].password)).toBe(true);
     await expect(s.forgotReturn({ ...choose, password: 'Again-pass-3' })).resolves.toBe(false);
+  });
+
+  it('opened twice at once, only one gets the link to choose a password', async () => {
+    const { s, users, signUp } = world();
+    const { link } = await signUp('Stranger-pass-1');
+
+    const [first, second] = await Promise.all([s.activate(link, '', undefined), s.activate(link, '', undefined)]);
+
+    expect([first, second].filter((r) => r && typeof r === 'object')).toHaveLength(1);
+    expect([first, second]).toContain(false);
+    expect(users[ADDRESS].tokenVersion).toBe(1);
+  });
+
+  it('is active and without the password together, or neither', async () => {
+    const { s, users, signUp } = world();
+    const { link } = await signUp('Stranger-pass-1');
+    (s as any)._userService.activateWithoutPassword = async () => {
+      throw new Error('database gone');
+    };
+
+    await expect(s.activate(link, '', undefined)).rejects.toThrow('database gone');
+    expect(users[ADDRESS].activated).toBe(false);
   });
 
   it("someone else's proof is not this account's", async () => {
