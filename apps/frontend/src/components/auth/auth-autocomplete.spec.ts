@@ -26,10 +26,10 @@ describe('auth forms identify their input purpose', () => {
     expect(s).toContain('autoComplete="current-password"');
   });
 
-  it('register: email, two new passwords, organisation', () => {
+  it('register: email, one new password, organisation', () => {
     const s = read('register.tsx');
     expect(s).toContain('autoComplete="email"');
-    expect(s.match(/autoComplete="new-password"/g)).toHaveLength(2);
+    expect(s.match(/autoComplete="new-password"/g)).toHaveLength(1);
     expect(s).toContain('autoComplete="organization"');
   });
 
