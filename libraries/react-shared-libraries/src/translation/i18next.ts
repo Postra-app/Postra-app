@@ -31,6 +31,11 @@ i18next
       caches: ['cookie'],
     },
     preload: runsOnServerSide ? languages : [],
+    // React escapes what it renders. Escaped here as well, a value came out
+    // twice escaped and people read the entities: a date as
+    // 16&#x2F;11&#x2F;2026, a name with "&" as "&amp;". No translated text is
+    // put into the page as raw HTML.
+    interpolation: { escapeValue: false },
   });
 
 export default i18next;

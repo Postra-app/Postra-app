@@ -546,6 +546,8 @@ export class PostsRepository {
         state: 'PUBLISHED',
         releaseURL,
         releaseId: postId,
+        // Published: what an earlier attempt failed with is no longer true.
+        error: null,
       },
     });
   }

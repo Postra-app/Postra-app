@@ -419,7 +419,7 @@ export class PublicIntegrationsController {
         pricing[tier]?.allowedProviders || pricing.FREE.allowedProviders;
       if (!allowed.includes(integration)) {
         throw new HttpException(
-          `The ${integration} channel isn't included in your plan - upgrade to connect it.`,
+          `The ${this._integrationManager.label(integration)} channel isn't included in your plan - upgrade to connect it.`,
           402
         );
       }
@@ -429,7 +429,7 @@ export class PublicIntegrationsController {
     // after the plan gate, so a plan without it still answers 402.
     if (!refresh && !this._integrationManager.isOffered(integration)) {
       throw new HttpException(
-        `The ${integration} channel isn't available yet.`,
+        `The ${this._integrationManager.label(integration)} channel isn't available yet.`,
         403
       );
     }
