@@ -14,7 +14,15 @@ type Inputs = {
   repeatPassword: string;
   token: string;
 };
-export function ForgotReturn({ token }: { token: string }) {
+// `confirmed`: sent here by the activation link, opened somewhere other than
+// the browser the sign-up was made in. Same form, said as what it is.
+export function ForgotReturn({
+  token,
+  confirmed,
+}: {
+  token: string;
+  confirmed?: boolean;
+}) {
   const [loading, setLoading] = useState(false);
   const t = useT();
   const [state, setState] = useState(false);
@@ -80,13 +88,20 @@ export function ForgotReturn({ token }: { token: string }) {
       <form onSubmit={form.handleSubmit(onSubmit)}>
         <div>
           <h1 className="mb-4 cursor-pointer text-start text-[40px] font-[700] tracking-[-0.04em] text-white">
-            {t('forgot_password_1', 'Forgot Password')}
+            {confirmed
+              ? t('activated_choose_password_title', 'Choose your password')
+              : t('forgot_password_1', 'Forgot Password')}
           </h1>
           <p className="mb-6 text-[15px] text-textColor/58">
-            {t(
-              'forgot_return_subtitle',
-              'Choose a new password to get back into your workspace.'
-            )}
+            {confirmed
+              ? t(
+                  'activated_choose_password_subtitle',
+                  'Your email address is confirmed. Choose a password to finish setting up your account.'
+                )
+              : t(
+                  'forgot_return_subtitle',
+                  'Choose a new password to get back into your workspace.'
+                )}
           </p>
         </div>
         {!state ? (
@@ -116,7 +131,9 @@ export function ForgotReturn({ token }: { token: string }) {
                   className="flex-1 rounded-[12px] !h-[52px]"
                   loading={loading}
                 >
-                  {t('change_password', 'Change Password')}
+                  {confirmed
+                    ? t('activated_save_password', 'Save password')
+                    : t('change_password', 'Change Password')}
                 </Button>
               </div>
               <p className="mt-4 text-sm text-textColor/66">
@@ -132,10 +149,15 @@ export function ForgotReturn({ token }: { token: string }) {
         ) : (
           <>
             <div className="mt-6 rounded-[16px] border border-white/8 bg-white/[0.03] p-[16px] text-start text-textColor/78">
-              {t(
-                'we_successfully_reset_your_password_you_can_now_login_with_your',
-                'We successfully reset your password. You can now login with your'
-              )}
+              {confirmed
+                ? t(
+                    'activated_password_saved',
+                    'Your password is saved. You can now log in.'
+                  )
+                : t(
+                    'we_successfully_reset_your_password_you_can_now_login_with_your',
+                    'We successfully reset your password. You can now login with your'
+                  )}
             </div>
             <p className="mt-4 text-sm text-textColor/66">
               <Link

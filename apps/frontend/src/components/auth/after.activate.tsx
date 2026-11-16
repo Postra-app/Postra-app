@@ -44,7 +44,15 @@ export const AfterActivate = () => {
           setShowLoader(false);
           return;
         }
-        const { can, kept } = await response.json();
+        const { can, kept, setPassword } = await response.json();
+        // Opened somewhere other than the browser the sign-up was made in:
+        // the address is confirmed, the password is chosen here.
+        if (setPassword) {
+          window.location.replace(
+            `/auth/forgot/${encodeURIComponent(setPassword)}?confirmed=1`
+          );
+          return;
+        }
         if (kept) {
           setKept(true);
         }

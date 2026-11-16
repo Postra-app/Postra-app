@@ -14,7 +14,10 @@ import { Response, Request } from 'express';
 
 import { CreateOrgUserDto } from '@gitroom/nestjs-libraries/dtos/auth/create.org.user.dto';
 import { LoginUserDto } from '@gitroom/nestjs-libraries/dtos/auth/login.user.dto';
-import { AuthService } from '@gitroom/backend/services/auth/auth.service';
+import {
+  AuthService,
+  REGISTRATION_PROOF_TTL_SECONDS,
+} from '@gitroom/backend/services/auth/auth.service';
 import { ForgotReturnPasswordDto } from '@gitroom/nestjs-libraries/dtos/auth/forgot-return.password.dto';
 import { ForgotPasswordDto } from '@gitroom/nestjs-libraries/dtos/auth/forgot.password.dto';
 import { ResendActivationDto } from '@gitroom/nestjs-libraries/dtos/auth/resend-activation.dto';
@@ -24,7 +27,10 @@ import {
   authCookieOptions,
   setSessionCookie,
 } from '@gitroom/backend/services/auth/session.cookie';
-import { clearSessionCookies } from '@gitroom/nestjs-libraries/services/auth/remove.auth';
+import {
+  clearSessionCookies,
+  sessionCookieOptions,
+} from '@gitroom/nestjs-libraries/services/auth/remove.auth';
 import { EmailService } from '@gitroom/nestjs-libraries/services/email.service';
 import { RealIP } from 'nestjs-real-ip';
 import { UserAgent } from '@gitroom/nestjs-libraries/user/user.agent';
@@ -51,6 +57,8 @@ const oauthStateCookieOptions = () => ({
 });
 
 // The native app names itself; it gets its token in the body.
+const REGISTRATION_PROOF_COOKIE = 'postra_reg';
+
 const isAppClient = (req: Request) => req.headers?.['x-client'] === 'mobile';
 
 @ApiTags('Auth')
@@ -85,7 +93,7 @@ export class AuthController {
         req?.cookies?.org
       );
 
-      const { jwt, addedOrg } = await this._authService.routeAuth(
+      const signedUp = await this._authService.routeAuth(
         body.provider,
         body,
         ip,
@@ -93,6 +101,9 @@ export class AuthController {
         getOrgFromCookie,
         pickEmailLang(req)
       );
+      const { jwt, addedOrg } = signedUp;
+      const registrationProof =
+        'registrationProof' in signedUp ? signedUp.registrationProof : undefined;
 
       this._auditService.record({
         action: 'auth.register',
@@ -105,6 +116,14 @@ export class AuthController {
         body.provider === 'LOCAL' && this._emailService.hasProvider();
 
       if (activationRequired) {
+        // Marks this browser as the one the password was typed in; see
+        // AuthService.activate.
+        if (registrationProof) {
+          response.cookie(REGISTRATION_PROOF_COOKIE, registrationProof, {
+            ...sessionCookieOptions(),
+            maxAge: REGISTRATION_PROOF_TTL_SECONDS * 1000,
+          });
+        }
         response.header('activate', 'true');
         response.status(200).json({ activate: true });
         return;
@@ -383,9 +402,13 @@ export class AuthController {
     @Body('datafast_visitor_id') datafast_visitor_id: string,
     @Res({ passthrough: false }) response: Response
   ) {
-    let activate: string | false;
+    let activate: Awaited<ReturnType<AuthService['activate']>>;
     try {
-      activate = await this._authService.activate(code, datafast_visitor_id);
+      activate = await this._authService.activate(
+        code,
+        datafast_visitor_id,
+        req.cookies?.[REGISTRATION_PROOF_COOKIE]
+      );
     } catch (e: any) {
       // The page shows "invalid or expired" for any non-2xx; `can: false`
       // stays for a link that was already used.
@@ -393,6 +416,15 @@ export class AuthController {
     }
     if (!activate) {
       return response.status(200).json({ can: false });
+    }
+    response.clearCookie(REGISTRATION_PROOF_COOKIE, sessionCookieOptions());
+
+    // Activated from somewhere other than the browser that signed up: no
+    // session, the page sends the person to choose their password.
+    if (typeof activate !== 'string') {
+      return response
+        .status(200)
+        .json({ can: true, setPassword: activate.setPassword });
     }
 
     // The page posts on open, so someone else's activation link signed the

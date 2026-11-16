@@ -54,6 +54,10 @@ export class UsersService {
     return this._usersRepository.updatePassword(id, password, tokenVersion);
   }
 
+  discardPassword(id: string, unusable: string) {
+    return this._usersRepository.discardPassword(id, unusable);
+  }
+
   getPersonal(userId: string) {
     return this._usersRepository.getPersonal(userId);
   }

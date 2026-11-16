@@ -61,6 +61,7 @@ const service = (users: Record<string, any> = {}) => {
         return u;
       },
       updatePassword: async () => 1,
+      discardPassword: async () => 1,
     },
     _emailService: { sendEmailSync: async () => true, sendEmail: async () => true },
     _track: async (): Promise<void> => undefined,
@@ -111,7 +112,9 @@ describe('a promised plan goes to the account only once the address is proven', 
     const users = { [PROMISED]: { id: 'u1', email: PROMISED, activated: false } };
     const { s, applied, activated } = service(users);
     const code = AuthChecker.signJWT({ id: 'u1', email: PROMISED, activated: false, purpose: 'activate' });
-    await expect(s.activate(code, '')).resolves.toBe('session');
+    // No sign-up was made in this browser: the plan arrives all the same,
+    // and the person holding the link is sent to choose a password.
+    await expect(s.activate(code, '')).resolves.toEqual({ setPassword: expect.any(String) });
     expect(activated).toEqual(['u1']);
     expect(applied).toEqual([['org-of-u1', PROMISED]]);
   });

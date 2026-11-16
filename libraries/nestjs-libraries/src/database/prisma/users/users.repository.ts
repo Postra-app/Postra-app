@@ -143,6 +143,23 @@ export class UsersRepository {
     return count;
   }
 
+  /**
+   * The password an account was made with stops working, and with it every
+   * session and reset link issued so far. Answers the new token version, for
+   * the link that lets the owner of the address choose their own.
+   */
+  async discardPassword(id: string, unusable: string) {
+    const user = await this._user.model.user.update({
+      where: { id },
+      data: {
+        password: AuthService.hashPassword(unusable),
+        tokenVersion: { increment: 1 },
+      },
+      select: { tokenVersion: true },
+    });
+    return user.tokenVersion;
+  }
+
   changeAudienceSize(userId: string, audience: number) {
     return this._user.model.user.update({
       where: {
