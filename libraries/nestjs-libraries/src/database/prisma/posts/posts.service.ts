@@ -96,6 +96,11 @@ const postCapException = () =>
     action: AuthorizationActions.Create,
   });
 
+// As in CreatePostDto (ArrayMaxSize).
+export const MAX_POSTS_PER_REQUEST = 50;
+export const MAX_ITEMS_PER_POST = 100;
+export const MAX_MEDIA_PER_ITEM = 20;
+
 @Injectable()
 export class PostsService {
   private readonly _logger = new Logger(PostsService.name);
@@ -1160,6 +1165,32 @@ export class PostsService {
       )
     ) {
       throw new BadRequestException('Each post value must be an array');
+    }
+    // The same limits as CreatePostDto, before anything is done with the
+    // lists. This runs on the raw body: a provider's check opened one
+    // download per picture, all at once, and a single request naming the
+    // same picture a hundred thousand times filled the worker's memory.
+    if ((posts || []).length > MAX_POSTS_PER_REQUEST) {
+      throw new BadRequestException(
+        `At most ${MAX_POSTS_PER_REQUEST} channels in one request`
+      );
+    }
+    for (const post of posts || []) {
+      if ((post?.value || []).length > MAX_ITEMS_PER_POST) {
+        throw new BadRequestException(
+          `At most ${MAX_ITEMS_PER_POST} posts and comments per channel`
+        );
+      }
+      for (const item of post?.value || []) {
+        if (item?.image != null && !Array.isArray(item.image)) {
+          throw new BadRequestException('Each post image must be an array');
+        }
+        if ((item?.image || []).length > MAX_MEDIA_PER_ITEM) {
+          throw new BadRequestException(
+            `At most ${MAX_MEDIA_PER_ITEM} media files in one post`
+          );
+        }
+      }
     }
 
     const integrationsById = new Map(

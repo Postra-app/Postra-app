@@ -42,6 +42,8 @@ export const isAllowedUrl = (
   }
 };
 
+export const READ_OR_FETCH_MAX_BYTES = 60 * 1024 * 1024;
+
 export const readOrFetch = async (path: string) => {
   if (path.startsWith('http')) {
     if (!isAllowedUrl(path)) {
@@ -54,6 +56,9 @@ export const readOrFetch = async (path: string) => {
         responseType: 'arraybuffer',
         maxRedirects: 2,
         timeout: 30_000,
+        // A body has an end: the largest picture or thumbnail any platform
+        // takes is far below this.
+        maxContentLength: READ_OR_FETCH_MAX_BYTES,
       })
     ).data;
   }

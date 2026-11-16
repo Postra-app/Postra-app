@@ -15,6 +15,7 @@ import slugify from 'slugify';
 import axios from 'axios';
 import { Tool } from '@gitroom/nestjs-libraries/integrations/tool.decorator';
 import { string } from 'yup';
+import { instanceFetch } from '@gitroom/nestjs-libraries/integrations/instance.fetch';
 import { assertSafeInstanceUrl } from '@gitroom/nestjs-libraries/dtos/webhooks/webhook.url.validator';
 import { fetchMediaBlob } from '@gitroom/nestjs-libraries/media/fetch.media.buffer';
 
@@ -22,6 +23,10 @@ export class WordpressProvider
   extends SocialAbstract
   implements SocialProvider
 {
+  // The site is the customer's own: a redirect from it must not be followed
+  // into our network.
+  protected override httpFetch = instanceFetch;
+
   private readonly _logger = new Logger(WordpressProvider.name);
   identifier = 'wordpress';
   name = 'WordPress';
@@ -119,7 +124,7 @@ export class WordpressProvider
         'base64'
       );
       const { id, name, avatar_urls, code } = await (
-        await fetch(`${domain}/wp-json/wp/v2/users/me`, {
+        await instanceFetch(`${domain}/wp-json/wp/v2/users/me`, {
           headers: {
             Authorization: `Basic ${auth}`,
           },

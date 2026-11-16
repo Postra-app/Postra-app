@@ -33,9 +33,39 @@ export class GithubProvider extends AuthProviderAbstract {
     return access_token;
   }
 
+  // Only a token GitHub issued to this app: one the same person gave to any
+  // other GitHub app answers "whose token is it" just as well, and it comes
+  // in the request body. GitHub's own check takes this app's credentials,
+  // so with none configured nothing signs in.
+  private async issuedToThisApp(access_token: string) {
+    const id = process.env.GITHUB_CLIENT_ID;
+    const secret = process.env.GITHUB_CLIENT_SECRET;
+    if (!id || !secret || !access_token) return false;
+    try {
+      const res = await fetch(
+        `https://api.github.com/applications/${encodeURIComponent(id)}/token`,
+        {
+          method: 'POST',
+          headers: {
+            Authorization:
+              'Basic ' + Buffer.from(`${id}:${secret}`).toString('base64'),
+            Accept: 'application/vnd.github+json',
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ access_token }),
+        }
+      );
+      return res.status === 200;
+    } catch {
+      return false;
+    }
+  }
+
   async getUser(
     access_token: string
-  ): Promise<{ email: string; id: string; verified: boolean }> {
+  ): Promise<{ email: string; id: string; verified: boolean } | false> {
+    if (!(await this.issuedToThisApp(access_token))) return false;
+
     const data = await (
       await fetch('https://api.github.com/user', {
         headers: {

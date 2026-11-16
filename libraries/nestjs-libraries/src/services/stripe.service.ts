@@ -657,8 +657,21 @@ export class StripeService {
     // the metadata, and writing it here granted the upgrade before the money.
     const kept =
       current.status === 'past_due' ? await this.currentTier(current) : null;
+    // A trial whose first charge failed is past_due with nothing paid yet. It
+    // stopped being "trialing" for Stripe, and written as a paid plan it had
+    // the whole tier without the trial's limits for as long as Stripe kept
+    // retrying, again with the next card and address. It stays a trial here
+    // until a charge goes through (the subscription turns active) or Stripe
+    // gives up (deleted, unpaid).
+    const unpaidTrial =
+      current.status === 'past_due' &&
+      !!(
+        await this._organizationService.getOrgByCustomerId(
+          current.customer as string
+        )
+      )?.isTrailing;
     return this._subscriptionService.createOrUpdateSubscription(
-      current.status === 'trialing',
+      current.status === 'trialing' || unpaidTrial,
       uniqueId,
       current.customer as string,
       pricing[kept?.billing || billing].channel!,

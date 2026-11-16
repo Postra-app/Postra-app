@@ -263,6 +263,11 @@ export abstract class SocialAbstract {
     return value;
   }
 
+  // What this.fetch sends with. A provider whose server the customer names
+  // replaces it with one that checks every connection (instance.fetch.ts).
+  protected httpFetch: typeof globalThis.fetch = (url, init) =>
+    fetch(url, init);
+
   async fetch(
     url: string,
     options: RequestInit = {},
@@ -274,7 +279,7 @@ export abstract class SocialAbstract {
     // Social APIs occasionally hang forever; without a signal the fetch pins
     // the Temporal activity until startToClose. 120s accommodates slow media
     // uploads while still bounding the call. Callers may pass their own signal.
-    const request = await fetch(url, {
+    const request = await this.httpFetch(url, {
       ...options,
       signal: options.signal ?? AbortSignal.timeout(120_000),
     });

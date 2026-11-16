@@ -23,6 +23,7 @@ import { GoogleTagManagerComponent } from '@gitroom/frontend/components/layout/g
 import { requestLanguage } from '@gitroom/frontend/components/layout/request.language';
 import { HtmlComponent } from '@gitroom/frontend/components/layout/html.component';
 import Script from 'next/script';
+import { PLAUSIBLE_INIT } from '@gitroom/frontend/components/layout/plausible.init';
 import { headers } from 'next/headers';
 import { NONCE_HEADER } from '@gitroom/frontend/csp';
 import { ChangeDirClient } from '@gitroom/frontend/components/new-layout/change.dir.client';
@@ -61,7 +62,7 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
               strategy="afterInteractive"
             />
             <Script id="plausible-init" nonce={nonce} strategy="afterInteractive">
-              {`window.plausible=window.plausible||function(){(plausible.q=plausible.q||[]).push(arguments)},plausible.init=plausible.init||function(i){plausible.o=i||{}};plausible.init()`}
+              {PLAUSIBLE_INIT}
             </Script>
           </>
         )}

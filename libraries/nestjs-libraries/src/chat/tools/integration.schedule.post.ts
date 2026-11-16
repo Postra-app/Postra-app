@@ -1,3 +1,4 @@
+import { sanitizePostContent } from '@gitroom/helpers/utils/sanitize.post.content';
 import { AgentToolInterface } from '@gitroom/nestjs-libraries/chat/agent.tool.interface';
 import { createTool } from '@mastra/core/tools';
 import { z } from 'zod';
@@ -74,7 +75,9 @@ export class IntegrationSchedulePostTool implements AgentToolInterface {
         annotations: {
           title: 'Schedule Social Media Post',
           readOnlyHint: false,
-          destructiveHint: false,
+          // It can publish at once, in public, under the customer's name:
+          // a client decides by this hint what to run without asking.
+          destructiveHint: true,
           idempotentHint: false,
           openWorldHint: true,
         },
@@ -121,6 +124,9 @@ If the tools return errors, you would need to rerun it with the right parameters
                   z.object({
                     content: z
                       .string()
+                      // No platform takes more; megabytes of markup stalled
+                      // the patterns that read a post back.
+                      .max(100_000)
                       .describe(
                         "The content of the post, HTML, Each line must be wrapped in <p> here is the possible tags: h1, h2, h3, u, strong, li, ul, p (you can't have u and strong together)"
                       ),
@@ -228,7 +234,7 @@ If the tools return errors, you would need to rerun it with the right parameters
                 integration: { id: platform.integrationId },
                 settings,
                 value: platform.postsAndComments.map((p: any) => ({
-                  content: p.content,
+                  content: sanitizePostContent(p.content),
                   image: (p.attachments || []).map(toMedia),
                 })),
               },
@@ -299,7 +305,7 @@ If the tools return errors, you would need to rerun it with the right parameters
                       } as AllProvidersSettings
                     ),
                     value: post.postsAndComments.map((p: any) => ({
-                      content: p.content,
+                      content: sanitizePostContent(p.content),
                       id: makeId(10),
                       delay: 0,
                       image: (p.attachments || []).map(

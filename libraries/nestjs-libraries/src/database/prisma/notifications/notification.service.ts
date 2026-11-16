@@ -1,4 +1,5 @@
 import { Injectable } from '@nestjs/common';
+import { escapeHtml } from '@gitroom/helpers/utils/escape.html';
 import { NotificationsRepository } from '@gitroom/nestjs-libraries/database/prisma/notifications/notifications.repository';
 import { EmailService } from '@gitroom/nestjs-libraries/services/email.service';
 import { OrganizationRepository } from '@gitroom/nestjs-libraries/database/prisma/organizations/organization.repository';
@@ -11,6 +12,9 @@ import {
 } from '@gitroom/nestjs-libraries/database/prisma/mobile-push/mobile.push.service';
 
 export type NotificationType = 'success' | 'fail' | 'info';
+
+export const notificationMailHtml = (message: string) =>
+  escapeHtml(message).replace(/\r?\n/g, '<br/>');
 
 @Injectable()
 export class NotificationService {
@@ -63,6 +67,13 @@ export class NotificationService {
     if (!sendEmail) {
       return;
     }
+
+    // A notification is text. It names the channel as the platform gave it
+    // and repeats what a platform answered, and both went into the mail as
+    // markup: a channel renamed to a link put that link, in a genuine mail
+    // from us, in front of every member of the organisation. The in-app list
+    // and the push show the text as it is; the mail gets it escaped.
+    message = notificationMailHtml(message);
 
     if (digest) {
       try {

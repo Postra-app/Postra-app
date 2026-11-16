@@ -24,7 +24,7 @@ import {
   authEmails,
   EmailLang,
 } from '@gitroom/backend/services/auth/auth.emails';
-import { randomBytes, randomUUID } from 'crypto';
+import { createHash, randomBytes, randomUUID, timingSafeEqual } from 'crypto';
 import {
   MOBILE_TOKEN_EXPIRES_IN,
   MOBILE_TOKEN_TTL_SECONDS,
@@ -70,6 +70,9 @@ export const ACTIVATION_LINK_INVALID =
 
 const ACCOUNT_SUSPENDED =
   'This account is suspended. Contact hello@postra.co.uk if you think this is a mistake.';
+
+// How long the browser a sign-up was made in is remembered as such.
+export const REGISTRATION_PROOF_TTL_SECONDS = 7 * 24 * 60 * 60;
 
 @Injectable()
 export class AuthService {
@@ -198,6 +201,9 @@ export class AuthService {
           addedOrg,
           jwt: await this.jwt(create.users[0].user),
           userId: create.users[0].user.id,
+          registrationProof: create.users[0].user.activated
+            ? undefined
+            : await this.rememberWhoRegistered(create.users[0].user.id),
         };
         const activation = authEmails.activation[lang];
         await sendActivationMail(
@@ -400,21 +406,7 @@ export class AuthService {
       return { forgot: false, reason: 'provider', provider: user.providerName };
     }
 
-    // `tokenVersion` makes the link single-use without storing anything:
-    // updatePassword increments it, so the same link stops verifying the moment
-    // it is redeemed. Without this the token was a bare {id, expires} JWT that
-    // nothing could mark as spent, and a leaked link stayed usable for the full
-    // twenty minutes — including *after* the victim had reset their own
-    // password, which handed the account to whoever else held the link.
-    const resetValues = AuthChecker.signJWT(
-      {
-        id: user.id,
-        tokenVersion: user.tokenVersion,
-        expires: dayjs().add(20, 'minutes').format('YYYY-MM-DD HH:mm:ss'),
-        purpose: 'reset',
-      },
-      { expiresIn: '20m' }
-    );
+    const resetValues = this.resetToken(user);
 
     // Awaited, so a mail that could not be sent is an error on the form, not
     // a silent "sent". Equal answer times would hide nothing now that the
@@ -508,7 +500,62 @@ export class AuthService {
     }
   }
 
-  async activate(code: string, tracking: string) {
+  // Sign-up leaves a secret with the browser (the controller's cookie) and
+  // its hash here, for as long as it takes someone to find the mail.
+  private async rememberWhoRegistered(userId: string) {
+    const proof = randomBytes(32).toString('hex');
+    try {
+      await ioRedis.set(
+        `reg-proof:${userId}`,
+        createHash('sha256').update(proof).digest('hex'),
+        'EX',
+        REGISTRATION_PROOF_TTL_SECONDS
+      );
+      return proof;
+    } catch {
+      // Not remembered: the activation link will ask for a password.
+      return undefined;
+    }
+  }
+
+  private async registeredInThisBrowser(userId: string, proof?: string) {
+    if (!proof) return false;
+    try {
+      const stored = await ioRedis.get(`reg-proof:${userId}`);
+      if (!stored) return false;
+      const given = createHash('sha256').update(proof).digest('hex');
+      return (
+        stored.length === given.length &&
+        timingSafeEqual(Buffer.from(stored), Buffer.from(given))
+      );
+    } catch {
+      return false;
+    }
+  }
+
+  // `tokenVersion` makes the link single-use without storing anything:
+  // updatePassword increments it, so the same link stops verifying the moment
+  // it is redeemed. Without this the token was a bare {id, expires} JWT that
+  // nothing could mark as spent, and a leaked link stayed usable for the full
+  // twenty minutes — including *after* the victim had reset their own
+  // password, which handed the account to whoever else held the link.
+  private resetToken(user: Pick<User, 'id' | 'tokenVersion'>) {
+    return AuthChecker.signJWT(
+      {
+        id: user.id,
+        tokenVersion: user.tokenVersion,
+        expires: dayjs().add(20, 'minutes').format('YYYY-MM-DD HH:mm:ss'),
+        purpose: 'reset',
+      },
+      { expiresIn: '20m' }
+    );
+  }
+
+  async activate(
+    code: string,
+    tracking: string,
+    proof?: string
+  ): Promise<string | false | { setPassword: string }> {
     // A mangled activation code must read as "this link is not valid", not as
     // a server error. verifyJWT throws on a bad signature, and mail clients do
     // mangle links — wrapping, tracking rewrites — so this is a real person
@@ -545,6 +592,29 @@ export class AuthService {
         // database failed after the activation) gets another chance.
         await this.applyGrantOnProof(user.id, getUserAgain.email);
         return false;
+      }
+      const typedHere = await this.registeredInThisBrowser(user.id, proof);
+      // The link proves who owns the address, not who typed the password.
+      // Anyone can sign up with someone else's address and their own
+      // password; the owner, expecting our mail (an invitation, a plan
+      // promised to them), opens the link, and the account they then use
+      // still opened with the stranger's password. Opened in the browser the
+      // sign-up was made in, it is one person. Anywhere else the account
+      // becomes active and loses that password in the same write, and the
+      // person holding the link chooses theirs.
+      if (!typedHere) {
+        const tokenVersion = await this._userService.activateWithoutPassword(
+          user.id,
+          randomBytes(32).toString('hex')
+        );
+        if (tokenVersion === null) {
+          // Opened twice at once: the other one has the link.
+          return false;
+        }
+        await bustAuthContextCache(user.id);
+        await this.applyGrantOnProof(user.id, getUserAgain.email);
+        this._track('register', user.email, tracking).catch((err) => {});
+        return { setPassword: this.resetToken({ id: user.id, tokenVersion }) };
       }
       await this._userService.activateUser(user.id);
       await this.applyGrantOnProof(user.id, getUserAgain.email);
@@ -632,7 +702,9 @@ export class AuthService {
     const providerInstance = this._providerManager.getProvider(provider);
     const token = await providerInstance.getToken(code, redirectUri);
     const user = await providerInstance.getUser(token);
-    if (!user) {
+    // No id, no user: a lookup by an undefined id is a lookup without one,
+    // and answers with the first account of that provider.
+    if (!user || !user.id) {
       throw new Error('Invalid user');
     }
     const checkExists = await this._userService.getUserByProvider(

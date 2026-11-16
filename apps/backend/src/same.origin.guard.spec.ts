@@ -12,6 +12,7 @@ const run = (req: any) => {
 
 const browser = (extra: any = {}) => ({
   method: 'POST',
+  path: '/posts',
   headers: { origin: 'https://evil.example' },
   cookies: { auth: 'jwt' },
   ...extra,
@@ -29,6 +30,35 @@ describe('sameOriginGuard', () => {
     const { next, res } = run(browser());
     expect(next).not.toHaveBeenCalled();
     expect(res.status).toHaveBeenCalledWith(403);
+  });
+
+  // A form on another site, posted with that site's own account.
+  it("refuses a sign-in from another site, which has no session cookie to ride", () => {
+    for (const path of ['/auth/login', '/auth/register', '/auth/activate', '/auth/forgot-return']) {
+      const { next, res } = run({
+        method: 'POST',
+        path,
+        headers: { origin: 'https://evil.example' },
+        cookies: {},
+      });
+      expect(next).not.toHaveBeenCalled();
+      expect(res.status).toHaveBeenCalledWith(403);
+    }
+  });
+
+  it('signs in from the app, and from the mobile app, which names no origin', () => {
+    expect(
+      run({ method: 'POST', path: '/auth/login', headers: { origin: 'https://app.postra.co.uk' }, cookies: {} }).next
+    ).toHaveBeenCalled();
+    expect(
+      run({ method: 'POST', path: '/auth/login', headers: { 'x-client': 'mobile' }, cookies: {} }).next
+    ).toHaveBeenCalled();
+  });
+
+  it('leaves other sessionless posts from elsewhere alone (webhooks, OAuth clients)', () => {
+    expect(
+      run({ method: 'POST', path: '/oauth/token', headers: { origin: 'https://claude.ai' }, cookies: {} }).next
+    ).toHaveBeenCalled();
   });
 
   it('lets the app itself through', () => {

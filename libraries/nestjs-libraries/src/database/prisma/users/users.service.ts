@@ -54,6 +54,10 @@ export class UsersService {
     return this._usersRepository.updatePassword(id, password, tokenVersion);
   }
 
+  activateWithoutPassword(id: string, unusable: string) {
+    return this._usersRepository.activateWithoutPassword(id, unusable);
+  }
+
   getPersonal(userId: string) {
     return this._usersRepository.getPersonal(userId);
   }

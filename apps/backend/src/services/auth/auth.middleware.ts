@@ -237,7 +237,9 @@ export class AuthMiddleware implements NestMiddleware {
           // @ts-expect-error
           req.org = loadImpersonate.organization;
 
-          const path = req.path || req.url || '';
+          // Routes match in any case (/User/delete is /user/delete to the
+          // router), so the list has to as well.
+          const path = (req.path || req.url || '').toLowerCase();
           if (FORBIDDEN_WHILE_IMPERSONATING.some((p) => path.startsWith(p))) {
             throw new ImpersonationForbiddenException();
           }

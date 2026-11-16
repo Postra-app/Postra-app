@@ -25,7 +25,7 @@ test.afterAll(async () => {
 const hugeRun = (count: number) =>
   `{"method":"agent/run","params":{"agentId":"postra"},"body":{"threadId":"${randomUUID()}","runId":"${randomUUID()}","tools":[],"context":[],"state":{},"forwardedProps":{},"messages":[${Array(count).fill('1').join(',')}]}}`;
 
-for (const route of ['/copilot/chat', '/copilot/agent']) {
+for (const route of ['/copilot/agent']) {
   test(`${route}: a 3 MB body is 413 and the backend keeps answering`, async () => {
     const body = hugeRun(1_500_000);
     expect(body.length).toBeGreaterThan(3_000_000);

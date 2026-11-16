@@ -8,13 +8,18 @@ import {
   Query,
   Req,
   Res,
+  Logger,
 } from '@nestjs/common';
 import { Throttle } from '@nestjs/throttler';
 import { Response, Request } from 'express';
 
 import { CreateOrgUserDto } from '@gitroom/nestjs-libraries/dtos/auth/create.org.user.dto';
 import { LoginUserDto } from '@gitroom/nestjs-libraries/dtos/auth/login.user.dto';
-import { AuthService } from '@gitroom/backend/services/auth/auth.service';
+import {
+  ACTIVATION_LINK_INVALID,
+  AuthService,
+  REGISTRATION_PROOF_TTL_SECONDS,
+} from '@gitroom/backend/services/auth/auth.service';
 import { ForgotReturnPasswordDto } from '@gitroom/nestjs-libraries/dtos/auth/forgot-return.password.dto';
 import { ForgotPasswordDto } from '@gitroom/nestjs-libraries/dtos/auth/forgot.password.dto';
 import { ResendActivationDto } from '@gitroom/nestjs-libraries/dtos/auth/resend-activation.dto';
@@ -24,6 +29,10 @@ import {
   authCookieOptions,
   setSessionCookie,
 } from '@gitroom/backend/services/auth/session.cookie';
+import {
+  clearSessionCookies,
+  sessionCookieOptions,
+} from '@gitroom/nestjs-libraries/services/auth/remove.auth';
 import { EmailService } from '@gitroom/nestjs-libraries/services/email.service';
 import { RealIP } from 'nestjs-real-ip';
 import { UserAgent } from '@gitroom/nestjs-libraries/user/user.agent';
@@ -48,6 +57,11 @@ const oauthStateCookieOptions = () => ({
   sameSite: 'lax' as const,
   secure: !process.env.NOT_SECURED,
 });
+
+// The native app names itself; it gets its token in the body.
+const REGISTRATION_PROOF_COOKIE = 'postra_reg';
+
+const isAppClient = (req: Request) => req.headers?.['x-client'] === 'mobile';
 
 @ApiTags('Auth')
 @Controller('/auth')
@@ -81,7 +95,7 @@ export class AuthController {
         req?.cookies?.org
       );
 
-      const { jwt, addedOrg } = await this._authService.routeAuth(
+      const signedUp = await this._authService.routeAuth(
         body.provider,
         body,
         ip,
@@ -89,6 +103,9 @@ export class AuthController {
         getOrgFromCookie,
         pickEmailLang(req)
       );
+      const { jwt, addedOrg } = signedUp;
+      const registrationProof =
+        'registrationProof' in signedUp ? signedUp.registrationProof : undefined;
 
       this._auditService.record({
         action: 'auth.register',
@@ -101,23 +118,43 @@ export class AuthController {
         body.provider === 'LOCAL' && this._emailService.hasProvider();
 
       if (activationRequired) {
+        // Marks this browser as the one the password was typed in; see
+        // AuthService.activate.
+        if (registrationProof) {
+          response.cookie(REGISTRATION_PROOF_COOKIE, registrationProof, {
+            ...sessionCookieOptions(),
+            maxAge: REGISTRATION_PROOF_TTL_SECONDS * 1000,
+          });
+        }
         response.header('activate', 'true');
         response.status(200).json({ activate: true });
         return;
       }
 
-      setSessionCookie(response, jwt);
+      // The app keeps its own short token in the Keychain and never sends
+      // cookies on purpose; the 30-day web cookie it used to get here sat in
+      // the phone's cookie store, outside the Keychain and untouched by the
+      // app's sign-out. No cookie for the app, and the ones older versions
+      // were given are expired.
+      const forApp = isAppClient(req);
+      if (forApp) {
+        clearSessionCookies(response, ['auth', 'showorg']);
+      } else {
+        setSessionCookie(response, jwt);
+      }
 
       if (process.env.NOT_SECURED) {
         response.header('auth', jwt);
       }
 
       if (typeof addedOrg === 'object' && addedOrg?.organizationId) {
-        response.cookie(
-          'showorg',
-          addedOrg.organizationId,
-          authCookieOptions()
-        );
+        if (!forApp) {
+          response.cookie(
+            'showorg',
+            addedOrg.organizationId,
+            authCookieOptions()
+          );
+        }
 
         if (process.env.NOT_SECURED) {
           response.header('showorg', addedOrg.organizationId);
@@ -131,7 +168,7 @@ export class AuthController {
       response.status(200).json({
         register: true,
         // The mobile client cannot read an httpOnly cookie — return the token in the body.
-        ...(req.headers['x-client'] === 'mobile'
+        ...(forApp
           ? {
               token: this._authService.mobileJwt(jwt),
               org:
@@ -182,18 +219,30 @@ export class AuthController {
         metadata: { email: body.email, provider: body.provider },
       });
 
-      setSessionCookie(response, jwt);
+      // The app keeps its own short token in the Keychain and never sends
+      // cookies on purpose; the 30-day web cookie it used to get here sat in
+      // the phone's cookie store, outside the Keychain and untouched by the
+      // app's sign-out. No cookie for the app, and the ones older versions
+      // were given are expired.
+      const forApp = isAppClient(req);
+      if (forApp) {
+        clearSessionCookies(response, ['auth', 'showorg']);
+      } else {
+        setSessionCookie(response, jwt);
+      }
 
       if (process.env.NOT_SECURED) {
         response.header('auth', jwt);
       }
 
       if (typeof addedOrg === 'object' && addedOrg?.organizationId) {
-        response.cookie(
-          'showorg',
-          addedOrg.organizationId,
-          authCookieOptions()
-        );
+        if (!forApp) {
+          response.cookie(
+            'showorg',
+            addedOrg.organizationId,
+            authCookieOptions()
+          );
+        }
 
         if (process.env.NOT_SECURED) {
           response.header('showorg', addedOrg.organizationId);
@@ -208,7 +257,7 @@ export class AuthController {
         // The native client cannot read an httpOnly cookie, so it gets the
         // token in the body — but not the same one. The app's token is short
         // and revocable; see AuthService.mobileJwt.
-        ...(req.headers['x-client'] === 'mobile'
+        ...(forApp
           ? {
               token: this._authService.mobileJwt(jwt),
               org:
@@ -355,16 +404,34 @@ export class AuthController {
     @Body('datafast_visitor_id') datafast_visitor_id: string,
     @Res({ passthrough: false }) response: Response
   ) {
-    let activate: string | false;
+    let activate: Awaited<ReturnType<AuthService['activate']>>;
     try {
-      activate = await this._authService.activate(code, datafast_visitor_id);
+      activate = await this._authService.activate(
+        code,
+        datafast_visitor_id,
+        req.cookies?.[REGISTRATION_PROOF_COOKIE]
+      );
     } catch (e: any) {
       // The page shows "invalid or expired" for any non-2xx; `can: false`
-      // stays for a link that was already used.
-      return response.status(400).type('text/plain').send(e.message);
+      // stays for a link that was already used. The answer is that sentence
+      // and nothing else: an exception from the database or Redis named
+      // hosts and queries to whoever opened a link.
+      if (e?.message !== ACTIVATION_LINK_INVALID) {
+        Logger.error(`activation failed: ${e?.message}`);
+      }
+      return response.status(400).type('text/plain').send(ACTIVATION_LINK_INVALID);
     }
     if (!activate) {
       return response.status(200).json({ can: false });
+    }
+    response.clearCookie(REGISTRATION_PROOF_COOKIE, sessionCookieOptions());
+
+    // Activated from somewhere other than the browser that signed up: no
+    // session, the page sends the person to choose their password.
+    if (typeof activate !== 'string') {
+      return response
+        .status(200)
+        .json({ can: true, setPassword: activate.setPassword });
     }
 
     // The page posts on open, so someone else's activation link signed the

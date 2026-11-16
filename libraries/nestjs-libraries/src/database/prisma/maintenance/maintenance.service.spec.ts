@@ -186,6 +186,58 @@ describe('sweepOrphanMedia', () => {
     expect(removeFile).toHaveBeenCalledWith('uploads/gone.jpg');
   });
 
+  // The thumbnail of a media row is a URL its owner sets. Storage deletes by
+  // the path of the URL alone.
+  describe("a thumbnail that names someone else's file", () => {
+    const env = { ...process.env };
+    beforeEach(() => {
+      process.env.NEXT_PUBLIC_UPLOAD_STATIC_DIRECTORY = 'https://cdn.example.com';
+      process.env.RESTRICT_UPLOAD_DOMAINS = 'cdn-old.example.com';
+      process.env.FRONTEND_URL = 'https://app.example.com';
+    });
+    afterEach(() => {
+      process.env = { ...env };
+    });
+    const victim = {
+      id: 'victim',
+      path: 'https://cdn.example.com/2026/11/01/victim.png',
+      thumbnail: null as string | null,
+      deletedAt: null as Date | null,
+    };
+    const attacker = (thumbnail: string) => ({
+      id: 'mine',
+      path: 'https://cdn.example.com/2026/11/02/mine.mp4',
+      thumbnail,
+      deletedAt: longAgo,
+    });
+
+    it.each([
+      ['on any other host', 'https://anything.example/2026/11/01/victim.png'],
+      ['under an earlier name of our CDN', 'https://cdn-old.example.com/2026/11/01/victim.png'],
+      ['with a query added', 'https://cdn.example.com/2026/11/01/victim.png?x=1'],
+    ])('%s is not deleted', async (_what, thumbnail) => {
+      const prisma = buildPrisma({ media: [victim, attacker(thumbnail)] });
+      const service = new MaintenanceService(prisma as any);
+
+      await service.sweepOrphanMedia(true);
+
+      const removed = removeFile.mock.calls.map(([path]) => path);
+      expect(removed.filter((path) => path.includes('victim.png'))).toEqual([]);
+    });
+
+    it('a row that names only a foreign file is removed without touching storage', async () => {
+      const prisma = buildPrisma({
+        media: [{ id: 'm9', path: 'https://anything.example/a.png', thumbnail: null, deletedAt: longAgo }],
+      });
+      const service = new MaintenanceService(prisma as any);
+
+      await service.sweepOrphanMedia(true);
+
+      expect(removeFile).not.toHaveBeenCalled();
+      expect(prisma.deleted.media).toEqual([{ id: { in: ['m9'] } }]);
+    });
+  });
+
   it('leaves a file a scheduled post still holds', async () => {
     // This is the whole reason stored files could not be removed by calling
     // removeFile at the point of deletion: media deletion is soft because a
