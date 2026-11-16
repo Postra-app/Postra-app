@@ -695,7 +695,9 @@ export class AuthService {
     const providerInstance = this._providerManager.getProvider(provider);
     const token = await providerInstance.getToken(code, redirectUri);
     const user = await providerInstance.getUser(token);
-    if (!user) {
+    // No id, no user: a lookup by an undefined id is a lookup without one,
+    // and answers with the first account of that provider.
+    if (!user || !user.id) {
       throw new Error('Invalid user');
     }
     const checkExists = await this._userService.getUserByProvider(

@@ -1,4 +1,3 @@
-import { meterCopilotAdapter } from '@gitroom/nestjs-libraries/services/ai-usage.copilot';
 import { aiUsageOrgContext } from '@gitroom/nestjs-libraries/services/ai-usage.model-wrap';
 import { Throttle } from '@nestjs/throttler';
 import {
@@ -15,7 +14,6 @@ import {
 } from '@nestjs/common';
 import {
   CopilotRuntime,
-  OpenAIAdapter,
   copilotRuntimeNodeHttpEndpoint,
 } from '@copilotkit/runtime';
 import { GetOrgFromRequest } from '@gitroom/nestjs-libraries/user/org.from.request';
@@ -68,41 +66,10 @@ export class CopilotController {
     private _postsService: PostsService,
     private _openaiService: OpenaiService
   ) {}
-  @Post('/chat')
-  @Throttle({ default: { ttl: 300000, limit: 30 } })
-  @CheckPolicies([AuthorizationActions.Create, Sections.AI])
-  chatAgent(
-    @Req() req: Request,
-    @Res() res: Response,
-    @GetOrgFromRequest() organization: Organization
-  ) {
-    if (
-      process.env.OPENAI_API_KEY === undefined ||
-      process.env.OPENAI_API_KEY === ''
-    ) {
-      Logger.warn('OpenAI API key not set, chat functionality will not work');
-      return;
-    }
-
-    const copilotRuntimeHandler = copilotRuntimeNodeHttpEndpoint({
-      endpoint: '/copilot/chat',
-      cors: copilotCors(),
-      runtime: new CopilotRuntime(),
-      // Ghost-text suggestions; recorded in AiUsage like every other AI call
-      // (the feature stays, metered).
-      serviceAdapter: meterCopilotAdapter(
-        new OpenAIAdapter({
-          model: 'gpt-4.1',
-        }),
-        'autocomplete'
-      ),
-    });
-
-    // The metered model reads the organization from this scope.
-    return aiUsageOrgContext.run(organization.id, () =>
-      copilotRuntimeHandler(req, res)
-    );
-  }
+  // There is no /copilot/chat. It mounted CopilotKit's default agent on
+  // gpt-4.1 with none of what /copilot/agent checks: no fair-use count, no
+  // run slot, and the runtime's own thread store, which answers to anyone
+  // holding a thread id. Nothing in the app called it.
 
   // Ghost text in the signature, AutoPost and Plugs editors. CopilotKit's
   // textarea stopped asking for suggestions itself (a stub since 1.60), so
