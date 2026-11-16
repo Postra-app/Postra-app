@@ -5,6 +5,7 @@ import { EmptyProvider } from '@gitroom/nestjs-libraries/emails/empty.provider';
 import { NodeMailerProvider } from '@gitroom/nestjs-libraries/emails/node.mailer.provider';
 import { TemporalService } from 'nestjs-temporal-core';
 import { timer } from '@gitroom/helpers/utils/timer';
+import { escapeHtml } from '@gitroom/helpers/utils/escape.html';
 
 // Logs must not carry full recipient addresses.
 const maskEmail = (address: string) => {
@@ -147,7 +148,7 @@ export class EmailService {
                 margin-bottom: 1.5rem;
                 text-align: left;
                 color: #1f2937;
-            ">${subject}</h1>
+            ">${escapeHtml(subject)}</h1>
             
             <div style="
                 margin-bottom: 2rem;
