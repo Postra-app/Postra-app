@@ -199,6 +199,41 @@ describe('a plan change that is not paid at once', () => {
     expect(period).toBe('MONTHLY');
   });
 
+  // A trial whose first charge fails turns past_due with nothing paid.
+  const sync = async (status: string, org: Record<string, unknown>) => {
+    const { service, subscriptionService } = build();
+    (service as any)._organizationService.getOrgByCustomerId.mockResolvedValue({
+      id: 'org-1',
+      ...org,
+    });
+    retrieveSubscription.mockResolvedValue({
+      id: 'sub_live',
+      status,
+      customer: 'cus_1',
+      metadata: { billing: 'ULTIMATE', period: 'MONTHLY', uniqueId: 'u1' },
+      cancel_at: null,
+      billing_cycle_anchor: 1_700_000_000,
+    });
+    jest.spyOn(service as any, 'newTrial').mockResolvedValue(null);
+    jest.spyOn(service as any, 'checkValidCard').mockResolvedValue(true);
+    await (service as any).syncSubscription({
+      data: { object: { id: 'sub_live' } },
+    });
+    return subscriptionService.createOrUpdateSubscription.mock.calls[0][0];
+  };
+
+  it('a trial whose first charge failed stays a trial, with its limits', async () => {
+    expect(await sync('past_due', { isTrailing: true })).toBe(true);
+  });
+
+  it('a paid plan in the retry window is not turned back into a trial', async () => {
+    expect(await sync('past_due', { isTrailing: false })).toBe(false);
+  });
+
+  it('the trial ends when the charge goes through', async () => {
+    expect(await sync('active', { isTrailing: true })).toBe(false);
+  });
+
   it('the webhook writes the new tier once the change is active', async () => {
     const { service, subscriptionService } = build();
     retrieveSubscription.mockResolvedValue({
