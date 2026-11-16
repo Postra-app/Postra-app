@@ -1264,7 +1264,7 @@
   "account_deleted": "Votre compte a été supprimé",
   "account_delete_failed": "Impossible de supprimer le compte. Veuillez réessayer.",
   "danger_zone": "Zone de danger",
-  "delete_account_description": "La suppression définitive de votre compte efface vos données, vos canaux connectés (y compris les jetons d'accès), vos publications programmées et vos médias. Les organisations dont vous êtes le seul membre seront entièrement supprimées, et tout abonnement actif est annulé immédiatement. Cette action est irréversible. Les données de facturation exigées par la loi sont conservées conformément à notre politique de confidentialité.",
+  "delete_account_description": "La suppression définitive de votre compte efface vos données, vos canaux connectés (y compris les jetons d'accès), vos publications programmées et vos médias. Les organisations dont vous êtes le seul membre seront entièrement supprimées, et un abonnement payé sur ce site est annulé immédiatement. Un abonnement acheté sur l'App Store n'est pas annulé : annulez-le dans les Réglages de votre iPhone. Cette action est irréversible. Les données de facturation exigées par la loi sont conservées conformément à notre politique de confidentialité.",
   "type_to_confirm_2": "pour confirmer",
   "delete_my_account": "Supprimer mon compte",
   "global_settings_sub": "Préférences de compte, de notifications et de liens",

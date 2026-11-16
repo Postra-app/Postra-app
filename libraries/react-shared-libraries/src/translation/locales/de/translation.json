@@ -1264,7 +1264,7 @@
   "account_deleted": "Ihr Konto wurde gelöscht",
   "account_delete_failed": "Das Konto konnte nicht gelöscht werden. Bitte versuchen Sie es erneut.",
   "danger_zone": "Gefahrenzone",
-  "delete_account_description": "Wenn Sie Ihr Konto endgültig löschen, werden Ihre Daten, verbundenen Kanäle (einschließlich Zugriffstokens), geplanten Beiträge und Medien gelöscht. Organisationen, in denen Sie das einzige Mitglied sind, werden vollständig gelöscht, und ein aktives Abonnement wird sofort gekündigt. Diese Aktion kann nicht rückgängig gemacht werden. Gesetzlich vorgeschriebene Abrechnungsunterlagen werden gemäß unserer Datenschutzerklärung aufbewahrt.",
+  "delete_account_description": "Wenn Sie Ihr Konto endgültig löschen, werden Ihre Daten, verbundenen Kanäle (einschließlich Zugriffstokens), geplanten Beiträge und Medien gelöscht. Organisationen, in denen Sie das einzige Mitglied sind, werden vollständig gelöscht, und ein auf dieser Website bezahltes Abonnement wird sofort gekündigt. Ein im App Store gekauftes Abonnement wird nicht gekündigt: Kündigen Sie es in den Einstellungen Ihres iPhones. Diese Aktion kann nicht rückgängig gemacht werden. Gesetzlich vorgeschriebene Abrechnungsunterlagen werden gemäß unserer Datenschutzerklärung aufbewahrt.",
   "type_to_confirm_2": "ein, um zu bestätigen",
   "delete_my_account": "Mein Konto löschen",
   "global_settings_sub": "Konto-, Benachrichtigungs- und Link-Einstellungen",
