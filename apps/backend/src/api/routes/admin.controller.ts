@@ -552,7 +552,7 @@ export class AdminController {
   // channels in the Channels tab. Apps they approved stop with the account
   // (OAuthService.getOrgByOAuthToken), and the API key of every organisation
   // where they could see it is replaced in the same transaction: the key
-  // they copied kept the public API and MCP open to them (E2E-11-362).
+  // they copied kept the public API and MCP open to them.
   @Post('/suspend-user')
   async suspendUser(
     @GetUserFromRequest() user: User,

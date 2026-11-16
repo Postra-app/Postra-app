@@ -1,6 +1,6 @@
 import { OrganizationService } from '@gitroom/nestjs-libraries/database/prisma/organizations/organization.service';
 
-// E2E-11-362: once the key is replaced, the integrations of the organisation
+// Once the key is replaced, the integrations of the organisation
 // stop working. The owners and admins, the only ones who can fix them, are
 // told why, by mail, and the audit trail says the replacement was automatic.
 // The mail never carries the key.

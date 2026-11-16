@@ -46,7 +46,7 @@ jest.mock('@gitroom/nestjs-libraries/track/track.service', () => ({
 
 import { StripeService } from '@gitroom/nestjs-libraries/services/stripe.service';
 
-// E2E-11-363: a chargeback or a refund of the whole payment left the plan in
+// A chargeback or a refund of the whole payment left the plan in
 // place, and the tier was read from metadata anyone with Dashboard access (or
 // a stray API call) could change while the price stayed Starter.
 

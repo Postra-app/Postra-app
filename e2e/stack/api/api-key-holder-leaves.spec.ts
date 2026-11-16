@@ -1,7 +1,7 @@
 import { expect, test } from '@playwright/test';
 import { addMember, database, throwawayOrg } from '../helpers';
 
-// E2E-11-362: owners and admins see the organisation's API key. Removing an
+// Owners and admins see the organisation's API key. Removing an
 // admin, or making them a plain member, left the key they had copied working:
 // the public API and MCP stayed open to someone who no longer belonged. The
 // key is now replaced with the change, and the key the owner reads afterwards

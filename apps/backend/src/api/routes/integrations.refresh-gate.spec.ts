@@ -42,7 +42,7 @@ import { NoAuthIntegrationsController } from './no.auth.integrations.controller'
  * went through both gates and created the channel.
  */
 
-// The caller is an admin: connecting a new channel is for admins (DH).
+// The caller is an admin: connecting a new channel is for admins.
 const FREE_ORG = { id: 'org-1', isTrailing: false, users: [{ role: 'ADMIN' }] } as any;
 const GUILD = 'guild-123';
 

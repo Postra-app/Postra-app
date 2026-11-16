@@ -663,7 +663,7 @@ export class OrganizationRepository {
 
   // Turns seats off or on, never the owner's. An admin whose seat is turned
   // off can no longer use the organisation but kept the API key they had seen
-  // (E2E-11-362): the key is replaced in the same transaction. Turning seats
+  //: the key is replaced in the same transaction. Turning seats
   // back on replaces nothing. `userIds` undefined = every member but the owner.
   // Returns the admins whose seat was turned off.
   private setSeats(orgId: string, userIds: string[] | undefined, disabled: boolean) {

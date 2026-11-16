@@ -1,6 +1,10 @@
 const redisSet = jest.fn();
+const redisDel = jest.fn();
 jest.mock('@gitroom/nestjs-libraries/redis/redis.service', () => ({
-  ioRedis: { set: (...a: unknown[]) => redisSet(...a) },
+  ioRedis: {
+    set: (...a: unknown[]) => redisSet(...a),
+    del: (...a: unknown[]) => redisDel(...a),
+  },
 }));
 const bust = jest.fn();
 jest.mock('@gitroom/nestjs-libraries/redis/auth-context.cache', () => ({
@@ -9,6 +13,8 @@ jest.mock('@gitroom/nestjs-libraries/redis/auth-context.cache', () => ({
 
 import { Provider } from '@prisma/client';
 import { AuthService as AuthChecker } from '@gitroom/helpers/auth/auth.service';
+import { HttpException } from '@nestjs/common';
+import { AccountChangedError } from '@gitroom/nestjs-libraries/database/prisma/users/users.service';
 import {
   AccountDeletionService,
   DELETE_ACCOUNT_PURPOSE,
@@ -64,6 +70,7 @@ function linkToken(sendEmailSync: jest.Mock) {
 
 beforeEach(() => {
   redisSet.mockReset().mockResolvedValue('OK');
+  redisDel.mockReset().mockResolvedValue(1);
   bust.mockReset();
 });
 
@@ -92,7 +99,7 @@ describe('AccountDeletionService.request', () => {
       deleted: true,
     });
     expect(calls).toEqual(['stripe', 'deleteAccount']);
-    expect(users.deleteAccount).toHaveBeenCalledWith('user-1');
+    expect(users.deleteAccount).toHaveBeenCalledWith('user-1', 3);
     expect(bust).toHaveBeenCalledWith('user-1');
     expect(notifications.sendEmail).toHaveBeenCalledWith(
       'owner@example.com',
@@ -141,7 +148,7 @@ describe('AccountDeletionService.confirm', () => {
     const { service, users, calls } = setup(local);
     await expect(service.confirm(token)).resolves.toBe('user-1');
     expect(calls).toEqual(['stripe', 'deleteAccount']);
-    expect(users.deleteAccount).toHaveBeenCalledWith('user-1');
+    expect(users.deleteAccount).toHaveBeenCalledWith('user-1', 3);
   });
 
   it('dies when the account changed its password (tokenVersion moved on)', async () => {
@@ -188,11 +195,64 @@ describe('AccountDeletionService.confirm', () => {
     const token = await mintedLink();
     const { service, users } = setup(local);
     redisSet.mockResolvedValueOnce('OK').mockResolvedValueOnce(null);
-    const [a, b] = await Promise.all([
+    const [a, b] = await Promise.allSettled([
       service.confirm(token),
       service.confirm(token),
     ]);
-    expect([a, b].filter(Boolean)).toEqual(['user-1']);
+    expect(a).toEqual({ status: 'fulfilled', value: 'user-1' });
+    expect(b.status).toBe('rejected');
     expect(users.deleteAccount).toHaveBeenCalledTimes(1);
   });
 });
+
+describe('AccountDeletionService.confirm, races and retries', () => {
+  async function mintLink(user: typeof local) {
+    const { service, email } = setup(user);
+    await service.request(user.id, undefined);
+    return linkToken(email.sendEmailSync);
+  }
+
+  it('hands the link version to the deleting transaction, so a reset that lands meanwhile wins', async () => {
+    const token = await mintLink(local);
+    const { service, users } = setup(local);
+    users.deleteAccount.mockImplementationOnce(async () => {
+      throw new AccountChangedError();
+    });
+    await expect(service.confirm(token)).resolves.toBeNull();
+    expect(users.deleteAccount).toHaveBeenCalledWith('user-1', 3);
+  });
+
+  it('does not reach Stripe when the version moved after the link was checked', async () => {
+    const token = await mintLink(local);
+    const { service, users, stripe } = setup(local);
+    users.getUserById
+      .mockResolvedValueOnce(local as any)
+      .mockResolvedValueOnce({ ...local, tokenVersion: 4 } as any);
+    await expect(service.confirm(token)).resolves.toBeNull();
+    expect(stripe.cancelAllSubscriptionsForDeletedAccount).not.toHaveBeenCalled();
+    expect(users.deleteAccount).not.toHaveBeenCalled();
+  });
+
+  it('gives the lock back after a failed attempt, so the same link works again', async () => {
+    const token = await mintLink(local);
+    const { service, stripe, users } = setup(local);
+    stripe.cancelAllSubscriptionsForDeletedAccount.mockRejectedValueOnce(
+      new Error('stripe down')
+    );
+    await expect(service.confirm(token)).rejects.toThrow('stripe down');
+    expect(redisDel).toHaveBeenCalledWith('account-delete:user-1');
+    await expect(service.confirm(token)).resolves.toBe('user-1');
+    expect(users.deleteAccount).toHaveBeenCalledTimes(1);
+  });
+
+  it('a click while another deletion runs is told so, not that the link is invalid', async () => {
+    const token = await mintLink(local);
+    const { service, users } = setup(local);
+    redisSet.mockResolvedValueOnce(null);
+    const err = await service.confirm(token).catch((e) => e);
+    expect(err).toBeInstanceOf(HttpException);
+    expect((err as HttpException).getStatus()).toBe(409);
+    expect(users.deleteAccount).not.toHaveBeenCalled();
+  });
+});
+

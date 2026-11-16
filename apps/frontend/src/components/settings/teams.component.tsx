@@ -181,7 +181,7 @@ export const TeamsComponent = () => {
 
   // An admin sees the organisation's API key (Settings, Developers). Removing
   // them or making them a plain member replaces the key on the server in the
-  // same step (E2E-11-362); the owners and admins also get a mail. This only
+  // same step; the owners and admins also get a mail. This only
   // says so and shows the new key, so the integrations can be updated.
   const keyReplacedNote = useCallback(async () => {
     await mutateGlobal('/user/self');

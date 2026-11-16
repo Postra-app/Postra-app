@@ -359,7 +359,7 @@ export class OrganizationService {
     // Bust the 30s auth-context cache for anyone whose access just changed.
     await bustAuthContextCacheForUsers([...toEnable, ...toDisable]);
     // An admin turned off by the downgrade took the API key with them: it was
-    // replaced with the seat change (E2E-11-362).
+    // replaced with the seat change.
     if (disabled.adminsDisabled.length) {
       await this.afterApiKeyReplaced(
         [orgId],

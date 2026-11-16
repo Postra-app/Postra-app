@@ -1,6 +1,9 @@
 import { HttpException, Injectable, Logger } from '@nestjs/common';
 import { Provider } from '@prisma/client';
-import { UsersService } from '@gitroom/nestjs-libraries/database/prisma/users/users.service';
+import {
+  AccountChangedError,
+  UsersService,
+} from '@gitroom/nestjs-libraries/database/prisma/users/users.service';
 import { StripeService } from '@gitroom/nestjs-libraries/services/stripe.service';
 import { NotificationService } from '@gitroom/nestjs-libraries/database/prisma/notifications/notification.service';
 import { EmailService } from '@gitroom/nestjs-libraries/services/email.service';
@@ -17,6 +20,10 @@ export const DELETE_ACCOUNT_PURPOSE = 'delete-account';
 export const WRONG_PASSWORD = 'The password is not correct.';
 export const DELETE_LINK_INVALID =
   'This link is not valid or has expired. Ask for a new one in Settings.';
+export const ACCOUNT_CHANGED =
+  'Your account changed while we were deleting it, so nothing was deleted. Please try again.';
+export const DELETE_IN_PROGRESS =
+  'Your account is already being deleted. Try again in a minute if it is still there.';
 export const DELETE_MAIL_NOT_SENT =
   'We could not send the confirmation email. Please try again.';
 
@@ -66,7 +73,14 @@ export class AccountDeletionService {
       ) {
         throw new HttpException(WRONG_PASSWORD, 400);
       }
-      await this.deleteNow(user.id, user.email);
+      try {
+        await this.deleteNow(user.id, user.email, user.tokenVersion);
+      } catch (err) {
+        if (err instanceof AccountChangedError) {
+          throw new HttpException(ACCOUNT_CHANGED, 409);
+        }
+        throw err;
+      }
       return { deleted: true };
     }
 
@@ -121,31 +135,50 @@ export class AccountDeletionService {
     if (!user || user.tokenVersion !== claims.tokenVersion) {
       return null;
     }
-    // Two clicks at once both passed the check above; one deletes.
+    // Two clicks at once both passed the check above; one deletes. The
+    // lock only keeps them apart: the version is checked again inside the
+    // deleting transaction, and a failed attempt gives the lock back so the
+    // same link can be tried again.
+    const lockKey = `account-delete:${user.id}`;
+    let locked = false;
     try {
-      const lock = await ioRedis.set(
-        `account-delete:${user.id}`,
-        '1',
-        'EX',
-        120,
-        'NX'
-      );
+      const lock = await ioRedis.set(lockKey, '1', 'EX', 120, 'NX');
       if (lock !== 'OK') {
+        throw new HttpException(DELETE_IN_PROGRESS, 409);
+      }
+      locked = true;
+    } catch (err) {
+      if (err instanceof HttpException) throw err;
+      // Without Redis the version check in the transaction still decides.
+    }
+    try {
+      await this.deleteNow(user.id, user.email, claims.tokenVersion);
+    } catch (err) {
+      if (locked) await ioRedis.del(lockKey).catch((): void => undefined);
+      if (err instanceof AccountChangedError) {
         return null;
       }
-    } catch {
-      // Without Redis the second one finds no user or fails on the cascade.
+      throw err;
     }
-    await this.deleteNow(user.id, user.email);
     return user.id;
   }
 
   // GDPR / RODO right to erasure + Meta data-deletion. Permanently deletes the
   // user and the organizations they solely own (UsersService.deleteAccount).
-  private async deleteNow(userId: string, email: string) {
+  private async deleteNow(
+    userId: string,
+    email: string,
+    expectedTokenVersion: number
+  ) {
     // Cancel Stripe billing before the DB rows (and with them the customer
     // lookup) are gone. Orchestrated here because StripeService itself
     // injects UsersService: the reverse dependency would be circular.
+    // Checked once more before Stripe, which cannot be rolled back; the
+    // transaction in deleteAccount checks it again under the row lock.
+    const current = await this._userService.getUserById(userId);
+    if (!current || current.tokenVersion !== expectedTokenVersion) {
+      throw new AccountChangedError();
+    }
     const soleOrgIds = await this._userService.getSoleOwnedOrganizations(
       userId
     );
@@ -155,7 +188,7 @@ export class AccountDeletionService {
       );
     }
 
-    await this._userService.deleteAccount(userId);
+    await this._userService.deleteAccount(userId, expectedTokenVersion);
     // Another device signed in as this user kept reading the shared org for
     // up to the 30 s the auth context is cached.
     await bustAuthContextCache(userId);

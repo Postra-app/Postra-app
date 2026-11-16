@@ -12,7 +12,7 @@ import { AuthController } from './auth.controller';
 
 // Required as in the other users.controller specs: the module graph behind it
 // is heavy, and the routes need only the prototype.
-// eslint-disable-next-line @typescript-eslint/no-var-requires
+// eslint-disable-next-line @typescript-eslint/no-require-imports
 const { UsersController } = require('./users.controller');
 
 process.env.JWT_SECRET = 'test-secret-for-account-delete-routes';
@@ -40,7 +40,9 @@ function wiring() {
   const users = {
     getUserById: jest.fn(async () => user),
     getSoleOwnedOrganizations: jest.fn(async (): Promise<string[]> => []),
-    deleteAccount: jest.fn(async (_id: string): Promise<void> => undefined),
+    deleteAccount: jest.fn(
+      async (_id: string, _version?: number): Promise<void> => undefined
+    ),
   };
   const email = { sendEmailSync: jest.fn(async (..._a: unknown[]) => true) };
   const deletion = new AccountDeletionService(
@@ -94,7 +96,7 @@ describe('POST /user/delete', () => {
       PASSWORD,
       res
     );
-    expect(users.deleteAccount).toHaveBeenCalledWith('user-1');
+    expect(users.deleteAccount).toHaveBeenCalledWith('user-1', expect.any(Number));
     expect(res.statusCode).toBe(200);
     expect(out).toEqual({ deleted: true });
     expect(res.headers.logout).toBe('true');
@@ -116,7 +118,7 @@ describe('POST /auth/delete-account', () => {
     await expect(
       w.authController.deleteAccount(req({ auth: someoneElse }), token, res)
     ).resolves.toEqual({ deleted: true });
-    expect(w.users.deleteAccount).toHaveBeenCalledWith('user-1');
+    expect(w.users.deleteAccount).toHaveBeenCalledWith('user-1', expect.any(Number));
     expect(res.headers.logout).toBeUndefined();
     expect(res.cookie).not.toHaveBeenCalled();
   });

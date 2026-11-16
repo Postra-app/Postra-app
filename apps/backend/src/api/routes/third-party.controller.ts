@@ -60,7 +60,7 @@ export class ThirdPartyController {
     );
   }
 
-  // Saving and removing a service's API key is for admins (K., 2026-11-16);
+  // Saving and removing a service's API key is for admins;
   // members keep using the saved ones.
   @Delete('/:id')
   @CheckPolicies([AuthorizationActions.Create, Sections.ADMIN])

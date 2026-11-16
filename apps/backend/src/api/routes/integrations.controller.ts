@@ -308,7 +308,7 @@ export class IntegrationsController {
     }
 
     // Adding a channel, or handing a client a link to add one, is for admins
-    // (K., 2026-11-16): a channel takes a paid slot and posts in the
+    // because a channel takes a paid slot and posts in the
     // organisation's name. A member may still re-authenticate a channel the
     // organisation already has (`refresh` without `invite`), so a team of
     // members is not stuck when a token expires.

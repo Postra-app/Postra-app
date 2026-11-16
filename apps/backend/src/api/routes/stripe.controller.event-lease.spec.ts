@@ -183,7 +183,7 @@ describe('Stripe webhook: one run per event, and a crash is not "done"', () => {
   });
 });
 
-// E2E-11-363: a chargeback or a full refund carries no service tag (charges
+// A chargeback or a full refund carries no service tag (charges
 // and disputes have no Postra metadata), so the filter above answered "ok"
 // and the plan stayed with the money gone.
 describe('Stripe webhook: disputes and refunds reach the handler', () => {

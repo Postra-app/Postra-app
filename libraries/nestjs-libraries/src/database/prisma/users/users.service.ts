@@ -18,6 +18,14 @@ import {
   ProviderGrantsService,
 } from '@gitroom/nestjs-libraries/integrations/provider-grants.service';
 
+// The account changed (password reset, suspension, sign-out everywhere)
+// after the deletion was asked for: nothing was deleted.
+export class AccountChangedError extends Error {
+  constructor() {
+    super('account changed since the deletion was requested');
+  }
+}
+
 @Injectable()
 export class UsersService {
   constructor(
@@ -118,7 +126,12 @@ export class UsersService {
   // exercised their right to erasure, every photo and video they had uploaded
   // was still a working URL. Postra is registered with the ICO, so that is an
   // obligation, not a tidy-up.
-  async deleteAccount(userId: string) {
+  // `expectedTokenVersion`: the session or link that asked for the deletion
+  // was issued at this version. It is checked again under the user's row lock
+  // inside the deleting transaction, so a password reset or a suspension that
+  // lands while the deletion runs either happens first (nothing is deleted)
+  // or waits for it.
+  async deleteAccount(userId: string, expectedTokenVersion?: number) {
     const soleOrgIds = await this.getSoleOwnedOrganizations(userId);
 
     // Collected before the delete: the rows cascade away with the org, and
@@ -141,6 +154,12 @@ export class UsersService {
     const deletedOrgIds = new Set<string>();
     const keyReplacedIn: string[] = [];
     await this._prisma.$transaction(async (tx) => {
+      if (expectedTokenVersion !== undefined) {
+        const [row] = await tx.$queryRaw<{ tokenVersion: number }[]>`SELECT "tokenVersion" FROM "User" WHERE "id" = ${userId} FOR UPDATE`;
+        if (!row || row.tokenVersion !== expectedTokenVersion) {
+          throw new AccountChangedError();
+        }
+      }
       for (const id of soleOrgIds) {
         // Counted again under the organisation's row lock: someone accepting
         // an invitation between the first count and here had their new
@@ -188,7 +207,7 @@ export class UsersService {
       }
 
       // An admin or owner leaving a team that stays takes the API key they
-      // could see (E2E-11-362): replaced before the membership goes.
+      // could see: replaced before the membership goes.
       const sawTheKey = await tx.userOrganization.findMany({
         where: { userId, role: { in: ROLES_THAT_SEE_THE_API_KEY } },
         select: { organizationId: true },

@@ -38,7 +38,7 @@ import { ThirdPartyController } from './third-party.controller';
 import { IntegrationsController } from './integrations.controller';
 
 /**
- * K., 2026-11-16 (security audit DH): a member (role USER) created AutoPost
+ * A member (role USER) created AutoPost
  * feeds, saved third-party API keys, connected new channels and minted
  * channel invite links, while sibling routes (webhooks, channel delete,
  * channel group) were already for admins. Feeds, keys, new channels and
@@ -76,7 +76,7 @@ const route = (controller: any, method: string, path: string) => {
   return found;
 };
 
-describe('admin-only routes for a member (DH)', () => {
+describe('admin-only routes for a member', () => {
   it.each([
     ['POST', '/'],
     ['PUT', '/:id'],
@@ -120,7 +120,7 @@ describe('admin-only routes for a member (DH)', () => {
   });
 });
 
-describe('GET /integrations/social/:integration by role (DH)', () => {
+describe('GET /integrations/social/:integration by role', () => {
   const env = process.env.STRIPE_PUBLISHABLE_KEY;
   beforeAll(() => {
     delete process.env.STRIPE_PUBLISHABLE_KEY;

@@ -40,7 +40,7 @@ export class AutopostController {
   }
 
   // Feeds publish to the organisation's channels on their own: managing them
-  // is for admins (K., 2026-11-16). Listing them stays open to every member.
+  // is for admins. Listing them stays open to every member.
   @Post('/')
   @CheckPolicies(
     [AuthorizationActions.Create, Sections.ADMIN],

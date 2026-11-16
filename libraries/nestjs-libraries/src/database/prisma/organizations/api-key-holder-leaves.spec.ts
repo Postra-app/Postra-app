@@ -1,7 +1,7 @@
 import { Role } from '@prisma/client';
 import { OrganizationRepository } from '@gitroom/nestjs-libraries/database/prisma/organizations/organization.repository';
 
-// E2E-11-362: owners and admins see the organisation's API key. Removing one,
+// Owners and admins see the organisation's API key. Removing one,
 // or making them a plain member, left the key they had copied working, so the
 // public API and MCP stayed open to someone who no longer belonged. The key is
 // now replaced in the same transaction as the change.

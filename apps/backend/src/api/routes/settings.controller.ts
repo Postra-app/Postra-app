@@ -66,7 +66,7 @@ export class SettingsController {
       metadata: { targetUserId: id },
     });
     // An admin or owner who leaves takes the API key they could see: it was
-    // replaced with the removal (E2E-11-362), the team is told here.
+    // replaced with the removal, the team is told here.
     if (result?.keyReplaced) {
       await this._organizationService.afterApiKeyReplaced([org.id], 'admin-removed', id);
     }

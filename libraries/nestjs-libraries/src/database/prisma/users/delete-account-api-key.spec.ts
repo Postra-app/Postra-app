@@ -2,9 +2,12 @@ jest.mock('@gitroom/nestjs-libraries/upload/upload.factory', () => ({
   UploadFactory: { createStorage: () => ({ removeFile: jest.fn() }) },
 }));
 
-import { UsersService } from '@gitroom/nestjs-libraries/database/prisma/users/users.service';
+import {
+  AccountChangedError,
+  UsersService,
+} from '@gitroom/nestjs-libraries/database/prisma/users/users.service';
 
-// E2E-11-362: an owner or admin of a team that stays deleted their account,
+// An owner or admin of a team that stays deleted their account,
 // and the API key they had copied kept working for the team's organisation.
 // It is replaced in the deletion's transaction; organisations deleted with
 // the account need nothing.
@@ -62,3 +65,25 @@ describe('an owner or admin deletes their account', () => {
     expect(orgs.afterApiKeyReplaced).not.toHaveBeenCalled();
   });
 });
+
+describe('the deletion checks the session version under the user row lock', () => {
+  it('a version that moved meanwhile deletes nothing', async () => {
+    const { service, tx } = build(['own-org'], ['own-org']);
+    tx.$queryRaw.mockResolvedValueOnce([{ tokenVersion: 4 }]);
+    await expect(service.deleteAccount('u1', 3)).rejects.toBeInstanceOf(AccountChangedError);
+    expect(tx.organization.delete).not.toHaveBeenCalled();
+    expect(tx.user.delete).not.toHaveBeenCalled();
+  });
+
+  it('the same version deletes, and the lock is taken first', async () => {
+    const { service, tx } = build(['own-org'], []);
+    tx.$queryRaw.mockResolvedValueOnce([{ tokenVersion: 3 }]);
+    await service.deleteAccount('u1', 3);
+    expect(String(tx.$queryRaw.mock.calls[0][0].join('?'))).toContain('FOR UPDATE');
+    expect(tx.$queryRaw.mock.invocationCallOrder[0]).toBeLessThan(
+      tx.organization.delete.mock.invocationCallOrder[0]
+    );
+    expect(tx.user.delete).toHaveBeenCalled();
+  });
+});
+

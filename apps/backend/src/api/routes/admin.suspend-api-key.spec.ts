@@ -9,7 +9,7 @@ jest.mock('nostr-tools', () => ({
 
 import { AdminController } from '@gitroom/backend/api/routes/admin.controller';
 
-// E2E-11-362: a suspension ended every session, but the organisation's API
+// A suspension ended every session, but the organisation's API
 // key the person had seen as an owner or admin kept the public API and MCP
 // open to them. Every key they could see is replaced with the suspension.
 const admin = { id: 'admin-1', isSuperAdmin: true } as any;

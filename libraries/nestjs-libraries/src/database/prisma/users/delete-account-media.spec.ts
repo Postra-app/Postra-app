@@ -264,7 +264,7 @@ describe('the owner leaving an organisation that stays', () => {
       expect.objectContaining({ orderBy: [{ role: 'asc' }, { createdAt: 'asc' }] })
     );
     expect(tx.userOrganization.update).toHaveBeenCalledWith({ where: { id: 'uo-heir' }, data: { role: 'SUPERADMIN' } });
-    // The owner saw the team's API key: it is replaced (E2E-11-362).
+    // The owner saw the team's API key: it is replaced.
     expect(tx.organization.update).toHaveBeenCalledWith(
       expect.objectContaining({ where: { id: 'org-1' } })
     );

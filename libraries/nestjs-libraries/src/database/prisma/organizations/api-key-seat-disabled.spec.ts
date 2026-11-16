@@ -2,7 +2,7 @@ import { Role } from '@prisma/client';
 import { OrganizationRepository } from '@gitroom/nestjs-libraries/database/prisma/organizations/organization.repository';
 import { OrganizationService } from '@gitroom/nestjs-libraries/database/prisma/organizations/organization.service';
 
-// E2E-11-362: a plan downgrade turns off the seats over the new cap. An admin
+// A plan downgrade turns off the seats over the new cap. An admin
 // whose seat went off could no longer use the organisation, but the API key
 // they had seen kept working. The key is replaced with the seat change;
 // turning seats back on replaces nothing.
