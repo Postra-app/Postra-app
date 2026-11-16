@@ -33,6 +33,30 @@ function service(post: any) {
 }
 
 describe('PostsService.validatePosts - body shape', () => {
+  // One request named the same picture a hundred thousand times; the
+  // provider's check downloaded every one of them at once.
+  it('refuses a post with more media than any post can have, before reading them', async () => {
+    const { s } = service(null);
+    const image = Array.from({ length: 100_000 }, () => ({ path: 'https://cdn.example.com/a.png' }));
+    const integrations = (s as any)._integrationService.getIntegrationsByIds;
+    await expect(
+      s.validatePosts('org', [{ integration: { id: 'i1' }, value: [{ content: 'x', image }] }] as any)
+    ).rejects.toThrow('At most 20 media files');
+    expect(integrations).not.toHaveBeenCalled();
+  });
+
+  it('refuses more channels or more items than a request can have', async () => {
+    const { s } = service(null);
+    const post = { integration: { id: 'i1' }, value: [{ content: 'x' }] };
+    await expect(s.validatePosts('org', Array(51).fill(post) as any)).rejects.toThrow('At most 50 channels');
+    await expect(
+      s.validatePosts('org', [{ integration: { id: 'i1' }, value: Array(101).fill({ content: 'x' }) }] as any)
+    ).rejects.toThrow('At most 100 posts and comments');
+    await expect(
+      s.validatePosts('org', [{ integration: { id: 'i1' }, value: [{ image: { length: 5 } }] }] as any)
+    ).rejects.toBeInstanceOf(BadRequestException);
+  });
+
   it.each(['abc', 42, { a: 1 }])('rejects posts=%p with 400', async (bad) => {
     const { s } = service(null);
     await expect(s.validatePosts('org', bad as any)).rejects.toBeInstanceOf(
