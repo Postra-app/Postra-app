@@ -17,3 +17,22 @@ test('a plug that could not be saved says so and stays open', async ({ page }) =
   await expect(page.getByText('Plugin updated')).toHaveCount(0);
   await expect(page.getByRole('button', { name: 'Activate' })).toBeVisible();
 });
+
+// After a successful save the card still said "Set Plug" (the list was not
+// reloaded: the window closes without its onClose), and opening it again
+// showed an empty form, as if nothing had been saved.
+test('a saved plug shows as saved without a reload', async ({ page }) => {
+  await page.goto('/plugs');
+  await page.getByText('Auto Repost Posts').first().click();
+  const likes = String(40 + Math.floor(Math.random() * 50));
+  await page.getByPlaceholder('Number of likes').fill(likes);
+  const saved = page.waitForResponse(
+    (r) => /\/integrations\/[^/]+\/plugs$/.test(r.url()) && r.request().method() === 'POST'
+  );
+  await page.getByRole('button', { name: 'Activate' }).click();
+  expect((await saved).status()).toBeLessThan(300);
+  await expect(page.getByRole('button', { name: 'Edit Plug' }).first()).toBeVisible();
+
+  await page.getByText('Auto Repost Posts').first().click();
+  await expect(page.getByPlaceholder('Number of likes')).toHaveValue(likes);
+});

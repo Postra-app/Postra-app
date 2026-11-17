@@ -139,6 +139,9 @@ export const PlugPop: FC<{
       return;
     }
     toaster.show(t('plugin_updated', 'Plug updated'), 'success');
+    // closeAll() does not run the window's onClose, so the card kept saying
+    // "Set Plug" and a second open showed an empty form. Reload the list.
+    await mutate(`plugs-${settings.providerId}`);
     closeAll();
   }, [t]);
 
