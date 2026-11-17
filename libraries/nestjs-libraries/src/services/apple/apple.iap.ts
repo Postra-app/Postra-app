@@ -1,3 +1,4 @@
+import { IntroductoryOfferEligibilitySignatureCreator } from '@apple/app-store-server-library';
 import { pricing } from '@gitroom/nestjs-libraries/database/prisma/subscriptions/pricing';
 
 // Subscriptions bought in the iOS app are billed by Apple. Everything here is
@@ -17,24 +18,16 @@ export const appleAppId = () => {
 
 export type AppleTier = 'STANDARD' | 'PRO' | 'ULTIMATE';
 
-// Product ids as created in App Store Connect. Monthly only, and each plan
-// twice: once with the free week as its introductory offer and once without.
-// Apple decides who gets an introductory offer by Apple ID and knows nothing
-// of a trial already taken on the web, so an organisation that has had its
-// trial is offered the products that have none.
-const WITH_TRIAL: Record<string, AppleTier> = {
+// Product ids as created in App Store Connect: one per plan, monthly only,
+// each with the free week as its introductory offer. Apple decides who gets
+// an introductory offer by Apple ID and knows nothing of a trial already
+// taken on the web; for an organisation that has had its trial the server
+// signs "no introductory offer" into the purchase (appleOfferSigner below),
+// and Apple sells the same product at its full price from the first day.
+export const APPLE_PRODUCTS: Record<string, AppleTier> = {
   'uk.co.postra.app.starter.monthly': 'STANDARD',
   'uk.co.postra.app.pro.monthly': 'PRO',
   'uk.co.postra.app.business.monthly': 'ULTIMATE',
-};
-const WITHOUT_TRIAL: Record<string, AppleTier> = {
-  'uk.co.postra.app.starter.monthly.notrial': 'STANDARD',
-  'uk.co.postra.app.pro.monthly.notrial': 'PRO',
-  'uk.co.postra.app.business.monthly.notrial': 'ULTIMATE',
-};
-export const APPLE_PRODUCTS: Record<string, AppleTier> = {
-  ...WITH_TRIAL,
-  ...WITHOUT_TRIAL,
 };
 
 export const appleTierOf = (productId?: string | null): AppleTier | null =>
@@ -43,16 +36,37 @@ export const appleTierOf = (productId?: string | null): AppleTier | null =>
     APPLE_PRODUCTS[productId]) ||
   null;
 
-// The plans to show an organisation: with the free week only while it may
-// still have a trial, by the same rule the web's plan page goes by.
-export const applePlans = (trial: boolean) =>
-  Object.entries(trial ? WITH_TRIAL : WITHOUT_TRIAL).map(
-    ([productId, tier]) => ({
-      productId,
-      tier,
-      channels: pricing[tier].channel,
-    })
+// The plans the app may sell, the same three for every organisation.
+export const applePlans = () =>
+  Object.entries(APPLE_PRODUCTS).map(([productId, tier]) => ({
+    productId,
+    tier,
+    channels: pricing[tier].channel,
+  }));
+
+// The In-App Purchase key from App Store Connect (Users and Access >
+// Integrations > In-App Purchase) that signs the introductory offer
+// eligibility. APPLE_IAP_SIGNING_KEY is the .p8 file base64-encoded, so it
+// fits on one line of the environment file; a PEM as it is works too.
+// Null when any of the three is missing: an organisation that has had its
+// trial then cannot buy in the app, rather than getting a second free week.
+export const appleOfferSigner = () => {
+  const raw = process.env.APPLE_IAP_SIGNING_KEY?.trim();
+  const keyId = process.env.APPLE_IAP_KEY_ID?.trim();
+  const issuerId = process.env.APPLE_IAP_ISSUER_ID?.trim();
+  if (!raw || !keyId || !issuerId) {
+    return null;
+  }
+  const key = raw.includes('BEGIN')
+    ? raw.replace(/\\n/g, '\n')
+    : Buffer.from(raw, 'base64').toString('utf8');
+  return new IntroductoryOfferEligibilitySignatureCreator(
+    key,
+    keyId,
+    issuerId,
+    appleBundleId()
   );
+};
 
 // Purchases made in Apple's test environment (TestFlight, a sandbox tester,
 // an app reviewer) are real plans to this server. They are accepted only for

@@ -1,3 +1,5 @@
+import { generateKeyPairSync } from 'crypto';
+import * as jwt from 'jsonwebtoken';
 import { BillingController } from '@gitroom/backend/api/routes/billing.controller';
 
 // The same organisation must not be billed by Stripe and by Apple at once,
@@ -79,18 +81,105 @@ describe('billing: plans bought in the iOS app', () => {
   it.each([
     ['the organisation has had its trial', { allowTrial: false }, true],
     ['the email had a trial elsewhere', { allowTrial: true }, false],
-  ])('%s: the products without a free week', async (_, over, offered) => {
+  ])('%s: the same three products, no free week said', async (_, over, offered) => {
     process.env.APPLE_IAP_ENABLED = '1';
     const { controller, stripe } = build();
     stripe.trialOffered.mockResolvedValue(offered);
     const result = await controller.applePlans({ ...webOrg, ...over }, person);
     expect(result.trial).toBe(false);
+    // One product per plan for everyone: two copies of each plan made Apple's
+    // own subscription sheet list every plan twice.
     expect(result.plans.map((p: any) => p.productId)).toEqual([
-      'uk.co.postra.app.starter.monthly.notrial',
-      'uk.co.postra.app.pro.monthly.notrial',
-      'uk.co.postra.app.business.monthly.notrial',
+      'uk.co.postra.app.starter.monthly',
+      'uk.co.postra.app.pro.monthly',
+      'uk.co.postra.app.business.monthly',
     ]);
     expect(result.plans.map((p: any) => p.tier)).toEqual(['STANDARD', 'PRO', 'ULTIMATE']);
+  });
+
+  // Apple's free week is switched off for a purchase by a statement the
+  // server signs with the In-App Purchase key (StoreKit's
+  // introductoryOfferEligibility); Apple checks it against that key.
+  describe('POST /billing/apple/offer', () => {
+    const { privateKey, publicKey } = generateKeyPairSync('ec', { namedCurve: 'prime256v1' });
+    const pem = privateKey.export({ type: 'pkcs8', format: 'pem' }).toString();
+    const publicPem = publicKey.export({ type: 'spki', format: 'pem' }).toString();
+    const offer = { productId: 'uk.co.postra.app.pro.monthly', appTransactionId: '704289572311229970' };
+    const signing = () => {
+      process.env.APPLE_IAP_ENABLED = '1';
+      process.env.APPLE_IAP_SIGNING_KEY = Buffer.from(pem).toString('base64');
+      process.env.APPLE_IAP_KEY_ID = 'KEY123ABCD';
+      process.env.APPLE_IAP_ISSUER_ID = '57246542-96fe-1a63-e053-0824d011072a';
+    };
+
+    it.each([
+      ['the organisation has had its trial', { allowTrial: false }, true],
+      ['the email had a trial elsewhere', { allowTrial: true }, false],
+    ])('%s: signs "no free week" for this product and this Apple ID', async (_, over, offered) => {
+      signing();
+      const { controller, stripe } = build();
+      stripe.trialOffered.mockResolvedValue(offered);
+      const { eligibility } = await controller.appleOffer({ ...webOrg, ...over }, person, offer);
+      const decoded = jwt.verify(eligibility, publicPem, {
+        algorithms: ['ES256'],
+        audience: 'introductory-offer-eligibility',
+        issuer: '57246542-96fe-1a63-e053-0824d011072a',
+        complete: true,
+      });
+      expect(decoded.header.kid).toBe('KEY123ABCD');
+      expect(decoded.payload).toMatchObject({
+        productId: 'uk.co.postra.app.pro.monthly',
+        allowIntroductoryOffer: false,
+        transactionId: '704289572311229970',
+        bid: 'uk.co.postra.app',
+      });
+    });
+
+    it('an organisation that may still have a trial gets nothing to sign: Apple decides', async () => {
+      signing();
+      await expect(build().controller.appleOffer(webOrg, person, offer)).resolves.toEqual({
+        eligibility: null,
+      });
+    });
+
+    it('the key also works as the PEM itself', async () => {
+      signing();
+      process.env.APPLE_IAP_SIGNING_KEY = pem.replace(/\n/g, '\\n');
+      const { eligibility } = await build().controller.appleOffer(
+        { ...webOrg, allowTrial: false },
+        person,
+        offer
+      );
+      expect(jwt.verify(eligibility, publicPem, { algorithms: ['ES256'] })).toMatchObject({
+        allowIntroductoryOffer: false,
+      });
+    });
+
+    it('without the key an organisation past its trial cannot buy (503), never a second free week', async () => {
+      signing();
+      delete process.env.APPLE_IAP_SIGNING_KEY;
+      await expect(
+        build().controller.appleOffer({ ...webOrg, allowTrial: false }, person, offer)
+      ).rejects.toMatchObject({ status: 503 });
+    });
+
+    it('a product that is not ours is refused (400)', async () => {
+      signing();
+      await expect(
+        build().controller.appleOffer({ ...webOrg, allowTrial: false }, person, {
+          ...offer,
+          productId: 'uk.co.postra.app.pro.monthly.notrial',
+        })
+      ).rejects.toMatchObject({ status: 400 });
+    });
+
+    it('is 404 while the feature is off', async () => {
+      signing();
+      delete process.env.APPLE_IAP_ENABLED;
+      await expect(build().controller.appleOffer(webOrg, person, offer)).rejects.toMatchObject({
+        status: 404,
+      });
+    });
   });
 
   it('POST /billing/apple/transaction hands the signed transaction over for the signed-in organisation', async () => {

@@ -16,9 +16,12 @@ import { StripeService } from '@gitroom/nestjs-libraries/services/stripe.service
 import { AppleIapService } from '@gitroom/nestjs-libraries/services/apple/apple.iap.service';
 import {
   appleIapEnabled,
+  appleOfferSigner,
   applePlans,
+  appleTierOf,
 } from '@gitroom/nestjs-libraries/services/apple/apple.iap';
 import { BillingAppleTransactionDto } from '@gitroom/nestjs-libraries/dtos/billing/billing.apple.transaction.dto';
+import { BillingAppleOfferDto } from '@gitroom/nestjs-libraries/dtos/billing/billing.apple.offer.dto';
 import { GetOrgFromRequest } from '@gitroom/nestjs-libraries/user/org.from.request';
 import { Organization, User } from '@prisma/client';
 import { BillingSubscribeDto } from '@gitroom/nestjs-libraries/dtos/billing/billing.subscribe.dto';
@@ -238,14 +241,49 @@ export class BillingController {
       throw new HttpException('Not found', 404);
     }
     const trial = await this.appleTrialAllowed(org, user);
-    return { plans: applePlans(trial), trial };
+    return { plans: applePlans(), trial };
+  }
+
+  // Asked by the app just before Apple's purchase sheet opens. For an
+  // organisation that has had its trial: Apple's free week is switched off
+  // for this purchase by a statement the server signs (StoreKit's
+  // introductoryOfferEligibility), and Apple charges the full price from the
+  // first day. Otherwise null, and Apple decides by Apple ID as usual.
+  @Post('/apple/offer')
+  @CheckPolicies(BILLING_ADMIN)
+  @Throttle({ default: { ttl: 300_000, limit: 20 } })
+  async appleOffer(
+    @GetOrgFromRequest() org: Organization,
+    @GetUserFromRequest() user: User,
+    @Body() body: BillingAppleOfferDto
+  ) {
+    if (!appleIapEnabled()) {
+      throw new HttpException('Not found', 404);
+    }
+    if (!appleTierOf(body.productId)) {
+      throw new HttpException('This plan is not available right now.', 400);
+    }
+    if (await this.appleTrialAllowed(org, user)) {
+      return { eligibility: null };
+    }
+    const signer = appleOfferSigner();
+    if (!signer) {
+      throw new HttpException('This plan is not available right now.', 503);
+    }
+    return {
+      eligibility: signer.createSignature(
+        body.productId,
+        false,
+        body.appTransactionId
+      ),
+    };
   }
 
   // One trial, wherever it is taken. The offer the web's plan page reads
   // (the organisation's, and not for an email that already had a trial)
-  // decides whether the app shows the products with the free week or the
-  // ones without, and whether a free week bought in the app is accepted. A
-  // plan bought in the app ends the offer in turn.
+  // decides whether the app shows the free week and whether Apple's free
+  // week is switched off for the purchase, and whether a free week bought in
+  // the app is accepted. A plan bought in the app ends the offer in turn.
   private async appleTrialAllowed(org: Organization, user: User) {
     return (
       !!org.allowTrial &&

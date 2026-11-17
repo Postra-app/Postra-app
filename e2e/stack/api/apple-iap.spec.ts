@@ -272,17 +272,30 @@ test('a trial taken on the web is not offered again in the app, and one taken in
   try {
     // The web trial was had and ended: the organisation's offer is spent.
     await expect.poll(async () => (await usedOnWeb.self()).allowTrial).toBe(false);
+    // The same three products as for everyone (one per plan, so Apple's own
+    // subscription sheet lists each plan once), and no free week said.
     expect(await ids(usedOnWeb)).toEqual({
       trial: false,
       ids: [
-        'uk.co.postra.app.starter.monthly.notrial',
-        'uk.co.postra.app.pro.monthly.notrial',
-        'uk.co.postra.app.business.monthly.notrial',
+        'uk.co.postra.app.starter.monthly',
+        'uk.co.postra.app.pro.monthly',
+        'uk.co.postra.app.business.monthly',
       ],
     });
-    // Buying one of those is a paid plan from the first day.
+    // Apple's free week is switched off by a statement the server signs with
+    // the In-App Purchase key. This stack has no key (it is a secret), so the
+    // route says it cannot sell rather than letting Apple give a second free
+    // week; the signature itself is checked in billing.apple.spec.ts.
+    const offer = { productId: 'uk.co.postra.app.pro.monthly', appTransactionId: '704289572311229970' };
+    const unsigned = await usedOnWeb.api.post('/billing/apple/offer', { data: offer });
+    expect(unsigned.status(), await unsigned.text()).toBe(503);
+    expect((await usedOnWeb.api.post('/billing/apple/offer', { data: { ...offer, appTransactionId: 'x y' } })).status()).toBe(400);
+    expect(
+      (await usedOnWeb.api.post('/billing/apple/offer', { data: { ...offer, productId: 'uk.co.postra.app.pro.monthly.notrial' } })).status()
+    ).toBe(400);
+    // A purchase Apple made at the full price is a paid plan from the first day.
     const paid = await usedOnWeb.api.post('/billing/apple/transaction', {
-      data: { signedTransaction: transaction(purchase(), { productId: 'uk.co.postra.app.pro.monthly.notrial' }) },
+      data: { signedTransaction: transaction(purchase(), { productId: 'uk.co.postra.app.pro.monthly' }) },
     });
     expect(paid.status(), await paid.text()).toBe(201);
     expect(await usedOnWeb.self()).toMatchObject({ tier: 'PRO', isTrailing: false, appleBilled: true });
@@ -291,6 +304,10 @@ test('a trial taken on the web is not offered again in the app, and one taken in
     await prisma.organization.update({ where: { id: fresh.orgId }, data: { allowTrial: true } });
     await expect.poll(async () => (await fresh.self()).allowTrial).toBe(true);
     expect((await ids(fresh)).trial).toBe(true);
+    // Nothing to sign while the trial is still to be had: Apple decides.
+    const free = await fresh.api.post('/billing/apple/offer', { data: offer });
+    expect(free.status(), await free.text()).toBe(201);
+    expect(await free.json()).toEqual({ eligibility: null });
     const id = purchase();
     expect(
       (
