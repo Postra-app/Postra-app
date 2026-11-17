@@ -21,7 +21,6 @@ interface VariableContextInterface {
   cloudflareUrl: string;
   mainUrl: string;
   frontEndUrl: string;
-  plontoKey: string;
   storageProvider: 'local' | 'cloudflare' | 's3';
   backendUrl: string;
   environment: string;
@@ -55,7 +54,6 @@ const VariableContext = createContext({
   mainUrl: '',
   frontEndUrl: '',
   storageProvider: 'local',
-  plontoKey: '',
   backendUrl: '',
   discordUrl: '',
   uploadDirectory: '',

@@ -26,7 +26,7 @@ const deprecated = Object.entries(outdated)
   .sort();
 
 // Packages dependabot.yml ignores outright, not only their majors: the ones we
-// cannot take yet (TypeScript, CopilotKit, @atproto/api, polotno). Their minors
+// cannot take yet (TypeScript, CopilotKit, @atproto/api). Their minors
 // no longer come as PRs, so this issue is where they show.
 const config = readFileSync(new URL('../.github/dependabot.yml', import.meta.url), 'utf8');
 const npmEntry = config.split(/^\s*- package-ecosystem:/m)[1] || '';

@@ -17,7 +17,7 @@
 # few exact names. So the type groups exclude every pattern of the named
 # groups (repo/dependabot.spec.ts checks the lists stay in step).
 #
-# Packages we cannot take yet (TypeScript 5.9, @atproto/api 0.20, polotno) are
+# Packages we cannot take yet (TypeScript 5.9, @atproto/api 0.20) are
 # ignored here. They used to sit in a "held" group whose red PR came back
 # every week (#371, #386); the weekly freshness issue lists them instead
 # (#334). Every ignore names version-update types only, so security updates
@@ -42,12 +42,6 @@ updates:
       # Patches of 0.19 still come.
       - dependency-name: "@atproto/api"
         update-types: ["version-update:semver-major", "version-update:semver-minor"]
-      - dependency-name: "polotno"
-        update-types: ["version-update:semver-major", "version-update:semver-minor", "version-update:semver-patch"]
-      # polotno pins mobx exactly; a newer mobx in the catalog puts a second
-      # MobX under the design editor (#398). mobx moves with polotno.
-      - dependency-name: "mobx"
-        update-types: ["version-update:semver-major", "version-update:semver-minor", "version-update:semver-patch"]
     groups:
       ai:
         applies-to: version-updates

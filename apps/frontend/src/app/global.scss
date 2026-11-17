@@ -1,5 +1,4 @@
 @use './colors.scss';
-@use './polonto.css';
 @use '@uppy/core/dist/style.css' as uppyCore;
 @use '@uppy/dashboard/dist/style.css' as uppyDashboard;
 
@@ -502,14 +501,6 @@ body::before {
 
 .editor :not(.removeEditor *) {
   @apply text-textColor;
-}
-
-.editor .polonto * {
-  color: black !important;
-}
-
-.bp5-portal {
-  z-index: 9999 !important;
 }
 
 :empty + .existing-empty {
