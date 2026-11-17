@@ -85,15 +85,16 @@ export class IntegrationService {
     return true;
   }
 
-  getMentions(platform: string, q: string) {
-    return this._integrationRepository.getMentions(platform, q);
+  getMentions(orgId: string, platform: string, q: string) {
+    return this._integrationRepository.getMentions(orgId, platform, q);
   }
 
   insertMentions(
+    orgId: string,
     platform: string,
     mentions: { name: string; username: string; image: string }[]
   ) {
-    return this._integrationRepository.insertMentions(platform, mentions);
+    return this._integrationRepository.insertMentions(orgId, platform, mentions);
   }
 
   async setTimes(

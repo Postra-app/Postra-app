@@ -498,12 +498,14 @@ export class IntegrationsController {
     }
 
     const list = await this._integrationService.getMentions(
+      org.id,
       getIntegration.providerIdentifier,
       body?.data?.query
     );
 
     if (Array.isArray(newList) && newList.length) {
       await this._integrationService.insertMentions(
+        org.id,
         getIntegration.providerIdentifier,
         newList
           .map((p: any) => ({

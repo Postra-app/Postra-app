@@ -49,6 +49,12 @@ export const defaultPostingTimes = (
   return local.map((time) => ({ time: minutesOfDay(time - offset) }));
 };
 
+// One lookup stores at most this many suggestions: a platform (or a server
+// we do not run) answering with thousands of names does not fill the table.
+export const MENTIONS_PER_LOOKUP = 50;
+export const mentionScope = (orgId: string, platform: string) =>
+  `${platform}:${orgId}`;
+
 @Injectable()
 export class IntegrationRepository {
   private storage = UploadFactory.createStorage();
@@ -98,10 +104,13 @@ export class IntegrationRepository {
     });
   }
 
-  getMentions(platform: string, q: string) {
+  // Suggestions are cached per organisation and platform: one organisation's
+  // lookups (members of its Discord server, names from its own Bluesky
+  // server) are not shown to another. The scope sits in the platform column.
+  getMentions(orgId: string, platform: string, q: string) {
     return this._mentions.model.mentions.findMany({
       where: {
-        platform,
+        platform: mentionScope(orgId, platform),
         OR: [
           {
             name: {
@@ -130,6 +139,7 @@ export class IntegrationRepository {
   }
 
   insertMentions(
+    orgId: string,
     platform: string,
     mentions: { name: string; username: string; image: string }[]
   ) {
@@ -137,8 +147,8 @@ export class IntegrationRepository {
       return [] as any[];
     }
     return this._mentions.model.mentions.createMany({
-      data: mentions.map((mention) => ({
-        platform,
+      data: mentions.slice(0, MENTIONS_PER_LOOKUP).map((mention) => ({
+        platform: mentionScope(orgId, platform),
         name: mention.name,
         username: mention.username,
         image: mention.image,
