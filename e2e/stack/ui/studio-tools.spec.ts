@@ -223,8 +223,8 @@ test('Templates: a built-in template fills the canvas', async ({ page }) => {
 });
 
 // Typing a word ran the search about three times a second for as long as the
-// word stayed, each request aborted by the next; nothing ever came back
-// (FG-E-38, seen on production too). One word, one search, and its results.
+// word stayed, each request aborted by the next; nothing ever came back.
+// One word, one search, and its results.
 test('Templates: a search runs once and shows what it found', async ({ page }) => {
   const s = await studio(page);
   let searches = 0;

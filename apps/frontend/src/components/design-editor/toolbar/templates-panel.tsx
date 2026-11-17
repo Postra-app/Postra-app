@@ -180,7 +180,7 @@ export const TemplatesPanel: FC<TemplatesPanelProps> = ({ canvas }) => {
   // dependencies, `showAiError` (a new function on every render) restarted
   // it on each render: the "searching" state alone re-ran it, every request
   // was aborted by the next one about three times a second, and no result
-  // ever came back (FG-E-38, also on production).
+  // ever came back.
   const searchDeps = useRef({ fetch, showAiError, t });
   searchDeps.current = { fetch, showAiError, t };
 

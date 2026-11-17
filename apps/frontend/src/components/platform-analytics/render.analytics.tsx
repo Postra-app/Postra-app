@@ -223,7 +223,7 @@ export const RenderAnalytics: FC<{
   });
 
   // The same reconnect as the channel list: this one sent the browser to
-  // `url` whatever it was, /undefined (a 404) on a refusal (FG-F-16).
+  // `url` whatever it was, /undefined (a 404) on a refusal.
   const refreshChannel = useReconnectChannel();
 
   const t = useT();

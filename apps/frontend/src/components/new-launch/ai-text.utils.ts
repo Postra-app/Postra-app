@@ -33,7 +33,7 @@ const decodeEntities = (text: string) =>
 // The editor's HTML as the text the AI should read: one line per paragraph,
 // and the characters themselves rather than their HTML escapes. It sent
 // "Tom &amp; Co" on one line; a model that echoed it back put a literal
-// "&amp;amp;" in the post, and every paragraph break was gone (FG-C-6).
+// "&amp;amp;" in the post, and every paragraph break was gone.
 export const aiPlainText = (html: string) =>
   decodeEntities(
     html

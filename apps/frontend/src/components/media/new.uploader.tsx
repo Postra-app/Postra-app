@@ -139,7 +139,7 @@ export function useUppyUploader(props: {
 
         // A refused file is dropped and named; the rest of the batch goes
         // on. One HEIC next to two JPEGs used to cancel all three, and the
-        // toast named only the HEIC (FG-F-4).
+        // toast named only the HEIC.
         let refused = 0;
         let lastError: Error | undefined;
         for (const file of files) {

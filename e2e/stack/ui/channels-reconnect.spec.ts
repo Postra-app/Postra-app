@@ -1,16 +1,15 @@
 import { expect, test, type BrowserContext } from '@playwright/test';
 import { database, stateFile, throwawayOrg } from '../helpers';
 
-// Fixing a channel and connecting one, when the answer is not a plain success
-// (frontend review 17 XI, FG-D-1, D-2, D-5, D-7, D-11).
+// Fixing a channel and connecting one, when the answer is not a plain success.
 test.use({ storageState: { cookies: [], origins: [] } });
 
 const signedInto = async (context: BrowserContext, org: Awaited<ReturnType<typeof throwawayOrg>>) =>
   context.addCookies((await org.api.storageState()).cookies);
 
 // Bluesky, WordPress and Telegram carry a state, not an address: "click to
-// reconnect" opened it as a page of ours, a 404 (FG-D-1). On a full plan the
-// credentials form then asked for a bigger plan (FG-D-2).
+// reconnect" opened it as a page of ours, a 404. On a full plan the
+// credentials form then asked for a bigger plan.
 test('a Bluesky channel to reconnect opens its credentials, on a full plan too', async ({ page, context }) => {
   const prisma = database();
   // One slot, taken by the channel being fixed.
@@ -61,7 +60,7 @@ test('a Telegram channel to reconnect opens the Telegram steps, not a 404', asyn
 });
 
 // A box unticked on the consent screen read "Not enough scopes, when
-// choosing a provider, please add all the scopes" (FG-D-7).
+// choosing a provider, please add all the scopes".
 test('a permission left unticked at the platform says which and what to do', async ({ page, context }) => {
   const prisma = database();
   const org = await throwawayOrg(prisma, { tier: 'PRO', totalChannels: 5, channels: 0 });
@@ -88,7 +87,7 @@ test('a permission left unticked at the platform says which and what to do', asy
 });
 
 // A failed GET /third-party (a menu entry for a feature we do not offer)
-// took the whole screen down: the composer could not be opened (FG-D-11).
+// took the whole screen down: the composer could not be opened.
 for (const status of [503, 429]) {
   test.describe(() => {
     test.use({ storageState: stateFile('a') });
@@ -107,8 +106,8 @@ for (const status of [503, 429]) {
 }
 
 // A tab the app opened itself (Go to billing, Help) has an opener, and closed
-// itself on reaching the calendar: right after paying for a bigger plan
-// (FG-D-5). Only the OAuth popup closes itself.
+// itself on reaching the calendar: right after paying for a bigger plan.
+// Only the OAuth popup closes itself.
 test('a tab the app opened stays open on the calendar', async ({ page, context }) => {
   const prisma = database();
   const org = await throwawayOrg(prisma, { tier: 'PRO', totalChannels: 5, channels: 1 });

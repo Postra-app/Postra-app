@@ -154,8 +154,8 @@ describe('getPostsList - drafts and repeating posts', () => {
 });
 
 // The list (the only view on a phone) showed a failed post with "An error
-// occurred while publishing this post", while the week view named the cause
-// (FG-B-4). The list now carries the same readable reason.
+// occurred while publishing this post", while the week view named the cause.
+// The list now carries the same readable reason.
 describe('getPostsList - the reason a post failed', () => {
   it('reads the error and gives it back readable', async () => {
     const { repo, findMany } = buildRepo();

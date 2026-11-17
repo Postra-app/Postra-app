@@ -119,7 +119,7 @@ export const CarouselStrip: FC<CarouselStripProps> = ({ fabricRef }) => {
   // These three replace or drop slides, and nothing undoes them: "Apply
   // layout" wrote the current slide over every other one (texts and photos
   // included, Ctrl+Z did not bring them back), and "Exit" and a slide's 16 px
-  // cross took the work with one click (FG-E-3, FG-E-12). Each asks first.
+  // cross took the work with one click. Each asks first.
   const handleApplyLayoutToAll = async () => {
     if (!fabricRef.current) return;
     const json = JSON.stringify(fabricRef.current.toJSON());

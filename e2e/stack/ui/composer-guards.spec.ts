@@ -171,7 +171,7 @@ test('a changed channel setting alone still asks before closing', async ({ page 
 // A scheduled post moved to a date in the past was taken for one already
 // published (the check read the date just picked, not the saved one): "This
 // post was already published", and "Just update the post details" left it
-// queued behind its time, where nothing ever picks it up (FG-C-7).
+// queued behind its time, where nothing ever picks it up.
 test('a scheduled post moved into the past asks about the date, not about republishing', async ({ page }) => {
   const now = new Date();
   test.skip(now.getHours() === 23 && now.getMinutes() > 30, 'needs the rest of today');

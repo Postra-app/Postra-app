@@ -321,8 +321,8 @@ test('the post waits for a file still uploading', async ({ page }) => {
 });
 
 // One file the composer does not take (a PDF, a HEIC from an iPhone) cancelled
-// the whole batch: nothing was uploaded, and the toast named only that file
-// (FG-F-4). The others go on.
+// the whole batch: nothing was uploaded, and the toast named only that file.
+// The others go on.
 test('a file the composer does not take leaves the rest of the batch', async ({ page }) => {
   test.setTimeout(60_000);
   await openComposer(page, 'bluesky', `[stack ui] mixed batch ${Date.now()}`);

@@ -41,7 +41,7 @@ export const BrandKitPanel: FC = () => {
   const [pickingColors, setPickingColors] = useState(false);
   // A failed read (5xx, 429, a dropped connection) showed the defaults as if
   // they were the saved kit, and the first change wrote them over it: logo
-  // gone, font and tone reset (FG-E-13). No form until the kit is read.
+  // gone, font and tone reset. No form until the kit is read.
   const [loadFailed, setLoadFailed] = useState(false);
   const [attempt, setAttempt] = useState(0);
 

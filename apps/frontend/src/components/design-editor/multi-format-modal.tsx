@@ -134,7 +134,7 @@ export const MultiFormatModal: FC<MultiFormatModalProps> = ({
         // eslint-disable-next-line no-await-in-loop
         const blob = dataUrlToBlob(r.uploadDataUrl);
         // Stops at the first refusal: a full library answered every format
-        // with its own "Payment required" and an empty attachment (FG-E-1).
+        // with its own "Payment required" and an empty attachment.
         // eslint-disable-next-line no-await-in-loop
         uploaded.push(
           await uploadDesign(fetch, blob, `${r.platform.key}.jpg`, r.canvasJson)

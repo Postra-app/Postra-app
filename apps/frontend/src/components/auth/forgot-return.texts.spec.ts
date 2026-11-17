@@ -4,7 +4,7 @@ import { readFileSync } from 'fs';
 import { join } from 'path';
 
 // After a password reset the page said "You can now login with your" and
-// stopped (FG-A-4): the sentence ends now, in both languages.
+// stopped: the sentence ends now, in both languages.
 describe('password reset done', () => {
   const key = 'we_successfully_reset_your_password_you_can_now_login_with_your';
   it('ends its sentence', () => {
@@ -16,7 +16,7 @@ describe('password reset done', () => {
   });
 });
 
-// FG-C-3: the Bluesky provider never reads a thread finisher, so the composer
+// The Bluesky provider never reads a thread finisher, so the composer
 // must not offer one.
 describe('Bluesky settings', () => {
   it('offer no thread finisher the provider would ignore', () => {

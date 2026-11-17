@@ -9,7 +9,7 @@ import { database, throwawayOrg } from '../helpers';
 test.use({ storageState: { cookies: [], origins: [] } });
 
 // Sign-in allows 5 attempts per address. In a full run every browser test
-// signs in from the same one, and this test met "Too many attempts" (FG-T-1);
+// signs in from the same one, and this test met "Too many attempts";
 // its own address, like throwawayOrg's API client.
 test.beforeEach(async ({ page }) => {
   await page.setExtraHTTPHeaders({

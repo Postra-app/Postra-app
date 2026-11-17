@@ -17,7 +17,7 @@ describe('Help text matches the app', () => {
     expect(tab('plugs').description).not.toContain('LinkedIn Pages');
   });
 
-  // Link shortening is not in Settings (FG-H-19).
+  // Link shortening is not in Settings.
   it('does not promise link shortening in Settings', () => {
     expect(JSON.stringify(help.settingsSections(help.english))).not.toContain('link shortening');
     expect(JSON.stringify(en)).not.toContain('link shortening');

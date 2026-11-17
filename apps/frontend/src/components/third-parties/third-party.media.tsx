@@ -163,7 +163,7 @@ export const ThirdPartyMedia: FC<{
 
   // A side request for a menu entry: a failed answer (5xx, 429) parsed as
   // anything but a list threw on `.length` and took the whole screen down,
-  // composer included (FG-D-11). No list, no entry.
+  // composer included. No list, no entry.
   const thirdParties = useCallback(async () => {
     try {
       const list = await (await fetch('/third-party')).json();

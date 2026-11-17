@@ -81,6 +81,31 @@ export const requestFingerprint = (req: Request) => ({
   userAgent: (req.headers['user-agent'] as string) || '',
 });
 
+// Prisma's connection and pool errors (by name and code, without importing
+// the runtime classes) and the socket errors under them.
+const INFRA_PRISMA = new Set([
+  'PrismaClientInitializationError',
+  'PrismaClientRustPanicError',
+]);
+const INFRA_CODES = new Set([
+  'P1001', // can't reach the database server
+  'P1002', // the server timed out
+  'P1008', // operation timed out
+  'P1017', // the server closed the connection
+  'P2024', // timed out fetching a connection from the pool
+  'ECONNREFUSED',
+  'ECONNRESET',
+  'ETIMEDOUT',
+  'EPIPE',
+]);
+export const isInfrastructureFailure = (err: unknown): boolean => {
+  const e = err as { name?: string; code?: string; errorCode?: string; cause?: unknown };
+  if (!e || typeof e !== 'object') return false;
+  if (INFRA_PRISMA.has(e.name || '')) return true;
+  if (INFRA_CODES.has(e.code || '') || INFRA_CODES.has(e.errorCode || '')) return true;
+  return !!e.cause && e.cause !== err && isInfrastructureFailure(e.cause);
+};
+
 @Injectable()
 export class AuthMiddleware implements NestMiddleware {
   constructor(
@@ -223,8 +248,8 @@ export class AuthMiddleware implements NestMiddleware {
           // Forcing isSuperAdmin=true here meant every `user.isSuperAdmin` gate
           // in the product kept opening while the identity behind the request
           // was the customer's — grant-admin, add-subscription and the debug
-          // export all worked, and every audit row named the customer
-          //. The real admin travels separately.
+          // export all worked, and every audit row named the customer.
+          // The real admin travels separately.
           // eslint-disable-next-line @typescript-eslint/ban-ts-comment
           // @ts-expect-error
           req.impersonatedBy = admin.id;
@@ -299,7 +324,10 @@ export class AuthMiddleware implements NestMiddleware {
         organization.find((org: any) => org.subscription) ||
         organization[0];
 
-      if (!organization) {
+      // Every organisation of this person disabled (seats cut after a
+      // downgrade): no organisation to act in, the same answer as before,
+      // now on purpose rather than through a TypeError on `setOrg`.
+      if (!setOrg) {
         throw new HttpForbiddenException();
       }
 
@@ -327,11 +355,14 @@ export class AuthMiddleware implements NestMiddleware {
       if (err instanceof HttpException) {
         throw err;
       }
-      // A valid token whose check could not be finished (the database or
-      // Redis refused, a pool ran dry, RDS failing over) is not a bad
-      // session. Answering 401 cleared the cookie and signed every active
-      // customer out at once; 503 keeps the session for when it is back.
-      if (verified) {
+      // A valid token whose check could not be finished because the database
+      // did not answer (RDS restarting or failing over, the pool run dry, the
+      // connection dropped) is not a bad session. Answering 401 cleared the
+      // cookie and signed every active customer out at once; 503 keeps the
+      // session for when it is back. Only those failures: any other
+      // error stays the sign-out it always was, so a fault of ours cannot
+      // leave someone on "try again" for good.
+      if (verified && isInfrastructureFailure(err)) {
         throw new ServiceUnavailableException(
           'Postra is temporarily unavailable. Please try again in a moment.'
         );

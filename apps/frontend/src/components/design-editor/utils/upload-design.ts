@@ -13,7 +13,7 @@ export class DesignUploadError extends Error {
  * "Use in Post", the carousel export and "Add all to post" read the upload's
  * answer without checking it: with the library full (402, "No, cancel!") the
  * answer had no id, the canvas went to /media/undefined/canvas, Studio closed,
- * the draft was deleted and the post got an empty attachment (FG-E-1). This
+ * the draft was deleted and the post got an empty attachment. This
  * throws instead, before anything is closed or cleared.
  */
 export const uploadDesign = async (

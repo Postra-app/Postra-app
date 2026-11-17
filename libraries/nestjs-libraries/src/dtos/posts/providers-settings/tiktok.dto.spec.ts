@@ -57,7 +57,7 @@ describe('TikTokDto', () => {
 });
 
 // "Upload content to TikTok without posting it" leaves privacy to the
-// creator in TikTok; the composer locks the field empty (FG-C-1).
+// creator in TikTok; the composer locks the field empty.
 describe('TikTokDto in upload mode', () => {
   it('accepts an upload without a privacy level', async () => {
     expect(

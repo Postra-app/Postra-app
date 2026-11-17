@@ -145,7 +145,7 @@ test.describe('a library with files', () => {
 });
 
 // The same file chosen again with "Upload" (after a refusal, a cancel or a
-// delete) fired no change event: the button seemed dead (FG-F-9). The field
+// delete) fired no change event: the button seemed dead. The field
 // is emptied after every choice, so the next one always counts.
 test('the upload field is ready for the same file again', async ({ page }) => {
   await page.goto('/media');

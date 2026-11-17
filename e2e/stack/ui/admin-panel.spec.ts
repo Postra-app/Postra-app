@@ -164,13 +164,12 @@ test('a plan promised to an email shows as waiting, and a comp from Users shows 
 
 // Errors → Copy used the browser's own fetch: it asked the frontend for
 // /admin/errors/<id> (no /api, no session) and always answered "Could not load
-// the error to copy" (FG-I-1).
+// the error to copy".
 test('Errors → Copy copies the debug code', async ({ page }) => {
   test.setTimeout(180_000);
   const prisma = database();
   const staff = await signInAsAdmin(page, prisma);
   try {
-    await page.context().grantPermissions(['clipboard-read', 'clipboard-write']);
     const row = {
       id: 'stack-error-1',
       message: 'Media aspect ratio is not supported',

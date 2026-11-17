@@ -2,8 +2,8 @@ import { expect, test } from '@playwright/test';
 
 // Enter pressed again while the first request was out sent it again: three
 // sign-in attempts for three presses (eating the login limit), and a second
-// sign-up answered "Email already exists" after the first had worked
-// (FG-A-7). The shared Button is disabled while it loads.
+// sign-up answered "Email already exists" after the first had worked.
+// The shared Button is disabled while it loads.
 test.use({ storageState: { cookies: [], origins: [] } });
 
 test('pressing Enter three times while signing in sends one request', async ({ page }) => {

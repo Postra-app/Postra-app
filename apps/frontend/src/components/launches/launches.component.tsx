@@ -446,7 +446,7 @@ export const LaunchesComponent = () => {
     []
   );
   // Bluesky, WordPress and Telegram carry a state, not an address: opened
-  // as a page it was a 404 (FG-D-1). One hook for every reconnect.
+  // as a page it was a 404. One hook for every reconnect.
   const refreshChannel = useReconnectChannel();
   useEffect(() => {
     if (typeof window === 'undefined') {
@@ -475,7 +475,7 @@ export const LaunchesComponent = () => {
     // Only the OAuth popup closes itself, after it has told its opener. A tab
     // the app opened itself (Go to billing, Help, a post preview) has an
     // opener too, and vanished the moment it reached the calendar: right
-    // after paying for a bigger plan (FG-D-5).
+    // after paying for a bigger plan.
     if (window.opener && (search.get('added') || search.get('msg'))) {
       window.close();
     }

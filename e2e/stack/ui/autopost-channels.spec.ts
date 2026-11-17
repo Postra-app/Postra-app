@@ -18,7 +18,7 @@ test('a new Auto Post feed starts with no channels chosen', async ({ page }) => 
 
 // Editing a feed saved with "sync last = Yes" sent `lastUrl: ""` and the
 // server stored it: the cursor was gone, so the next run posted the newest
-// article again on every channel of the feed (FG-F-1).
+// article again on every channel of the feed.
 test('editing a feed keeps where it got to', async ({ browser }) => {
   const { database, throwawayOrg } = await import('../helpers');
   const prisma = database();

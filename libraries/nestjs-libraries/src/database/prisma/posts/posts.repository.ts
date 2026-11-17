@@ -386,7 +386,7 @@ export class PostsRepository {
           state: true,
           // The reason a post failed: the list is the only view on a phone,
           // and it said "An error occurred" where the week view named the
-          // cause (FG-B-4). Made readable below, like the calendar's.
+          // cause. Made readable below, like the calendar's.
           error: true,
           intervalInDays: true,
           group: true,

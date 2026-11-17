@@ -1,10 +1,10 @@
 import { expect, test } from '@playwright/test';
 
-// A failure must say something (frontend review 17 XI). These screens used to
+// A failure must say something. These screens used to
 // show nothing at all when the server did not answer as expected.
 
 // /user/self not answering when the app opens (a deploy, the database failing
-// over) left a blank page for good (FG-H-2).
+// over) left a blank page for good.
 test('the app says it cannot load, and Try again brings it back', async ({ page }) => {
   let fail = true;
   await page.route('**/api/user/self', (route) =>
@@ -21,7 +21,7 @@ test('the app says it cannot load, and Try again brings it back', async ({ page 
 test.describe('signed out', () => {
   test.use({ storageState: { cookies: [], origins: [] } });
 
-  // The sign-in screen had no toaster: a 5xx answered with silence (FG-H-3).
+  // The sign-in screen had no toaster: a 5xx answered with silence.
   test('signing in while the server is down says so', async ({ page }) => {
     await page.route('**/api/auth/login', (route) =>
       route.fulfill({ status: 503, body: '<html>Service Unavailable</html>', contentType: 'text/html' })
@@ -34,13 +34,13 @@ test.describe('signed out', () => {
   });
 
   // Cancelling the Google sign-in ended on "Could not add provider. You
-  // declined the connection request." with no way back (FG-A-5).
+  // declined the connection request." with no way back.
   test('a Google sign-in cancelled at Google goes back to signing in', async ({ page }) => {
     await page.goto('/integrations/social/youtube?error=access_denied&state=auth-abc');
     await expect(page).toHaveURL(/\/auth\/login/);
   });
 
-  // "Continue with Google" was a div: Tab skipped it (FG-A-6).
+  // "Continue with Google" was a div: Tab skipped it.
   test('Continue with Google is a button the keyboard reaches', async ({ page }) => {
     await page.goto('/auth/login');
     await expect(page.getByRole('button', { name: /Google/ })).toBeVisible();
@@ -49,7 +49,7 @@ test.describe('signed out', () => {
 
 // Over the plan's channel limit the return from the platform answers 402; the
 // "Payment required" dialog had nowhere to be drawn and "Adding Channel" spun
-// for good (FG-D-8).
+// for good.
 test('connecting over the channel limit asks about the plan, then says what happened', async ({ page }) => {
   await page.route('**/api/integrations/social-connect/bluesky/handoff*', (route) => route.fulfill({ json: {} }));
   await page.route('**/api/integrations/social-connect/bluesky', (route) =>
@@ -63,8 +63,7 @@ test('connecting over the channel limit asks about the plan, then says what happ
 });
 
 // Choosing the page to connect: a refused save (409, the page is in another
-// Postra account) showed nothing, the picker stayed as if nothing happened
-// (FG-D-3).
+// Postra account) showed nothing, the picker stayed as if nothing happened.
 test('a page that cannot be saved says why', async ({ page }) => {
   await page.route('**/api/integrations/social-connect/facebook/handoff*', (route) => route.fulfill({ json: {} }));
   await page.route('**/api/integrations/social-connect/facebook', (route) =>
@@ -87,4 +86,20 @@ test('a page that cannot be saved says why', async ({ page }) => {
   await expect(page.getByRole('alert').filter({ hasText: 'This Page is already connected to another Postra account.' })).toBeVisible();
   await expect(page.getByText('Corner Cafe')).toBeVisible();
   expect(saves).toEqual(['POST']);
+});
+
+// The return page mounts its own dialogs; moving on to the calendar left its
+// confirmation listener behind, and every question after it opened twice.
+test('after connecting a channel, a question in the calendar opens once', async ({ page }) => {
+  await page.route('**/api/integrations/social-connect/bluesky/handoff*', (route) => route.fulfill({ json: {} }));
+  await page.route('**/api/integrations/social-connect/bluesky', (route) =>
+    route.fulfill({ json: { id: 'stack-connected', inBetweenSteps: false } })
+  );
+  await page.goto('/integrations/social/bluesky?code=c&state=s');
+  await expect(page).toHaveURL(/\/launches/, { timeout: 20_000 });
+  await page.getByRole('button', { name: 'Create Post' }).first().click({ timeout: 20_000 });
+  const editor = page.getByRole('dialog', { name: 'Post editor' });
+  await editor.locator('.ProseMirror').first().fill('A draft that asks before closing');
+  await editor.getByRole('button', { name: 'Close', exact: true }).click();
+  await expect(page.getByRole('button', { name: 'Yes, close it!' })).toHaveCount(1);
 });

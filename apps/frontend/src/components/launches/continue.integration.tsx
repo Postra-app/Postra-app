@@ -299,7 +299,7 @@ export const ContinueIntegration: FC<{
       ) {
         const errorData = await data.json().catch(() => ({}));
         // A box unticked on the platform's consent screen: say which
-        // platform and what to do (wording approved by Krzysztof, 17 XI).
+        // platform and what to do.
         if (errorData.code === 'not_enough_scopes') {
           setErrorMessage(
             t(

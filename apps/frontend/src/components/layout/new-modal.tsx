@@ -216,7 +216,7 @@ export const Component: FC<{
         // Only a click that starts and ends on the backdrop closes the
         // window. Selecting text in a field and letting go outside the panel
         // is a click on the backdrop too, and it closed the form with what
-        // was typed in it (FG-H-6).
+        // was typed in it.
         onMouseDown={(e) => {
           pressedOnBackdrop.current = !panelRef.current?.contains(
             e.target as Node
@@ -405,13 +405,15 @@ export const ModalManagerEmitter: FC = () => {
     }))
   );
 
+  // Its own listener only: removeAllListeners also took the one of the other
+  // mounted manager (app shell and StandaloneFeedback can overlap briefly).
   useEffect(() => {
-    emitter.on('show', (params: OpenModalInterface) => {
+    const show = (params: OpenModalInterface) => {
       showModal(params);
-    });
-
+    };
+    emitter.on('show', show);
     return () => {
-      emitter.removeAllListeners('show');
+      emitter.off('show', show);
     };
   }, []);
   return null;
@@ -485,8 +487,15 @@ export const areYouSure = ({
 
 export const DecisionEverywhere: FC = () => {
   const decision = useDecisionModal();
+  // The listener goes with the component: the screens outside the app shell
+  // mount their own (StandaloneFeedback), and one left behind after moving
+  // on to the calendar opened every confirmation twice.
   useEffect(() => {
-    decisionModalEmitter.on('open', decision.open);
+    const open = decision.open;
+    decisionModalEmitter.on('open', open);
+    return () => {
+      decisionModalEmitter.off('open', open);
+    };
   }, []);
   return null;
 };

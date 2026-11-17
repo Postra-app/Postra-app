@@ -3,7 +3,7 @@ import { NotEnoughScopes } from '@gitroom/nestjs-libraries/integrations/social.a
 
 // A box unticked on the platform's consent screen read "Not enough scopes,
 // when choosing a provider, please add all the scopes": jargon that did not
-// say what to do (FG-D-7). The answer says it, and carries a code the web app
+// say what to do. The answer says it, and carries a code the web app
 // turns into a sentence naming the platform.
 describe('NotEnoughScopesFilter', () => {
   it('answers 409 with what to do and a code', () => {

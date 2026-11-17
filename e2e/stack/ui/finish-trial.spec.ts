@@ -80,7 +80,7 @@ test('after the trial is paid the app loads the new limits', async ({ page }) =>
 });
 
 // On a phone the window ran off both edges: no close button, the sentence
-// with the amount cut off, and Escape did nothing (FG-G-3).
+// with the amount cut off, and Escape did nothing.
 test('on a phone the whole window fits, and Escape closes it', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   const calls = await routes(page, { finish: true });

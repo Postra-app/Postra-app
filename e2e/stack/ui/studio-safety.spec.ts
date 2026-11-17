@@ -1,8 +1,7 @@
 import { expect, Page, test } from '@playwright/test';
 import { openComposer } from './ui-helpers';
 
-// Studio losing work (frontend review 17 XI, FG-E-1, E-2, E-3, E-12, E-13,
-// E-5, H-6). Each of these used to drop a design, slides or a brand kit
+// Studio losing work. Each of these used to drop a design, slides or a brand kit
 // without asking.
 test.use({ viewport: { width: 1440, height: 900 } });
 
@@ -26,7 +25,7 @@ const studioFromComposer = async (page: Page) => {
 
 // With the library full the upload answered 402; "Use in post" went on with
 // no file: Studio closed, the draft was deleted and the post got an empty
-// attachment (FG-E-1).
+// attachment.
 test('a refused upload keeps Studio, the design and its draft', async ({ page }) => {
   const editor = await studioFromComposer(page);
   await page.route('**/api/media/upload-simple', (route) =>
@@ -41,7 +40,7 @@ test('a refused upload keeps Studio, the design and its draft', async ({ page })
 });
 
 // Escape is "deselect" in Studio, and a drag that ends off the canvas lands on
-// the backdrop: both closed Studio opened from the composer (FG-E-5).
+// the backdrop: both closed Studio opened from the composer.
 test('Escape and a click on the backdrop do not close Studio', async ({ page }) => {
   await studioFromComposer(page);
   await page.keyboard.press('Escape');
@@ -62,8 +61,7 @@ const carousel = async (page: Page) => {
 };
 
 // "Save to library" in a carousel saved the slide on screen and deleted the
-// draft of the whole carousel: after a reload the other slides were gone
-// (FG-E-2).
+// draft of the whole carousel: after a reload the other slides were gone.
 test('saving one slide of a carousel keeps the carousel', async ({ page }) => {
   await carousel(page);
   await page.getByRole('button', { name: 'Export', exact: true }).first().click();
@@ -74,7 +72,7 @@ test('saving one slide of a carousel keeps the carousel', async ({ page }) => {
 });
 
 // "Apply layout" wrote the current slide over all the others, and "Exit" and
-// a slide's cross dropped slides, all without a question (FG-E-3, FG-E-12).
+// a slide's cross dropped slides, all without a question.
 test('replacing or dropping slides asks first', async ({ page }) => {
   await carousel(page);
   await page.getByRole('button', { name: 'Copy this slide to all' }).click();
@@ -92,7 +90,7 @@ test('replacing or dropping slides asks first', async ({ page }) => {
 });
 
 // A failed read of the brand kit showed the defaults as if saved, and the
-// first change wrote them over the real kit (FG-E-13).
+// first change wrote them over the real kit.
 test('a brand kit that could not be read is not overwritten', async ({ page }) => {
   const puts: string[] = [];
   await page.route('**/api/brand-kit', (route) => {
@@ -112,7 +110,7 @@ test('a brand kit that could not be read is not overwritten', async ({ page }) =
 });
 
 // Selecting text in a field and letting go outside the window closed the
-// window with what was typed (FG-H-6, the drag part).
+// window with what was typed.
 test('a text selection dragged out of a window does not close it', async ({ page }) => {
   await page.goto('/settings');
   await page.getByRole('tab', { name: 'Webhooks' }).click({ timeout: 20_000 });

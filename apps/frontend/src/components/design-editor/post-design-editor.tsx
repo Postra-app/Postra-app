@@ -840,7 +840,7 @@ const PostDesignEditor: FC<PostDesignEditorProps> = ({
           if (!slide.canvasJson) continue;
           const blob = await renderSlideToBlob(slide.canvasJson, platform.width, platform.height);
           // Every slide in before anything closes: a refused one keeps the
-          // carousel and its draft (FG-E-1).
+          // carousel and its draft.
           uploaded.push(
             await uploadDesign(fetch, blob, `slide-${i + 1}.jpg`, slide.canvasJson)
           );
@@ -921,8 +921,8 @@ const PostDesignEditor: FC<PostDesignEditorProps> = ({
         });
       }
       // In a carousel only the slide on screen was saved: the draft holds
-      // the other slides, and clearing it lost them on the next reload
-      // (FG-E-2). It stays until the whole carousel goes out.
+      // the other slides, and clearing it lost them on the next reload.
+      // It stays until the whole carousel goes out.
       const carousel = useCarouselStore.getState();
       if (carousel.isCarouselMode && carousel.slides.length > 1) return;
       draftDoneRef.current = true;

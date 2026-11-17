@@ -21,7 +21,7 @@ describe('aiPlainText', () => {
     expect(aiPlainText('<p>hello </p>\n<p>  world</p>')).toBe('hello\nworld');
   });
 
-  // FG-C-6: "Tom &amp; Co" went to the model escaped and on one line.
+  // "Tom &amp; Co" went to the model escaped and on one line.
   it('sends the characters, not their HTML escapes', () => {
     expect(aiPlainText('<p>Tom &amp; Co makes &lt;great&gt; coffee</p>')).toBe(
       'Tom & Co makes <great> coffee'

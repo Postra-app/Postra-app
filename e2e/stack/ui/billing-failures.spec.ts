@@ -1,12 +1,12 @@
 import { expect, test } from '@playwright/test';
 import { addMember, database, throwawayOrg } from '../helpers';
 
-// Billing when an answer is not the one expected (frontend review 17 XI,
-// FG-G-1, G-2, G-14, G-15). The stack has no Stripe: routes answer.
+// Billing when an answer is not the one expected. The stack has no Stripe:
+// routes answer.
 
 // A failed /user/subscription read as "no subscription": a paying
 // organisation saw three "Purchase plan" buttons, and a press changed the
-// plan at once, without the window that shows the amount (FG-G-2).
+// plan at once, without the window that shows the amount.
 for (const status of [503, 429]) {
   test(`a ${status} on the plan shows an error with Try again, not plans to buy`, async ({ page }) => {
     let fail = true;
@@ -57,7 +57,7 @@ test('a member sees who manages the plan, and no plans to buy', async ({ browser
 });
 
 // A double click on "Purchase plan" opened two windows with the amount, one on
-// the other, and approving both sent two POST /billing/subscribe (FG-G-15).
+// the other, and approving both sent two POST /billing/subscribe.
 test('a double click on Purchase plan asks once and changes once', async ({ page }) => {
   const prorates: string[] = [];
   const subscribe: string[] = [];
@@ -85,7 +85,7 @@ test('a double click on Purchase plan asks once and changes once', async ({ page
 });
 
 // A failed quote comes back as {price: 0} and read "(Pay Today £0.00)" next
-// to an upgrade; a refused one (429) left the spinner turning (FG-G-14).
+// to an upgrade; a refused one (429) left the spinner turning.
 test('without a quote there is no "Pay Today" and no endless spinner', async ({ page }) => {
   let status = 200;
   await page.route('**/api/billing/prorate', (route) =>
@@ -104,8 +104,7 @@ test('without a quote there is no "Pay Today" and no endless spinner', async ({ 
 
 // Cancelling: the feedback window demanded 20 characters, and closing it with
 // the cross or Escape cancelled nothing and said nothing; the customer
-// believed the plan was gone (FG-G-1). Feedback is optional now (Krzysztof,
-// 17 XI 2026).
+// believed the plan was gone. Feedback is optional now.
 test.describe('cancelling the subscription', () => {
   const routes = async (page: import('@playwright/test').Page) => {
     const cancels: Array<{ feedback: string; cancel: boolean }> = [];

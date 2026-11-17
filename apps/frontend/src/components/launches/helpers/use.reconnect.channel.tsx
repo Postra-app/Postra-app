@@ -34,10 +34,10 @@ type Reconnectable = {
  * signed in with OAuth that is the platform's page; for Bluesky, WordPress
  * and Telegram it is only a state to carry, so "click to reconnect" opened
  * /MSSIub, a 404, and analytics' "tap to refresh" opened /undefined
- * (FG-D-1, FG-F-16). Those now open the credentials form or the Telegram
+ *. Those now open the credentials form or the Telegram
  * steps, with the channel named in `refresh` so the plan's channel limit and
  * the member's role do not stand in the way of fixing a channel the
- * organisation already has (FG-D-2).
+ * organisation already has.
  */
 export const useReconnectChannel = () => {
   const fetch = useFetch();

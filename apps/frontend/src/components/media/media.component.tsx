@@ -315,7 +315,7 @@ export const MediaBox: FC<{
     async (e: ChangeEvent<HTMLInputElement>) => {
       const files = Array.from(e.target.files || []);
       // The same file chosen again (after a refusal, a cancel or a delete)
-      // fired no change event, so "Upload" did nothing (FG-F-9).
+      // fired no change event, so "Upload" did nothing.
       e.target.value = '';
       const totalSize = files.reduce((acc, file) => acc + file.size, 0);
 
@@ -901,7 +901,7 @@ export const MultiMediaComponent: FC<{
         askClose: false,
         // Studio is a whole workspace: Escape is "deselect" there (the
         // shortcut sheet says so), and a drag that ends off the canvas lands
-        // on the backdrop. Both closed Studio without a word (FG-E-5). It
+        // on the backdrop. Both closed Studio without a word. It
         // closes with its own button.
         closeOnEscape: false,
         closeOnClickOutside: false,

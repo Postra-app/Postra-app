@@ -15,7 +15,7 @@ import { dragWithMouse, quietSlot, weekOf } from './ui-helpers';
 
 // A 404 was already put back; a 403, 429 or 5xx (answered by the app-wide
 // fetch, which rejects) and a dropped connection were not: the tile stayed at
-// the new time and the post went out at the old one (FG-B-1).
+// the new time and the post went out at the old one.
 for (const [answer, days] of [[404, 4], [502, 8], ['abort', 9]] as const) {
 test(`a move the server refuses puts the post back (${answer})`, async ({
   page,

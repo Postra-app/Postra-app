@@ -231,7 +231,7 @@ const Info: FC<{
           onChange={(e) => setFeedback(e.target.value)}
         />
       </div>
-      {/* Feedback is optional (Krzysztof, 17 XI 2026): "cancel any time,
+      {/* Feedback is optional: "cancel any time,
           without talking to anyone" meant 20 characters of it first. */}
       <div>
         <Button onClick={cancel}>

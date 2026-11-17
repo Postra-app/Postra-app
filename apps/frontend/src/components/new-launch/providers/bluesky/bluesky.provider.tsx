@@ -7,7 +7,7 @@ import {
 
 // No "Add a thread finisher" here: the Bluesky provider never reads the
 // setting, so the switch did nothing, and its default text spoke of
-// retweets (FG-C-3). A control we offer has to work.
+// retweets. A control we offer has to work.
 
 export default withProvider({
   postComment: PostComment.POST,

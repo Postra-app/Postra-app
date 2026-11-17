@@ -75,7 +75,7 @@ export class ProcessingTimeout extends ApplicationFailure {
 export class NotEnoughScopes {
   constructor(
     // What to do, not the OAuth word for it: the customer unticked a box on
-    // the platform's consent screen (FG-D-7). The web app names the platform.
+    // the platform's consent screen. The web app names the platform.
     public message = 'The platform did not grant every permission Postra needs. Connect again and leave all the boxes ticked.'
   ) {}
 }
