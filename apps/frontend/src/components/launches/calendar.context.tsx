@@ -185,6 +185,22 @@ function getDateRange(display: string, referenceDate?: string) {
   }
 }
 
+// The month view draws six weeks from the Monday before the 1st (calendar.tsx),
+// so days of the months around it are on screen too. Fetching only the month
+// left those cells empty, and a post added in one seemed not to save.
+export const fetchRange = (
+  display: string,
+  startDate: string,
+  endDate: string
+) => {
+  if (display !== 'month') {
+    return { start: newDayjs(startDate), end: newDayjs(endDate) };
+  }
+  const first = newDayjs(startDate).startOf('month');
+  const start = first.subtract(first.isoWeekday() - 1, 'day');
+  return { start, end: start.add(41, 'day') };
+};
+
 export const CalendarWeekProvider: FC<{
   children: ReactNode;
   integrations: Integrations[];
@@ -248,11 +264,12 @@ export const CalendarWeekProvider: FC<{
 
   // Calendar view data fetcher
   const loadData = useCallback(async () => {
+    const range = fetchRange(filters.display, filters.startDate, filters.endDate);
     const modifiedParams = new URLSearchParams({
       display: filters.display,
       customer: filters?.customer?.toString() || '',
-      startDate: newDayjs(filters.startDate).startOf('day').utc().format(),
-      endDate: newDayjs(filters.endDate).endOf('day').utc().format(),
+      startDate: range.start.startOf('day').utc().format(),
+      endDate: range.end.endOf('day').utc().format(),
     }).toString();
 
     const data = await (await fetch(`/posts?${modifiedParams}`)).json();
