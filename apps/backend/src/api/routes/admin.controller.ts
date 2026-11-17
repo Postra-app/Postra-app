@@ -19,7 +19,10 @@ import { Prisma, User } from '@prisma/client';
 import { ApiTags } from '@nestjs/swagger';
 import { ErrorsService } from '@gitroom/nestjs-libraries/database/prisma/errors/errors.service';
 import { AdminStatsService } from '@gitroom/nestjs-libraries/database/prisma/admin-stats/admin-stats.service';
-import { PrismaService } from '@gitroom/nestjs-libraries/database/prisma/prisma.service';
+import {
+  PrismaService,
+  readInOneSnapshot,
+} from '@gitroom/nestjs-libraries/database/prisma/prisma.service';
 import { SubscriptionService } from '@gitroom/nestjs-libraries/database/prisma/subscriptions/subscription.service';
 import { withLiveSubscription } from '@gitroom/nestjs-libraries/database/prisma/subscriptions/live.subscription';
 import { AuditService } from '@gitroom/nestjs-libraries/database/prisma/audit/audit.service';
@@ -237,7 +240,9 @@ export class AdminController {
       : {};
 
     const [items, total] = await Promise.all([
-      this._prisma.user.findMany({
+      // Accounts and organisations come and go while this list is read
+      // (readInOneSnapshot).
+      readInOneSnapshot(this._prisma, (tx) => tx.user.findMany({
         where,
         take,
         skip,
@@ -277,7 +282,7 @@ export class AdminController {
             },
           },
         },
-      }),
+      })),
       this._prisma.user.count({ where }),
     ]);
 
@@ -1082,7 +1087,9 @@ export class AdminController {
         this._prisma.subscription.count({
           where: { cancelAt: { not: null }, deletedAt: null },
         }),
-        this._prisma.subscription.findMany({
+        // Organisations come and go while this list is read
+        // (readInOneSnapshot).
+        readInOneSnapshot(this._prisma, (tx) => tx.subscription.findMany({
           where: { deletedAt: null },
           orderBy: { createdAt: 'desc' },
           take: 10,
@@ -1098,7 +1105,7 @@ export class AdminController {
               select: { id: true, name: true, paymentId: true },
             },
           },
-        }),
+        })),
       ]);
 
     const noSubscription = await this._prisma.organization.count({
@@ -1574,7 +1581,8 @@ export class AdminController {
     };
 
     const [rows, total, summary] = await Promise.all([
-      this._prisma.integration.findMany({
+      // Organisations come and go while this list is read (readInOneSnapshot).
+      readInOneSnapshot(this._prisma, (tx) => tx.integration.findMany({
         where,
         take: paging.limit,
         skip: paging.skip,
@@ -1599,7 +1607,7 @@ export class AdminController {
           customer: { select: { id: true, name: true } },
           organization: { select: { id: true, name: true } },
         },
-      }),
+      })),
       this._prisma.integration.count({ where }),
       this.channelSummary(base, now),
     ]);

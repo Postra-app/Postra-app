@@ -39,6 +39,7 @@ export type AuditAction =
   | 'subscription.cancel'
   | 'billing.refund'
   | 'admin.delete-user'
+  | 'account.delete'
   | 'admin.export-user'
   | 'admin.delete-organization'
   | 'admin.retention.purge'

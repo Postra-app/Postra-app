@@ -166,16 +166,19 @@ export class SubscriptionRepository {
    */
   // Comps whose end date has passed and that are still in force.
   listExpiredComps(now: Date) {
-    return this._subscription.model.subscription.findMany({
-      where: { deletedAt: null, isLifetime: false, compEndsAt: { lte: now } },
-      select: {
-        organizationId: true,
-        subscriptionTier: true,
-        compReason: true,
-        compEndsAt: true,
-        organization: { select: { name: true } },
-      },
-    });
+    // Organisations come and go while this list is read (readInOneSnapshot).
+    return readInOneSnapshot(this._prismaTransaction.model, (tx) =>
+      tx.subscription.findMany({
+        where: { deletedAt: null, isLifetime: false, compEndsAt: { lte: now } },
+        select: {
+          organizationId: true,
+          subscriptionTier: true,
+          compReason: true,
+          compEndsAt: true,
+          organization: { select: { name: true } },
+        },
+      })
+    );
   }
 
   // Every plan in force that nobody pays for: rows written by a comp, and
@@ -335,15 +338,18 @@ export class SubscriptionRepository {
   }
 
   listActiveNonLifetime() {
-    return this._subscription.model.subscription.findMany({
-      where: { deletedAt: null, isLifetime: false },
-      select: {
-        id: true,
-        subscriptionTier: true,
-        totalChannels: true,
-        organization: { select: { id: true, name: true } },
-      },
-    });
+    // Organisations come and go while this list is read (readInOneSnapshot).
+    return readInOneSnapshot(this._prismaTransaction.model, (tx) =>
+      tx.subscription.findMany({
+        where: { deletedAt: null, isLifetime: false },
+        select: {
+          id: true,
+          subscriptionTier: true,
+          totalChannels: true,
+          organization: { select: { id: true, name: true } },
+        },
+      })
+    );
   }
 
   updateTotalChannels(id: string, totalChannels: number) {

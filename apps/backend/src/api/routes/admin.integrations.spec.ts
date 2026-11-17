@@ -72,11 +72,14 @@ const build = (rows: any[] = [row()], counts: number[] = [], errorRows: any[] = 
   };
 
   const queryRaw = jest.fn(async (..._args: any[]) => errorRows);
+  // The list is read inside one snapshot (readInOneSnapshot).
+  const prisma: any = { integration, $queryRaw: queryRaw };
+  prisma.$transaction = async (run: (tx: unknown) => unknown) => run(prisma);
 
   const controller = new AdminController(
     {} as any,
     {} as any,
-    { integration, $queryRaw: queryRaw } as any,
+    prisma,
     {} as any,
     {} as any,
     {} as any,

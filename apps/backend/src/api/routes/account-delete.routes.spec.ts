@@ -40,16 +40,18 @@ function wiring() {
   const users = {
     getUserById: jest.fn(async () => user),
     getSoleOwnedOrganizations: jest.fn(async (): Promise<string[]> => []),
-    deleteAccount: jest.fn(
-      async (_id: string, _version?: number): Promise<void> => undefined
-    ),
+    deleteAccount: jest.fn(async (_id: string, _version?: number) => ({
+      deleted: true,
+      deletedOrgIds: [] as string[],
+    })),
   };
   const email = { sendEmailSync: jest.fn(async (..._a: unknown[]) => true) };
   const deletion = new AccountDeletionService(
     users as any,
     { cancelAllSubscriptionsForDeletedAccount: jest.fn() } as any,
     { sendEmail: jest.fn() } as any,
-    email as any
+    email as any,
+    { record: jest.fn() } as any
   );
   const usersController = Object.create(UsersController.prototype);
   Object.assign(usersController, {
