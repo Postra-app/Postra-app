@@ -49,6 +49,17 @@ const FORBIDDEN_WHILE_IMPERSONATING = [
   '/billing/add-subscription',
   '/user/delete',
   '/settings/transfer-ownership',
+  // Money and keys: an admin looking at a customer's account must not charge
+  // their card, change or cancel their plan, or rotate the keys their
+  // integrations use, in their name. Refunds and cancellations go through
+  // the admin panel, which is audited. The plan preview (prorate) stays open.
+  '/billing/finish-trial',
+  '/billing/subscribe',
+  '/billing/cancel',
+  '/billing/apply-discount',
+  '/billing/portal',
+  '/user/api-key/rotate',
+  '/user/oauth-app/rotate-secret',
 ];
 
 /**
