@@ -31,6 +31,10 @@ import {
   PropertiesContext,
 } from '@gitroom/frontend/components/agents/agent';
 import { useVariables } from '@gitroom/react/helpers/variable.context';
+import {
+  isChatMediaAllowed,
+  SafeChatImage,
+} from '@gitroom/frontend/components/agents/agent.safe-media';
 import { useParams } from 'next/navigation';
 import { useFetch } from '@gitroom/helpers/utils/custom.fetch';
 import { TextMessage } from '@copilotkit/runtime-client-gql';
@@ -165,6 +169,7 @@ export const AgentChat: FC = () => {
             }}
             UserMessage={Message}
             Input={NewInput}
+            markdownTagRenderers={{ img: SafeChatImage }}
           />
         </div>
       </div>
@@ -240,7 +245,10 @@ const LoadMessages: FC<{ id: string }> = ({ id }) => {
 };
 
 const Message: FC<UserMessageProps> = (props) => {
+  const { uploadDirectory } = useVariables();
   const convertContentToImagesAndVideo = useMemo(() => {
+    const own = (url: string) =>
+      isChatMediaAllowed(url, uploadDirectory, window.location.origin);
     // Sanitized at the end — message content echoes user input, and the
     // regex templating alone is not an XSS boundary.
     const content = props.message?.content || '';
@@ -250,9 +258,11 @@ const Message: FC<UserMessageProps> = (props) => {
         : content.map((p) => (p.type === 'text' ? p.text : '')).join('');
     const html = text
       .replace(/Video: (http.*mp4\n)/g, (match, p1) => {
+        if (!own(p1.trim())) return match;
         return `<video controls class="h-[150px] w-[150px] rounded-[8px] mb-[10px]"><source src="${p1.trim()}" type="video/mp4">Your browser does not support the video tag.</video>`;
       })
       .replace(/Image: (http.*\n)/g, (match, p1) => {
+        if (!own(p1.trim())) return match;
         return `<img alt="Image from the agent" src="${p1.trim()}" class="h-[150px] w-[150px] max-w-full border border-newBgColorInner" />`;
       })
       .replace(/\[\-\-Media\-\-\](.*)\[\-\-Media\-\-\]/g, (match, p1) => {
@@ -265,7 +275,7 @@ const Message: FC<UserMessageProps> = (props) => {
         }
       );
     return DOMPurify.sanitize(html, { ADD_ATTR: ['controls'] });
-  }, [props.message?.content]);
+  }, [props.message?.content, uploadDirectory]);
   return (
     <div
       className="copilotKitMessage copilotKitUserMessage min-w-[300px]"
