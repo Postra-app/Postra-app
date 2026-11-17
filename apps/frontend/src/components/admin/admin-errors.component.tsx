@@ -204,6 +204,9 @@ const useErrorsList = (params: {
 };
 
 export const AdminErrorsComponent: FC = () => {
+  // Without it `fetch` was the browser's own: Copy asked :54000/admin/errors
+  // (no /api, no session) and always said it could not load (FG-I-1).
+  const fetch = useFetch();
   const modal = useModals();
   const toaster = useToaster();
 

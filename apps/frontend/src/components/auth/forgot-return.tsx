@@ -156,7 +156,7 @@ export function ForgotReturn({
                   )
                 : t(
                     'we_successfully_reset_your_password_you_can_now_login_with_your',
-                    'We successfully reset your password. You can now login with your'
+                    'We successfully reset your password. You can now log in with your new password.'
                   )}
             </div>
             <p className="mt-4 text-sm text-textColor/66">

@@ -4,16 +4,15 @@ import {
   PostComment,
   withProvider,
 } from '@gitroom/frontend/components/new-launch/providers/high.order.provider';
-import { ThreadFinisher } from '@gitroom/frontend/components/new-launch/finisher/thread.finisher';
 
-const SettingsComponent = () => {
-  return <ThreadFinisher />;
-};
+// No "Add a thread finisher" here: the Bluesky provider never reads the
+// setting, so the switch did nothing, and its default text spoke of
+// retweets (FG-C-3). A control we offer has to work.
 
 export default withProvider({
   postComment: PostComment.POST,
   minimumCharacters: [],
-  SettingsComponent: SettingsComponent,
+  SettingsComponent: undefined,
   CustomPreviewComponent: undefined,
   dto: undefined,
   maximumCharacters: 300,

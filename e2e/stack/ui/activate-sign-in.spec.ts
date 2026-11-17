@@ -8,6 +8,15 @@ import { database, throwawayOrg } from '../helpers';
 // not sign up can still choose a new password from the same page.
 test.use({ storageState: { cookies: [], origins: [] } });
 
+// Sign-in allows 5 attempts per address. In a full run every browser test
+// signs in from the same one, and this test met "Too many attempts" (FG-T-1);
+// its own address, like throwawayOrg's API client.
+test.beforeEach(async ({ page }) => {
+  await page.setExtraHTTPHeaders({
+    'x-forwarded-for': `198.22.${Math.floor(Math.random() * 250)}.${Math.floor(Math.random() * 250) + 1}`,
+  });
+});
+
 const linkFor = (u: { id: string; email: string }) =>
   sign(
     { id: u.id, email: u.email, activated: false, purpose: 'activate' },

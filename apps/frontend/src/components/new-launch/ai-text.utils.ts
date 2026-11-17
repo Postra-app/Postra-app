@@ -13,10 +13,41 @@ export const aiTextToHtml = (text: string) =>
     })
     .join('');
 
+const ENTITIES: Record<string, string> = {
+  lt: '<',
+  gt: '>',
+  quot: '"',
+  apos: "'",
+  nbsp: ' ',
+};
+
+// &amp; last, so "&amp;lt;" (a literal "&lt;" typed by the customer) stays
+// "&lt;" instead of turning into "<".
+const decodeEntities = (text: string) =>
+  text
+    .replace(/&#(\d+);/g, (_, n) => String.fromCodePoint(Number(n)))
+    .replace(/&#x([0-9a-f]+);/gi, (_, n) => String.fromCodePoint(parseInt(n, 16)))
+    .replace(/&(lt|gt|quot|apos|nbsp);/g, (_, name) => ENTITIES[name])
+    .replace(/&amp;/g, '&');
+
+// The editor's HTML as the text the AI should read: one line per paragraph,
+// and the characters themselves rather than their HTML escapes. It sent
+// "Tom &amp; Co" on one line; a model that echoed it back put a literal
+// "&amp;amp;" in the post, and every paragraph break was gone (FG-C-6).
 export const aiPlainText = (html: string) =>
-  html
-    .replace(/<[^>]+>/g, ' ')
-    .replace(/\s+/g, ' ')
+  decodeEntities(
+    html
+      // A raw line break in HTML is only whitespace; the tags say where
+      // lines end.
+      .replace(/\r?\n/g, ' ')
+      .replace(/<br\s*\/?>/gi, '\n')
+      .replace(/<\/(p|div|li|h[1-6])>/gi, '\n')
+      .replace(/<[^>]+>/g, '')
+  )
+    .split('\n')
+    .map((line) => line.replace(/[ \t]+/g, ' ').trim())
+    .join('\n')
+    .replace(/\n{3,}/g, '\n\n')
     .trim();
 
 // Below this an "improve"/"adapt" call has nothing to work with.

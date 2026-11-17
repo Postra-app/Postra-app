@@ -646,7 +646,7 @@ const SETTINGS_SOURCE: SettingsSectionGuide[] = [
     name: 'Global Settings',
     availability: 'All plans',
     description:
-      'Your profile, interface language, time format and time zone, email notifications, link shortening and account deletion.',
+      'Your profile, interface language, time format and time zone, email notifications and account deletion.',
   },
   {
     name: 'Teams',

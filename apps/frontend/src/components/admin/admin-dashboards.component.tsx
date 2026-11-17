@@ -9,8 +9,11 @@ const REGION = 'eu-west-2';
 const CW = `https://${REGION}.console.aws.amazon.com/cloudwatch/home?region=${REGION}`;
 
 const links: { name: string; desc: string; href: string }[] = [
-  { name: 'CloudWatch', desc: 'RAM, disk, CPU, RDS, ALB · dashboard postra-dev', href: `${CW}#dashboards/dashboard/postra-dev` },
-  { name: 'Alarms', desc: '7 alarms → email (5xx, RAM, disk, RDS, recovery)', href: `${CW}#alarmsV2:` },
+  // The production dashboard and alarms (the postra-dev ones were retired
+  // with the move to the production account; FG-I-9). No count in the text:
+  // it went stale the first time an alarm was added.
+  { name: 'CloudWatch', desc: 'RAM, disk, CPU, RDS, ALB · dashboard postra-prod', href: `${CW}#dashboards/dashboard/postra-prod` },
+  { name: 'Alarms', desc: 'postra-prod-* alarms → email (5xx, RAM, disk, RDS, recovery)', href: `${CW}#alarmsV2:` },
   { name: 'Status page', desc: 'status.postra.co.uk · uptime + response time', href: 'https://status.postra.co.uk' },
   { name: 'Sentry', desc: 'errors + traces (FE + BE)', href: 'https://bk-company-9c.sentry.io/issues/' },
 ];

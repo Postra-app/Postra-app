@@ -25,8 +25,8 @@ const run = async (auth: string, getUserById: jest.Mock) => {
     ip: '203.0.113.7',
   };
   return middleware.use(req, { cookie: jest.fn(), header: jest.fn() } as any, jest.fn()).then(
-    () => undefined,
-    (e) => e
+    (): undefined => undefined,
+    (e: unknown) => e
   );
 };
 

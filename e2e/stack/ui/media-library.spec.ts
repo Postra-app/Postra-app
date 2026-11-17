@@ -143,3 +143,13 @@ test.describe('a library with files', () => {
     });
   });
 });
+
+// The same file chosen again with "Upload" (after a refusal, a cancel or a
+// delete) fired no change event: the button seemed dead (FG-F-9). The field
+// is emptied after every choice, so the next one always counts.
+test('the upload field is ready for the same file again', async ({ page }) => {
+  await page.goto('/media');
+  const input = page.locator('input[type="file"]').first();
+  await input.setInputFiles({ name: 'again.pdf', mimeType: 'application/pdf', buffer: Buffer.from('%PDF') });
+  await expect(input).toHaveValue('');
+});

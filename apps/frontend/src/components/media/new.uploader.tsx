@@ -137,6 +137,11 @@ export function useUppyUploader(props: {
           return [type];
         });
 
+        // A refused file is dropped and named; the rest of the batch goes
+        // on. One HEIC next to two JPEGs used to cancel all three, and the
+        // toast named only the HEIC (FG-F-4).
+        let refused = 0;
+        let lastError: Error | undefined;
         for (const file of files) {
           if (fileIDs.includes(file.id)) {
             const fileType = file.type;
@@ -161,18 +166,23 @@ export function useUppyUploader(props: {
                 )}`
               );
               uppy2.removeFile(file.id);
-              return reject(error);
+              refused++;
+              lastError = error;
             }
           }
         }
 
-        resolve();
+        return refused && refused === fileIDs.length
+          ? reject(lastError)
+          : resolve();
       });
     });
 
     uppy2.addPreProcessor((fileIDs) => {
       return new Promise<void>((resolve, reject) => {
         const files = uppy2.getFiles();
+        let refused = 0;
+        let lastError: Error | undefined;
 
         for (const file of files) {
           if (fileIDs.includes(file.id)) {
@@ -204,7 +214,9 @@ export function useUppyUploader(props: {
                   : `${file.name} is too large. Images can be up to 10 MB.`
               );
               uppy2.removeFile(file.id); // Remove file from queue
-              return reject(error);
+              refused++;
+              lastError = error;
+              continue;
             }
 
             if (isVideo && file.size > maxVideoSize) {
@@ -214,12 +226,16 @@ export function useUppyUploader(props: {
               uppy2.log(error.message, 'error');
               refuse(`${file.name} is too large. Videos can be up to 1 GB.`);
               uppy2.removeFile(file.id); // Remove file from queue
-              return reject(error);
+              refused++;
+              lastError = error;
             }
           }
         }
 
-        resolve();
+        // Earlier refusals (the type check) are already out of fileIDs'
+        // files; only a batch with nothing left fails as a whole.
+        const left = fileIDs.filter((id) => uppy2.getFile(id)).length;
+        return refused && !left ? reject(lastError) : resolve();
       });
     });
 

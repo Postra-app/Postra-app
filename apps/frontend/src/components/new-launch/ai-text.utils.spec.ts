@@ -17,8 +17,30 @@ describe('aiTextToHtml', () => {
 });
 
 describe('aiPlainText', () => {
-  it('strips tags and squeezes whitespace', () => {
-    expect(aiPlainText('<p>hello </p>\n<p>  world</p>')).toBe('hello world');
+  it('strips tags and squeezes whitespace, a line per paragraph', () => {
+    expect(aiPlainText('<p>hello </p>\n<p>  world</p>')).toBe('hello\nworld');
+  });
+
+  // FG-C-6: "Tom &amp; Co" went to the model escaped and on one line.
+  it('sends the characters, not their HTML escapes', () => {
+    expect(aiPlainText('<p>Tom &amp; Co makes &lt;great&gt; coffee</p>')).toBe(
+      'Tom & Co makes <great> coffee'
+    );
+  });
+
+  it('keeps paragraphs and an empty line between them', () => {
+    expect(aiPlainText('<p>First paragraph.</p><p><br></p><p>Second paragraph.</p>')).toBe(
+      'First paragraph.\n\nSecond paragraph.'
+    );
+  });
+
+  it('leaves a typed "&lt;" as it was typed', () => {
+    expect(aiPlainText('<p>write &amp;lt; in HTML</p>')).toBe('write &lt; in HTML');
+  });
+
+  it('round-trips through aiTextToHtml without doubling escapes', () => {
+    const html = aiTextToHtml(aiPlainText('<p>Tom &amp; Co</p><p>Line two</p>'));
+    expect(html).toBe('<p>Tom &amp; Co</p><p>Line two</p>');
   });
 });
 
