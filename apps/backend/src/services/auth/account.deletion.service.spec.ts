@@ -44,13 +44,15 @@ function setup(user: Record<string, unknown> | null, sent = true) {
   };
   const notifications = { sendEmail: jest.fn(async (..._a: unknown[]): Promise<void> => undefined) };
   const email = { sendEmailSync: jest.fn(async (..._a: unknown[]) => sent) };
+  const audit = { record: jest.fn() };
   const service = new AccountDeletionService(
     users as any,
     stripe as any,
     notifications as any,
-    email as any
+    email as any,
+    audit as any
   );
-  return { service, users, stripe, notifications, email, calls };
+  return { service, users, stripe, notifications, email, audit, calls };
 }
 
 const local = {
@@ -256,3 +258,38 @@ describe('AccountDeletionService.confirm, races and retries', () => {
   });
 });
 
+
+// An account deleted by its owner left nothing in the audit trail: the
+// account and its organisations were gone and no row said when or how.
+describe('the audit trail of a deletion', () => {
+  it('a deletion with the password is recorded, without the address', async () => {
+    const { service, audit } = setup(local);
+    await service.request('user-1', PASSWORD);
+    expect(audit.record).toHaveBeenCalledTimes(1);
+    expect(audit.record).toHaveBeenCalledWith({
+      action: 'account.delete',
+      userId: 'user-1',
+      metadata: { confirmedBy: 'password', organizationsDeleted: ['org-1'] },
+    });
+    expect(JSON.stringify(audit.record.mock.calls)).not.toContain('owner@example.com');
+  });
+
+  it('a deletion from the emailed link is recorded', async () => {
+    const { service, audit, email } = setup(google);
+    await service.request('user-1', undefined);
+    expect(audit.record).not.toHaveBeenCalled();
+    await expect(service.confirm(linkToken(email.sendEmailSync))).resolves.toBe('user-1');
+    expect(audit.record).toHaveBeenCalledWith({
+      action: 'account.delete',
+      userId: 'user-1',
+      metadata: { confirmedBy: 'email', organizationsDeleted: ['org-1'] },
+    });
+  });
+
+  it('a deletion that did not happen is not recorded', async () => {
+    const { service, users, audit } = setup(local);
+    users.deleteAccount.mockRejectedValueOnce(new AccountChangedError());
+    await expect(service.request('user-1', PASSWORD)).rejects.toBeInstanceOf(HttpException);
+    expect(audit.record).not.toHaveBeenCalled();
+  });
+});

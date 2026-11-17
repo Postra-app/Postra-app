@@ -10,7 +10,10 @@ import {
   ROLES_THAT_SEE_THE_API_KEY,
 } from '@gitroom/nestjs-libraries/database/prisma/organizations/organization.repository';
 import { OrganizationService } from '@gitroom/nestjs-libraries/database/prisma/organizations/organization.service';
-import { PrismaService } from '@gitroom/nestjs-libraries/database/prisma/prisma.service';
+import {
+  PrismaService,
+  readInOneSnapshot,
+} from '@gitroom/nestjs-libraries/database/prisma/prisma.service';
 import { UploadFactory } from '@gitroom/nestjs-libraries/upload/upload.factory';
 import { Logger, Optional } from '@nestjs/common';
 import {
@@ -279,14 +282,18 @@ export class UsersService {
       return null;
     }
 
-    const memberships = await this._prisma.userOrganization.findMany({
-      where: { userId },
-      select: {
-        role: true,
-        createdAt: true,
-        organization: { select: { id: true, name: true, createdAt: true } },
-      },
-    });
+    // Another owner may delete one of these organisations meanwhile
+    // (readInOneSnapshot).
+    const memberships = await readInOneSnapshot(this._prisma, (tx) =>
+      tx.userOrganization.findMany({
+        where: { userId },
+        select: {
+          role: true,
+          createdAt: true,
+          organization: { select: { id: true, name: true, createdAt: true } },
+        },
+      })
+    );
     const soleOrgIds = new Set(await this.getSoleOwnedOrganizations(userId));
 
     const organizations = [];

@@ -72,8 +72,19 @@ const enrolled = async () => {
   return { ...ctx, secret, backupCodes, enabledStep: step };
 };
 
+// The clock stands still in the middle of a 30-second step. On a moving clock
+// a step boundary between `enrolled()` reading the step and `enable()`
+// checking the code put that code two steps back, outside the window, and
+// every test built on `enrolled()` failed now and then.
+const MID_STEP_MS = (totpStep() * 30 + 15) * 1000;
+
 beforeEach(async () => {
+  jest.spyOn(Date, 'now').mockReturnValue(MID_STEP_MS);
   await ioRedis.del(adminMfaFailuresKey(admin.id));
+});
+
+afterEach(() => {
+  jest.restoreAllMocks();
 });
 
 describe('setting up the authenticator', () => {

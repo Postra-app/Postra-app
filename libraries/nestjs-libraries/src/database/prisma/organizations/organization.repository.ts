@@ -2,6 +2,7 @@ import { withLiveSubscription } from '@gitroom/nestjs-libraries/database/prisma/
 import {
   PrismaRepository,
   PrismaTransaction,
+  readInOneSnapshot,
 } from '@gitroom/nestjs-libraries/database/prisma/prisma.service';
 import {
   planLimits,
@@ -211,53 +212,57 @@ export class OrganizationRepository {
   }
 
   getImpersonateUser(name: string) {
-    return this._userOrg.model.userOrganization.findMany({
-      where: {
-        OR: [
-          {
-            organizationId: {
-              contains: name,
+    // Accounts and organisations come and go while this list is read
+    // (readInOneSnapshot).
+    return readInOneSnapshot(this._transaction.model, (tx) =>
+      tx.userOrganization.findMany({
+        where: {
+          OR: [
+            {
+              organizationId: {
+                contains: name,
+              },
+            },
+            {
+              user: {
+                OR: [
+                  {
+                    name: {
+                      contains: name,
+                    },
+                  },
+                  {
+                    email: {
+                      contains: name,
+                    },
+                  },
+                  {
+                    id: {
+                      contains: name,
+                    },
+                  },
+                ],
+              },
+            },
+          ],
+        },
+        select: {
+          id: true,
+          organization: {
+            select: {
+              id: true,
             },
           },
-          {
-            user: {
-              OR: [
-                {
-                  name: {
-                    contains: name,
-                  },
-                },
-                {
-                  email: {
-                    contains: name,
-                  },
-                },
-                {
-                  id: {
-                    contains: name,
-                  },
-                },
-              ],
+          user: {
+            select: {
+              id: true,
+              name: true,
+              email: true,
             },
           },
-        ],
-      },
-      select: {
-        id: true,
-        organization: {
-          select: {
-            id: true,
-          },
         },
-        user: {
-          select: {
-            id: true,
-            name: true,
-            email: true,
-          },
-        },
-      },
-    });
+      })
+    );
   }
 
   endTrialOffer(orgId: string) {
@@ -652,15 +657,18 @@ export class OrganizationRepository {
   // Who can see the API key today, to be told it was replaced: owners and
   // admins with a working seat and an account that is not suspended.
   async getApiKeyHolders(orgId: string) {
-    const rows = await this._userOrg.model.userOrganization.findMany({
-      where: {
-        organizationId: orgId,
-        role: { in: ROLES_THAT_SEE_THE_API_KEY },
-        disabled: false,
-        user: { suspendedAt: null },
-      },
-      select: { user: { select: { id: true, email: true } } },
-    });
+    // A member may be deleting their account meanwhile (readInOneSnapshot).
+    const rows = await readInOneSnapshot(this._transaction.model, (tx) =>
+      tx.userOrganization.findMany({
+        where: {
+          organizationId: orgId,
+          role: { in: ROLES_THAT_SEE_THE_API_KEY },
+          disabled: false,
+          user: { suspendedAt: null },
+        },
+        select: { user: { select: { id: true, email: true } } },
+      })
+    );
     return rows.map((r) => r.user);
   }
 

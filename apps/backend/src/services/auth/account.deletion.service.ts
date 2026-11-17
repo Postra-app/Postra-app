@@ -10,6 +10,7 @@ import { EmailService } from '@gitroom/nestjs-libraries/services/email.service';
 import { AuthService as AuthChecker } from '@gitroom/helpers/auth/auth.service';
 import { bustAuthContextCache } from '@gitroom/nestjs-libraries/redis/auth-context.cache';
 import { ioRedis } from '@gitroom/nestjs-libraries/redis/redis.service';
+import { AuditService } from '@gitroom/nestjs-libraries/database/prisma/audit/audit.service';
 import {
   authEmailFooter,
   authEmails,
@@ -46,7 +47,8 @@ export class AccountDeletionService {
     private _userService: UsersService,
     private _stripeService: StripeService,
     private _notificationService: NotificationService,
-    private _emailService: EmailService
+    private _emailService: EmailService,
+    private _audit: AuditService
   ) {}
 
   async request(
@@ -74,7 +76,7 @@ export class AccountDeletionService {
         throw new HttpException(WRONG_PASSWORD, 400);
       }
       try {
-        await this.deleteNow(user.id, user.email, user.tokenVersion);
+        await this.deleteNow(user.id, user.email, user.tokenVersion, 'password');
       } catch (err) {
         if (err instanceof AccountChangedError) {
           throw new HttpException(ACCOUNT_CHANGED, 409);
@@ -152,7 +154,7 @@ export class AccountDeletionService {
       // Without Redis the version check in the transaction still decides.
     }
     try {
-      await this.deleteNow(user.id, user.email, claims.tokenVersion);
+      await this.deleteNow(user.id, user.email, claims.tokenVersion, 'email');
     } catch (err) {
       if (locked) await ioRedis.del(lockKey).catch((): void => undefined);
       if (err instanceof AccountChangedError) {
@@ -168,7 +170,8 @@ export class AccountDeletionService {
   private async deleteNow(
     userId: string,
     email: string,
-    expectedTokenVersion: number
+    expectedTokenVersion: number,
+    confirmedBy: 'password' | 'email'
   ) {
     // Cancel Stripe billing before the DB rows (and with them the customer
     // lookup) are gone. Orchestrated here because StripeService itself
@@ -189,6 +192,13 @@ export class AccountDeletionService {
     }
 
     await this._userService.deleteAccount(userId, expectedTokenVersion);
+    // The account and its organisations are gone; this row says when and
+    // how. Ids only: the address went with the account.
+    await this._audit.record({
+      action: 'account.delete',
+      userId,
+      metadata: { confirmedBy, organizationsDeleted: soleOrgIds },
+    });
     // Another device signed in as this user kept reading the shared org for
     // up to the 30 s the auth context is cached.
     await bustAuthContextCache(userId);
