@@ -164,6 +164,7 @@ export const Component: FC<{
   }, []);
 
   const titleId = `modal-title-${modal.id}`;
+  const pressedOnBackdrop = useRef(false);
 
   if (modal.removeLayout) {
     return (
@@ -212,8 +213,27 @@ export const Component: FC<{
   return (
     <CurrentModalContext.Provider value={{ id: modal.id }}>
       <div
+        // Only a click that starts and ends on the backdrop closes the
+        // window. Selecting text in a field and letting go outside the panel
+        // is a click on the backdrop too, and it closed the form with what
+        // was typed in it (FG-H-6).
+        onMouseDown={(e) => {
+          pressedOnBackdrop.current = !panelRef.current?.contains(
+            e.target as Node
+          );
+        }}
         onClick={
-          modal.closeOnClickOutside === false ? undefined : closeModalFunction
+          modal.closeOnClickOutside === false
+            ? undefined
+            : () => {
+                // A click inside the panel never gets here (it stops the
+                // event); one that started inside and ended outside does.
+                const fromBackdrop = pressedOnBackdrop.current;
+                pressedOnBackdrop.current = false;
+                if (fromBackdrop) {
+                  closeModalFunction();
+                }
+              }
         }
         style={{ zIndex }}
         className={clsx(
