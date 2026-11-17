@@ -1,4 +1,6 @@
 import {
+  appleOffered,
+  applePlans,
   appleSandboxAllowedFor,
   appleStateOf,
   appleTierOf,
@@ -20,14 +22,34 @@ describe('App Store product ids', () => {
     expect(appleTierOf('uk.co.postra.app.starter.monthly')).toBe('STANDARD');
     expect(appleTierOf('uk.co.postra.app.pro.monthly')).toBe('PRO');
     expect(appleTierOf('uk.co.postra.app.business.monthly')).toBe('ULTIMATE');
-    // One product per plan: the copies without a free week are gone (the
-    // App Store listed every plan twice); no trial is now signed per purchase.
-    expect(appleTierOf('uk.co.postra.app.starter.monthly.notrial')).toBeNull();
-    expect(appleTierOf('uk.co.postra.app.pro.monthly.notrial')).toBeNull();
-    expect(appleTierOf('uk.co.postra.app.business.monthly.notrial')).toBeNull();
+    // The copies without a free week are no longer sold, but a subscription
+    // already on one (moved there in Apple's own plan sheet) is still the
+    // same plan: its renewals and "restore purchases" must not end it.
+    expect(appleTierOf('uk.co.postra.app.starter.monthly.notrial')).toBe('STANDARD');
+    expect(appleTierOf('uk.co.postra.app.pro.monthly.notrial')).toBe('PRO');
+    expect(appleTierOf('uk.co.postra.app.business.monthly.notrial')).toBe('ULTIMATE');
     expect(appleTierOf('uk.co.postra.app.team.monthly')).toBeNull();
     expect(appleTierOf('__proto__')).toBeNull();
     expect(appleTierOf(undefined)).toBeNull();
+  });
+});
+
+describe('products on sale', () => {
+  it('one per plan; a retired product is known but not sold', () => {
+    expect(applePlans().map((p) => p.productId)).toEqual([
+      'uk.co.postra.app.starter.monthly',
+      'uk.co.postra.app.pro.monthly',
+      'uk.co.postra.app.business.monthly',
+    ]);
+    expect(appleOffered('uk.co.postra.app.pro.monthly')).toBe(true);
+    expect(appleOffered('uk.co.postra.app.pro.monthly.notrial')).toBe(false);
+    expect(appleOffered('__proto__')).toBe(false);
+  });
+
+  it('a renewal of a subscription on a retired product keeps its plan', () => {
+    expect(
+      appleStateOf(tx({ productId: 'uk.co.postra.app.pro.monthly.notrial' }), { autoRenewStatus: 1 }, NOW)
+    ).toMatchObject({ state: 'active', tier: 'PRO' });
   });
 });
 

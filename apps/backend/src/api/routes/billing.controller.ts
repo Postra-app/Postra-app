@@ -16,9 +16,9 @@ import { StripeService } from '@gitroom/nestjs-libraries/services/stripe.service
 import { AppleIapService } from '@gitroom/nestjs-libraries/services/apple/apple.iap.service';
 import {
   appleIapEnabled,
+  appleOffered,
   appleOfferSigner,
   applePlans,
-  appleTierOf,
 } from '@gitroom/nestjs-libraries/services/apple/apple.iap';
 import { BillingAppleTransactionDto } from '@gitroom/nestjs-libraries/dtos/billing/billing.apple.transaction.dto';
 import { BillingAppleOfferDto } from '@gitroom/nestjs-libraries/dtos/billing/billing.apple.offer.dto';
@@ -260,7 +260,7 @@ export class BillingController {
     if (!appleIapEnabled()) {
       throw new HttpException('Not found', 404);
     }
-    if (!appleTierOf(body.productId)) {
+    if (!appleOffered(body.productId)) {
       throw new HttpException('This plan is not available right now.', 400);
     }
     if (await this.appleTrialAllowed(org, user)) {

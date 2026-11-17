@@ -30,11 +30,29 @@ export const APPLE_PRODUCTS: Record<string, AppleTier> = {
   'uk.co.postra.app.business.monthly': 'ULTIMATE',
 };
 
-export const appleTierOf = (productId?: string | null): AppleTier | null =>
+// Retired copies of the plans without the free week: no longer sold (they
+// made Apple's own plan sheet list every plan twice), but a subscription
+// already moved onto one in that sheet keeps renewing on it, and its
+// renewals and "restore purchases" are still that plan.
+const RETIRED_PRODUCTS: Record<string, AppleTier> = {
+  'uk.co.postra.app.starter.monthly.notrial': 'STANDARD',
+  'uk.co.postra.app.pro.monthly.notrial': 'PRO',
+  'uk.co.postra.app.business.monthly.notrial': 'ULTIMATE',
+};
+
+const own = (map: Record<string, AppleTier>, productId?: string | null) =>
   (productId &&
-    Object.prototype.hasOwnProperty.call(APPLE_PRODUCTS, productId) &&
-    APPLE_PRODUCTS[productId]) ||
+    Object.prototype.hasOwnProperty.call(map, productId) &&
+    map[productId]) ||
   null;
+
+// The plan a product stands for, sold or retired.
+export const appleTierOf = (productId?: string | null): AppleTier | null =>
+  own(APPLE_PRODUCTS, productId) || own(RETIRED_PRODUCTS, productId);
+
+// Whether the app may sell this product now.
+export const appleOffered = (productId?: string | null) =>
+  !!own(APPLE_PRODUCTS, productId);
 
 // The plans the app may sell, the same three for every organisation.
 export const applePlans = () =>
