@@ -490,6 +490,9 @@ export const Menu: FC<{
       children: (
         <CustomVariables
           identifier={findIntegration.identifier}
+          // The channel being fixed: on a full plan "Connect" asked for a
+          // bigger plan, and a member was refused (FG-D-2).
+          refresh={findIntegration.internalId}
           gotoUrl={(url: string) => router.push(url)}
           variables={findIntegration.customFields}
         />

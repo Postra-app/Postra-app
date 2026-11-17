@@ -298,6 +298,22 @@ export const ContinueIntegration: FC<{
         data.status !== HttpStatusCode.Created
       ) {
         const errorData = await data.json().catch(() => ({}));
+        // A box unticked on the platform's consent screen: say which
+        // platform and what to do (wording approved by Krzysztof, 17 XI).
+        if (errorData.code === 'not_enough_scopes') {
+          setErrorMessage(
+            t(
+              'connect_missing_permissions',
+              '{{platform}} did not grant every permission Postra needs. Connect again and leave all the boxes ticked.',
+              {
+                platform: providerDisplayName,
+                interpolation: { escapeValue: false },
+              }
+            )
+          );
+          setError(true);
+          return;
+        }
         setErrorMessage(
           errorData.message || errorData.msg || 'Could not add provider'
         );

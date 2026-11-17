@@ -246,8 +246,9 @@ export const CustomVariables: FC<{
   identifier: string;
   gotoUrl(url: string): void;
   onboarding?: boolean;
+  refresh?: string;
 }> = (props) => {
-  const { close, gotoUrl, identifier, variables, onboarding } = props;
+  const { close, gotoUrl, identifier, variables, onboarding, refresh } = props;
   const fetch = useFetch();
   const modals = useModals();
   const schema = useMemo(() => {
@@ -284,8 +285,16 @@ export const CustomVariables: FC<{
   });
   const submit = useCallback(
     async (data: FieldValues) => {
+      // `refresh` names the channel being fixed: no new slot is taken, so
+      // neither the plan's limit nor the member's role applies.
+      const query = [
+        onboarding ? 'onboarding=true' : '',
+        refresh ? `refresh=${encodeURIComponent(refresh)}` : '',
+      ]
+        .filter(Boolean)
+        .join('&');
       const response = await fetch(
-        `/integrations/social/${identifier}${onboarding ? '?onboarding=true' : ''}`
+        `/integrations/social/${identifier}${query ? `?${query}` : ''}`
       );
       // 402: the payment dialog has had its say; stay on Add Channel.
       if (response.status === 402) {

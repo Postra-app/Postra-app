@@ -1,4 +1,5 @@
 import { FC, useCallback, useMemo, useState } from 'react';
+import { useReconnectChannel } from '@gitroom/frontend/components/launches/helpers/use.reconnect.channel';
 import { Integration } from '@prisma/client';
 import useSWR from 'swr';
 import { useFetch } from '@gitroom/helpers/utils/custom.fetch';
@@ -221,25 +222,9 @@ export const RenderAnalytics: FC<{
     revalidateOnMount: true,
   });
 
-  const refreshChannel = useCallback(
-    (
-        integrationData: Integration & {
-          identifier: string;
-        }
-      ) =>
-      async () => {
-        const { url } = await (
-          await fetch(
-            `/integrations/social/${integrationData.identifier}?refresh=${integrationData.internalId}`,
-            {
-              method: 'GET',
-            }
-          )
-        ).json();
-        window.location.href = url;
-      },
-    []
-  );
+  // The same reconnect as the channel list: this one sent the browser to
+  // `url` whatever it was, /undefined (a 404) on a refusal (FG-F-16).
+  const refreshChannel = useReconnectChannel();
 
   const t = useT();
 

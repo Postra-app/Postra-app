@@ -11,6 +11,7 @@ export class NotEnoughScopesFilter implements ExceptionFilter {
 
     response
       .status(HttpStatusCode.Conflict)
-      .json({ msg: exception.message });
+      // `code` lets a client put the sentence in its own words and language.
+      .json({ msg: exception.message, code: 'not_enough_scopes' });
   }
 }

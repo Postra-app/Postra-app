@@ -8,7 +8,6 @@ import { planLabel } from '@gitroom/nestjs-libraries/database/prisma/subscriptio
 import { CalendarWeekProvider } from '@gitroom/frontend/components/launches/calendar.context';
 import { Filters } from '@gitroom/frontend/components/launches/filters';
 import { useFetch } from '@gitroom/helpers/utils/custom.fetch';
-import { readResponseError } from '@gitroom/helpers/utils/response.error';
 import { CalendarSkeleton } from '@gitroom/frontend/components/ui/skeleton';
 import clsx from 'clsx';
 import { useUser } from '../layout/user.context';
@@ -28,6 +27,7 @@ import { useT } from '@gitroom/react/translation/get.transation.service.client';
 import { useIntegrationList } from '@gitroom/frontend/components/launches/helpers/use.integration.list';
 import useCookie from 'react-use-cookie';
 import { Onboarding } from '@gitroom/frontend/components/onboarding/onboarding';
+import { useReconnectChannel } from '@gitroom/frontend/components/launches/helpers/use.reconnect.channel';
 
 export const SVGLine = () => {
   return (
@@ -445,50 +445,9 @@ export const LaunchesComponent = () => {
     },
     []
   );
-  const refreshChannel = useCallback(
-    (
-        integration: Integration & {
-          identifier: string;
-        }
-      ) =>
-      async () => {
-        try {
-          const response = await fetch(
-            `/integrations/social/${integration.identifier}?refresh=${integration.internalId}`,
-            {
-              method: 'GET',
-            }
-          );
-          if (!response.ok) {
-            toast.show(
-              `${t(
-                'channel_reconnect_failed',
-                'Could not reconnect the channel'
-              )}: ${await readResponseError(response)}`,
-              'warning'
-            );
-            return;
-          }
-          const { url } = await response.json();
-          // Guard against `location.href = undefined` → navigating to `/undefined`
-          if (!url) {
-            toast.show(
-              t('channel_reconnect_failed', 'Could not reconnect the channel'),
-              'warning'
-            );
-            return;
-          }
-          window.location.href = url;
-        } catch (e) {
-          console.error('[Postra:channels] reconnect failed', e);
-          toast.show(
-            t('channel_reconnect_failed', 'Could not reconnect the channel'),
-            'warning'
-          );
-        }
-      },
-    []
-  );
+  // Bluesky, WordPress and Telegram carry a state, not an address: opened
+  // as a page it was a 404 (FG-D-1). One hook for every reconnect.
+  const refreshChannel = useReconnectChannel();
   useEffect(() => {
     if (typeof window === 'undefined') {
       return;
@@ -513,7 +472,11 @@ export const LaunchesComponent = () => {
         '*'
       );
     }
-    if (window.opener) {
+    // Only the OAuth popup closes itself, after it has told its opener. A tab
+    // the app opened itself (Go to billing, Help, a post preview) has an
+    // opener too, and vanished the moment it reached the calendar: right
+    // after paying for a bigger plan (FG-D-5).
+    if (window.opener && (search.get('added') || search.get('msg'))) {
       window.close();
     }
   }, []);
