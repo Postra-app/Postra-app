@@ -3,10 +3,9 @@ import { BACKEND_URL, database, throwawayOrg } from '../helpers';
 import { totpCode, totpStep } from '../../../libraries/helpers/src/auth/totp';
 
 // Add Channel showed every customer the grey "Soon" tiles (Lemmy, LinkedIn
-// Page, Google My Business...), which read as a promise. Customers now see
-// only the platforms they can connect; a super admin sees every tile; the
-// preview organisation (a platform reviewer's login) sees the offered ones
-// plus Google Business Profile.
+// Page...), which read as a promise. Customers now see only the platforms
+// they can connect; a super admin sees every tile. Google Business Profile is
+// offered from Pro since 2026-11-17.
 test.use({ storageState: { cookies: [], origins: [] } });
 
 type Who = Awaited<ReturnType<typeof throwawayOrg>>;
@@ -37,9 +36,12 @@ test('a customer sees only the platforms on offer, no "Soon" tile', async ({ pag
     const tile = await openPicker(page);
     await expect(page.getByText('1 of 6 social accounts connected · Pro', { exact: true })).toBeVisible();
     await expect(tile('Soon')).toHaveCount(0);
-    for (const name of ['Lemmy', 'LinkedIn Page', 'Google My Business']) {
+    for (const name of ['Lemmy', 'LinkedIn Page']) {
       await expect(tile(name), name).toHaveCount(0);
     }
+    // On Pro: connectable, not a preview.
+    await expect(tile('Google Business Profile')).toBeVisible();
+    await expect(tile('Google Business Profile')).not.toContainText('Preview');
     // A working platform outside Pro stays, locked behind the upgrade.
     await expect(tile('WordPress')).toContainText('Business');
   } finally {
@@ -48,7 +50,7 @@ test('a customer sees only the platforms on offer, no "Soon" tile', async ({ pag
   }
 });
 
-test('the preview organisation sees Google Business Profile and no other "Soon" tile', async ({ page }) => {
+test('on Starter, Google Business Profile shows behind the Pro upgrade', async ({ page }) => {
   const prisma = database();
   const reviewer = await throwawayOrg(prisma, {
     tier: 'STANDARD',
@@ -61,7 +63,7 @@ test('the preview organisation sees Google Business Profile and no other "Soon" 
   try {
     await signIn(page, reviewer);
     const tile = await openPicker(page);
-    await expect(tile('Google My Business')).toBeVisible();
+    await expect(tile('Google Business Profile')).toContainText('Pro');
     await expect(tile('Soon')).toHaveCount(0);
     await expect(tile('Lemmy')).toHaveCount(0);
     await expect(tile('LinkedIn Page')).toHaveCount(0);
@@ -95,7 +97,7 @@ test('a super admin sees every tile, "Soon" ones included', async ({ page }) => 
     const tile = await openPicker(page);
     await expect(tile('Lemmy')).toContainText('Soon');
     await expect(tile('LinkedIn Page')).toContainText('Soon');
-    await expect(tile('Google My Business')).toContainText('Preview, admin only');
+    await expect(tile('Google Business Profile')).not.toContainText('Soon');
   } finally {
     await staff.remove();
     await prisma.$disconnect();

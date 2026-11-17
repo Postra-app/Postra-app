@@ -37,12 +37,12 @@ const clientAndGmb = () => {
 };
 
 @Rules(
-  'Google My Business posts can have text content and optionally one image. Posts can be updates, events, or offers.'
+  'Google Business Profile posts can have text content and optionally one image. Posts can be updates, events, or offers.'
 )
 export class GmbProvider extends SocialAbstract implements SocialProvider {
   override maxConcurrentJob = 3;
   identifier = 'gmb';
-  name = 'Google My Business';
+  name = 'Google Business Profile';
   isBetweenSteps = true;
   scopes = [
     'https://www.googleapis.com/auth/userinfo.profile',
@@ -62,14 +62,14 @@ export class GmbProvider extends SocialAbstract implements SocialProvider {
   ): Promise<string | true> {
     // GMB posts can have text only, or text with one image
     if ((items?.length ?? 0) > 0 && (items?.[0]?.length ?? 0) > 1) {
-      return 'Google My Business posts can only have one image';
+      return 'Google Business Profile posts can only have one image';
     }
 
     // Check for video - GMB doesn't support video in local posts
     if ((items?.length ?? 0) > 0 && (items?.[0]?.length ?? 0) > 0) {
       const media = items?.[0]?.[0];
       if ((media?.path?.indexOf?.('mp4') ?? -1) > -1) {
-        return 'Google My Business posts do not support video attachments';
+        return 'Google Business Profile posts do not support video attachments';
       }
     }
 
@@ -90,7 +90,7 @@ export class GmbProvider extends SocialAbstract implements SocialProvider {
     if (body.includes('UNAUTHENTICATED') || body.includes('invalid_grant')) {
       return {
         type: 'refresh-token',
-        value: 'Please re-authenticate your Google My Business account',
+        value: 'Please re-authenticate your Google Business Profile account',
       };
     }
 
@@ -440,8 +440,12 @@ export class GmbProvider extends SocialAbstract implements SocialProvider {
       topicType: settings?.topicType || 'STANDARD',
     };
 
-    // Add call to action if provided (and not NONE)
-    if (
+    // Add call to action if provided (and not NONE). "Call" has no link:
+    // Google rings the number on the business profile. The others open their
+    // link and are left out without one.
+    if (settings?.callToActionType === 'CALL') {
+      postBody.callToAction = { actionType: 'CALL' };
+    } else if (
       settings?.callToActionType &&
       settings.callToActionType !== 'NONE' &&
       settings?.callToActionUrl

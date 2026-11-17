@@ -181,21 +181,32 @@ test('a "Coming soon" platform takes no new channels; one already there can be r
   }
 });
 
-// Preview platforms (previewProviders in integration.manager.ts): "Coming
-// soon" for customers, but a super admin can connect one into their own
-// organisation, to test it on production and to record the platform's
-// review video. The pass is bound to the platform it was minted for.
-test('a preview platform is "Coming soon" for customers and open to a super admin', async () => {
+// Google Business Profile left the preview on 2026-11-17 (Google approved
+// the API): an offered platform from Pro, behind the plan like the others.
+// Nothing is in the preview list now, so no one gets past a plan with it.
+test('Google Business Profile is offered from Pro, and the other platforms keep their plans', async () => {
   const prisma = database();
   const customer = await throwawayOrg(prisma, { tier: 'STANDARD', totalChannels: 5, channels: 0 });
+  const pro = await throwawayOrg(prisma, { tier: 'PRO', totalChannels: 8, channels: 0 });
   const admin = await throwawayOrg(prisma, { tier: 'STANDARD', totalChannels: 5, channels: 0 });
   // Before admin's first request: the auth middleware caches the user.
   const adminUser = (await prisma.userOrganization.findFirstOrThrow({ where: { organizationId: admin.orgId } })).userId;
   await makeAdministrator(prisma, { api: admin.api, userId: adminUser });
   try {
-    // Refused: 402 because no plan has it, before "Coming soon" (403).
-    const gmb = await customer.api.get(connect('gmb'));
-    expect([402, 403], await gmb.text()).toContain(gmb.status());
+    // Offered, named as Google names it, and not a preview any more.
+    const listed = (await (await pro.api.get('/integrations')).json()).social.find(
+      (p: any) => p.identifier === 'gmb'
+    );
+    expect(listed).toMatchObject({ enabled: true, name: 'Google Business Profile' });
+    expect(listed.preview).toBeFalsy();
+    expect(listed.adminOnly).toBeFalsy();
+    expect((await pro.api.get(connect('gmb'))).status()).toBe(200);
+    // Starter: the plan's 402, for a super admin too (no preview pass left).
+    for (const who of [customer, admin]) {
+      const res = await who.api.get(connect('gmb'));
+      expect(res.status(), await res.text()).toBe(402);
+    }
+
     // WordPress left the preview on 2026-11-01: Business only, so Starter
     // gets the plan's 402, not "Coming soon".
     const wordpress = await customer.api.get(connect('wordpress'));
@@ -226,35 +237,11 @@ test('a preview platform is "Coming soon" for customers and open to a super admi
     ).toMatchObject({ enabled: true, name: 'Instagram\n(with Facebook Page)' });
     expect((await customer.api.get(connect('instagram-standalone'))).status()).toBe(200);
 
-    // No plan has Google Business Profile: the preview pass skips the plan
-    // gate too.
-    const preview = await admin.api.get(connect('gmb'));
-    expect(preview.status(), await preview.text()).toBe(200);
-    // Not through an invite link, which connects someone else's account.
-    expect((await admin.api.get(`${connect('gmb')}?invite=true`)).status()).toBe(402);
-    // Not for a platform outside the preview list.
+    // A platform that is not offered stays closed to a super admin as well.
     expect((await admin.api.get(connect('linkedin-page'))).status()).toBe(402);
-
-    // A link minted for another platform (Pinterest, no preview pass) does
-    // not open Google Business Profile at the callback.
-    const minted = await admin.api.get(connect('pinterest'));
-    const state = new URL((await minted.json()).url).searchParams.get('state');
-    const other = await admin.api.post('/integrations/social-connect/gmb', {
-      data: { state, code: 'x', timezone: '0' },
-    });
-    expect(other.status(), await other.text()).toBe(403);
-
-    // The pass for Google Business Profile gets past "Coming soon" and the
-    // plan; the made-up code then fails the sign-in, which is the next check,
-    // not a 402/403.
-    const own = await admin.api.get(connect('gmb'));
-    const ownState = new URL((await own.json()).url).searchParams.get('state');
-    const finish = await admin.api.post('/integrations/social-connect/gmb', {
-      data: { state: ownState, code: 'x', timezone: '0' },
-    });
-    expect([402, 403], await finish.text()).not.toContain(finish.status());
   } finally {
     await customer.remove();
+    await pro.remove();
     await admin.remove();
     await prisma.$disconnect();
   }
@@ -262,8 +249,9 @@ test('a preview platform is "Coming soon" for customers and open to a super admi
 
 // Instagram App Review: Meta's reviewer signs in as review@, which must not be
 // a super admin. Its organisation, named in PREVIEW_ORGANIZATIONS, gets the
-// preview platforms the way a super admin does; others do not.
-test('a preview organisation connects a preview platform without being a super admin', async () => {
+// preview platforms the way a super admin does; others do not. The list is
+// empty today, so the reviewer's organisation follows its plan like anyone.
+test('a preview organisation is marked, and with no preview platform it follows its plan', async () => {
   const prisma = database();
   const reviewer = await throwawayOrg(prisma, {
     tier: 'STANDARD',
@@ -277,18 +265,11 @@ test('a preview organisation connects a preview platform without being a super a
     expect(self).toMatchObject({ previewChannels: true, isSuperAdmin: false });
     expect((await (await customer.api.get('/user/self')).json()).previewChannels).toBe(false);
 
-    for (const platform of ['pinterest', 'gmb']) {
-      const res = await reviewer.api.get(connect(platform));
-      expect(res.status(), `${platform}: ${await res.text()}`).toBe(200);
+    expect((await reviewer.api.get(connect('pinterest'))).status()).toBe(200);
+    for (const who of [reviewer, customer]) {
+      expect((await who.api.get(connect('gmb'))).status()).toBe(402);
+      expect((await who.api.get(connect('linkedin-page'))).status()).toBe(402);
     }
-    const refused = await customer.api.get(connect('gmb'));
-    expect([402, 403], await refused.text()).toContain(refused.status());
-
-    // Still only the preview list, and not through an invite link.
-    expect((await reviewer.api.get(connect('linkedin-page'))).status()).toBe(402);
-    expect(
-      (await reviewer.api.get(`${connect('gmb')}?invite=true`)).status()
-    ).not.toBe(200);
   } finally {
     await reviewer.remove();
     await customer.remove();

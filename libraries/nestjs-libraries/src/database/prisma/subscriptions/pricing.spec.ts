@@ -42,10 +42,16 @@ describe('pricing matrix', () => {
     expect(pricing.ULTIMATE.channel).toBe(15);
   });
 
-  it('gives Business a slot for every platform in its allowlist', () => {
+  it('gives Business a slot for every platform a customer can connect today', () => {
     // Instagram counts once: through a Page and without one is the same
-    // account, which cannot be connected twice (same.account.ts).
-    const platforms = new Set(pricing.ULTIMATE.allowedProviders.map(platformOf));
+    // account, which cannot be connected twice (same.account.ts). LinkedIn
+    // Pages is in the allowlist but still "Coming soon" (integration.manager
+    // enabledProviders): when it opens, Business gets its 16th slot and the
+    // page says 16 platforms (K., 2026-11-17, with Google Business Profile).
+    const comingSoon = new Set(['linkedin-page']);
+    const platforms = new Set(
+      pricing.ULTIMATE.allowedProviders.filter((p) => !comingSoon.has(p)).map(platformOf)
+    );
     expect(pricing.ULTIMATE.channel).toBe(platforms.size);
   });
 
@@ -71,6 +77,7 @@ describe('pricing matrix', () => {
       'bluesky',
       'mastodon',
       'telegram',
+      'gmb',
     ]);
     expect(pricing.ULTIMATE.allowedProviders).toEqual([
       'facebook',
@@ -85,6 +92,7 @@ describe('pricing matrix', () => {
       'bluesky',
       'mastodon',
       'telegram',
+      'gmb',
       'x',
       'discord',
       'slack',

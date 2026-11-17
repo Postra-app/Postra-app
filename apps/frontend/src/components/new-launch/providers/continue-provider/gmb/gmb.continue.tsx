@@ -32,7 +32,7 @@ export const GmbContinue = withContinueProvider<GmbItem, GmbSelection>({
     },
     {
       key: 'gmb_ensure_business_verified',
-      text: 'Please ensure your business is verified on Google My Business.',
+      text: 'Please ensure your business is verified on Google Business Profile.',
     },
     {
       key: 'gmb_try_again',

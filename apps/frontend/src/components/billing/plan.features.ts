@@ -23,6 +23,7 @@ export const PLATFORM_NAMES: Record<string, string> = {
   bluesky: 'Bluesky',
   mastodon: 'Mastodon',
   telegram: 'Telegram',
+  gmb: 'Google Business Profile',
   x: 'X',
   discord: 'Discord',
   slack: 'Slack',

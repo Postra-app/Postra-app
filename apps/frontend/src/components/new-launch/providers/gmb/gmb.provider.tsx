@@ -161,6 +161,8 @@ const GmbSettings: FC = () => {
 
 export default withProvider({
   postComment: PostComment.POST,
+  // One local post per publish: further parts would be dropped.
+  comments: false,
   minimumCharacters: [],
   SettingsComponent: GmbSettings,
   CustomPreviewComponent: undefined,
