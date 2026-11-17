@@ -152,3 +152,18 @@ describe('getPostsList - drafts and repeating posts', () => {
     expect(args.where.publishDate).toBeDefined();
   });
 });
+
+// The list (the only view on a phone) showed a failed post with "An error
+// occurred while publishing this post", while the week view named the cause
+// (FG-B-4). The list now carries the same readable reason.
+describe('getPostsList - the reason a post failed', () => {
+  it('reads the error and gives it back readable', async () => {
+    const { repo, findMany } = buildRepo();
+    findMany.mockResolvedValue([
+      { id: 'p1', state: State.ERROR, error: 'Media aspect ratio is not supported by Instagram' },
+    ]);
+    const result = await repo.getPostsList('org-1', { state: 'error', page: 0, limit: 20 } as any);
+    expect(findMany.mock.calls[0][0].select.error).toBe(true);
+    expect(result.posts[0].error).toBe('Media aspect ratio is not supported by Instagram');
+  });
+});

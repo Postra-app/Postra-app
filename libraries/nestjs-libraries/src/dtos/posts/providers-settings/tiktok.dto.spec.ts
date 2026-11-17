@@ -55,3 +55,19 @@ describe('TikTokDto', () => {
     expect(await messages({ content_posting_method: 'UPLOAD', disclose: true })).toEqual([]);
   });
 });
+
+// "Upload content to TikTok without posting it" leaves privacy to the
+// creator in TikTok; the composer locks the field empty (FG-C-1).
+describe('TikTokDto in upload mode', () => {
+  it('accepts an upload without a privacy level', async () => {
+    expect(
+      await messages({ content_posting_method: 'UPLOAD', privacy_level: undefined })
+    ).toEqual([]);
+  });
+
+  it('still wants a privacy level for a direct post', async () => {
+    expect(
+      (await messages({ content_posting_method: 'DIRECT_POST', privacy_level: undefined })).length
+    ).toBeGreaterThan(0);
+  });
+});

@@ -384,6 +384,10 @@ export class PostsRepository {
           releaseURL: true,
           releaseId: true,
           state: true,
+          // The reason a post failed: the list is the only view on a phone,
+          // and it said "An error occurred" where the week view named the
+          // cause (FG-B-4). Made readable below, like the calendar's.
+          error: true,
           intervalInDays: true,
           group: true,
           creationMethod: true,
@@ -407,7 +411,10 @@ export class PostsRepository {
     ]);
 
     return {
-      posts,
+      posts: posts.map((post) => ({
+        ...post,
+        error: readablePostError(post.error),
+      })),
       total,
       page,
       limit,
