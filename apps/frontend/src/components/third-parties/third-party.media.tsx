@@ -161,10 +161,18 @@ export const ThirdPartyMedia: FC<{
   const fetch = useFetch();
   const modals = useModals();
 
+  // A side request for a menu entry: a failed answer (5xx, 429) parsed as
+  // anything but a list threw on `.length` and took the whole screen down,
+  // composer included. No list, no entry.
   const thirdParties = useCallback(async () => {
-    return (await (await fetch('/third-party')).json()).filter(
-      (f: any) => f.position === 'media'
-    );
+    try {
+      const list = await (await fetch('/third-party')).json();
+      return Array.isArray(list)
+        ? list.filter((f: any) => f.position === 'media')
+        : [];
+    } catch {
+      return [];
+    }
   }, []);
 
   // Distinct key: this caches the position==='media' subset, while
@@ -179,7 +187,7 @@ export const ThirdPartyMedia: FC<{
     refreshWhenOffline: false,
   });
 
-  if (isLoading || !data.length) {
+  if (isLoading || !data?.length) {
     return null;
   }
 

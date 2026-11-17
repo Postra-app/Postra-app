@@ -39,13 +39,23 @@ export const BrandKitPanel: FC = () => {
   const [savedAt, setSavedAt] = useState<number | null>(null);
   const [uploading, setUploading] = useState(false);
   const [pickingColors, setPickingColors] = useState(false);
+  // A failed read (5xx, 429, a dropped connection) showed the defaults as if
+  // they were the saved kit, and the first change wrote them over it: logo
+  // gone, font and tone reset. No form until the kit is read.
+  const [loadFailed, setLoadFailed] = useState(false);
+  const [attempt, setAttempt] = useState(0);
 
   useEffect(() => {
     let cancelled = false;
+    setLoading(true);
+    setLoadFailed(false);
     (async () => {
       try {
         const res = await fetch('/brand-kit');
-        if (!res.ok) return;
+        if (!res.ok) {
+          if (!cancelled) setLoadFailed(true);
+          return;
+        }
         const text = await res.text();
         if (!text) return;
         const data = JSON.parse(text);
@@ -59,6 +69,8 @@ export const BrandKitPanel: FC = () => {
             tone: data.tone ?? DEFAULTS.tone,
           });
         }
+      } catch {
+        if (!cancelled) setLoadFailed(true);
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -66,7 +78,7 @@ export const BrandKitPanel: FC = () => {
     return () => {
       cancelled = true;
     };
-  }, [fetch]);
+  }, [fetch, attempt]);
 
   const persist = useDebouncedCallback(
     async (next: BrandKit) => {
@@ -119,7 +131,9 @@ export const BrandKitPanel: FC = () => {
           method: 'POST',
           body: formData,
         });
-        const { path } = await res.json();
+        // A refused logo (too big, library full) was silence.
+        const path = res.ok ? (await res.json())?.path : undefined;
+        if (!path) throw new Error(`logo upload ${res.status}`);
         update('logoPath', path);
       } catch {
         toaster.show(t('logo_upload_failed', 'Logo upload failed'), 'warning');
@@ -181,6 +195,22 @@ export const BrandKitPanel: FC = () => {
     return (
       <div className="text-[11px] text-textColor/60">
         {t('brand_kit_loading', 'Loading brand kit…')}
+      </div>
+    );
+  }
+
+  if (loadFailed) {
+    return (
+      <div role="alert" className="flex flex-col gap-2 text-[12px] text-textColor/85">
+        <div>
+          {t(
+            'brand_kit_load_failed',
+            'Could not load your brand kit. Nothing has been changed.'
+          )}
+        </div>
+        <Button size="sm" onClick={() => setAttempt((n) => n + 1)}>
+          {t('try_again', 'Try again')}
+        </Button>
       </div>
     );
   }

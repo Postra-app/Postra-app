@@ -1,19 +1,47 @@
 'use client';
 
-import { useCallback } from 'react';
+import { useCallback, useState } from 'react';
+import { useToaster } from '@gitroom/react/toaster/toaster';
+import { isFetchHandledError } from '@gitroom/helpers/utils/fetch.errors';
 import { useFetch } from '@gitroom/helpers/utils/custom.fetch';
 import { useT } from '@gitroom/react/translation/get.transation.service.client';
 export const GoogleProvider = () => {
   const fetch = useFetch();
   const t = useT();
+  const toaster = useToaster();
+  const [busy, setBusy] = useState(false);
+  // A real button (it was a div: Tab skipped it, a screen reader did not call
+  // it a button), held while the link is fetched, and a failed answer says so
+  // instead of sending the browser to an error page's text.
   const gotoLogin = useCallback(async () => {
-    const link = await (await fetch('/auth/oauth/GOOGLE')).text();
-    window.location.href = link;
-  }, []);
+    if (busy) return;
+    setBusy(true);
+    try {
+      const response = await fetch('/auth/oauth/GOOGLE');
+      const link = response.ok ? await response.text() : '';
+      if (!/^https:\/\//.test(link)) {
+        throw new Error(`google link ${response.status}`);
+      }
+      window.location.href = link;
+    } catch (e) {
+      setBusy(false);
+      // 429 and 5xx have their own toast from the app-wide fetch.
+      if (!isFetchHandledError(e)) {
+        toaster.show(
+          t('login_failed_try_again', 'Something went wrong, please try again.'),
+          'warning'
+        );
+      }
+    }
+  }, [busy, fetch, t, toaster]);
   return (
-    <div
+    <button
+      type="button"
       onClick={gotoLogin}
-      className="flex h-[52px] flex-1 cursor-pointer items-center justify-center gap-[10px] rounded-[14px] border border-white/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.96),rgba(241,245,249,0.92))] text-[#0E0E0E] shadow-[0_16px_32px_rgba(15,23,42,0.14)] transition-all hover:-translate-y-[1px] hover:shadow-[0_20px_38px_rgba(15,23,42,0.18)]"
+      disabled={busy}
+      aria-busy={busy || undefined}
+      aria-label={t('continue_with_google', 'Continue with Google')}
+      className="disabled:opacity-60 flex h-[52px] flex-1 cursor-pointer items-center justify-center gap-[10px] rounded-[14px] border border-white/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.96),rgba(241,245,249,0.92))] text-[#0E0E0E] shadow-[0_16px_32px_rgba(15,23,42,0.14)] transition-all hover:-translate-y-[1px] hover:shadow-[0_20px_38px_rgba(15,23,42,0.18)]"
     >
       <div>
         <svg
@@ -41,6 +69,6 @@ export const GoogleProvider = () => {
         </svg>
       </div>
       <div className="block xs:hidden font-[600]">{t('google', 'Google')}</div>
-    </div>
+    </button>
   );
 };

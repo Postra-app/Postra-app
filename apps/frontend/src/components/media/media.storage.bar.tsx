@@ -5,6 +5,7 @@ import useSWR from 'swr';
 import clsx from 'clsx';
 import { useFetch } from '@gitroom/helpers/utils/custom.fetch';
 import { useT } from '@gitroom/react/translation/get.transation.service.client';
+import { useUser } from '@gitroom/frontend/components/layout/user.context';
 
 const GB = 1024 * 1024 * 1024;
 
@@ -24,6 +25,10 @@ export const formatBytes = (bytes: number): string => {
 export const MediaStorageBar: FC<{ version?: unknown }> = ({ version }) => {
   const fetch = useFetch();
   const t = useT();
+  const user = useUser();
+  // A member cannot change the plan: the link led to Billing's "Purchase
+  // plan" buttons, each refused with 403. The same words, without the link.
+  const Upgrade = user?.role === 'USER' ? 'span' : 'a';
   const { data, mutate } = useSWR<{ used: number; limit: number | null }>(
     'media-storage',
     async () => (await fetch('/media/storage')).json()
@@ -48,16 +53,16 @@ export const MediaStorageBar: FC<{ version?: unknown }> = ({ version }) => {
           })}
         </span>
         {full ? (
-          <a href="/billing" className="text-[#f87171] underline" data-testid="media-storage-full">
+          <Upgrade {...(Upgrade === 'a' ? { href: '/billing' } : {})} className={clsx('text-[#f87171]', Upgrade === 'a' && 'underline')} data-testid="media-storage-full">
             {t(
               'media_storage_full',
               'Your media library is full. Delete files you no longer need, or upgrade your plan.'
             )}
-          </a>
+          </Upgrade>
         ) : nearly ? (
-          <a href="/billing" className="text-[#fbbf24] underline" data-testid="media-storage-nearly">
+          <Upgrade {...(Upgrade === 'a' ? { href: '/billing' } : {})} className={clsx('text-[#fbbf24]', Upgrade === 'a' && 'underline')} data-testid="media-storage-nearly">
             {t('media_storage_nearly', 'Almost full. Upgrade your plan for more space.')}
-          </a>
+          </Upgrade>
         ) : null}
       </div>
       <div

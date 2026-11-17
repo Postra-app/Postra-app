@@ -47,6 +47,11 @@ export class TikTokDto {
   @MaxLength(90)
   title: string;
 
+  // "Upload content to TikTok without posting it" sends the video to the
+  // creator's TikTok inbox, where they choose who sees it: the composer
+  // leaves the field empty and locked, and requiring it refused every such
+  // post with a list of values nobody could pick.
+  @ValidateIf((o) => o.content_posting_method !== 'UPLOAD')
   @IsIn([
     'PUBLIC_TO_EVERYONE',
     'MUTUAL_FOLLOW_FRIENDS',

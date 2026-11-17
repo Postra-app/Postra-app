@@ -314,6 +314,9 @@ export const MediaBox: FC<{
   const addToUpload = useCallback(
     async (e: ChangeEvent<HTMLInputElement>) => {
       const files = Array.from(e.target.files || []);
+      // The same file chosen again (after a refusal, a cancel or a delete)
+      // fired no change event, so "Upload" did nothing.
+      e.target.value = '';
       const totalSize = files.reduce((acc, file) => acc + file.size, 0);
 
       if (totalSize > MAX_UPLOAD_SIZE) {
@@ -896,6 +899,12 @@ export const MultiMediaComponent: FC<{
     if (!dummy) {
       modals.openModal({
         askClose: false,
+        // Studio is a whole workspace: Escape is "deselect" there (the
+        // shortcut sheet says so), and a drag that ends off the canvas lands
+        // on the backdrop. Both closed Studio without a word. It
+        // closes with its own button.
+        closeOnEscape: false,
+        closeOnClickOutside: false,
         title: t('studio_title', 'Studio'),
         size: '80%',
         height: 'min(92vh, 900px)',
@@ -1011,6 +1020,8 @@ export const MultiMediaComponent: FC<{
                           e.stopPropagation();
                           modals.openModal({
                             askClose: false,
+                            closeOnEscape: false,
+                            closeOnClickOutside: false,
                             title: t('design_media_edit', 'Edit design'),
                             size: '80%',
                             height: 'min(92vh, 900px)',
@@ -1048,6 +1059,8 @@ export const MultiMediaComponent: FC<{
                           e.stopPropagation();
                           modals.openModal({
                             askClose: false,
+                            closeOnEscape: false,
+                            closeOnClickOutside: false,
                             title: t('retouch_title', 'Photo retouch'),
                             size: '80%',
                             height: 'min(92vh, 900px)',

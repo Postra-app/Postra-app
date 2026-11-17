@@ -222,6 +222,24 @@ test('Templates: a built-in template fills the canvas', async ({ page }) => {
   await s.clean();
 });
 
+// Typing a word ran the search about three times a second for as long as the
+// word stayed, each request aborted by the next; nothing ever came back.
+// One word, one search, and its results.
+test('Templates: a search runs once and shows what it found', async ({ page }) => {
+  const s = await studio(page);
+  let searches = 0;
+  await page.route('**/api/media/search-templates', (route) => {
+    searches++;
+    return route.fulfill({ json: [{ id: 'promo-modern', score: 0.9 }] });
+  });
+  await s.open('Templates');
+  await page.getByPlaceholder(/Search templates/).fill('sale');
+  await expect(page.getByText('Modern Promo').first()).toBeVisible();
+  await page.waitForTimeout(4_000);
+  expect(searches).toBe(1);
+  await s.clean();
+});
+
 test('Brand Kit opens and loads', async ({ page }) => {
   const s = await studio(page);
   await s.open('Brand Kit');

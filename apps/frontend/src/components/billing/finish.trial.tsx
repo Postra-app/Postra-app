@@ -111,16 +111,33 @@ export const FinishTrial: FC<{ close: () => void }> = (props) => {
     checkFinished();
   }, []);
 
+  // Escape closes it like every other window, except while the payment runs.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && step !== 'working') props.close();
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [step, props.close]);
+
+  // On a phone the 500 px box inside 60 px of padding ran off both edges: no
+  // close button, and the sentence with the amount cut off.
   return (
-    <div className="text-textColor fixed start-0 top-0 bg-primary/80 z-[300] w-full h-full p-[60px] animate-fade justify-center flex bg-black/50">
-      <div>
-        <div className="flex gap-[10px] flex-col w-[500px] h-auto bg-[rgba(15,23,42,0.92)] border-white/10 border-2 rounded-[16px] pb-[20px] px-[20px] relative">
+    <div className="text-textColor fixed start-0 top-0 bg-primary/80 z-[300] w-full h-full p-[60px] phone:p-[16px] overflow-y-auto animate-fade justify-center flex bg-black/50">
+      <div className="max-w-full">
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-label={t('finishing_trial', 'Finishing your trial')}
+          className="flex gap-[10px] flex-col w-[500px] max-w-full h-auto bg-[rgba(15,23,42,0.92)] border-white/10 border-2 rounded-[16px] pb-[20px] px-[20px] relative"
+        >
           <div className="flex">
             <div className="flex-1">
               <TopTitle title={t('finishing_trial', 'Finishing your trial')} />
             </div>
             <button
               onClick={props.close}
+              aria-label={t('close_dialog', 'Close')}
               className="outline-none absolute end-[10px] top-[10px] mantine-UnstyledButton-root mantine-ActionIcon-root bg-primary hover:bg-tableBorder cursor-pointer mantine-Modal-close mantine-1dcetaa"
               type="button"
             >
@@ -169,7 +186,7 @@ export const FinishTrial: FC<{ close: () => void }> = (props) => {
                         'Your card is charged straight away and your plan renews from today.'
                       )}
                     </div>
-                    <div className="flex gap-[10px] mt-[20px]">
+                    <div className="flex gap-[10px] mt-[20px] phone:flex-col">
                       <Button className="flex-1" onClick={finishSubscription}>
                         {amount
                           ? t(
@@ -201,7 +218,7 @@ export const FinishTrial: FC<{ close: () => void }> = (props) => {
                         'Your trial has already ended - your plan is active.'
                       )}
                     </div>
-                    <div className="flex gap-[10px] mt-[20px]">
+                    <div className="flex gap-[10px] mt-[20px] phone:flex-col">
                       <Button className="flex-1" onClick={() => props.close()}>
                         {t('close_dialog', 'Close')}
                       </Button>
@@ -216,7 +233,7 @@ export const FinishTrial: FC<{ close: () => void }> = (props) => {
                         'We could not take the first payment yet. Your bank may need you to confirm it.'
                       )}
                     </div>
-                    <div className="flex gap-[10px] mt-[20px]">
+                    <div className="flex gap-[10px] mt-[20px] phone:flex-col">
                       <Button
                         className="flex-1"
                         onClick={() =>
@@ -241,7 +258,7 @@ export const FinishTrial: FC<{ close: () => void }> = (props) => {
                         'Your trial has ended and the payment has been charged.'
                       )}
                     </div>
-                    <div className="flex gap-[10px] mt-[20px]">
+                    <div className="flex gap-[10px] mt-[20px] phone:flex-col">
                       <Button className="flex-1" onClick={() => window.close()}>
                         {t('close_window', 'Close window')}
                       </Button>

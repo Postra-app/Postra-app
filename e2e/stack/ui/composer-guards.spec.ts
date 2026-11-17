@@ -167,3 +167,52 @@ test('a changed channel setting alone still asks before closing', async ({ page 
   await editor.getByRole('button', { name: 'Close', exact: true }).click();
   await expect(page.getByRole('button', { name: 'Yes, close it!' })).toBeVisible();
 });
+
+// A scheduled post moved to a date in the past was taken for one already
+// published (the check read the date just picked, not the saved one): "This
+// post was already published", and "Just update the post details" left it
+// queued behind its time, where nothing ever picks it up.
+test('a scheduled post moved into the past asks about the date, not about republishing', async ({ page }) => {
+  const now = new Date();
+  test.skip(now.getHours() === 23 && now.getMinutes() > 30, 'needs the rest of today');
+  const when = new Date(now);
+  when.setHours(23, 50, 0, 0);
+  const api = await signedIn('a');
+  const content = `[stack ui] moved to the past ${Date.now()}`;
+  const res = await api.post('/posts', {
+    data: {
+      type: 'schedule',
+      shortLink: false,
+      date: when.toISOString(),
+      tags: [],
+      posts: [
+        {
+          integration: { id: USERS.a.mastodon.id },
+          value: [{ content, image: [] }],
+          settings: { __type: 'mastodon' },
+        },
+      ],
+    },
+  });
+  expect(res.status(), await res.text()).toBe(201);
+  const { group } = (await listPosts(api)).find((p) => p.content.includes(content))!;
+  try {
+    await page.goto(weekOf(when));
+    await page
+      .getByRole('button', { name: `Open post: ${USERS.a.mastodon.name}` })
+      .filter({ hasText: content })
+      .click();
+    const editor = page.getByRole('dialog', { name: 'Post editor' });
+    await editor.getByRole('button', { name: /^Publish date:/ }).click();
+    const picker = page.getByRole('dialog', { name: 'Publish date' });
+    const yesterday = new Date(now.getTime() - 86_400_000).getDate();
+    await picker.locator('button', { hasText: new RegExp(`^${yesterday}$`) }).first().click();
+    await picker.getByRole('button', { name: 'Close' }).click();
+    await editor.getByRole('button', { name: 'Update', exact: true }).click();
+    await expect(page.getByText('This date has passed')).toBeVisible();
+    await expect(page.getByText('This post was already published', { exact: false })).toHaveCount(0);
+  } finally {
+    await api.delete(`/posts/${group}`);
+    await api.dispose();
+  }
+});

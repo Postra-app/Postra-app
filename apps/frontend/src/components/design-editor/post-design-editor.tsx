@@ -20,6 +20,7 @@ import {
   wireStudioIds,
 } from './utils/fabric-studio-metadata';
 import { markAiGenerated } from './utils/ai-provenance';
+import { uploadDesign } from './utils/upload-design';
 import { installStudioFabricControls } from './utils/fabric-controls';
 import { computeSnap, edgesOf, SnapGuide } from './utils/canvas-snapping';
 import { ExportMenu } from './export-menu';
@@ -838,20 +839,11 @@ const PostDesignEditor: FC<PostDesignEditorProps> = ({
           const slide = slides[i];
           if (!slide.canvasJson) continue;
           const blob = await renderSlideToBlob(slide.canvasJson, platform.width, platform.height);
-          const formData = new FormData();
-          formData.append('file', blob, `slide-${i + 1}.jpg`);
-          markAiGenerated(formData, slide.canvasJson);
-          const data = await (
-            await fetch('/media/upload-simple', {
-              method: 'POST',
-              body: formData,
-            })
-          ).json();
-          await fetch(`/media/${data.id}/canvas`, {
-            method: 'PUT',
-            body: JSON.stringify({ canvasJson: slide.canvasJson }),
-          });
-          uploaded.push({ id: data.id, path: data.path });
+          // Every slide in before anything closes: a refused one keeps the
+          // carousel and its draft.
+          uploaded.push(
+            await uploadDesign(fetch, blob, `slide-${i + 1}.jpg`, slide.canvasJson)
+          );
         }
 
         useCarouselStore.getState().exitCarouselMode();
@@ -867,25 +859,16 @@ const PostDesignEditor: FC<PostDesignEditorProps> = ({
         useEditorStore.getState().platform
       );
       const blob = dataUrlToBlob(dataUrl);
-      const formData = new FormData();
-      formData.append('file', blob, 'design.jpg');
-      markAiGenerated(formData, canvasJson);
-
-      const data = await (
-        await fetch('/media/upload-simple', {
-          method: 'POST',
-          body: formData,
-        })
-      ).json();
-
-      await fetch(`/media/${data.id}/canvas`, {
-        method: 'PUT',
-        body: JSON.stringify({ canvasJson }),
-      });
-
-      finishExport([{ id: data.id, path: data.path }]);
+      finishExport([await uploadDesign(fetch, blob, 'design.jpg', canvasJson)]);
     } catch (err) {
-      toaster.show(t('export_failed', 'Export failed. Please try again.'), 'warning');
+      // Studio, the design and its draft stay; only the export did not happen.
+      toaster.show(
+        t(
+          'export_failed_design_kept',
+          'The design was not added. It is still here, so you can try again.'
+        ),
+        'warning'
+      );
     } finally {
       setExporting(false);
     }
@@ -937,6 +920,11 @@ const PostDesignEditor: FC<PostDesignEditorProps> = ({
           body: JSON.stringify({ isTemplate: true }),
         });
       }
+      // In a carousel only the slide on screen was saved: the draft holds
+      // the other slides, and clearing it lost them on the next reload.
+      // It stays until the whole carousel goes out.
+      const carousel = useCarouselStore.getState();
+      if (carousel.isCarouselMode && carousel.slides.length > 1) return;
       draftDoneRef.current = true;
       doneJsonRef.current = fabricRef.current ? JSON.stringify(fabricRef.current.toJSON()) : null;
       clearDraft(orgIdRef.current);
@@ -1264,6 +1252,8 @@ const PostDesignEditor: FC<PostDesignEditorProps> = ({
                     icon: 'save',
                     label: savingToLibrary
                       ? t('saving', 'Saving…')
+                      : carouselSlideCount > 1
+                      ? t('save_slide_to_library_btn', 'Save this slide to library')
                       : t('save_to_library_btn', 'Save to library'),
                     hint: t('save_to_library_hint', 'Save to media library - use it in any post'),
                     disabled: savingToLibrary,

@@ -41,6 +41,7 @@ import { useDrag, useDrop } from 'react-dnd';
 import { Integration, Post, State, Tags } from '@prisma/client';
 import { useAddProvider } from '@gitroom/frontend/components/launches/add.provider.component';
 import { useToaster } from '@gitroom/react/toaster/toaster';
+import { isFetchHandledError } from '@gitroom/helpers/utils/fetch.errors';
 import { useUser } from '@gitroom/frontend/components/layout/user.context';
 import isSameOrAfter from 'dayjs/plugin/isSameOrAfter';
 import isSameOrBefore from 'dayjs/plugin/isSameOrBefore';
@@ -786,6 +787,7 @@ export const CalendarColumn: FC<{
   } = useCalendar();
   const modal = useModals();
   const fetch = useFetch();
+  const toaster = useToaster();
 
   // Use shared post actions hook
   const { editPost, deletePost, copyDebugJson, openStatistics, openMissingRelease } =
@@ -913,16 +915,37 @@ export const CalendarColumn: FC<{
         if (!item.interval) {
           changeDate(item.id, target);
         }
-        const { status } = await fetch(`/posts/${item.id}/date`, {
-          method: 'PUT',
-          body: JSON.stringify({
-            date: target.utc().format('YYYY-MM-DDTHH:mm:ss'),
-            action,
-            // A published post asks first (above); without the flag the server
-            // refuses to put it back in the queue. No effect on queued posts.
-            ...(action === 'schedule' ? { republish: true } : {}),
-          }),
-        });
+        // 403, 429 and 5xx are answered by the app-wide fetch (a toast) and
+        // come back as a rejection, and a dropped connection rejects too:
+        // the tile stayed at the new time while the post kept the old one
+        // and went out then. Every failure puts the tile back.
+        let status: number;
+        try {
+          ({ status } = await fetch(`/posts/${item.id}/date`, {
+            method: 'PUT',
+            body: JSON.stringify({
+              date: target.utc().format('YYYY-MM-DDTHH:mm:ss'),
+              action,
+              // A published post asks first (above); without the flag the
+              // server refuses to put it back in the queue. No effect on
+              // queued posts.
+              ...(action === 'schedule' ? { republish: true } : {}),
+            }),
+          }));
+        } catch (e) {
+          revertDate(item.id, move);
+          reloadCalendarView();
+          if (!isFetchHandledError(e)) {
+            toaster.show(
+              t(
+                'post_move_failed',
+                'The post was not moved. Check your connection and try again.'
+              ),
+              'warning'
+            );
+          }
+          return;
+        }
         // Refused (the post deleted in another tab, a 404): the tile was
         // already moved here and stayed there as if saved.
         if (status >= 400) {

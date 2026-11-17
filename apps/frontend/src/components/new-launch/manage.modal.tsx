@@ -372,12 +372,17 @@ export const ManageModal: FC<AddEditModalProps> = (props) => {
       const saveAs: Record<string, 'draft' | 'schedule' | 'update'> = {};
       const saveTypeOf = (id: string) => saveAs[id] || type;
       const existing = existingPosts.filter((p) => p.integration);
-      // The channels that already went out, or are going out right now.
+      // The channels that already went out, or are going out right now —
+      // judged by the date the post is saved with. Judged by the date just
+      // picked, a scheduled post moved into the past was taken for published:
+      // "This post was already published", and "Just update the post
+      // details" left it queued behind its time, where nothing picks it up.
       const published = existing.filter(
         (p) =>
           p.posts?.[0]?.state === 'PUBLISHED' ||
           (p.posts?.[0]?.state === 'QUEUE' &&
-            dayjs().isAfter(dateOf(p.integration).utc()))
+            !!p.posts?.[0]?.publishDate &&
+            dayjs().isAfter(dayjs(p.posts[0].publishDate)))
       );
       const others = existing.filter((p) => p !== channel);
 

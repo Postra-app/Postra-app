@@ -161,3 +161,35 @@ test('a plan promised to an email shows as waiting, and a comp from Users shows 
     await staff.remove();
   }
 });
+
+// Errors → Copy used the browser's own fetch: it asked the frontend for
+// /admin/errors/<id> (no /api, no session) and always answered "Could not load
+// the error to copy".
+test('Errors → Copy copies the debug code', async ({ page }) => {
+  test.setTimeout(180_000);
+  const prisma = database();
+  const staff = await signInAsAdmin(page, prisma);
+  try {
+    const row = {
+      id: 'stack-error-1',
+      message: 'Media aspect ratio is not supported',
+      platform: 'instagram',
+      postId: 'p1',
+      createdAt: new Date().toISOString(),
+      organization: { id: 'o1', name: 'Corner Cafe', users: [] },
+      post: { id: 'p1' },
+    };
+    await page.route(/\/api\/admin\/errors(\?|$)/, (route) =>
+      route.fulfill({ json: { items: [row], total: 1, page: 1, limit: 20, hasMore: false } })
+    );
+    await page.route('**/api/admin/errors/stack-error-1', (route) =>
+      route.fulfill({ json: { ...row, body: '{"a":1}', post: { id: 'p1', content: 'x' } } })
+    );
+    await page.goto('/admin/errors');
+    await page.getByRole('button', { name: 'Copy', exact: true }).first().click({ timeout: 30_000 });
+    await expect(page.getByText('Debug code copied to clipboard')).toBeVisible();
+  } finally {
+    await staff.remove();
+    await prisma.$disconnect();
+  }
+});

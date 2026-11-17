@@ -344,7 +344,14 @@ export const AddOrEditWebhook: FC<{
                 }
               : {}),
             ...values,
-            ...(!syncLast
+            // The cursor (the newest article already handled) is the
+            // server's to keep. An edit of a feed saved with "sync last =
+            // Yes" sent it empty, and the next run posted the newest
+            // article again on every channel. Sent only for a new
+            // feed or a feed whose address changed.
+            ...(data?.id && values.url === data?.url
+              ? {}
+              : !syncLast
               ? {
                   lastUrl,
                 }

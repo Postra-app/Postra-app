@@ -78,3 +78,21 @@ test('after the trial is paid the app loads the new limits', async ({ page }) =>
   await expect(page.getByText('Your trial has ended and the payment has been charged.')).toBeVisible();
   await expect.poll(() => selfLoads).toBeGreaterThan(before);
 });
+
+// On a phone the window ran off both edges: no close button, the sentence
+// with the amount cut off, and Escape did nothing.
+test('on a phone the whole window fits, and Escape closes it', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  const calls = await routes(page, { finish: true });
+  await page.goto('/billing?finishTrial=true');
+  const dialog = page.getByRole('dialog', { name: 'Finishing your trial' });
+  await expect(dialog.getByText('End your trial now and pay £29 for Pro (monthly)?')).toBeVisible({ timeout: 20_000 });
+  for (const part of [dialog, dialog.getByRole('button', { name: 'Close' }), dialog.getByRole('button', { name: 'End trial and pay £29 now' })]) {
+    const box = (await part.boundingBox())!;
+    expect(box.x).toBeGreaterThanOrEqual(0);
+    expect(box.x + box.width).toBeLessThanOrEqual(390);
+  }
+  await page.keyboard.press('Escape');
+  await expect(dialog).toHaveCount(0);
+  expect(calls).toEqual([]);
+});

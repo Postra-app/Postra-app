@@ -50,7 +50,7 @@ export const AdminSuspendModal: FC<{
       <p className="text-[14px] text-newTextColor/80">
         {t(
           'admin_suspend_explain',
-          `${email} will be signed out everywhere and will not be able to sign in. Their organisations, posts and channels stay as they are; to stop an organisation publishing, disable its channels in the Channels tab.`
+          `${email} will be signed out everywhere and will not be able to sign in. Their organisations, posts and channels stay as they are, and scheduled posts still go out; to stop an organisation publishing, revoke its plan or delete the organisation.`
         )}
       </p>
       <Textarea

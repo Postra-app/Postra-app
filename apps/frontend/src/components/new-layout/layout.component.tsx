@@ -17,6 +17,8 @@ import { useFetch } from '@gitroom/helpers/utils/custom.fetch';
 import { useVariables } from '@gitroom/react/helpers/variable.context';
 import { usePathname, useSearchParams } from 'next/navigation';
 import useSWR from 'swr';
+import { useT } from '@gitroom/react/translation/get.transation.service.client';
+import { Button } from '@gitroom/frontend/components/ui/button';
 import { CheckPayment } from '@gitroom/frontend/components/layout/check.payment';
 import { ToolTip } from '@gitroom/frontend/components/layout/top.tip';
 // media.component drags the whole Uppy suite — keep it out of the app-shell
@@ -65,6 +67,37 @@ const MediaBoxOnRequest = () => {
   return wanted ? <ShowMediaBoxModal /> : null;
 };
 
+const CantLoadPostra = ({
+  retry,
+  retrying,
+}: {
+  retry: () => void;
+  retrying: boolean;
+}) => {
+  const t = useT();
+  return (
+    <div className="flex min-h-screen w-full items-center justify-center p-[16px] text-newTextColor">
+      <div
+        role="alert"
+        className="flex max-w-[440px] flex-col items-center gap-[12px] rounded-[20px] border border-white/10 bg-[rgba(15,23,42,0.82)] p-[28px] text-center"
+      >
+        <div className="text-[20px] font-[600]">
+          {t('cant_load_postra_title', "Can't load Postra")}
+        </div>
+        <div className="text-newTextColor/70">
+          {t(
+            'cant_load_postra',
+            'Postra is not answering right now. Your work and your scheduled posts are safe. Please try again in a moment.'
+          )}
+        </div>
+        <Button loading={retrying} onClick={retry}>
+          {t('try_again', 'Try again')}
+        </Button>
+      </div>
+    </div>
+  );
+};
+
 export const LayoutComponent = ({ children }: { children: ReactNode }) => {
   const fetch = useFetch();
 
@@ -76,7 +109,12 @@ export const LayoutComponent = ({ children }: { children: ReactNode }) => {
   const load = useCallback(async (path: string) => {
     return await (await fetch(path)).json();
   }, []);
-  const { data: user, mutate } = useSWR('/user/self', load, {
+  const {
+    data: user,
+    mutate,
+    error: userError,
+    isValidating: retrying,
+  } = useSWR('/user/self', load, {
     // Back in a tab left open while the plan changed in another one, the page
     // asks again, so Add Channel and the limits follow the new plan (it was
     // Starter on the server with every platform open here).
@@ -98,6 +136,11 @@ export const LayoutComponent = ({ children }: { children: ReactNode }) => {
 
   useFollowOrgChange(user?.orgId);
 
+  // /user/self not answering (a deploy, the database failing over) left a
+  // blank page for good: no words, no button. Say so, and offer a retry.
+  if (!user && userError) {
+    return <CantLoadPostra retry={() => mutate()} retrying={retrying} />;
+  }
   if (!user) return null;
 
   return (

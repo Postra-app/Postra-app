@@ -53,6 +53,7 @@ export const ContinueIntegration: FC<{
   const [twoStepState, setTwoStepState] = useState<TwoStepState | null>(null);
   const [successState, setSuccessState] = useState<SuccessState | null>(null);
   const [isSaving, setIsSaving] = useState(false);
+  const [saveError, setSaveError] = useState('');
   const fireEvents = useFireEvents();
 
   // Which platforms fail to connect, and whether people declined or it broke
@@ -297,6 +298,22 @@ export const ContinueIntegration: FC<{
         data.status !== HttpStatusCode.Created
       ) {
         const errorData = await data.json().catch(() => ({}));
+        // A box unticked on the platform's consent screen: say which
+        // platform and what to do.
+        if (errorData.code === 'not_enough_scopes') {
+          setErrorMessage(
+            t(
+              'connect_missing_permissions',
+              '{{platform}} did not grant every permission Postra needs. Connect again and leave all the boxes ticked.',
+              {
+                platform: providerDisplayName,
+                interpolation: { escapeValue: false },
+              }
+            )
+          );
+          setError(true);
+          return;
+        }
         setErrorMessage(
           errorData.message || errorData.msg || 'Could not add provider'
         );
@@ -372,6 +389,17 @@ export const ContinueIntegration: FC<{
           )
         );
       }
+      // The plan's channel limit: the "Payment required" dialog has been
+      // answered with "Go to billing" (a new tab); this page says what
+      // happened instead of spinning.
+      if (isFetchHandledError(e) && e.status === HttpStatusCode.PaymentRequired) {
+        setErrorMessage(
+          t(
+            'connect_plan_limit',
+            'This channel was not added: your plan has no room for another channel. Upgrade your plan, then connect it again.'
+          )
+        );
+      }
       setError(true);
     });
   }, []);
@@ -393,17 +421,25 @@ export const ContinueIntegration: FC<{
           body: JSON.stringify({ ...modifiedParams, ...data }),
         });
 
+        // A refused save (409: the page is connected to another Postra
+        // account; 400: a permission missing) set the page-wide error, which
+        // the picker drawn on top of it hid: nothing on screen changed. The
+        // reason now shows above the list, and the customer can choose again.
         if (
           response.status !== HttpStatusCode.Ok &&
           response.status !== HttpStatusCode.Created
         ) {
           const errorData = await response.json().catch(() => ({}));
-          setErrorMessage(
-            errorData.message || 'Failed to save channel configuration'
+          setSaveError(
+            errorData.message ||
+              t(
+                'channel_configuration_failed',
+                'Could not save this choice. Please try again.'
+              )
           );
-          setError(true);
           return;
         }
+        setSaveError('');
 
         navigateOrShow(
           `/launches?added=${provider}&msg=Channel connected${
@@ -412,11 +448,20 @@ export const ContinueIntegration: FC<{
           twoStepState.returnURL,
           { kind: 'connected' }
         );
+      } catch (e) {
+        // 403, 429 and 5xx: the app-wide fetch has shown its toast; stay on
+        // the list with a line that says nothing was saved.
+        setSaveError(
+          t(
+            'channel_configuration_failed',
+            'Could not save this choice. Please try again.'
+          )
+        );
       } finally {
         setIsSaving(false);
       }
     },
-    [twoStepState, fetch, modifiedParams, provider, navigateOrShow]
+    [twoStepState, fetch, modifiedParams, provider, navigateOrShow, t]
   );
 
   // The OAuth step already created the channel row; when the picker comes back
@@ -518,6 +563,15 @@ export const ContinueIntegration: FC<{
                 )}
               </p>
             </div>
+
+            {!!saveError && (
+              <div
+                role="alert"
+                className="rounded-[8px] border border-red-500/40 bg-red-500/10 px-[12px] py-[10px] text-[14px] text-red-200"
+              >
+                {saveError}
+              </div>
+            )}
 
             <IntegrationContext.Provider
               value={{

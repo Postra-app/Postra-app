@@ -319,3 +319,28 @@ test('the post waits for a file still uploading', async ({ page }) => {
   await expect.poll(() => sent.length).toBe(1);
   expect(sent[0].posts[0].value[0].image).toHaveLength(1);
 });
+
+// One file the composer does not take (a PDF, a HEIC from an iPhone) cancelled
+// the whole batch: nothing was uploaded, and the toast named only that file.
+// The others go on.
+test('a file the composer does not take leaves the rest of the batch', async ({ page }) => {
+  test.setTimeout(60_000);
+  await openComposer(page, 'bluesky', `[stack ui] mixed batch ${Date.now()}`);
+  const stamp = Date.now();
+  const dataTransfer = await page.evaluateHandle(
+    ({ png, stamp }) => {
+      const bytes = Uint8Array.from(atob(png), (c) => c.charCodeAt(0));
+      const dt = new DataTransfer();
+      dt.items.add(new File([bytes], `a-${stamp}.png`, { type: 'image/png', lastModified: stamp }));
+      dt.items.add(new File([bytes], `b-${stamp}.png`, { type: 'image/png', lastModified: stamp + 1 }));
+      dt.items.add(new File([new Uint8Array([37, 80, 68, 70])], `c-${stamp}.pdf`, { type: 'application/pdf', lastModified: stamp + 2 }));
+      return dt;
+    },
+    { png: PNG, stamp }
+  );
+  const editor = page.locator('.ProseMirror').first();
+  await editor.dispatchEvent('dragenter', { dataTransfer });
+  await editor.dispatchEvent('drop', { dataTransfer });
+  await expect(page.getByText(`c-${stamp}.pdf can't be uploaded here`, { exact: false })).toBeVisible();
+  await expect(attached(page)).toHaveCount(2, { timeout: 15_000 });
+});

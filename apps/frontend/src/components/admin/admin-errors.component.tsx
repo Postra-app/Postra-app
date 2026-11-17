@@ -16,8 +16,8 @@ import {
 import { LoadingComponent } from '@gitroom/frontend/components/layout/loading';
 
 // The list no longer carries `body` or the post content: they were most of its
-// 151 KB per twenty rows, and both are only ever looked at one row at a time
-//. They come from GET /admin/errors/:id instead.
+// 151 KB per twenty rows, and both are only ever looked at one row at a time.
+// They come from GET /admin/errors/:id instead.
 interface ErrorRow {
   id: string;
   message: string;
@@ -204,6 +204,9 @@ const useErrorsList = (params: {
 };
 
 export const AdminErrorsComponent: FC = () => {
+  // Without it `fetch` was the browser's own: Copy asked :54000/admin/errors
+  // (no /api, no session) and always said it could not load.
+  const fetch = useFetch();
   const modal = useModals();
   const toaster = useToaster();
 

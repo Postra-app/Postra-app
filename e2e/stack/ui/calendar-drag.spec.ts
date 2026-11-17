@@ -13,13 +13,16 @@ import { dragWithMouse, quietSlot, weekOf } from './ui-helpers';
 // server answers. When the server refused (the post deleted in another tab,
 // a 404), the tile stayed in the new slot as if it had been saved.
 
-const SLOT = quietSlot(4);
-
-test('a move the server refuses puts the post back', async ({
+// A 404 was already put back; a 403, 429 or 5xx (answered by the app-wide
+// fetch, which rejects) and a dropped connection were not: the tile stayed at
+// the new time and the post went out at the old one.
+for (const [answer, days] of [[404, 4], [502, 8], ['abort', 9]] as const) {
+test(`a move the server refuses puts the post back (${answer})`, async ({
   page,
 }) => {
+  const SLOT = quietSlot(days);
   const api = await signedIn('a');
-  const content = `[stack ui] refused drag ${Date.now()}`;
+  const content = `[stack ui] refused drag ${answer} ${Date.now()}`;
   const created = await api.post('/posts', {
     data: {
       type: 'draft',
@@ -45,8 +48,9 @@ test('a move the server refuses puts the post back', async ({
     let refused = 0;
     await page.route(`**/posts/${id}/date`, (route) => {
       refused++;
+      if (answer === 'abort') return route.abort('connectionreset');
       return route.fulfill({
-        status: 404,
+        status: answer,
         contentType: 'application/json',
         body: '{"message":"Post not found"}',
       });
@@ -80,11 +84,17 @@ test('a move the server refuses puts the post back', async ({
     expect(
       (await (await api.get(`/posts/${id}`)).json()).posts[0].publishDate
     ).toBe(SLOT.toISOString());
+    if (answer === 'abort') {
+      await expect(page.getByText('The post was not moved. Check your connection and try again.')).toBeVisible();
+    }
   } finally {
     await api.delete(`/posts/${group}`);
     await api.dispose();
   }
 });
+}
+
+const SLOT = quietSlot(4);
 
 test('the old week answering late does not replace the new week', async ({
   page,

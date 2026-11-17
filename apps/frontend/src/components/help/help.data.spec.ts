@@ -17,6 +17,12 @@ describe('Help text matches the app', () => {
     expect(tab('plugs').description).not.toContain('LinkedIn Pages');
   });
 
+  // Link shortening is not in Settings.
+  it('does not promise link shortening in Settings', () => {
+    expect(JSON.stringify(help.settingsSections(help.english))).not.toContain('link shortening');
+    expect(JSON.stringify(en)).not.toContain('link shortening');
+  });
+
   it('says where a failed post shows its error', () => {
     const failed = FAQ_ITEMS.find((f) => f.question.startsWith('A post failed to publish'))!;
     expect(failed.answer).not.toContain('Open the post from the Calendar to see the error');

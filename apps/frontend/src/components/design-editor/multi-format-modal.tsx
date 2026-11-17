@@ -12,7 +12,7 @@ import {
   dataUrlToBlob,
   FormatRender,
 } from './utils/multi-format-renderer';
-import { markAiGenerated } from './utils/ai-provenance';
+import { uploadDesign } from './utils/upload-design';
 
 interface MultiFormatModalProps {
   canvasRef: MutableRefObject<fabric.Canvas | null>;
@@ -133,24 +133,12 @@ export const MultiFormatModal: FC<MultiFormatModalProps> = ({
         const r = renders[i];
         // eslint-disable-next-line no-await-in-loop
         const blob = dataUrlToBlob(r.uploadDataUrl);
-        const formData = new FormData();
-        formData.append('file', blob, `${r.platform.key}.jpg`);
-        markAiGenerated(formData, r.canvasJson);
+        // Stops at the first refusal: a full library answered every format
+        // with its own "Payment required" and an empty attachment.
         // eslint-disable-next-line no-await-in-loop
-        const data = await (
-          await fetch('/media/upload-simple', {
-            method: 'POST',
-            body: formData,
-          })
-        ).json();
-        if (r.canvasJson) {
-          // eslint-disable-next-line no-await-in-loop
-          await fetch(`/media/${data.id}/canvas`, {
-            method: 'PUT',
-            body: JSON.stringify({ canvasJson: r.canvasJson }),
-          });
-        }
-        uploaded.push({ id: data.id, path: data.path });
+        uploaded.push(
+          await uploadDesign(fetch, blob, `${r.platform.key}.jpg`, r.canvasJson)
+        );
         setUploadProgress({ done: i + 1, total: renders.length });
       }
       setMedia(uploaded);
@@ -158,7 +146,10 @@ export const MultiFormatModal: FC<MultiFormatModalProps> = ({
       closeParent();
     } catch {
       toaster.show(
-        t('multi_format_error', 'Rendering failed. Please try again.'),
+        t(
+          'export_failed_design_kept',
+          'The design was not added. It is still here, so you can try again.'
+        ),
         'warning'
       );
       setUploading(false);

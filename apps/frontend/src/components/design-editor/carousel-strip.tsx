@@ -7,6 +7,7 @@ import { useEditorStore } from './editor.store';
 import { useT } from '@gitroom/react/translation/get.transation.service.client';
 import { StudioIcon } from '@gitroom/frontend/components/studio/studio-icons';
 import { loadCanvasFonts } from './utils/font-loading';
+import { areYouSure } from '@gitroom/frontend/components/layout/new-modal';
 
 const THUMB_W = 80;
 const THUMB_H = 100;
@@ -115,10 +116,65 @@ export const CarouselStrip: FC<CarouselStripProps> = ({ fabricRef }) => {
     setDragIndex(null);
   };
 
-  const handleApplyLayoutToAll = () => {
+  // These three replace or drop slides, and nothing undoes them: "Apply
+  // layout" wrote the current slide over every other one (texts and photos
+  // included, Ctrl+Z did not bring them back), and "Exit" and a slide's 16 px
+  // cross took the work with one click. Each asks first.
+  const handleApplyLayoutToAll = async () => {
     if (!fabricRef.current) return;
     const json = JSON.stringify(fabricRef.current.toJSON());
+    if (
+      !(await areYouSure({
+        destructive: true,
+        title: t('carousel_copy_all_title', 'Copy this slide to all slides?'),
+        description: t(
+          'carousel_copy_all_confirm',
+          'Every other slide is replaced by a copy of this one, its text and images included. This cannot be undone.'
+        ),
+        approveLabel: t('carousel_copy_all_approve', 'Copy to all slides'),
+        cancelLabel: t('cancel', 'Cancel'),
+      }))
+    ) {
+      return;
+    }
     applyLayoutToAll(json);
+  };
+  const handleExit = async () => {
+    if (
+      !(await areYouSure({
+        destructive: true,
+        title: t('carousel_exit_title', 'Leave carousel mode?'),
+        description: t(
+          'carousel_exit_confirm',
+          'Only the slide on screen stays. The other slides are deleted.'
+        ),
+        approveLabel: t('carousel_exit_approve', 'Leave and delete the other slides'),
+        cancelLabel: t('cancel', 'Cancel'),
+      }))
+    ) {
+      return;
+    }
+    exitCarouselMode();
+  };
+  const handleDeleteSlide = async (i: number) => {
+    if (
+      !(await areYouSure({
+        destructive: true,
+        title: t('carousel_delete_slide_title', 'Delete Slide {n}?').replace(
+          '{n}',
+          String(i + 1)
+        ),
+        description: t(
+          'carousel_delete_slide_confirm',
+          'The slide and everything on it are deleted.'
+        ),
+        approveLabel: t('carousel_delete_slide', 'Delete this slide'),
+        cancelLabel: t('cancel', 'Cancel'),
+      }))
+    ) {
+      return;
+    }
+    deleteSlide(i);
   };
 
   return (
@@ -161,13 +217,13 @@ export const CarouselStrip: FC<CarouselStripProps> = ({ fabricRef }) => {
           <button
             onClick={handleApplyLayoutToAll}
             className="px-2 py-1 text-xs rounded bg-newColColor text-textColor hover:bg-white/[0.08] transition-colors"
-            title={t('carousel_apply_all_hint', 'Copy the current slide layout to all slides (keeps brand consistency)')}
+            title={t('carousel_copy_all_hint', 'Replace every other slide with a copy of this one')}
           >
             <StudioIcon name="templates" size={13} />
-            {t('carousel_apply_all', 'Apply layout')}
+            {t('carousel_copy_all', 'Copy this slide to all')}
           </button>
           <button
-            onClick={exitCarouselMode}
+            onClick={handleExit}
             className="px-2 py-1 text-xs rounded bg-newColColor text-textColor hover:bg-red-500 hover:text-white transition-colors"
             title={t('carousel_exit_hint', 'Exit carousel mode (slides will be lost)')}
           >
@@ -216,9 +272,9 @@ export const CarouselStrip: FC<CarouselStripProps> = ({ fabricRef }) => {
                   type="button"
                   onClick={(e) => {
                     e.stopPropagation();
-                    deleteSlide(i);
+                    handleDeleteSlide(i);
                   }}
-                  className="absolute top-0 right-0 bg-black/70 text-white text-[11px] w-4 h-4 rounded-bl hover:bg-red-500 flex items-center justify-center"
+                  className="absolute top-0 right-0 bg-black/70 text-white text-[11px] w-6 h-6 rounded-bl hover:bg-red-500 flex items-center justify-center"
                   title={t('carousel_delete_slide', 'Delete this slide')}
                   aria-label={t('carousel_delete_slide', 'Delete this slide')}
                 >

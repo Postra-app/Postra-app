@@ -176,7 +176,16 @@ export const TemplatesPanel: FC<TemplatesPanelProps> = ({ canvas }) => {
     [fetch, t, toaster]
   );
 
+  // The search effect reads these through refs. With them in its
+  // dependencies, `showAiError` (a new function on every render) restarted
+  // it on each render: the "searching" state alone re-ran it, every request
+  // was aborted by the next one about three times a second, and no result
+  // ever came back.
+  const searchDeps = useRef({ fetch, showAiError, t });
+  searchDeps.current = { fetch, showAiError, t };
+
   useEffect(() => {
+    const { fetch, showAiError, t } = searchDeps.current;
     if (query.trim().length < MIN_SEARCH_LEN) {
       setSearchHits(null);
       searchAbort.current?.abort();
@@ -244,7 +253,7 @@ export const TemplatesPanel: FC<TemplatesPanelProps> = ({ canvas }) => {
       window.clearTimeout(id);
       ctrl.abort();
     };
-  }, [query, fetch, isPl, showAiError, t]);
+  }, [query, isPl]);
 
   useEffect(() => () => searchAbort.current?.abort(), []);
 
