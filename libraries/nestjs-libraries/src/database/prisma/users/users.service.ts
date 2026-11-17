@@ -243,7 +243,9 @@ export class UsersService {
       [...deletedOrgIds].flatMap((id) => grants.get(id) ?? [])
     );
 
-    return { deleted: true };
+    // The organisations that really went: one that someone joined before the
+    // count under its lock stayed, although it was a candidate.
+    return { deleted: true, deletedOrgIds: [...deletedOrgIds] };
   }
 
   /**

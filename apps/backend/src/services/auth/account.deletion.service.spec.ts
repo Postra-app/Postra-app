@@ -35,6 +35,7 @@ function setup(user: Record<string, unknown> | null, sent = true) {
     getSoleOwnedOrganizations: jest.fn(async () => ['org-1']),
     deleteAccount: jest.fn(async () => {
       calls.push('deleteAccount');
+      return { deleted: true, deletedOrgIds: ['org-1'] };
     }),
   };
   const stripe = {
@@ -283,6 +284,19 @@ describe('the audit trail of a deletion', () => {
       action: 'account.delete',
       userId: 'user-1',
       metadata: { confirmedBy: 'email', organizationsDeleted: ['org-1'] },
+    });
+  });
+
+  it('only the organisations the deletion really removed are recorded', async () => {
+    // org-1 looked owned alone, but someone joined it before the deleting
+    // transaction counted again under its lock, so it stayed.
+    const { service, users, audit } = setup(local);
+    users.deleteAccount.mockResolvedValueOnce({ deleted: true, deletedOrgIds: [] } as any);
+    await service.request('user-1', PASSWORD);
+    expect(audit.record).toHaveBeenCalledWith({
+      action: 'account.delete',
+      userId: 'user-1',
+      metadata: { confirmedBy: 'password', organizationsDeleted: [] },
     });
   });
 

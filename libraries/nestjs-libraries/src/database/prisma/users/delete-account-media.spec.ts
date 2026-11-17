@@ -119,7 +119,7 @@ describe('deleting an account', () => {
       { path: 'https://cdn.example/b.jpg', thumbnail: null },
     ]);
 
-    await expect(service.deleteAccount('user-1')).resolves.toEqual({
+    await expect(service.deleteAccount('user-1')).resolves.toMatchObject({
       deleted: true,
     });
     expect(removeFile).toHaveBeenCalledTimes(2);
@@ -239,7 +239,11 @@ describe('deleting an account while someone joins the organisation', () => {
     removeFile.mockClear();
     tx.userOrganization.count.mockResolvedValue(2);
 
-    await service.deleteAccount('user-1');
+    // The audit row of the deletion names what really went: nothing here.
+    await expect(service.deleteAccount('user-1')).resolves.toEqual({
+      deleted: true,
+      deletedOrgIds: [],
+    });
 
     expect(tx.$queryRaw).toHaveBeenCalled();
     expect(tx.organization.delete).not.toHaveBeenCalled();

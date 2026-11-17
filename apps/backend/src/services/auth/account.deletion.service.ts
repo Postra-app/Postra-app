@@ -191,13 +191,16 @@ export class AccountDeletionService {
       );
     }
 
-    await this._userService.deleteAccount(userId, expectedTokenVersion);
+    const { deletedOrgIds } = await this._userService.deleteAccount(
+      userId,
+      expectedTokenVersion
+    );
     // The account and its organisations are gone; this row says when and
     // how. Ids only: the address went with the account.
     await this._audit.record({
       action: 'account.delete',
       userId,
-      metadata: { confirmedBy, organizationsDeleted: soleOrgIds },
+      metadata: { confirmedBy, organizationsDeleted: deletedOrgIds },
     });
     // Another device signed in as this user kept reading the shared org for
     // up to the 30 s the auth context is cached.
