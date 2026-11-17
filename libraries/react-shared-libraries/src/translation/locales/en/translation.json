@@ -1815,6 +1815,7 @@
   "refresh_channel": "Refresh Channel",
   "analytics_no_data_refresh": "No analytics data yet - tap to refresh the channel",
   "comment_not_sent": "The comment was not sent. Please try again.",
+  "comments_team_only": "Only the team that made this post can comment here. To share feedback, reply to whoever sent you this link.",
   "webhook_new_secret_title": "Generate a new signing secret?",
   "webhook_new_secret_description": "Deliveries are signed with the new secret from now on. A receiver that still checks the old one will reject them until you update it.",
   "webhook_new_secret_done": "New signing secret generated",

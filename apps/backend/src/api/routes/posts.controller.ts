@@ -84,6 +84,17 @@ export class PostsController {
     return { ask: this._shortLinkService.askShortLinkedin(body.messages) };
   }
 
+  // The shared preview asks before it shows the comment form: only the
+  // organisation that made the post can comment, and someone else who opened
+  // the link got the form and then "The comment was not sent".
+  @Get('/:id/can-comment')
+  async canComment(
+    @GetOrgFromRequest() org: Organization,
+    @Param('id') id: string
+  ) {
+    return { canComment: await this._postsService.isOrganisationPost(org.id, id) };
+  }
+
   @Post('/:id/comments')
   @Throttle({ default: { ttl: 300_000, limit: 30 } })
   async createComment(

@@ -53,3 +53,48 @@ test('the client preview shows no creation badge, and Close is in English', asyn
     await api.dispose();
   }
 });
+
+// Someone signed in to another organisation (the client who made an account to
+// comment) got the comment form, and every comment answered "The comment was
+// not sent". They now get a sentence instead; the post's own team still gets
+// the form.
+test('only the post\'s organisation gets the comment form on the preview', async ({ page, browser }) => {
+  const api = await signedIn('a');
+  const content = `[stack ui] preview comments ${Date.now()}`;
+  const created = await api.post('/posts', {
+    data: {
+      type: 'draft',
+      shortLink: false,
+      date: quietSlot(5).toISOString(),
+      tags: [],
+      posts: [
+        {
+          type: 'draft',
+          integration: { id: USERS.a.channel.id },
+          value: [{ content, image: [] }],
+          settings: { __type: 'bluesky' },
+        },
+      ],
+    },
+  });
+  expect(created.status(), await created.text()).toBe(201);
+  const { id, group } = (await listPosts(api)).find((p) => p.content.includes(content))!;
+
+  const other = await browser.newContext({ storageState: `${__dirname}/../.auth/b.json` });
+  try {
+    const otherPage = await other.newPage();
+    await otherPage.goto(`/p/${id}`);
+    await expect(otherPage.getByText(content)).toBeVisible();
+    await expect(otherPage.getByTestId('comments-team-only')).toBeVisible();
+    await expect(otherPage.getByPlaceholder('Add a comment...')).toHaveCount(0);
+
+    await page.goto(`/p/${id}`);
+    await expect(page.getByText(content)).toBeVisible();
+    await expect(page.getByPlaceholder('Add a comment...')).toBeVisible();
+    await expect(page.getByTestId('comments-team-only')).toHaveCount(0);
+  } finally {
+    await other.close();
+    await api.delete(`/posts/${group}`);
+    await api.dispose();
+  }
+});

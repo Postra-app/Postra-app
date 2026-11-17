@@ -1815,6 +1815,7 @@
   "refresh_channel": "Odśwież kanał",
   "analytics_no_data_refresh": "Brak danych statystyk - dotknij, aby odświeżyć kanał",
   "comment_not_sent": "Komentarz nie został wysłany. Spróbuj ponownie.",
+  "comments_team_only": "Komentować mogą tu tylko osoby z zespołu, który przygotował ten post. Uwagi przekaż w odpowiedzi osobie, która wysłała Ci ten link.",
   "webhook_new_secret_title": "Wygenerować nowy sekret podpisu?",
   "webhook_new_secret_description": "Od teraz wysyłki będą podpisywane nowym sekretem. Odbiorca, który sprawdza stary, będzie je odrzucał, dopóki go nie zaktualizujesz.",
   "webhook_new_secret_done": "Wygenerowano nowy sekret podpisu",
