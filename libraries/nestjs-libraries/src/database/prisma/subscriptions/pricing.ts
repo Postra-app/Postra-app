@@ -72,7 +72,7 @@ const PRO_PROVIDERS = [
   'mastodon',
   'telegram',
   // Google Business Profile (posts on Google Search and Maps): from Pro, a
-  // reason for a local business to step up from Starter (K., 2026-11-14).
+  // reason for a local business to step up from Starter.
   'gmb',
 ];
 const BUSINESS_PROVIDERS = [

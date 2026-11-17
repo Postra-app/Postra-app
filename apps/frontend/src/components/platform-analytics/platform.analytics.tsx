@@ -47,7 +47,7 @@ const platformLabel: Record<string, string> = {
   'linkedin-page': 'LinkedIn Page',
   tiktok: 'TikTok',
   youtube: 'YouTube',
-  gmb: 'Google Business',
+  gmb: 'Google Business Profile',
   pinterest: 'Pinterest',
   threads: 'Threads',
   x: 'X',

@@ -46,8 +46,7 @@ describe('pricing matrix', () => {
     // Instagram counts once: through a Page and without one is the same
     // account, which cannot be connected twice (same.account.ts). LinkedIn
     // Pages is in the allowlist but still "Coming soon" (integration.manager
-    // enabledProviders): when it opens, Business gets its 16th slot and the
-    // page says 16 platforms (K., 2026-11-17, with Google Business Profile).
+    // enabledProviders): when it opens, Business gets its 16th slot.
     const comingSoon = new Set(['linkedin-page']);
     const platforms = new Set(
       pricing.ULTIMATE.allowedProviders.filter((p) => !comingSoon.has(p)).map(platformOf)
