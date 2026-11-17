@@ -61,6 +61,9 @@ export const ManageModal: FC<AddEditModalProps> = (props) => {
   const ref = useRef(null);
   const existingData = useExistingData();
   const [loading, setLoading] = useState(false);
+  // "Post now" opened by its arrow: on a touch screen there is no hover, and
+  // a tap on the main button schedules at once.
+  const [postNowOpen, setPostNowOpen] = useState(false);
   const toaster = useToaster();
   const fireEvents = useFireEvents();
   const modal = useModals();
@@ -1239,13 +1242,23 @@ export const ManageModal: FC<AddEditModalProps> = (props) => {
               </button>
             )}
             {!addEditSets && (
-              <div className="group cursor-pointer relative">
+              <div className="group cursor-pointer relative flex">
                 <button
                   disabled={
                     selectedIntegrations.length === 0 || loading || locked
                   }
                   onClick={schedule('schedule')}
-                  className="text-white relative min-w-[180px] btnSub disabled:cursor-not-allowed disabled:opacity-80 outline-none gap-[8px] flex justify-center items-center h-[44px] rounded-[8px] bg-[#38bdf8] ps-[20px] pe-[16px]"
+                  className={clsx(
+                    'text-white relative btnSub disabled:cursor-not-allowed disabled:opacity-80 outline-none gap-[8px] flex justify-center items-center h-[44px] bg-[#38bdf8] ps-[20px]',
+                    // The arrow beside it hides while it is disabled
+                    // (global.scss `.btnSub:disabled + button`).
+                    dummy ||
+                      selectedIntegrations.length === 0 ||
+                      loading ||
+                      locked
+                      ? 'min-w-[180px] rounded-[8px] pe-[16px]'
+                      : 'min-w-[144px] rounded-s-[8px] pe-[12px]'
+                  )}
                 >
                   {loading && (
                     <div className="absolute left-[50%] top-[50%] -translate-y-[50%] -translate-x-[50%]">
@@ -1268,12 +1281,28 @@ export const ManageModal: FC<AddEditModalProps> = (props) => {
                       ? t('schedule', 'Schedule')
                       : t('update', 'Update')}
                   </div>
-                  {!dummy && (
-                    <div className="flex justify-center items-center h-[20px] w-[20px] pt-[4px] arrow-change">
-                      <DropdownArrowSmallIcon className="group-hover:rotate-180 text-white" />
-                    </div>
-                  )}
                 </button>
+                {!dummy && (
+                  <button
+                    type="button"
+                    aria-label={t('more_publish_options', 'More publishing options')}
+                    aria-haspopup="true"
+                    aria-expanded={postNowOpen}
+                    data-testid="post-now-toggle"
+                    disabled={
+                      selectedIntegrations.length === 0 || loading || locked
+                    }
+                    onClick={() => setPostNowOpen((open) => !open)}
+                    className="btnSub disabled:cursor-not-allowed disabled:opacity-80 outline-none flex justify-center items-center h-[44px] w-[36px] rounded-e-[8px] bg-[#38bdf8] border-s border-white/25 pt-[4px]"
+                  >
+                    <DropdownArrowSmallIcon
+                      className={clsx(
+                        'group-hover:rotate-180 text-white',
+                        postNowOpen && 'rotate-180'
+                      )}
+                    />
+                  </button>
+                )}
 
                 {!dummy && (
                   <button
@@ -1281,7 +1310,11 @@ export const ManageModal: FC<AddEditModalProps> = (props) => {
                     disabled={
                       selectedIntegrations.length === 0 || loading || locked
                     }
-                    className="rounded-[8px] z-[300] disabled:cursor-not-allowed disabled:opacity-80 hidden group-hover:flex absolute bottom-[100%] -left-[12px] p-[12px] w-[206px] bg-white/[0.03]"
+                    data-testid="post-now"
+                    className={clsx(
+                      'rounded-[8px] z-[300] disabled:cursor-not-allowed disabled:opacity-80 hidden group-hover:flex group-focus-within:flex absolute bottom-[100%] -left-[12px] p-[12px] w-[206px] bg-white/[0.03]',
+                      postNowOpen && '!flex'
+                    )}
                   >
                     <div className="text-white rounded-[8px] bg-[#D82D7E] h-[44px] w-full flex justify-center items-center post-now">
                       {t('post_now', 'Post now')}
