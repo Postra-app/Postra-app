@@ -2323,5 +2323,16 @@
   "activate_sign_in_subtitle": "Zaloguj się hasłem, które podałeś przy rejestracji, aby dokończyć aktywację konta.",
   "activate_password_required": "Wpisz hasło.",
   "activate_choose_new_password": "To nie ja zakładałem konto albo nie pamiętam hasła",
-  "activation_check_spam": "Nie widzisz go? Sprawdź folder spam lub wiadomości-śmieci."
+  "activation_check_spam": "Nie widzisz go? Sprawdź folder spam lub wiadomości-śmieci.",
+  "billing_admins_only_title": "Planem zarządza administrator",
+  "billing_admins_only": "Plan i dane płatności może zmienić tylko administrator tej organizacji. Poproś go o to.",
+  "billing_load_failed_title": "Nie udało się wczytać Twojego planu",
+  "billing_load_failed": "Nic nie zostało zmienione. Spróbuj ponownie za chwilę.",
+  "try_again": "Spróbuj ponownie",
+  "subscription_not_cancelled": "Subskrypcja nie została anulowana.",
+  "feedback_optional": "Opinia (opcjonalnie)",
+  "cant_load_postra_title": "Nie udało się wczytać Postry",
+  "cant_load_postra": "Postra chwilowo nie odpowiada. Twoja praca i zaplanowane posty są bezpieczne. Spróbuj ponownie za chwilę.",
+  "connect_plan_limit": "Kanał nie został dodany: Twój plan nie ma miejsca na kolejny kanał. Zmień plan, a potem połącz kanał ponownie.",
+  "channel_configuration_failed": "Nie udało się zapisać tego wyboru. Spróbuj ponownie."
 }

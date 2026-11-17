@@ -51,6 +51,12 @@ export const Button: FC<
   return (
     <button
       {...props}
+      // Disabled while loading, not only dimmed: pointer-events kept the mouse
+      // off, but Enter in a form or on the focused button sent the request
+      // again (three sign-ins for three presses, two plan changes for a
+      // double click).
+      disabled={props.disabled || loading}
+      aria-busy={loading || undefined}
       type={props.type || 'button'}
       className={clsx(
         buttonClass(v, size),

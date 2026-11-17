@@ -48,9 +48,9 @@ test('a late monthly quote does not replace the yearly one', async ({ page }) =>
     if (period === 'MONTHLY') {
       monthlyOut++;
       await held;
-      return route.fulfill({ json: { price: 11.11 } });
+      return route.fulfill({ json: { price: 11.11, renewsOn: '2026-12-09T09:35:51.000Z' } });
     }
-    return route.fulfill({ json: { price: 222.22 } });
+    return route.fulfill({ json: { price: 222.22, renewsOn: '2026-12-09T09:35:51.000Z' } });
   });
   await page.goto('/billing');
   await expect.poll(() => monthlyOut, { timeout: 20_000 }).toBeGreaterThan(0);

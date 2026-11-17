@@ -64,18 +64,31 @@ export const Prorate: FC<{
   const calculatePrice = useDebouncedCallback(async () => {
     const request = ++latest.current;
     setLoading(true);
-    const { price: quoted } = await (
-      await fetch('/billing/prorate', {
+    // No amount unless Stripe gave one: a failed quote comes back as
+    // {price: 0} and read as "(Pay Today £0.00)", and a refused request (429)
+    // left the spinner turning for good.
+    let quoted: number | false = false;
+    try {
+      const response = await fetch('/billing/prorate', {
         method: 'POST',
         body: JSON.stringify({
           period,
           billing: pack,
         }),
-      })
-    ).json();
-    if (request !== latest.current) return;
-    setPrice(quoted);
-    setLoading(false);
+      });
+      const quote = response.ok ? await response.json() : {};
+      quoted =
+        typeof quote?.price === 'number' && quote?.renewsOn
+          ? quote.price
+          : false;
+    } catch {
+      quoted = false;
+    } finally {
+      if (request === latest.current) {
+        setPrice(quoted);
+        setLoading(false);
+      }
+    }
   }, 500);
   useEffect(() => {
     setPrice(false);
@@ -211,18 +224,18 @@ const Info: FC<{
       <div>
         <Textarea
           className="bg-white/[0.03]"
-          label={t('feedback', 'Feedback')}
+          label={t('feedback_optional', 'Feedback (optional)')}
           name="feedback"
           disableForm={true}
           value={feedback}
           onChange={(e) => setFeedback(e.target.value)}
         />
       </div>
+      {/* Feedback is optional (Krzysztof, 17 XI 2026): "cancel any time,
+          without talking to anyone" meant 20 characters of it first. */}
       <div>
-        <Button disabled={feedback.length < 20} onClick={cancel}>
-          {feedback.length < 20
-            ? t('please_add_at_least', 'Please add at least 20 characters')
-            : t('cancel_subscription', 'Cancel Subscription')}
+        <Button onClick={cancel}>
+          {t('cancel_subscription', 'Cancel Subscription')}
         </Button>
       </div>
     </div>
@@ -348,7 +361,7 @@ export const MainBillingComponent: FC<{
         description: upgrade
           ? `${t(
               'plan_change_upgrade',
-              'Upgrade to {{plan}} now? Today: {{amount}} for the rest of this billing month (what is left of {{current}} is taken off).',
+              'Upgrade to {{plan}} now? Today: {{amount}} for the rest of this billing period (what is left of {{current}} is taken off).',
               { plan, amount: today, current: planLabel(current) }
             )} ${renewal}`.trim()
           : `${t(
@@ -413,6 +426,7 @@ export const MainBillingComponent: FC<{
     return subscription?.subscriptionTier;
   }, [subscription, initialChannels, monthlyOrYearly, period]);
   const reactivating = useRef(false);
+  const checkingOut = useRef(false);
   const moveToCheckout = useCallback(
     (billing: 'STANDARD' | 'PRO' | 'FREE', reactivate = false) =>
       async () => {
@@ -422,6 +436,12 @@ export const MainBillingComponent: FC<{
         // ran the finally below, which released the first press's guard, so
         // a third press went through.
         if (reactivate && reactivating.current) return;
+        // The same for a plan change or cancelling: a double click opened two
+        // confirmation windows, one on the other, and both went through
+        // (two POST /billing/subscribe). Held until this press is answered.
+        if (!reactivate && checkingOut.current) return;
+        const tookCheckout = !reactivate;
+        if (tookCheckout) checkingOut.current = true;
         try {
           if (reactivate) {
             reactivating.current = true;
@@ -494,38 +514,62 @@ export const MainBillingComponent: FC<{
               const checkDiscount = discountResponse.ok
                 ? await discountResponse.json()
                 : {};
+              // Closing a window of this flow (cross, Escape, the backdrop)
+              // left it waiting for good and said nothing: the customer
+              // believed the plan was cancelled and was charged again. A
+              // closed window now says that nothing was cancelled.
+              const notCancelled = () =>
+                toast.show(
+                  t(
+                    'subscription_not_cancelled',
+                    'Your subscription was not cancelled.'
+                  ),
+                  'warning'
+                );
               if (checkDiscount.offerCoupon) {
-                const info = await new Promise((res) => {
-                  modal.openModal({
-                    title: 'Before you cancel',
-                    withCloseButton: true,
-                    classNames: {
-                      modal: 'bg-transparent text-textColor',
-                    },
-                    children: <Accept resolve={res} />,
-                  });
-                });
+                const accepted = await new Promise<boolean | 'closed'>(
+                  (res) => {
+                    modal.openModal({
+                      title: 'Before you cancel',
+                      withCloseButton: true,
+                      onClose: () => res('closed'),
+                      classNames: {
+                        modal: 'bg-transparent text-textColor',
+                      },
+                      children: <Accept resolve={res} />,
+                    });
+                  }
+                );
 
                 modal.closeAll();
 
-                if (info) {
+                if (accepted === 'closed') {
+                  notCancelled();
+                  return;
+                }
+                if (accepted) {
                   return;
                 }
               }
 
-              const info = await new Promise((res) => {
+              const info = await new Promise<string | null>((res) => {
                 modal.openModal({
                   title: t(
                     'we_are_sorry_to_see_you_go',
                     'We are sorry to see you go :('
                   ),
                   withCloseButton: true,
+                  onClose: () => res(null),
                   classNames: {
                     modal: 'bg-transparent text-textColor',
                   },
                   children: <Info proceed={(e) => res(e)} />,
                 });
               });
+              if (info === null) {
+                notCancelled();
+                return;
+              }
 
               setLoading(true);
               const cancelResponse = await fetch('/billing/cancel', {
@@ -689,6 +733,7 @@ export const MainBillingComponent: FC<{
         } finally {
           // Only the press that took the guard gives it back.
           if (reactivate) reactivating.current = false;
+          if (tookCheckout) checkingOut.current = false;
           setLoading(false);
           // An upgrade or cancelling drops a waiting downgrade.
           refreshPending();

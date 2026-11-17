@@ -21,7 +21,7 @@ test('changing plan asks first, with a fresh amount and the renewal', async ({ p
   await expect(page.getByText('(Pay Today £50.00)').last()).toBeVisible({ timeout: 20_000 });
   clicked = true;
   await page.getByRole('button', { name: /Purchase plan/ }).last().click();
-  await expect(page.getByText(/Upgrade to Business now\? Today: £49\.68 for the rest of this billing month \(what is left of Pro is taken off\)\. From 9 November: £79 a month\./)).toBeVisible();
+  await expect(page.getByText(/Upgrade to Business now\? Today: £49\.68 for the rest of this billing period \(what is left of Pro is taken off\)\. From 9 November: £79 a month\./)).toBeVisible();
   expect(subscribe).toEqual([]);
 
   await page.getByRole('button', { name: 'Cancel', exact: true }).last().click();
