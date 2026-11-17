@@ -1,6 +1,7 @@
 'use client';
 
 import { FC, useCallback, useEffect, useMemo, useState } from 'react';
+import { rememberConnectMessage } from '@gitroom/frontend/components/launches/connect.message';
 import { platformName } from '@gitroom/frontend/components/launches/platform.name';
 import { isNavigableUrl } from '@gitroom/frontend/components/layout/safe.url';
 import { HttpStatusCode } from 'axios';
@@ -289,7 +290,8 @@ export const ContinueIntegration: FC<{
 
       if (data.status === HttpStatusCode.NotAcceptable) {
         const { msg, returnURL } = await data.json();
-        navigateOrShow(`/launches?msg=${msg}`, returnURL, { kind: 'failed', message: msg });
+        rememberConnectMessage(msg);
+        navigateOrShow(`/launches?msg=${encodeURIComponent(msg)}`, returnURL, { kind: 'failed', message: msg });
         return;
       }
 

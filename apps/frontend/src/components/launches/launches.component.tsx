@@ -1,6 +1,7 @@
 'use client';
 
 import { AddProviderButton } from '@gitroom/frontend/components/launches/add.provider.component';
+import { connectMessageFromUrl } from '@gitroom/frontend/components/launches/connect.message';
 import { FC, useCallback, useEffect, useMemo, useState } from 'react';
 import SafeImage from '@gitroom/react/helpers/safe.image';
 import { groupBy, orderBy } from 'lodash';
@@ -452,14 +453,22 @@ export const LaunchesComponent = () => {
     if (typeof window === 'undefined') {
       return;
     }
-    if (search.get('msg')) {
-      toast.show(search.get('msg')!, 'success');
+    const notice = connectMessageFromUrl(
+      search,
+      t('channel_connected', 'Channel connected')
+    );
+    if (notice) {
+      toast.show(notice.text, notice.kind);
+    }
+    // Only to our own pages: '*' handed the message to whatever site opened
+    // this window.
+    if (notice?.kind === 'warning') {
       window?.opener?.postMessage(
         {
-          msg: search.get('msg')!,
+          msg: notice.text,
           success: false,
         },
-        '*'
+        window.location.origin
       );
     }
     if (search.get('added')) {
@@ -469,7 +478,7 @@ export const LaunchesComponent = () => {
           msg: t('channel_added', 'Channel added'),
           success: true,
         },
-        '*'
+        window.location.origin
       );
     }
     // Only the OAuth popup closes itself, after it has told its opener. A tab
