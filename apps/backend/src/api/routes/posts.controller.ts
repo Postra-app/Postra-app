@@ -29,6 +29,7 @@ import { CheckPolicies } from '@gitroom/backend/services/auth/permissions/permis
 import { ApiTags } from '@nestjs/swagger';
 import { GeneratorDto } from '@gitroom/nestjs-libraries/dtos/generator/generator.dto';
 import { CreateGeneratedPostsDto } from '@gitroom/nestjs-libraries/dtos/generator/create.generated.posts.dto';
+import { SeparatePostsDto } from '@gitroom/nestjs-libraries/dtos/posts/separate.posts.dto';
 import { AgentGraphService } from '@gitroom/nestjs-libraries/agent/agent.graph.service';
 import { Response } from 'express';
 import { GetUserFromRequest } from '@gitroom/nestjs-libraries/user/user.from.request';
@@ -357,7 +358,7 @@ export class PostsController {
   @CheckPolicies([AuthorizationActions.Create, Sections.AI])
   async separatePosts(
     @GetOrgFromRequest() org: Organization,
-    @Body() body: { content: string; len: number }
+    @Body() body: SeparatePostsDto
   ) {
     return this._postsService.separatePosts(body.content, body.len, org.id);
   }
