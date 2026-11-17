@@ -61,3 +61,9 @@ describe('selectAdaptTargets', () => {
     expect(selectAdaptTargets([a, b], [a, b])).toEqual([]);
   });
 });
+
+describe('aiPlainText strips nested tags completely', () => {
+  it('leaves no tag behind a broken one', () => {
+    expect(aiPlainText('<p>a<scr<b>ipt>b</p>')).not.toMatch(/<script/i);
+  });
+});
