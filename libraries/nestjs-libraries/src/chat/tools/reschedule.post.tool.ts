@@ -3,11 +3,18 @@ import { createTool } from '@mastra/core/tools';
 import { Injectable } from '@nestjs/common';
 import z from 'zod';
 import { checkAuth } from '@gitroom/nestjs-libraries/chat/auth.context';
-import { PendingActionService } from '@gitroom/nestjs-libraries/chat/pending-action.service';
+import {
+  confirmationSummary,
+  PendingActionService,
+} from '@gitroom/nestjs-libraries/chat/pending-action.service';
+import { PostFactsReader } from '@gitroom/nestjs-libraries/chat/post-facts.reader';
 
 @Injectable()
 export class ReschedulePostTool implements AgentToolInterface {
-  constructor(private _pendingActionService: PendingActionService) {}
+  constructor(
+    private _pendingActionService: PendingActionService,
+    private _postFacts: PostFactsReader
+  ) {}
   name = 'reschedulePost';
 
   run() {
@@ -35,7 +42,7 @@ export class ReschedulePostTool implements AgentToolInterface {
         },
       },
       outputSchema: z.object({
-        status: z.literal('awaiting_confirmation'),
+        status: z.enum(['awaiting_confirmation', 'not_found']),
         token: z.string(),
         summary: z.string(),
         id: z.string(),
@@ -48,11 +55,21 @@ export class ReschedulePostTool implements AgentToolInterface {
           (context?.requestContext as any)?.get('organization') as string
         ).id;
 
-        const { id, date, summary } = inputData as {
-          id: string;
-          date: string;
-          summary: string;
-        };
+        const { id, date } = inputData as { id: string; date: string };
+        // The card says which post moves and from when to when, read from
+        // the post itself; the model's own sentence is not shown.
+        const post = await this._postFacts.byId(id, organizationId);
+        if (!post) {
+          return {
+            status: 'not_found' as const,
+            token: '',
+            summary: 'No post with this id in this organisation.',
+            id,
+            date,
+            expiresInMinutes: 0,
+          };
+        }
+        const summary = confirmationSummary('reschedulePost', [post], date);
         const { token, expiresInMinutes } =
           await this._pendingActionService.create({
             kind: 'reschedulePost',

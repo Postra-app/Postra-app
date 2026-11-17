@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { randomBytes } from 'crypto';
 import { ioRedis } from '@gitroom/nestjs-libraries/redis/redis.service';
+import { htmlToText } from '@gitroom/helpers/utils/html.to.text';
 
 /**
  * Destructive agent tools do not act; they park what they would have done here
@@ -16,10 +17,61 @@ export type PendingActionKind = 'deletePost' | 'reschedulePost';
 export interface PendingAction {
   kind: PendingActionKind;
   organizationId: string;
-  /** What the agent told the user it was about to do. Shown on the card. */
+  /**
+   * What the card says. Written by the server from the post itself
+   * (confirmationSummary), never by the model: the card must describe what
+   * Approve will do, and the model's sentence could name another post.
+   */
   summary: string;
   payload: Record<string, string>;
 }
+
+type PostFacts = {
+  publishDate?: Date | string | null;
+  content?: string | null;
+  integration?: { name?: string | null; providerIdentifier?: string | null } | null;
+};
+
+const when = (date?: Date | string | null) => {
+  if (!date) return '';
+  const d = new Date(date);
+  if (Number.isNaN(d.getTime())) return '';
+  return `${d.toISOString().slice(0, 16).replace('T', ' ')} UTC`;
+};
+
+const opening = (content?: string | null) => {
+  const text = htmlToText(content || '').replace(/\s+/g, ' ').trim();
+  return text.length > 80 ? `${text.slice(0, 80)}…` : text;
+};
+
+const channel = (post: PostFacts) =>
+  `${post.integration?.providerIdentifier || 'channel'} "${
+    post.integration?.name || ''
+  }"`;
+
+/**
+ * The card's text, from the rows Approve will act on. `posts` are the
+ * group's posts (delete) or the one post (reschedule).
+ */
+export const confirmationSummary = (
+  kind: PendingActionKind,
+  posts: PostFacts[],
+  newDate?: string
+) => {
+  const first = posts[0];
+  const text = opening(first?.content);
+  const quote = text ? `: "${text}"` : '';
+  if (kind === 'reschedulePost') {
+    return `Move the post on ${channel(first)} from ${
+      when(first?.publishDate) || 'no date'
+    } to ${when(newDate) || newDate}${quote}`;
+  }
+  const channels = posts.map(channel).filter((c, i, all) => all.indexOf(c) === i);
+  const date = when(first?.publishDate);
+  return `Delete the post on ${channels.join(', ')}${
+    date ? ` scheduled for ${date}` : ''
+  }${quote}`;
+};
 
 /** Long enough to read the card and think, short enough to not linger. */
 export const PENDING_ACTION_TTL_SECONDS = 10 * 60;

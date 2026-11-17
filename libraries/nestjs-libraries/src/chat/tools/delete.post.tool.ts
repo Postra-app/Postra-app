@@ -3,11 +3,18 @@ import { createTool } from '@mastra/core/tools';
 import { Injectable } from '@nestjs/common';
 import z from 'zod';
 import { checkAuth } from '@gitroom/nestjs-libraries/chat/auth.context';
-import { PendingActionService } from '@gitroom/nestjs-libraries/chat/pending-action.service';
+import {
+  confirmationSummary,
+  PendingActionService,
+} from '@gitroom/nestjs-libraries/chat/pending-action.service';
+import { PostFactsReader } from '@gitroom/nestjs-libraries/chat/post-facts.reader';
 
 @Injectable()
 export class DeletePostTool implements AgentToolInterface {
-  constructor(private _pendingActionService: PendingActionService) {}
+  constructor(
+    private _pendingActionService: PendingActionService,
+    private _postFacts: PostFactsReader
+  ) {}
   name = 'deletePost';
 
   run() {
@@ -34,7 +41,7 @@ export class DeletePostTool implements AgentToolInterface {
         },
       },
       outputSchema: z.object({
-        status: z.literal('awaiting_confirmation'),
+        status: z.enum(['awaiting_confirmation', 'not_found']),
         token: z.string(),
         summary: z.string(),
         group: z.string(),
@@ -46,10 +53,23 @@ export class DeletePostTool implements AgentToolInterface {
           (context?.requestContext as any)?.get('organization') as string
         ).id;
 
-        const { group, summary } = inputData as {
-          group: string;
-          summary: string;
-        };
+        const { group } = inputData as { group: string };
+        // The card says what Approve will delete, read from the posts
+        // themselves; the model's own sentence is not shown.
+        const posts = await this._postFacts.byGroup(
+          organizationId,
+          group
+        );
+        if (!posts?.length) {
+          return {
+            status: 'not_found' as const,
+            token: '',
+            summary: 'No post with this group id in this organisation.',
+            group,
+            expiresInMinutes: 0,
+          };
+        }
+        const summary = confirmationSummary('deletePost', posts);
         const { token, expiresInMinutes } =
           await this._pendingActionService.create({
             kind: 'deletePost',
