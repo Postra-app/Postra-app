@@ -40,6 +40,7 @@ async function fetchMediaResponse(
 // streaming gigabytes — with or without Content-Length — filled the backend's
 // memory for every user.
 export const URL_IMPORT_MAX_BYTES = 100 * 1024 * 1024;
+export const MEDIA_FETCH_MAX_BYTES = 1024 * 1024 * 1024;
 export async function readResponseCapped(
   response: Awaited<ReturnType<typeof fetch>>,
   maxBytes = URL_IMPORT_MAX_BYTES
@@ -68,7 +69,9 @@ export async function fetchMediaBuffer(
   timeoutMs = 30_000
 ): Promise<Buffer> {
   const response = await fetchMediaResponse(url, timeoutMs);
-  return Buffer.from(await response.arrayBuffer());
+  // The address comes from the post: counted while it arrives, up to the
+  // largest file Postra accepts (a 1 GB video).
+  return readResponseCapped(response, MEDIA_FETCH_MAX_BYTES);
 }
 
 // For sinks that need the content type as well (e.g. re-uploading the media

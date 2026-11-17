@@ -5,6 +5,7 @@ import sharp, { type Sharp } from 'sharp';
 import { readFile } from 'fs/promises';
 import { join, normalize } from 'path';
 import { fetch } from 'undici';
+import { readResponseCapped } from '@gitroom/nestjs-libraries/media/fetch.media.buffer';
 import { fromBuffer as fileTypeFromBuffer } from '@gitroom/nestjs-libraries/upload/file.type';
 import { parseChat } from '@gitroom/nestjs-libraries/openai/parse-chat';
 import { isSafePublicHttpsUrl } from '@gitroom/nestjs-libraries/dtos/webhooks/webhook.url.validator';
@@ -189,10 +190,11 @@ export class RetouchService {
     if (Number(res.headers.get('content-length') || 0) > MAX_SOURCE_BYTES) {
       throw new HttpException('This photo is too large to retouch', 413);
     }
-    const buffer = Buffer.from(await res.arrayBuffer());
-    if (buffer.length > MAX_SOURCE_BYTES) {
+    // Counted while it arrives: a response without Content-Length was read
+    // whole before its size was looked at.
+    const buffer = await readResponseCapped(res, MAX_SOURCE_BYTES).catch(() => {
       throw new HttpException('This photo is too large to retouch', 413);
-    }
+    });
     return buffer;
   }
 

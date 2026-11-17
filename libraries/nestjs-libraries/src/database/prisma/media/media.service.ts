@@ -1,3 +1,4 @@
+import { readResponseCapped } from '@gitroom/nestjs-libraries/media/fetch.media.buffer';
 import { HttpException, Injectable, Logger } from '@nestjs/common';
 import { posterFor } from '@gitroom/nestjs-libraries/videos/poster/video.poster';
 import { createHash } from 'crypto';
@@ -646,10 +647,11 @@ export class MediaService {
     if (declared && declared > maxBytes) {
       throw new HttpException('Pixabay asset exceeds size limit', 502);
     }
-    const buffer = Buffer.from(await res.arrayBuffer());
-    if (buffer.length > maxBytes) {
+    // Counted while it arrives, so a response without Content-Length stops
+    // at the cap instead of being read whole first.
+    const buffer = await readResponseCapped(res as any, maxBytes).catch(() => {
       throw new HttpException('Pixabay asset exceeds size limit', 502);
-    }
+    });
     return { res, buffer };
   }
 

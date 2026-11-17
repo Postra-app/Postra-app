@@ -21,6 +21,7 @@ import pLimit from 'p-limit';
 // render falls back to a plain gradient. The upload storages already do this;
 // keep it here too if an upstream sync reintroduces the global fetch.
 import { fetch } from 'undici';
+import { readResponseCapped } from '@gitroom/nestjs-libraries/media/fetch.media.buffer';
 
 // This box is small (3.7 GiB, whole backend in one process). Don't let libvips
 // retain decoded images between renders — a branded-draft render now composites
@@ -50,6 +51,8 @@ const renderLimit = pLimit(Number(process.env.DESIGN_RENDER_CONCURRENCY) || 2);
  * Studio from the persisted `PostDesignSpec` via the existing browser renderer,
  * so the design stays fully editable without hand-authoring Fabric JSON.
  */
+export const DESIGN_IMAGE_MAX_BYTES = 20 * 1024 * 1024;
+
 @Injectable()
 export class DesignRenderService {
   async renderDesignToPng(
@@ -294,7 +297,8 @@ export class DesignRenderService {
         signal: AbortSignal.timeout(10_000),
       });
       if (!res.ok) return null;
-      return Buffer.from(await res.arrayBuffer());
+      // A logo or a background, not a stream without an end.
+      return await readResponseCapped(res, DESIGN_IMAGE_MAX_BYTES);
     } catch {
       return null;
     }
