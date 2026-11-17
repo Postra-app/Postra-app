@@ -233,6 +233,7 @@ export class BillingController {
   // the store for the price and shows these only to an organisation that has
   // no plan.
   @Get('/apple/plans')
+  @Throttle({ default: { ttl: 300_000, limit: 60 } })
   async applePlans(
     @GetOrgFromRequest() org: Organization,
     @GetUserFromRequest() user: User
@@ -317,7 +318,9 @@ export class BillingController {
   }
 
   // A lower plan waiting for the next billing period.
+  // Two Stripe reads per call, on every visit to Billing.
   @Get('/pending-change')
+  @Throttle({ default: { ttl: 300_000, limit: 60 } })
   pendingChange(@GetOrgFromRequest() org: Organization) {
     return this._stripeService.pendingChange(org.id);
   }
