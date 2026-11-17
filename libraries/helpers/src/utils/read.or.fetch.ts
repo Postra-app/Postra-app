@@ -44,6 +44,27 @@ export const isAllowedUrl = (
 
 export const READ_OR_FETCH_MAX_BYTES = 60 * 1024 * 1024;
 
+// A redirect is a new request: the host it points at has to pass the same
+// check, or one allowed host that redirects would let us fetch any address,
+// internal ones included.
+export const refuseRedirectOutsideAllowedHosts = (options: {
+  href?: string;
+  protocol?: string;
+  hostname?: string;
+  host?: string;
+  port?: string | number;
+  path?: string;
+}) => {
+  const target =
+    options.href ||
+    `${options.protocol}//${options.hostname || options.host}${
+      options.port ? `:${options.port}` : ''
+    }${options.path || '/'}`;
+  if (!isAllowedUrl(target)) {
+    throw new Error('readOrFetch: blocked redirect to untrusted URL');
+  }
+};
+
 export const readOrFetch = async (path: string) => {
   if (path.startsWith('http')) {
     if (!isAllowedUrl(path)) {
@@ -55,6 +76,7 @@ export const readOrFetch = async (path: string) => {
         method: 'GET',
         responseType: 'arraybuffer',
         maxRedirects: 2,
+        beforeRedirect: refuseRedirectOutsideAllowedHosts,
         timeout: 30_000,
         // A body has an end: the largest picture or thumbnail any platform
         // takes is far below this.

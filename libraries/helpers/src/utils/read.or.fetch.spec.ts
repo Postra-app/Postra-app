@@ -31,3 +31,51 @@ describe('readOrFetch hosts', () => {
     expect(isAllowedUrl('https://anywhere.example/a.png', {})).toBe(false);
   });
 });
+
+describe('readOrFetch redirects', () => {
+  const realEnv = process.env;
+  beforeEach(() => {
+    process.env = { ...realEnv, ...env };
+  });
+  afterEach(() => {
+    process.env = realEnv;
+  });
+
+  // An allowed host that answers with a redirect must not take the request
+  // anywhere else: each hop is checked like the first address.
+  it('refuses a redirect from an allowed host to any other address', () => {
+    const { refuseRedirectOutsideAllowedHosts } = require('./read.or.fetch');
+    expect(() =>
+      refuseRedirectOutsideAllowedHosts({
+        protocol: 'http:',
+        hostname: '169.254.169.254',
+        path: '/latest/meta-data/',
+      })
+    ).toThrow('blocked redirect');
+    expect(() =>
+      refuseRedirectOutsideAllowedHosts({ href: 'https://evil.example/a.png' })
+    ).toThrow('blocked redirect');
+    expect(() =>
+      refuseRedirectOutsideAllowedHosts({
+        protocol: 'https:',
+        hostname: 'cdn.postra.co.uk',
+        path: '/2026/11/17/a.png',
+      })
+    ).not.toThrow();
+  });
+
+  it('hands that check to the HTTP client for every fetch', async () => {
+    jest.resetModules();
+    const axios = jest.fn().mockResolvedValue({ data: Buffer.from('x') });
+    jest.doMock('axios', () => ({ __esModule: true, default: axios }));
+    const { readOrFetch, refuseRedirectOutsideAllowedHosts } = require('./read.or.fetch');
+    await readOrFetch('https://cdn.postra.co.uk/2026/11/17/a.png');
+    expect(axios).toHaveBeenCalledWith(
+      expect.objectContaining({
+        maxRedirects: 2,
+        beforeRedirect: refuseRedirectOutsideAllowedHosts,
+      })
+    );
+    jest.dontMock('axios');
+  });
+});
