@@ -61,3 +61,34 @@ describe('Business Profile channel without a location', () => {
     });
   });
 });
+
+// The composer offers a "Call" button without a link field (Google rings the
+// number on the business profile), but the post only got a button when it had
+// a link, so "Call" was dropped without a word.
+describe('Business Profile call to action', () => {
+  const sent = async (settings: Record<string, unknown>) => {
+    const provider = new GmbProvider();
+    const fetch = jest.fn(async () => ({
+      json: async () => ({ name: 'accounts/1/locations/2/localPosts/9', state: 'LIVE' }),
+    }));
+    (provider as any).fetch = fetch;
+    await provider.post(
+      'accounts/1/locations/2',
+      'token',
+      [{ id: 'p1', message: 'Open on Sunday', settings, media: [] }] as any
+    );
+    return JSON.parse((fetch.mock.calls[0] as any)[1].body);
+  };
+
+  it('"Call" goes to Google without a link', async () => {
+    expect((await sent({ callToActionType: 'CALL' })).callToAction).toEqual({ actionType: 'CALL' });
+  });
+
+  it('a button that opens a link goes with its link, and is left out without one', async () => {
+    expect(
+      (await sent({ callToActionType: 'BOOK', callToActionUrl: 'https://example.com/book' })).callToAction
+    ).toEqual({ actionType: 'BOOK', url: 'https://example.com/book' });
+    expect((await sent({ callToActionType: 'BOOK' })).callToAction).toBeUndefined();
+    expect((await sent({ callToActionType: 'NONE' })).callToAction).toBeUndefined();
+  });
+});

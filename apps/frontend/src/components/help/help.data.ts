@@ -337,6 +337,27 @@ const CHANNEL_SOURCE: ChannelGuide[] = [
     ],
   },
   {
+    identifier: 'gmb',
+    name: 'Google Business Profile',
+    connectType: 'oauth',
+    steps: [
+      'Click "Add Channel", pick Google Business Profile, sign in with the Google account that manages your business profile and allow access.',
+      'Choose the business location to post to. Each location is a channel of its own.',
+    ],
+    gotchas: [
+      'The business must be verified on Google. Locations your Google account does not manage are not listed.',
+      'Google checks every post. A post it refuses under its content policy shows as failed in Postra.',
+      'Google Business Profile is on Pro and Business.',
+    ],
+    composer: [
+      'Post type: update, event (title, start and end date, optional times) or offer (optional coupon code, redeem link and terms).',
+      'Optional button: Book, Order online, Shop, Learn more or Sign up with a link, or Call, which rings the number on your business profile.',
+      'One photo per post.',
+      'Text limit: 1,500 characters.',
+      'First comments and threads are not available on Google Business Profile.',
+    ],
+  },
+  {
     identifier: 'slack',
     name: 'Slack',
     connectType: 'oauth',

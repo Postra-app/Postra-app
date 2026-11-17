@@ -52,7 +52,7 @@ export interface PricingInterface {
 // a Facebook Page and without one: one platform, two logins.
 // Pinterest is there too: visual small businesses live on it
 // and every rival offers it on its cheapest plan. Pro adds video and text-first
-// platforms and LinkedIn Pages (post as the company); X (our X API volume is
+// platforms, LinkedIn Pages (post as the company) and Google Business Profile; X (our X API volume is
 // capped), Discord, Slack and WordPress stay Business-only, so Business is
 // every platform.
 const STARTER_PROVIDERS = [
@@ -71,6 +71,9 @@ const PRO_PROVIDERS = [
   'bluesky',
   'mastodon',
   'telegram',
+  // Google Business Profile (posts on Google Search and Maps): from Pro, a
+  // reason for a local business to step up from Starter.
+  'gmb',
 ];
 const BUSINESS_PROVIDERS = [
   ...PRO_PROVIDERS,

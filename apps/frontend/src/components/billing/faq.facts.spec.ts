@@ -25,6 +25,7 @@ const NAMES: Record<string, string> = {
   bluesky: 'Bluesky',
   mastodon: 'Mastodon',
   telegram: 'Telegram',
+  gmb: 'Google Business Profile',
   discord: 'Discord',
   pinterest: 'Pinterest',
   slack: 'Slack',

@@ -30,7 +30,7 @@ describe('planFeatures', () => {
     expect(pro).toContain(
       // Only platforms a customer can connect today, like the landing's
       // "6 channels on 10 platforms" (no "(soon)").
-      'On Facebook, Instagram, TikTok, LinkedIn, Pinterest, YouTube, Threads, Bluesky, Mastodon, Telegram'
+      'On Facebook, Instagram, TikTok, LinkedIn, Pinterest, YouTube, Threads, Bluesky, Mastodon, Telegram, Google Business Profile'
     );
     // K. 14 XI: Starter 4, Pro 8, Business 15 (were 3, 6, 15).
     expect(pro).toContain('8 channels');

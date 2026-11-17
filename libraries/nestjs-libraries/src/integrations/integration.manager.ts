@@ -108,6 +108,10 @@ const enabledProviders = new Set([
   // Slack: our app is publicly distributed (no Slack review needed outside
   // the Marketplace), so any workspace can install it. Business only.
   'slack',
+  // Google Business Profile: Google approved our project for the Business
+  // Profile APIs on 2026-11-17, and its scope (business.manage) is not a
+  // sensitive one, so no further Google verification. From Pro.
+  'gmb',
 ]);
 
 // Platforms on their way in: still waiting for the platform's review, or for
@@ -116,9 +120,7 @@ const enabledProviders = new Set([
 // on production to test them and to record the review video. Move one to
 // enabledProviders once it is approved and proven.
 const previewProviders = new Set<string>([
-  // Google Business Profile: its API needs Google's approval, and the
-  // request needs a video of the integration working on production.
-  'gmb',
+  // None today. Google Business Profile left on 2026-11-17 (API approved).
 ]);
 
 // Organisations that get the preview platforms the way a super admin does,
