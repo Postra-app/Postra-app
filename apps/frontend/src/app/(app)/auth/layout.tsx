@@ -1,4 +1,5 @@
 export const dynamic = 'force-dynamic';
+import { StandaloneFeedback } from '@gitroom/frontend/components/layout/standalone.feedback';
 import { ReactNode } from 'react';
 import type { Metadata } from 'next';
 
@@ -21,6 +22,7 @@ export default async function AuthLayout({
   return (
     <div className="relative flex min-h-screen w-screen flex-col gap-[14px] overflow-hidden bg-[radial-gradient(circle_at_top_left,rgba(56,189,248,0.14),transparent_30%),radial-gradient(circle_at_bottom_right,rgba(167,139,250,0.14),transparent_32%),linear-gradient(180deg,#0a0e1a,#0f172a_42%,#111827)] p-[14px] text-white md:flex-row">
       <ReturnUrlComponent />
+      <StandaloneFeedback />
       <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_20%_15%,rgba(56,189,248,0.06),transparent_20%),radial-gradient(circle_at_80%_80%,rgba(167,139,250,0.08),transparent_24%)]" />
       <div className="pointer-events-none absolute inset-0 opacity-[0.05] [background-image:radial-gradient(rgba(255,255,255,0.75)_0.6px,transparent_0.6px)] [background-size:18px_18px]" />
       <div className="relative flex flex-1 flex-col rounded-[28px] border border-white/10 bg-[linear-gradient(180deg,rgba(15,23,42,0.86),rgba(10,14,26,0.95))] p-[12px] text-white shadow-[0_36px_90px_rgba(2,6,23,0.42)] backdrop-blur-2xl md:w-[560px] md:flex-none lg:w-[640px]">

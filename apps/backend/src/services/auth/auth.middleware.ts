@@ -3,6 +3,7 @@ import {
   Injectable,
   NestMiddleware,
   Optional,
+  ServiceUnavailableException,
 } from '@nestjs/common';
 import { AuditService } from '@gitroom/nestjs-libraries/database/prisma/audit/audit.service';
 import { Request, Response, NextFunction } from 'express';
@@ -93,6 +94,7 @@ export class AuthMiddleware implements NestMiddleware {
     if (!auth) {
       throw new HttpForbiddenException();
     }
+    let verified = false;
     try {
       // Verify the JWT signature only. Never trust authorization-relevant
       // claims (id, isSuperAdmin, activated) from the token body — always
@@ -123,6 +125,9 @@ export class AuthMiddleware implements NestMiddleware {
       if ((payload as any).purpose || (payload as any).expires) {
         throw new HttpForbiddenException();
       }
+      // From here on the token itself is good: a failure is ours, not the
+      // session's (see the catch below).
+      verified = true;
 
       // Mark the authenticated human as seen — the admin, when a session is
       // impersonating, since an admin looking around is not the customer being
@@ -321,6 +326,15 @@ export class AuthMiddleware implements NestMiddleware {
       // response, which also clears the session cookie.
       if (err instanceof HttpException) {
         throw err;
+      }
+      // A valid token whose check could not be finished (the database or
+      // Redis refused, a pool ran dry, RDS failing over) is not a bad
+      // session. Answering 401 cleared the cookie and signed every active
+      // customer out at once; 503 keeps the session for when it is back.
+      if (verified) {
+        throw new ServiceUnavailableException(
+          'Postra is temporarily unavailable. Please try again in a moment.'
+        );
       }
       throw new HttpForbiddenException();
     }

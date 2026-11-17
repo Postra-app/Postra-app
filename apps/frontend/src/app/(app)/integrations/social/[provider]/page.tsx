@@ -34,6 +34,17 @@ export default async function Page(
     );
   }
 
+  // The same sign-in cancelled at Google (`?error=access_denied`, no code)
+  // ended on "Could not add provider" with no way back to signing in, and
+  // counted as a failed channel connection. Back to the sign-in page.
+  if (
+    typeof searchParams?.state === 'string' &&
+    searchParams.state.startsWith('auth-') &&
+    !searchParams?.code
+  ) {
+    redirect('/auth/login');
+  }
+
   const get = (await cookies()).get('auth');
   return <ContinueIntegration searchParams={searchParams} provider={provider} logged={!!get?.name} />;
 }
