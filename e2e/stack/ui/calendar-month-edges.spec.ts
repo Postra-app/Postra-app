@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { listPosts, signedIn } from '../helpers';
+import { signedIn } from '../helpers';
 import { USERS } from '../seed';
 
 // The month view draws six weeks, so the first days of the next month are on
@@ -32,7 +32,13 @@ test('the month view shows posts on the days of the next month it draws', async 
     },
   });
   expect(created.status(), await created.text()).toBe(201);
-  const { group } = (await listPosts(api)).find((p) => p.content.includes(content))!;
+  // listPosts looks 30 days ahead; this post is further out.
+  const window = await api.get(
+    `/posts?startDate=${new Date(edge.getTime() - 86400000).toISOString()}&endDate=${new Date(edge.getTime() + 86400000).toISOString()}`
+  );
+  const group = ((await window.json()).p as { g: string; c: string }[]).find((p) =>
+    p.c.includes(content)
+  )!.g;
 
   try {
     const last = new Date(month.getFullYear(), month.getMonth() + 1, 0);
