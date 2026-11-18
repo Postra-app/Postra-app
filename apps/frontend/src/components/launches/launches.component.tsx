@@ -455,7 +455,7 @@ export const LaunchesComponent = () => {
     }
     const notice = connectMessageFromUrl(
       search,
-      t('channel_connected', 'Channel connected')
+      t('channel_connected', 'Channel Connected!')
     );
     if (notice) {
       toast.show(notice.text, notice.kind);

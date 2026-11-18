@@ -27,6 +27,7 @@ describe('global ValidationPipe', () => {
   });
 
   it('still refuses a body that breaks the DTO', async () => {
-    await expect(run({ fullname: 'K' })).rejects.toThrow();
+    // One character is a name now (Li, Ng); blank is not.
+    await expect(run({ fullname: '  ' })).rejects.toThrow();
   });
 });
