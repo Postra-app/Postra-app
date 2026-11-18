@@ -966,10 +966,14 @@ const PostDesignEditor: FC<PostDesignEditorProps> = ({
     try {
       await saveDesignToLibrary(false);
       // This version is in the library now: no warning about it until the
-      // design changes again. The draft itself is still written as usual (a
-      // carousel's other slides live only there).
-      libraryCoveredSigRef.current = currentDraftSigRef.current?.() ?? null;
-      setSaveState(null);
+      // design changes again. The draft itself is still written as usual.
+      // A carousel saves only the slide on screen: its other slides live only
+      // in the draft, so the warning stays.
+      const carousel = useCarouselStore.getState();
+      if (!(carousel.isCarouselMode && carousel.slides.length > 1)) {
+        libraryCoveredSigRef.current = currentDraftSigRef.current?.() ?? null;
+        setSaveState(null);
+      }
       toaster.show(
         t(
           'saved_to_library',

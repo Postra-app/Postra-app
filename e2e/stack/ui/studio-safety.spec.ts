@@ -219,3 +219,27 @@ test('opening a file in Studio keeps the unfinished design', async ({ page }) =>
   });
   expect(kept).toBe(unfinished);
 });
+
+// A carousel saves only the slide on screen to the library: the warning about
+// a design the browser cannot keep stays, the other slides live nowhere else.
+test('saving one slide of a carousel keeps the warning while the browser cannot keep it', async ({ page }) => {
+  await page.addInitScript(() => {
+    const setItem = Storage.prototype.setItem;
+    Storage.prototype.setItem = function (key: string, value: string) {
+      if (key.startsWith('postra:studio-draft:')) throw new DOMException('full', 'QuotaExceededError');
+      return setItem.call(this, key, value);
+    };
+  });
+  await carousel(page);
+  const banner = page.getByRole('alert').filter({ hasText: 'Save it to your library' });
+  await expect
+    .poll(async () => {
+      await page.evaluate(() => window.dispatchEvent(new Event('pagehide')));
+      return banner.isVisible();
+    })
+    .toBe(true);
+  await page.getByRole('button', { name: 'Export', exact: true }).first().click();
+  await page.getByText(/^Save (this slide )?to library$/).click();
+  await expect(page.getByText('Saved to media library - you can use it in any post.')).toBeVisible();
+  await expect(banner).toBeVisible();
+});
