@@ -42,7 +42,9 @@ describe('images in the assistant chat', () => {
 // The chat itself must use the check: the answers' markdown images and the
 // "Image:" / "Video:" lines of the messages.
 describe('the assistant chat uses the check', () => {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
   const src = require('fs').readFileSync(
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
     require('path').join(__dirname, 'agent.chat.tsx'),
     'utf8'
   );

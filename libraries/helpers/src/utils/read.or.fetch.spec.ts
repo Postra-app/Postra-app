@@ -44,6 +44,7 @@ describe('readOrFetch redirects', () => {
   // An allowed host that answers with a redirect must not take the request
   // anywhere else: each hop is checked like the first address.
   it('refuses a redirect from an allowed host to any other address', () => {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
     const { refuseRedirectOutsideAllowedHosts } = require('./read.or.fetch');
     expect(() =>
       refuseRedirectOutsideAllowedHosts({
@@ -68,6 +69,7 @@ describe('readOrFetch redirects', () => {
     jest.resetModules();
     const axios = jest.fn().mockResolvedValue({ data: Buffer.from('x') });
     jest.doMock('axios', () => ({ __esModule: true, default: axios }));
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
     const { readOrFetch, refuseRedirectOutsideAllowedHosts } = require('./read.or.fetch');
     await readOrFetch('https://cdn.postra.co.uk/2026/11/17/a.png');
     expect(axios).toHaveBeenCalledWith(

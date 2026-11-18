@@ -45,6 +45,7 @@ describe('downloads stop at their cap without Content-Length', () => {
   });
 
   it('media fetched for publishing', async () => {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
     const { fetchMediaBuffer, MEDIA_FETCH_MAX_BYTES } = require('./fetch.media.buffer');
     const small = endless(1024, 2);
     fetchMock.mockResolvedValue(small.response);

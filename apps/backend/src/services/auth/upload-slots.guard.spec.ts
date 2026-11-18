@@ -219,6 +219,7 @@ describe('imports from a URL take a slot whatever the request size', () => {
   });
 
   it('a third import of the same organisation waits for one to finish', async () => {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
     const { UrlImportSlotsGuard } = require('./upload-slots.guard') as GuardModule;
     const a = call('org-url', 120, UrlImportSlotsGuard);
     const b = call('org-url', 120, UrlImportSlotsGuard);
@@ -239,7 +240,9 @@ describe('imports from a URL take a slot whatever the request size', () => {
 
 describe('the public API import uses it', () => {
   it('POST /public/v1/upload-from-url is guarded by UrlImportSlotsGuard', () => {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
     const { UrlImportSlotsGuard } = require('./upload-slots.guard') as GuardModule;
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
     const { PublicIntegrationsController } = require('@gitroom/backend/public-api/routes/v1/public.integrations.controller');
     const guards = Reflect.getMetadata('__guards__', PublicIntegrationsController.prototype.uploadsFromUrl) || [];
     expect(guards).toContain(UrlImportSlotsGuard);
