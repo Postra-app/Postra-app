@@ -720,6 +720,10 @@ export class MediaService {
 
   // Stock files (Pexels, Unsplash): hosts checked by the controller; the type
   // is read from the bytes, not trusted from the URL.
+  setCredit(org: string, id: string, credit: string) {
+    return this._mediaRepository.setCredit(org, id, credit);
+  }
+
   async importStockAsset(
     org: string,
     sourceUrl: string,

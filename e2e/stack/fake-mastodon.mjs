@@ -30,7 +30,8 @@
 //   GET  /unsplash/search/photos   Unsplash (stack.env UNSPLASH_API_URL): one
 //                           photo for any query, only with "Client-ID <stack
 //                           key>"; GET /unsplash/photos/:id/download records a
-//                           download (GET /__unsplash/downloads lists them)
+//                           download (GET /__unsplash/downloads lists them);
+//                           GET /unsplash/photos/:id the photographer
 //   POST /oauth/token       exchange any code for a token — the account is
 //   GET  /api/v1/accounts/verify_credentials   named after the code, so each
 //                           connect in a test can be a different account
@@ -169,6 +170,14 @@ createServer(async (req, res) => {
           user: { name: 'Stack Lens', links: { html: 'https://unsplash.com/@stacklens' } },
         },
       ],
+    });
+  }
+  const unsplashPhoto = req.method === 'GET' && req.url?.match(/^\/unsplash\/photos\/([^/?]+)(\?|$)/);
+  if (unsplashPhoto) {
+    if (!unsplashAuthorized()) return json(res, 401, { errors: ['OAuth error'] });
+    return json(res, 200, {
+      id: unsplashPhoto[1],
+      user: { name: 'Stack Lens', username: 'stacklens', instagram_username: 'stack.lens', links: { html: 'https://unsplash.com/@stacklens' } },
     });
   }
   const unsplashDownload = req.method === 'GET' && req.url?.match(/^\/unsplash\/photos\/([^/?]+)\/download/);

@@ -5,6 +5,7 @@ import { fromUtc } from '@gitroom/frontend/components/layout/set.timezone';
 import { useCalendar } from '@gitroom/frontend/components/launches/calendar.context';
 import { useFetch } from '@gitroom/helpers/utils/custom.fetch';
 import { safeJsonParse } from '@gitroom/helpers/utils/safe.json.parse';
+import { creditsAsHtml } from '@gitroom/frontend/components/new-launch/stock-credit';
 import { useT } from '@gitroom/react/translation/get.transation.service.client';
 import { SetSelectionModal } from '@gitroom/frontend/components/launches/calendar';
 import dynamic from 'next/dynamic';
@@ -34,7 +35,7 @@ export const NewPost = () => {
   const t = useT();
 
   const createAPost = useCallback(async (
-    initialMedia?: { id: string; path: string }[]
+    initialMedia?: { id: string; path: string; credit?: string | null }[]
   ) => {
     const [{ date }, { sets, signature }] = await Promise.all([
       fetch('/posts/find-slot').then((res) => res.json()),
@@ -97,7 +98,11 @@ export const NewPost = () => {
                 // already did; this button (the main way in) skipped it.
                 onlyValues: [
                   {
-                    content: signature?.id && !set ? '\n' + signature.content : '',
+                    // A Studio design with an Unsplash photo brings its
+                    // credit line into the text.
+                    content:
+                      creditsAsHtml(initialMedia) +
+                      (signature?.id && !set ? '\n' + signature.content : ''),
                     ...(initialMedia?.length ? { image: initialMedia } : {}),
                   },
                 ],
@@ -120,7 +125,7 @@ export const NewPost = () => {
     const raw = searchParams.get('newPostMedia');
     if (!raw || lastConsumedNewPostMedia === raw) return;
     lastConsumedNewPostMedia = raw;
-    const media = safeJsonParse<{ id: string; path: string }[]>(raw, []);
+    const media = safeJsonParse<{ id: string; path: string; credit?: string | null }[]>(raw, []);
     router.replace('/launches');
     if (media?.length) {
       createAPost(media);

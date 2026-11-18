@@ -64,3 +64,33 @@ export const isUnsplashDownloadLocation = (value: unknown): value is string => {
   if (!ok) return false;
   return /\/photos\/[^/?]+\/download(\?|$)/.test(value);
 };
+
+/**
+ * The credit Unsplash asks for in the text of a social post that uses one of
+ * its photos: the photographer, their social handle when they have one, and
+ * Unsplash. From GET /photos/:id (the photographer as Unsplash has them, not
+ * as the browser sent them). Empty when there is no name.
+ */
+/**
+ * Credit lines a client may attach to its own upload (a Studio design with
+ * Unsplash photos): only lines in that form, at most ten, so the field cannot
+ * carry arbitrary text into posts. Empty when none qualify.
+ */
+export const creditLinesFromClient = (value: unknown): string => {
+  if (typeof value !== 'string') return '';
+  const lines = value
+    .split('\n')
+    .map((l) => l.replace(/\s+/g, ' ').trim())
+    .filter((l) => /^Photo by [^<>\n]{1,120} on Unsplash$/.test(l));
+  return [...new Set(lines)].slice(0, 10).join('\n');
+};
+
+export const unsplashCredit = (photo: any): string => {
+  const name = String(photo?.user?.name || '').replace(/\s+/g, ' ').trim().slice(0, 80);
+  if (!name) return '';
+  const handle = String(photo?.user?.instagram_username || photo?.user?.twitter_username || '')
+    .replace(/^@/, '')
+    .trim();
+  const tag = /^[A-Za-z0-9._]{1,30}$/.test(handle) ? ` (@${handle})` : '';
+  return `Photo by ${name}${tag} on Unsplash`;
+};

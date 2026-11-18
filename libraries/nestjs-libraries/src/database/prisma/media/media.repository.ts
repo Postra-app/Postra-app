@@ -65,7 +65,15 @@ export class MediaRepository {
         alt: true,
         aiGenerated: true,
         type: true,
+        credit: true,
       },
+    });
+  }
+
+  setCredit(org: string, id: string, credit: string) {
+    return this._media.model.media.updateMany({
+      where: { id, organizationId: org },
+      data: { credit },
     });
   }
 
@@ -356,6 +364,7 @@ export class MediaRepository {
         thumbnailTimestamp: true,
         aiGenerated: true,
         type: true,
+        credit: true,
         createdAt: true,
       },
       skip: pageNum * 18,

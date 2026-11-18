@@ -11,6 +11,7 @@ import React, {
   forwardRef,
   useImperativeHandle,
 } from 'react';
+import { creditsToAdd } from '@gitroom/frontend/components/new-launch/stock-credit';
 import { Fragment, Slice } from '@tiptap/pm/model';
 import clsx from 'clsx';
 import { makeId } from '@gitroom/nestjs-libraries/services/make.is';
@@ -901,6 +902,18 @@ export const Editor: FC<{
                   }
                   onChange={(value) => {
                     setImages(value.target.value);
+                    // A stock photo that asks for credit (Unsplash) brings
+                    // its "Photo by … on Unsplash" line into the text, once.
+                    const editor = editorRef?.current?.editor;
+                    for (const credit of creditsToAdd(
+                      value.target.value,
+                      valueWithoutHtml
+                    )) {
+                      editor?.commands?.insertContentAt(
+                        editor.state.doc.content.size,
+                        { type: 'paragraph', content: [{ type: 'text', text: credit }] }
+                      );
+                    }
                   }}
                   onOpen={() => {}}
                   onClose={() => {}}

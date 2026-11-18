@@ -136,7 +136,7 @@ export const StockImagesPanel: FC<Props> = ({ canvas, defaultQuery }) => {
   }, [defaultQuery, search]);
 
   const addToCanvas = useCallback(
-    (path: string) => {
+    (path: string, credit?: string | null) => {
       const imgEl = new Image();
       imgEl.crossOrigin = 'anonymous';
       imgEl.onload = () => {
@@ -160,6 +160,11 @@ export const StockImagesPanel: FC<Props> = ({ canvas, defaultQuery }) => {
           hasControls: true,
           hasBorders: true,
         });
+        // Unsplash asks for the photographer in the post text: the layer
+        // keeps the line, and every export of the design carries it.
+        if (credit) {
+          (img as fabric.FabricImage & { studioCredit?: string }).studioCredit = credit;
+        }
         canvas.current.add(img);
         canvas.current.setActiveObject(img);
         canvas.current.renderAll();
@@ -187,7 +192,7 @@ export const StockImagesPanel: FC<Props> = ({ canvas, defaultQuery }) => {
         if (!res.ok) throw new Error(`import ${res.status}`);
         const media = await res.json();
         if (!media?.path) throw new Error('no path');
-        addToCanvas(media.path);
+        addToCanvas(media.path, media.credit);
       } catch {
         toaster.show(
           t('image_stock_import_failed', 'Image import failed.'),

@@ -1,5 +1,7 @@
 import {
   isUnsplashAssetUrl,
+  creditLinesFromClient,
+  unsplashCredit,
   isUnsplashDownloadLocation,
   unsplashPhotoHits,
   withReferral,
@@ -40,4 +42,33 @@ describe('Unsplash', () => {
     expect(isUnsplashDownloadLocation('https://api.unsplash.com/me')).toBe(false);
     expect(isUnsplashDownloadLocation('http://169.254.169.254/latest/meta-data')).toBe(false);
   });
+
+  // Unsplash's condition for production use: the post text credits the
+  // photographer and Unsplash, with their social handle when they have one.
+  it('builds the credit for the post text from the photographer Unsplash returns', () => {
+    expect(unsplashCredit({ user: { name: 'Ana Lens', instagram_username: 'ana.lens' } })).toBe(
+      'Photo by Ana Lens (@ana.lens) on Unsplash'
+    );
+    expect(unsplashCredit({ user: { name: 'Ana Lens', twitter_username: '@analens' } })).toBe(
+      'Photo by Ana Lens (@analens) on Unsplash'
+    );
+    expect(unsplashCredit({ user: { name: 'Ana  Lens' } })).toBe('Photo by Ana Lens on Unsplash');
+    // A handle that is not one is left out rather than printed.
+    expect(unsplashCredit({ user: { name: 'Ana', instagram_username: 'not a handle!' } })).toBe(
+      'Photo by Ana on Unsplash'
+    );
+    expect(unsplashCredit(null)).toBe('');
+    expect(unsplashCredit({ user: {} })).toBe('');
+  });
+
+  it('keeps only credit lines from a client, so the field cannot carry other text into posts', () => {
+    expect(creditLinesFromClient('Photo by Ana on Unsplash\nPhoto by Bo  Light (@bo) on Unsplash')).toBe(
+      'Photo by Ana on Unsplash\nPhoto by Bo Light (@bo) on Unsplash'
+    );
+    expect(creditLinesFromClient('Buy now at evil.test\nPhoto by Ana on Unsplash')).toBe('Photo by Ana on Unsplash');
+    expect(creditLinesFromClient('Photo by <script> on Unsplash')).toBe('');
+    expect(creditLinesFromClient(undefined)).toBe('');
+    expect(creditLinesFromClient(Array(20).fill('Photo by Ana on Unsplash').join('\n'))).toBe('Photo by Ana on Unsplash');
+  });
 });
+
