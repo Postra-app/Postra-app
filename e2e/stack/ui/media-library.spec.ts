@@ -145,7 +145,7 @@ test.describe('a library with files', () => {
       }
       await context.addCookies((await owner.api.storageState()).cookies);
       await page.goto('/media');
-      await page.getByRole('link', { name: 'Next page' }).click();
+      await page.getByLabel('Next page').click();
       // Newest first: page 2 holds the first upload alone.
       await expect(page.getByText(names[0])).toBeVisible();
       await page.getByText(names[0]).hover();
