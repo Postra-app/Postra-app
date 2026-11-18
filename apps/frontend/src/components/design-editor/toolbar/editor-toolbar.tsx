@@ -171,6 +171,14 @@ export const EditorToolbar: FC<ToolbarProps> = ({ canvas }) => {
     return img;
   }, [canvas]);
 
+  // The photo behind an image object. A filter swaps the object's element for
+  // a canvas with the filtered pixels, and the image tools that wanted an
+  // <img> then said "Add an image to the canvas first" about a selected photo.
+  const sourceImageOf = (img: fabric.FabricImage): HTMLImageElement | null => {
+    const el = img._originalElement ?? img.getElement();
+    return el instanceof HTMLImageElement && el.src ? el : null;
+  };
+
   const cropSelectedImage = useCallback(async () => {
     if (!canvas.current) return;
     const active = resolveTargetImage();
@@ -181,8 +189,8 @@ export const EditorToolbar: FC<ToolbarProps> = ({ canvas }) => {
       );
       return;
     }
-    const el = active.getElement();
-    if (!(el instanceof HTMLImageElement) || !el.src) {
+    const el = sourceImageOf(active);
+    if (!el) {
       toaster.show(t('crop_no_image', 'Add an image to the canvas first'), 'warning');
       return;
     }
@@ -349,8 +357,8 @@ export const EditorToolbar: FC<ToolbarProps> = ({ canvas }) => {
       );
       return;
     }
-    const sourceEl = active.getElement();
-    if (!(sourceEl instanceof HTMLImageElement)) {
+    const sourceEl = sourceImageOf(active);
+    if (!sourceEl) {
       toaster.show(
         t('bg_remove_no_image', 'Add an image to the canvas first'),
         'warning'

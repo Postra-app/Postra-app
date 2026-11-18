@@ -124,6 +124,25 @@ test('Images: smart crop keeps the format, not the old box', async ({ page }) =>
   await s.clean();
 });
 
+// After any filter the image tools said "Add an image to the canvas first"
+// about the selected photo: a filter swaps its element for a canvas.
+test('Images: smart crop and remove background still work after a filter', async ({ page }) => {
+  const s = await studio(page);
+  await s.uploadPhoto();
+  await page.getByRole('button', { name: 'B&W', exact: true }).click();
+  await page.waitForTimeout(500);
+  await page.getByRole('button', { name: /Smart crop to platform/ }).click();
+  await page.waitForTimeout(2500);
+  expect(await s.toasts()).not.toContain('Add an image to the canvas first');
+  const done = page.waitForResponse(
+    (r) => r.url().includes('/media/remove-background') && r.request().method() === 'POST'
+  );
+  await page.getByRole('button', { name: /Remove background/ }).click();
+  expect((await done).status()).toBe(201);
+  expect(await s.toasts()).not.toContain('Add an image to the canvas first');
+  await s.clean();
+});
+
 // Typed key by key, as a customer types: the field showed the clamped value
 // after every key, so "1320" became 4320 (the "1" raised to the minimum 4).
 test('Inspector: a width typed into W is the width the image gets', { tag: '@safari' }, async ({ page }) => {
