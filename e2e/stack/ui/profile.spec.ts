@@ -24,6 +24,31 @@ test('Global Settings change your name and bio, and they stay', async ({ page })
   }
 });
 
+// A two-letter name ("Li", "Ng") kept Save greyed out with no reason given.
+test.describe('a short name', () => {
+  test.use({ storageState: { cookies: [], origins: [] } });
+
+  test('a two-letter name can be saved', async ({ page, context }) => {
+    const prisma = database();
+    const owner = await throwawayOrg(prisma, { tier: 'PRO', totalChannels: 5, channels: 0 });
+    try {
+      await context.addCookies((await owner.api.storageState()).cookies);
+      await page.goto('/settings');
+      await expect(page.getByLabel('Full Name')).toBeEnabled();
+      await page.getByLabel('Full Name').fill('Li');
+      const card = page.getByText('Profile', { exact: true }).locator('xpath=ancestor::*[contains(@class,"p-[24px]")][1]');
+      const save = card.getByRole('button', { name: 'Save', exact: true });
+      await expect(save).toBeEnabled();
+      await save.click();
+      await expect(page.getByText('Profile updated')).toBeVisible();
+      await expect.poll(async () => (await (await owner.api.get('/user/personal')).json()).fullname).toBe('Li');
+    } finally {
+      await owner.remove();
+      await prisma.$disconnect();
+    }
+  });
+});
+
 // The media library hands back a list of chosen files, and the card read an id
 // and path from the list itself, so a chosen picture never showed and saving
 // sent an empty one.
