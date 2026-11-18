@@ -1,4 +1,5 @@
 import { expect, Page, test } from '@playwright/test';
+import { database, throwawayOrg } from '../helpers';
 import sharp from 'sharp';
 import { watchForErrors } from './ui-helpers';
 
@@ -124,6 +125,24 @@ test('Images: smart crop keeps the format, not the old box', async ({ page }) =>
   await s.clean();
 });
 
+test.describe('in its own organisation', () => {
+  // Uploads count against the organisation's limit: on the shared test
+  // organisation they pushed the Safari clip tests over it (429).
+  let done: () => Promise<void> = async () => undefined;
+  test.beforeEach(async ({ context }) => {
+    const prisma = database();
+    const org = await throwawayOrg(prisma, { tier: 'PRO', totalChannels: 5, channels: 0 });
+    await context.clearCookies();
+    await context.addCookies((await org.api.storageState()).cookies);
+    done = async () => {
+      await org.remove();
+      await prisma.$disconnect();
+    };
+  });
+  test.afterEach(async () => {
+    await done();
+  });
+
 // After any filter the image tools said "Add an image to the canvas first"
 // about the selected photo: a filter swaps its element for a canvas.
 test('Images: smart crop and remove background still work after a filter', async ({ page }) => {
@@ -141,6 +160,7 @@ test('Images: smart crop and remove background still work after a filter', async
   expect((await done).status()).toBe(201);
   expect(await s.toasts()).not.toContain('Add an image to the canvas first');
   await s.clean();
+});
 });
 
 // Typed key by key, as a customer types: the field showed the clamped value

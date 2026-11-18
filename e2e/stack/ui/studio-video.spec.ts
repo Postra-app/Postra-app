@@ -1,4 +1,5 @@
 import { readFileSync } from 'fs';
+import { database, throwawayOrg } from '../helpers';
 import { expect, Page, test } from '@playwright/test';
 import { watchForErrors } from './ui-helpers';
 
@@ -176,6 +177,24 @@ test('a trim edge moved before the waveform is ready stays where it was put', { 
   await expect(start).toHaveAttribute('aria-valuenow', '1');
 });
 
+test.describe('in its own organisation', () => {
+  // Uploads count against the organisation's limit: on the shared test
+  // organisation they pushed the Safari clip tests over it (429).
+  let done: () => Promise<void> = async () => undefined;
+  test.beforeEach(async ({ context }) => {
+    const prisma = database();
+    const org = await throwawayOrg(prisma, { tier: 'PRO', totalChannels: 5, channels: 0 });
+    await context.clearCookies();
+    await context.addCookies((await org.api.storageState()).cookies);
+    done = async () => {
+      await org.remove();
+      await prisma.$disconnect();
+    };
+  });
+  test.afterEach(async () => {
+    await done();
+  });
+
 // Formats and AI Captions were greyed out until a clip was loaded, and nothing
 // said why or where to load one. They open on the clip picker instead and go
 // on to the tool once the clip is in.
@@ -219,4 +238,5 @@ test('AI Captions on a clip without speech says so', { tag: '@safari' }, async (
   await page.getByRole('button', { name: 'Generate captions', exact: true }).click();
   await expect(page.getByText('No speech found in this clip', { exact: false })).toBeVisible();
   await expect(page.getByRole('button', { name: 'Burn into video', exact: true })).toBeDisabled();
+});
 });

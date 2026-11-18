@@ -1,4 +1,5 @@
 import { expect, Page, test } from '@playwright/test';
+import { database, throwawayOrg } from '../helpers';
 import { openComposer } from './ui-helpers';
 
 // Studio losing work. Each of these used to drop a design, slides or a brand kit
@@ -160,6 +161,24 @@ test('a design the browser cannot keep says so, and closing the tab asks first',
   await expect.poll(() => asked).toBe('beforeunload');
 });
 
+test.describe('in its own organisation', () => {
+  // Uploads count against the organisation's limit: on the shared test
+  // organisation they pushed the Safari clip tests over it (429).
+  let done: () => Promise<void> = async () => undefined;
+  test.beforeEach(async ({ context }) => {
+    const prisma = database();
+    const org = await throwawayOrg(prisma, { tier: 'PRO', totalChannels: 5, channels: 0 });
+    await context.clearCookies();
+    await context.addCookies((await org.api.storageState()).cookies);
+    done = async () => {
+      await org.remove();
+      await prisma.$disconnect();
+    };
+  });
+  test.afterEach(async () => {
+    await done();
+  });
+
 test('saving the design to the library quiets the warning', async ({ page }) => {
   await page.addInitScript(() => {
     const setItem = Storage.prototype.setItem;
@@ -185,6 +204,25 @@ test('saving the design to the library quiets the warning', async ({ page }) => 
   await expect(page.getByText('Saved to media library - you can use it in any post.')).toBeVisible();
   await expect(banner).toHaveCount(0);
 });
+});
+
+test.describe('in its own organisation', () => {
+  // Uploads count against the organisation's limit: on the shared test
+  // organisation they pushed the Safari clip tests over it (429).
+  let done: () => Promise<void> = async () => undefined;
+  test.beforeEach(async ({ context }) => {
+    const prisma = database();
+    const org = await throwawayOrg(prisma, { tier: 'PRO', totalChannels: 5, channels: 0 });
+    await context.clearCookies();
+    await context.addCookies((await org.api.storageState()).cookies);
+    done = async () => {
+      await org.remove();
+      await prisma.$disconnect();
+    };
+  });
+  test.afterEach(async () => {
+    await done();
+  });
 
 // "Edit in Studio" on another file wrote over the unfinished design in the
 // draft on its first autosave, without a word.
@@ -243,4 +281,5 @@ test('saving one slide of a carousel keeps the warning while the browser cannot 
   await page.getByText(/^Save (this slide )?to library$/).click();
   await expect(page.getByText('Saved to media library - you can use it in any post.')).toBeVisible();
   await expect(banner).toBeVisible();
+});
 });

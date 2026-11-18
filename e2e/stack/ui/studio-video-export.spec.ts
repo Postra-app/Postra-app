@@ -1,4 +1,5 @@
 import { readFileSync } from 'fs';
+import { database, throwawayOrg } from '../helpers';
 import { expect, Page, Request, Response, test } from '@playwright/test';
 import { ALL_FORMATS, BufferSource, Input } from 'mediabunny';
 import { watchForErrors } from './ui-helpers';
@@ -149,6 +150,24 @@ test('AI Captions burns the captions into the clip', { tag: '@safari' }, async (
   expect(problems).toEqual([]);
 });
 
+test.describe('in its own organisation', () => {
+  // Uploads count against the organisation's limit: on the shared test
+  // organisation they pushed the Safari clip tests over it (429).
+  let done: () => Promise<void> = async () => undefined;
+  test.beforeEach(async ({ context }) => {
+    const prisma = database();
+    const org = await throwawayOrg(prisma, { tier: 'PRO', totalChannels: 5, channels: 0 });
+    await context.clearCookies();
+    await context.addCookies((await org.api.storageState()).cookies);
+    done = async () => {
+      await org.remove();
+      await prisma.$disconnect();
+    };
+  });
+  test.afterEach(async () => {
+    await done();
+  });
+
 // "Remove the clip without captions from the library" was offered as soon as
 // the captions were burned, before the captioned clip was stored: one click
 // left the customer with neither version.
@@ -175,6 +194,7 @@ test('removing the clip without captions is offered only once the captioned clip
   await expect(remove).toHaveCount(0);
   await saveAll(page, 'Save to library');
   await expect(remove).toBeVisible();
+});
 });
 
 // An iPhone records HEVC in a .MOV. Safari decodes it; X and LinkedIn refuse
