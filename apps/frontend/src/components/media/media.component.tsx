@@ -253,6 +253,16 @@ export const MediaBox: FC<{
     `get-media-${page}-${debouncedSearch}-${type ?? 'all'}`,
     loadMedia
   );
+  // A delete that empties the last page leaves the pager past the end: step
+  // back to the new last page instead of showing an empty library.
+  useEffect(() => {
+    if (data?.pages === undefined || page === 0) {
+      return;
+    }
+    if (page > Math.max(0, data.pages - 1)) {
+      setPage(Math.max(0, data.pages - 1));
+    }
+  }, [data?.pages, page]);
   const [selected, setSelected] = useState([]);
   const t = useT();
   const uploaderRef = useRef<any>(null);

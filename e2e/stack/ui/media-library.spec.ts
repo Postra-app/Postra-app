@@ -127,6 +127,40 @@ test.describe('a library with files', () => {
     });
   });
 
+  // 18 files a page: deleting the only file on page 2 used to leave the
+  // library saying it was empty, with 18 files still on page 1.
+  test('deleting the last file on the last page shows the page before it', async ({ page, context }) => {
+    test.setTimeout(180_000);
+    const prisma = database();
+    const owner = await throwawayOrg(prisma, { tier: 'PRO', totalChannels: 5, channels: 0 });
+    try {
+      const names: string[] = [];
+      for (let i = 0; i < 19; i++) {
+        const name = `paged-${String(i).padStart(2, '0')}-${Date.now()}.png`;
+        const res = await owner.api.post('/media/upload-simple', {
+          multipart: { file: { name, mimeType: 'image/png', buffer: PNG } },
+        });
+        expect(res.status(), await res.text()).toBe(201);
+        names.push(name);
+      }
+      await context.addCookies((await owner.api.storageState()).cookies);
+      await page.goto('/media');
+      await page.getByRole('link', { name: 'Next page' }).click();
+      // Newest first: page 2 holds the first upload alone.
+      await expect(page.getByText(names[0])).toBeVisible();
+      await page.getByText(names[0]).hover();
+      await page.getByRole('button', { name: 'Delete', exact: true }).filter({ visible: true }).click();
+      await page.getByRole('button', { name: 'Yes, delete it!' }).click();
+
+      await expect(page.getByText(names[18])).toBeVisible();
+      await expect(page.getByText("You don't have any media yet")).toHaveCount(0);
+      expect(await prisma.media.count({ where: { organizationId: owner.orgId, deletedAt: null } })).toBe(18);
+    } finally {
+      await owner.remove();
+      await prisma.$disconnect();
+    }
+  });
+
   test.describe('at phone width', () => {
     test.use({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true });
 
