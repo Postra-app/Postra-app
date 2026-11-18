@@ -125,3 +125,54 @@ test('a text selection dragged out of a window does not close it', async ({ page
   await expect(page.getByRole('dialog')).toBeVisible();
   await expect(field).toHaveValue('My webhook name that is long');
 });
+
+// A design the browser cannot keep (too large, or storage full) showed only a
+// small yellow "Not autosaved", and closing the tab took it without a word.
+test('a design the browser cannot keep says so, and closing the tab asks first', async ({ page }) => {
+  await page.addInitScript(() => {
+    const setItem = Storage.prototype.setItem;
+    Storage.prototype.setItem = function (key: string, value: string) {
+      if (key.startsWith('postra:studio-draft:')) throw new DOMException('full', 'QuotaExceededError');
+      return setItem.call(this, key, value);
+    };
+  });
+  await page.goto('/studio');
+  await expect(page.locator('canvas').first()).toBeVisible({ timeout: 30_000 });
+  await page.getByRole('button', { name: /Blank canvas/ }).click();
+  await page.getByRole('button', { name: 'Text', exact: true }).click();
+  await page.getByRole('button', { name: /Add text/ }).click();
+  await page.evaluate(() => window.dispatchEvent(new Event('pagehide')));
+
+  const banner = page.getByRole('alert').filter({ hasText: 'Save it to your library' });
+  await expect(banner).toBeVisible();
+
+  let asked = '';
+  page.on('dialog', async (dialog) => {
+    asked = dialog.type();
+    await dialog.dismiss();
+  });
+  await page.close({ runBeforeUnload: true });
+  await expect.poll(() => asked).toBe('beforeunload');
+});
+
+test('saving the design to the library quiets the warning', async ({ page }) => {
+  await page.addInitScript(() => {
+    const setItem = Storage.prototype.setItem;
+    Storage.prototype.setItem = function (key: string, value: string) {
+      if (key.startsWith('postra:studio-draft:')) throw new DOMException('full', 'QuotaExceededError');
+      return setItem.call(this, key, value);
+    };
+  });
+  await page.goto('/studio');
+  await expect(page.locator('canvas').first()).toBeVisible({ timeout: 30_000 });
+  await page.getByRole('button', { name: /Blank canvas/ }).click();
+  await page.getByRole('button', { name: 'Text', exact: true }).click();
+  await page.getByRole('button', { name: /Add text/ }).click();
+  await page.evaluate(() => window.dispatchEvent(new Event('pagehide')));
+  const banner = page.getByRole('alert').filter({ hasText: 'Save it to your library' });
+  await expect(banner).toBeVisible();
+  await page.getByRole('button', { name: 'Export', exact: true }).first().click();
+  await page.getByText(/^Save (this slide )?to library$/).click();
+  await expect(page.getByText('Saved to media library - you can use it in any post.')).toBeVisible();
+  await expect(banner).toHaveCount(0);
+});

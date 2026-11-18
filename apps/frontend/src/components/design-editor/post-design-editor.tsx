@@ -174,6 +174,17 @@ const PostDesignEditor: FC<PostDesignEditorProps> = ({
   const [zoomLabel, setZoomLabel] = useState(1);
   /** What the last autosave actually did, so the editor can show it. */
   const [saveState, setSaveState] = useState<SaveState | null>(null);
+  // Closing or refreshing the tab with a design the browser could not keep
+  // asks first (the browser's own question; the text is the browser's).
+  useEffect(() => {
+    if (!saveState || saveState.result === 'saved') return;
+    const ask = (e: BeforeUnloadEvent) => {
+      e.preventDefault();
+      e.returnValue = '';
+    };
+    window.addEventListener('beforeunload', ask);
+    return () => window.removeEventListener('beforeunload', ask);
+  }, [saveState]);
 
   const fitScale = useCallback((p: PlatformSize) => {
     const { width, height } = viewportSizeRef.current;
@@ -937,6 +948,10 @@ const PostDesignEditor: FC<PostDesignEditorProps> = ({
     setSavingToLibrary(true);
     try {
       await saveDesignToLibrary(false);
+      // This version is in the library now: no warning about it until the
+      // design changes again (the next autosave tick sees a new design).
+      markDraftSeenRef.current?.();
+      setSaveState(null);
       toaster.show(
         t(
           'saved_to_library',
@@ -1197,6 +1212,22 @@ const PostDesignEditor: FC<PostDesignEditorProps> = ({
             viewport (it scrolls inside overflow-auto instead) — without it the
             right side of the action bar ("Use in post") lands off-screen. */}
         <div className="flex-1 min-w-0 min-h-0 flex flex-col">
+          {saveState && saveState.result !== 'saved' && (
+            // A design the browser could not keep was lost on a refresh with
+            // only a small yellow word to show for it.
+            <div
+              role="alert"
+              className="shrink-0 flex items-center gap-2 px-4 py-2 bg-yellow-400/15 border-b border-yellow-400/40 text-[13px] text-textColor"
+            >
+              <StudioIcon name="warning" size={16} />
+              <span>
+                {t(
+                  'studio_autosave_off_hint',
+                  'This design is too large to keep in the browser. Save it to your library so a refresh cannot lose it.'
+                )}
+              </span>
+            </div>
+          )}
           {restoringDraft && (
             <div className="shrink-0 flex items-center gap-2 px-4 py-2 bg-forth/10 border-b border-forth/30 text-xs text-textColor">
               <span>
