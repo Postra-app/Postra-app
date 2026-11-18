@@ -176,3 +176,37 @@ test('saving the design to the library quiets the warning', async ({ page }) => 
   await expect(page.getByText('Saved to media library - you can use it in any post.')).toBeVisible();
   await expect(banner).toHaveCount(0);
 });
+
+// "Edit in Studio" on another file wrote over the unfinished design in the
+// draft on its first autosave, without a word.
+test('opening a file in Studio keeps the unfinished design', async ({ page }) => {
+  const PNG = Buffer.from(
+    'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==',
+    'base64'
+  );
+  const uploaded = await page.request.post('/api/media/upload-simple', {
+    multipart: { file: { name: `edit-in-studio-${Date.now()}.png`, mimeType: 'image/png', buffer: PNG } },
+  });
+  expect(uploaded.status(), await uploaded.text()).toBe(201);
+  const media: { id: string } = await uploaded.json();
+
+  await page.goto('/studio');
+  await expect(page.locator('canvas').first()).toBeVisible({ timeout: 30_000 });
+  await page.getByRole('button', { name: /Blank canvas/ }).click();
+  await page.getByRole('button', { name: 'Text', exact: true }).click();
+  await page.getByRole('button', { name: /Add text/ }).click();
+  const unfinished = await draft(page);
+  expect(unfinished).not.toBeNull();
+
+  await page.goto(`/studio?mediaId=${media.id}`);
+  await expect(page.locator('canvas').first()).toBeVisible({ timeout: 30_000 });
+  await page.waitForTimeout(2000);
+  await page.evaluate(() => window.dispatchEvent(new Event('pagehide')));
+  const kept = await page.evaluate(() => {
+    const keys = Object.keys(localStorage).filter(
+      (k) => k.startsWith('postra:studio-draft:') && !k.includes(':media:')
+    );
+    return keys.length === 1 ? localStorage.getItem(keys[0]) : `keys: ${keys.join(',')}`;
+  });
+  expect(kept).toBe(unfinished);
+});

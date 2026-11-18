@@ -143,8 +143,13 @@ const PostDesignEditor: FC<PostDesignEditorProps> = ({
 
   // Draft autosave (crash/refresh/tab-switch insurance). Refs, not state, so
   // the once-only canvas effect and its interval never see stale values.
+  // The draft's slot. A file opened with "Edit in Studio" keeps its own, so
+  // opening it does not overwrite the unfinished design in the usual slot
+  // (it did, without a word, on the first autosave).
   const orgIdRef = useRef('default');
-  orgIdRef.current = user?.orgId || 'default';
+  orgIdRef.current = `${user?.orgId || 'default'}${
+    loadMediaId ? `:media:${loadMediaId}` : ''
+  }`;
   const [restoringDraft, setRestoringDraft] = useState(false);
   const [shortcutsOpen, setShortcutsOpen] = useState(false);
   const [hasSelection, setHasSelection] = useState(false);
