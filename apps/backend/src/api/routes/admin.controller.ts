@@ -1428,6 +1428,20 @@ export class AdminController {
     this.assertSuperAdmin(user);
     const org = await this.requireOrganization(organizationId);
 
+    // One of the admin's own organizations: deleting it here would take the
+    // admin's channels and posts with it and leave their session failing on
+    // every request. Refused before billing or the audit are touched.
+    const ownMembership = await this._prisma.userOrganization.findFirst({
+      where: { organizationId: org.id, userId: user.id },
+      select: { id: true },
+    });
+    if (ownMembership) {
+      throw new HttpException(
+        'You are a member of this organization, so deleting it here would lock you out of it. Leave it first, or delete it from its own settings.',
+        400
+      );
+    }
+
     const members = await this._prisma.userOrganization.count({
       where: { organizationId: org.id },
     });
