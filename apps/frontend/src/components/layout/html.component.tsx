@@ -1,6 +1,10 @@
 'use client';
 import { FC, ReactNode, useEffect, useState } from 'react';
 import { useTranslationSettings } from '@gitroom/react/translation/get.transation.service.client';
+import { registerDayjsLocales } from '@gitroom/frontend/components/layout/dayjs.locales';
+
+// Dates follow the interface language on every page, not only the calendar.
+registerDayjsLocales();
 
 export const HtmlComponent: FC = () => {
   const settings = useTranslationSettings();
