@@ -33,7 +33,10 @@ export function Login() {
   const { isGeneral, genericOauth, disableRegistration } = useVariables();
   // Sent here by an invitation to a team while sign-ups are closed (proxy.ts):
   // the sign-up link is back, and opens the form (`?invite`).
-  const invited = !!useSearchParams()?.has('invited');
+  const searchParams = useSearchParams();
+  const invited = !!searchParams?.has('invited');
+  // Arrived here straight after deleting the account: say it worked.
+  const deleted = searchParams?.get('deleted') === '1';
   const resolver = useMemo(() => {
     // The DTO class validates the same fields; since @hookform/resolvers 5 the
     // resolver is typed by that class, which is wider than the form's own type.
@@ -125,6 +128,14 @@ export function Login() {
               )}
             </p>
           </div>
+          {deleted && (
+            <div
+              role="status"
+              className="mt-[20px] rounded-[10px] border border-emerald-400/40 bg-emerald-400/10 px-[14px] py-[10px] text-[14px] text-textColor"
+            >
+              {t('account_deleted', 'Your account has been deleted')}
+            </div>
+          )}
           {/* Shown while sign-ups are closed too: an existing account that
               signs in with Google has no other way in. A new Google user is
               told sign-ups are closed on the next page. */}
