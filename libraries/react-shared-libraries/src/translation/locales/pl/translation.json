@@ -2392,5 +2392,14 @@
   "billing_confirm_failed": "Nie udało się wysłać płatności. Sprawdź połączenie i spróbuj ponownie.",
   "billing_comp_given": "Ten plan dostajesz od Postry. Nie ma nic do zapłacenia ani do anulowania.",
   "billing_comp_ends": "Kończy się",
-  "billing_comp_no_end": "Nie ma daty końca."
+  "billing_comp_no_end": "Nie ma daty końca.",
+  "enable_first_comment": "Włącz pierwszy komentarz",
+  "renew_first_comment": "Odnów dostęp do pierwszego komentarza",
+  "tiktok_comments_start_failed": "Nie udało się rozpocząć włączania pierwszego komentarza. Spróbuj ponownie.",
+  "tiktok_comments_declined": "Pierwszy komentarz nie został włączony: logowanie w TikToku nie zostało dokończone. Możesz zacząć ponownie z menu kanału.",
+  "tiktok_comments_working": "Włączanie pierwszego komentarza...",
+  "tiktok_comments_done_title": "Pierwszy komentarz jest włączony",
+  "tiktok_comments_done_text": "Posty publikowane na tym kanale TikTok mogą teraz mieć pierwszy komentarz. TikTok pokaże go, gdy post będzie publiczny.",
+  "tiktok_comments_failed_title": "Pierwszy komentarz nie został włączony",
+  "comments_not_enabled_explanation": "Pierwszy komentarz nie jest włączony dla tych kanałów. Otwórz menu kanału i wybierz „Włącz pierwszy komentarz”. Sam post wyjdzie zgodnie z planem."
 }

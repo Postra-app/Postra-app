@@ -26,6 +26,7 @@ import {
   AuthTokenDetails,
   PostResponse,
 } from '@gitroom/nestjs-libraries/integrations/social/social.integrations.interface';
+import { commentAccessForNow } from '@gitroom/nestjs-libraries/integrations/comment.access';
 import {
   canPostComments,
   commentSupport,
@@ -343,6 +344,13 @@ export class PostActivity {
           getIntegration?.convertToJPEG || false
         ),
       }))
+    );
+
+    // A provider whose comments use an access of their own (TikTok).
+    await commentAccessForNow(
+      this._integrationService,
+      getIntegration,
+      integration
     );
 
     // From here the platform may receive the comment (see temporal.heartbeat.ts).

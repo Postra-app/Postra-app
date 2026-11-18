@@ -44,6 +44,7 @@ import {
   PostComment,
   providerSupportsComments,
 } from '@gitroom/frontend/components/new-launch/providers/high.order.provider';
+import { waitsForCommentStep } from '@gitroom/frontend/components/new-launch/comment-step';
 import WordpressProvider from '@gitroom/frontend/components/new-launch/providers/wordpress/wordpress.provider';
 import ListmonkProvider from '@gitroom/frontend/components/new-launch/providers/listmonk/listmonk.provider';
 import GmbProvider from '@gitroom/frontend/components/new-launch/providers/gmb/gmb.provider';
@@ -221,6 +222,17 @@ export const ShowAllProviders = forwardRef((props, ref) => {
 
         if (!!found && !providerSupportsComments(found.component)) {
           return [{ name: p.integration.name, reason: 'no_api' }];
+        }
+
+        // TikTok: first comment is the owner's to turn on, where it is
+        // offered; where it is not, TikTok has none as far as they can tell.
+        if (waitsForCommentStep(p.integration)) {
+          return [
+            {
+              name: p.integration.name,
+              reason: p.integration.commentSetup ? 'not_enabled' : 'no_api',
+            },
+          ];
         }
 
         if (p.integration.canComment === false) {

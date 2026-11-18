@@ -26,6 +26,10 @@ describe('IntegrationRepository.deleteChannel', () => {
         token: '',
         refreshToken: null,
         tokenExpiration: null,
+        // What the channel kept beside its token (a Bluesky app password,
+        // TikTok's access for comments) goes too, with its scopes.
+        customInstanceDetails: null,
+        grantedScopes: null,
       },
     });
   });

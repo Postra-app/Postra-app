@@ -516,7 +516,10 @@ export default withProvider({
   postComment: PostComment.COMMENT,
   minimumCharacters: [],
   SettingsComponent: TikTokSettings,
-  comments: false,
+  // Text only. Whether a channel can publish them at all is decided per
+  // channel (canComment): its owner turns first comment on in the channel
+  // menu, and until then they are left out (comment-step.ts).
+  comments: 'no-media',
   CustomPreviewComponent: TiktokPreview,
   dto: TikTokDto,
   maximumCharacters: 2000,

@@ -9,9 +9,10 @@ import { newDayjs } from '@gitroom/frontend/components/layout/set.timezone';
 
 // `no_api`: the platform has no way for apps to post a comment (TikTok).
 // `not_granted`: it has one, but this channel's token lacks the permission.
+// `not_enabled`: the channel's owner has not turned first comment on (TikTok).
 export interface CommentsUnsupported {
   name: string;
-  reason: 'no_api' | 'not_granted';
+  reason: 'no_api' | 'not_granted' | 'not_enabled';
 }
 
 interface Values {

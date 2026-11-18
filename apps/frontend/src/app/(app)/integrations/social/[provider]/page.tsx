@@ -1,4 +1,5 @@
 import { ContinueIntegration } from '@gitroom/frontend/components/launches/continue.integration';
+import { TiktokCommentsReturn } from '@gitroom/frontend/components/launches/tiktok.comments.return';
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 
@@ -43,6 +44,17 @@ export default async function Page(
     !searchParams?.code
   ) {
     redirect('/auth/login');
+  }
+
+  // Not a channel being connected: a TikTok channel's owner coming back from
+  // the second authorization that turns first comment on.
+  if (provider === 'tiktok-business') {
+    return (
+      <TiktokCommentsReturn
+        code={typeof searchParams?.code === 'string' ? searchParams.code : ''}
+        state={typeof searchParams?.state === 'string' ? searchParams.state : ''}
+      />
+    );
   }
 
   const get = (await cookies()).get('auth');
