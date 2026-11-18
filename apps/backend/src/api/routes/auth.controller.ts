@@ -134,6 +134,11 @@ export class AuthController {
             maxAge: REGISTRATION_PROOF_TTL_SECONDS * 1000,
           });
         }
+        // The invitation is already used (the membership exists): the
+        // browser that activates must not be asked to join again.
+        if (typeof addedOrg === 'object' && addedOrg?.organizationId) {
+          response.clearCookie('org', orgCookieClearOptions());
+        }
         response.header('activate', 'true');
         response.status(200).json({ activate: true });
         return;
