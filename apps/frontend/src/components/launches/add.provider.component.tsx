@@ -1,6 +1,7 @@
 'use client';
 
 import { useModals } from '@gitroom/frontend/components/layout/new-modal';
+import { stashConnectCode } from '@gitroom/frontend/components/launches/helpers/connect.code';
 import React, { FC, useCallback, useMemo } from 'react';
 import { useFetch } from '@gitroom/helpers/utils/custom.fetch';
 import { isFetchHandledError } from '@gitroom/helpers/utils/fetch.errors';
@@ -302,10 +303,14 @@ export const CustomVariables: FC<{
       }
       const { url } = await response.json();
       modals.closeAll();
+      const code = stashConnectCode(
+        url,
+        Buffer.from(JSON.stringify(data)).toString('base64')
+      );
       gotoUrl(
-        `/integrations/social/${identifier}?state=${url}&code=${Buffer.from(
-          JSON.stringify(data)
-        ).toString('base64')}${onboarding ? '&onboarding=true' : ''}`
+        `/integrations/social/${identifier}?state=${url}&code=${code}${
+          onboarding ? '&onboarding=true' : ''
+        }`
       );
     },
     [variables, onboarding]

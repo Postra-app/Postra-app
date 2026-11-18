@@ -1,6 +1,11 @@
 'use client';
 
 import { FC, useCallback, useEffect, useMemo, useState } from 'react';
+import {
+  CONNECT_CODE_STORED,
+  dropConnectCode,
+  readConnectCode,
+} from '@gitroom/frontend/components/launches/helpers/connect.code';
 import { rememberConnectMessage } from '@gitroom/frontend/components/launches/connect.message';
 import { platformName } from '@gitroom/frontend/components/launches/platform.name';
 import { isNavigableUrl } from '@gitroom/frontend/components/layout/safe.url';
@@ -129,7 +134,36 @@ export const ContinueIntegration: FC<{
       };
     }
 
+    // `code=stored`: the credentials typed on Add Channel wait in session
+    // storage (see connect.code.ts).
+    if (
+      searchParams?.code === CONNECT_CODE_STORED &&
+      typeof window !== 'undefined'
+    ) {
+      return {
+        ...searchParams,
+        code: readConnectCode(searchParams.state || '') || '',
+      };
+    }
+
     return searchParams;
+  }, []);
+
+  // The code leaves the address once read, so going back or reopening the
+  // history does not show it (an older form put the credentials there).
+  useEffect(() => {
+    if (searchParams?.code === CONNECT_CODE_STORED) {
+      dropConnectCode(searchParams.state || '');
+    }
+    const url = new URL(window.location.href);
+    if (url.searchParams.has('code')) {
+      url.searchParams.delete('code');
+      window.history.replaceState(
+        window.history.state,
+        '',
+        `${url.pathname}${url.search}${url.hash}`
+      );
+    }
   }, []);
 
   /**
