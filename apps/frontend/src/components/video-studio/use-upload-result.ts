@@ -4,6 +4,7 @@ import { useCallback, useState } from 'react';
 import { useFetch } from '@gitroom/helpers/utils/custom.fetch';
 import { useToaster } from '@gitroom/react/toaster/toaster';
 import { useT } from '@gitroom/react/translation/get.transation.service.client';
+import { uploadSignal } from './upload-deadline';
 
 export interface UploadedMedia {
   id: string;
@@ -27,12 +28,14 @@ export function useUploadResult() {
     async (blob: Blob, fileName: string): Promise<UploadedMedia | null> => {
       if (uploading) return null;
       setUploading(true);
+      const deadline = uploadSignal(blob.size);
       try {
         const formData = new FormData();
         formData.append('file', blob, fileName);
         const res = await fetch('/media/upload-simple', {
           method: 'POST',
           body: formData,
+          signal: deadline.signal,
         });
         // A 413 from nginx answers with HTML, so res.json() is where an upload
         // over the size ceiling actually fails.
@@ -43,6 +46,7 @@ export function useUploadResult() {
         toaster.show(t('clip_text_upload_failed', 'Clip upload failed.'), 'warning');
         return null;
       } finally {
+        deadline.done();
         setUploading(false);
       }
     },
