@@ -2378,5 +2378,6 @@
   "wordpress_post_types_failed": "WordPress did not send its post types. Try again in a moment.",
   "wordpress_post_types_none": "No post types found on this WordPress site. Try again in a moment.",
   "wordpress_post_types_refresh": "Refresh post types",
-  "analytics_load_failed": "Could not load analytics for this channel."
+  "analytics_load_failed": "Could not load analytics for this channel.",
+  "team_invite_valid_for": "The link works for 7 days."
 }

@@ -79,3 +79,36 @@ test('the owner changes roles, the key is replaced after an admin, and the organ
     await prisma.$disconnect();
   }
 });
+
+// "Copy Link" clicked twice made two invitations; nothing said how long the
+// link works (an hour then, a week now).
+test('a double click on Copy Link makes one invitation, and the window says how long it works', async ({
+  page,
+  context,
+}) => {
+  const prisma = database();
+  const org = await throwawayOrg(prisma, { tier: 'ULTIMATE', totalChannels: 5, channels: 0 });
+  await context.clearCookies();
+  await context.addCookies((await org.api.storageState()).cookies);
+  await context.grantPermissions(['clipboard-read', 'clipboard-write']);
+  try {
+    let invites = 0;
+    page.on('request', (r) => {
+      if (r.method() === 'POST' && r.url().endsWith('/api/settings/team')) invites += 1;
+    });
+    await page.goto('/settings');
+    await page.getByRole('tab', { name: 'Teams', exact: true }).click();
+    await page.getByRole('button', { name: 'Add another member' }).click();
+    const form = page.getByRole('dialog', { name: 'Add Member' });
+    await expect(form.getByText('The link works for 7 days.')).toBeVisible();
+    await form.getByRole('checkbox', { name: 'Send invitation via email?' }).click();
+    await form.getByRole('combobox', { name: 'Role' }).selectOption('USER');
+    await form.getByRole('button', { name: 'Copy Link' }).dblclick();
+    await expect(page.getByText('Link copied to clipboard')).toBeVisible();
+    await page.waitForTimeout(1000);
+    expect(invites).toBe(1);
+  } finally {
+    await org.remove();
+    await prisma.$disconnect();
+  }
+});

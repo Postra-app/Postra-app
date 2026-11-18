@@ -5,7 +5,7 @@ import { Card } from '@gitroom/frontend/components/ui/card';
 import { useFetch } from '@gitroom/helpers/utils/custom.fetch';
 import { readResponseError } from '@gitroom/helpers/utils/response.error';
 import useSWR, { useSWRConfig } from 'swr';
-import React, { useCallback, useMemo } from 'react';
+import React, { useCallback, useMemo, useRef, useState } from 'react';
 import { useUser } from '@gitroom/frontend/components/layout/user.context';
 import { capitalize } from 'lodash';
 import {
@@ -55,8 +55,17 @@ export const AddMember = () => {
     control: form.control,
     name: 'sendEmail',
   });
+  // A second click while the first was on its way made a second invitation
+  // (and a second email).
+  const sending = useRef(false);
+  const [busy, setBusy] = useState(false);
   const submit = useCallback(
     async (values: { email: string; role: string; sendEmail: boolean }) => {
+      if (sending.current) {
+        return;
+      }
+      sending.current = true;
+      setBusy(true);
       try {
         const response = await fetch('/settings/team', {
           method: 'POST',
@@ -87,6 +96,9 @@ export const AddMember = () => {
           t('team_invite_failed', 'Could not create the invitation'),
           'warning'
         );
+      } finally {
+        sending.current = false;
+        setBusy(false);
       }
     },
     []
@@ -127,9 +139,12 @@ export const AddMember = () => {
               {t('send_invitation_via_email', 'Send invitation via email?')}
             </div>
           </div>
-          <Button type="submit" className="mt-[18px]">
+          <Button type="submit" className="mt-[18px]" loading={busy} disabled={busy}>
             {sendEmail ? t('send_invitation_link', 'Send Invitation Link') : t('copy_link', 'Copy Link')}
           </Button>
+          <div className="text-[13px] text-textColor/70">
+            {t('team_invite_valid_for', 'The link works for 7 days.')}
+          </div>
         </div>
       </form>
     </FormProvider>

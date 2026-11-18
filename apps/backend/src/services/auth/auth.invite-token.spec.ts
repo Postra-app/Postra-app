@@ -84,4 +84,30 @@ describe('invitation tokens', () => {
     const token = new URL(url).searchParams.get('org')!;
     expect((AuthChecker.verifyJWT(token) as any).purpose).toBe('invite');
   });
+
+  // An hour ran out before most people opened the email.
+  it('issues invitations that work for 7 days, and the email says so', async () => {
+    const sendEmail = jest.fn();
+    const org = new OrganizationService({} as any, { sendEmail } as any);
+    const { url } = await org.inviteTeamMember('org-1', {
+      email: 'new@example.com',
+      role: 'USER',
+      sendEmail: true,
+    });
+    const token = new URL(url).searchParams.get('org')!;
+    const { timeLimit } = AuthChecker.verifyJWT(token) as any;
+    const days = dayjs(timeLimit).diff(dayjs(), 'hour') / 24;
+    expect(days).toBeGreaterThan(6.9);
+    expect(days).toBeLessThanOrEqual(7);
+    expect(sendEmail.mock.calls[0][2]).toContain('This link works for 7 days.');
+
+    // Still good after six days.
+    const later = dayjs().add(6, 'day');
+    jest.useFakeTimers({ now: later.toDate() });
+    try {
+      expect(service().getOrgFromCookie(token)).toMatchObject({ orgId: 'org-1' });
+    } finally {
+      jest.useRealTimers();
+    }
+  });
 });

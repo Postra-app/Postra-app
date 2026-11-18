@@ -34,6 +34,9 @@ const REPLACED_BECAUSE: Record<ApiKeyReplacedReason, string> = {
   'seat-disabled': "An admin's seat in your Postra organisation was turned off.",
 };
 
+// How long a team invitation link works.
+export const TEAM_INVITE_VALID_DAYS = 7;
+
 @Injectable()
 export class OrganizationService {
   constructor(
@@ -188,7 +191,11 @@ export class OrganizationService {
   }
 
   async inviteTeamMember(orgId: string, body: AddTeamMemberDto) {
-    const timeLimit = dayjs().add(1, 'hour').format('YYYY-MM-DD HH:mm:ss');
+    // A week: an hour ran out before most people opened the email. The mail
+    // and the Copy Link window say the same.
+    const timeLimit = dayjs()
+      .add(TEAM_INVITE_VALID_DAYS, 'day')
+      .format('YYYY-MM-DD HH:mm:ss');
     const id = makeId(5);
     const url =
       process.env.FRONTEND_URL +
@@ -205,7 +212,7 @@ export class OrganizationService {
       await this._notificationsService.sendEmail(
         body.email,
         'You have been invited to a team on Postra',
-        `You have been invited to join a team on Postra.<br />Click <a href="${url}">here</a> to join.<br />This link expires in 1 hour.`
+        `You have been invited to join a team on Postra.<br />Click <a href="${url}">here</a> to join.<br />This link works for ${TEAM_INVITE_VALID_DAYS} days.`
       );
     }
     return { url };
