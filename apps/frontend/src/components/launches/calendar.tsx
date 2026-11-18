@@ -1,7 +1,6 @@
 'use client';
 
 import React, {
-import { registerDayjsLocales } from '@gitroom/frontend/components/layout/dayjs.locales';
   FC,
   Fragment,
   memo,
@@ -9,6 +8,7 @@ import { registerDayjsLocales } from '@gitroom/frontend/components/layout/dayjs.
   useMemo,
   useState,
 } from 'react';
+import { registerDayjsLocales } from '@gitroom/frontend/components/layout/dayjs.locales';
 import {
   CalendarContext,
   Integrations,
