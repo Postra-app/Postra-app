@@ -193,7 +193,8 @@ export const tiktokBusinessPostLink = async (
   const found = (data?.videos || []).find(
     (video: any) => String(video?.item_id) === videoId
   );
-  return found?.share_url ? String(found.share_url) : undefined;
+  // Without TikTok's tracking parameters, which also name our app.
+  return found?.share_url ? String(found.share_url).split('?')[0] : undefined;
 };
 
 export const tiktokBusinessCreateComment = async (
