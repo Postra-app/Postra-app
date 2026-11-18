@@ -28,11 +28,11 @@
     "@fontsource/playfair-display": "^5.3.0",
     "@fontsource/poppins": "^5.3.0",
     "@fontsource/roboto": "^5.3.0",
-    "@tabler/icons-react": "^3.49.0",
-    "dompurify": "^3.4.17",
-    "geist": "^1.8.1",
+    "@tabler/icons-react": "^3.52.0",
+    "dompurify": "^3.4.18",
+    "geist": "^1.9.2",
     "jszip": "^3.10.2",
-    "mediabunny": "^1.61.4",
+    "mediabunny": "^1.66.0",
     "wavesurfer.js": "^7"
   },
   "devDependencies": {
