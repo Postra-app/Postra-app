@@ -2362,5 +2362,20 @@
   "carousel_exit_approve": "Wyjdź i usuń pozostałe slajdy",
   "carousel_delete_slide_title": "Usunąć slajd {n}?",
   "carousel_delete_slide_confirm": "Slajd i wszystko, co na nim jest, zostanie usunięte.",
-  "brand_kit_load_failed": "Nie udało się wczytać Brand Kitu. Nic nie zostało zmienione."
+  "brand_kit_load_failed": "Nie udało się wczytać Brand Kitu. Nic nie zostało zmienione.",
+  "slack_channels_label": "Wybierz kanał",
+  "slack_channels_loading": "Wczytuję kanały…",
+  "slack_channels_failed": "Slack nie przesłał Twoich kanałów. Spróbuj ponownie za chwilę.",
+  "slack_channels_none": "W tym obszarze roboczym Slacka nie ma kanałów publicznych. Utwórz kanał w Slacku i odśwież.",
+  "slack_channels_refresh": "Odśwież kanały",
+  "discord_channels_label": "Wybierz kanał",
+  "discord_channels_loading": "Wczytuję kanały…",
+  "discord_channels_failed": "Discord nie przesłał Twoich kanałów. Spróbuj ponownie za chwilę.",
+  "discord_channels_none": "Na tym serwerze Discord nie ma kanałów tekstowych. Utwórz kanał w Discordzie i odśwież.",
+  "discord_channels_refresh": "Odśwież kanały",
+  "wordpress_post_types_label": "Wybierz typ",
+  "wordpress_post_types_loading": "Wczytuję typy wpisów…",
+  "wordpress_post_types_failed": "WordPress nie przesłał typów wpisów. Spróbuj ponownie za chwilę.",
+  "wordpress_post_types_none": "Na tej stronie WordPress nie znaleziono typów wpisów. Spróbuj ponownie za chwilę.",
+  "wordpress_post_types_refresh": "Odśwież typy wpisów"
 }

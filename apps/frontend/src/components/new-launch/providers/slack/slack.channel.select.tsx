@@ -1,57 +1,26 @@
 'use client';
 
-import { FC, useEffect, useState } from 'react';
-import { useCustomProviderFunction } from '@gitroom/frontend/components/launches/helpers/use.custom.provider.function';
-import { Select } from '@gitroom/react/form/select';
-import { useSettings } from '@gitroom/frontend/components/launches/helpers/use.values';
+import { FC } from 'react';
 import { useT } from '@gitroom/react/translation/get.transation.service.client';
+import { ProviderListSelect } from '@gitroom/frontend/components/new-launch/providers/provider.list.select';
+
 export const SlackChannelSelect: FC<{
   name: string;
-  onChange: (event: {
-    target: {
-      value: string;
-      name: string;
-    };
-  }) => void;
-}> = (props) => {
-  const { onChange, name } = props;
+  onChange: (event: { target: { value: string; name: string } }) => void;
+}> = ({ name, onChange }) => {
   const t = useT();
-  const customFunc = useCustomProviderFunction();
-  const [publications, setOrgs] = useState([]);
-  const { getValues } = useSettings();
-  const [currentMedia, setCurrentMedia] = useState<string | undefined>();
-  const onChangeInner = (event: {
-    target: {
-      value: string;
-      name: string;
-    };
-  }) => {
-    setCurrentMedia(event.target.value);
-    onChange(event);
-  };
-  useEffect(() => {
-    customFunc.get('channels').then((data) => setOrgs(data));
-    const settings = getValues()[props.name];
-    if (settings) {
-      setCurrentMedia(settings);
-    }
-  }, []);
-  if (!publications.length) {
-    return null;
-  }
   return (
-    <Select
+    <ProviderListSelect
       name={name}
-      label="Select Channel"
-      onChange={onChangeInner}
-      value={currentMedia}
-    >
-      <option value="">{t('select_1', '--Select--')}</option>
-      {publications.map((publication: any) => (
-        <option key={publication.id} value={publication.id}>
-          {publication.name}
-        </option>
-      ))}
-    </Select>
+      fn="channels"
+      onChange={onChange}
+      texts={{
+        label: t('slack_channels_label', 'Select channel'),
+        loading: t('slack_channels_loading', 'Loading channels…'),
+        failed: t('slack_channels_failed', 'Slack did not send your channels. Try again in a moment.'),
+        none: t('slack_channels_none', 'No public channels found in this Slack workspace. Create one in Slack, then refresh.'),
+        refresh: t('slack_channels_refresh', 'Refresh channels'),
+      }}
+    />
   );
 };

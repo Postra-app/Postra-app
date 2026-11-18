@@ -2362,5 +2362,20 @@
   "carousel_exit_approve": "Leave and delete the other slides",
   "carousel_delete_slide_title": "Delete Slide {n}?",
   "carousel_delete_slide_confirm": "The slide and everything on it are deleted.",
-  "brand_kit_load_failed": "Could not load your brand kit. Nothing has been changed."
+  "brand_kit_load_failed": "Could not load your brand kit. Nothing has been changed.",
+  "slack_channels_label": "Select channel",
+  "slack_channels_loading": "Loading channels…",
+  "slack_channels_failed": "Slack did not send your channels. Try again in a moment.",
+  "slack_channels_none": "No public channels found in this Slack workspace. Create one in Slack, then refresh.",
+  "slack_channels_refresh": "Refresh channels",
+  "discord_channels_label": "Select channel",
+  "discord_channels_loading": "Loading channels…",
+  "discord_channels_failed": "Discord did not send your channels. Try again in a moment.",
+  "discord_channels_none": "No text channels found on this Discord server. Create one in Discord, then refresh.",
+  "discord_channels_refresh": "Refresh channels",
+  "wordpress_post_types_label": "Select type",
+  "wordpress_post_types_loading": "Loading post types…",
+  "wordpress_post_types_failed": "WordPress did not send its post types. Try again in a moment.",
+  "wordpress_post_types_none": "No post types found on this WordPress site. Try again in a moment.",
+  "wordpress_post_types_refresh": "Refresh post types"
 }
