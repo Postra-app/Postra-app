@@ -1,4 +1,4 @@
-import { FC, useCallback, useMemo, useState } from 'react';
+import { FC, useCallback, useMemo } from 'react';
 import { useReconnectChannel } from '@gitroom/frontend/components/launches/helpers/use.reconnect.channel';
 import { Integration } from '@prisma/client';
 import useSWR from 'swr';
@@ -189,15 +189,17 @@ export const RenderAnalytics: FC<{
   date: number;
 }> = (props) => {
   const { integration, date } = props;
-  const [loading, setLoading] = useState(true);
   const fetch = useFetch();
 
+  // Loading and failure come from SWR, per channel and date. A flag of our
+  // own stayed "loading" for good when a request failed, or when going back
+  // to a channel within SWR's dedupe window started no request at all.
   const load = useCallback(async () => {
-    setLoading(true);
-    const result = await (
-      await fetch(`/analytics/${integration.id}?date=${date}`)
-    ).json();
-    setLoading(false);
+    const res = await fetch(`/analytics/${integration.id}?date=${date}`);
+    if (!res.ok) {
+      throw new Error(`analytics ${res.status}`);
+    }
+    const result = await res.json();
     // Debug: per-channel, what did analytics return? An empty array ([]) is
     // exactly what triggers the "needs to be refreshed" empty-state — the
     // backend logs ([analytics:<platform>] …) explain WHY it came back empty.
@@ -212,15 +214,20 @@ export const RenderAnalytics: FC<{
     return result;
   }, [integration, date]);
 
-  const { data } = useSWR(`/analytics-${integration?.id}-${date}`, load, {
-    refreshInterval: 0,
-    refreshWhenHidden: false,
-    revalidateOnFocus: false,
-    revalidateOnReconnect: false,
-    revalidateIfStale: false,
-    refreshWhenOffline: false,
-    revalidateOnMount: true,
-  });
+  const { data, error, isLoading, isValidating, mutate } = useSWR(
+    `/analytics-${integration?.id}-${date}`,
+    load,
+    {
+      refreshInterval: 0,
+      refreshWhenHidden: false,
+      revalidateOnFocus: false,
+      revalidateOnReconnect: false,
+      revalidateIfStale: false,
+      refreshWhenOffline: false,
+      revalidateOnMount: true,
+      shouldRetryOnError: false,
+    }
+  );
 
   // The same reconnect as the channel list: this one sent the browser to
   // `url` whatever it was, /undefined (a 404) on a refusal.
@@ -228,12 +235,39 @@ export const RenderAnalytics: FC<{
 
   const t = useT();
 
-  const totals = useMemo(() => data?.map(analyticsTotal), [data]);
+  const totals = useMemo(
+    () => (Array.isArray(data) ? data.map(analyticsTotal) : []),
+    [data]
+  );
 
-  if (loading) {
+  if (isLoading) {
     return (
       <div className="flex items-center justify-center py-[48px]">
         <LoadingComponent />
+      </div>
+    );
+  }
+
+  if (error && !data) {
+    return (
+      <div
+        role="alert"
+        className="flex flex-col items-center justify-center gap-[12px] py-[48px] text-center"
+      >
+        <p className="text-[15px] text-newTableText">
+          {t(
+            'analytics_load_failed',
+            'Could not load analytics for this channel.'
+          )}
+        </p>
+        <button
+          type="button"
+          onClick={() => mutate()}
+          disabled={isValidating}
+          className="px-[16px] py-[8px] text-[14px] font-medium text-[#06222e] bg-[#38bdf8] hover:bg-[#0284c7] rounded-[8px] transition-colors disabled:opacity-50"
+        >
+          {t('try_again', 'Try again')}
+        </button>
       </div>
     );
   }

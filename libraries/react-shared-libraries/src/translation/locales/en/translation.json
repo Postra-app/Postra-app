@@ -2377,5 +2377,6 @@
   "wordpress_post_types_loading": "Loading post types…",
   "wordpress_post_types_failed": "WordPress did not send its post types. Try again in a moment.",
   "wordpress_post_types_none": "No post types found on this WordPress site. Try again in a moment.",
-  "wordpress_post_types_refresh": "Refresh post types"
+  "wordpress_post_types_refresh": "Refresh post types",
+  "analytics_load_failed": "Could not load analytics for this channel."
 }
