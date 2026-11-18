@@ -160,6 +160,13 @@ body.light .launches-modal-panel {
   box-shadow: 0 24px 60px rgba(148, 163, 184, 0.16) !important;
 }
 
+/* Plain windows in the light theme: the dark panel left dark text on navy. */
+body.light .postra-modal-default {
+  background: rgba(255, 255, 255, 0.97);
+  border-color: rgba(148, 163, 184, 0.24);
+  box-shadow: 0 24px 60px rgba(148, 163, 184, 0.2);
+}
+
 body.light .launches-provider-card {
   background: linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(248, 250, 252, 0.98)) !important;
   border-color: rgba(148, 163, 184, 0.18) !important;

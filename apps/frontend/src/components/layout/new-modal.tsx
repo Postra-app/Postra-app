@@ -280,6 +280,10 @@ export const Component: FC<{
               className={clsx(
                 !modal.removeLayout && 'gap-[40px] p-[32px]',
                 'bg-[rgba(15,23,42,0.92)] backdrop-blur-xl border border-white/10 mx-auto flex flex-col w-fit rounded-[24px] relative animate-modalIn phone:!min-w-0 phone:!w-full phone:!max-w-full',
+                // The plain windows (language, sign out, confirmations,
+                // "Payment required") take the light theme's panel; windows
+                // that style their own panel keep it.
+                !modal.classNames?.modal && 'postra-modal-default',
                 modal.classNames?.modal,
                 modal.size ? '' : 'min-w-[600px]',
                 modal.fullScreen && 'h-full'
