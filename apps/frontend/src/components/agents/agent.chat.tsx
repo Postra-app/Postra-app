@@ -534,15 +534,37 @@ export const Hooks: FC = () => {
         ],
       },
     ],
-    renderAndWaitForResponse: ({ args, status, respond }) => {
+    renderAndWaitForResponse: ({ args, status, respond, result }: any) => {
       if (status === 'executing') {
         return <OpenModal args={args} respond={respond} />;
+      }
+      // After the answer the tool's own message would vanish: keep saying
+      // why no editor opened.
+      if (
+        typeof result === 'string' &&
+        result.startsWith(CHANNELS_NOT_CONNECTED)
+      ) {
+        return <ChannelNotConnected />;
       }
 
       return null;
     },
   });
   return null;
+};
+
+const CHANNELS_NOT_CONNECTED = 'These channels are not connected';
+
+const ChannelNotConnected: FC = () => {
+  const t = useT();
+  return (
+    <div role="status">
+      {t(
+        'agent_channel_not_connected',
+        'That channel is not connected any more, so the editor did not open. Pick one of your channels and ask again.'
+      )}
+    </div>
+  );
 };
 
 const OpenModal: FC<{
@@ -638,7 +660,7 @@ const OpenModal: FC<{
     if (notFound.length) {
       setMissing(notFound);
       respond(
-        `These channels are not connected to this organisation, so no editor was opened for them: ${notFound.join(
+        `${CHANNELS_NOT_CONNECTED} to this organisation, so no editor was opened for them: ${notFound.join(
           ', '
         )}. Ask the user to pick one of their connected channels.`
       );
@@ -656,14 +678,7 @@ const OpenModal: FC<{
     startModal(allChannels?.length ? allChannels : properties);
   }, [allChannels]);
   if (missing.length) {
-    return (
-      <div role="status">
-        {t(
-          'agent_channel_not_connected',
-          'That channel is not connected any more, so the editor did not open. Pick one of your channels and ask again.'
-        )}
-      </div>
-    );
+    return <ChannelNotConnected />;
   }
   return (
     // Shown in the chat while the editor is open. It used to print the raw

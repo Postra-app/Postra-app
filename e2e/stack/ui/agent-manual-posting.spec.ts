@@ -28,7 +28,7 @@ test('the editor opens with the draft when no channel is ticked', async ({ page,
 
     const editor = page.getByRole('dialog', { name: 'Post editor' });
     await expect(editor).toBeVisible({ timeout: 30_000 });
-    await expect(editor.getByText('Stack post from the assistant')).toBeVisible();
+    await expect(editor.getByText('Stack post from the assistant').first()).toBeVisible();
     expect(problems.filter((p) => /picture|TypeError/.test(p))).toEqual([]);
   } finally {
     await org.remove();
