@@ -45,6 +45,7 @@ import { useDubClickId } from '@gitroom/frontend/components/layout/dubAnalytics'
 import { LogoutComponent } from '@gitroom/frontend/components/layout/logout.component';
 import { TrialLimitsNote } from '@gitroom/frontend/components/billing/trial.limits.note';
 import { AppStoreBilled } from '@gitroom/frontend/components/billing/app.store.billed';
+import { CompBilled } from '@gitroom/frontend/components/billing/comp.billed';
 import { AiUsageThisMonth } from '@gitroom/frontend/components/billing/ai.usage.this.month';
 import { BillingHistory } from '@gitroom/frontend/components/billing/billing.history.component';
 import { planFeatures } from '@gitroom/frontend/components/billing/plan.features';
@@ -754,6 +755,9 @@ export const MainBillingComponent: FC<{
   }
   if (subscription?.appleOriginalTransactionId) {
     return <AppStoreBilled sub={subscription} isTrailing={!!user?.isTrailing} />;
+  }
+  if (subscription?.compReason) {
+    return <CompBilled sub={subscription} />;
   }
   return (
     <div className="flex flex-col gap-[16px]">

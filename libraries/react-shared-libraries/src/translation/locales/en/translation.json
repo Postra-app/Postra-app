@@ -2389,5 +2389,8 @@
   "team_demote_admin_title": "Make this admin a user?",
   "team_demote_admin_description": "They could see your API key, so it will be replaced and your integrations will need the new one.",
   "team_demote_admin_confirm": "Make user",
-  "billing_confirm_failed": "The payment could not be sent. Check your connection and try again."
+  "billing_confirm_failed": "The payment could not be sent. Check your connection and try again.",
+  "billing_comp_given": "Postra gave you this plan. There is nothing to pay and nothing to cancel.",
+  "billing_comp_ends": "It ends on",
+  "billing_comp_no_end": "It has no end date."
 }

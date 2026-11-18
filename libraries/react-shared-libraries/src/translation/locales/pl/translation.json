@@ -2389,5 +2389,8 @@
   "team_demote_admin_title": "Zmienić tego administratora w użytkownika?",
   "team_demote_admin_description": "Ta osoba widziała Twój klucz API, więc zostanie on wymieniony, a Twoje integracje będą potrzebowały nowego.",
   "team_demote_admin_confirm": "Zmień na użytkownika",
-  "billing_confirm_failed": "Nie udało się wysłać płatności. Sprawdź połączenie i spróbuj ponownie."
+  "billing_confirm_failed": "Nie udało się wysłać płatności. Sprawdź połączenie i spróbuj ponownie.",
+  "billing_comp_given": "Ten plan dostajesz od Postry. Nie ma nic do zapłacenia ani do anulowania.",
+  "billing_comp_ends": "Kończy się",
+  "billing_comp_no_end": "Nie ma daty końca."
 }
