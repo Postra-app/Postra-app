@@ -2379,5 +2379,6 @@
   "wordpress_post_types_none": "Na tej stronie WordPress nie znaleziono typów wpisów. Spróbuj ponownie za chwilę.",
   "wordpress_post_types_refresh": "Odśwież typy wpisów",
   "analytics_load_failed": "Nie udało się wczytać analityki tego kanału.",
-  "team_invite_valid_for": "Link działa przez 7 dni."
+  "team_invite_valid_for": "Link działa przez 7 dni.",
+  "open_source_licences": "Licencje i informacje o prawach autorskich pakietów zewnętrznych użytych w Postrze znajdziesz na"
 }

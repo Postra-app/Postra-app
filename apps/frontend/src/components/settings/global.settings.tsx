@@ -61,6 +61,22 @@ export const GlobalSettings = () => {
             : ''}
           .
         </div>
+        <div className="text-[13px] text-newTextColor/70 max-w-[560px]">
+          {t(
+            'open_source_licences',
+            'The licences and copyright notices of the third-party packages in Postra are at'
+          )}
+          &nbsp;
+          <a
+            href="https://postra.co.uk/licences/"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="underline underline-offset-4 hover:text-[#38bdf8]"
+          >
+            postra.co.uk/licences
+          </a>
+          .
+        </div>
       </Card>
       <DeleteAccountComponent />
     </div>
