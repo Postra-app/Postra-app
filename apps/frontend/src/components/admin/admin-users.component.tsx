@@ -122,7 +122,8 @@ const CompSubscription: FC<{
   const t = useT();
   const [tier, setTier] = useState('');
   // A comp for a time by default: one without an end is easy to forget.
-  const [months, setMonths] = useState('3');
+  // No end date unless one is chosen (same default as a promise in Comps).
+  const [months, setMonths] = useState('');
   const [reason, setReason] = useState<string>('influencer');
 
   const comp = useCallback(async () => {

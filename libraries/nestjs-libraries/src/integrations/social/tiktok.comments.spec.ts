@@ -194,7 +194,8 @@ describe('TikTok first comment: publishing', () => {
               videos: [
                 {
                   item_id: '7600000000000000001',
-                  share_url: 'https://www.tiktok.com/@postra.co.uk/video/7600000000000000001',
+                  share_url:
+                    'https://www.tiktok.com/@postra.co.uk/video/7600000000000000001?utm_campaign=tt4d_open_api&utm_source=7000000000000000001',
                 },
               ],
             },

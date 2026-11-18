@@ -114,7 +114,9 @@ export const AdminCompsComponent = () => {
 
   const [email, setEmail] = useState('');
   const [tier, setTier] = useState<string>('PRO');
-  const [months, setMonths] = useState('3');
+  // A promise has no end date unless one is chosen: influencers keep their
+  // plan until it is revoked.
+  const [months, setMonths] = useState('');
   const [reason, setReason] = useState<string>('influencer');
   const [busy, setBusy] = useState(false);
 
