@@ -212,6 +212,24 @@ export const TeamsComponent = () => {
   const changeRole = useCallback(
     (member: { role: string; user: { id: string } }, role: 'USER' | 'ADMIN') =>
       async () => {
+        // Taking an admin's role replaces the organisation's API key (they
+        // could see it): it happened at once, with no question.
+        if (
+          member.role === 'ADMIN' &&
+          role === 'USER' &&
+          !(await areYouSure({
+            title: t('team_demote_admin_title', 'Make this admin a user?'),
+            description: t(
+              'team_demote_admin_description',
+              'They could see your API key, so it will be replaced and your integrations will need the new one.'
+            ),
+            approveLabel: t('team_demote_admin_confirm', 'Make user'),
+            cancelLabel: t('cancel', 'Cancel'),
+          }))
+        ) {
+          await mutate();
+          return;
+        }
         const response = await fetch(`/settings/team/${member.user.id}/role`, {
           method: 'PUT',
           body: JSON.stringify({ role }),

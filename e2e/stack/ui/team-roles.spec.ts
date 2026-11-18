@@ -39,9 +39,18 @@ test('the owner changes roles, the key is replaced after an admin, and the organ
     await expect(page.getByText('Role changed').first()).toBeVisible();
     await expect.poll(() => roleOf(member.userId)).toBe('ADMIN');
 
-    // Admin → User: they saw the key, so it is replaced and the page says so.
+    // Admin → User: they saw the key, so it is replaced. It asks first (it
+    // happened at once); "Cancel" leaves them an admin.
     const keyBefore = await apiKeyHash();
     await memberRole.selectOption('USER');
+    const question = page.getByRole('dialog').filter({ hasText: 'Make this admin a user?' });
+    await expect(question).toBeVisible();
+    await question.getByRole('button', { name: 'Cancel' }).click();
+    await expect(memberRole).toHaveValue('ADMIN');
+    expect(await roleOf(member.userId)).toBe('ADMIN');
+    expect(await apiKeyHash()).toBe(keyBefore);
+    await memberRole.selectOption('USER');
+    await question.getByRole('button', { name: 'Make user' }).click();
     await expect(
       page.getByText('They could see your API key, so it was replaced.', { exact: false })
     ).toBeVisible();
