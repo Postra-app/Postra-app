@@ -516,6 +516,26 @@ export class IntegrationRepository {
     });
   }
 
+  // The access a channel keeps next to its own token (TikTok's access for
+  // comments), already encrypted, with the scopes it brings when it is new.
+  // updateMany: an id outside the org matches nothing instead of throwing.
+  setCommentAccess(
+    org: string,
+    id: string,
+    customInstanceDetails: string,
+    grantedScopes?: string[]
+  ) {
+    return this._integration.model.integration.updateMany({
+      where: { id, organizationId: org, deletedAt: null },
+      data: {
+        customInstanceDetails,
+        ...(grantedScopes
+          ? { grantedScopes: JSON.stringify(grantedScopes) }
+          : {}),
+      },
+    });
+  }
+
   async needsToBeRefreshed() {
     const list = await this._integration.model.integration.findMany({
       where: {
@@ -838,6 +858,11 @@ export class IntegrationRepository {
         token: '',
         refreshToken: null,
         tokenExpiration: null,
+        // The same goes for what a channel keeps beside its token (a Bluesky
+        // app password, TikTok's access for comments) and for the scopes that
+        // came with it: a channel connected again starts without them.
+        customInstanceDetails: null,
+        grantedScopes: null,
       },
     });
   }

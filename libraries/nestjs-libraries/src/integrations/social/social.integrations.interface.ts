@@ -130,6 +130,12 @@ export interface ISocialMediaIntegration {
     postDetails: PostDetails[],
     integration: Integration
   ): Promise<PostResponse[]>; // Schedules a new post
+
+  // For a provider whose comments use an access of their own, kept in
+  // customInstanceDetails (TikTok): called before comment() with the stored
+  // value, answers the renewed value to store, or nothing when it is still
+  // good.
+  refreshCommentAccess?(integration: Integration): Promise<string | undefined>;
 }
 
 export type PostResponse = {

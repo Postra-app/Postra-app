@@ -48,6 +48,18 @@ import {
 import { uniqBy } from 'lodash';
 import { canPostComments } from '@gitroom/nestjs-libraries/integrations/social/comment.capability';
 import { RefreshIntegrationService } from '@gitroom/nestjs-libraries/integrations/refresh.integration.service';
+import { TiktokCommentsConnectDto } from '@gitroom/nestjs-libraries/dtos/integrations/tiktok.comments.dto';
+import { makeSecureId } from '@gitroom/nestjs-libraries/services/make.secure.id';
+import {
+  TIKTOK_COMMENT_SCOPE,
+  TiktokBusinessError,
+  sameTiktokAccount,
+  sealTiktokBusinessAccess,
+  tiktokBusinessAuthUrl,
+  tiktokBusinessConfigured,
+  tiktokBusinessExchangeCode,
+  tiktokBusinessUsername,
+} from '@gitroom/nestjs-libraries/integrations/social/tiktok.business';
 
 // Composer pickers that read from the platform but are not @Tool methods.
 const PICKER_FUNCTIONS = new Set([
@@ -165,8 +177,135 @@ export class IntegrationsController {
     return this._integrationService.updateCustomName(org.id, id, body.name);
   }
 
+  // Who may turn first comment on for a TikTok channel: everyone once
+  // TIKTOK_COMMENTS_FOR says so, until then a Postra administrator and the
+  // organisations that preview new platforms. Nobody without the keys of the
+  // TikTok API for Business app.
+  private tiktokCommentsOffered(user: User, org: Organization) {
+    return (
+      tiktokBusinessConfigured() &&
+      (process.env.TIKTOK_COMMENTS_FOR === 'everyone' ||
+        !!user?.isSuperAdmin ||
+        isPreviewOrganization(org.id))
+    );
+  }
+
+  private async tiktokChannelForComments(
+    user: User,
+    org: Organization,
+    id: string
+  ) {
+    if (!this.tiktokCommentsOffered(user, org)) {
+      throw new HttpException(
+        "First comment on TikTok isn't available yet.",
+        403
+      );
+    }
+    const role = (org as { users?: { role?: string }[] })?.users?.[0]?.role;
+    if (!['ADMIN', 'SUPERADMIN'].includes(role || '')) {
+      throw new HttpException(
+        'Only an admin of this workspace can turn first comment on.',
+        403
+      );
+    }
+    const channel = await this._integrationService.getIntegrationById(
+      org.id,
+      id
+    );
+    if (!channel || channel.providerIdentifier !== 'tiktok') {
+      throw new HttpException('TikTok channel not found', 404);
+    }
+    return channel;
+  }
+
+  // First comment on TikTok needs a second authorization, with TikTok API for
+  // Business (tiktok.business.ts). This answers where to send the browser.
+  @Get('/:id/tiktok-comments')
+  @Throttle({ default: { ttl: 300_000, limit: 30 } })
+  async tiktokCommentsUrl(
+    @Param('id') id: string,
+    @GetOrgFromRequest() org: Organization,
+    @GetUserFromRequest() user: User
+  ) {
+    const channel = await this.tiktokChannelForComments(user, org, id);
+    const state = makeSecureId(24);
+    await ioRedis.set(
+      `tiktok-comments:${state}`,
+      JSON.stringify({ org: org.id, id: channel.id }),
+      'EX',
+      3600
+    );
+    return { url: tiktokBusinessAuthUrl(state) };
+  }
+
+  // The browser comes back from TikTok with a code; the state says which
+  // channel it was for, and only its own organisation may finish it.
+  @Post('/tiktok-comments/connect')
+  @Throttle({ default: { ttl: 300_000, limit: 30 } })
+  async tiktokCommentsConnect(
+    @Body() body: TiktokCommentsConnectDto,
+    @GetOrgFromRequest() org: Organization,
+    @GetUserFromRequest() user: User
+  ) {
+    const key = `tiktok-comments:${body.state}`;
+    const saved = await ioRedis.get(key);
+    // One use: the same code and state sent again finish nothing.
+    await ioRedis.del(key);
+    const pending: { org?: string; id?: string } = saved
+      ? JSON.parse(saved)
+      : {};
+    if (!pending.id || pending.org !== org.id) {
+      throw new HttpException(
+        'This attempt has expired. Start again from the channel menu.',
+        400
+      );
+    }
+    const channel = await this.tiktokChannelForComments(user, org, pending.id);
+
+    let access: Awaited<ReturnType<typeof tiktokBusinessExchangeCode>>;
+    let username: string;
+    try {
+      access = await tiktokBusinessExchangeCode(body.code);
+      username = await tiktokBusinessUsername(access);
+    } catch (err) {
+      throw new HttpException(
+        err instanceof TiktokBusinessError
+          ? err.message
+          : 'TikTok did not finish the sign-in. Try again.',
+        400
+      );
+    }
+
+    if (!access.scopes.includes(TIKTOK_COMMENT_SCOPE)) {
+      throw new HttpException(
+        'TikTok did not give the permission to comment. Try again and leave every permission on.',
+        400
+      );
+    }
+    // Comments go under this channel's posts, so the sign-in must be the same
+    // TikTok account.
+    if (!sameTiktokAccount(username, channel.profile)) {
+      throw new HttpException(
+        `You signed in to TikTok as @${username || 'another account'}, and this channel is @${channel.profile}. Sign in to TikTok as @${channel.profile} and try again.`,
+        409
+      );
+    }
+
+    const { scopes, ...tokens } = access;
+    await this._integrationService.setCommentAccess(
+      org.id,
+      channel.id,
+      sealTiktokBusinessAccess(tokens),
+      [TIKTOK_COMMENT_SCOPE]
+    );
+    return { id: channel.id, name: channel.customName || channel.name };
+  }
+
   @Get('/list')
-  async getIntegrationList(@GetOrgFromRequest() org: Organization) {
+  async getIntegrationList(
+    @GetOrgFromRequest() org: Organization,
+    @GetUserFromRequest() user: User
+  ) {
     // Fire-and-forget: lazily verify tokens are still valid so a channel the
     // user revoked on the platform gets the "needs reconnect" flag on the next
     // load. Never blocks the response.
@@ -196,6 +335,13 @@ export class IntegrationsController {
             // can take comments while the next one can't. The composer hides
             // the option where the comment would be dropped at publish.
             canComment: canPostComments(findIntegration, p),
+            // First comment is a step of the customer's own (TikTok's second
+            // authorization): the channel menu offers it, and offers it again
+            // on a channel that has it, for when that access has run out.
+            ...(p.providerIdentifier === 'tiktok' &&
+            this.tiktokCommentsOffered(user, org)
+              ? { commentSetup: 'tiktok' }
+              : {}),
             isCustomFields: !!findIntegration.customFields,
             ...(findIntegration.customFields
               ? { customFields: await findIntegration.customFields() }

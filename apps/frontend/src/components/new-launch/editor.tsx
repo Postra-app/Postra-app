@@ -383,6 +383,13 @@ export const EditorWrapper: FC<{
                 'These platforms have not granted the permission needed to post comments. The post itself will go out as scheduled.'
               ),
             ],
+            [
+              'not_enabled',
+              t(
+                'comments_not_enabled_explanation',
+                'First comment is not turned on for these channels. Open the channel menu and choose "Enable first comment". The post itself will go out as scheduled.'
+              ),
+            ],
           ] as const
         ).map(([reason, explanation]) => {
           const names = commentsUnsupported

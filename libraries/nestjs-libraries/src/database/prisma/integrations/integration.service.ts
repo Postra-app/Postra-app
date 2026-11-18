@@ -492,6 +492,20 @@ export class IntegrationService {
     return this._integrationRepository.getIntegrationById(org, id);
   }
 
+  setCommentAccess(
+    org: string,
+    id: string,
+    customInstanceDetails: string,
+    grantedScopes?: string[]
+  ) {
+    return this._integrationRepository.setCommentAccess(
+      org,
+      id,
+      customInstanceDetails,
+      grantedScopes
+    );
+  }
+
   getIntegrationsByIds(org: string, ids: string[]) {
     return this._integrationRepository.getIntegrationsByIds(org, ids);
   }

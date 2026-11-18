@@ -421,6 +421,26 @@ export const Menu: FC<{
     });
     setShow(false);
   }, [integrations, t]);
+  // TikTok: first comment needs a second authorization. Ask where to go and
+  // go; TikTok sends the browser back to /integrations/social/tiktok-business.
+  const enableTiktokComments = useCallback(async () => {
+    setShow(false);
+    const response = await fetch(`/integrations/${id}/tiktok-comments`);
+    const body = await response.json().catch(() => ({}));
+    if (!response.ok || typeof body?.url !== 'string') {
+      toast.show(
+        typeof body?.message === 'string' && body.message
+          ? body.message
+          : t(
+              'tiktok_comments_start_failed',
+              'Could not start turning first comment on. Try again.'
+            ),
+        'warning'
+      );
+      return;
+    }
+    window.location.href = body.url;
+  }, [id, fetch, toast, t]);
   const addToCustomer = useCallback(() => {
     const findIntegration = integrations.find(
       (integration) => integration.id === id
@@ -593,6 +613,35 @@ export const Menu: FC<{
               </div>
             <div className="text-[14px] font-[500]">{t('copy_id', 'Copy channel ID')}</div>
           </div>
+          {canDisable && findIntegration?.commentSetup === 'tiktok' && (
+            <div
+              className={menuItemClass}
+              onClick={enableTiktokComments}
+              data-testid="enable-first-comment"
+            >
+              <div className={iconClass}>
+                <svg
+                  width={18}
+                  height={18}
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  xmlns="http://www.w3.org/2000/svg"
+                >
+                  <path
+                    d="M21 12a8 8 0 0 1-11.6 7.1L4 20l1-4.6A8 8 0 1 1 21 12Z"
+                    stroke="currentColor"
+                    strokeWidth="1.6"
+                    strokeLinejoin="round"
+                  />
+                </svg>
+              </div>
+              <div className="text-[14px] font-[500]">
+                {findIntegration?.canComment
+                  ? t('renew_first_comment', 'Renew first comment access')
+                  : t('enable_first_comment', 'Enable first comment')}
+              </div>
+            </div>
+          )}
           {canDisable &&
             findIntegration?.refreshNeeded &&
             !findIntegration.customFields && (

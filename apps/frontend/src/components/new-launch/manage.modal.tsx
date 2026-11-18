@@ -21,6 +21,7 @@ import {
 } from '@gitroom/frontend/components/new-launch/providers/show.all.providers';
 import { providerSupportsComments } from '@gitroom/frontend/components/new-launch/providers/high.order.provider';
 import { valuesForChannel } from '@gitroom/frontend/components/new-launch/comments-per-channel';
+import { waitsForCommentStep } from '@gitroom/frontend/components/new-launch/comment-step';
 import { useExistingData } from '@gitroom/frontend/components/launches/helpers/use.existing.data';
 import { useLaunchStore } from '@gitroom/frontend/components/new-launch/store';
 import { DatePicker } from '@gitroom/frontend/components/launches/helpers/date.picker';
@@ -650,9 +651,14 @@ export const ManageModal: FC<AddEditModalProps> = (props) => {
         const integrationById = (id: string) =>
           selectedIntegrations.find((p) => p.integration.id === id);
         const takesComments = (id: string) => {
-          const identifier = integrationById(id)?.integration.identifier;
-          const provider = Providers.find((p) => p.identifier === identifier);
-          return !provider || providerSupportsComments(provider.component);
+          const integration = integrationById(id)?.integration;
+          const provider = Providers.find(
+            (p) => p.identifier === integration?.identifier
+          );
+          return (
+            (!provider || providerSupportsComments(provider.component)) &&
+            !waitsForCommentStep(integration)
+          );
         };
 
         const group = existingData.group || makeId(10);

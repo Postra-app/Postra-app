@@ -21,6 +21,17 @@ import { hasExtension } from '@gitroom/helpers/utils/has.extension';
 import { Integration } from '@prisma/client';
 import { Rules } from '@gitroom/nestjs-libraries/chat/rules.description.decorator';
 import { makeSecureId } from '@gitroom/nestjs-libraries/services/make.secure.id';
+import {
+  TIKTOK_COMMENT_MAX_LENGTH,
+  TIKTOK_COMMENT_SCOPE,
+  TiktokBusinessError,
+  openTiktokBusinessAccess,
+  sealTiktokBusinessAccess,
+  tiktokBusinessCreateComment,
+  tiktokBusinessNeedsRefresh,
+  tiktokBusinessPostLink,
+  tiktokBusinessRefresh,
+} from '@gitroom/nestjs-libraries/integrations/social/tiktok.business';
 
 // The published post's link. Photo posts (publish ids p_pub_...) live under
 // /photo/: TikTok answers 403 for /video/<id> of a photo post (upstream
@@ -63,6 +74,10 @@ export class TiktokProvider extends SocialAbstract implements SocialProvider {
     'video.publish',
     'video.upload',
   ];
+  // First comment goes through TikTok API for Business, a second
+  // authorization the channel's owner turns on (tiktok.business.ts). The
+  // channel has this scope in grantedScopes once they did.
+  commentScope = TIKTOK_COMMENT_SCOPE;
   override maxConcurrentJob = 300;
   dto = TikTokDto;
   editor = 'normal' as const;
@@ -736,6 +751,115 @@ export class TiktokProvider extends SocialAbstract implements SocialProvider {
         id: firstPost.id,
         releaseURL: url,
         postId: String(videoId),
+        status: 'success',
+      },
+    ];
+  }
+
+  // How long to wait for TikTok to give a new post its public id (its review
+  // of the post), in tries 10 seconds apart. Kept well under the activity's
+  // time limit.
+  static commentWaitTries = 18;
+
+  // The access for comments, renewed when its one-day token is about to run
+  // out. The caller stores the answer (it is the new customInstanceDetails).
+  async refreshCommentAccess(integration: Integration) {
+    const access = openTiktokBusinessAccess(integration.customInstanceDetails);
+    if (!access || !tiktokBusinessNeedsRefresh(access)) {
+      return undefined;
+    }
+    return sealTiktokBusinessAccess(await tiktokBusinessRefresh(access));
+  }
+
+  async comment(
+    id: string,
+    postId: string,
+    lastCommentId: string | undefined,
+    accessToken: string,
+    postDetails: PostDetails[],
+    integration: Integration
+  ): Promise<PostResponse[]> {
+    const [commentPost] = postDetails;
+    const access = openTiktokBusinessAccess(integration.customInstanceDetails);
+    if (!access) {
+      throw new BadBody(
+        'tiktok-comment',
+        'no access for comments',
+        Buffer.from(''),
+        'First comment is not turned on for this TikTok channel. Open the channel menu and choose "Enable first comment".'
+      );
+    }
+
+    const text = String(commentPost?.message || '').trim();
+    if (!text) {
+      throw new BadBody(
+        'tiktok-comment',
+        'empty comment',
+        Buffer.from(''),
+        'A TikTok comment needs text.'
+      );
+    }
+    if (text.length > TIKTOK_COMMENT_MAX_LENGTH) {
+      throw new BadBody(
+        'tiktok-comment',
+        'comment too long',
+        Buffer.from(''),
+        `A TikTok comment can have up to ${TIKTOK_COMMENT_MAX_LENGTH} characters.`
+      );
+    }
+
+    // A post that TikTok was still reviewing when it was published has its
+    // publish id, not its public id, and only a public post takes a comment.
+    let videoId = postId;
+    for (
+      let attempt = 0;
+      videoId.indexOf('_pub_') > -1 && attempt < TiktokProvider.commentWaitTries;
+      attempt++
+    ) {
+      const resolved = await this.resolveReleaseId(
+        accessToken,
+        postId,
+        integration
+      );
+      if (resolved?.postId) {
+        videoId = resolved.postId;
+        break;
+      }
+      await timer(10000);
+    }
+    if (!/^\d+$/.test(videoId)) {
+      throw new BadBody(
+        'tiktok-comment',
+        `no public post id for ${postId}`,
+        Buffer.from(''),
+        'TikTok has not made this post public, so the comment could not be added. A post seen only by you or your followers, a post sent to your TikTok inbox and a post still in review take no comment from an app.'
+      );
+    }
+
+    let commentId: string;
+    try {
+      commentId = await tiktokBusinessCreateComment(access, videoId, text);
+    } catch (err) {
+      throw new BadBody(
+        'tiktok-comment',
+        (err as Error)?.message || 'comment refused',
+        Buffer.from(''),
+        err instanceof TiktokBusinessError
+          ? err.message
+          : 'TikTok did not accept the comment.'
+      );
+    }
+
+    // The post's own link; without it the profile, where the post is.
+    const link = await tiktokBusinessPostLink(access, videoId).catch(
+      (): undefined => undefined
+    );
+
+    return [
+      {
+        id: commentPost.id,
+        postId: commentId,
+        releaseURL: link || tiktokPostUrl(integration.profile!, postId),
         status: 'success',
       },
     ];
