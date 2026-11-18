@@ -2388,5 +2388,6 @@
   "webhook_test_unreachable": "Postra could not reach that address within 5 seconds.",
   "team_demote_admin_title": "Make this admin a user?",
   "team_demote_admin_description": "They could see your API key, so it will be replaced and your integrations will need the new one.",
-  "team_demote_admin_confirm": "Make user"
+  "team_demote_admin_confirm": "Make user",
+  "billing_confirm_failed": "The payment could not be sent. Check your connection and try again."
 }

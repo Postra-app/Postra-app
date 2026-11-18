@@ -28,13 +28,16 @@ export const EmbeddedBilling: FC<{
   const [mode, setMode] = useCookie('mode', 'dark');
 
   useEffect(() => {
-    modeEmitter.on('mode', (value) => {
+    const onMode = (value: any) => {
       setMode(value);
       setLoading(true);
-    });
+    };
+    modeEmitter.on('mode', onMode);
 
+    // Only this listener: removeAllListeners() also took the theme switch's
+    // own listeners elsewhere on the page.
     return () => {
-      modeEmitter.removeAllListeners();
+      modeEmitter.off('mode', onMode);
     };
   }, []);
 
@@ -137,13 +140,25 @@ const FormWrapper: FC<{ showCoupon?: boolean; autoApplyCoupon?: string }> = ({
 
     const { checkout } = checkoutState;
 
-    const confirmResult = await checkout.confirm();
-
-    if (confirmResult.type === 'error') {
-      toaster.show(confirmResult.error.message, 'warning');
+    // A throw from Stripe.js (network, a closed session) left "Pay Now" greyed
+    // out for good: the button comes back whatever happens.
+    try {
+      const confirmResult = await checkout.confirm();
+      if (confirmResult.type === 'error') {
+        toaster.show(confirmResult.error.message, 'warning');
+      }
+    } catch (err) {
+      console.error('[Postra:billing] confirm failed', err);
+      toaster.show(
+        t(
+          'billing_confirm_failed',
+          'The payment could not be sent. Check your connection and try again.'
+        ),
+        'warning'
+      );
+    } finally {
+      setLoading(false);
     }
-
-    setLoading(false);
   };
 
   return (
