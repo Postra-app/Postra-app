@@ -2380,5 +2380,6 @@
   "wordpress_post_types_refresh": "Refresh post types",
   "analytics_load_failed": "Could not load analytics for this channel.",
   "team_invite_valid_for": "The link works for 7 days.",
-  "open_source_licences": "The licences and copyright notices of the third-party packages in Postra are at"
+  "open_source_licences": "The licences and copyright notices of the third-party packages in Postra are at",
+  "agent_channel_not_connected": "That channel is not connected any more, so the editor did not open. Pick one of your channels and ask again."
 }

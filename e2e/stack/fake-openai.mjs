@@ -189,6 +189,40 @@ createServer((req, res) => {
         output_tokens_details: { reasoning_tokens: 0 },
       };
       const message = { type: 'message', role: 'assistant', id: 'msg_stack' };
+
+      // The assistant's "prepare a post" path: a user turn with
+      // `stack-manual-posting <channel id>` gets a call to the browser's
+      // manualPosting tool for that channel, once (after the tool's answer,
+      // the last input item is the tool output and the reply is plain text).
+      const input = Array.isArray(body.input) ? body.input : [];
+      const last = input[input.length - 1];
+      const lastText = JSON.stringify(last?.content ?? '');
+      const manual = /stack-manual-posting ([A-Za-z0-9_-]+)/.exec(lastText);
+      const offersTool = (body.tools || []).some((t) => t.name === 'manualPosting');
+      if (body.stream && manual && offersTool && last?.role === 'user') {
+        const args = JSON.stringify({
+          list: [
+            {
+              integrationId: manual[1],
+              date: '2031-01-06T10:00:00.000Z',
+              settings: {},
+              posts: [{ content: 'Stack post from the assistant', attachments: [] }],
+            },
+          ],
+        });
+        const call = { type: 'function_call', id: 'fc_stack', call_id: 'call_stack_manual', name: 'manualPosting' };
+        res.writeHead(200, { 'content-type': 'text/event-stream' });
+        const event = (data) => res.write(`event: ${data.type}\ndata: ${JSON.stringify(data)}\n\n`);
+        event({ type: 'response.created', response: { id: 'resp_stack_tool', created_at: created, model: body.model } });
+        event({ type: 'response.output_item.added', output_index: 0, item: { ...call, arguments: '', status: 'in_progress' } });
+        event({ type: 'response.function_call_arguments.delta', item_id: 'fc_stack', output_index: 0, delta: args });
+        event({ type: 'response.function_call_arguments.done', item_id: 'fc_stack', output_index: 0, arguments: args });
+        event({ type: 'response.output_item.done', output_index: 0, item: { ...call, arguments: args, status: 'completed' } });
+        event({ type: 'response.completed', response: { usage } });
+        res.end();
+        return;
+      }
+
       if (body.stream) {
         res.writeHead(200, { 'content-type': 'text/event-stream' });
         const event = (data) => res.write(`event: ${data.type}\ndata: ${JSON.stringify(data)}\n\n`);

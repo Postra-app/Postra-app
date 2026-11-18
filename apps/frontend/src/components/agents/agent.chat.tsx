@@ -2,6 +2,7 @@
 
 // The assistant's styles load with the assistant, not on every page.
 import '@copilotkit/react-ui/styles.css';
+import { useIntegrationList } from '@gitroom/frontend/components/launches/helpers/use.integration.list';
 import React, {
   FC,
   useCallback,
@@ -558,8 +559,20 @@ const OpenModal: FC<{
   const t = useT();
   const modals = useModals();
   const { properties } = useContext(PropertiesContext);
-  const startModal = useCallback(async () => {
+  // The channel comes from the organisation's list, not from what is ticked
+  // in the side panel: on a phone the panel is hidden, and with nothing
+  // ticked the editor never opened ("Opening the editor…" for good).
+  const { data: allChannels } = useIntegrationList();
+  const [missing, setMissing] = useState<string[]>([]);
+  const started = useRef(false);
+  const startModal = useCallback(async (channels: any[]) => {
+    const notFound: string[] = [];
     for (const integration of args.list) {
+      const channel = channels.find((p) => p.id === integration.integrationId);
+      if (!channel) {
+        notFound.push(integration.integrationId);
+        continue;
+      }
       await new Promise((res) => {
         const group = makeId(10);
         modals.openModal({
@@ -580,9 +593,7 @@ const OpenModal: FC<{
               value={{
                 group,
                 integration: integration.integrationId,
-                integrationPicture:
-                  properties.find((p) => p.id === integration.integrationId)
-                    .picture || '',
+                integrationPicture: channel.picture || '',
                 settings: integration.settings || {},
                 posts: integration.posts.map((p) => ({
                   approvedSubmitForOrder: 'NO',
@@ -593,9 +604,7 @@ const OpenModal: FC<{
                   settings: JSON.stringify(integration.settings || {}),
                   group,
                   integrationId: integration.integrationId,
-                  integration: properties.find(
-                    (p) => p.id === integration.integrationId
-                  ),
+                  integration: channel,
                   publishDate: dayjs.utc(integration.date).toISOString(),
                   image: p.attachments.map((a) => ({
                     id: a.id,
@@ -606,10 +615,8 @@ const OpenModal: FC<{
             >
               <AddEditModal
                 date={fromUtc(integration.date)}
-                allIntegrations={properties}
-                integrations={properties.filter(
-                  (p) => p.id === integration.integrationId
-                )}
+                allIntegrations={channels}
+                integrations={[channel]}
                 onlyValues={integration.posts.map((p) => ({
                   content: p.content,
                   id: makeId(10),
@@ -628,12 +635,36 @@ const OpenModal: FC<{
       });
     }
 
+    if (notFound.length) {
+      setMissing(notFound);
+      respond(
+        `These channels are not connected to this organisation, so no editor was opened for them: ${notFound.join(
+          ', '
+        )}. Ask the user to pick one of their connected channels.`
+      );
+      return;
+    }
     respond('User scheduled all the posts');
-  }, [args, respond, properties]);
+  }, [args, respond]);
 
+  // Once the channel list is in (it usually is: the side panel loads it).
   useEffect(() => {
-    startModal();
-  }, []);
+    if (started.current || allChannels === undefined) {
+      return;
+    }
+    started.current = true;
+    startModal(allChannels?.length ? allChannels : properties);
+  }, [allChannels]);
+  if (missing.length) {
+    return (
+      <div role="status">
+        {t(
+          'agent_channel_not_connected',
+          'That channel is not connected any more, so the editor did not open. Pick one of your channels and ask again.'
+        )}
+      </div>
+    );
+  }
   return (
     // Shown in the chat while the editor is open. It used to print the raw
     // tool arguments as JSON to the user.
