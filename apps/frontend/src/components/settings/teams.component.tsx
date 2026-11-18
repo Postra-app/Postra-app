@@ -366,8 +366,13 @@ export const TeamsComponent = () => {
           ) : (
             (data || []).map((p) => (
             <div key={p.user.id} className="flex items-center">
-              <div className="flex-1">
-                {nameOf(p.user.email)}
+              {/* The full address under the name: two people called Jan
+                  were two identical rows. */}
+              <div className="flex-1 min-w-0">
+                <div>{nameOf(p.user.email)}</div>
+                <div className="text-[12px] text-newTextColor/60 break-all">
+                  {p.user.email}
+                </div>
               </div>
               <div className="flex-1">
                 {/* The owner changes a member's role here;

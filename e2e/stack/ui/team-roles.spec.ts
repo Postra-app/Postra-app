@@ -121,3 +121,25 @@ test('a double click on Copy Link makes one invitation, and the window says how 
     await prisma.$disconnect();
   }
 });
+
+// Two members called Jan were two identical "Jan" rows: the full address
+// tells them apart.
+test('each member row shows the full email address', async ({ page, context }) => {
+  const prisma = database();
+  const org = await throwawayOrg(prisma, { tier: 'ULTIMATE', totalChannels: 5, channels: 0 });
+  const first = await addMember(prisma, org.orgId, 'USER');
+  const second = await addMember(prisma, org.orgId, 'USER');
+  await context.clearCookies();
+  await context.addCookies((await org.api.storageState()).cookies);
+  try {
+    await page.goto('/settings');
+    await page.getByRole('tab', { name: 'Teams', exact: true }).click();
+    await expect(page.getByText(first.email, { exact: true })).toBeVisible();
+    await expect(page.getByText(second.email, { exact: true })).toBeVisible();
+  } finally {
+    await first.remove();
+    await second.remove();
+    await org.remove();
+    await prisma.$disconnect();
+  }
+});
