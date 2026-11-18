@@ -153,16 +153,25 @@ const AutopostFeeds: FC = () => {
               className="py-[12px]"
             />
           ) : (
-            <div className="grid grid-cols-[1fr,1fr,1fr,1fr,1fr] w-full gap-y-[10px]">
+            // Text columns may shrink and cut their text; the controls keep
+            // their size. A long feed address pushed Edit, Delete and the
+            // switch past the right edge of a phone, out of reach. On a phone
+            // the address column goes (the title names the feed, Edit shows
+            // the address).
+            <div className="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto_auto_auto] phone:grid-cols-[minmax(0,1fr)_auto_auto_auto] w-full gap-y-[10px] gap-x-[12px] items-center">
               <div>{t('title', 'Title')}</div>
-              <div>{t('url', 'URL')}</div>
+              <div className="phone:hidden">{t('url', 'URL')}</div>
               <div>{t('edit', 'Edit')}</div>
               <div>{t('delete', 'Delete')}</div>
               <div>{t('active', 'Active')}</div>
               {data?.map((p: any) => (
                 <Fragment key={p.id}>
-                  <div className="flex flex-col justify-center">{p.title}</div>
-                  <div className="flex flex-col justify-center">{p.url}</div>
+                  <div className="min-w-0 truncate" title={p.title}>
+                    {p.title}
+                  </div>
+                  <div className="min-w-0 truncate phone:hidden" title={p.url}>
+                    {p.url}
+                  </div>
                   <div className="flex flex-col justify-center">
                     <div>
                       <Button onClick={addWebhook(p)}>
