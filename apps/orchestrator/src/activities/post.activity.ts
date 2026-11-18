@@ -26,6 +26,7 @@ import {
   AuthTokenDetails,
   PostResponse,
 } from '@gitroom/nestjs-libraries/integrations/social/social.integrations.interface';
+import { commentAccessForNow } from '@gitroom/nestjs-libraries/integrations/comment.access';
 import {
   canPostComments,
   commentSupport,
@@ -345,27 +346,12 @@ export class PostActivity {
       }))
     );
 
-    // A provider whose comments use an access of their own (TikTok): read
-    // it as stored now, not as the workflow read it when it started, renew it
-    // when it is about to run out and keep the renewed one.
-    if (getIntegration.refreshCommentAccess) {
-      const stored = await this._integrationService.getIntegrationById(
-        integration.organizationId,
-        integration.id
-      );
-      if (stored) {
-        integration.customInstanceDetails = stored.customInstanceDetails;
-      }
-      const renewed = await getIntegration.refreshCommentAccess(integration);
-      if (renewed) {
-        await this._integrationService.setCommentAccess(
-          integration.organizationId,
-          integration.id,
-          renewed
-        );
-        integration.customInstanceDetails = renewed;
-      }
-    }
+    // A provider whose comments use an access of their own (TikTok).
+    await commentAccessForNow(
+      this._integrationService,
+      getIntegration,
+      integration
+    );
 
     // From here the platform may receive the comment (see temporal.heartbeat.ts).
     markPublishing(`${integration.providerIdentifier} comment`);

@@ -536,6 +536,26 @@ export class IntegrationRepository {
     });
   }
 
+  // A renewed access goes only over the value it was renewed from: a renewal
+  // that lost the race with another one, or with the owner authorizing
+  // again, writes nothing (comment.access.ts).
+  replaceCommentAccess(
+    org: string,
+    id: string,
+    expected: string | null,
+    next: string
+  ) {
+    return this._integration.model.integration.updateMany({
+      where: {
+        id,
+        organizationId: org,
+        deletedAt: null,
+        customInstanceDetails: expected,
+      },
+      data: { customInstanceDetails: next },
+    });
+  }
+
   async needsToBeRefreshed() {
     const list = await this._integration.model.integration.findMany({
       where: {

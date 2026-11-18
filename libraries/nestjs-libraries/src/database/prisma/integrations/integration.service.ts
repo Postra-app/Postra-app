@@ -492,6 +492,20 @@ export class IntegrationService {
     return this._integrationRepository.getIntegrationById(org, id);
   }
 
+  replaceCommentAccess(
+    org: string,
+    id: string,
+    expected: string | null,
+    next: string
+  ) {
+    return this._integrationRepository.replaceCommentAccess(
+      org,
+      id,
+      expected,
+      next
+    );
+  }
+
   setCommentAccess(
     org: string,
     id: string,
