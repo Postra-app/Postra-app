@@ -136,6 +136,8 @@ ${style}
         </div>
         <textarea
           value={prompt}
+          // The server takes up to 4000 characters, the style wrapper included.
+          maxLength={3800}
           onChange={(e) => setPrompt(e.target.value)}
           placeholder={t(
             'describe_the_image_you_want_to_generate',

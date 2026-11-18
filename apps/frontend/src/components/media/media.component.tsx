@@ -18,7 +18,6 @@ import { readResponseError } from '@gitroom/helpers/utils/response.error';
 import { isVideoMedia } from '@gitroom/helpers/utils/media.type';
 import { Media } from '@prisma/client';
 import { useMediaDirectory } from '@gitroom/react/helpers/use.media.directory';
-import { useVariables } from '@gitroom/react/helpers/variable.context';
 import { useSettings } from '@gitroom/frontend/components/launches/helpers/use.values';
 import { listenForMediaBox } from '@gitroom/frontend/components/media/media-box-request';
 import { useToaster } from '@gitroom/react/toaster/toaster';
@@ -52,7 +51,6 @@ import {
   DragHandleIcon,
   MediaSettingsIcon,
   InsertMediaIcon,
-  DesignMediaIcon,
   StudioIcon,
   VerticalDividerIcon,
   NoMediaIcon,
@@ -62,9 +60,6 @@ import { useShallow } from 'zustand/react/shallow';
 import { LoadingComponent } from '@gitroom/frontend/components/layout/loading';
 import { useDebounce } from 'use-debounce';
 import { MediaStorageBar } from '@gitroom/frontend/components/media/media.storage.bar';
-const Polonto = dynamic(
-  () => import('@gitroom/frontend/components/launches/polonto')
-);
 const PostDesignEditor = dynamic(
   () => import('@gitroom/frontend/components/design-editor/post-design-editor'),
   { ssr: false }
@@ -258,6 +253,16 @@ export const MediaBox: FC<{
     `get-media-${page}-${debouncedSearch}-${type ?? 'all'}`,
     loadMedia
   );
+  // A delete that empties the last page leaves the pager past the end: step
+  // back to the new last page instead of showing an empty library.
+  useEffect(() => {
+    if (data?.pages === undefined || page === 0) {
+      return;
+    }
+    if (page > Math.max(0, data.pages - 1)) {
+      setPage(Math.max(0, data.pages - 1));
+    }
+  }, [data?.pages, page]);
   const [selected, setSelected] = useState([]);
   const t = useT();
   const uploaderRef = useRef<any>(null);
@@ -829,9 +834,6 @@ export const MultiMediaComponent: FC<{
   const user = useUser();
   const modals = useModals();
   const t = useT();
-  // Polotno stays behind its licence key: no NEXT_PUBLIC_POLOTNO → no second
-  // graphics editor next to Studio. The dependency stays in package.json.
-  const { plontoKey } = useVariables();
   useEffect(() => {
     if (value) {
       setCurrentMedia(value);
@@ -915,19 +917,6 @@ export const MultiMediaComponent: FC<{
     }
   }, [changeMedia, t]);
 
-  const openPolotno = useCallback(() => {
-    if (!dummy) {
-      modals.openModal({
-        askClose: false,
-        title: t('design_media', 'Design Media'),
-        size: '80%',
-        height: '750px',
-        children: (close) => (
-          <Polonto setMedia={changeMedia} closeModal={close} />
-        ),
-      });
-    }
-  }, [changeMedia, t]);
 
   return (
     <>
@@ -1151,23 +1140,6 @@ export const MultiMediaComponent: FC<{
                   </div>
                 </div>
               </button>
-              {!!plontoKey && (
-                <button
-                  type="button"
-                  onClick={openPolotno}
-                  aria-label="Polotno"
-                  className="cursor-pointer h-[30px] rounded-[6px] justify-center items-center flex bg-newColColor px-[8px] hover:bg-forth transition-colors phone:hidden"
-                >
-                  <div className="flex gap-[5px] items-center">
-                    <div>
-                      <DesignMediaIcon />
-                    </div>
-                    <div className="text-[10px] font-[600] iconBreak:hidden block">
-                      Polotno
-                    </div>
-                  </div>
-                </button>
-              )}
               {/* The Studio button above is phone:hidden — say why instead of
                   hiding the feature without a trace. */}
               <div className="hidden phone:flex items-center text-[10px] text-textColor/50">

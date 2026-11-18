@@ -106,7 +106,7 @@ export class WebhookController {
     // User-supplied URL — pin DNS + refuse private ranges so this test call
     // can't be turned into an SSRF probe of the VPC/IMDS.
     if (!(await isSafePublicHttpsUrl(query.url))) {
-      return { send: false };
+      return { send: false, reason: 'not-allowed' };
     }
     // A saved webhook's test is signed like its deliveries, so the receiver's
     // check can be tried with it (unknown id: 404).
@@ -120,8 +120,10 @@ export class WebhookController {
           ),
         }
       : {};
+    // What the receiver answered: the button said "sent" before it knew,
+    // and the same for an address that refused or never answered.
     try {
-      await fetch(query.url, {
+      const res = await fetch(query.url, {
         method: 'POST',
         body: raw,
         headers: { 'Content-Type': 'application/json', ...signature },
@@ -129,10 +131,11 @@ export class WebhookController {
         redirect: 'error',
         signal: AbortSignal.timeout(5000),
       });
+      return res.ok
+        ? { send: true, status: res.status }
+        : { send: false, reason: 'status', status: res.status };
     } catch (err) {
-      /** sent **/
+      return { send: false, reason: 'unreachable' };
     }
-
-    return { send: true };
   }
 }

@@ -1,3 +1,5 @@
+import 'reflect-metadata';
+import { PostFactsReader } from '@gitroom/nestjs-libraries/chat/post-facts.reader';
 import { PendingActionService } from '@gitroom/nestjs-libraries/chat/pending-action.service';
 import { DeletePostTool } from '@gitroom/nestjs-libraries/chat/tools/delete.post.tool';
 import { ReschedulePostTool } from '@gitroom/nestjs-libraries/chat/tools/reschedule.post.tool';
@@ -50,7 +52,16 @@ describe('PendingActionService', () => {
 describe('destructive agent tools', () => {
   it('deletePost parks the deletion instead of doing it', async () => {
     const service = new PendingActionService();
-    const tool = new DeletePostTool(service).run();
+    const facts = {
+      byGroup: jest.fn().mockResolvedValue([
+        {
+          publishDate: new Date('2026-10-02T10:00:00Z'),
+          content: 'Friday post',
+          integration: { name: 'Acme', providerIdentifier: 'x' },
+        },
+      ]),
+    };
+    const tool = new DeletePostTool(service, facts as any).run();
 
     const output = (await (tool as any).execute(
       { group: 'group-9', summary: 'delete the Friday post' },
@@ -58,7 +69,9 @@ describe('destructive agent tools', () => {
     )) as { status: string; token: string; summary: string };
 
     expect(output.status).toEqual('awaiting_confirmation');
-    expect(output.summary).toEqual('delete the Friday post');
+    expect(output.summary).toEqual(
+      'Delete the post on x "Acme" scheduled for 2026-10-02 10:00 UTC: "Friday post"'
+    );
 
     // Nothing is deleted yet - the parked action still holds the group id.
     const parked = await service.consume(output.token, 'org-7');
@@ -73,7 +86,14 @@ describe('destructive agent tools', () => {
 
   it('reschedulePost parks the new date instead of moving the post', async () => {
     const service = new PendingActionService();
-    const tool = new ReschedulePostTool(service).run();
+    const facts = {
+      byId: jest.fn().mockResolvedValue({
+        publishDate: new Date('2026-09-30T09:00:00Z'),
+        content: 'Thursday post',
+        integration: { name: 'Acme', providerIdentifier: 'x' },
+      }),
+    };
+    const tool = new ReschedulePostTool(service, facts as any).run();
 
     const output = (await (tool as any).execute(
       {
@@ -93,8 +113,15 @@ describe('destructive agent tools', () => {
 
   it('takes no constructor dependency that could delete a post on its own', () => {
     // The tools used to hold PostsService. If that comes back, the gate is a
-    // prompt again rather than a control.
-    expect(DeletePostTool.length).toEqual(1);
-    expect(ReschedulePostTool.length).toEqual(1);
+    // prompt again rather than a control. Besides the parking service they
+    // hold only the read-only reader the card text comes from.
+    const allowed = [PendingActionService, PostFactsReader];
+    for (const tool of [DeletePostTool, ReschedulePostTool]) {
+      const deps: unknown[] =
+        Reflect.getMetadata('design:paramtypes', tool) ?? [];
+      expect(deps).toEqual(allowed);
+    }
+    const reader = Object.getOwnPropertyNames(PostFactsReader.prototype);
+    expect(reader.sort()).toEqual(['byGroup', 'byId', 'constructor']);
   });
 });

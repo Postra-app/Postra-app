@@ -2,6 +2,7 @@
 
 import React, { useState } from 'react';
 import { useFetch } from '@gitroom/helpers/utils/custom.fetch';
+import { isFetchHandledError } from '@gitroom/helpers/utils/fetch.errors';
 import { Card } from '@gitroom/frontend/components/ui/card';
 import { Button } from '@gitroom/frontend/components/ui/button';
 import { useToaster } from '@gitroom/react/toaster/toaster';
@@ -57,9 +58,14 @@ const DeleteAccountComponent = () => {
         setDeleting(false);
         return;
       }
-      toaster.show(t('account_deleted', 'Your account has been deleted'), 'success');
-      window.location.href = '/';
+      // The sign-in page that follows says the account was deleted; '/'
+      // here overrode that and opened it with no word.
+      window.location.href = '/auth/login?deleted=1';
     } catch (e) {
+      // The response that signs this browser out ends the request on our
+      // side on purpose (the page is already going to the sign-in page):
+      // not a failure.
+      if (isFetchHandledError(e)) return;
       setDeleting(false);
       toaster.show(
         t('account_delete_failed', 'Could not delete the account. Please try again.'),

@@ -8,6 +8,7 @@ import React, {
   useMemo,
   useState,
 } from 'react';
+import { registerDayjsLocales } from '@gitroom/frontend/components/layout/dayjs.locales';
 import {
   CalendarContext,
   Integrations,
@@ -16,21 +17,6 @@ import {
 } from '@gitroom/frontend/components/launches/calendar.context';
 import dayjs from 'dayjs';
 import { cellPostDate, dropTarget } from './calendar.helpers';
-import localeEn from 'dayjs/locale/en';
-import localePl from 'dayjs/locale/pl';
-import localeHe from 'dayjs/locale/he';
-import localeRu from 'dayjs/locale/ru';
-import localeZh from 'dayjs/locale/zh';
-import localeFr from 'dayjs/locale/fr';
-import localeEs from 'dayjs/locale/es';
-import localePt from 'dayjs/locale/pt';
-import localeDe from 'dayjs/locale/de';
-import localeIt from 'dayjs/locale/it';
-import localeJa from 'dayjs/locale/ja';
-import localeKo from 'dayjs/locale/ko';
-import localeAr from 'dayjs/locale/ar';
-import localeTr from 'dayjs/locale/tr';
-import localeVi from 'dayjs/locale/vi';
 import localizedFormat from 'dayjs/plugin/localizedFormat';
 import { useModals } from '@gitroom/frontend/components/layout/new-modal';
 import clsx from 'clsx';
@@ -86,31 +72,8 @@ extend(isSameOrAfter);
 extend(isSameOrBefore);
 extend(localizedFormat);
 
-// Register every supported UI locale's data. Bare `import 'dayjs/locale/x'`
-// side-effect imports were dropped from the production bundle, so
-// dayjs.locale('pl') (and the others) silently no-op'd and the calendar's
-// weekday names fell back to English. Referencing the imported locale objects
-// keeps their data in the bundle and registers them without changing the
-// currently active locale.
-[
-  localeEn, localePl, localeHe, localeRu, localeZh, localeFr, localeEs,
-  localePt, localeDe, localeIt, localeJa, localeKo, localeAr, localeTr,
-  localeVi,
-].forEach((locale) => dayjs.locale(locale.name, locale, true));
-
-// Initialize language
-const updateDayjsLocale = () => {
-  const currentLanguage = i18next.resolvedLanguage || 'en';
-  dayjs.locale(currentLanguage);
-};
-
-// Set dayjs locale whenever i18next language changes
-i18next.on('languageChanged', () => {
-  updateDayjsLocale();
-});
-
-// Initial setup
-updateDayjsLocale();
+// Every UI locale's dates, here and on every other page (layout).
+registerDayjsLocales();
 
 const convertTimeFormatBasedOnLocality = (time: number) => {
   if (isUSCitizen()) {

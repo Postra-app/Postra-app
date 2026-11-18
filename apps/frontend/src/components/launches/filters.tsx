@@ -448,6 +448,7 @@ export const Filters = () => {
         </div>
       )}
       <SelectCustomer
+        allowAll
         customer={calendar.customer as string}
         onChange={(customer: string) => setCustomer(customer)}
         integrations={calendar.integrations}

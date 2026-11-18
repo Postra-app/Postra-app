@@ -29,6 +29,7 @@ import { CheckPolicies } from '@gitroom/backend/services/auth/permissions/permis
 import { ApiTags } from '@nestjs/swagger';
 import { GeneratorDto } from '@gitroom/nestjs-libraries/dtos/generator/generator.dto';
 import { CreateGeneratedPostsDto } from '@gitroom/nestjs-libraries/dtos/generator/create.generated.posts.dto';
+import { SeparatePostsDto } from '@gitroom/nestjs-libraries/dtos/posts/separate.posts.dto';
 import { AgentGraphService } from '@gitroom/nestjs-libraries/agent/agent.graph.service';
 import { Response } from 'express';
 import { GetUserFromRequest } from '@gitroom/nestjs-libraries/user/user.from.request';
@@ -81,6 +82,17 @@ export class PostsController {
   @Post('/should-shortlink')
   async shouldShortlink(@Body() body: { messages: string[] }) {
     return { ask: this._shortLinkService.askShortLinkedin(body.messages) };
+  }
+
+  // The shared preview asks before it shows the comment form: only the
+  // organisation that made the post can comment, and someone else who opened
+  // the link got the form and then "The comment was not sent".
+  @Get('/:id/can-comment')
+  async canComment(
+    @GetOrgFromRequest() org: Organization,
+    @Param('id') id: string
+  ) {
+    return { canComment: await this._postsService.isOrganisationPost(org.id, id) };
   }
 
   @Post('/:id/comments')
@@ -357,7 +369,7 @@ export class PostsController {
   @CheckPolicies([AuthorizationActions.Create, Sections.AI])
   async separatePosts(
     @GetOrgFromRequest() org: Organization,
-    @Body() body: { content: string; len: number }
+    @Body() body: SeparatePostsDto
   ) {
     return this._postsService.separatePosts(body.content, body.len, org.id);
   }

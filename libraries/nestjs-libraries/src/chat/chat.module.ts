@@ -1,3 +1,4 @@
+import { PostFactsReader } from '@gitroom/nestjs-libraries/chat/post-facts.reader';
 import { Global, Module } from '@nestjs/common';
 import { LoadToolsService } from '@gitroom/nestjs-libraries/chat/load.tools.service';
 import { MastraService } from '@gitroom/nestjs-libraries/chat/mastra.service';
@@ -6,7 +7,13 @@ import { PendingActionService } from '@gitroom/nestjs-libraries/chat/pending-act
 
 @Global()
 @Module({
-  providers: [MastraService, LoadToolsService, PendingActionService, ...toolList],
+  providers: [
+    MastraService,
+    LoadToolsService,
+    PendingActionService,
+    PostFactsReader,
+    ...toolList,
+  ],
   get exports() {
     return this.providers;
   },

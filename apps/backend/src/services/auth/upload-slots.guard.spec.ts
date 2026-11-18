@@ -208,3 +208,43 @@ describe('UploadSlotsGuard', () => {
     expect(await status(call('org-a', 200 * MB).run)).toBe(429);
   });
 });
+
+// A URL import is a few bytes of JSON, but the server then holds the file it
+// downloads (up to 100 MB). Thirty at once from one API key passed freely.
+describe('imports from a URL take a slot whatever the request size', () => {
+  beforeEach(() => {
+    resetUploadSlots();
+    mockLeases.clear();
+    mockRedisDown = false;
+  });
+
+  it('a third import of the same organisation waits for one to finish', async () => {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const { UrlImportSlotsGuard } = require('./upload-slots.guard') as GuardModule;
+    const a = call('org-url', 120, UrlImportSlotsGuard);
+    const b = call('org-url', 120, UrlImportSlotsGuard);
+    const c = call('org-url', 120, UrlImportSlotsGuard);
+    expect(await status(a.run)).toBe(200);
+    expect(await status(b.run)).toBe(200);
+    expect(await status(c.run)).toBe(429);
+    a.res.emit('finish');
+    await tick();
+    expect(await status(call('org-url', 120, UrlImportSlotsGuard).run)).toBe(200);
+  });
+
+  it('a small ordinary upload still passes without a slot', async () => {
+    expect(await status(call('org-small', 120).run)).toBe(200);
+    expect(leases('org-small')).toBe(0);
+  });
+});
+
+describe('the public API import uses it', () => {
+  it('POST /public/v1/upload-from-url is guarded by UrlImportSlotsGuard', () => {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const { UrlImportSlotsGuard } = require('./upload-slots.guard') as GuardModule;
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const { PublicIntegrationsController } = require('@gitroom/backend/public-api/routes/v1/public.integrations.controller');
+    const guards = Reflect.getMetadata('__guards__', PublicIntegrationsController.prototype.uploadsFromUrl) || [];
+    expect(guards).toContain(UrlImportSlotsGuard);
+  });
+});

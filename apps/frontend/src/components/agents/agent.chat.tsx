@@ -2,6 +2,7 @@
 
 // The assistant's styles load with the assistant, not on every page.
 import '@copilotkit/react-ui/styles.css';
+import { useIntegrationList } from '@gitroom/frontend/components/launches/helpers/use.integration.list';
 import React, {
   FC,
   useCallback,
@@ -31,6 +32,10 @@ import {
   PropertiesContext,
 } from '@gitroom/frontend/components/agents/agent';
 import { useVariables } from '@gitroom/react/helpers/variable.context';
+import {
+  isChatMediaAllowed,
+  SafeChatImage,
+} from '@gitroom/frontend/components/agents/agent.safe-media';
 import { useParams } from 'next/navigation';
 import { useFetch } from '@gitroom/helpers/utils/custom.fetch';
 import { TextMessage } from '@copilotkit/runtime-client-gql';
@@ -165,6 +170,7 @@ export const AgentChat: FC = () => {
             }}
             UserMessage={Message}
             Input={NewInput}
+            markdownTagRenderers={{ img: SafeChatImage }}
           />
         </div>
       </div>
@@ -240,7 +246,10 @@ const LoadMessages: FC<{ id: string }> = ({ id }) => {
 };
 
 const Message: FC<UserMessageProps> = (props) => {
+  const { uploadDirectory } = useVariables();
   const convertContentToImagesAndVideo = useMemo(() => {
+    const own = (url: string) =>
+      isChatMediaAllowed(url, uploadDirectory, window.location.origin);
     // Sanitized at the end — message content echoes user input, and the
     // regex templating alone is not an XSS boundary.
     const content = props.message?.content || '';
@@ -250,9 +259,11 @@ const Message: FC<UserMessageProps> = (props) => {
         : content.map((p) => (p.type === 'text' ? p.text : '')).join('');
     const html = text
       .replace(/Video: (http.*mp4\n)/g, (match, p1) => {
+        if (!own(p1.trim())) return match;
         return `<video controls class="h-[150px] w-[150px] rounded-[8px] mb-[10px]"><source src="${p1.trim()}" type="video/mp4">Your browser does not support the video tag.</video>`;
       })
       .replace(/Image: (http.*\n)/g, (match, p1) => {
+        if (!own(p1.trim())) return match;
         return `<img alt="Image from the agent" src="${p1.trim()}" class="h-[150px] w-[150px] max-w-full border border-newBgColorInner" />`;
       })
       .replace(/\[\-\-Media\-\-\](.*)\[\-\-Media\-\-\]/g, (match, p1) => {
@@ -265,7 +276,7 @@ const Message: FC<UserMessageProps> = (props) => {
         }
       );
     return DOMPurify.sanitize(html, { ADD_ATTR: ['controls'] });
-  }, [props.message?.content]);
+  }, [props.message?.content, uploadDirectory]);
   return (
     <div
       className="copilotKitMessage copilotKitUserMessage min-w-[300px]"
@@ -523,15 +534,37 @@ export const Hooks: FC = () => {
         ],
       },
     ],
-    renderAndWaitForResponse: ({ args, status, respond }) => {
+    renderAndWaitForResponse: ({ args, status, respond, result }: any) => {
       if (status === 'executing') {
         return <OpenModal args={args} respond={respond} />;
+      }
+      // After the answer the tool's own message would vanish: keep saying
+      // why no editor opened.
+      if (
+        typeof result === 'string' &&
+        result.startsWith(CHANNELS_NOT_CONNECTED)
+      ) {
+        return <ChannelNotConnected />;
       }
 
       return null;
     },
   });
   return null;
+};
+
+const CHANNELS_NOT_CONNECTED = 'These channels are not connected';
+
+const ChannelNotConnected: FC = () => {
+  const t = useT();
+  return (
+    <div role="status">
+      {t(
+        'agent_channel_not_connected',
+        'That channel is not connected any more, so the editor did not open. Pick one of your channels and ask again.'
+      )}
+    </div>
+  );
 };
 
 const OpenModal: FC<{
@@ -548,8 +581,20 @@ const OpenModal: FC<{
   const t = useT();
   const modals = useModals();
   const { properties } = useContext(PropertiesContext);
-  const startModal = useCallback(async () => {
+  // The channel comes from the organisation's list, not from what is ticked
+  // in the side panel: on a phone the panel is hidden, and with nothing
+  // ticked the editor never opened ("Opening the editor…" for good).
+  const { data: allChannels } = useIntegrationList();
+  const [missing, setMissing] = useState<string[]>([]);
+  const started = useRef(false);
+  const startModal = useCallback(async (channels: any[]) => {
+    const notFound: string[] = [];
     for (const integration of args.list) {
+      const channel = channels.find((p) => p.id === integration.integrationId);
+      if (!channel) {
+        notFound.push(integration.integrationId);
+        continue;
+      }
       await new Promise((res) => {
         const group = makeId(10);
         modals.openModal({
@@ -570,9 +615,7 @@ const OpenModal: FC<{
               value={{
                 group,
                 integration: integration.integrationId,
-                integrationPicture:
-                  properties.find((p) => p.id === integration.integrationId)
-                    .picture || '',
+                integrationPicture: channel.picture || '',
                 settings: integration.settings || {},
                 posts: integration.posts.map((p) => ({
                   approvedSubmitForOrder: 'NO',
@@ -583,9 +626,7 @@ const OpenModal: FC<{
                   settings: JSON.stringify(integration.settings || {}),
                   group,
                   integrationId: integration.integrationId,
-                  integration: properties.find(
-                    (p) => p.id === integration.integrationId
-                  ),
+                  integration: channel,
                   publishDate: dayjs.utc(integration.date).toISOString(),
                   image: p.attachments.map((a) => ({
                     id: a.id,
@@ -596,10 +637,8 @@ const OpenModal: FC<{
             >
               <AddEditModal
                 date={fromUtc(integration.date)}
-                allIntegrations={properties}
-                integrations={properties.filter(
-                  (p) => p.id === integration.integrationId
-                )}
+                allIntegrations={channels}
+                integrations={[channel]}
                 onlyValues={integration.posts.map((p) => ({
                   content: p.content,
                   id: makeId(10),
@@ -618,12 +657,29 @@ const OpenModal: FC<{
       });
     }
 
+    if (notFound.length) {
+      setMissing(notFound);
+      respond(
+        `${CHANNELS_NOT_CONNECTED} to this organisation, so no editor was opened for them: ${notFound.join(
+          ', '
+        )}. Ask the user to pick one of their connected channels.`
+      );
+      return;
+    }
     respond('User scheduled all the posts');
-  }, [args, respond, properties]);
+  }, [args, respond]);
 
+  // Once the channel list is in (it usually is: the side panel loads it).
   useEffect(() => {
-    startModal();
-  }, []);
+    if (started.current || allChannels === undefined) {
+      return;
+    }
+    started.current = true;
+    startModal(allChannels?.length ? allChannels : properties);
+  }, [allChannels]);
+  if (missing.length) {
+    return <ChannelNotConnected />;
+  }
   return (
     // Shown in the chat while the editor is open. It used to print the raw
     // tool arguments as JSON to the user.

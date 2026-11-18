@@ -2,14 +2,16 @@ import { MediaDto } from '@gitroom/nestjs-libraries/dtos/media/media.dto';
 import {
   IsOptional,
   IsString,
-  MinLength,
+  Matches,
   ValidateNested,
 } from 'class-validator';
 import { Type } from 'class-transformer';
 
 export class UserDetailDto {
+  // One character is a name (Li, Ng in two; some people use one); only
+  // blank is refused.
   @IsString()
-  @MinLength(3)
+  @Matches(/\S/, { message: 'fullname should not be empty' })
   fullname: string;
 
   @IsString()

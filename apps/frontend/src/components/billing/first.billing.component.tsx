@@ -279,9 +279,13 @@ export const FirstBillingComponent = () => {
                 {t('billing_choose_plan', 'Choose a Plan')}
               </div>
               <div className="h-[44px] px-[6px] mobile:px-0 flex items-center justify-center mobile:justify-start gap-[12px] border border-newColColor rounded-[16px] select-none">
-                <div
+                {/* Buttons, not divs: from the keyboard only Starter, monthly
+                    could be bought. */}
+                <button
+                  type="button"
+                  aria-pressed={period === 'MONTHLY'}
                   className={clsx(
-                    'h-[32px] mobile:flex-1 rounded-[6px] text-[16px] px-[12px] flex justify-center items-center',
+                    'h-[32px] mobile:flex-1 rounded-[6px] text-[16px] px-[12px] flex justify-center items-center focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#618DFF]',
                     period === 'MONTHLY'
                       ? 'bg-boxFocused text-textItemFocused'
                       : 'cursor-pointer'
@@ -289,31 +293,35 @@ export const FirstBillingComponent = () => {
                   onClick={() => setPeriod('MONTHLY')}
                 >
                   {t('billing_monthly', 'Monthly')}
-                </div>
-                <div
+                </button>
+                <button
+                  type="button"
+                  aria-pressed={period === 'YEARLY'}
                   className={clsx(
-                    'gap-[10px] h-[32px] mobile:flex-1 rounded-[6px] text-[16px] px-[12px] flex justify-center items-center',
+                    'gap-[10px] h-[32px] mobile:flex-1 rounded-[6px] text-[16px] px-[12px] flex justify-center items-center focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#618DFF]',
                     period === 'YEARLY'
                       ? 'bg-boxFocused text-textItemFocused'
                       : 'cursor-pointer'
                   )}
                   onClick={() => setPeriod('YEARLY')}
                 >
-                  <div>{t('billing_yearly', 'Yearly')}</div>
-                  <div className="bg-[#a78bfa] text-[white] px-[8px] rounded-[4px] mobile:hidden">
+                  <span>{t('billing_yearly', 'Yearly')}</span>
+                  <span className="bg-[#a78bfa] text-[white] px-[8px] rounded-[4px] mobile:hidden">
                     {t('billing_two_months_free', '2 months free')}
-                  </div>
-                </div>
+                  </span>
+                </button>
               </div>
             </div>
             <div className="grid grid-cols-2 gap-[8px] mobile:!grid-cols-2 tablet:grid-cols-4">
               {price.map(
                 ([key, value]) => (
-                  <div
+                  <button
+                    type="button"
+                    aria-pressed={key === tier}
                     onClick={() => setTier(key)}
                     key={key}
                     className={clsx(
-                      'cursor-pointer select-none w-[266px] h-[138px] tablet:w-full tablet:h-[124px] p-[24px] tablet:p-[15px] rounded-[20px] flex flex-col',
+                      'text-start cursor-pointer select-none w-[266px] h-[138px] tablet:w-full tablet:h-[124px] p-[24px] tablet:p-[15px] rounded-[20px] flex flex-col focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#618DFF]',
                       key === tier
                         ? 'border-[1.5px] border-[#618DFF]'
                         : 'border-[1.5px] border-newColColor'
@@ -335,7 +343,7 @@ export const FirstBillingComponent = () => {
                         ? t('billing_per_month', '/ month')
                         : t('billing_per_year', '/ year')}
                     </div>
-                  </div>
+                  </button>
                 ),
                 []
               )}

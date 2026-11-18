@@ -19,8 +19,11 @@ export const SelectCustomer: FC<{
   onChange: (value: string) => void;
   integrations: Integrations[];
   customer?: string;
+  // The calendar's filter can be taken off again; the composer's picker
+  // selects a customer's channels and has nothing to go back to.
+  allowAll?: boolean;
 }> = (props) => {
-  const { onChange, integrations, customer: currentCustomer } = props;
+  const { onChange, integrations, customer: currentCustomer, allowAll } = props;
   const { setCurrent } = useLaunchStore(
     useShallow((state) => ({
       setCurrent: state.setCurrent,
@@ -67,6 +70,13 @@ export const SelectCustomer: FC<{
     setOpen(true);
   }, [open, trigger]);
 
+  const selectedName = useMemo(
+    () =>
+      integrations.find((i) => customer && i?.customer?.id === customer)
+        ?.customer?.name || '',
+    [integrations, customer]
+  );
+
   const totalCustomers = useMemo(() => {
     return uniqBy(integrations, (i) => i?.customer?.id).length;
   }, [integrations]);
@@ -90,6 +100,14 @@ export const SelectCustomer: FC<{
         <div>
           <UserIcon />
         </div>
+        {allowAll && selectedName ? (
+          <div
+            className="text-[13px] font-[500] max-w-[140px] truncate"
+            data-testid="selected-customer"
+          >
+            {selectedName}
+          </div>
+        ) : null}
         <div>
           <DropdownArrowIcon rotated={open} />
         </div>
@@ -104,6 +122,21 @@ export const SelectCustomer: FC<{
             <div className="text-[14px] font-[600] px-[12px] mb-[5px] pt-[4px]">
               {t('customers', 'Customers')}
             </div>
+            {allowAll && (
+              <div
+                onClick={() => {
+                  setCustomer('');
+                  onChange('');
+                  setOpen(false);
+                }}
+                className={clsx(
+                  'p-[12px] hover:bg-white/[0.06] text-[14px] font-[500] h-[40px] flex items-center transition-colors',
+                  !customer && 'text-sky-300'
+                )}
+              >
+                {t('all_customers', 'All customers')}
+              </div>
+            )}
             {uniqBy(integrations, (u) => u?.customer?.name)
               .filter((f) => f.customer?.name)
               .map((p) => (

@@ -94,3 +94,28 @@ describe('activation link that fails', () => {
     expect(res.body).toMatch(/invalid or (has )?expired/i);
   });
 });
+
+// Signing up with a password from a team invitation adds the person to the
+// team at once, but the account waits for its email. The invitation cookie
+// stayed: after activating, the same browser was asked "Join X?" and then
+// told the invitation had expired or been used.
+describe('sign-up from an invitation that waits for activation', () => {
+  it('drops the invitation cookie, the membership already exists', async () => {
+    const auth = {
+      getOrgFromCookie: jest.fn(() => ({ orgId: 'org1' })),
+      routeAuth: jest.fn(async () => ({ jwt: 'web', addedOrg: { organizationId: 'org1' }, userId: 'u1' })),
+    };
+    const email = { hasProvider: jest.fn(() => true) };
+    const res = fakeResponse();
+    await new AuthController(auth as any, email as any, { record: jest.fn() } as any, {} as any).register(
+      request(),
+      { provider: 'LOCAL', email: 'new@example.com', password: 'x' } as any,
+      res,
+      'ip',
+      'ua'
+    );
+
+    expect(res.body).toEqual({ activate: true });
+    expect(res.clearCookie).toHaveBeenCalledWith('org', expect.anything());
+  });
+});

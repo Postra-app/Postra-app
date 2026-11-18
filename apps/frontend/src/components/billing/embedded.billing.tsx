@@ -1,6 +1,7 @@
 'use client';
 
 import type { Stripe } from '@stripe/stripe-js';
+import i18next from '@gitroom/react/translation/i18next';
 
 import { FC, useEffect, useState } from 'react';
 import {
@@ -27,13 +28,16 @@ export const EmbeddedBilling: FC<{
   const [mode, setMode] = useCookie('mode', 'dark');
 
   useEffect(() => {
-    modeEmitter.on('mode', (value) => {
+    const onMode = (value: any) => {
       setMode(value);
       setLoading(true);
-    });
+    };
+    modeEmitter.on('mode', onMode);
 
+    // Only this listener: removeAllListeners() also took the theme switch's
+    // own listeners elsewhere on the page.
     return () => {
-      modeEmitter.removeAllListeners();
+      modeEmitter.off('mode', onMode);
     };
   }, []);
 
@@ -136,13 +140,25 @@ const FormWrapper: FC<{ showCoupon?: boolean; autoApplyCoupon?: string }> = ({
 
     const { checkout } = checkoutState;
 
-    const confirmResult = await checkout.confirm();
-
-    if (confirmResult.type === 'error') {
-      toaster.show(confirmResult.error.message, 'warning');
+    // A throw from Stripe.js (network, a closed session) left "Pay Now" greyed
+    // out for good: the button comes back whatever happens.
+    try {
+      const confirmResult = await checkout.confirm();
+      if (confirmResult.type === 'error') {
+        toaster.show(confirmResult.error.message, 'warning');
+      }
+    } catch (err) {
+      console.error('[Postra:billing] confirm failed', err);
+      toaster.show(
+        t(
+          'billing_confirm_failed',
+          'The payment could not be sent. Check your connection and try again.'
+        ),
+        'warning'
+      );
+    } finally {
+      setLoading(false);
     }
-
-    setLoading(false);
   };
 
   return (
@@ -246,7 +262,7 @@ const PriceBreakdown: FC = () => {
   const dueToday = checkout?.total?.total?.amount || '£0.00';
   const nextBillingTotal = recurring?.dueNext?.total?.amount;
   const nextBillingDate = recurring?.trial?.trialEnd
-    ? newDayjs(recurring.trial.trialEnd * 1000).format('MMMM D, YYYY')
+    ? newDayjs(recurring.trial.trialEnd * 1000).format('D MMMM YYYY')
     : null;
   const billingInterval =
     recurring?.interval === 'month'
@@ -362,7 +378,11 @@ const AppliedCouponDisplay: FC<{
       typeof recurringDiscount === 'number' &&
       recurringDiscount > 0
     ) {
-      return `-$${(recurringDiscount / 100).toFixed(2)}`;
+      // In the checkout's currency (pounds), not a hard-coded dollar.
+      return `-${new Intl.NumberFormat(i18next.resolvedLanguage || 'en-GB', {
+        style: 'currency',
+        currency: String(checkout?.currency || 'gbp').toUpperCase(),
+      }).format(recurringDiscount / 100)}`;
     }
 
     // Try lineItems discount
@@ -395,11 +415,11 @@ const AppliedCouponDisplay: FC<{
 
     if (expiresAt && typeof expiresAt === 'number') {
       const date = new Date(expiresAt * 1000);
-      return newDayjs(date).format('MMMM D, YYYY');
+      return newDayjs(date).format('D MMMM YYYY');
     }
 
     if (expiresAt && typeof expiresAt === 'string') {
-      return newDayjs(expiresAt).format('MMMM D, YYYY');
+      return newDayjs(expiresAt).format('D MMMM YYYY');
     }
 
     return null;
@@ -694,7 +714,7 @@ const SubmitBar: FC<{ loading: boolean; consent: boolean }> = ({
             <span className="text-textColor font-[600]">
               {newDayjs(
                 checkout.checkout.recurring?.trial?.trialEnd * 1000
-              ).format('MMMM D, YYYY')}{' '}
+              ).format('D MMMM YYYY')}{' '}
               -{' '}
             </span>
             <span className="text-textColor font-[600]">

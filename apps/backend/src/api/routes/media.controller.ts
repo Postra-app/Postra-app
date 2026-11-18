@@ -97,6 +97,22 @@ const NO_IMAGE_MESSAGE = 'The image could not be generated, please try again';
 export const isSafeStoredName = (name: string) =>
   typeof name === 'string' && /^[A-Za-z0-9_-][A-Za-z0-9._-]{0,199}$/.test(name);
 
+// An image prompt goes to the model on our key (and is first rewritten by a
+// text model for some callers): a few paragraphs at most, never a document.
+export const MAX_IMAGE_PROMPT = 4000;
+export const requireBoundedPrompt = (prompt: unknown) => {
+  if (
+    typeof prompt !== 'string' ||
+    !prompt.trim() ||
+    prompt.length > MAX_IMAGE_PROMPT
+  ) {
+    throw new HttpException(
+      `Describe the image in up to ${MAX_IMAGE_PROMPT} characters.`,
+      400
+    );
+  }
+};
+
 @ApiTags('Media')
 @Controller('/media')
 export class MediaController {
@@ -158,6 +174,7 @@ export class MediaController {
     @Body('prompt') prompt: string,
     isPicturePrompt = false
   ) {
+    requireBoundedPrompt(prompt);
     const total = await this._subscriptionService.checkCredits(org);
     if (process.env.STRIPE_PUBLISHABLE_KEY && total.credits <= 0) {
       throw new HttpException(
@@ -166,9 +183,8 @@ export class MediaController {
       );
     }
 
-    // generateImage generates AND uploads, returning the stored CDN URL. The
-    // Polotno "AI Img" tab uses `output` directly as the image src, so return
-    // the URL as-is. (The old code prefixed it with `data:image/png;base64,`,
+    // generateImage generates AND uploads, returning the stored CDN URL.
+    // Callers use `output` directly as the image src, so return the URL as-is. (The old code prefixed it with `data:image/png;base64,`,
     // yielding `data:image/png;base64,https://cdn.../x.png` — a broken src that
     // failed getImageSize/insert while still charging a credit. Same class as
     // the #108 fix on /generate-image-with-prompt.)
@@ -191,6 +207,7 @@ export class MediaController {
     @GetOrgFromRequest() org: Organization,
     @Body('prompt') prompt: string
   ) {
+    requireBoundedPrompt(prompt);
     const total = await this._subscriptionService.checkCredits(org);
     if (process.env.STRIPE_PUBLISHABLE_KEY && total.credits <= 0) {
       // `return false` here read as a 201 with a falsy body, so the composer

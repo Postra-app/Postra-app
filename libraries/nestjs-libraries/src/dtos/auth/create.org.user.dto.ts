@@ -8,6 +8,7 @@ import {
   MaxLength,
   MinLength,
   ValidateIf,
+  Matches,
 } from 'class-validator';
 import { NormalizeEmail } from './email.transform';
 import { Provider } from '@prisma/client';
@@ -38,9 +39,10 @@ export class CreateOrgUserDto {
   @ValidateIf((o) => o.provider === 'LOCAL' || !o.providerToken)
   email: string;
 
+  // One character is a name (BT, EE, O2, "3"); only blank is refused.
   @IsString()
   @IsDefined()
-  @MinLength(3)
+  @Matches(/\S/, { message: 'company should not be empty' })
   @MaxLength(128)
   company: string;
 

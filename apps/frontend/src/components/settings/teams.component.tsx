@@ -5,7 +5,7 @@ import { Card } from '@gitroom/frontend/components/ui/card';
 import { useFetch } from '@gitroom/helpers/utils/custom.fetch';
 import { readResponseError } from '@gitroom/helpers/utils/response.error';
 import useSWR, { useSWRConfig } from 'swr';
-import React, { useCallback, useMemo } from 'react';
+import React, { useCallback, useMemo, useRef, useState } from 'react';
 import { useUser } from '@gitroom/frontend/components/layout/user.context';
 import { capitalize } from 'lodash';
 import {
@@ -55,8 +55,17 @@ export const AddMember = () => {
     control: form.control,
     name: 'sendEmail',
   });
+  // A second click while the first was on its way made a second invitation
+  // (and a second email).
+  const sending = useRef(false);
+  const [busy, setBusy] = useState(false);
   const submit = useCallback(
     async (values: { email: string; role: string; sendEmail: boolean }) => {
+      if (sending.current) {
+        return;
+      }
+      sending.current = true;
+      setBusy(true);
       try {
         const response = await fetch('/settings/team', {
           method: 'POST',
@@ -87,6 +96,9 @@ export const AddMember = () => {
           t('team_invite_failed', 'Could not create the invitation'),
           'warning'
         );
+      } finally {
+        sending.current = false;
+        setBusy(false);
       }
     },
     []
@@ -127,9 +139,12 @@ export const AddMember = () => {
               {t('send_invitation_via_email', 'Send invitation via email?')}
             </div>
           </div>
-          <Button type="submit" className="mt-[18px]">
+          <Button type="submit" className="mt-[18px]" loading={busy} disabled={busy}>
             {sendEmail ? t('send_invitation_link', 'Send Invitation Link') : t('copy_link', 'Copy Link')}
           </Button>
+          <div className="text-[13px] text-textColor/70">
+            {t('team_invite_valid_for', 'The link works for 7 days.')}
+          </div>
         </div>
       </form>
     </FormProvider>
@@ -197,6 +212,24 @@ export const TeamsComponent = () => {
   const changeRole = useCallback(
     (member: { role: string; user: { id: string } }, role: 'USER' | 'ADMIN') =>
       async () => {
+        // Taking an admin's role replaces the organisation's API key (they
+        // could see it): it happened at once, with no question.
+        if (
+          member.role === 'ADMIN' &&
+          role === 'USER' &&
+          !(await areYouSure({
+            title: t('team_demote_admin_title', 'Make this admin a user?'),
+            description: t(
+              'team_demote_admin_description',
+              'They could see your API key, so it will be replaced and your integrations will need the new one.'
+            ),
+            approveLabel: t('team_demote_admin_confirm', 'Make user'),
+            cancelLabel: t('cancel', 'Cancel'),
+          }))
+        ) {
+          await mutate();
+          return;
+        }
         const response = await fetch(`/settings/team/${member.user.id}/role`, {
           method: 'PUT',
           body: JSON.stringify({ role }),
@@ -333,8 +366,13 @@ export const TeamsComponent = () => {
           ) : (
             (data || []).map((p) => (
             <div key={p.user.id} className="flex items-center">
-              <div className="flex-1">
-                {nameOf(p.user.email)}
+              {/* The full address under the name: two people called Jan
+                  were two identical rows. */}
+              <div className="flex-1 min-w-0">
+                <div>{nameOf(p.user.email)}</div>
+                <div className="text-[12px] text-newTextColor/60 break-all">
+                  {p.user.email}
+                </div>
               </div>
               <div className="flex-1">
                 {/* The owner changes a member's role here;

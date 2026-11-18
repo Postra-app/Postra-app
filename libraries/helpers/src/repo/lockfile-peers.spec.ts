@@ -1,11 +1,8 @@
 import { readFileSync } from 'fs';
 import { join } from 'path';
 
-// mobx-react-lite had no mobx beside it in package.json, so every relock handed
-// it the newest mobx (7) while polotno ships with 6: two MobX copies, and the
-// design editor's observers would watch the wrong one. canvas was declared ^2
-// while konva wants ^3. Any `pnpm add` re-resolved those peers and dragged both
-// changes into unrelated PRs. Each now has one version.
+// canvas was declared ^2 while konva wants ^3: any `pnpm add` re-resolved the
+// peer and dragged the change into unrelated PRs. It now has one version.
 
 const root = join(__dirname, '..', '..', '..', '..');
 const lock = readFileSync(join(root, 'pnpm-lock.yaml'), 'utf8');
@@ -20,7 +17,7 @@ const versionsOf = (name: string) =>
   );
 
 describe('pnpm-lock.yaml peers', () => {
-  it.each(['mobx', 'canvas'])('has one version of %s', (name) => {
+  it.each(['canvas'])('has one version of %s', (name) => {
     expect(versionsOf(name)).toHaveLength(1);
   });
 
@@ -32,7 +29,7 @@ describe('pnpm-lock.yaml peers', () => {
       (m) => [m[1], m[2]]
     )
   );
-  const shared = ['mobx', 'mobx-react-lite', 'polotno', 'typescript'];
+  const shared = ['typescript'];
 
   it.each(['package.json', join('apps', 'frontend', 'package.json')])(
     '%s takes the shared editor versions from the catalog',
@@ -46,24 +43,13 @@ describe('pnpm-lock.yaml peers', () => {
     }
   );
 
-  // polotno pins mobx exactly, so the catalog follows it and Dependabot leaves
-  // mobx alone (#398 proposed 6.16.1: a second copy).
-  it('keeps mobx at the version polotno pins, out of Dependabot', () => {
-    const snapshots = lock.slice(lock.indexOf('\nsnapshots:'));
-    const polotno = snapshots.match(/\n  polotno@[^\n]*:\n((?:    [^\n]*\n)+)/)?.[1] ?? '';
-    expect(polotno.match(/\n?\s+mobx: ([^\s(]+)/)?.[1]).toBe(catalog.mobx);
-    const dependabot = readFileSync(join(root, '.github', 'dependabot.yml'), 'utf8');
-    expect(dependabot).toMatch(
-      /- dependency-name: "mobx"\n\s*update-types: \[[^\]]*semver-minor[^\]]*semver-patch/
-    );
-  });
-
-  it('gives mobx-react-lite the mobx polotno uses', () => {
-    expect(versionsOf('mobx')).toEqual([catalog.mobx]);
-    const peers = [...lock.matchAll(/mobx-react-lite@[^\s:]*?\(mobx@([^)]+)\)/g)];
-    expect(peers.length).toBeGreaterThan(0);
-    for (const [, version] of peers) {
-      expect(version).toBe(catalog.mobx);
+  // Polotno is free only for non-commercial products, and its code shipped in
+  // the front end's chunks although no key ever switched the editor on. Studio
+  // is the editor; nothing that needs a paid licence goes back in.
+  it.each(['polotno', '@blueprintjs/core', 'mobx-react-lite'])(
+    'has no %s',
+    (name) => {
+      expect(versionsOf(name)).toEqual([]);
     }
-  });
+  );
 });

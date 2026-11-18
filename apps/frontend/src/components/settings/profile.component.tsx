@@ -118,7 +118,7 @@ const ProfileComponent = () => {
         />
       </div>
       <div>
-        <Button type="button" loading={saving} disabled={!data || name.trim().length < 3} onClick={save}>
+        <Button type="button" loading={saving} disabled={!data || !name.trim()} onClick={save}>
           {t('save', 'Save')}
         </Button>
       </div>

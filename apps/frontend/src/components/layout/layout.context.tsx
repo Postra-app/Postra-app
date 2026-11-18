@@ -8,6 +8,11 @@ import { useReturnUrl } from '@gitroom/frontend/app/(app)/auth/return.url.compon
 import { useVariables } from '@gitroom/react/helpers/variable.context';
 import { useToaster } from '@gitroom/react/toaster/toaster';
 import { useT } from '@gitroom/react/translation/get.transation.service.client';
+// The two requests that delete the signed-in account (from Settings, and from
+// the link in the confirmation email).
+const isAccountDeletion = (url: string) =>
+  /\/(user\/delete|auth\/delete-account)(\?|$)/.test(url);
+
 export default function LayoutContext(params: { children: ReactNode }) {
   if (params?.children) {
     // eslint-disable-next-line react/no-children-prop
@@ -63,11 +68,17 @@ function LayoutContextInner(params: { children: ReactNode }) {
       if (impersonate && !isSecured) {
         setCookie('impersonate', impersonate, 365);
       }
+      // After deleting the account the sign-in page says it was deleted; it
+      // used to open with no word on whether it had worked.
+      const afterLogout =
+        response.ok && logout && isAccountDeletion(url)
+          ? '/auth/login?deleted=1'
+          : '/';
       if (logout && !isSecured) {
         setCookie('auth', '', -10);
         setCookie('showorg', '', -10);
         setCookie('impersonate', '', -10);
-        window.location.href = '/';
+        window.location.href = afterLogout;
         return true;
       }
       const reloadOrOnboarding =
@@ -101,7 +112,7 @@ function LayoutContextInner(params: { children: ReactNode }) {
           setCookie('showorg', '', -10);
           setCookie('impersonate', '', -10);
         }
-        window.location.href = '/';
+        window.location.href = afterLogout;
         // false -> FetchHandledError: we are navigating away, so the caller
         // must unwind rather than .json() the 401 body mid-redirect.
         return false;

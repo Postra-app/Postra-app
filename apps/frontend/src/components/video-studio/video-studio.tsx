@@ -1,6 +1,7 @@
 'use client';
 
 import { FC, useCallback, useEffect, useRef, useState } from 'react';
+import { uploadSignal } from '@gitroom/frontend/components/video-studio/upload-deadline';
 import { useRouter } from 'next/navigation';
 import { useFetch } from '@gitroom/helpers/utils/custom.fetch';
 import { useMediaDirectory } from '@gitroom/react/helpers/use.media.directory';
@@ -354,10 +355,14 @@ export const VideoStudio: FC<VideoStudioProps> = ({
     async (blob: Blob, name: string): Promise<UploadResult> => {
       const formData = new FormData();
       formData.append('file', blob, name);
+      // A big clip on a home connection needs more than the 120 s every
+      // other request gets.
+      const deadline = uploadSignal(blob.size);
       try {
         const res = await fetch('/media/upload-simple', {
           method: 'POST',
           body: formData,
+          signal: deadline.signal,
         });
         // 413 comes back from the gateway as HTML, so read the status before
         // touching the body — .json() on it throws and used to surface as a
@@ -374,6 +379,8 @@ export const VideoStudio: FC<VideoStudioProps> = ({
           : { media: null, reason: 'rejected' };
       } catch {
         return { media: null, reason: 'network' };
+      } finally {
+        deadline.done();
       }
     },
     [fetch]

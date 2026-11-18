@@ -29,7 +29,10 @@ import { CheckPolicies } from '@gitroom/backend/services/auth/permissions/permis
 import { PostsService } from '@gitroom/nestjs-libraries/database/prisma/posts/posts.service';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { UploadFactory } from '@gitroom/nestjs-libraries/upload/upload.factory';
-import { UploadSlotsGuard } from '@gitroom/backend/services/auth/upload-slots.guard';
+import {
+  UploadSlotsGuard,
+  UrlImportSlotsGuard,
+} from '@gitroom/backend/services/auth/upload-slots.guard';
 import { MediaService } from '@gitroom/nestjs-libraries/database/prisma/media/media.service';
 import { GetPostsDto } from '@gitroom/nestjs-libraries/dtos/posts/get.posts.dto';
 import { GetMediaDto } from '@gitroom/nestjs-libraries/dtos/media/get.media.dto';
@@ -125,6 +128,7 @@ export class PublicIntegrationsController {
 
   @Post('/upload-from-url')
   @Throttle({ default: { ttl: 300000, limit: 30 } })
+  @UseGuards(UrlImportSlotsGuard)
   async uploadsFromUrl(
     @GetOrgFromRequest() org: Organization,
     @Body() body: UploadDto

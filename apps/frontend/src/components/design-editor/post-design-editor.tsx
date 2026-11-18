@@ -143,8 +143,13 @@ const PostDesignEditor: FC<PostDesignEditorProps> = ({
 
   // Draft autosave (crash/refresh/tab-switch insurance). Refs, not state, so
   // the once-only canvas effect and its interval never see stale values.
+  // The draft's slot. A file opened with "Edit in Studio" keeps its own, so
+  // opening it does not overwrite the unfinished design in the usual slot
+  // (it did, without a word, on the first autosave).
   const orgIdRef = useRef('default');
-  orgIdRef.current = user?.orgId || 'default';
+  orgIdRef.current = `${user?.orgId || 'default'}${
+    loadMediaId ? `:media:${loadMediaId}` : ''
+  }`;
   const [restoringDraft, setRestoringDraft] = useState(false);
   const [shortcutsOpen, setShortcutsOpen] = useState(false);
   const [hasSelection, setHasSelection] = useState(false);
@@ -174,6 +179,17 @@ const PostDesignEditor: FC<PostDesignEditorProps> = ({
   const [zoomLabel, setZoomLabel] = useState(1);
   /** What the last autosave actually did, so the editor can show it. */
   const [saveState, setSaveState] = useState<SaveState | null>(null);
+  // Closing or refreshing the tab with a design the browser could not keep
+  // asks first (the browser's own question; the text is the browser's).
+  useEffect(() => {
+    if (!saveState || saveState.result === 'saved') return;
+    const ask = (e: BeforeUnloadEvent) => {
+      e.preventDefault();
+      e.returnValue = '';
+    };
+    window.addEventListener('beforeunload', ask);
+    return () => window.removeEventListener('beforeunload', ask);
+  }, [saveState]);
 
   const fitScale = useCallback((p: PlatformSize) => {
     const { width, height } = viewportSizeRef.current;
@@ -205,6 +221,9 @@ const PostDesignEditor: FC<PostDesignEditorProps> = ({
   // design back over the newer one being worked on in another tab.
   const draftSigRef = useRef<string | null>(null);
   const markDraftSeenRef = useRef<(() => void) | null>(null);
+  const currentDraftSigRef = useRef<(() => string) | null>(null);
+  // The design last saved to the library, by its draft signature.
+  const libraryCoveredSigRef = useRef<string | null>(null);
 
   useEffect(() => {
     if (!canvasRef.current) return;
@@ -354,17 +373,26 @@ const PostDesignEditor: FC<PostDesignEditorProps> = ({
           : {}),
       });
       if (result === 'saved') draftSigRef.current = sig;
+      // Not kept in the browser, but this very design is in the library:
+      // nothing to warn about.
+      if (result !== 'saved' && sig === libraryCoveredSigRef.current) {
+        setSaveState(null);
+        return;
+      }
       setSaveState({ result, at: Date.now() });
     };
-    markDraftSeenRef.current = () => {
+    currentDraftSigRef.current = () => {
       const liveJson = JSON.stringify(c.toJSON());
       const carousel = useCarouselStore.getState();
-      draftSigRef.current = JSON.stringify([
+      return JSON.stringify([
         liveJson,
         draftSlides(liveJson, carousel),
         carousel.currentSlideIndex,
         useEditorStore.getState().platform.key,
       ]);
+    };
+    markDraftSeenRef.current = () => {
+      draftSigRef.current = currentDraftSigRef.current?.() ?? null;
     };
     const autosave = window.setInterval(snapshotDraft, 30_000);
     // React cleanup never runs on a browser refresh/close — pagehide is the
@@ -937,6 +965,15 @@ const PostDesignEditor: FC<PostDesignEditorProps> = ({
     setSavingToLibrary(true);
     try {
       await saveDesignToLibrary(false);
+      // This version is in the library now: no warning about it until the
+      // design changes again. The draft itself is still written as usual.
+      // A carousel saves only the slide on screen: its other slides live only
+      // in the draft, so the warning stays.
+      const carousel = useCarouselStore.getState();
+      if (!(carousel.isCarouselMode && carousel.slides.length > 1)) {
+        libraryCoveredSigRef.current = currentDraftSigRef.current?.() ?? null;
+        setSaveState(null);
+      }
       toaster.show(
         t(
           'saved_to_library',
@@ -1197,6 +1234,22 @@ const PostDesignEditor: FC<PostDesignEditorProps> = ({
             viewport (it scrolls inside overflow-auto instead) — without it the
             right side of the action bar ("Use in post") lands off-screen. */}
         <div className="flex-1 min-w-0 min-h-0 flex flex-col">
+          {saveState && saveState.result !== 'saved' && (
+            // A design the browser could not keep was lost on a refresh with
+            // only a small yellow word to show for it.
+            <div
+              role="alert"
+              className="shrink-0 flex items-center gap-2 px-4 py-2 bg-yellow-400/15 border-b border-yellow-400/40 text-[13px] text-textColor"
+            >
+              <StudioIcon name="warning" size={16} />
+              <span>
+                {t(
+                  'studio_autosave_off_hint',
+                  'This design is too large to keep in the browser. Save it to your library so a refresh cannot lose it.'
+                )}
+              </span>
+            </div>
+          )}
           {restoringDraft && (
             <div className="shrink-0 flex items-center gap-2 px-4 py-2 bg-forth/10 border-b border-forth/30 text-xs text-textColor">
               <span>

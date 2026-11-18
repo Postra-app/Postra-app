@@ -20,7 +20,8 @@ export const Onboarding: FC = () => {
 
   const handleClose = useCallback(() => {
     modal.closeAll();
-    router.push('/launches');
+    // replace: Back must not reopen the welcome window either.
+    router.replace('/launches');
   }, [modal, router]);
 
   useEffect(() => {

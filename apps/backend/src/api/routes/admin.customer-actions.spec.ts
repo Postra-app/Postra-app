@@ -52,7 +52,10 @@ const build = (overrides: any = {}) => {
         email: 'client@example.com',
       })),
     },
-    userOrganization: { count: jest.fn(async () => 2) },
+    userOrganization: {
+      count: jest.fn(async () => 2),
+      findFirst: jest.fn(async (): Promise<null> => null),
+    },
     ...overrides.prisma,
   };
 
@@ -326,5 +329,34 @@ describe('POST /admin/delete-organization', () => {
       status(() => controller.deleteOrganization(notAdmin, 'org-1'))
     ).resolves.toBe(403);
     expect(users.deleteOrganization).not.toHaveBeenCalled();
+  });
+
+  // The admin's own organization: one click would take their panel and
+  // channels with it, and their session would loop on 401 afterwards.
+  it('refuses an organization the admin belongs to, before touching billing', async () => {
+    const findFirst = jest.fn(async () => ({ id: 'membership-1' }));
+    const { controller, users, stripe, audit } = build({
+      prisma: {
+        userOrganization: { count: jest.fn(async () => 2), findFirst },
+      },
+    });
+
+    await expect(
+      status(() => controller.deleteOrganization(admin, 'org-1'))
+    ).resolves.toBe(400);
+    await expect(
+      message(() => controller.deleteOrganization(admin, 'org-1'))
+    ).resolves.toMatch(/you are a member/i);
+    expect(findFirst).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          organizationId: 'org-1',
+          userId: 'admin-1',
+        }),
+      })
+    );
+    expect(stripe.cancelAllSubscriptionsForDeletedAccount).not.toHaveBeenCalled();
+    expect(users.deleteOrganization).not.toHaveBeenCalled();
+    expect(audit.record).not.toHaveBeenCalled();
   });
 });

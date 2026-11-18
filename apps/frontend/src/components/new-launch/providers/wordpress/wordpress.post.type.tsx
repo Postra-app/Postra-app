@@ -1,57 +1,26 @@
 'use client';
 
-import { FC, useEffect, useState } from 'react';
-import { Select } from '@gitroom/react/form/select';
+import { FC } from 'react';
 import { useT } from '@gitroom/react/translation/get.transation.service.client';
-import { useCustomProviderFunction } from '@gitroom/frontend/components/launches/helpers/use.custom.provider.function';
-import { useSettings } from '@gitroom/frontend/components/launches/helpers/use.values';
+import { ProviderListSelect } from '@gitroom/frontend/components/new-launch/providers/provider.list.select';
+
 export const WordpressPostType: FC<{
   name: string;
-  onChange: (event: {
-    target: {
-      value: string;
-      name: string;
-    };
-  }) => void;
-}> = (props) => {
-  const { onChange, name } = props;
+  onChange: (event: { target: { value: string; name: string } }) => void;
+}> = ({ name, onChange }) => {
   const t = useT();
-  const customFunc = useCustomProviderFunction();
-  const [orgs, setOrgs] = useState([]);
-  const { getValues } = useSettings();
-  const [currentMedia, setCurrentMedia] = useState<string | undefined>();
-  const onChangeInner = (event: {
-    target: {
-      value: string;
-      name: string;
-    };
-  }) => {
-    setCurrentMedia(event.target.value);
-    onChange(event);
-  };
-  useEffect(() => {
-    customFunc.get('postTypes').then((data) => setOrgs(data));
-    const settings = getValues()[props.name];
-    if (settings) {
-      setCurrentMedia(settings);
-    }
-  }, []);
-  if (!orgs.length) {
-    return null;
-  }
   return (
-    <Select
+    <ProviderListSelect
       name={name}
-      label="Select type"
-      onChange={onChangeInner}
-      value={currentMedia}
-    >
-      <option value="">{t('select_1', '--Select--')}</option>
-      {orgs.map((org: any) => (
-        <option key={org.id} value={org.id}>
-          {org.name}
-        </option>
-      ))}
-    </Select>
+      fn="postTypes"
+      onChange={onChange}
+      texts={{
+        label: t('wordpress_post_types_label', 'Select type'),
+        loading: t('wordpress_post_types_loading', 'Loading post types…'),
+        failed: t('wordpress_post_types_failed', 'WordPress did not send its post types. Try again in a moment.'),
+        none: t('wordpress_post_types_none', 'No post types found on this WordPress site. Try again in a moment.'),
+        refresh: t('wordpress_post_types_refresh', 'Refresh post types'),
+      }}
+    />
   );
 };

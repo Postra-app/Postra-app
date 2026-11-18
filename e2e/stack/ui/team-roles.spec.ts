@@ -39,9 +39,18 @@ test('the owner changes roles, the key is replaced after an admin, and the organ
     await expect(page.getByText('Role changed').first()).toBeVisible();
     await expect.poll(() => roleOf(member.userId)).toBe('ADMIN');
 
-    // Admin → User: they saw the key, so it is replaced and the page says so.
+    // Admin → User: they saw the key, so it is replaced. It asks first (it
+    // happened at once); "Cancel" leaves them an admin.
     const keyBefore = await apiKeyHash();
     await memberRole.selectOption('USER');
+    const question = page.getByRole('dialog').filter({ hasText: 'Make this admin a user?' });
+    await expect(question).toBeVisible();
+    await question.getByRole('button', { name: 'Cancel' }).click();
+    await expect(memberRole).toHaveValue('ADMIN');
+    expect(await roleOf(member.userId)).toBe('ADMIN');
+    expect(await apiKeyHash()).toBe(keyBefore);
+    await memberRole.selectOption('USER');
+    await question.getByRole('button', { name: 'Make user' }).click();
     await expect(
       page.getByText('They could see your API key, so it was replaced.', { exact: false })
     ).toBeVisible();
@@ -75,6 +84,61 @@ test('the owner changes roles, the key is replaced after an admin, and the organ
   } finally {
     await member.remove();
     await admin.remove();
+    await org.remove();
+    await prisma.$disconnect();
+  }
+});
+
+// "Copy Link" clicked twice made two invitations; nothing said how long the
+// link works (an hour then, a week now).
+test('a double click on Copy Link makes one invitation, and the window says how long it works', async ({
+  page,
+  context,
+}) => {
+  const prisma = database();
+  const org = await throwawayOrg(prisma, { tier: 'ULTIMATE', totalChannels: 5, channels: 0 });
+  await context.clearCookies();
+  await context.addCookies((await org.api.storageState()).cookies);
+  await context.grantPermissions(['clipboard-read', 'clipboard-write']);
+  try {
+    let invites = 0;
+    page.on('request', (r) => {
+      if (r.method() === 'POST' && r.url().endsWith('/api/settings/team')) invites += 1;
+    });
+    await page.goto('/settings');
+    await page.getByRole('tab', { name: 'Teams', exact: true }).click();
+    await page.getByRole('button', { name: 'Add another member' }).click();
+    const form = page.getByRole('dialog', { name: 'Add Member' });
+    await expect(form.getByText('The link works for 7 days.')).toBeVisible();
+    await form.getByRole('checkbox', { name: 'Send invitation via email?' }).click();
+    await form.getByRole('combobox', { name: 'Role' }).selectOption('USER');
+    await form.getByRole('button', { name: 'Copy Link' }).dblclick();
+    await expect(page.getByText('Link copied to clipboard')).toBeVisible();
+    await page.waitForTimeout(1000);
+    expect(invites).toBe(1);
+  } finally {
+    await org.remove();
+    await prisma.$disconnect();
+  }
+});
+
+// Two members called Jan were two identical "Jan" rows: the full address
+// tells them apart.
+test('each member row shows the full email address', async ({ page, context }) => {
+  const prisma = database();
+  const org = await throwawayOrg(prisma, { tier: 'ULTIMATE', totalChannels: 5, channels: 0 });
+  const first = await addMember(prisma, org.orgId, 'USER');
+  const second = await addMember(prisma, org.orgId, 'USER');
+  await context.clearCookies();
+  await context.addCookies((await org.api.storageState()).cookies);
+  try {
+    await page.goto('/settings');
+    await page.getByRole('tab', { name: 'Teams', exact: true }).click();
+    await expect(page.getByText(first.email, { exact: true })).toBeVisible();
+    await expect(page.getByText(second.email, { exact: true })).toBeVisible();
+  } finally {
+    await first.remove();
+    await second.remove();
     await org.remove();
     await prisma.$disconnect();
   }

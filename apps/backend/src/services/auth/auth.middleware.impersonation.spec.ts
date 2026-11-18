@@ -185,6 +185,34 @@ describe('a session that is impersonating', () => {
     expect(next).not.toHaveBeenCalled();
   });
 
+  // An admin looking at a customer's account could charge their card or
+  // change their plan in their name, and rotate the keys their integrations
+  // use. Refunds and cancellations go through the admin panel, which is
+  // audited. Changing the period in the plan preview (prorate) stays open.
+  it.each([
+    '/billing/finish-trial',
+    '/billing/subscribe',
+    '/billing/cancel',
+    '/billing/apply-discount',
+    '/billing/portal',
+    '/user/api-key/rotate',
+    '/user/oauth-app/rotate-secret',
+  ])('cannot reach %s, which moves money or keys', async (path) => {
+    const { middleware } = build(impersonatedTarget);
+    const next = jest.fn();
+    await expect(
+      middleware.use(request(path) as any, response() as any, next)
+    ).rejects.toMatchObject({ status: 403 });
+    expect(next).not.toHaveBeenCalled();
+  });
+
+  it('can still preview a plan change (prorate)', async () => {
+    const { middleware } = build(impersonatedTarget);
+    const next = jest.fn();
+    await middleware.use(request('/billing/prorate') as any, response() as any, next);
+    expect(next).toHaveBeenCalled();
+  });
+
   // The router matches /User/delete as /user/delete.
   it.each(['/User/delete', '/USER/DELETE', '/Settings/transfer-ownership/u2', '/Billing/add-subscription'])(
     'cannot reach %s by spelling it in another case',

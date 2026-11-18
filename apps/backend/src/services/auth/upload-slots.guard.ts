@@ -102,12 +102,17 @@ const takeOrgSlot = async (org: string): Promise<OrgSlot> => {
 
 @Injectable()
 export class UploadSlotsGuard implements CanActivate {
+  // A small request body is a small upload; see UrlImportSlotsGuard.
+  protected passesFreely(request: any) {
+    const length = Number(request.headers?.['content-length']);
+    // No length (a chunked body) counts as large.
+    return Number.isFinite(length) && length > 0 && length <= SMALL_BODY_BYTES;
+  }
+
   async canActivate(context: ExecutionContext): Promise<boolean> {
     const request = context.switchToHttp().getRequest();
     const response = context.switchToHttp().getResponse();
-    const length = Number(request.headers?.['content-length']);
-    // No length (a chunked body) counts as large.
-    if (Number.isFinite(length) && length > 0 && length <= SMALL_BODY_BYTES) {
+    if (this.passesFreely(request)) {
       return true;
     }
     const busy = () => {
@@ -156,5 +161,15 @@ export class UploadSlotsGuard implements CanActivate {
       return false;
     }
     return true;
+  }
+}
+
+// Importing from a URL: the request is a few bytes of JSON, but the server
+// then holds the downloaded file (up to 100 MB) in memory. Every such import
+// takes a slot, so one API key cannot hold thirty downloads at once.
+@Injectable()
+export class UrlImportSlotsGuard extends UploadSlotsGuard {
+  protected passesFreely() {
+    return false;
   }
 }

@@ -7,14 +7,12 @@ import { orderBy } from 'lodash';
 import SafeImage from '@gitroom/react/helpers/safe.image';
 import { AddProviderComponent } from '@gitroom/frontend/components/launches/add.provider.component';
 import { useT } from '@gitroom/react/translation/get.transation.service.client';
-import { useModals } from '@gitroom/frontend/components/layout/new-modal';
 
 interface OnboardingModalProps {
   onClose: () => void;
 }
 
 export const OnboardingModal: FC<OnboardingModalProps> = ({ onClose }) => {
-  const modals = useModals();
   const t = useT();
 
   return (
@@ -26,7 +24,10 @@ export const OnboardingModal: FC<OnboardingModalProps> = ({ onClose }) => {
         <button
           className="outline-none absolute end-[20px] top-[20px] mantine-UnstyledButton-root mantine-ActionIcon-root hover:bg-tableBorder cursor-pointer mantine-Modal-close mantine-1dcetaa"
           type="button"
-          onClick={modals.closeAll}
+          // Through onClose, which also takes `?onboarding=true` out of the
+          // address: closed with the cross, the window came back on refresh.
+          onClick={onClose}
+          aria-label={t('close', 'Close')}
         >
           <svg
             viewBox="0 0 15 15"

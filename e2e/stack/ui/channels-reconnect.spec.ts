@@ -42,6 +42,48 @@ test('a Bluesky channel to reconnect opens its credentials, on a full plan too',
   }
 });
 
+// The credentials went into the address of the connect page as base64
+// (`?code=`), where they stayed in the browser history and in the request
+// logs of the servers on the way.
+test('Bluesky credentials never travel in an address', async ({ page, context }) => {
+  const prisma = database();
+  const org = await throwawayOrg(prisma, { tier: 'STANDARD', totalChannels: 1, channels: 1, provider: 'bluesky' });
+  try {
+    await prisma.integration.update({ where: { id: org.channelIds[0] }, data: { refreshNeeded: true } });
+    await signedInto(context, org);
+    const bodies: string[] = [];
+    await page.route('**/api/integrations/social-connect/bluesky', (route) => {
+      bodies.push(route.request().postData() || '');
+      return route.fulfill({ json: { id: org.channelIds[0], inBetweenSteps: false } });
+    });
+    await page.route('**/api/integrations/social-connect/bluesky/handoff*', (route) => route.fulfill({ json: {} }));
+    const addresses: string[] = [];
+    page.on('request', (r) => addresses.push(r.url()));
+    page.on('framenavigated', (f) => addresses.push(f.url()));
+
+    await page.goto('/launches');
+    await page.getByText('Throwaway bluesky 0').first().click({ timeout: 20_000 });
+    const form = page.getByRole('dialog', { name: 'Update credentials' });
+    await form.getByLabel('Identifier').fill('cafe.bsky.social');
+    await form.getByRole('textbox', { name: 'Password' }).fill('app-password-1234');
+    await form.getByRole('button', { name: 'Connect' }).click();
+    await expect.poll(() => bodies.length).toBe(1);
+
+    // The connect request still gets them, in its body.
+    const sent = JSON.parse(bodies[0]);
+    expect(Buffer.from(sent.code, 'base64').toString()).toContain('app-password-1234');
+    const base64 = sent.code as string;
+    const leaked = addresses.filter(
+      (a) => a.includes(base64) || a.includes(encodeURIComponent(base64)) || a.includes('app-password-1234')
+    );
+    expect(leaked).toEqual([]);
+    expect(await page.evaluate(() => window.location.search)).not.toContain('code=');
+  } finally {
+    await org.remove();
+    await prisma.$disconnect();
+  }
+});
+
 test('a Telegram channel to reconnect opens the Telegram steps, not a 404', async ({ page, context }) => {
   const prisma = database();
   const org = await throwawayOrg(prisma, { tier: 'PRO', totalChannels: 5, channels: 1, provider: 'telegram' });

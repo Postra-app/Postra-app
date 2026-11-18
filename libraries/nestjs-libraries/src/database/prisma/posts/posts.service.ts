@@ -1864,6 +1864,10 @@ export class PostsService {
     return tag;
   }
 
+  async isOrganisationPost(orgId: string, postId: string) {
+    return !!(await this._postRepository.getPostById(postId, orgId));
+  }
+
   async createComment(
     orgId: string,
     userId: string,

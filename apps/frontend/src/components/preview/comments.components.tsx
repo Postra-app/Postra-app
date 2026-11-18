@@ -127,6 +127,14 @@ export const CommentsComponents: FC<{
   const goToComments = useCallback(() => {
     window.location.href = `/auth?returnUrl=${window.location.href}`;
   }, []);
+  const fetch = useFetch();
+  const { data: access, isLoading } = useSWR(
+    user?.id ? `can-comment-${postId}` : null,
+    async () => {
+      const res = await fetch(`/posts/${postId}/can-comment`);
+      return res.ok ? ((await res.json()) as { canComment: boolean }) : { canComment: false };
+    }
+  );
   if (!user?.id) {
     return (
       <Button onClick={goToComments}>
@@ -135,6 +143,21 @@ export const CommentsComponents: FC<{
           'Log in to add comments'
         )}
       </Button>
+    );
+  }
+  if (isLoading) {
+    return <></>;
+  }
+  // Signed in, but not in the organisation that made the post: the server
+  // refuses their comments, so there is no form to fill in for nothing.
+  if (!access?.canComment) {
+    return (
+      <div className="text-sm text-gray-300" data-testid="comments-team-only">
+        {t(
+          'comments_team_only',
+          'Only the team that made this post can comment here. To share feedback, reply to whoever sent you this link.'
+        )}
+      </div>
     );
   }
   return <RenderComponents postId={postId} />;
