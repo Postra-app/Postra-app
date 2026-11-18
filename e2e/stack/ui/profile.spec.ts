@@ -41,7 +41,7 @@ test.describe('a short name', () => {
       await expect(save).toBeEnabled();
       await save.click();
       await expect(page.getByText('Profile updated')).toBeVisible();
-      await expect.poll(async () => (await (await owner.api.get('/user/personal')).json()).fullname).toBe('Li');
+      await expect.poll(async () => (await (await owner.api.get('/user/personal')).json()).name).toBe('Li');
     } finally {
       await owner.remove();
       await prisma.$disconnect();
