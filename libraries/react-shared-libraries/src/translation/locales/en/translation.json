@@ -2392,5 +2392,14 @@
   "billing_confirm_failed": "The payment could not be sent. Check your connection and try again.",
   "billing_comp_given": "Postra gave you this plan. There is nothing to pay and nothing to cancel.",
   "billing_comp_ends": "It ends on",
-  "billing_comp_no_end": "It has no end date."
+  "billing_comp_no_end": "It has no end date.",
+  "enable_first_comment": "Enable first comment",
+  "renew_first_comment": "Renew first comment access",
+  "tiktok_comments_start_failed": "Could not start turning first comment on. Try again.",
+  "tiktok_comments_declined": "First comment was not turned on: the TikTok sign-in was not finished. You can start again from the channel menu.",
+  "tiktok_comments_working": "Turning first comment on...",
+  "tiktok_comments_done_title": "First comment is on",
+  "tiktok_comments_done_text": "Posts you publish to this TikTok channel can now have a first comment. TikTok shows it once the post is public.",
+  "tiktok_comments_failed_title": "First comment was not turned on",
+  "comments_not_enabled_explanation": "First comment is not turned on for these channels. Open the channel menu and choose \"Enable first comment\". The post itself will go out as scheduled."
 }
