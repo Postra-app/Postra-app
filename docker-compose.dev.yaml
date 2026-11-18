@@ -165,7 +165,7 @@ services:
 
   temporal-ui:
     container_name: temporal-ui
-    image: temporalio/ui:2.58.0
+    image: temporalio/ui:2.58.1
     profiles: [temporal]
     environment:
       - TEMPORAL_ADDRESS=temporal:7233
