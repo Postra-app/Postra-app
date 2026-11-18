@@ -39,6 +39,9 @@ export const VideoCaptions: FC<VideoCaptionsProps> = ({ mediaId, source, onCapti
   // ever saw the captions they had just burned in - and there was no way back.
   const [burned, setBurned] = useState<Blob | null>(null);
   const [replacedSource, setReplacedSource] = useState(false);
+  // Removing the clip without captions is offered only once the captioned
+  // one is in the library: before that one click left neither version.
+  const [captionedStored, setCaptionedStored] = useState(false);
   // The clip the captions were burned onto. "Use in post" swaps the studio's
   // media for the captioned result, so `mediaId` alone pointed the remove
   // button at the new file and deleted it.
@@ -167,6 +170,7 @@ export const VideoCaptions: FC<VideoCaptionsProps> = ({ mediaId, source, onCapti
         // Show it before it goes anywhere: the result panel does the upload,
         // once the user has looked at it and said so.
         setBurned(result.blob);
+        setCaptionedStored(false);
       } else if (mediaId) {
         // Fallback: server burn-in when we don't hold the local bytes. Cancel
         // here only drops our end of the request — ffmpeg on the server runs to
@@ -358,9 +362,15 @@ export const VideoCaptions: FC<VideoCaptionsProps> = ({ mediaId, source, onCapti
               },
             ]}
             fileNameFor={() => `postra-captioned-${Date.now()}`}
-            onUseInPost={onCaptioned}
+            onUseInPost={(media) => {
+              setCaptionedStored(true);
+              onCaptioned(media);
+            }}
+            onSaved={(stored) => {
+              if (stored.length) setCaptionedStored(true);
+            }}
           />
-          {burnSource && !replacedSource && (
+          {burnSource && captionedStored && !replacedSource && (
             <button
               type="button"
               onClick={removeSourceClip}

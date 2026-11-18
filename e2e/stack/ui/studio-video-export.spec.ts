@@ -149,6 +149,34 @@ test('AI Captions burns the captions into the clip', { tag: '@safari' }, async (
   expect(problems).toEqual([]);
 });
 
+// "Remove the clip without captions from the library" was offered as soon as
+// the captions were burned, before the captioned clip was stored: one click
+// left the customer with neither version.
+test('removing the clip without captions is offered only once the captioned clip is stored', async ({
+  page,
+  browserName,
+}) => {
+  test.setTimeout(120_000);
+  await page.route('**/api/media/*/auto-caption', (route) =>
+    route.fulfill({
+      status: 201,
+      contentType: 'application/json',
+      body: JSON.stringify({ srt: '1\n00:00:00,000 --> 00:00:01,000\nHello from Postra\n' }),
+    })
+  );
+  await loadClip(page, browserName);
+  const clipUpload = page.waitForResponse((r) => isUpload(r.request()));
+  await page.getByRole('button', { name: 'AI Captions', exact: true }).click();
+  expect((await clipUpload).status()).toBe(201);
+  await page.getByRole('button', { name: 'Generate captions', exact: true }).click();
+  await page.getByRole('button', { name: 'Burn into video', exact: true }).click();
+  await expect(page.getByText('with audio', { exact: true })).toBeVisible({ timeout: 60_000 });
+  const remove = page.getByRole('button', { name: 'Remove the clip without captions from the library' });
+  await expect(remove).toHaveCount(0);
+  await saveAll(page, 'Save to library');
+  await expect(remove).toBeVisible();
+});
+
 // An iPhone records HEVC in a .MOV. Safari decodes it; X and LinkedIn refuse
 // HEVC, so Trim re-encodes it to H.264. Engines without an HEVC decoder (the
 // Linux builds) cannot open the clip at all and skip.
