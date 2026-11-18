@@ -83,3 +83,37 @@ test('an Unsplash photo in a Studio design brings its credit into the post', asy
     await prisma.$disconnect();
   }
 });
+
+test('a credit typed before the photo goes in is not added a second time', async ({ page, context }) => {
+  test.setTimeout(90_000);
+  const prisma = database();
+  const org = await throwawayOrg(prisma, { tier: 'PRO', totalChannels: 5, channels: 1, provider: 'bluesky' });
+  try {
+    const name = `unsplash-typed-${Date.now()}.png`;
+    const up = await org.api.post('/media/upload-simple', {
+      multipart: { file: { name, mimeType: 'image/png', buffer: PNG } },
+    });
+    expect(up.status(), await up.text()).toBe(201);
+    const credit = 'Photo by Stack Lens (@stack.lens) on Unsplash';
+    await prisma.media.update({ where: { id: (await up.json()).id }, data: { credit } });
+
+    await context.addCookies((await org.api.storageState()).cookies);
+    await page.goto('/launches');
+    await page.getByRole('button', { name: 'Create Post' }).click();
+    const editor = page.getByRole('dialog', { name: 'Post editor' });
+    const text = editor.locator('[contenteditable="true"]').first();
+    await text.click();
+    // The media picker kept the text from when the composer opened (empty).
+    await page.keyboard.type(`Rye today. ${credit}`);
+    await editor.getByRole('button', { name: 'Insert Media' }).click();
+    const library = page.getByRole('dialog').filter({ hasText: 'Media Library' });
+    await library.getByRole('checkbox', { name, exact: true }).click();
+    await library.getByRole('button', { name: 'Add selected media', exact: true }).click();
+    await expect(library).toBeHidden();
+    await expect(editor.locator('img[src*="unsplash-typed"], img[src*="/uploads/"]').first()).toBeVisible();
+    expect((await text.innerText()).split(credit).length - 1).toBe(1);
+  } finally {
+    await org.remove();
+    await prisma.$disconnect();
+  }
+});

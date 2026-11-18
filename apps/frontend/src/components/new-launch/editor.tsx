@@ -905,9 +905,11 @@ export const Editor: FC<{
                     // A stock photo that asks for credit (Unsplash) brings
                     // its "Photo by … on Unsplash" line into the text, once.
                     const editor = editorRef?.current?.editor;
+                    // The editor's own text: the media picker keeps an
+                    // older copy of this handler, whose props are stale.
                     for (const credit of creditsToAdd(
                       value.target.value,
-                      valueWithoutHtml
+                      editor?.getText() ?? valueWithoutHtml
                     )) {
                       editor?.commands?.insertContentAt(
                         editor.state.doc.content.size,
