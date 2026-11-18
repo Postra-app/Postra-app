@@ -1,4 +1,5 @@
 import { markAiGenerated } from './ai-provenance';
+import { markCredits } from './stock-credit';
 
 /** A design the library refused: nothing was added, the work stays. */
 export class DesignUploadError extends Error {
@@ -21,10 +22,11 @@ export const uploadDesign = async (
   blob: Blob,
   name: string,
   canvasJson?: string | null
-): Promise<{ id: string; path: string }> => {
+): Promise<{ id: string; path: string; credit?: string | null }> => {
   const formData = new FormData();
   formData.append('file', blob, name);
   markAiGenerated(formData, canvasJson);
+  markCredits(formData, canvasJson);
   const uploaded = await fetch('/media/upload-simple', {
     method: 'POST',
     body: formData,
@@ -39,5 +41,5 @@ export const uploadDesign = async (
     });
     if (!saved.ok) throw new DesignUploadError(saved.status);
   }
-  return { id: data.id, path: data.path };
+  return { id: data.id, path: data.path, credit: data.credit ?? null };
 };

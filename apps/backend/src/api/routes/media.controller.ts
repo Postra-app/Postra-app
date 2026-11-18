@@ -60,6 +60,8 @@ import {
 import {
   isUnsplashAssetUrl,
   unsplashApiUrl,
+  creditLinesFromClient,
+  unsplashCredit,
   unsplashPhotoHits,
 } from '@gitroom/nestjs-libraries/media/unsplash';
 import {
@@ -625,11 +627,25 @@ export class MediaController {
     // Unsplash's terms: report the download. The address is built from the
     // id, never taken from the request (CodeQL), and a failed report must not
     // undo the import the customer just made.
+    const headers = { Authorization: `Client-ID ${key}`, 'Accept-Version': 'v1' };
     await fetch(unsplashApiUrl(`/photos/${encodeURIComponent(id)}/download`), {
-      headers: { Authorization: `Client-ID ${key}`, 'Accept-Version': 'v1' },
+      headers,
       signal: AbortSignal.timeout(10_000),
     }).catch((): undefined => undefined);
-    return media;
+    // And credit the photographer in the post text (the composer adds it):
+    // the name and handle as Unsplash has them. Without it the photo stays
+    // usable; the credit is simply not added.
+    const photo = await fetch(unsplashApiUrl(`/photos/${encodeURIComponent(id)}`), {
+      headers,
+      signal: AbortSignal.timeout(10_000),
+    })
+      .then((r) => (r.ok ? r.json() : null))
+      .catch((): null => null);
+    const credit = unsplashCredit(photo);
+    if (credit) {
+      await this._mediaService.setCredit(org.id, media.id, credit);
+    }
+    return { ...media, credit: credit || null };
   }
 
   @Post('/refine-design')
@@ -796,7 +812,9 @@ export class MediaController {
     // Studio exports come through here, and only the canvas knows whether an
     // image model drew any of it. A client can only ever make its
     // own upload carry the AI label, never take it off something we generated.
-    @Body('aiGenerated') aiGenerated: string = 'false'
+    @Body('aiGenerated') aiGenerated: string = 'false',
+    // The photographer credits of the Unsplash photos in a Studio design.
+    @Body('credit') creditField?: string
   ) {
     // No file field at all reached `file.originalname` as a 500.
     if (!file) {
@@ -816,7 +834,7 @@ export class MediaController {
       return { path };
     }
 
-    return this._mediaService.saveFile(
+    const saved = await this._mediaService.saveFile(
       org.id,
       getFile.originalname,
       getFile.path,
@@ -824,6 +842,10 @@ export class MediaController {
       aiGenerated === 'true',
       file.size
     );
+    const credit = creditLinesFromClient(creditField);
+    if (!credit) return saved;
+    await this._mediaService.setCredit(org.id, saved.id, credit);
+    return { ...saved, credit };
   }
 
   // Studio's Remove background. Before /:endpoint, which takes any one-segment

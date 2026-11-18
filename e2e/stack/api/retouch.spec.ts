@@ -129,6 +129,15 @@ test('an image a model made stays marked as AI-made after a retouch', async () =
   expect((await prisma.media.findUniqueOrThrow({ where: { id: made.id } })).aiGenerated).toBe(true);
 });
 
+test('a retouched Unsplash photo keeps the photographer credit', async () => {
+  const source = await upload(org.api, 'unsplash.jpg', await photo());
+  const credit = 'Photo by Stack Lens (@stack.lens) on Unsplash';
+  await prisma.media.update({ where: { id: source.id }, data: { credit } });
+  const made = await (await org.api.post(`/media/${source.id}/retouch`, { data: { level: 'light' } })).json();
+  expect(made.credit).toBe(credit);
+  expect((await prisma.media.findUniqueOrThrow({ where: { id: made.id } })).credit).toBe(credit);
+});
+
 test('a phone-sized photo comes back capped to 2048 px, in a few seconds', async () => {
   const big = await sharp({ create: { width: 3000, height: 2250, channels: 3, background: '#406080' } })
     .jpeg({ quality: 80 })

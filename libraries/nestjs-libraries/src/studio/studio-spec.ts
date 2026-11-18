@@ -123,6 +123,9 @@ export const STUDIO_FABRIC_METADATA_KEYS = [
   'studioSlot',
   'studioAiGenerated',
   'studioTemplateId',
+  // Photographer credit of a stock photo layer (Unsplash), carried into the
+  // text of the post the design goes into.
+  'studioCredit',
 ] as const;
 
 export type StudioFabricMetadataKey = (typeof STUDIO_FABRIC_METADATA_KEYS)[number];
@@ -132,6 +135,7 @@ export interface StudioFabricMetadata {
   studioSlot?: string;
   studioAiGenerated?: boolean;
   studioTemplateId?: string;
+  studioCredit?: string;
 }
 
 let idCounter = 0;

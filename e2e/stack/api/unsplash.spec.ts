@@ -40,6 +40,13 @@ test('an Unsplash photo comes with its credit, and importing it reports the down
     const media = await prisma.media.findUniqueOrThrow({ where: { id: (await imported.json()).id } });
     expect(media.organizationId).toBe(org.orgId);
     expect(media.originalName).toBe('unsplash-StackUnspl1');
+    // The credit for the post text, from the photographer as Unsplash has them.
+    expect((await imported.json()).credit).toBe('Photo by Stack Lens (@stack.lens) on Unsplash');
+    expect(media.credit).toBe('Photo by Stack Lens (@stack.lens) on Unsplash');
+    const library = await (await org.api.get('/media?page=1')).json();
+    expect(library.results.find((m: any) => m.id === media.id)?.credit).toBe(
+      'Photo by Stack Lens (@stack.lens) on Unsplash'
+    );
     const downloads = await (await org.api.get('http://localhost:58080/__unsplash/downloads')).json();
     expect(downloads.length).toBe(before + 1);
     expect(downloads.at(-1)).toBe('StackUnspl1');

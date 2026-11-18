@@ -1024,7 +1024,20 @@ export const MultiMediaComponent: FC<{
                                     target: {
                                       name: 'upload',
                                       value: currentMedia.map((p) =>
-                                        p.id === media.id ? { ...p, id: repl.id, path: repl.path } : p
+                                        p.id === media.id
+                                          ? {
+                                              ...p,
+                                              id: repl.id,
+                                              path: repl.path,
+                                              // the new file's credit, or the one the
+                                              // replaced photo carried (an Unsplash
+                                              // photo edited or retouched)
+                                              credit:
+                                                (repl as { credit?: string | null }).credit ||
+                                                (p as { credit?: string | null }).credit ||
+                                                null,
+                                            }
+                                          : p
                                       ),
                                     },
                                   });
@@ -1064,7 +1077,20 @@ export const MultiMediaComponent: FC<{
                                     target: {
                                       name: 'upload',
                                       value: currentMedia.map((p) =>
-                                        p.id === media.id ? { ...p, id: repl.id, path: repl.path } : p
+                                        p.id === media.id
+                                          ? {
+                                              ...p,
+                                              id: repl.id,
+                                              path: repl.path,
+                                              // the new file's credit, or the one the
+                                              // replaced photo carried (an Unsplash
+                                              // photo edited or retouched)
+                                              credit:
+                                                (repl as { credit?: string | null }).credit ||
+                                                (p as { credit?: string | null }).credit ||
+                                                null,
+                                            }
+                                          : p
                                       ),
                                     },
                                   });

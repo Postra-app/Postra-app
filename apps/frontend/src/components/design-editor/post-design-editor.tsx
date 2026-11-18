@@ -20,6 +20,7 @@ import {
   wireStudioIds,
 } from './utils/fabric-studio-metadata';
 import { markAiGenerated } from './utils/ai-provenance';
+import { markCredits } from './utils/stock-credit';
 import { uploadDesign } from './utils/upload-design';
 import { installStudioFabricControls } from './utils/fabric-controls';
 import { computeSnap, edgesOf, SnapGuide } from './utils/canvas-snapping';
@@ -68,7 +69,7 @@ const MultiFormatModal = lazy(() =>
 const HISTORY_EVENTS = ['object:modified', 'object:added', 'object:removed'] as const;
 
 interface PostDesignEditorProps {
-  setMedia: (params: { id: string; path: string }[]) => void;
+  setMedia: (params: { id: string; path: string; credit?: string | null }[]) => void;
   closeModal: () => void;
   width?: number;
   height?: number;
@@ -826,7 +827,7 @@ const PostDesignEditor: FC<PostDesignEditorProps> = ({
   // there is no post to attach to, so carry the saved media into a fresh post
   // on /launches (NewPost picks up the query param and opens the post modal).
   const finishExport = useCallback(
-    (uploaded: { id: string; path: string }[]) => {
+    (uploaded: { id: string; path: string; credit?: string | null }[]) => {
       // The design is safely in the library/post now — stop nagging about it.
       // The flag matters as much as the clear: unmount snapshots the canvas one
       // last time, and without it the just-posted design was written straight
@@ -862,7 +863,7 @@ const PostDesignEditor: FC<PostDesignEditorProps> = ({
           i === carouselState.currentSlideIndex ? { ...s, canvasJson: currentJson } : s
         );
 
-        const uploaded: { id: string; path: string }[] = [];
+        const uploaded: { id: string; path: string; credit?: string | null }[] = [];
         for (let i = 0; i < slides.length; i += 1) {
           const slide = slides[i];
           if (!slide.canvasJson) continue;
@@ -932,6 +933,7 @@ const PostDesignEditor: FC<PostDesignEditorProps> = ({
       const formData = new FormData();
       formData.append('file', blob, asTemplate ? 'template.jpg' : 'design.jpg');
       markAiGenerated(formData, canvasJson);
+      markCredits(formData, canvasJson);
       const uploaded = await fetch('/media/upload-simple', { method: 'POST', body: formData });
       if (!uploaded.ok) throw new Error(String(uploaded.status));
       const data = await uploaded.json();

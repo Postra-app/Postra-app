@@ -720,6 +720,10 @@ export class MediaService {
 
   // Stock files (Pexels, Unsplash): hosts checked by the controller; the type
   // is read from the bytes, not trusted from the URL.
+  setCredit(org: string, id: string, credit: string) {
+    return this._mediaRepository.setCredit(org, id, credit);
+  }
+
   async importStockAsset(
     org: string,
     sourceUrl: string,
@@ -1482,6 +1486,10 @@ export class MediaService {
       sourceId,
       level,
     });
+    // Still the photographer's photo: an Unsplash credit goes with it.
+    if (from.credit) {
+      await this._mediaRepository.setCredit(org.id, saved.id, from.credit);
+    }
     Logger.log(
       `retouch ${level} ${result.width}x${result.height} from ${source.length} bytes: ${marks.join(' ')} total=${Date.now() - started}ms${result.fallback ? ' fallback' : ''}`,
       'Retouch'
@@ -1490,6 +1498,7 @@ export class MediaService {
       id: saved.id,
       path: saved.path,
       originalName: saved.originalName,
+      credit: from.credit ?? null,
       sourceId,
       level,
       summary: result.spec.summary,
