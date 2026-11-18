@@ -91,3 +91,35 @@ test.describe('in Polish', () => {
     await expect(editor.getByText('Save Set', { exact: true })).toHaveCount(0);
   });
 });
+
+// "Send Test" said "Webhook send" in green before the request went out, and
+// the same when the address refused or never answered.
+test('a webhook test says what the receiver answered', async ({ page }) => {
+  let answer = { send: false, reason: 'unreachable' } as Record<string, unknown>;
+  const sent: number[] = [];
+  let release!: () => void;
+  let held = new Promise<void>((r) => (release = r));
+  await page.route('**/api/webhooks/send*', async (route) => {
+    sent.push(Date.now());
+    await held;
+    await route.fulfill({ status: 201, contentType: 'application/json', body: JSON.stringify(answer) });
+  });
+  await page.goto('/settings');
+  await page.getByRole('tab', { name: 'Webhooks' }).click({ timeout: 20_000 });
+  await page.getByRole('button', { name: /Add a webhook/i }).click();
+  const form = page.getByRole('dialog');
+  await form.getByLabel('Name').fill('Stack test hook');
+  await form.getByLabel('URL').fill('https://hooks.example.com/postra');
+  await form.getByRole('button', { name: 'Send Test' }).click();
+  await expect.poll(() => sent.length).toBe(1);
+  // Nothing claims success while the answer is out.
+  await page.waitForTimeout(500);
+  await expect(page.getByText('Webhook send')).toHaveCount(0);
+  release();
+  await expect(page.getByText('Postra could not reach that address within 5 seconds.')).toBeVisible();
+
+  answer = { send: true, status: 200 };
+  held = Promise.resolve();
+  await form.getByRole('button', { name: 'Send Test' }).click();
+  await expect(page.getByText('Test sent. Your server answered 200.')).toBeVisible();
+});

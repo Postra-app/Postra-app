@@ -2381,5 +2381,9 @@
   "analytics_load_failed": "Could not load analytics for this channel.",
   "team_invite_valid_for": "The link works for 7 days.",
   "open_source_licences": "The licences and copyright notices of the third-party packages in Postra are at",
-  "agent_channel_not_connected": "That channel is not connected any more, so the editor did not open. Pick one of your channels and ask again."
+  "agent_channel_not_connected": "That channel is not connected any more, so the editor did not open. Pick one of your channels and ask again.",
+  "webhook_test_delivered": "Test sent. Your server answered {{status}}.",
+  "webhook_test_status": "Your server answered {{status}}, so the test was not accepted.",
+  "webhook_test_not_allowed": "Postra sends webhooks only to public https addresses.",
+  "webhook_test_unreachable": "Postra could not reach that address within 5 seconds."
 }

@@ -2381,5 +2381,9 @@
   "analytics_load_failed": "Nie udało się wczytać analityki tego kanału.",
   "team_invite_valid_for": "Link działa przez 7 dni.",
   "open_source_licences": "Licencje i informacje o prawach autorskich pakietów zewnętrznych użytych w Postrze znajdziesz na",
-  "agent_channel_not_connected": "Ten kanał nie jest już połączony, więc edytor się nie otworzył. Wybierz jeden ze swoich kanałów i zapytaj ponownie."
+  "agent_channel_not_connected": "Ten kanał nie jest już połączony, więc edytor się nie otworzył. Wybierz jeden ze swoich kanałów i zapytaj ponownie.",
+  "webhook_test_delivered": "Test wysłany. Twój serwer odpowiedział {{status}}.",
+  "webhook_test_status": "Twój serwer odpowiedział {{status}}, więc test nie został przyjęty.",
+  "webhook_test_not_allowed": "Postra wysyła webhooki tylko na publiczne adresy https.",
+  "webhook_test_unreachable": "Postra nie połączyła się z tym adresem w ciągu 5 sekund."
 }

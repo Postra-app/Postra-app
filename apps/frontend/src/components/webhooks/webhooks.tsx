@@ -319,12 +319,14 @@ export const AddOrEditWebhook: FC<{
     },
     [data, integrations]
   );
+  const [testing, setTesting] = useState(false);
   const sendTest = useCallback(async () => {
     const url = form.getValues('url');
-    toast.show(t('webhook_sent', 'Webhook send'), 'success');
+    if (testing) return;
+    setTesting(true);
     try {
       // A saved webhook's test is signed like its deliveries.
-      await fetch(
+      const res = await fetch(
         `/webhooks/send?url=${encodeURIComponent(url)}${
           data?.id ? `&id=${encodeURIComponent(data.id)}` : ''
         }`,
@@ -364,10 +366,43 @@ export const AddOrEditWebhook: FC<{
           },
         ]),
       });
+      // The answer decides the message: it used to say "sent" before the
+      // request went out, whatever came back.
+      const result = res.ok ? await res.json() : { send: false, reason: 'unreachable' };
+      if (result?.send) {
+        toast.show(
+          t('webhook_test_delivered', 'Test sent. Your server answered {{status}}.', {
+            status: result.status,
+          }),
+          'success'
+        );
+      } else if (result?.reason === 'status') {
+        toast.show(
+          t('webhook_test_status', 'Your server answered {{status}}, so the test was not accepted.', {
+            status: result.status,
+          }),
+          'warning'
+        );
+      } else if (result?.reason === 'not-allowed') {
+        toast.show(
+          t('webhook_test_not_allowed', 'Postra sends webhooks only to public https addresses.'),
+          'warning'
+        );
+      } else {
+        toast.show(
+          t('webhook_test_unreachable', 'Postra could not reach that address within 5 seconds.'),
+          'warning'
+        );
+      }
     } catch (e: any) {
-      /** empty **/
+      toast.show(
+        t('webhook_test_unreachable', 'Postra could not reach that address within 5 seconds.'),
+        'warning'
+      );
+    } finally {
+      setTesting(false);
     }
-  }, [data]);
+  }, [data, testing]);
 
   return (
     <FormProvider {...form}>
@@ -426,7 +461,9 @@ export const AddOrEditWebhook: FC<{
                 secondary={true}
                 className="mt-[24px]"
                 onClick={sendTest}
+                loading={testing}
                 disabled={
+                  testing ||
                   !form.formState.isValid ||
                   (allIntegrations.value === 'specific' &&
                     !integrations?.length)
