@@ -204,8 +204,9 @@ test('opening a file in Studio keeps the unfinished design', async ({ page }) =>
   await page.getByRole('button', { name: /Blank canvas/ }).click();
   await page.getByRole('button', { name: 'Text', exact: true }).click();
   await page.getByRole('button', { name: /Add text/ }).click();
+  // The text lands on the canvas a moment after the click.
+  await expect.poll(() => draft(page)).not.toBeNull();
   const unfinished = await draft(page);
-  expect(unfinished).not.toBeNull();
 
   await page.goto(`/studio?mediaId=${media.id}`);
   await expect(page.locator('canvas').first()).toBeVisible({ timeout: 30_000 });
