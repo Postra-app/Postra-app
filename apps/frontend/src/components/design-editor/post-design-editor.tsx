@@ -221,6 +221,9 @@ const PostDesignEditor: FC<PostDesignEditorProps> = ({
   // design back over the newer one being worked on in another tab.
   const draftSigRef = useRef<string | null>(null);
   const markDraftSeenRef = useRef<(() => void) | null>(null);
+  const currentDraftSigRef = useRef<(() => string) | null>(null);
+  // The design last saved to the library, by its draft signature.
+  const libraryCoveredSigRef = useRef<string | null>(null);
 
   useEffect(() => {
     if (!canvasRef.current) return;
@@ -370,17 +373,26 @@ const PostDesignEditor: FC<PostDesignEditorProps> = ({
           : {}),
       });
       if (result === 'saved') draftSigRef.current = sig;
+      // Not kept in the browser, but this very design is in the library:
+      // nothing to warn about.
+      if (result !== 'saved' && sig === libraryCoveredSigRef.current) {
+        setSaveState(null);
+        return;
+      }
       setSaveState({ result, at: Date.now() });
     };
-    markDraftSeenRef.current = () => {
+    currentDraftSigRef.current = () => {
       const liveJson = JSON.stringify(c.toJSON());
       const carousel = useCarouselStore.getState();
-      draftSigRef.current = JSON.stringify([
+      return JSON.stringify([
         liveJson,
         draftSlides(liveJson, carousel),
         carousel.currentSlideIndex,
         useEditorStore.getState().platform.key,
       ]);
+    };
+    markDraftSeenRef.current = () => {
+      draftSigRef.current = currentDraftSigRef.current?.() ?? null;
     };
     const autosave = window.setInterval(snapshotDraft, 30_000);
     // React cleanup never runs on a browser refresh/close — pagehide is the
@@ -954,8 +966,9 @@ const PostDesignEditor: FC<PostDesignEditorProps> = ({
     try {
       await saveDesignToLibrary(false);
       // This version is in the library now: no warning about it until the
-      // design changes again (the next autosave tick sees a new design).
-      markDraftSeenRef.current?.();
+      // design changes again. The draft itself is still written as usual (a
+      // carousel's other slides live only there).
+      libraryCoveredSigRef.current = currentDraftSigRef.current?.() ?? null;
       setSaveState(null);
       toaster.show(
         t(

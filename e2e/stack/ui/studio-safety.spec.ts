@@ -141,10 +141,15 @@ test('a design the browser cannot keep says so, and closing the tab asks first',
   await page.getByRole('button', { name: /Blank canvas/ }).click();
   await page.getByRole('button', { name: 'Text', exact: true }).click();
   await page.getByRole('button', { name: /Add text/ }).click();
-  await page.evaluate(() => window.dispatchEvent(new Event('pagehide')));
-
+  // The text lands on the canvas a moment after the click: snapshot until it
+  // is there (the editor does it every 30 s on its own).
   const banner = page.getByRole('alert').filter({ hasText: 'Save it to your library' });
-  await expect(banner).toBeVisible();
+  await expect
+    .poll(async () => {
+      await page.evaluate(() => window.dispatchEvent(new Event('pagehide')));
+      return banner.isVisible();
+    })
+    .toBe(true);
 
   let asked = '';
   page.on('dialog', async (dialog) => {
@@ -168,9 +173,13 @@ test('saving the design to the library quiets the warning', async ({ page }) => 
   await page.getByRole('button', { name: /Blank canvas/ }).click();
   await page.getByRole('button', { name: 'Text', exact: true }).click();
   await page.getByRole('button', { name: /Add text/ }).click();
-  await page.evaluate(() => window.dispatchEvent(new Event('pagehide')));
   const banner = page.getByRole('alert').filter({ hasText: 'Save it to your library' });
-  await expect(banner).toBeVisible();
+  await expect
+    .poll(async () => {
+      await page.evaluate(() => window.dispatchEvent(new Event('pagehide')));
+      return banner.isVisible();
+    })
+    .toBe(true);
   await page.getByRole('button', { name: 'Export', exact: true }).first().click();
   await page.getByText(/^Save (this slide )?to library$/).click();
   await expect(page.getByText('Saved to media library - you can use it in any post.')).toBeVisible();
