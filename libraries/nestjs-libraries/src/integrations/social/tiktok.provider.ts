@@ -88,6 +88,9 @@ export class TiktokProvider extends SocialAbstract implements SocialProvider {
   maxLength() {
     return 2000;
   }
+  commentMaxLength() {
+    return TIKTOK_COMMENT_MAX_LENGTH;
+  }
 
   override async checkValidity(
     items: Array<ValidityMedia[]>
@@ -854,17 +857,23 @@ export class TiktokProvider extends SocialAbstract implements SocialProvider {
       );
     }
 
-    // The post's own link; without it the profile, where the post is.
-    const link = await tiktokBusinessPostLink(access, videoId).catch(
-      (): undefined => undefined
-    );
+    // The post's own link; without it the one built from its public id.
+    const link =
+      (await tiktokBusinessPostLink(access, videoId).catch(
+        (): undefined => undefined
+      )) || tiktokPostUrl(integration.profile!, postId, videoId);
 
     return [
       {
         id: commentPost.id,
         postId: commentId,
-        releaseURL: link || tiktokPostUrl(integration.profile!, postId),
+        releaseURL: link,
         status: 'success',
+        // The post went out with its publish id and the profile as its link;
+        // it takes the public id the comment waited for.
+        ...(videoId !== postId
+          ? { parentRelease: { postId: videoId, releaseURL: link } }
+          : {}),
       },
     ];
   }

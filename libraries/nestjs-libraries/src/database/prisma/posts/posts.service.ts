@@ -230,6 +230,20 @@ export class PostsService {
 
   // Whether the post's platform gives apps statistics of a post at all
   // (Telegram, Discord and a few others do not).
+  updateResolvedRelease(
+    id: string,
+    orgId: string,
+    releaseId: string,
+    releaseURL: string
+  ) {
+    return this._postRepository.updateResolvedRelease(
+      id,
+      orgId,
+      releaseId,
+      releaseURL
+    );
+  }
+
   async postAnalyticsOffered(orgId: string, postId: string) {
     const post = await this._postRepository.getPostById(postId, orgId);
     if (!post?.integration) {
@@ -1256,6 +1270,9 @@ export class PostsService {
         }
 
         const maximumCharacters = provider.maxLength(additionalSettings);
+        // Items after the first are comments, which can have a smaller limit.
+        const commentMaximumCharacters =
+          provider.commentMaxLength?.() ?? maximumCharacters;
         const emptyContent = (post.value || []).some((a) => {
           const strip = stripHtmlValidation('normal', a.content || '', true);
           return strip.length === 0 && (a.image || []).length === 0;
@@ -1264,11 +1281,12 @@ export class PostsService {
         // Counted the way the platform counts (links as 23 on X/Mastodon,
         // graphemes on Bluesky). This used to take max(weighted, raw length),
         // which threw the link weighting away.
-        const tooLong = (post.value || []).some((a) => {
+        const tooLong = (post.value || []).some((a, index) => {
           const strip = stripHtmlValidation('normal', a.content || '', true);
           return (
             providerTextLength(integration.providerIdentifier, strip) >
-            (maximumCharacters || 1000000)
+            ((index > 0 ? commentMaximumCharacters : maximumCharacters) ||
+              1000000)
           );
         });
 

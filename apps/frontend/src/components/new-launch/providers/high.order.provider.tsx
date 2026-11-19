@@ -52,6 +52,8 @@ export const withProvider = function <T extends object>(params: {
   }>;
   dto?: any;
   maximumCharacters?: number | ((settings: any) => number);
+  // The limit of a comment when it differs from the post's.
+  commentMaximumCharacters?: number;
 }) {
   const {
     postComment,
@@ -59,6 +61,7 @@ export const withProvider = function <T extends object>(params: {
     CustomPreviewComponent,
     dto,
     maximumCharacters,
+    commentMaximumCharacters,
   } = params;
 
   const Wrapped = forwardRef((props: { id: string }, ref) => {
@@ -80,6 +83,7 @@ export const withProvider = function <T extends object>(params: {
       setEditor,
       dummy,
       setChars,
+      setCommentChars,
       setComments,
       setHide,
     } = useLaunchStore(
@@ -101,6 +105,7 @@ export const withProvider = function <T extends object>(params: {
         setPostComment: state.setPostComment,
         setEditor: state.setEditor,
         setChars: state.setChars,
+        setCommentChars: state.setCommentChars,
         selectedIntegration: state.selectedIntegrations.find(
           (p) => p.integration.id === props.id
         ),
@@ -112,16 +117,16 @@ export const withProvider = function <T extends object>(params: {
         return;
       }
 
-      setChars(
-        props.id,
+      const postLimit =
         typeof maximumCharacters === 'number'
           ? maximumCharacters
           : maximumCharacters(
               safeJsonParse(
                 selectedIntegration.integration.additionalSettings, []
               )
-            )
-      );
+            );
+      setChars(props.id, postLimit);
+      setCommentChars(props.id, commentMaximumCharacters ?? postLimit);
 
       if (isGlobal) {
         // `comments` is deliberately NOT set here: on the global tab the answer

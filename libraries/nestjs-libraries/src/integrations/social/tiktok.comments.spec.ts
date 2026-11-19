@@ -252,8 +252,16 @@ describe('TikTok first comment: publishing', () => {
     expect(
       calls.find((c) => c.url.includes('/comment/create/'))!.body.video_id
     ).toBe('7600000000000000002');
-    // TikTok did not list the post: the profile, where the post is.
-    expect(result[0].releaseURL).toBe('https://www.tiktok.com/@postra.co.uk');
+    // TikTok did not list the post: its link built from the public id, and
+    // the post itself learns that id and link instead of keeping the
+    // profile it got while TikTok was still reviewing it.
+    expect(result[0].releaseURL).toBe(
+      'https://www.tiktok.com/@postra.co.uk/video/7600000000000000002'
+    );
+    expect(result[0].parentRelease).toEqual({
+      postId: '7600000000000000002',
+      releaseURL: 'https://www.tiktok.com/@postra.co.uk/video/7600000000000000002',
+    });
   });
 
   it('says why when the post never becomes public, and sends no comment', async () => {

@@ -147,6 +147,10 @@ interface StoreState {
   setLoaded?: (loaded: boolean) => void;
   setChars: (id: string, chars: number) => void;
   chars: Record<string, number>;
+  // A comment can have its own, smaller limit than the post (TikTok: 1,200
+  // for a comment, 2,000 for the caption). Same keys as `chars`.
+  setCommentChars: (id: string, chars: number) => void;
+  commentChars: Record<string, number>;
   setComments: (comments: boolean | 'no-media') => void;
   setCommentsUnsupported: (commentsUnsupported: CommentsUnsupported[]) => void;
 }
@@ -173,6 +177,7 @@ const initialState = {
   global: [] as Values[],
   internal: [] as Internal[],
   chars: {},
+  commentChars: {},
   // Part of what reset() clears: a repeat set in one composer was saved with
   // the next, unrelated post.
   repeater: undefined as number | undefined,
@@ -681,6 +686,13 @@ export const useLaunchStore = create<StoreState>()((set) => ({
     set((state) => ({
       chars: {
         ...state.chars,
+        [id]: chars,
+      },
+    })),
+  setCommentChars: (id: string, chars: number) =>
+    set((state) => ({
+      commentChars: {
+        ...state.commentChars,
         [id]: chars,
       },
     })),
