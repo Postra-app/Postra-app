@@ -108,7 +108,7 @@ describe('TikTok first comment: the second authorization', () => {
     expect(url.searchParams.get('state')).toBe('state-1');
   });
 
-  it('keeps the return address on TIKTOK_URL, where the TikTok channel has its own', () => {
+  it('keeps the return address on TIKTOK_URL, where the Business app has it registered', () => {
     process.env.TIKTOK_URL = 'https://old.example.test';
     expect(
       new URL(tiktokBusinessAuthUrl('s')).searchParams.get('redirect_uri')
