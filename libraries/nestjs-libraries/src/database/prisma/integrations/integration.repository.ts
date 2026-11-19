@@ -288,7 +288,9 @@ export class IntegrationRepository {
     // must also take that login's identity and refresh token, otherwise the
     // next refresh runs as the old identity and cannot find the page (a
     // YouTube brand channel: "Channel not found" every hour; upstream
-    // e3f6c4a3b).
+    // e3f6c4a3b). And the scopes that login granted (2026-11-19): without
+    // them a reconnect made to add the first-comment permission (YouTube
+    // force-ssl, Meta pages_manage_engagement) left the channel without it.
     const fresh = existing
       ? await this._integration.model.integration.findUnique({
           where: { id },
@@ -296,6 +298,7 @@ export class IntegrationRepository {
             rootInternalId: true,
             refreshToken: true,
             tokenExpiration: true,
+            grantedScopes: true,
           },
         })
       : null;
@@ -334,6 +337,7 @@ export class IntegrationRepository {
         ...(fresh?.tokenExpiration
           ? { tokenExpiration: fresh.tokenExpiration }
           : {}),
+        ...(fresh?.grantedScopes ? { grantedScopes: fresh.grantedScopes } : {}),
         disabled: false,
         deletedAt: null,
         refreshNeeded: false,
