@@ -10,7 +10,8 @@
 # 90 kB/s) once made one unbounded `playwright install --with-deps` take 25
 # of the job's 30 minutes, and the job was cancelled before a single test
 # ran. So every apt step is bounded (APT_MINUTES each, 5 by default) and
-# tried twice, the second time on Ubuntu's primary mirror; when both fail the
+# tried twice, the second time on Ubuntu's primary mirror (which also serves
+# the security pocket); when both fail the
 # job stops in minutes and says why.
 set -euo pipefail
 
@@ -34,7 +35,7 @@ apt_recover() {
 
 use_primary_mirror() {
   for f in /etc/apt/sources.list.d/ubuntu.sources /etc/apt/sources.list; do
-    [ -f "$f" ] && sudo sed -i -E 's#https?://[a-z0-9.-]*archive\.ubuntu\.com/ubuntu#http://archive.ubuntu.com/ubuntu#g' "$f"
+    [ -f "$f" ] && sudo sed -i -E 's#https?://([a-z0-9.-]*archive|security)\.ubuntu\.com/ubuntu#http://archive.ubuntu.com/ubuntu#g' "$f"
   done
 }
 
