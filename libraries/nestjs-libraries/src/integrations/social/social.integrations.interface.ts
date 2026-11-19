@@ -28,7 +28,10 @@ export interface IAuthenticator {
     accessToken: string
   ): Promise<Omit<AuthTokenDetails, 'refreshToken' | 'expiresIn'>>;
   generateAuthUrl(
-    clientInformation?: ClientInformation
+    clientInformation?: ClientInformation,
+    // comments: ask for the provider's optional first-comment scope too
+    // (YouTube, while Google has not verified it for everyone).
+    options?: { comments?: boolean }
   ): Promise<GenerateAuthUrlResponse>;
   analytics?(
     id: string,

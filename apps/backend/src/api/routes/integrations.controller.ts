@@ -1,3 +1,4 @@
+import { youtubeCommentsOffered } from '@gitroom/nestjs-libraries/integrations/social/youtube.provider';
 import { Throttle } from '@nestjs/throttler';
 import { randomBytes } from 'crypto';
 import {
@@ -549,7 +550,11 @@ export class IntegrationsController {
         : undefined;
 
       const { codeVerifier, state, url } =
-        await integrationProvider.generateAuthUrl(getExternalUrl);
+        await integrationProvider.generateAuthUrl(getExternalUrl, {
+          comments:
+            integration === 'youtube' &&
+            youtubeCommentsOffered(!!user?.isSuperAdmin, org.id),
+        });
 
       if (refresh) {
         await ioRedis.set(`refresh:${state}`, refresh, 'EX', 3600);

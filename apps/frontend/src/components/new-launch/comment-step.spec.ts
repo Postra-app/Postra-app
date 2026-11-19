@@ -10,6 +10,11 @@ describe('waitsForCommentStep', () => {
     expect(waitsForCommentStep({ identifier: 'tiktok' })).toBe(false);
   });
 
+  it('is a YouTube channel connected without the comment scope, which most are while Google verifies it', () => {
+    expect(waitsForCommentStep({ identifier: 'youtube', canComment: false })).toBe(true);
+    expect(waitsForCommentStep({ identifier: 'youtube', canComment: true })).toBe(false);
+  });
+
   it('is not a Facebook Page without the permission: its comment is sent and the failure reported', () => {
     expect(waitsForCommentStep({ identifier: 'facebook', canComment: false })).toBe(false);
   });
