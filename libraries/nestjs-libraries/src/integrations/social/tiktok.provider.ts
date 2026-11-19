@@ -47,13 +47,13 @@ export const tiktokPostUrl = (
         publishId.indexOf('p_pub_') === 0 ? 'photo' : 'video'
       }/${publicPostId}`;
 
-// The live TikTok app has one registered redirect URI, and changing it is a
-// revision TikTok reviews again. TIKTOK_URL keeps it on that host after the app
-// moved (app.postra.pl, which answers with a 301 to app.postra.co.uk, path and
-// query kept); without it the redirect follows FRONTEND_URL. Authorize and the
-// token exchange must send the same address.
+// TikTok accepts only the redirect URI registered for the app, which is on the
+// app's own host, so the redirect follows FRONTEND_URL. TIKTOK_URL is only for
+// the TikTok API for Business app, whose registered address can be on another
+// host (tiktok.business.ts). Authorize and the token exchange must send the
+// same address.
 export const tiktokRedirectUri = () => {
-  const base = process?.env?.TIKTOK_URL || process?.env?.FRONTEND_URL;
+  const base = process?.env?.FRONTEND_URL;
   return `${
     base?.indexOf('https') === -1 ? 'https://redirectmeto.com/' : ''
   }${base}/integrations/social/tiktok`;

@@ -48,8 +48,9 @@ export class TiktokBusinessError extends Error {
 export const tiktokBusinessConfigured = () =>
   !!process.env.TIKTOK_BUSINESS_APP_ID && !!process.env.TIKTOK_BUSINESS_SECRET;
 
-// The app has one registered redirect address, on the same host as the TikTok
-// channel's own (see tiktokRedirectUri): TIKTOK_URL when set, else the app.
+// The app has one registered redirect address: TIKTOK_URL when set (another
+// host), else the app. The TikTok channel's own sign-in always returns to the
+// app (tiktokRedirectUri).
 export const tiktokBusinessRedirectUri = () => {
   const base = process?.env?.TIKTOK_URL || process?.env?.FRONTEND_URL;
   return `${
