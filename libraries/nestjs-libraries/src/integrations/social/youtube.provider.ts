@@ -26,6 +26,30 @@ import { GaxiosResponse } from 'gaxios/build/src/common';
 import Schema$Video = youtube_v3.Schema$Video;
 import { Rules } from '@gitroom/nestjs-libraries/chat/rules.description.decorator';
 
+// First comment (commentThreads.insert) needs youtube.force-ssl, a sensitive
+// scope Google verifies on its own. Until it has, the sign-in asks for it
+// only where comments are offered.
+export const YOUTUBE_COMMENT_SCOPE =
+  'https://www.googleapis.com/auth/youtube.force-ssl';
+export const YOUTUBE_COMMENT_MAX_LENGTH = 10000;
+
+// Who is offered first comment on YouTube: everyone once
+// YOUTUBE_COMMENTS_FOR says so, until then a Postra administrator and the
+// organisations that preview new platforms (PREVIEW_ORGANIZATIONS; the same
+// list as isPreviewOrganization, read here to keep the provider free of the
+// integration manager).
+export const youtubeCommentsOffered = (
+  isSuperAdmin: boolean,
+  orgId?: string
+) =>
+  process.env.YOUTUBE_COMMENTS_FOR === 'everyone' ||
+  isSuperAdmin ||
+  (!!orgId &&
+    (process.env.PREVIEW_ORGANIZATIONS || '')
+      .split(',')
+      .map((id) => id.trim())
+      .includes(orgId));
+
 const clientAndYoutube = () => {
   const client = new google.auth.OAuth2({
     clientId: process.env.YOUTUBE_CLIENT_ID,
@@ -61,11 +85,10 @@ export class YoutubeProvider extends SocialAbstract implements SocialProvider {
   name = 'YouTube';
   isBetweenSteps = true;
   dto = YoutubeSettingsDto;
-  // Sensitive-only scopes — no RESTRICTED scopes, so Google App Review does
-  // not require a CASA third-party Security Assessment. Restricted scopes
-  // (youtube, youtube.force-ssl, youtubepartner) were only needed for custom
-  // thumbnails (thumbnails.set), which we dropped. Upload uses youtube.upload,
-  // reads use youtube.readonly / yt-analytics.readonly.
+  // Sensitive scopes only: upload uses youtube.upload, reads use
+  // youtube.readonly / yt-analytics.readonly. youtube.force-ssl (first
+  // comment) is sensitive too, so Google verifies it without a CASA
+  // assessment; it is optional and asked for only where comments are offered.
   scopes = [
     'https://www.googleapis.com/auth/userinfo.profile',
     'https://www.googleapis.com/auth/userinfo.email',
@@ -74,9 +97,14 @@ export class YoutubeProvider extends SocialAbstract implements SocialProvider {
     'https://www.googleapis.com/auth/yt-analytics.readonly',
   ];
 
+  commentScope = YOUTUBE_COMMENT_SCOPE;
+  optionalScopes = [YOUTUBE_COMMENT_SCOPE];
   editor = 'normal' as const;
   maxLength() {
     return 5000;
+  }
+  commentMaxLength() {
+    return YOUTUBE_COMMENT_MAX_LENGTH;
   }
 
   override async checkValidity(
@@ -310,7 +338,10 @@ export class YoutubeProvider extends SocialAbstract implements SocialProvider {
     };
   }
 
-  async generateAuthUrl() {
+  async generateAuthUrl(
+    _clientInformation?: unknown,
+    options?: { comments?: boolean }
+  ) {
     const state = makeSecureId(7);
     const { client } = clientAndYoutube();
     return {
@@ -319,7 +350,10 @@ export class YoutubeProvider extends SocialAbstract implements SocialProvider {
         prompt: 'consent',
         state,
         redirect_uri: `${process.env.FRONTEND_URL}/integrations/social/youtube`,
-        scope: this.scopes.slice(0),
+        scope: [
+          ...this.scopes,
+          ...(options?.comments ? [YOUTUBE_COMMENT_SCOPE] : []),
+        ],
       }),
       codeVerifier: makeSecureId(11),
       state,
@@ -353,7 +387,63 @@ export class YoutubeProvider extends SocialAbstract implements SocialProvider {
       name: data.name!,
       picture: data?.picture || '',
       username: '',
+      // Whether first comment works on this channel (comment.capability.ts).
+      grantedScopes: scopes,
     };
+  }
+
+  async comment(
+    _id: string,
+    postId: string,
+    _lastCommentId: string | undefined,
+    accessToken: string,
+    postDetails: PostDetails[]
+  ): Promise<PostResponse[]> {
+    const [commentPost] = postDetails;
+    const text = String(commentPost?.message || '').trim();
+    if (!text) {
+      throw new BadBody('youtube-comment', 'empty comment', Buffer.from(''), 'A YouTube comment needs text.');
+    }
+    if (text.length > YOUTUBE_COMMENT_MAX_LENGTH) {
+      throw new BadBody(
+        'youtube-comment',
+        'comment too long',
+        Buffer.from(''),
+        `A YouTube comment can have up to ${YOUTUBE_COMMENT_MAX_LENGTH} characters.`
+      );
+    }
+
+    const { client, youtube } = clientAndYoutube();
+    client.setCredentials({ access_token: accessToken });
+    let threadId: string;
+    try {
+      const { data } = await youtube(client).commentThreads.insert({
+        part: ['snippet'],
+        requestBody: {
+          snippet: {
+            videoId: postId,
+            topLevelComment: { snippet: { textOriginal: text } },
+          },
+        },
+      });
+      threadId = data.id!;
+    } catch (err) {
+      throw new BadBody(
+        'youtube-comment',
+        (err as Error)?.message || 'comment refused',
+        Buffer.from(''),
+        `YouTube did not accept the comment: ${(err as Error)?.message || 'no reason given'}`
+      );
+    }
+
+    return [
+      {
+        id: commentPost.id,
+        postId: threadId,
+        releaseURL: `https://www.youtube.com/watch?v=${postId}&lc=${threadId}`,
+        status: 'success',
+      },
+    ];
   }
 
   async pages(accessToken: string) {

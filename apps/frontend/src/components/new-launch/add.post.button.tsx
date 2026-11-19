@@ -14,7 +14,9 @@ export const AddPostButton: FC<{
 
   return (
     <div className="flex">
-      <div
+      {/* A real button: a clickable div could not be reached from the keyboard. */}
+      <button
+        type="button"
         onClick={onClick}
         className="select-none cursor-pointer h-[34px] rounded-[6px] flex bg-[#D82D7E] gap-[8px] justify-center items-center pl-[16px] pr-[20px] text-[13px] font-[600] mt-[12px]"
       >
@@ -44,7 +46,7 @@ export const AddPostButton: FC<{
               : ['add_comment', 'Add comment'])
           )}
         </div>
-      </div>
+      </button>
     </div>
   );
 };

@@ -68,9 +68,13 @@ export class TiktokProvider extends SocialAbstract implements SocialProvider {
   name = 'TikTok';
   isBetweenSteps = false;
   convertToJPEG = true;
+  // user.info.stats and video.list read the channel's numbers for Analytics
+  // and Post Statistics (video.list also covers video/query).
   scopes = [
     'user.info.basic',
     'user.info.profile',
+    'user.info.stats',
+    'video.list',
     'video.publish',
     'video.upload',
   ];
@@ -83,6 +87,9 @@ export class TiktokProvider extends SocialAbstract implements SocialProvider {
   editor = 'normal' as const;
   maxLength() {
     return 2000;
+  }
+  commentMaxLength() {
+    return TIKTOK_COMMENT_MAX_LENGTH;
   }
 
   override async checkValidity(
@@ -850,17 +857,23 @@ export class TiktokProvider extends SocialAbstract implements SocialProvider {
       );
     }
 
-    // The post's own link; without it the profile, where the post is.
-    const link = await tiktokBusinessPostLink(access, videoId).catch(
-      (): undefined => undefined
-    );
+    // The post's own link; without it the one built from its public id.
+    const link =
+      (await tiktokBusinessPostLink(access, videoId).catch(
+        (): undefined => undefined
+      )) || tiktokPostUrl(integration.profile!, postId, videoId);
 
     return [
       {
         id: commentPost.id,
         postId: commentId,
-        releaseURL: link || tiktokPostUrl(integration.profile!, postId),
+        releaseURL: link,
         status: 'success',
+        // The post went out with its publish id and the profile as its link;
+        // it takes the public id the comment waited for.
+        ...(videoId !== postId
+          ? { parentRelease: { postId: videoId, releaseURL: link } }
+          : {}),
       },
     ];
   }
@@ -1000,8 +1013,8 @@ export class TiktokProvider extends SocialAbstract implements SocialProvider {
       }
 
       if (!result.length) {
-        // user.info.stats + video.list scopes were cut for App Review (#35),
-        // so empty metrics are expected.
+        // A channel connected before it had user.info.stats and video.list
+        // gets nothing until it is reconnected.
         this._logger.warn(
           `[analytics:tiktok] no metrics for ${id} - user/info error: ${
             userStatsData?.error?.code ?? 'none'

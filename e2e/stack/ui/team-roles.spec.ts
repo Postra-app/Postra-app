@@ -94,12 +94,17 @@ test('the owner changes roles, the key is replaced after an admin, and the organ
 test('a double click on Copy Link makes one invitation, and the window says how long it works', async ({
   page,
   context,
+  browserName,
 }) => {
   const prisma = database();
   const org = await throwawayOrg(prisma, { tier: 'ULTIMATE', totalChannels: 5, channels: 0 });
   await context.clearCookies();
   await context.addCookies((await org.api.storageState()).cookies);
-  await context.grantPermissions(['clipboard-read', 'clipboard-write']);
+  // Only Chromium knows these permission names; Firefox and WebKit allow a
+  // clipboard write from a click without them and throw on the grant.
+  if (browserName === 'chromium') {
+    await context.grantPermissions(['clipboard-read', 'clipboard-write']);
+  }
   try {
     let invites = 0;
     page.on('request', (r) => {

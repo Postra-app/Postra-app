@@ -389,6 +389,34 @@ export class PostActivity {
       }
     }
 
+    // The post itself still has the temporary id it was published with:
+    // give it the public id and link the comment found.
+    const parentRelease = (comments || []).find((r) => r?.parentRelease)
+      ?.parentRelease;
+    const parentId = posts?.[0]?.parentPostId;
+    if (parentRelease && parentId) {
+      try {
+        const parent = await this._postService.getPostById(
+          parentId,
+          integration.organizationId
+        );
+        if (parent?.releaseId === postId) {
+          await this._postService.updateResolvedRelease(
+            parentId,
+            integration.organizationId,
+            parentRelease.postId,
+            parentRelease.releaseURL
+          );
+        }
+      } catch (err) {
+        this._logger.error(
+          `[postComment] failed to update the post's release for post=${parentId}: ${
+            (err as Error)?.message ?? err
+          }`
+        );
+      }
+    }
+
     return comments;
   }
 

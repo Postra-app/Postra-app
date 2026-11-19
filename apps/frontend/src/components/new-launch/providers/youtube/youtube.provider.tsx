@@ -71,10 +71,14 @@ const YoutubeSettings: FC = () => {
 };
 export default withProvider({
   postComment: PostComment.COMMENT,
-  comments: false,
+  // Text only, on channels connected with the comment scope (canComment);
+  // the others get no "Add comment" (comment-step.ts).
+  comments: 'no-media',
   minimumCharacters: [],
   SettingsComponent: YoutubeSettings,
   CustomPreviewComponent: YoutubePreview,
   dto: YoutubeSettingsDto,
   maximumCharacters: 5000,
+  // YouTube takes up to 10,000 characters in a comment.
+  commentMaximumCharacters: 10000,
 });

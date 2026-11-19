@@ -49,12 +49,11 @@ jobs:
         env:
           NODE_OPTIONS: '--max-old-space-size=4096'
 
-      - name: Install the browser
-        run: pnpm exec playwright install --with-deps ${{ matrix.engine }}
-
       # The app image has ffmpeg (poster frames, captions); the runner does not.
-      - name: Install ffmpeg
-        run: sudo apt-get update -qq && sudo apt-get install -y -qq --no-install-recommends ffmpeg
+      # apt is bounded and retried on another mirror: an unbounded install
+      # once took 25 of the job's 30 minutes (scripts/ci-install-browsers.sh).
+      - name: Install the browser and ffmpeg
+        run: bash scripts/ci-install-browsers.sh ${{ matrix.engine }}
 
       # Same list as ci.yml: the stack's ports kept out of the ephemeral range.
       - name: Reserve the stack's ports

@@ -523,4 +523,6 @@ export default withProvider({
   CustomPreviewComponent: TiktokPreview,
   dto: TikTokDto,
   maximumCharacters: 2000,
+  // TikTok API for Business takes up to 1,200 characters in a comment.
+  commentMaximumCharacters: 1200,
 });

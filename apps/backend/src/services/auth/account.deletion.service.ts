@@ -5,7 +5,6 @@ import {
   UsersService,
 } from '@gitroom/nestjs-libraries/database/prisma/users/users.service';
 import { StripeService } from '@gitroom/nestjs-libraries/services/stripe.service';
-import { NotificationService } from '@gitroom/nestjs-libraries/database/prisma/notifications/notification.service';
 import { EmailService } from '@gitroom/nestjs-libraries/services/email.service';
 import { AuthService as AuthChecker } from '@gitroom/helpers/auth/auth.service';
 import { bustAuthContextCache } from '@gitroom/nestjs-libraries/redis/auth-context.cache';
@@ -46,7 +45,6 @@ export class AccountDeletionService {
   constructor(
     private _userService: UsersService,
     private _stripeService: StripeService,
-    private _notificationService: NotificationService,
     private _emailService: EmailService,
     private _audit: AuditService
   ) {}
@@ -208,11 +206,15 @@ export class AccountDeletionService {
 
     // GDPR art. 12: confirm the erasure to the data subject, in writing.
     // Best-effort: the deletion already happened and must not fail on email.
+    // It ends with who sends it: the default footer links to the account's
+    // notification settings, and there is no account any more.
     try {
-      await this._notificationService.sendEmail(
+      await this._emailService.sendEmailSync(
         email,
         'Your Postra account has been deleted',
-        'Your Postra account and its data - connected channels, scheduled posts and media - have been permanently deleted, and a subscription paid on the Postra website was cancelled. A subscription bought in the App Store goes on until you cancel it in Settings on your iPhone. Billing records required by law are retained in line with our privacy policy. Thanks for trying Postra.'
+        'Your Postra account and its data - connected channels, scheduled posts and media - have been permanently deleted, and a subscription paid on the Postra website was cancelled. A subscription bought in the App Store goes on until you cancel it in Settings on your iPhone. Billing records required by law are retained in line with our privacy policy. Thanks for trying Postra.',
+        undefined,
+        authEmailFooter.en
       );
     } catch (e) {
       /* the account is gone either way */

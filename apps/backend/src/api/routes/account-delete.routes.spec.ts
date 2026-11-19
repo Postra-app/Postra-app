@@ -49,7 +49,6 @@ function wiring() {
   const deletion = new AccountDeletionService(
     users as any,
     { cancelAllSubscriptionsForDeletedAccount: jest.fn() } as any,
-    { sendEmail: jest.fn() } as any,
     email as any,
     { record: jest.fn() } as any
   );

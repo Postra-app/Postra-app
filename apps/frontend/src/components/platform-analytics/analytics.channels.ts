@@ -1,9 +1,8 @@
-// Channels that have a page on Analytics. TikTok is left out: the scopes
-// that read its numbers (user.info.stats, video.list) were cut for TikTok's
-// App Review, so its page only ever showed empty cards and a "tap to refresh
-// the channel" that sent people to reconnect for nothing. It comes back when
-// TikTok grants them. LinkedIn Pages and Google Business stay for the
-// channels connected before (LinkedIn) and the preview (Google).
+// Channels that have a page on Analytics. TikTok reads its numbers with
+// user.info.stats and video.list; a channel connected before it had them
+// shows empty cards with "tap to refresh the channel", and reconnecting it
+// once fixes that. LinkedIn Pages and Google Business stay for the channels
+// connected before (LinkedIn) and the preview (Google).
 export const ANALYTICS_CHANNELS = [
   'facebook',
   'instagram',
@@ -14,6 +13,7 @@ export const ANALYTICS_CHANNELS = [
   'pinterest',
   'threads',
   'x',
+  'tiktok',
 ];
 
 // What the empty page tells customers they can add: the platforms they can
@@ -26,4 +26,5 @@ export const ANALYTICS_SUPPORTED_NAMES = [
   'X',
   'YouTube',
   'Pinterest',
+  'TikTok',
 ];

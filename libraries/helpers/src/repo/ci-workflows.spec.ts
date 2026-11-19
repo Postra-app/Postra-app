@@ -152,10 +152,32 @@ describe('CI workflows', () => {
   // The stack makes video poster frames with ffmpeg, as the app image does.
   // The nightly Firefox/WebKit run had no ffmpeg on its runner: the media
   // library tests waited a minute for a poster that never came, every night.
-  it.each(workflows.filter((w) => w.text.includes('e2e:stack')))('$name installs ffmpeg before the stack starts', ({ text }) => {
-    const ffmpeg = text.search(/apt-get install[^\n]*\bffmpeg\b/);
-    expect(ffmpeg).toBeGreaterThan(-1);
-    expect(ffmpeg).toBeLessThan(text.search(/pnpm e2e:stack/));
+  // One unbounded `playwright install --with-deps` once pulled apt packages
+  // at 90 kB/s for 25 of the job's 30 minutes, and the stack shard was
+  // cancelled before a test ran. Browsers, their packages and ffmpeg go
+  // through one script, whose every apt call has a time limit.
+  const installScript = join(root, 'scripts', 'ci-install-browsers.sh');
+
+  it.each(workflows.filter((w) => w.text.includes('e2e:stack')))('$name installs the browsers and ffmpeg through the bounded script before the stack starts', ({ text }) => {
+    const install = text.search(/bash scripts\/ci-install-browsers\.sh /);
+    expect(install).toBeGreaterThan(-1);
+    expect(install).toBeLessThan(text.search(/pnpm e2e:stack/));
+  });
+
+  it('installs Playwright browsers and apt packages only through that script', () => {
+    for (const { text } of workflows) {
+      expect(text).not.toMatch(/playwright install|apt-get/);
+    }
+    const script = readFileSync(installScript, 'utf8');
+    expect(script).toMatch(/apt-get install[^\n]*\bffmpeg\b/);
+    const aptCalls = script
+      .split('\n')
+      .filter((line) => !line.trim().startsWith('#'))
+      .filter((line) => /playwright install|apt-get install/.test(line));
+    expect(aptCalls.length).toBeGreaterThanOrEqual(3);
+    for (const line of aptCalls) {
+      expect(line).toMatch(/\btimeout\b/);
+    }
   });
 
   // The stack's backend died with EADDRINUSE on 53000 in CI. Every stack port

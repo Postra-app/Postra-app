@@ -316,6 +316,7 @@ const CHANNEL_SOURCE: ChannelGuide[] = [
       'Caption limit: 2,000 characters.',
       'First comment: turn it on once for the channel. Open the channel menu, choose "Enable first comment" and approve it in TikTok with the same account. Then the composer shows "Add comment" for that channel.',
       'A TikTok comment is text only, up to 1,200 characters, and is added once TikTok has made the post public. A post seen only by you or your followers, or sent to your TikTok drafts, gets no comment.',
+      'Analytics shows your followers, total likes and videos, and the views, likes, comments and shares of your 20 latest videos. If the TikTok page in Analytics has no numbers, reconnect the channel once so TikTok gives Postra the new permission.',
     ],
   },
   {
@@ -418,7 +419,7 @@ const TAB_SOURCE: AppTabGuide[] = [
   {
     id: 'analytics',
     name: 'Analytics',
-    description: 'Follower growth and post performance for Facebook, Instagram, Threads, X, YouTube and Pinterest; post statistics (likes, reposts, replies) for Bluesky and Mastodon, and reactions for Discord. TikTok, Telegram, Slack, WordPress and personal LinkedIn profiles have no analytics in Postra.',
+    description: 'Follower growth and post performance for Facebook, Instagram, Threads, X, YouTube, Pinterest and TikTok; post statistics (likes, reposts, replies) for Bluesky and Mastodon, and reactions for Discord. Telegram, Slack, WordPress and personal LinkedIn profiles have no analytics in Postra.',
   },
   {
     id: 'studio',

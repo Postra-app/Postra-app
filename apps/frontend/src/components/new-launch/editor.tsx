@@ -142,6 +142,7 @@ export const EditorWrapper: FC<{
     setLoadedState,
     selectedIntegration,
     chars,
+    commentChars,
     comments,
     commentsUnsupported,
   } = useLaunchStore(
@@ -178,6 +179,7 @@ export const EditorWrapper: FC<{
       setLoadedState: state.setLoaded,
       selectedIntegration: state.selectedIntegrations,
       chars: state.chars,
+      commentChars: state.commentChars,
     }))
   );
 
@@ -455,9 +457,14 @@ export const EditorWrapper: FC<{
               )}
             </div>
             <div>
-              <div className="text-white rounded-[8px] h-[44px] px-[20px] bg-[#D82D7E] cursor-pointer flex justify-center items-center">
+              {/* A real button, so the keyboard reaches it; the click goes on
+                  to the overlay's handler. */}
+              <button
+                type="button"
+                className="text-white rounded-[8px] h-[44px] px-[20px] bg-[#D82D7E] cursor-pointer flex justify-center items-center"
+              >
                 {t('edit_content', 'Edit content')}
-              </div>
+              </button>
             </div>
           </div>
           <div className="absolute w-full h-full left-0 top-0 bg-newBackdrop opacity-60 z-[100] rounded-[12px]" />
@@ -495,11 +502,15 @@ export const EditorWrapper: FC<{
                 autoComplete={canEdit}
                 validateChars={true}
                 identifier={internalFromAll?.identifier || 'global'}
-                totalChars={totalChars}
+                // Items after the first are comments, counted against the
+                // comment limit where a platform has a smaller one.
+                totalChars={
+                  index > 0 ? commentChars[current] ?? totalChars : totalChars
+                }
                 appendImages={appendImages(index)}
                 dummy={dummy}
                 selectedIntegration={selectedIntegration}
-                chars={chars}
+                chars={index > 0 ? { ...chars, ...commentChars } : chars}
                 childButton={
                   <>
                     {(canEdit && items.length - 1 === index) || !comments ? (

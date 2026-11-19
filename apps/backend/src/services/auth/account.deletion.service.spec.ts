@@ -21,6 +21,7 @@ import {
   DELETE_MAIL_NOT_SENT,
   WRONG_PASSWORD,
 } from './account.deletion.service';
+import { authEmailFooter } from './auth.emails';
 
 process.env.JWT_SECRET = 'test-secret-for-account-deletion';
 process.env.FRONTEND_URL = 'https://app.example.test';
@@ -43,17 +44,15 @@ function setup(user: Record<string, unknown> | null, sent = true) {
       calls.push('stripe');
     }),
   };
-  const notifications = { sendEmail: jest.fn(async (..._a: unknown[]): Promise<void> => undefined) };
   const email = { sendEmailSync: jest.fn(async (..._a: unknown[]) => sent) };
   const audit = { record: jest.fn() };
   const service = new AccountDeletionService(
     users as any,
     stripe as any,
-    notifications as any,
     email as any,
     audit as any
   );
-  return { service, users, stripe, notifications, email, audit, calls };
+  return { service, users, stripe, email, audit, calls };
 }
 
 const local = {
@@ -97,17 +96,21 @@ describe('AccountDeletionService.request', () => {
   });
 
   it('the right password deletes now, Stripe before the rows', async () => {
-    const { service, users, calls, notifications } = setup(local);
+    const { service, users, calls, email } = setup(local);
     await expect(service.request('user-1', PASSWORD)).resolves.toEqual({
       deleted: true,
     });
     expect(calls).toEqual(['stripe', 'deleteAccount']);
     expect(users.deleteAccount).toHaveBeenCalledWith('user-1', 3);
     expect(bust).toHaveBeenCalledWith('user-1');
-    expect(notifications.sendEmail).toHaveBeenCalledWith(
+    // The account is gone, so the mail ends with who sends it, not with the
+    // default line that links to the account's notification settings.
+    expect(email.sendEmailSync).toHaveBeenCalledWith(
       'owner@example.com',
       'Your Postra account has been deleted',
-      expect.any(String)
+      expect.any(String),
+      undefined,
+      authEmailFooter.en
     );
   });
 

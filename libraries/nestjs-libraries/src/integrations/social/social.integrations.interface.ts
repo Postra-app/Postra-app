@@ -28,7 +28,10 @@ export interface IAuthenticator {
     accessToken: string
   ): Promise<Omit<AuthTokenDetails, 'refreshToken' | 'expiresIn'>>;
   generateAuthUrl(
-    clientInformation?: ClientInformation
+    clientInformation?: ClientInformation,
+    // comments: ask for the provider's optional first-comment scope too
+    // (YouTube, while Google has not verified it for everyone).
+    options?: { comments?: boolean }
   ): Promise<GenerateAuthUrlResponse>;
   analytics?(
     id: string,
@@ -143,6 +146,10 @@ export type PostResponse = {
   postId: string; // The ID of the scheduled post returned by the platform
   releaseURL: string; // The URL of the post on the platform
   status: string; // Status of the operation or initial post status
+  // A comment that found the post's public id while the post still has a
+  // temporary one (TikTok, published during its review): the post's own id
+  // and link to store.
+  parentRelease?: { postId: string; releaseURL: string };
 };
 
 export type PostDetails<T = any> = {
@@ -187,6 +194,8 @@ export interface SocialProvider
   refreshCron?: boolean;
   dto?: any;
   maxLength: (additionalSettings?: any) => number;
+  // A comment's limit when it is smaller than the post's.
+  commentMaxLength?: () => number;
   checkValidity(
     posts: Array<{ path: string; thumbnail?: string; alt?: string }[]>,
     settings: any,
