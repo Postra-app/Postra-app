@@ -121,12 +121,11 @@ jobs:
         env:
           NODE_OPTIONS: '--max-old-space-size=4096'
 
-      - name: Install Chromium and WebKit
-        run: pnpm exec playwright install --with-deps chromium webkit
-
       # The app image has ffmpeg (poster frames, captions); the runner does not.
-      - name: Install ffmpeg
-        run: sudo apt-get update -qq && sudo apt-get install -y -qq --no-install-recommends ffmpeg
+      # apt is bounded and retried on another mirror: an unbounded install
+      # once took 25 of the job's 30 minutes (scripts/ci-install-browsers.sh).
+      - name: Install Chromium, WebKit and ffmpeg
+        run: bash scripts/ci-install-browsers.sh chromium webkit
 
       # Every port the stack listens on sits in Linux's ephemeral range
       # (32768-60999), so a stray outbound connection of the runner can take
