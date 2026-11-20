@@ -116,7 +116,7 @@ export class AuthController {
         'registrationProof' in signedUp ? signedUp.registrationProof : undefined;
 
       // Named by user and organisation: a row with only the address was
-      // invisible in the account's own audit (E2E-11-472).
+      // invisible in the account's own audit.
       this._auditService.record({
         action: 'auth.register',
         userId: signedUp.userId,
@@ -496,7 +496,7 @@ export class AuthController {
 
     setSessionCookie(response, activate);
     // The browser that signed up is signed in here: the account's first
-    // sign-in, which the audit missed (E2E-11-472).
+    // sign-in, which the audit used to miss.
     this._auditService.record({
       action: 'auth.login',
       userId: (AuthChecker.verifyJWT(activate) as { id?: string })?.id,

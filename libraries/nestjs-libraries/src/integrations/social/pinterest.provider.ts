@@ -352,7 +352,7 @@ export class PinterestProvider
       // The video, not whatever came first — a cover image usually does
       // (upstream be413ec2).
       // Pinterest's upload is an S3 form POST: a body of unknown length goes
-      // chunked and S3 refuses it with 411 (E2E-11-471), so the file part
+      // chunked and S3 refuses it with 411, so the file part
       // carries its length and the request a Content-Length.
       const video = await fetchMediaStreamWithLength(findMp4.path);
 
@@ -368,13 +368,18 @@ export class PinterestProvider
         filename: 'video.mp4',
         contentType: video.contentType,
       });
-      await axios.post(upload_url, formData, {
-        headers: {
-          ...formData.getHeaders(),
-          'Content-Length': String(formData.getLengthSync()),
-        },
-        maxBodyLength: Infinity,
-      });
+      try {
+        await axios.post(upload_url, formData, {
+          headers: {
+            ...formData.getHeaders(),
+            'Content-Length': String(formData.getLengthSync()),
+          },
+          maxBodyLength: Infinity,
+        });
+      } finally {
+        // A temporary copy on disk goes with its stream, read or not.
+        video.stream.destroy();
+      }
 
       let statusCode = '';
       // Capped under the 10-min activity budget (H1): an unbounded poll used

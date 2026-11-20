@@ -5,10 +5,10 @@ jest.mock('@gitroom/nestjs-libraries/redis/redis.service', () => ({
 import { AuthService as AuthChecker } from '@gitroom/helpers/auth/auth.service';
 import { AuthController } from './auth.controller';
 
-// E2E-11-472 (20 XI): the first customer's audit had no sign-up and no sign-in.
-// The sign-up row carried only the address (no user, no organisation), and the
-// activation link opened in the browser that signed up signed her in with no
-// row at all. Both rows now name the account.
+// A new account's audit showed no sign-up and no sign-in. The sign-up row
+// carried only the address (no user, no organisation), and the activation
+// link opened in the browser that signed up signed the user in with no row
+// at all. Both rows now name the account.
 
 process.env.JWT_SECRET = process.env.JWT_SECRET || 'test-secret';
 

@@ -85,7 +85,7 @@ describe('Pinterest', () => {
     ).toEqual(['https://cdn-dev.postra.pl/clip.mp4']);
   });
 
-  // E2E-11-471 (20 XI): the video went to Pinterest's S3 form upload as a
+  // The video went to Pinterest's S3 form upload as a
   // stream of unknown length, sent chunked, and S3 answered 411 Length
   // Required, so every video pin failed. The upload now declares its length.
   it('a video pin uploads with a Content-Length, as S3 requires', async () => {

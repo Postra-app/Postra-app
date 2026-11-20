@@ -57,8 +57,8 @@ describe('a comment that learns the post\'s public id', () => {
 
   // What the workflow really passes: getPostsList hands activities slimmed
   // posts (slimPost drops parentPostId), so the parent must come from the
-  // database row, not from the post in the arguments (E2E-11-465, 19 XI:
-  // the fix above never ran in production).
+  // database row, not from the post in the arguments (the
+  // fix above never ran in production because of it).
   const fromDb = (rows: Record<string, any>) => (id: string) =>
     Promise.resolve(rows[id] ?? null);
 
