@@ -55,6 +55,51 @@ describe('a comment that learns the post\'s public id', () => {
     );
   });
 
+  // What the workflow really passes: getPostsList hands activities slimmed
+  // posts (slimPost drops parentPostId), so the parent must come from the
+  // database row, not from the post in the arguments (E2E-11-465, 19 XI:
+  // the fix above never ran in production).
+  const fromDb = (rows: Record<string, any>) => (id: string) =>
+    Promise.resolve(rows[id] ?? null);
+
+  it('finds the post from the database when the workflow passes a slimmed comment', async () => {
+    const { activity, postService, comment, integration } = setup('v_pub_url~1');
+    const { parentPostId: _dropped, ...slimmed } = comment;
+    postService.getPostById.mockImplementation(
+      fromDb({
+        p1: { id: 'p1', parentPostId: null, releaseId: 'v_pub_url~1' },
+        c1: { id: 'c1', parentPostId: 'p1', releaseId: null },
+      })
+    );
+    await activity.postCommentBody('v_pub_url~1', undefined, integration, [slimmed]);
+    expect(postService.updateResolvedRelease).toHaveBeenCalledWith(
+      'p1',
+      'o1',
+      '76',
+      'https://www.tiktok.com/@a/video/76'
+    );
+  });
+
+  it('walks up a thread to the post itself from a later comment', async () => {
+    const { activity, postService, comment, integration } = setup('v_pub_url~1');
+    const second = { ...comment, id: 'c2' };
+    delete (second as any).parentPostId;
+    postService.getPostById.mockImplementation(
+      fromDb({
+        p1: { id: 'p1', parentPostId: null, releaseId: 'v_pub_url~1' },
+        c1: { id: 'c1', parentPostId: 'p1', releaseId: 'cm-0' },
+        c2: { id: 'c2', parentPostId: 'c1', releaseId: null },
+      })
+    );
+    await activity.postCommentBody('v_pub_url~1', 'cm-0', integration, [second]);
+    expect(postService.updateResolvedRelease).toHaveBeenCalledWith(
+      'p1',
+      'o1',
+      '76',
+      'https://www.tiktok.com/@a/video/76'
+    );
+  });
+
   it('leaves a post that already has another id alone', async () => {
     const { activity, postService, comment, integration } = setup('76');
     await activity.postCommentBody('v_pub_url~1', undefined, integration, [comment]);
