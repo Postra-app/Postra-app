@@ -115,8 +115,13 @@ export class AuthController {
       const registrationProof =
         'registrationProof' in signedUp ? signedUp.registrationProof : undefined;
 
+      // Named by user and organisation: a row with only the address was
+      // invisible in the account's own audit (E2E-11-472).
       this._auditService.record({
         action: 'auth.register',
+        userId: signedUp.userId,
+        organizationId:
+          'organizationId' in signedUp ? signedUp.organizationId : undefined,
         ip,
         userAgent,
         metadata: { email: body.email, provider: body.provider },
@@ -447,7 +452,9 @@ export class AuthController {
     @Req() req: Request,
     @Body('code') code: string,
     @Body('datafast_visitor_id') datafast_visitor_id: string,
-    @Res({ passthrough: false }) response: Response
+    @Res({ passthrough: false }) response: Response,
+    @RealIP() ip?: string,
+    @UserAgent() userAgent?: string
   ) {
     let activate: Awaited<ReturnType<AuthService['activate']>>;
     try {
@@ -488,6 +495,15 @@ export class AuthController {
     }
 
     setSessionCookie(response, activate);
+    // The browser that signed up is signed in here: the account's first
+    // sign-in, which the audit missed (E2E-11-472).
+    this._auditService.record({
+      action: 'auth.login',
+      userId: (AuthChecker.verifyJWT(activate) as { id?: string })?.id,
+      ip,
+      userAgent,
+      metadata: { provider: 'LOCAL', via: 'activation-link' },
+    });
 
     if (process.env.NOT_SECURED) {
       response.header('auth', activate);

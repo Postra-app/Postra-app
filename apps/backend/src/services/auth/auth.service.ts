@@ -241,6 +241,7 @@ export class AuthService {
           addedOrg,
           jwt: await this.jwt(create.users[0].user),
           userId: create.users[0].user.id,
+          organizationId: create.id,
           registrationProof: create.users[0].user.activated
             ? undefined
             : await this.rememberWhoRegistered(create.users[0].user.id),
