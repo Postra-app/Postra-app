@@ -1,4 +1,8 @@
-import { fetchMediaBlob, fetchMediaStream } from './fetch.media.buffer';
+import {
+  fetchMediaBlob,
+  fetchMediaStream,
+  fetchMediaStreamWithLength,
+} from './fetch.media.buffer';
 
 // U1 (upstream 6c4a8ca4): YouTube and Discord fetched a post's media path —
 // client-controlled — with plain axios / fetch, so a path pointing inside the
@@ -14,5 +18,6 @@ describe('media fetch helpers refuse internal addresses', () => {
   ])('%s', async (url) => {
     await expect(fetchMediaStream(url)).rejects.toThrow(/blocked request/);
     await expect(fetchMediaBlob(url)).rejects.toThrow(/blocked request/);
+    await expect(fetchMediaStreamWithLength(url)).rejects.toThrow(/blocked request/);
   });
 });

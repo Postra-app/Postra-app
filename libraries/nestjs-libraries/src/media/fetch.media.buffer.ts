@@ -101,3 +101,38 @@ export async function fetchMediaStream(
     clearTimeout(timer);
   }
 }
+
+// For uploads that must declare their size up front (an S3 form upload, as
+// Pinterest's media upload is, answers a chunked body with 411). The length
+// comes from the server; a server that sends none has the file read into
+// memory, up to the largest file Postra accepts, and counted.
+export async function fetchMediaStreamWithLength(
+  url: string,
+  headersTimeoutMs = 60_000
+): Promise<{ stream: Readable; length: number; contentType: string }> {
+  const abort = new AbortController();
+  const timer = setTimeout(() => abort.abort(), headersTimeoutMs);
+  try {
+    const response = await fetchMediaResponse(url, headersTimeoutMs, abort.signal);
+    const contentType =
+      response.headers.get('content-type') || 'application/octet-stream';
+    const declared = Number(response.headers.get('content-length'));
+    if (response.body && Number.isInteger(declared) && declared > 0) {
+      if (declared > MEDIA_FETCH_MAX_BYTES) {
+        await response.body.cancel().catch((): undefined => undefined);
+        throw new Error(
+          `The file is larger than ${Math.round(MEDIA_FETCH_MAX_BYTES / 1024 / 1024)} MB`
+        );
+      }
+      return {
+        stream: Readable.fromWeb(response.body as any),
+        length: declared,
+        contentType,
+      };
+    }
+    const body = await readResponseCapped(response, MEDIA_FETCH_MAX_BYTES);
+    return { stream: Readable.from([body]), length: body.length, contentType };
+  } finally {
+    clearTimeout(timer);
+  }
+}
