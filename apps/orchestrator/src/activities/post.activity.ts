@@ -393,16 +393,24 @@ export class PostActivity {
     // give it the public id and link the comment found.
     const parentRelease = (comments || []).find((r) => r?.parentRelease)
       ?.parentRelease;
-    const parentId = posts?.[0]?.parentPostId;
+    // The workflow passes slimmed posts without parentPostId (slimPost), so
+    // the thread is read from the database: up from this comment to the post.
+    const parentId = fresh[0]?.parentPostId ?? posts?.[0]?.parentPostId;
     if (parentRelease && parentId) {
       try {
-        const parent = await this._postService.getPostById(
+        let parent = await this._postService.getPostById(
           parentId,
           integration.organizationId
         );
-        if (parent?.releaseId === postId) {
+        for (let hop = 0; parent?.parentPostId && hop < 50; hop++) {
+          parent = await this._postService.getPostById(
+            parent.parentPostId,
+            integration.organizationId
+          );
+        }
+        if (parent && !parent.parentPostId && parent.releaseId === postId) {
           await this._postService.updateResolvedRelease(
-            parentId,
+            parent.id,
             integration.organizationId,
             parentRelease.postId,
             parentRelease.releaseURL

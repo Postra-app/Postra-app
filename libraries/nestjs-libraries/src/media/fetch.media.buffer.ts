@@ -1,4 +1,9 @@
-import { Readable } from 'node:stream';
+import { createReadStream, createWriteStream } from 'node:fs';
+import { mkdtemp, rm } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { Readable, Transform } from 'node:stream';
+import { pipeline } from 'node:stream/promises';
 import { fetch } from 'undici';
 import { ssrfSafeDispatcher } from '@gitroom/nestjs-libraries/dtos/webhooks/ssrf.safe.dispatcher';
 import { isSafePublicHttpsUrl } from '@gitroom/nestjs-libraries/dtos/webhooks/webhook.url.validator';
@@ -99,5 +104,71 @@ export async function fetchMediaStream(
     return Readable.fromWeb(response.body as any);
   } finally {
     clearTimeout(timer);
+  }
+}
+
+// For uploads that must declare their size up front (an S3 form upload, as
+// Pinterest's media upload is, answers a chunked body with 411). The length
+// comes from the server; a file sent without one is counted into a temporary
+// file on disk (not memory), up to the largest file Postra accepts, and the
+// file goes when its stream closes. The timeout covers only the headers, as
+// in fetchMediaStream.
+export async function fetchMediaStreamWithLength(
+  url: string,
+  headersTimeoutMs = 60_000
+): Promise<{ stream: Readable; length: number; contentType: string }> {
+  const abort = new AbortController();
+  const timer = setTimeout(() => abort.abort(), headersTimeoutMs);
+  let response: Awaited<ReturnType<typeof fetchMediaResponse>>;
+  try {
+    response = await fetchMediaResponse(url, headersTimeoutMs, abort.signal);
+  } finally {
+    clearTimeout(timer);
+  }
+  if (!response.body) {
+    throw new Error('fetchMediaStreamWithLength: empty response body');
+  }
+  const contentType =
+    response.headers.get('content-type') || 'application/octet-stream';
+  const tooLarge = () =>
+    new Error(
+      `The file is larger than ${Math.round(MEDIA_FETCH_MAX_BYTES / 1024 / 1024)} MB`
+    );
+
+  const declared = Number(response.headers.get('content-length'));
+  if (Number.isInteger(declared) && declared > 0) {
+    if (declared > MEDIA_FETCH_MAX_BYTES) {
+      await response.body.cancel().catch((): undefined => undefined);
+      throw tooLarge();
+    }
+    return {
+      stream: Readable.fromWeb(response.body as any),
+      length: declared,
+      contentType,
+    };
+  }
+
+  const dir = await mkdtemp(join(tmpdir(), 'postra-media-'));
+  const remove = () =>
+    rm(dir, { recursive: true, force: true }).catch((): undefined => undefined);
+  try {
+    const file = join(dir, 'media');
+    let length = 0;
+    await pipeline(
+      Readable.fromWeb(response.body as any),
+      new Transform({
+        transform(chunk: Buffer, _encoding, done) {
+          length += chunk.length;
+          done(length > MEDIA_FETCH_MAX_BYTES ? tooLarge() : null, chunk);
+        },
+      }),
+      createWriteStream(file)
+    );
+    const stream = createReadStream(file);
+    stream.once('close', remove);
+    return { stream, length, contentType };
+  } catch (err) {
+    await remove();
+    throw err;
   }
 }

@@ -2,7 +2,15 @@ jest.mock('isomorphic-dompurify', () => ({ __esModule: true, default: { sanitize
 const fetchMediaStream = jest.fn(async () => {
   throw new Error('stop after picking the file');
 });
-jest.mock('@gitroom/nestjs-libraries/media/fetch.media.buffer', () => ({ fetchMediaStream }));
+const fetchMediaStreamWithLength = jest.fn();
+jest.mock('@gitroom/nestjs-libraries/media/fetch.media.buffer', () => ({
+  fetchMediaStream,
+  fetchMediaStreamWithLength,
+}));
+
+import { createServer } from 'node:http';
+import { AddressInfo } from 'node:net';
+import { Readable } from 'node:stream';
 
 import { validate } from 'class-validator';
 import { plainToInstance } from 'class-transformer';
@@ -70,7 +78,65 @@ describe('Pinterest', () => {
     await provider
       .post('pin-user', 'token', [{ id: 'p1', message: 'x', settings: { board: '123' }, media }] as any)
       .catch(() => undefined);
-    expect(fetchMediaStream).toHaveBeenCalledWith('https://cdn-dev.postra.pl/clip.mp4');
+    expect(
+      [...fetchMediaStream.mock.calls, ...fetchMediaStreamWithLength.mock.calls].map(
+        (c: any[]) => c[0]
+      )
+    ).toEqual(['https://cdn-dev.postra.pl/clip.mp4']);
+  });
+
+  // The video went to Pinterest's S3 form upload as a
+  // stream of unknown length, sent chunked, and S3 answered 411 Length
+  // Required, so every video pin failed. The upload now declares its length.
+  it('a video pin uploads with a Content-Length, as S3 requires', async () => {
+    const video = Buffer.alloc(300_000, 7);
+    const seen: { length?: string; chunked: boolean; bytes: number }[] = [];
+    const s3 = createServer((req, res) => {
+      let bytes = 0;
+      req.on('data', (c) => (bytes += c.length));
+      req.on('end', () => {
+        seen.push({
+          length: req.headers['content-length'],
+          chunked: /chunked/i.test(String(req.headers['transfer-encoding'] || '')),
+          bytes,
+        });
+        // S3 POST policy uploads refuse a body without a length.
+        res.statusCode = req.headers['content-length'] ? 204 : 411;
+        res.end();
+      });
+    });
+    await new Promise<void>((r) => s3.listen(0, '127.0.0.1', r));
+    const url = `http://127.0.0.1:${(s3.address() as AddressInfo).port}/`;
+    let calls = 0;
+    (provider as any).fetch = async () => {
+      if (calls++ === 0) {
+        return {
+          json: async () => ({
+            upload_url: url,
+            media_id: 'm1',
+            upload_parameters: { key: 'uploads/v.mp4', policy: 'p' },
+          }),
+        };
+      }
+      throw new Error('stop after the upload');
+    };
+    fetchMediaStream.mockImplementationOnce(async () => Readable.from([video]) as any);
+    fetchMediaStreamWithLength.mockImplementationOnce(async () => ({
+      stream: Readable.from([video]),
+      length: video.length,
+      contentType: 'video/mp4',
+    }));
+    const error = await provider
+      .post('pin-user', 'token', [
+        { id: 'p1', message: 'x', settings: { board: '123' }, media: [{ path: 'https://cdn.postra.co.uk/clip.mp4' }] },
+      ] as any)
+      .catch((e: Error) => e);
+    await new Promise<void>((r) => s3.close(() => r()));
+    expect(seen).toHaveLength(1);
+    expect(seen[0].chunked).toBe(false);
+    expect(Number(seen[0].length)).toBe(seen[0].bytes);
+    expect(seen[0].bytes).toBeGreaterThan(video.length);
+    expect(String((error as Error)?.message)).toBe('stop after the upload');
   });
 });
 

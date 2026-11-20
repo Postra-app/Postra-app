@@ -1,4 +1,4 @@
-import { fetchMediaStream } from '@gitroom/nestjs-libraries/media/fetch.media.buffer';
+import { fetchMediaStreamWithLength } from '@gitroom/nestjs-libraries/media/fetch.media.buffer';
 import {
   AnalyticsData,
   AuthTokenDetails,
@@ -351,7 +351,10 @@ export class PinterestProvider
       // client-controlled path: SSRF guard (upstream 6c4a8ca4)
       // The video, not whatever came first — a cover image usually does
       // (upstream be413ec2).
-      const data = await fetchMediaStream(findMp4.path);
+      // Pinterest's upload is an S3 form POST: a body of unknown length goes
+      // chunked and S3 refuses it with 411, so the file part
+      // carries its length and the request a Content-Length.
+      const video = await fetchMediaStreamWithLength(findMp4.path);
 
       const formData = Object.keys(upload_parameters)
         .filter((f) => f)
@@ -360,8 +363,23 @@ export class PinterestProvider
           return acc;
         }, new FormData());
 
-      formData.append('file', data);
-      await axios.post(upload_url, formData);
+      formData.append('file', video.stream, {
+        knownLength: video.length,
+        filename: 'video.mp4',
+        contentType: video.contentType,
+      });
+      try {
+        await axios.post(upload_url, formData, {
+          headers: {
+            ...formData.getHeaders(),
+            'Content-Length': String(formData.getLengthSync()),
+          },
+          maxBodyLength: Infinity,
+        });
+      } finally {
+        // A temporary copy on disk goes with its stream, read or not.
+        video.stream.destroy();
+      }
 
       let statusCode = '';
       // Capped under the 10-min activity budget (H1): an unbounded poll used
