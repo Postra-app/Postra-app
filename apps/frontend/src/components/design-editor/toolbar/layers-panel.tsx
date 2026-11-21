@@ -85,6 +85,18 @@ export const LayersPanel: FC<{
     read();
   };
 
+  // Order, visibility and lock change the design: each is one undo step and
+  // goes into the draft. Without the event, Ctrl+Z after "Send backward" undid
+  // the change before it (deleting a text just added) and kept the new order.
+  const changeLayer = (
+    object: fabric.FabricObject,
+    fn: (c: fabric.Canvas) => void
+  ) =>
+    withCanvas((c) => {
+      fn(c);
+      c.fire('object:modified', { target: object } as fabric.ModifiedEvent);
+    });
+
   if (!rows.length) {
     return (
       <div className="flex flex-col gap-2">
@@ -124,7 +136,7 @@ export const LayersPanel: FC<{
             </button>
 
             <button
-              onClick={withCanvas((c) => {
+              onClick={changeLayer(row.object, (c) => {
                 const index = c.getObjects().indexOf(row.object);
                 if (index < c.getObjects().length - 1) c.bringObjectForward(row.object);
               })}
@@ -135,7 +147,7 @@ export const LayersPanel: FC<{
               <StudioIcon name="forward" size={14} />
             </button>
             <button
-              onClick={withCanvas((c) => c.sendObjectBackwards(row.object))}
+              onClick={changeLayer(row.object, (c) => c.sendObjectBackwards(row.object))}
               className="h-6 w-6 rounded flex items-center justify-center text-textColor/65 hover:bg-white/[0.10] hover:text-textColor transition-colors"
               title={t('layer_backward', 'Send backward')}
               aria-label={t('layer_backward', 'Send backward')}
@@ -143,7 +155,7 @@ export const LayersPanel: FC<{
               <StudioIcon name="backward" size={14} />
             </button>
             <button
-              onClick={withCanvas((c) => {
+              onClick={changeLayer(row.object, (c) => {
                 row.object.visible = row.hidden;
                 if (!row.hidden && c.getActiveObject() === row.object) {
                   c.discardActiveObject();
@@ -159,7 +171,7 @@ export const LayersPanel: FC<{
               <StudioIcon name={row.hidden ? 'hide' : 'show'} size={14} />
             </button>
             <button
-              onClick={withCanvas((c) => {
+              onClick={changeLayer(row.object, (c) => {
                 const locking = !row.locked;
                 row.object.selectable = !locking;
                 row.object.evented = !locking;
