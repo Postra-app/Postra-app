@@ -111,7 +111,9 @@ test('Photos → video: Cancel stops the render and leaves no clip and no upload
   await seconds(page).selectOption('4');
   await build(page).click();
   await expect(page.getByRole('button', { name: /^Building video…/ })).toBeVisible();
-  await page.getByRole('button', { name: 'Cancel', exact: true }).click();
+  // Firefox keeps re-laying out the button while it renders, so Playwright
+  // never sees it "stable"; the click itself works (3/3 in Firefox).
+  await page.getByRole('button', { name: 'Cancel', exact: true }).click({ force: true });
   await expect(build(page)).toBeEnabled({ timeout: 15_000 });
   await expect(page.getByRole('button', { name: 'Cancel', exact: true })).toHaveCount(0);
   // Long enough for a render that kept going in the background to land.
