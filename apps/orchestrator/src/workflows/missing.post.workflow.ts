@@ -1,7 +1,7 @@
-import { continueAsNew, proxyActivities, sleep } from '@temporalio/workflow';
+import { continueAsNew, patched, proxyActivities, sleep } from '@temporalio/workflow';
 import { PostActivity } from '@gitroom/orchestrator/activities/post.activity';
 
-const { searchForMissingThreeHoursPosts } = proxyActivities<PostActivity>({
+const { searchForMissingThreeHoursPosts, checkChannelsBeforePosting } = proxyActivities<PostActivity>({
   startToCloseTimeout: '10 minute',
   retry: {
     maximumAttempts: 3,
@@ -24,6 +24,15 @@ export async function missingPostWorkflow() {
       await searchForMissingThreeHoursPosts();
     } catch (err) {
       // Try again next hour.
+    }
+    // Behind a patch: the run alive at the deploy replays its history, which
+    // has no such activity (scripts/replay-histories.mjs).
+    if (patched('channel-check-before-posting')) {
+      try {
+        await checkChannelsBeforePosting();
+      } catch (err) {
+        // A failed check is not a reason to stop the sweep.
+      }
     }
     await sleep('1 hour');
   }

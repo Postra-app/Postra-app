@@ -184,6 +184,24 @@ export class PostActivity {
     }
   }
 
+  // 2026-11-20: a Facebook password change killed two channels' tokens at
+  // ~16:50 and nothing said so until their posts failed at 20:00: the token
+  // check ran only when someone opened the channel list. Hourly, from the
+  // missing-post sweep: the channels of every organisation with a post due in
+  // the next 6 hours. checkIntegrationsHealth flags a dead channel and emails
+  // "reconnect" once, and caches each channel for 30 minutes.
+  @ActivityMethod()
+  async checkChannelsBeforePosting() {
+    const orgs = await this._postService.organizationsWithPostsDueSoon(6);
+    for (const org of orgs) {
+      try {
+        await this._integrationService.checkIntegrationsHealth(org);
+      } catch (err) {
+        // One organisation (or platform) failing does not skip the rest.
+      }
+    }
+  }
+
   @ActivityMethod()
   async updatePost(
     id: string,

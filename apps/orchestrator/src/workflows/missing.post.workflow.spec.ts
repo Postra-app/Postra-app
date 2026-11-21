@@ -4,10 +4,15 @@
  * the workflow for good, and the loop never continued-as-new.
  */
 const search = jest.fn();
+const check = jest.fn().mockResolvedValue(undefined);
 const continueAsNew = jest.fn().mockResolvedValue(undefined);
 const sleep = jest.fn().mockResolvedValue(undefined);
 jest.mock('@temporalio/workflow', () => ({
-  proxyActivities: () => ({ searchForMissingThreeHoursPosts: search }),
+  proxyActivities: () => ({
+    searchForMissingThreeHoursPosts: search,
+    checkChannelsBeforePosting: check,
+  }),
+  patched: () => true,
   sleep: (...a: any[]) => sleep(...a),
   continueAsNew: (...a: any[]) => continueAsNew(...a),
 }));
@@ -28,6 +33,25 @@ describe('missingPostWorkflow', () => {
     await missingPostWorkflow();
     expect(sleep).toHaveBeenCalledTimes(24);
     expect(sleep).toHaveBeenCalledWith('1 hour');
+    expect(continueAsNew).toHaveBeenCalledTimes(1);
+  });
+});
+
+// 2026-11-20: channels whose token died were found only when a post failed.
+// Every hour the sweep also checks the channels of organisations with a post
+// due soon; a failed check must not stop the sweep.
+describe('missingPostWorkflow channel check', () => {
+  it('checks channels every hour, after the search', async () => {
+    search.mockResolvedValue([]);
+    await missingPostWorkflow();
+    expect(check).toHaveBeenCalledTimes(24);
+  });
+
+  it('keeps going after a failed check', async () => {
+    search.mockResolvedValue([]);
+    check.mockRejectedValueOnce(new Error('platform down'));
+    await missingPostWorkflow();
+    expect(search).toHaveBeenCalledTimes(24);
     expect(continueAsNew).toHaveBeenCalledTimes(1);
   });
 });

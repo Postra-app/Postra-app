@@ -126,6 +126,10 @@ export class PostsService {
     return this._postRepository.getCurrentState(id);
   }
 
+  organizationsWithPostsDueSoon(hours: number) {
+    return this._postRepository.organizationsWithPostsDueSoon(hours);
+  }
+
   searchForMissingThreeHoursPosts() {
     return this._postRepository.searchForMissingThreeHoursPosts();
   }

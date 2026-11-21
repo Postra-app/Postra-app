@@ -1,0 +1,50 @@
+jest.mock('isomorphic-dompurify', () => ({ __esModule: true, default: { sanitize: (v: string) => v } }));
+jest.mock('nostr-tools', () => ({ getPublicKey: jest.fn(), Relay: class {}, finalizeEvent: jest.fn(), SimplePool: class {} }));
+jest.mock('@gitroom/nestjs-libraries/redis/redis.service', () => {
+  delete process.env.REDIS_URL;
+  return jest.requireActual('@gitroom/nestjs-libraries/redis/redis.service');
+});
+
+import 'reflect-metadata';
+import { TemporalMetadataAccessor } from 'nestjs-temporal-core';
+import { PostActivity } from './post.activity';
+
+// 2026-11-20: a Facebook password change at ~16:50 killed the tokens of a
+// Page and an Instagram account. The token check ran only when someone opened
+// the channel list, so the first word came with the failed 20:00 posts. The
+// hourly sweep now checks the channels of organisations with a post due in
+// the next hours, while there is still time to reconnect.
+describe('channel check before posting', () => {
+  const build = (orgs: string[], failFor?: string) => {
+    const checkIntegrationsHealth = jest.fn(async (org: string) => {
+      if (org === failFor) throw new Error('platform down');
+    });
+    const organizationsWithPostsDueSoon = jest.fn().mockResolvedValue(orgs);
+    const activity = Object.create(PostActivity.prototype) as any;
+    Object.assign(activity, {
+      _postService: { organizationsWithPostsDueSoon },
+      _integrationService: { checkIntegrationsHealth },
+    });
+    return { activity, checkIntegrationsHealth, organizationsWithPostsDueSoon };
+  };
+
+  it('checks each organisation with a post due in the next 6 hours', async () => {
+    const { activity, checkIntegrationsHealth, organizationsWithPostsDueSoon } = build(['o1', 'o2']);
+    await activity.checkChannelsBeforePosting();
+    expect(organizationsWithPostsDueSoon).toHaveBeenCalledWith(6);
+    expect(checkIntegrationsHealth.mock.calls.map((c) => c[0])).toEqual(['o1', 'o2']);
+  });
+
+  it('one organisation failing does not skip the next', async () => {
+    const { activity, checkIntegrationsHealth } = build(['o1', 'o2'], 'o1');
+    await activity.checkChannelsBeforePosting();
+    expect(checkIntegrationsHealth).toHaveBeenCalledTimes(2);
+  });
+
+  it('reaches the worker as an activity', () => {
+    const accessor = new (TemporalMetadataAccessor as any)();
+    const activity = Object.create(PostActivity.prototype);
+    const { methods } = accessor.extractActivityMethods(activity);
+    expect([...methods.keys()]).toContain('checkChannelsBeforePosting');
+  });
+});

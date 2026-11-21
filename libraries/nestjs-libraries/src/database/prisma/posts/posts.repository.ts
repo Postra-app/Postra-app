@@ -122,6 +122,32 @@ export class PostsRepository {
     });
   }
 
+  // Organisations with a post waiting to publish in the next `hours` on a
+  // channel that still looks healthy: the hourly check asks their platforms
+  // whether the token still works before the post goes out.
+  async organizationsWithPostsDueSoon(hours: number) {
+    const rows = await this._post.model.post.findMany({
+      where: {
+        integration: {
+          refreshNeeded: false,
+          inBetweenSteps: false,
+          disabled: false,
+          deletedAt: null,
+        },
+        publishDate: {
+          gte: dayjs.utc().toDate(),
+          lt: dayjs.utc().add(hours, 'hour').toDate(),
+        },
+        state: 'QUEUE',
+        deletedAt: null,
+        parentPostId: null,
+      },
+      select: { organizationId: true },
+      distinct: ['organizationId'],
+    });
+    return rows.map((r) => r.organizationId);
+  }
+
   searchForMissingThreeHoursPosts() {
     return this._post.model.post.findMany({
       where: {
