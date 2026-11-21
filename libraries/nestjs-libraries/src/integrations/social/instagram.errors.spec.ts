@@ -78,10 +78,9 @@ describe('InstagramProvider.handleErrors (media not ready)', () => {
   });
 });
 
-// 2026-11-20: a Facebook password change invalidated the Instagram session
-// and the email blamed "frequent posting" and told the owner to wait 1-2 days
-// before posting again. Nothing was wrong with how often they posted; the
-// channel only needed reconnecting.
+// A password change invalidates the Instagram session. The email used to
+// blame "frequent posting" and tell the owner to wait 1-2 days before posting
+// again, when the channel only needed reconnecting.
 describe('InstagramProvider.handleErrors (session invalidated)', () => {
   const res = new InstagramProvider().handleErrors(
     JSON.stringify({

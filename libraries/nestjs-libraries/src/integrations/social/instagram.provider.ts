@@ -171,9 +171,8 @@ export class InstagramProvider
       return {
         type: 'refresh-token' as const,
         value:
-          // Customer text (Krzysztof approves). Meta ends the session when the
-          // password changes or access is removed (20 Nov: a Facebook password
-          // change); the old text blamed frequent posting and asked to wait.
+          // Meta ends the session when the password changes or access to the
+          // app is removed; a reconnect is all it takes, no waiting.
           'Your Instagram session has ended, usually because the account password was changed or access to the app was removed. Please reconnect the channel.',
       };
     }

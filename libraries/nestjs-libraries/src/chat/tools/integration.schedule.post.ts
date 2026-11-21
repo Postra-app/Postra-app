@@ -24,7 +24,7 @@ const validUrlExtension = new ValidUrlExtension();
 // Settings the editor needs but the agent may leave out. `post_type` is
 // optional in FacebookDto, so a Facebook post scheduled here was saved
 // without it, and retrying it in the web editor failed validation until
-// "Post" was picked by hand (2026-11-20). A value the agent passes wins.
+// "Post" was picked by hand. A value the agent passes wins.
 const DEFAULT_SETTINGS: Record<string, Record<string, unknown>> = {
   facebook: { post_type: 'post' },
   instagram: { post_type: 'post' },

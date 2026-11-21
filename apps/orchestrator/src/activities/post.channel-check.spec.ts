@@ -9,11 +9,10 @@ import 'reflect-metadata';
 import { TemporalMetadataAccessor } from 'nestjs-temporal-core';
 import { PostActivity } from './post.activity';
 
-// 2026-11-20: a Facebook password change at ~16:50 killed the tokens of a
-// Page and an Instagram account. The token check ran only when someone opened
-// the channel list, so the first word came with the failed 20:00 posts. The
-// hourly sweep now checks the channels of organisations with a post due in
-// the next hours, while there is still time to reconnect.
+// A token that dies hours before a scheduled post (a password change) was
+// found only when the post failed: the check ran when someone opened the
+// channel list. The hourly sweep now checks the channels of organisations with
+// a post due in the next hours, while there is still time to reconnect.
 describe('channel check before posting', () => {
   const build = (orgs: string[], failFor?: string) => {
     const checkIntegrationsHealth = jest.fn(async (org: string) => {
@@ -39,6 +38,12 @@ describe('channel check before posting', () => {
     const { activity, checkIntegrationsHealth } = build(['o1', 'o2'], 'o1');
     await activity.checkChannelsBeforePosting();
     expect(checkIntegrationsHealth).toHaveBeenCalledTimes(2);
+  });
+
+  it('stops at its deadline instead of holding the sweep', async () => {
+    const { activity, checkIntegrationsHealth } = build(['o1', 'o2']);
+    await activity.checkChannelsBeforePosting(0);
+    expect(checkIntegrationsHealth).not.toHaveBeenCalled();
   });
 
   it('reaches the worker as an activity', () => {

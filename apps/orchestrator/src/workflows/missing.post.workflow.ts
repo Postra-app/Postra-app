@@ -1,13 +1,21 @@
 import { continueAsNew, patched, proxyActivities, sleep } from '@temporalio/workflow';
 import { PostActivity } from '@gitroom/orchestrator/activities/post.activity';
 
-const { searchForMissingThreeHoursPosts, checkChannelsBeforePosting } = proxyActivities<PostActivity>({
+const { searchForMissingThreeHoursPosts } = proxyActivities<PostActivity>({
   startToCloseTimeout: '10 minute',
   retry: {
     maximumAttempts: 3,
     backoffCoefficient: 1,
     initialInterval: '2 minutes',
   },
+});
+
+// Its own options: one short try. A slow platform must not hold the search
+// for posts left in QUEUE (three 10-minute attempts would); the next hour
+// checks again.
+const { checkChannelsBeforePosting } = proxyActivities<PostActivity>({
+  startToCloseTimeout: '5 minute',
+  retry: { maximumAttempts: 1 },
 });
 
 // Hours per run before handing over to a fresh execution, so the history

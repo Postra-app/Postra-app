@@ -4,11 +4,12 @@
  * the workflow for good, and the loop never continued-as-new.
  */
 const search = jest.fn();
+const mockProxyOptions: unknown[] = [];
 const check = jest.fn().mockResolvedValue(undefined);
 const continueAsNew = jest.fn().mockResolvedValue(undefined);
 const sleep = jest.fn().mockResolvedValue(undefined);
 jest.mock('@temporalio/workflow', () => ({
-  proxyActivities: () => ({
+  proxyActivities: (opts: unknown) => (mockProxyOptions.push(opts), {
     searchForMissingThreeHoursPosts: search,
     checkChannelsBeforePosting: check,
   }),
@@ -37,7 +38,7 @@ describe('missingPostWorkflow', () => {
   });
 });
 
-// 2026-11-20: channels whose token died were found only when a post failed.
+// Channels whose token died were found only when a post failed.
 // Every hour the sweep also checks the channels of organisations with a post
 // due soon; a failed check must not stop the sweep.
 describe('missingPostWorkflow channel check', () => {
@@ -54,4 +55,12 @@ describe('missingPostWorkflow channel check', () => {
     expect(search).toHaveBeenCalledTimes(24);
     expect(continueAsNew).toHaveBeenCalledTimes(1);
   });
+
+  it('runs the check with one short try, apart from the search', () => {
+    expect(mockProxyOptions).toContainEqual({
+      startToCloseTimeout: '5 minute',
+      retry: { maximumAttempts: 1 },
+    });
+  });
 });
+

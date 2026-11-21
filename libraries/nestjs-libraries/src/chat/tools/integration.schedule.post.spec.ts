@@ -131,7 +131,7 @@ describe('agent post cap passed to createPost', () => {
   });
 });
 
-// 2026-11-20: a Facebook post scheduled through the MCP had no `post_type` in
+// A Facebook post scheduled through the MCP had no `post_type` in
 // its settings (optional in FacebookDto, so the tool saved it as given). When
 // it failed and was retried in the web editor, the editor's empty select sent
 // '' and validation refused it ("post_type must be one of the following
