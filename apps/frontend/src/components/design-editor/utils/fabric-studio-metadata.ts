@@ -24,6 +24,11 @@ export const installStudioFabricMetadata = (): void => {
     return originalToObject.call(this, [
       ...extraKeys,
       ...STUDIO_FABRIC_METADATA_KEYS,
+      // A layer locked in the Layers panel is one that cannot be selected or
+      // clicked. Fabric leaves both out of its JSON, so undo, a refresh or the
+      // restored draft brought the layer back unlocked.
+      'selectable',
+      'evented',
     ]);
   };
 };

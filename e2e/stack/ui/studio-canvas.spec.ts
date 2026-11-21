@@ -94,8 +94,7 @@ test.describe('layers', () => {
   // The lock lives on the Fabric object only (selectable/evented), which the
   // design's JSON does not carry: every undo, slide switch or refresh loads
   // the design back from JSON, unlocked.
-  // FIXME app bug: layers-panel.tsx sets selectable/evented, which toJSON() drops (lock lost on undo/refresh).
-  test.fixme('a locked layer stays locked after undoing a later change and after a refresh', async ({ page }) => {
+  test('a locked layer stays locked after undoing a later change and after a refresh', async ({ page }) => {
     const s = await studio(page);
     await s.addShape(/Rectangle/i, 'rect');
     await s.layers();
@@ -120,8 +119,7 @@ test.describe('layers', () => {
   // Moving a layer up or down was no undo step: the Ctrl+Z meant for it took
   // the change before it (here the text just added) and left the order as it
   // was.
-  // FIXME app bug: layers-panel.tsx reorders without firing object:modified, so no history step is recorded.
-  test.fixme('Send backward is one undo step: Ctrl+Z puts the order back and keeps the text', async ({ page }) => {
+  test('Send backward is one undo step: Ctrl+Z puts the order back and keeps the text', async ({ page }) => {
     const s = await studio(page);
     await s.addShape(/Rectangle/i, 'rect');
     await s.tool('Text').click();
@@ -130,6 +128,22 @@ test.describe('layers', () => {
     await rowOf(page, 'Type your text').getByRole('button', { name: 'Send backward', exact: true }).click();
     await expect.poll(() => types(page)).toEqual(['textbox', 'rect']);
     await s.undo();
+    await expect.poll(() => types(page)).toEqual(['rect', 'textbox']);
+    await s.clean();
+  });
+
+  // Hiding a layer was no undo step either: Ctrl+Z took the text added
+  // before it and left the layer hidden.
+  test('Hide is one undo step: Ctrl+Z shows the layer again and keeps the text', async ({ page }) => {
+    const s = await studio(page);
+    await s.addShape(/Rectangle/i, 'rect');
+    await s.tool('Text').click();
+    await expect.poll(() => types(page)).toEqual(['rect', 'textbox']);
+    await s.layers();
+    await rowOf(page, 'Rect').getByRole('button', { name: 'Hide', exact: true }).click();
+    await expect(rowOf(page, 'Rect').getByRole('button', { name: 'Show', exact: true })).toBeVisible();
+    await s.undo();
+    await expect(rowOf(page, 'Rect').getByRole('button', { name: 'Hide', exact: true })).toBeVisible();
     await expect.poll(() => types(page)).toEqual(['rect', 'textbox']);
     await s.clean();
   });
