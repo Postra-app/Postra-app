@@ -130,3 +130,31 @@ describe('agent post cap passed to createPost', () => {
     expect((await tool.postCap('org-1', new Date(0).toISOString())).anchor).toEqual(createdAt);
   });
 });
+
+// 2026-11-20: a Facebook post scheduled through the MCP had no `post_type` in
+// its settings (optional in FacebookDto, so the tool saved it as given). When
+// it failed and was retried in the web editor, the editor's empty select sent
+// '' and validation refused it ("post_type must be one of the following
+// values: post, story") until "Post" was picked by hand.
+import { withDefaultSettings } from './integration.schedule.post';
+
+describe('settings the agent leaves out', () => {
+  it.each(['facebook', 'instagram', 'instagram-standalone'])(
+    '%s gets post_type "post"',
+    (provider) => {
+      expect(withDefaultSettings(provider, {})).toEqual({ post_type: 'post' });
+    }
+  );
+
+  it('keeps a post_type the agent chose', () => {
+    expect(withDefaultSettings('facebook', { post_type: 'story' })).toEqual({ post_type: 'story' });
+    expect(withDefaultSettings('instagram', { post_type: 'story', is_trial_reel: false })).toEqual({
+      post_type: 'story',
+      is_trial_reel: false,
+    });
+  });
+
+  it('adds nothing for other platforms', () => {
+    expect(withDefaultSettings('x', { who_can_reply_post: 'everyone' })).toEqual({ who_can_reply_post: 'everyone' });
+  });
+});

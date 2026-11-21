@@ -20,6 +20,21 @@ import {
 } from '@gitroom/helpers/utils/valid.url.path';
 
 const validUrlExtension = new ValidUrlExtension();
+
+// Settings the editor needs but the agent may leave out. `post_type` is
+// optional in FacebookDto, so a Facebook post scheduled here was saved
+// without it, and retrying it in the web editor failed validation until
+// "Post" was picked by hand (2026-11-20). A value the agent passes wins.
+const DEFAULT_SETTINGS: Record<string, Record<string, unknown>> = {
+  facebook: { post_type: 'post' },
+  instagram: { post_type: 'post' },
+  'instagram-standalone': { post_type: 'post' },
+};
+
+export const withDefaultSettings = <T extends object>(
+  provider: string,
+  settings: T
+): T => ({ ...(DEFAULT_SETTINGS[provider] || {}), ...settings } as T);
 const validUrlPath = new ValidUrlPath();
 
 // Same URL validation as MediaDto (valid.url.path) - each attachment must
@@ -219,12 +234,15 @@ If the tools return errors, you would need to rerun it with the right parameters
 
           // Same server-side validation as the dashboard / public API
           // (settings DTO + media checkValidity + empty / too-long content).
-          const settings = platform.settings.reduce(
-            (acc: AllProvidersSettings, s: { key: string; value: any }) => ({
-              ...acc,
-              [s.key]: s.value,
-            }),
-            {} as AllProvidersSettings
+          const settings = withDefaultSettings(
+            integrations[platform.integrationId]?.providerIdentifier || '',
+            platform.settings.reduce(
+              (acc: AllProvidersSettings, s: { key: string; value: any }) => ({
+                ...acc,
+                [s.key]: s.value,
+              }),
+              {} as AllProvidersSettings
+            )
           );
 
           const [validation] = await this._postsService.validatePosts(
@@ -292,17 +310,20 @@ If the tools return errors, you would need to rerun it with the right parameters
                   {
                     integration,
                     group: makeId(10),
-                    settings: post.settings.reduce(
-                      (
-                        acc: AllProvidersSettings,
-                        s: { key: string; value: any }
-                      ) => ({
-                        ...acc,
-                        [s.key]: s.value,
-                      }),
-                      {
-                        __type: integration.providerIdentifier,
-                      } as AllProvidersSettings
+                    settings: withDefaultSettings(
+                      integration.providerIdentifier,
+                      post.settings.reduce(
+                        (
+                          acc: AllProvidersSettings,
+                          s: { key: string; value: any }
+                        ) => ({
+                          ...acc,
+                          [s.key]: s.value,
+                        }),
+                        {
+                          __type: integration.providerIdentifier,
+                        } as AllProvidersSettings
+                      )
                     ),
                     value: post.postsAndComments.map((p: any) => ({
                       content: sanitizePostContent(p.content),
