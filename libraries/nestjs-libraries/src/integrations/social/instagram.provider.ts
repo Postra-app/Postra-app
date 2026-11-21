@@ -171,7 +171,10 @@ export class InstagramProvider
       return {
         type: 'refresh-token' as const,
         value:
-          'You session has been invalidated, this can usually happen from frequent posting, please re-authenticate, and wait 1-2 days before posting again',
+          // Customer text (Krzysztof approves). Meta ends the session when the
+          // password changes or access is removed (20 Nov: a Facebook password
+          // change); the old text blamed frequent posting and asked to wait.
+          'Your Instagram session has ended, usually because the account password was changed or access to the app was removed. Please reconnect the channel.',
       };
     }
 
