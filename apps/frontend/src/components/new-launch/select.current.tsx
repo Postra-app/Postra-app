@@ -52,6 +52,7 @@ export function useHasScroll(ref: RefObject<HTMLElement | null>): boolean {
 }
 
 export const SelectCurrent: FC = () => {
+  const t = useT();
   const modals = useDecisionModal();
   const existingData = useExistingData();
   const {
@@ -107,7 +108,12 @@ export const SelectCurrent: FC = () => {
           {/* An existing post opens on its channels, without the global
               mode (each channel of it is a post of its own). */}
           {!existingData.integration && (
-            <div
+            // A button, like the channel tabs after it: the keyboard could
+            // reach every tab but this one.
+            <button
+              type="button"
+              aria-label={t('composer_tab_all_channels', 'Text for all channels')}
+              aria-pressed={current === 'global'}
               onClick={() => {
                 setHide(true);
                 setCurrent('global');
@@ -122,7 +128,7 @@ export const SelectCurrent: FC = () => {
               <div>
                 <GlobalIcon />
               </div>
-            </div>
+            </button>
           )}
           {selectedIntegrations.map(({ integration }) => (
             // A button: switching between the channels of a post has to work

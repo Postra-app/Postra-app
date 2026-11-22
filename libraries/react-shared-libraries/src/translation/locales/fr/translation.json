@@ -2003,5 +2003,18 @@
   "activate_sign_in_subtitle": "Connectez-vous avec le mot de passe choisi lors de l'inscription pour finir d'activer votre compte.",
   "activate_password_required": "Saisissez votre mot de passe.",
   "activate_choose_new_password": "Je ne me suis pas inscrit ou j'ai oublié mon mot de passe",
-  "activation_check_spam": "Vous ne le trouvez pas ? Vérifiez votre dossier spam ou courrier indésirable."
+  "activation_check_spam": "Vous ne le trouvez pas ? Vérifiez votre dossier spam ou courrier indésirable.",
+  "assistant_failed": "Je n'ai pas pu répondre pour l'instant - réessayez dans un moment.",
+  "assistant_undo": "Annuler",
+  "assistant_new_chat": "Nouvelle discussion",
+  "assistant_close": "Fermer l'assistant",
+  "assistant_open": "Ouvrir l'assistant IA",
+  "assistant_use_in_post": "Utiliser dans la publication",
+  "assistant_use_thread": "Utiliser comme fil",
+  "assistant_chars": "{{n}} caractères",
+  "assistant_writing": "Rédaction…",
+  "assistant_input_label": "Message à l'assistant",
+  "assistant_placeholder": "Écrivez une publication sur…",
+  "assistant_send": "Envoyer",
+  "composer_tab_all_channels": "Texte pour tous les canaux"
 }

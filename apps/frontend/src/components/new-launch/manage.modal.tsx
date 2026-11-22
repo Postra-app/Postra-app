@@ -42,6 +42,8 @@ import { isUSCitizen } from '@gitroom/frontend/components/launches/helpers/isusc
 import { capitalize } from 'lodash';
 import { SelectCustomer } from '@gitroom/frontend/components/launches/select.customer';
 import { DummyCodeComponent } from '@gitroom/frontend/components/new-launch/dummy.code.component';
+import { ComposerChat } from '@gitroom/frontend/components/new-launch/composer-chat';
+import { useVariables } from '@gitroom/react/helpers/variable.context';
 import { CreationMethodBadge } from '@gitroom/frontend/components/launches/creation.method.badge';
 import {
   SettingsIcon,
@@ -76,6 +78,7 @@ export const ManageModal: FC<AddEditModalProps> = (props) => {
   const { data: shortlinkPreferenceData } = useShortlinkPreference();
 
   const { addEditSets, mutate, customClose, dummy } = props;
+  const { disableComposerChat } = useVariables();
 
   const {
     selectedIntegrations,
@@ -1332,6 +1335,7 @@ export const ManageModal: FC<AddEditModalProps> = (props) => {
           </div>
         </div>
       </div>
+      {!dummy && !disableComposerChat && <ComposerChat />}
     </div>
   );
 };

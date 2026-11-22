@@ -1,0 +1,96 @@
+import { aiPlainText, aiTextToHtml } from '@gitroom/frontend/components/new-launch/ai-text.utils';
+
+export interface ChatMessage {
+  id: string;
+  role: 'user' | 'assistant';
+  content: string;
+  /** What the assistant wrote for the post, when it wrote something. */
+  posts?: string[];
+  /** The posts are parts of one thread rather than variants to pick from. */
+  thread?: boolean;
+  /** Something went wrong; shown in the chat, never sent back to the model. */
+  error?: boolean;
+}
+
+export interface ComposerValue {
+  id: string;
+  content: string;
+  delay: number;
+  media: { id: string; path: string; thumbnail?: string }[];
+}
+
+// Same caps as AiChatDto: past them the server answers 400 for the whole
+// conversation, so the oldest turns go first.
+export const CHAT_MAX_MESSAGES = 20;
+export const CHAT_MAX_MESSAGE = 6000;
+export const CHAT_MAX_POSTS = 10;
+export const CHAT_MAX_POST = 5000;
+
+/**
+ * The conversation as the model should read it: its own drafts included, so
+ * "make the second one shorter" has something to point at, and none of the
+ * failures the user saw in between.
+ */
+export const chatPayload = (
+  messages: ChatMessage[],
+  composer: ComposerValue[],
+  platform?: string
+) => {
+  const turns = messages
+    .filter((message) => !message.error)
+    .map((message) => ({
+      role: message.role,
+      content: [message.content, ...(message.posts ?? [])]
+        .filter(Boolean)
+        .join('\n\n')
+        .slice(0, CHAT_MAX_MESSAGE),
+    }))
+    .filter((turn) => turn.content);
+
+  // The window has to open on something the user said.
+  let recent = turns.slice(-CHAT_MAX_MESSAGES);
+  while (recent.length && recent[0].role !== 'user') recent = recent.slice(1);
+
+  return {
+    messages: recent,
+    posts: composer
+      .slice(0, CHAT_MAX_POSTS)
+      .map((post) => aiPlainText(post?.content ?? '').slice(0, CHAT_MAX_POST)),
+    ...(platform ? { platform } : {}),
+  };
+};
+
+const blank = (id: string): ComposerValue => ({
+  id,
+  content: '',
+  delay: 0,
+  media: [],
+});
+
+/**
+ * One draft into the composer: the first post's text changes, its media, its
+ * delay and every post after it stay as they are.
+ */
+export const putPost = (
+  composer: ComposerValue[],
+  text: string,
+  makeId: () => string
+): ComposerValue[] => {
+  const [first, ...rest] = composer.length ? composer : [blank(makeId())];
+  return [{ ...first, content: aiTextToHtml(text) }, ...rest];
+};
+
+/**
+ * A thread replaces the thread. Media and delays stay with their position;
+ * posts beyond the new length go, which is why the caller keeps what was
+ * there for Undo.
+ */
+export const putThread = (
+  composer: ComposerValue[],
+  texts: string[],
+  makeId: () => string
+): ComposerValue[] =>
+  texts.map((text, index) => ({
+    ...(composer[index] ?? blank(makeId())),
+    content: aiTextToHtml(text),
+  }));

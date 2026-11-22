@@ -23,6 +23,7 @@ const AI_ROUTES = [
   "/:id/alt-text",
   "/suggest-hashtags",
   "/ai-edit",
+  "/ai-chat",
   "/search-templates",
   // Photo retouch: a vision model decides the adjustments.
   "/:id/retouch",
