@@ -1821,6 +1821,8 @@
   "delete_account": "Eliminar cuenta",
   "billing_headline_start": "Crea un mes de contenido",
   "billing_headline_end": "en una tarde",
+  "billing_welcome_video_title": "Postra en 2 minutos",
+  "billing_welcome_video_watch": "Ver el recorrido",
   "billing_already_subscribed": "Tu suscripción ya está configurada. Recarga la página dentro de unos segundos para ver tu plan.",
   "billing_checkout_failed": "No se pudo cargar el formulario de pago. Recarga la página o escribe a hello@postra.co.uk si sigue pasando.",
   "billing_stripe_load_failed": "No se pudo cargar el formulario de pago. Desactiva los bloqueadores de anuncios o las extensiones de privacidad para esta página y recárgala.",
