@@ -59,6 +59,7 @@ import { deleteDialog } from '@gitroom/react/helpers/delete.dialog';
 import { useVariables } from '@gitroom/react/helpers/variable.context';
 import copy from 'copy-to-clipboard';
 import { readResponseError } from '@gitroom/helpers/utils/response.error';
+import { isLinkedinPagesNotice } from '@gitroom/nestjs-libraries/integrations/linkedin-pages.limits';
 import { stripHtmlValidation } from '@gitroom/helpers/utils/strip.html.validation';
 import {
   fromUtc,
@@ -883,8 +884,9 @@ export const CalendarColumn: FC<{
         // the tile stayed at the new time while the post kept the old one
         // and went out then. Every failure puts the tile back.
         let status: number;
+        let moved: Response;
         try {
-          ({ status } = await fetch(`/posts/${item.id}/date`, {
+          moved = await fetch(`/posts/${item.id}/date`, {
             method: 'PUT',
             body: JSON.stringify({
               date: target.utc().format('YYYY-MM-DDTHH:mm:ss'),
@@ -894,7 +896,8 @@ export const CalendarColumn: FC<{
               // queued posts.
               ...(action === 'schedule' ? { republish: true } : {}),
             }),
-          }));
+          });
+          status = moved.status;
         } catch (e) {
           revertDate(item.id, move);
           reloadCalendarView();
@@ -914,6 +917,12 @@ export const CalendarColumn: FC<{
         if (status >= 400) {
           revertDate(item.id, move);
           reloadCalendarView();
+          // A day already taken on a LinkedIn Page: the tile goes back, and
+          // the customer is told why instead of seeing it jump silently.
+          const reason = await readResponseError(moved).catch((): string => '');
+          if (isLinkedinPagesNotice(reason)) {
+            toaster.show(reason, 'warning');
+          }
           return;
         }
         if (status !== 500) {

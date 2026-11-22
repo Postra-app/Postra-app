@@ -46,6 +46,56 @@ export class PostsRepository {
     private _prismaTransaction: PrismaTransaction
   ) {}
 
+  /** Which of these channels of the organisation are LinkedIn Pages. */
+  async linkedinPagesAmong(
+    tx: Prisma.TransactionClient,
+    orgId: string,
+    integrationIds: string[]
+  ): Promise<string[]> {
+    if (!integrationIds.length) return [];
+    const rows = await tx.integration.findMany({
+      where: {
+        organizationId: orgId,
+        id: { in: integrationIds },
+        providerIdentifier: 'linkedin-page',
+      },
+      select: { id: true },
+    });
+    return rows.map((r) => r.id);
+  }
+
+  // Taken before the day's posts of a LinkedIn Page are counted, so two
+  // saves at once cannot both find the day free.
+  async lockLinkedinPage(tx: Prisma.TransactionClient, integrationId: string) {
+    // ::text — Prisma cannot read the void pg_advisory_xact_lock returns.
+    await tx.$queryRaw`SELECT pg_advisory_xact_lock(hashtext(${`linkedin-page:${integrationId}`})::bigint)::text`;
+  }
+
+  /**
+   * Posts (not comments) waiting or published on a channel in [start, end),
+   * other than `exclude` (the ones being saved or moved).
+   */
+  countChannelPostsBetween(
+    tx: Prisma.TransactionClient,
+    orgId: string,
+    integrationId: string,
+    start: Date,
+    end: Date,
+    exclude: string[]
+  ) {
+    return tx.post.count({
+      where: {
+        organizationId: orgId,
+        integrationId,
+        deletedAt: null,
+        parentPostId: null,
+        state: { in: ['QUEUE', 'PUBLISHED'] },
+        publishDate: { gte: start, lt: end },
+        ...(exclude.length ? { id: { notIn: exclude } } : {}),
+      },
+    });
+  }
+
   async getRecentPostBodies(orgId: string, take: number): Promise<string[]> {
     const rows = await this._post.model.post.findMany({
       where: {

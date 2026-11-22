@@ -21,16 +21,3 @@ describe('hidden providers', () => {
     }
   });
 });
-
-// LinkedIn Pages wait for LinkedIn's Standard Tier. In preview a super admin
-// and the reviewers' organisation can connect one; offering it to customers
-// is a separate decision (enabledProviders).
-describe('preview providers', () => {
-  const list = (name: string) =>
-    manager.slice(manager.indexOf(`const ${name} = new Set`)).split(']);')[0];
-
-  it('LinkedIn Pages are in preview and not offered to customers', () => {
-    expect(list('previewProviders')).toMatch(/^\s*'linkedin-page',/m);
-    expect(list('enabledProviders')).not.toMatch(/^\s*'linkedin-page',/m);
-  });
-});

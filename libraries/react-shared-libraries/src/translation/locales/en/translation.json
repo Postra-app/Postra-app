@@ -2117,15 +2117,15 @@
   "help_ch_x_composer_2": "\"Made with AI\" and \"Paid partnership\" flags.",
   "help_ch_x_composer_3": "Click \"Add post in a thread\" to build a thread; each follow-up post can have its own Delay (1 min - 2 h or a custom gap). Optional thread finisher.",
   "help_ch_x_composer_4": "Character limit: 280 (4,000 if your X account has Premium).",
-  "help_ch_linkedin_step_0": "This channel is your personal profile - posts are published under your own name. Posting as a company page (\"LinkedIn Page\") is coming soon.",
+  "help_ch_linkedin_step_0": "This channel is your personal profile - posts are published under your own name. To post as a company, connect a LinkedIn Page channel (Business plan, early access).",
   "help_ch_linkedin_step_1": "Click \"Add Channel\", pick LinkedIn and sign in.",
   "help_ch_linkedin_step_2": "Approve the requested permissions.",
-  "help_ch_linkedin_gotcha_0": "Personal profile and company page are two separate channels in Postra. Company pages are coming soon; a page you connected earlier keeps working alongside your profile.",
+  "help_ch_linkedin_gotcha_0": "Personal profile and company page are two separate channels in Postra: LinkedIn for your profile, LinkedIn Page for a company page.",
   "help_ch_linkedin_composer_0": "\"Post as images carousel\": turns 2+ attached images into a carousel document (you name the slide deck).",
   "help_ch_linkedin_composer_1": "First comments: click \"Add comment\" - text only on LinkedIn. You can add several, each with its own Delay (1 min - 2 h or a custom gap).",
   "help_ch_linkedin_composer_2": "Character limit: 3,000.",
   "help_ch_linkedin_page_step_0": "This channel is a company (business) page - posts are published as the company, not under your name.",
-  "help_ch_linkedin_page_step_1": "Coming soon: new LinkedIn Page connections open once LinkedIn approves our full API access. Pages you have already connected keep working.",
+  "help_ch_linkedin_page_step_1": "Early access on the Business plan: up to 5 Pages per workspace and one post a day on each Page.",
   "help_ch_linkedin_page_step_2": "Click \"Add Channel\", pick LinkedIn Page and sign in with the personal account that administers the page.",
   "help_ch_linkedin_page_step_3": "After approving, choose the company page you want to publish to from the list.",
   "help_ch_linkedin_page_gotcha_0": "You need to be an administrator of the company page - if the list is empty, ask the page owner to make you an admin on LinkedIn.",
@@ -2416,5 +2416,7 @@
   "assistant_input_label": "Message to the assistant",
   "assistant_placeholder": "Write a post about…",
   "assistant_send": "Send",
-  "composer_tab_all_channels": "Text for all channels"
+  "composer_tab_all_channels": "Text for all channels",
+  "help_ch_linkedin_page_gotcha_1": "A second post on the same day (UTC) for one Page is refused when you schedule it; drafts do not count.",
+  "early_access": "Early access"
 }

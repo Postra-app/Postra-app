@@ -2117,15 +2117,15 @@
   "help_ch_x_composer_2": "Oznaczenia \"Utworzone przez AI\" i \"Płatna współpraca\".",
   "help_ch_x_composer_3": "Kliknij \"Dodaj post w wątku\", żeby zbudować wątek; każdy kolejny post może mieć własne Opóźnienie (od 1 min do 2 h albo własny odstęp). Opcjonalny thread finisher.",
   "help_ch_x_composer_4": "Limit znaków: 280 (4000, jeśli Twoje konto X ma Premium).",
-  "help_ch_linkedin_step_0": "Ten kanał to Twój profil osobisty - posty ukazują się pod Twoim imieniem i nazwiskiem. Publikowanie jako strona firmowa (\"LinkedIn Page\") będzie dostępne wkrótce.",
+  "help_ch_linkedin_step_0": "Ten kanał to Twój profil osobisty - posty ukazują się pod Twoim imieniem i nazwiskiem. Aby publikować jako firma, podłącz kanał LinkedIn Page (plan Business, wczesny dostęp).",
   "help_ch_linkedin_step_1": "Kliknij \"Dodaj kanał\", wybierz LinkedIn i zaloguj się.",
   "help_ch_linkedin_step_2": "Zatwierdź wymagane uprawnienia.",
-  "help_ch_linkedin_gotcha_0": "Profil osobisty i strona firmowa to w Postrze dwa osobne kanały. Strony firmowe będą dostępne wkrótce; strona podłączona wcześniej działa dalej obok Twojego profilu.",
+  "help_ch_linkedin_gotcha_0": "Profil osobisty i strona firmowa to w Postrze dwa osobne kanały: LinkedIn dla Twojego profilu, LinkedIn Page dla strony firmowej.",
   "help_ch_linkedin_composer_0": "\"Karuzela publikowania jako obrazy\": zamienia 2 lub więcej załączonych obrazów w dokument-karuzelę (nazwę prezentacji nadajesz Ty).",
   "help_ch_linkedin_composer_1": "Pierwsze komentarze: kliknij \"Dodaj komentarz\" - na LinkedInie tylko tekst. Możesz dodać kilka, każdy z własnym Opóźnieniem (od 1 min do 2 h albo własny odstęp).",
   "help_ch_linkedin_composer_2": "Limit znaków: 3000.",
   "help_ch_linkedin_page_step_0": "Ten kanał to strona firmowa - posty ukazują się w imieniu firmy, nie pod Twoim nazwiskiem.",
-  "help_ch_linkedin_page_step_1": "Wkrótce: nowe połączenia ze stronami LinkedIn otworzą się, gdy LinkedIn zatwierdzi nasz pełny dostęp do API. Strony podłączone wcześniej działają dalej.",
+  "help_ch_linkedin_page_step_1": "Wczesny dostęp w planie Business: do 5 stron na przestrzeń roboczą i jeden post dziennie na każdej stronie.",
   "help_ch_linkedin_page_step_2": "Kliknij \"Dodaj kanał\", wybierz LinkedIn Page i zaloguj się kontem osobistym, które administruje stroną.",
   "help_ch_linkedin_page_step_3": "Po zatwierdzeniu wybierz z listy stronę firmową, na której chcesz publikować.",
   "help_ch_linkedin_page_gotcha_0": "Musisz być administratorem strony firmowej - jeśli lista jest pusta, poproś właściciela strony, żeby nadał Ci uprawnienia administratora na LinkedInie.",
@@ -2416,5 +2416,7 @@
   "assistant_input_label": "Wiadomość do asystenta",
   "assistant_placeholder": "Napisz post o…",
   "assistant_send": "Wyślij",
-  "composer_tab_all_channels": "Tekst dla wszystkich kanałów"
+  "composer_tab_all_channels": "Tekst dla wszystkich kanałów",
+  "help_ch_linkedin_page_gotcha_1": "Drugi post tego samego dnia (UTC) na jednej stronie zostanie odrzucony przy planowaniu; szkice się nie liczą.",
+  "early_access": "Wczesny dostęp"
 }

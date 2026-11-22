@@ -10,9 +10,7 @@ export interface PricingInnerInterface {
   // (integrations.controller.getIntegrationUrl) and on downgrade
   // (subscription.service.modifySubscription). Edit this list to move a
   // platform between tiers. NOTE: a platform must ALSO be in
-  // integration.manager `enabledProviders` to appear in the picker — e.g.
-  // `linkedin-page` is listed for PRO here but shows "Coming soon" until it is
-  // enabled globally.
+  // integration.manager `enabledProviders` to appear in the picker.
   allowedProviders: string[];
   posts_per_month: number;
   // Team seat allowance INCLUDING the owner. 1 = solo (owner only, cannot
@@ -52,9 +50,9 @@ export interface PricingInterface {
 // a Facebook Page and without one: one platform, two logins.
 // Pinterest is there too: visual small businesses live on it
 // and every rival offers it on its cheapest plan. Pro adds video and text-first
-// platforms, LinkedIn Pages (post as the company) and Google Business Profile; X (our X API volume is
-// capped), Discord, Slack and WordPress stay Business-only, so Business is
-// every platform.
+// platforms and Google Business Profile; X (our X API volume is capped),
+// LinkedIn Pages (early access within LinkedIn's API budget), Discord, Slack
+// and WordPress stay Business-only, so Business is every platform.
 const STARTER_PROVIDERS = [
   'facebook',
   'instagram',
@@ -67,7 +65,6 @@ const PRO_PROVIDERS = [
   ...STARTER_PROVIDERS,
   'youtube',
   'threads',
-  'linkedin-page',
   'bluesky',
   'mastodon',
   'telegram',
@@ -77,6 +74,9 @@ const PRO_PROVIDERS = [
 ];
 const BUSINESS_PROVIDERS = [
   ...PRO_PROVIDERS,
+  // LinkedIn Pages: early access within LinkedIn's daily API budget
+  // (linkedin-pages.limits.ts), so Business only for now.
+  'linkedin-page',
   'x',
   'discord',
   'slack',

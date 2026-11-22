@@ -105,6 +105,7 @@ export const cameFromInvitePage = (req: Request) => {
   );
 };
 
+import { LINKEDIN_PAGE } from '@gitroom/nestjs-libraries/integrations/linkedin-pages.limits';
 @ApiTags('Integrations')
 @Controller('/integrations')
 export class NoAuthIntegrationsController {
@@ -435,6 +436,14 @@ export class NoAuthIntegrationsController {
       );
     }
 
+    // LinkedIn Pages in early access: a cap per workspace and across Postra.
+    if (!refresh && integration === LINKEDIN_PAGE) {
+      const refused = await this._integrationService.linkedinPageRefusal(org.id);
+      if (refused) {
+        throw new HttpException(refused, 403);
+      }
+    }
+
     const onboarding = await ioRedis.get(`onboarding:${body.state}`);
     if (onboarding) {
       await ioRedis.del(`onboarding:${body.state}`);
@@ -611,6 +620,12 @@ export class NoAuthIntegrationsController {
         ? `channels-enable:${org.id}`
         : null;
     let capHeld = false;
+    // LinkedIn Pages in early access: the caps are checked and the Page saved
+    // behind one lock for all of Postra, so two connections at once cannot
+    // both take the last place.
+    const pagesLock =
+      !refresh && integration === LINKEDIN_PAGE ? 'linkedin-pages-connect' : null;
+    let pagesHeld = false;
     let createUpdate: Awaited<
       ReturnType<IntegrationService['createOrUpdateIntegration']>
     >;
@@ -623,6 +638,29 @@ export class NoAuthIntegrationsController {
           );
         }
         capHeld = true;
+      }
+      if (pagesLock) {
+        if ((await ioRedis.set(pagesLock, '1', 'EX', 30, 'NX')) !== 'OK') {
+          throw new HttpException(
+            'Another channel is being connected. Please try again.',
+            409
+          );
+        }
+        pagesHeld = true;
+        if (
+          !(await this._integrationService.hasChannel(
+            org.id,
+            integration,
+            String(id)
+          ))
+        ) {
+          const refused = await this._integrationService.linkedinPageRefusal(
+            org.id
+          );
+          if (refused) {
+            throw new HttpException(refused, 403);
+          }
+        }
       }
 
       if (!refresh) {
@@ -709,6 +747,9 @@ export class NoAuthIntegrationsController {
           grantedScopes
         );
     } finally {
+      if (pagesLock && pagesHeld) {
+        await ioRedis.del(pagesLock).catch((): undefined => undefined);
+      }
       if (capLock && capHeld) {
         await ioRedis.del(capLock).catch((): undefined => undefined);
       }

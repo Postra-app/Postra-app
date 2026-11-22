@@ -38,11 +38,12 @@ describe('Help channel cards', () => {
       </UserContext.Provider>
     );
 
-  it('a customer gets no card for a platform still coming', () => {
+  it('a customer gets the LinkedIn Page card, in early access and not coming soon', () => {
     const html = render(false);
     expect(html).toContain('id="channel-linkedin"');
-    expect(html).not.toContain('id="channel-linkedin-page"');
-    expect(html).not.toMatch(/Coming soon: new LinkedIn Page connections/);
+    expect(html).toContain('id="channel-linkedin-page"');
+    expect(html).toContain('Early access on the Business plan');
+    expect(html).not.toMatch(/Coming soon|coming soon/);
   });
 
   it('a super admin still gets it', () => {

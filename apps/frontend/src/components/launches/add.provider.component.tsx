@@ -964,6 +964,14 @@ export const AddProviderComponent: FC<{
                         {t('coming_soon_short', 'Soon')}
                       </div>
                     )}
+                    {/* Offered within limits (one post a day, 5 Pages). */}
+                    {isEnabled &&
+                      item.identifier === 'linkedin-page' &&
+                      !isMobile && (
+                        <div className="text-[10px] text-[#38bdf8] mt-[2px] font-[600]">
+                          {t('early_access', 'Early access')}
+                        </div>
+                      )}
                     {/* A preview organisation (a platform reviewer) sees the
                         tile as a customer will, without the admin note. */}
                     {previewOnly && !!user?.isSuperAdmin && !isMobile && (

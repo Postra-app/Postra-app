@@ -45,8 +45,8 @@ describe('pricing matrix', () => {
   it('gives Business a slot for every platform a customer can connect today', () => {
     // Instagram counts once: through a Page and without one is the same
     // account, which cannot be connected twice (same.account.ts). LinkedIn
-    // Pages is in the allowlist but still "Coming soon" (integration.manager
-    // enabledProviders): when it opens, Business gets its 16th slot.
+    // Pages are in early access with a cap of their own
+    // (linkedin-pages.limits.ts), so they are not counted here.
     const comingSoon = new Set(['linkedin-page']);
     const platforms = new Set(
       pricing.ULTIMATE.allowedProviders.filter((p) => !comingSoon.has(p)).map(platformOf)
@@ -72,7 +72,6 @@ describe('pricing matrix', () => {
       'pinterest',
       'youtube',
       'threads',
-      'linkedin-page',
       'bluesky',
       'mastodon',
       'telegram',
@@ -87,11 +86,11 @@ describe('pricing matrix', () => {
       'pinterest',
       'youtube',
       'threads',
-      'linkedin-page',
       'bluesky',
       'mastodon',
       'telegram',
       'gmb',
+      'linkedin-page',
       'x',
       'discord',
       'slack',
@@ -140,9 +139,10 @@ describe('pricing matrix', () => {
     }
   });
 
-  it('keeps company LinkedIn Pages out of Starter (Pro upgrade lever)', () => {
+  it('keeps company LinkedIn Pages on Business only while they are in early access', () => {
     expect(pricing.STANDARD.allowedProviders).not.toContain('linkedin-page');
-    expect(pricing.PRO.allowedProviders).toContain('linkedin-page');
+    expect(pricing.PRO.allowedProviders).not.toContain('linkedin-page');
+    expect(pricing.ULTIMATE.allowedProviders).toContain('linkedin-page');
   });
 
   it('keeps FREE inert - trials run on paid tiers, not on FREE', () => {

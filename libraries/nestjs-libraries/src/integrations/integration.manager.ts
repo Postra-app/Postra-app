@@ -82,12 +82,10 @@ const enabledProviders = new Set([
   // `instagram`, so one account cannot be both (same.account.ts).
   'instagram-standalone',
   'linkedin',
-  // 'linkedin-page' shows as "Coming soon" until LinkedIn moves the
-  // "Postra Pages" app from Community Management Development Tier to
-  // Standard: Development Tier caps the whole app at 500 API calls a day, and
-  // the upgrade has sat at stage 1 of 3 since 2026-07-28. Pages connected
-  // before this keep working and can be reconnected; new connections are
-  // refused (isOffered), except in preview (previewProviders below).
+  // LinkedIn Pages in early access, Business only: the app is still on
+  // LinkedIn's Development Tier (500 API calls a day for the whole app), so
+  // connections and posts are capped in linkedin-pages.limits.ts.
+  'linkedin-page',
   'tiktok',
   'youtube',
   'bluesky',
@@ -120,12 +118,7 @@ const enabledProviders = new Set([
 // on production to test them and to record the review video. Move one to
 // enabledProviders once it is approved and proven.
 const previewProviders = new Set<string>([
-  // LinkedIn Pages: the app is on LinkedIn's Community Management
-  // Development Tier, whose documentation limits API calls but not who may
-  // authorise. In preview a Page admin who is not a developer of the app can
-  // connect and post through an administrator or reviewer login, while
-  // customers still see "Coming soon".
-  'linkedin-page',
+  // None today.
 ]);
 
 // Organisations that get the preview platforms the way a super admin does,

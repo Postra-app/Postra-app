@@ -101,6 +101,12 @@ export const MAX_POSTS_PER_REQUEST = 50;
 export const MAX_ITEMS_PER_POST = 100;
 export const MAX_MEDIA_PER_ITEM = 20;
 
+import {
+  LINKEDIN_PAGE_POSTS_PER_DAY,
+  LINKEDIN_PAGES_LIMITS_MESSAGE,
+  LINKEDIN_PAGES_NO_REPEAT_MESSAGE,
+  linkedinPageDay,
+} from '@gitroom/nestjs-libraries/integrations/linkedin-pages.limits';
 @Injectable()
 export class PostsService {
   private readonly _logger = new Logger(PostsService.name);
@@ -1385,6 +1391,62 @@ export class PostsService {
     }
   }
 
+  // LinkedIn Pages in early access: one post a day on each Page (UTC day),
+  // so every customer stays inside LinkedIn's daily API budget. Checked in
+  // the save's transaction behind a lock of the Page. Drafts do not count,
+  // the posts being saved do not count against themselves, and two posts for
+  // one Page in the same request count together. A repeating post would go
+  // out again on later days, past this check, so a Page takes none.
+  private async refuseSecondLinkedinPagePost(
+    tx: Prisma.TransactionClient,
+    orgId: string,
+    body: CreatePostDto,
+    editedIds: string[],
+    now: string
+  ) {
+    const wanted = (body.posts || []).filter(
+      (post) => saveTypeOfPost(body, post) !== 'draft' && post.integration?.id
+    );
+    const pages = (
+      await this._postRepository.linkedinPagesAmong(
+        tx,
+        orgId,
+        [...new Set(wanted.map((post) => post.integration.id))]
+      )
+    ).sort();
+    if (!pages.length) return;
+    if (body.inter && +body.inter >= 1) {
+      throw new BadRequestException(LINKEDIN_PAGES_NO_REPEAT_MESSAGE);
+    }
+    for (const page of pages) {
+      await this._postRepository.lockLinkedinPage(tx, page);
+    }
+    const inRequest = new Map<string, number>();
+    for (const post of wanted) {
+      const page = post.integration.id;
+      if (!pages.includes(page)) continue;
+      const when = new Date(
+        saveTypeOfPost(body, post) === 'now' ? now : post.date || body.date
+      );
+      const [start, end] = linkedinPageDay(when);
+      const key = `${page}:${start.toISOString()}`;
+      const taken =
+        (inRequest.get(key) || 0) +
+        (await this._postRepository.countChannelPostsBetween(
+          tx,
+          orgId,
+          page,
+          start,
+          end,
+          editedIds
+        ));
+      if (taken >= LINKEDIN_PAGE_POSTS_PER_DAY) {
+        throw new BadRequestException(LINKEDIN_PAGES_LIMITS_MESSAGE);
+      }
+      inRequest.set(key, (inRequest.get(key) || 0) + 1);
+    }
+  }
+
   async createPost(
     orgId: string,
     body: CreatePostDto,
@@ -1484,6 +1546,7 @@ export class PostsService {
           postsReleasedBy(body)
         );
       }
+      await this.refuseSecondLinkedinPagePost(tx, orgId, body, editedIds, now);
       await this._postRepository.lockForSave(tx, orgId, editedIds, versions);
 
       // The channels of one save share a batch, so opening one of them in the
@@ -1658,6 +1721,33 @@ export class PostsService {
           ))
         ) {
           throw postCapException();
+        }
+      }
+      // LinkedIn Pages in early access: a move onto a day the Page already
+      // has a post for is refused like a second save would be.
+      if (
+        getPostById.integration?.providerIdentifier === 'linkedin-page' &&
+        !getPostById.parentPostId
+      ) {
+        await this._postRepository.lockLinkedinPage(
+          tx,
+          getPostById.integrationId
+        );
+        state =
+          (await this._postRepository.getPostState(tx, orgId, id)) || state;
+        if (state !== 'DRAFT' && (state !== 'ERROR' || action === 'schedule')) {
+          const [start, end] = linkedinPageDay(dayjs(date).toDate());
+          const taken = await this._postRepository.countChannelPostsBetween(
+            tx,
+            orgId,
+            getPostById.integrationId,
+            start,
+            end,
+            [id]
+          );
+          if (taken >= LINKEDIN_PAGE_POSTS_PER_DAY) {
+            throw new BadRequestException(LINKEDIN_PAGES_LIMITS_MESSAGE);
+          }
         }
       }
       return this._postRepository.changeDate(

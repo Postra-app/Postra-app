@@ -36,9 +36,9 @@ test('a customer sees only the platforms on offer, no "Soon" tile', async ({ pag
     const tile = await openPicker(page);
     await expect(page.getByText('1 of 6 social accounts connected · Pro', { exact: true })).toBeVisible();
     await expect(tile('Soon')).toHaveCount(0);
-    for (const name of ['Lemmy', 'LinkedIn Page']) {
-      await expect(tile(name), name).toHaveCount(0);
-    }
+    await expect(tile('Lemmy')).toHaveCount(0);
+    // LinkedIn Page is offered on Business: on Pro it shows behind the upgrade.
+    await expect(tile('LinkedIn Page')).toContainText('Business');
     // On Pro: connectable, not a preview.
     await expect(tile('Google Business Profile')).toBeVisible();
     await expect(tile('Google Business Profile')).not.toContainText('Preview');
@@ -66,10 +66,9 @@ test('on Starter, Google Business Profile shows behind the Pro upgrade', async (
     await expect(tile('Google Business Profile')).toContainText('Pro');
     await expect(tile('Soon')).toHaveCount(0);
     await expect(tile('Lemmy')).toHaveCount(0);
-    // LinkedIn Page is in preview: the reviewers' organisation sees it as a
-    // customer will, without the administrator's note.
-    await expect(tile('LinkedIn Page')).toBeVisible();
-    await expect(tile('LinkedIn Page')).not.toContainText('Preview');
+    // LinkedIn Page is offered on Business only, in early access.
+    await expect(tile('LinkedIn Page')).toContainText('Business');
+    await expect(tile('LinkedIn Page')).toContainText('Early access');
   } finally {
     await reviewer.remove();
     await prisma.$disconnect();
@@ -99,7 +98,8 @@ test('a super admin sees every tile, "Soon" ones included', async ({ page }) => 
 
     const tile = await openPicker(page);
     await expect(tile('Lemmy')).toContainText('Soon');
-    await expect(tile('LinkedIn Page')).toContainText('Preview, admin only');
+    await expect(tile('LinkedIn Page')).toContainText('Early access');
+    await expect(tile('LinkedIn Page')).not.toContainText('Soon');
     await expect(tile('Google Business Profile')).not.toContainText('Soon');
   } finally {
     await staff.remove();

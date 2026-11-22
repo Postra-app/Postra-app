@@ -249,12 +249,12 @@ const CHANNEL_SOURCE: ChannelGuide[] = [
     name: 'LinkedIn',
     connectType: 'oauth',
     steps: [
-      'This channel is your personal profile - posts are published under your own name. Posting as a company page ("LinkedIn Page") is coming soon.',
+      'This channel is your personal profile - posts are published under your own name. To post as a company, connect a LinkedIn Page channel (Business plan, early access).',
       'Click "Add Channel", pick LinkedIn and sign in.',
       'Approve the requested permissions.',
     ],
     gotchas: [
-      'Personal profile and company page are two separate channels in Postra. Company pages are coming soon; a page you connected earlier keeps working alongside your profile.',
+      'Personal profile and company page are two separate channels in Postra: LinkedIn for your profile, LinkedIn Page for a company page.',
     ],
     composer: [
       '"Post as images carousel": turns 2+ attached images into a carousel document (you name the slide deck).',
@@ -268,12 +268,13 @@ const CHANNEL_SOURCE: ChannelGuide[] = [
     connectType: 'oauth',
     steps: [
       'This channel is a company (business) page - posts are published as the company, not under your name.',
-      'Coming soon: new LinkedIn Page connections open once LinkedIn approves our full API access. Pages you have already connected keep working.',
+      'Early access on the Business plan: up to 5 Pages per workspace and one post a day on each Page.',
       'Click "Add Channel", pick LinkedIn Page and sign in with the personal account that administers the page.',
       'After approving, choose the company page you want to publish to from the list.',
     ],
     gotchas: [
       "You need to be an administrator of the company page - if the list is empty, ask the page owner to make you an admin on LinkedIn.",
+      'A second post on the same day (UTC) for one Page is refused when you schedule it; drafts do not count.',
     ],
     composer: [
       'Same options as LinkedIn: images carousel, first comments (text only, several allowed, each with its own Delay), 3,000-character limit.',
