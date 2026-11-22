@@ -95,8 +95,11 @@ describe('the conversation survives a reload and nothing else', () => {
   });
 
   it('is one conversation per person and organisation', () => {
-    expect(chatStorageKey('u1', 'o1')).not.toBe(chatStorageKey('u1', 'o2'));
-    expect(chatStorageKey('u1', 'o1')).not.toBe(chatStorageKey('u2', 'o1'));
+    expect(chatStorageKey('u1', 'o1', 'new')).not.toBe(chatStorageKey('u1', 'o2', 'new'));
+    expect(chatStorageKey('u1', 'o1', 'new')).not.toBe(chatStorageKey('u2', 'o1', 'new'));
+    // Another post has its own key, so opening it cannot clear this one's chat.
+    expect(chatStorageKey('u1', 'o1', 'group-a')).not.toBe(chatStorageKey('u1', 'o1', 'group-b'));
+    expect(chatStorageKey('u1', 'o1', 'group-a')).not.toBe(chatStorageKey('u1', 'o1', 'new'));
   });
 
   it("another post does not get this post's conversation", () => {

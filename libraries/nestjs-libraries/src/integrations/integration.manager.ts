@@ -120,12 +120,11 @@ const enabledProviders = new Set([
 // on production to test them and to record the review video. Move one to
 // enabledProviders once it is approved and proven.
 const previewProviders = new Set<string>([
-  // LinkedIn Pages (2026-11-22): the "Postra Pages" app is still on the
-  // Community Management Development Tier. Its documentation limits API calls
-  // and says nothing about who may authorise, so the open question is whether
-  // a Page admin who is not a developer of our app can connect and post. The
-  // preview lets us answer that on production with a test LinkedIn account
-  // before any customer sees the tile as anything but "Coming soon".
+  // LinkedIn Pages: the app is on LinkedIn's Community Management
+  // Development Tier, whose documentation limits API calls but not who may
+  // authorise. In preview a Page admin who is not a developer of the app can
+  // connect and post through an administrator or reviewer login, while
+  // customers still see "Coming soon".
   'linkedin-page',
 ]);
 

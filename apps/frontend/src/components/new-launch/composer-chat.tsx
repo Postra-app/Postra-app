@@ -76,8 +76,8 @@ export const ComposerChat: FC = () => {
   // drafts with it; dropped when the composer closes (composer-chat.utils).
   const user = useUser();
   const existing = useExistingData();
-  const storageKey = chatStorageKey(user?.id ?? '', user?.orgId ?? '');
   const scope = existing?.group || 'new';
+  const storageKey = chatStorageKey(user?.id ?? '', user?.orgId ?? '', scope);
   const storage = () => {
     try {
       return window.sessionStorage;

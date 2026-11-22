@@ -42,7 +42,7 @@ describe('the production image', () => {
 
   // The base image is a snapshot of Debian from the day it was built. Without
   // an upgrade the image shipped zlib and glibc older than the security
-  // updates Debian had already published (registry scan, 2026-11-22).
+  // updates Debian had already published.
   it("takes Debian's published updates before installing anything", () => {
     const first = dockerfile.indexOf('apt-get');
     const firstRun = dockerfile.slice(first, dockerfile.indexOf('rm -rf /var/lib/apt/lists', first));

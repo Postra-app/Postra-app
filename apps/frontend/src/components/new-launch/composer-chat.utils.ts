@@ -87,8 +87,10 @@ export const sameComposer = (a: ComposerValue[], b: ComposerValue[]) =>
 export const CHAT_KEPT_FOR_MS = 2 * 60 * 60 * 1000;
 
 /** One conversation per person, organisation and post ('new' for a new one). */
-export const chatStorageKey = (userId: string, orgId: string) =>
-  `postra:composer-chat:${userId}:${orgId}`;
+// The post is part of the key: opening another post first (an empty chat
+// there) must not wipe the conversation kept for this one.
+export const chatStorageKey = (userId: string, orgId: string, scope: string) =>
+  `postra:composer-chat:${userId}:${orgId}:${scope}`;
 
 export const keepChat = (
   messages: ChatMessage[],

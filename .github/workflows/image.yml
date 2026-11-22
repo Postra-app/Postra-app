@@ -59,11 +59,10 @@ jobs:
 
       # The attestation is written to a public transparency log and read back.
       # That read sometimes answers 404 for a minute ("error fetching tlog
-      # entry"), and one such answer failed the whole job: the image was in
-      # the registry, unsigned, and nothing could be deployed until someone
-      # re-ran the build by hand (2026-11-22, twice in a row). So it is tried
-      # three times, a minute and then two apart. Only the last attempt can
-      # fail the job; the deploy still verifies the attestation.
+      # entry"), and one such answer would fail the whole job, leaving the
+      # image in the registry unsigned and undeployable. So it is tried three
+      # times, a minute and then two apart. Only the last attempt can fail the
+      # job; the deploy still verifies the attestation.
       - name: Attest build provenance
         id: attest1
         continue-on-error: true
