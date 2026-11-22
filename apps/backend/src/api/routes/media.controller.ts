@@ -66,6 +66,7 @@ import {
 } from '@gitroom/nestjs-libraries/media/unsplash';
 import {
   BrandVoiceCheckDto,
+  AiChatDto,
   AiEditTextDto,
   SuggestHashtagsDto,
   RefineDesignDto,
@@ -713,6 +714,16 @@ export class MediaController {
   @UseGuards(AccountAgeGuard)
   aiEdit(@GetOrgFromRequest() org: Organization, @Body() body: AiEditTextDto) {
     return this._mediaService.aiEditText(org, body);
+  }
+
+  // The chat in the composer. Same gates as the ribbon next to it; a
+  // conversation is several calls, so the window is a little wider.
+  @Post('/ai-chat')
+  @CheckPolicies([AuthorizationActions.Create, Sections.AI])
+  @Throttle({ default: { ttl: 300000, limit: 40 } })
+  @UseGuards(AccountAgeGuard)
+  aiChat(@GetOrgFromRequest() org: Organization, @Body() body: AiChatDto) {
+    return this._mediaService.aiChat(org, body);
   }
 
   @Post('/search-templates')

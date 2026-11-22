@@ -2003,5 +2003,18 @@
   "activate_sign_in_subtitle": "Inicia sesión con la contraseña que elegiste al registrarte para terminar de activar tu cuenta.",
   "activate_password_required": "Introduce tu contraseña.",
   "activate_choose_new_password": "No me registré o he olvidado mi contraseña",
-  "activation_check_spam": "¿No lo encuentras? Revisa tu carpeta de spam o correo no deseado."
+  "activation_check_spam": "¿No lo encuentras? Revisa tu carpeta de spam o correo no deseado.",
+  "assistant_failed": "No he podido responder ahora - inténtalo de nuevo en un momento.",
+  "assistant_undo": "Deshacer",
+  "assistant_new_chat": "Nuevo chat",
+  "assistant_close": "Cerrar el asistente",
+  "assistant_open": "Abrir el asistente de IA",
+  "assistant_use_in_post": "Usar en la publicación",
+  "assistant_use_thread": "Usar como hilo",
+  "assistant_chars": "{{n}} caracteres",
+  "assistant_writing": "Escribiendo…",
+  "assistant_input_label": "Mensaje para el asistente",
+  "assistant_placeholder": "Escribe una publicación sobre…",
+  "assistant_send": "Enviar",
+  "composer_tab_all_channels": "Texto para todos los canales"
 }

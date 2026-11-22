@@ -2403,5 +2403,18 @@
   "tiktok_comments_done_title": "First comment is on",
   "tiktok_comments_done_text": "Posts you publish to this TikTok channel can now have a first comment. TikTok shows it once the post is public.",
   "tiktok_comments_failed_title": "First comment was not turned on",
-  "comments_not_enabled_explanation": "First comment is not turned on for these channels. Open the channel menu and choose \"Enable first comment\". The post itself will go out as scheduled."
+  "comments_not_enabled_explanation": "First comment is not turned on for these channels. Open the channel menu and choose \"Enable first comment\". The post itself will go out as scheduled.",
+  "assistant_failed": "I could not answer just now - try again in a moment.",
+  "assistant_undo": "Undo",
+  "assistant_new_chat": "New chat",
+  "assistant_close": "Close the assistant",
+  "assistant_open": "Open the AI assistant",
+  "assistant_use_in_post": "Use in post",
+  "assistant_use_thread": "Use as thread",
+  "assistant_chars": "{{n}} characters",
+  "assistant_writing": "Writing…",
+  "assistant_input_label": "Message to the assistant",
+  "assistant_placeholder": "Write a post about…",
+  "assistant_send": "Send",
+  "composer_tab_all_channels": "Text for all channels"
 }

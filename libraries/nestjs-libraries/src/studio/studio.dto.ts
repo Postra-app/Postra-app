@@ -1,5 +1,6 @@
 import {
   ArrayMaxSize,
+  ArrayMinSize,
   IsArray,
   IsDefined,
   IsIn,
@@ -91,6 +92,45 @@ export class AiEditTextDto {
   @IsString()
   @IsIn(AI_EDIT_LANGUAGES as unknown as string[])
   language?: string;
+}
+
+export const AI_CHAT_ROLES = ['user', 'assistant'] as const;
+
+export class AiChatMessageDto {
+  @IsString()
+  @IsDefined()
+  @IsIn(AI_CHAT_ROLES as unknown as string[])
+  role: 'user' | 'assistant';
+
+  @IsString()
+  @IsDefined()
+  @MinLength(1)
+  @MaxLength(6000)
+  content: string;
+}
+
+// The composer's chat. The browser keeps the conversation and sends it whole,
+// so the caps here are what bounds one call: 20 turns, 10 posts.
+export class AiChatDto {
+  @IsArray()
+  @ArrayMinSize(1)
+  @ArrayMaxSize(20)
+  @ValidateNested({ each: true })
+  @Type(() => AiChatMessageDto)
+  messages: AiChatMessageDto[];
+
+  // What the composer holds right now, one entry per post of the thread.
+  @IsArray()
+  @IsOptional()
+  @ArrayMaxSize(10)
+  @IsString({ each: true })
+  @MaxLength(5000, { each: true })
+  posts?: string[];
+
+  @IsString()
+  @IsOptional()
+  @MaxLength(50)
+  platform?: string;
 }
 
 // Studio persistence. Both bodies were previously typed as inline object

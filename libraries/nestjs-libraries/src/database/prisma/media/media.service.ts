@@ -53,6 +53,7 @@ import {
 import { templateCorpus } from '@gitroom/nestjs-libraries/studio/template-corpus';
 import {
   BrandVoiceCheckDto,
+  AiChatDto,
   AiEditTextDto,
   SuggestHashtagsDto,
   RefineDesignDto,
@@ -1650,6 +1651,23 @@ export class MediaService {
         action: body.action,
         platform: body.platform,
         language: body.language,
+        tone: brandKit?.tone,
+      },
+      org.id
+    );
+  }
+
+  async aiChat(
+    org: Organization,
+    body: AiChatDto
+  ): Promise<{ reply: string; posts: string[] | null; thread: boolean }> {
+    const brandKit = await this._brandKitService.getNormalized(org.id);
+
+    return this._studioAi.composeChat(
+      {
+        messages: body.messages,
+        posts: body.posts,
+        platform: body.platform,
         tone: brandKit?.tone,
       },
       org.id

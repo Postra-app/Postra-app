@@ -2003,5 +2003,18 @@
   "activate_sign_in_subtitle": "Melde dich mit dem Passwort an, das du bei der Registrierung gewählt hast, um die Aktivierung abzuschließen.",
   "activate_password_required": "Gib dein Passwort ein.",
   "activate_choose_new_password": "Ich habe mich nicht registriert oder mein Passwort vergessen",
-  "activation_check_spam": "Nicht gefunden? Sieh in deinem Spam- oder Junk-Ordner nach."
+  "activation_check_spam": "Nicht gefunden? Sieh in deinem Spam- oder Junk-Ordner nach.",
+  "assistant_failed": "Ich konnte gerade nicht antworten - versuche es gleich noch einmal.",
+  "assistant_undo": "Rückgängig",
+  "assistant_new_chat": "Neuer Chat",
+  "assistant_close": "Assistenten schließen",
+  "assistant_open": "KI-Assistenten öffnen",
+  "assistant_use_in_post": "Im Beitrag verwenden",
+  "assistant_use_thread": "Als Thread verwenden",
+  "assistant_chars": "{{n}} Zeichen",
+  "assistant_writing": "Schreibe…",
+  "assistant_input_label": "Nachricht an den Assistenten",
+  "assistant_placeholder": "Schreibe einen Beitrag über…",
+  "assistant_send": "Senden",
+  "composer_tab_all_channels": "Text für alle Kanäle"
 }

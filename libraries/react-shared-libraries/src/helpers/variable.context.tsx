@@ -39,6 +39,9 @@ interface VariableContextInterface {
   googleAdsId?: string;
   googleAdsTrialTracking?: string;
   disableRegistration?: boolean;
+  // The assistant in the corner of the composer; a way to switch it off
+  // without a release.
+  disableComposerChat?: boolean;
 }
 const VariableContext = createContext({
   stripeClient: '',
@@ -68,6 +71,7 @@ const VariableContext = createContext({
   sentryDsn: '',
   extensionId: '',
   disableRegistration: false,
+  disableComposerChat: false,
 } as VariableContextInterface);
 export const VariableContextComponent: FC<
   VariableContextInterface & {

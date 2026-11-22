@@ -16,6 +16,12 @@
 //   POST /v1/images/generations a 1x1 PNG as b64_json, like gpt-image; a
 //                               prompt containing "stack-refuse" is refused
 //                               the way the safety filter refuses
+//                               the composer chat (schema "composeChat")
+//                               answers by what the conversation contains:
+//                               "stack-chat-thread" a two-part thread,
+//                               "stack-chat-variants" two variants,
+//                               "stack-chat-question" a reply and no post,
+//                               "stack-chat-markup" a post full of HTML
 //   POST /__fail                the next completion answers 500
 //   POST /__outage {"match": t, "on": bool}
 //                               every /v1 call whose body contains t answers
@@ -43,6 +49,13 @@ import { createServer } from 'node:http';
 
 const PORT = Number(process.env.FAKE_OPENAI_PORT || 58090);
 export const TEXT = 'Stack AI answer.';
+export const CHAT_MARKUP = '<script>window.__chatXss=1</script> Tom & Co <b>bold</b>';
+const CHAT_ANSWERS = [
+  ['stack-chat-thread', { reply: 'A thread in two parts.', posts: ['Thread part one.', 'Thread part two.'], thread: true }],
+  ['stack-chat-variants', { reply: 'Two options.', posts: ['Variant A text.', 'Variant B text.'], thread: false }],
+  ['stack-chat-question', { reply: 'Which channel is it for?', posts: null, thread: false }],
+  ['stack-chat-markup', { reply: 'Here it is.', posts: [CHAT_MARKUP], thread: false }],
+];
 const requests = [];
 // Raw /v1 bodies, for /__seen.
 const bodies = [];
@@ -138,7 +151,11 @@ createServer((req, res) => {
         return json(res, 500, { error: { message: 'The server had an error', type: 'server_error' } });
       }
       const schema = body.response_format?.json_schema?.schema;
-      const content = schema ? JSON.stringify(instanceOf(schema)) : TEXT;
+      const chat =
+        body.response_format?.json_schema?.name === 'composeChat' &&
+        // the last thing the user said decides, not the history
+        CHAT_ANSWERS.find(([marker]) => String(body.messages?.at(-1)?.content ?? '').includes(marker))?.[1];
+      const content = chat ? JSON.stringify(chat) : schema ? JSON.stringify(instanceOf(schema)) : TEXT;
       const usage = { prompt_tokens: 11, completion_tokens: 7, total_tokens: 18 };
 
       if (body.stream) {

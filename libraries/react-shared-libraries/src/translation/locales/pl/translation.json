@@ -2403,5 +2403,18 @@
   "tiktok_comments_done_title": "Pierwszy komentarz jest włączony",
   "tiktok_comments_done_text": "Posty publikowane na tym kanale TikTok mogą teraz mieć pierwszy komentarz. TikTok pokaże go, gdy post będzie publiczny.",
   "tiktok_comments_failed_title": "Pierwszy komentarz nie został włączony",
-  "comments_not_enabled_explanation": "Pierwszy komentarz nie jest włączony dla tych kanałów. Otwórz menu kanału i wybierz „Włącz pierwszy komentarz”. Sam post wyjdzie zgodnie z planem."
+  "comments_not_enabled_explanation": "Pierwszy komentarz nie jest włączony dla tych kanałów. Otwórz menu kanału i wybierz „Włącz pierwszy komentarz”. Sam post wyjdzie zgodnie z planem.",
+  "assistant_failed": "Nie udało mi się teraz odpowiedzieć - spróbuj za chwilę.",
+  "assistant_undo": "Cofnij",
+  "assistant_new_chat": "Nowa rozmowa",
+  "assistant_close": "Zamknij asystenta",
+  "assistant_open": "Otwórz asystenta AI",
+  "assistant_use_in_post": "Użyj w poście",
+  "assistant_use_thread": "Użyj jako wątek",
+  "assistant_chars": "{{n}} znaków",
+  "assistant_writing": "Piszę…",
+  "assistant_input_label": "Wiadomość do asystenta",
+  "assistant_placeholder": "Napisz post o…",
+  "assistant_send": "Wyślij",
+  "composer_tab_all_channels": "Tekst dla wszystkich kanałów"
 }
