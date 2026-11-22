@@ -8,6 +8,13 @@ export default {
   testEnvironment: 'node',
   setupFiles: ['<rootDir>/jest.env.js'],
   clearMocks: true,
+  // A worker keeps every module it has loaded, so over the 500-odd suites
+  // each one grows to several GB: three workers peaked at 14.9 GB together,
+  // and on the 16 GB CI runner the machine stalled - the job hit its 30 min
+  // limit twice on 2026-11-22 with no log, past the Test step's own 10 min
+  // limit. A worker over 1 GB is replaced after its current suite: measured
+  // locally with three workers, 5.0 GB at the peak and 61 s instead of 88 s.
+  workerIdleMemoryLimit: '1GB',
   // Mirror the @gitroom/* path aliases from tsconfig.base.json so specs can
   // import source files that use them.
   moduleNameMapper: {
