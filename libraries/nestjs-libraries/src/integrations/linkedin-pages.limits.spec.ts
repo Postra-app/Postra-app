@@ -41,6 +41,22 @@ describe('LinkedIn Pages early access', () => {
     expect(next.toISOString()).toBe('2026-11-24T00:00:00.000Z');
   });
 
+  it('checks the caps and the daily limit behind a lock, and covers moves and repeats', () => {
+    const read = (file: string) => readFileSync(join(__dirname, file), 'utf8');
+    const service = read('../database/prisma/posts/posts.service.ts');
+    const save = service.slice(service.indexOf('  async createPost('));
+    // inside the save's transaction, before the rows are locked
+    expect(save.indexOf('this.refuseSecondLinkedinPagePost(tx,')).toBeGreaterThan(0);
+    expect(save.indexOf('this.refuseSecondLinkedinPagePost(tx,')).toBeLessThan(
+      save.indexOf('this._postRepository.lockForSave(tx,')
+    );
+    const move = service.slice(service.indexOf('  async changeDate('));
+    expect(move).toMatch(/lockLinkedinPage\([\s\S]{0,400}countChannelPostsBetween/);
+    expect(service).toContain('LINKEDIN_PAGES_NO_REPEAT_MESSAGE');
+    const callback = read('../../../../apps/backend/src/api/routes/no.auth.integrations.controller.ts');
+    expect(callback).toMatch(/linkedin-pages-connect[\s\S]{0,2500}linkedinPageRefusal/);
+  });
+
   it('is offered on Business only', () => {
     expect(pricing.ULTIMATE.allowedProviders).toContain('linkedin-page');
     expect(pricing.TEAM.allowedProviders).toContain('linkedin-page');

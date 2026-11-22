@@ -250,6 +250,46 @@ test('LinkedIn Pages: one post a day on each Page, drafts and other Pages not co
       },
     });
     expect(edit.status(), await edit.text()).toBe(201);
+
+    // Dragging the next day's post onto a day the Page already has one for
+    // is refused; onto a free day it moves.
+    const nextDay = await prisma.post.findFirstOrThrow({
+      where: { integrationId: pages[0], state: 'QUEUE', publishDate: { gte: new Date(day.getTime() + 20 * 3_600_000) } },
+    });
+    const moved = await org.api.put(`/posts/${nextDay.id}/date`, { data: { date: at(7), action: 'update' } });
+    expect(moved.status(), await moved.text()).toBe(400);
+    expect(await moved.text()).toContain('one post a day per Page');
+    expect((await org.api.put(`/posts/${nextDay.id}/date`, { data: { date: at(48), action: 'update' } })).status()).toBe(200);
+
+    // Two posts for one Page and day in a single request count together.
+    const twice = await org.api.post('/posts', {
+      data: {
+        type: 'schedule',
+        shortLink: false,
+        date: at(96),
+        tags: [],
+        posts: [0, 1].map((n) => ({
+          integration: { id: pages[1] },
+          value: [{ content: `twice ${n}`, image: [] }],
+          settings: { __type: 'linkedin-page' },
+        })),
+      },
+    });
+    expect(twice.status(), await twice.text()).toBe(400);
+
+    // A repeating post would go out again on later days: a Page takes none.
+    const repeating = await org.api.post('/posts', {
+      data: {
+        type: 'schedule',
+        shortLink: false,
+        date: at(120),
+        inter: 1,
+        tags: [],
+        posts: [{ integration: { id: pages[1] }, value: [{ content: 'daily', image: [] }], settings: { __type: 'linkedin-page' } }],
+      },
+    });
+    expect(repeating.status(), await repeating.text()).toBe(400);
+    expect(await repeating.text()).toContain('Repeating posts are not available');
   } finally {
     await prisma.post.deleteMany({ where: { organizationId: org.orgId } });
     await prisma.integration.deleteMany({ where: { organizationId: org.orgId } });

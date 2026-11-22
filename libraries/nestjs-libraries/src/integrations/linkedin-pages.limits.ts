@@ -18,6 +18,9 @@ export const LINKEDIN_PAGE_POSTS_PER_DAY = 1;
 export const LINKEDIN_PAGES_LIMITS_MESSAGE =
   'LinkedIn Pages are in early access: one post a day per Page, up to 5 Pages per workspace.';
 
+export const LINKEDIN_PAGES_NO_REPEAT_MESSAGE =
+  'Repeating posts are not available for LinkedIn Pages during early access.';
+
 export const LINKEDIN_PAGES_FULL_MESSAGE =
   'LinkedIn Pages are in early access and all places are taken for now. Please try again later.';
 
