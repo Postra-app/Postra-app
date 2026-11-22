@@ -87,7 +87,7 @@ const enabledProviders = new Set([
   // Standard: Development Tier caps the whole app at 500 API calls a day, and
   // the upgrade has sat at stage 1 of 3 since 2026-07-28. Pages connected
   // before this keep working and can be reconnected; new connections are
-  // refused (isOffered).
+  // refused (isOffered), except in preview (previewProviders below).
   'tiktok',
   'youtube',
   'bluesky',
@@ -120,7 +120,13 @@ const enabledProviders = new Set([
 // on production to test them and to record the review video. Move one to
 // enabledProviders once it is approved and proven.
 const previewProviders = new Set<string>([
-  // None today. Google Business Profile left on 2026-11-17 (API approved).
+  // LinkedIn Pages (2026-11-22): the "Postra Pages" app is still on the
+  // Community Management Development Tier. Its documentation limits API calls
+  // and says nothing about who may authorise, so the open question is whether
+  // a Page admin who is not a developer of our app can connect and post. The
+  // preview lets us answer that on production with a test LinkedIn account
+  // before any customer sees the tile as anything but "Coming soon".
+  'linkedin-page',
 ]);
 
 // Organisations that get the preview platforms the way a super admin does,

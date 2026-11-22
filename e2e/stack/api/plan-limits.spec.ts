@@ -237,8 +237,12 @@ test('Google Business Profile is offered from Pro, and the other platforms keep 
     ).toMatchObject({ enabled: true, name: 'Instagram\n(with Facebook Page)' });
     expect((await customer.api.get(connect('instagram-standalone'))).status()).toBe(200);
 
-    // A platform that is not offered stays closed to a super admin as well.
-    expect((await admin.api.get(connect('linkedin-page'))).status()).toBe(402);
+    // LinkedIn Pages are in preview: a super admin connects one whatever the
+    // plan, a customer on Pro (whose plan lists it) is told it is not here yet.
+    expect((await admin.api.get(connect('linkedin-page'))).status()).toBe(200);
+    const proAnswer = await pro.api.get(connect('linkedin-page'));
+    expect(proAnswer.status(), await proAnswer.text()).toBe(403);
+    expect(await proAnswer.text()).toContain("isn't available yet");
   } finally {
     await customer.remove();
     await pro.remove();
@@ -249,9 +253,10 @@ test('Google Business Profile is offered from Pro, and the other platforms keep 
 
 // Instagram App Review: Meta's reviewer signs in as review@, which must not be
 // a super admin. Its organisation, named in PREVIEW_ORGANIZATIONS, gets the
-// preview platforms the way a super admin does; others do not. The list is
-// empty today, so the reviewer's organisation follows its plan like anyone.
-test('a preview organisation is marked, and with no preview platform it follows its plan', async () => {
+// preview platforms the way a super admin does; others do not. LinkedIn Pages
+// are the one preview platform today; for the rest the reviewer's organisation
+// follows its plan like anyone.
+test('a preview organisation is marked and connects the preview platform, nothing else above its plan', async () => {
   const prisma = database();
   const reviewer = await throwawayOrg(prisma, {
     tier: 'STANDARD',
@@ -268,8 +273,9 @@ test('a preview organisation is marked, and with no preview platform it follows 
     expect((await reviewer.api.get(connect('pinterest'))).status()).toBe(200);
     for (const who of [reviewer, customer]) {
       expect((await who.api.get(connect('gmb'))).status()).toBe(402);
-      expect((await who.api.get(connect('linkedin-page'))).status()).toBe(402);
     }
+    expect((await reviewer.api.get(connect('linkedin-page'))).status()).toBe(200);
+    expect((await customer.api.get(connect('linkedin-page'))).status()).toBe(402);
   } finally {
     await reviewer.remove();
     await customer.remove();
