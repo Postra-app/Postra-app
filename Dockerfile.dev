@@ -26,7 +26,14 @@ ENV SENTRY_PROJECT=$SENTRY_PROJECT
 # and tripped postra-dev-ec2-memory (2026-09-13). pm2 now owns the Node
 # servers themselves (ecosystem.config.cjs), but the walk still has to reach
 # whatever they start (ffmpeg), and `ps` is what diagnosing it needs.
-RUN apt-get update && apt-get install -y --no-install-recommends \
+# `upgrade` first: the base image carries Debian's packages as they were on
+# the day it was built, and `install` only moves the ones the packages below
+# depend on. On 2026-11-22 that left the image with security updates Debian
+# had already published and the registry scan still counted (zlib from
+# stable-security, glibc). Every build now takes the fixes Debian has out for
+# what is already in the image.
+RUN apt-get update && apt-get upgrade -y --no-install-recommends \
+ && apt-get install -y --no-install-recommends \
     g++ \
     make \
     python3-pip \
