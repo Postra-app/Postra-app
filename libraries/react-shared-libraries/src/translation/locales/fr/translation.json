@@ -1821,6 +1821,8 @@
   "delete_account": "Supprimer le compte",
   "billing_headline_start": "Créez un mois de contenu",
   "billing_headline_end": "en un après-midi",
+  "billing_welcome_video_title": "Postra en 2 minutes",
+  "billing_welcome_video_watch": "Voir la visite",
   "billing_already_subscribed": "Votre abonnement est déjà en place. Rechargez la page dans quelques secondes pour voir votre forfait.",
   "billing_checkout_failed": "Le formulaire de paiement n'a pas pu se charger. Rechargez la page, ou écrivez à hello@postra.co.uk si le problème persiste.",
   "billing_stripe_load_failed": "Le formulaire de paiement n'a pas pu se charger. Veuillez désactiver les bloqueurs de publicité ou les extensions de confidentialité pour cette page et la recharger.",

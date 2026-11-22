@@ -1821,6 +1821,8 @@
   "delete_account": "Konto löschen",
   "billing_headline_start": "Erstellen Sie die Inhalte für einen Monat",
   "billing_headline_end": "an einem Nachmittag",
+  "billing_welcome_video_title": "Postra in 2 Minuten",
+  "billing_welcome_video_watch": "Rundgang ansehen",
   "billing_already_subscribed": "Ihr Abonnement ist bereits eingerichtet. Laden Sie die Seite in ein paar Sekunden neu, um Ihren Tarif zu sehen.",
   "billing_checkout_failed": "Das Zahlungsformular konnte nicht geladen werden. Laden Sie die Seite neu oder schreiben Sie an hello@postra.co.uk, falls es weiterhin passiert.",
   "billing_stripe_load_failed": "Das Zahlungsformular konnte nicht geladen werden. Bitte deaktivieren Sie Werbeblocker oder Datenschutz-Erweiterungen für diese Seite und laden Sie sie neu.",

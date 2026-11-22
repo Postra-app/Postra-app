@@ -1835,6 +1835,8 @@
   "delete_account": "Delete account",
   "billing_headline_start": "Create a month of content",
   "billing_headline_end": "in one afternoon",
+  "billing_welcome_video_title": "Postra in 2 minutes",
+  "billing_welcome_video_watch": "Watch the tour",
   "billing_already_subscribed": "Your subscription is already set up. Reload the page in a few seconds to see your plan.",
   "billing_checkout_failed": "The payment form could not be loaded. Reload the page, or email hello@postra.co.uk if it keeps happening.",
   "billing_stripe_load_failed": "The payment form could not be loaded. Please disable ad blockers or privacy extensions for this page and reload.",

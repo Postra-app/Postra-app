@@ -1835,6 +1835,8 @@
   "delete_account": "Usuń konto",
   "billing_headline_start": "Przygotuj treści na cały miesiąc",
   "billing_headline_end": "w jedno popołudnie",
+  "billing_welcome_video_title": "Postra w 2 minuty",
+  "billing_welcome_video_watch": "Obejrzyj prezentację",
   "billing_already_subscribed": "Subskrypcja jest już ustawiona. Odśwież stronę za kilka sekund, aby zobaczyć swój plan.",
   "billing_checkout_failed": "Nie udało się wczytać formularza płatności. Odśwież stronę albo napisz na hello@postra.co.uk, jeśli to się powtarza.",
   "billing_stripe_load_failed": "Nie udało się wczytać formularza płatności. Wyłącz blokery reklam lub rozszerzenia prywatności dla tej strony i odśwież ją.",

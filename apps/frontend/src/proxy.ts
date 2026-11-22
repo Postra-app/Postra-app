@@ -77,7 +77,11 @@ export async function proxy(request: NextRequest) {
     // extension escape only covers a top-level `<name>.<ext>`, so this
     // nested path reached the gate and a signed-out browser got 307 /auth
     // for an SVG (measured after the deploy).
-    nextUrl.pathname.startsWith('/flags/')
+    nextUrl.pathname.startsWith('/flags/') ||
+    // The tour film and its poster on the plan page (public/welcome): the
+    // same nested-path case, and a film is fetched in ranges, each of which
+    // would otherwise pass the whole gate.
+    nextUrl.pathname.startsWith('/welcome/')
   ) {
     return topResponse;
   }
