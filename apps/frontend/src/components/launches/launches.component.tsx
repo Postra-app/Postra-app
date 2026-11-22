@@ -29,6 +29,11 @@ import { useIntegrationList } from '@gitroom/frontend/components/launches/helper
 import useCookie from 'react-use-cookie';
 import { Onboarding } from '@gitroom/frontend/components/onboarding/onboarding';
 import { useReconnectChannel } from '@gitroom/frontend/components/launches/helpers/use.reconnect.channel';
+import {
+  clearPendingPostMedia,
+  pendingPostMedia,
+  stashPendingPostMedia,
+} from '@gitroom/frontend/components/launches/pending.post.media';
 
 export const SVGLine = () => {
   return (
@@ -489,6 +494,30 @@ export const LaunchesComponent = () => {
       window.close();
     }
   }, []);
+  // "Use in Post" from Studio with no channel connected: there is no post
+  // editor to open yet, so the design waits and the calendar says so.
+  const newPostMedia = search.get('newPostMedia');
+  const [designWaiting, setDesignWaiting] = useState(false);
+  useEffect(() => {
+    if (isLoading) {
+      return;
+    }
+    if (sortedIntegrations.length > 0) {
+      setDesignWaiting(false);
+      return;
+    }
+    if (newPostMedia) {
+      stashPendingPostMedia(user?.orgId, newPostMedia);
+    }
+    setDesignWaiting(!!(newPostMedia || pendingPostMedia(user?.orgId)));
+  }, [isLoading, sortedIntegrations.length, newPostMedia, user?.orgId]);
+  const forgetDesign = useCallback(() => {
+    clearPendingPostMedia();
+    setDesignWaiting(false);
+    if (newPostMedia) {
+      router.replace('/launches');
+    }
+  }, [newPostMedia]);
   if (isLoading || reload) {
     return <CalendarSkeleton />;
   }
@@ -595,9 +624,55 @@ export const LaunchesComponent = () => {
           </div>
         </div>
         <div className="launches-main-panel flex-1 phone:ms-0 ms-[16px] flex-col flex p-[20px] gap-[14px] rounded-[20px] border border-white/10 bg-[linear-gradient(180deg,rgba(15,23,42,0.76),rgba(10,14,26,0.9))] backdrop-blur-xl">
-          {sortedIntegrations?.length > 0 && (
-            <div className="md:hidden flex">
-              <NewPost />
+          {/* The channel column is hidden on a phone, and with it went the
+              only Add Channel button: a new account opened the calendar on
+              a phone and could neither connect a channel nor start a post. */}
+          <div
+            className="md:hidden flex flex-col gap-[10px]"
+            data-testid="phone-calendar-actions"
+          >
+            {sortedIntegrations.length === 0 && (
+              <div className="flex flex-col gap-[4px] text-center">
+                <div className="font-[600] text-[18px]">
+                  {t('no_channels', 'No channels yet')}
+                </div>
+                <div className="text-[14px] text-textColor/70">
+                  {t('connect_your_accounts')}
+                </div>
+              </div>
+            )}
+            <AddProviderButton update={() => update(true)} />
+            {sortedIntegrations.length > 0 && (
+              <div className="flex">
+                <NewPost />
+              </div>
+            )}
+          </div>
+          {designWaiting && (
+            <div
+              role="status"
+              data-testid="design-waiting"
+              className="flex flex-wrap items-center gap-[10px] rounded-[14px] border border-sky-300/30 bg-sky-400/10 px-[14px] py-[12px] text-[14px]"
+            >
+              <div className="flex-1 min-w-[200px]">
+                <span className="font-[600]">
+                  {t(
+                    'design_waiting_title',
+                    'Your design is saved in Media.'
+                  )}
+                </span>{' '}
+                {t(
+                  'design_waiting_text',
+                  'Add a channel and a new post opens with it.'
+                )}
+              </div>
+              <button
+                type="button"
+                onClick={forgetDesign}
+                className="rounded-[10px] border border-white/10 px-[12px] py-[6px] text-[13px] hover:bg-white/[0.08]"
+              >
+                {t('design_waiting_dismiss', 'Not now')}
+              </button>
             </div>
           )}
           <Filters />

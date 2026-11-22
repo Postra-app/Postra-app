@@ -2418,5 +2418,8 @@
   "assistant_send": "Wyślij",
   "composer_tab_all_channels": "Tekst dla wszystkich kanałów",
   "help_ch_linkedin_page_gotcha_1": "Drugi post tego samego dnia (UTC) na jednej stronie zostanie odrzucony przy planowaniu; szkice się nie liczą.",
-  "early_access": "Wczesny dostęp"
+  "early_access": "Wczesny dostęp",
+  "design_waiting_title": "Projekt jest zapisany w Mediach.",
+  "design_waiting_text": "Dodaj kanał, a nowy post otworzy się z nim.",
+  "design_waiting_dismiss": "Nie teraz"
 }

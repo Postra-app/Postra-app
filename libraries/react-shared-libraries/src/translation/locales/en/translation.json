@@ -2418,5 +2418,8 @@
   "assistant_send": "Send",
   "composer_tab_all_channels": "Text for all channels",
   "help_ch_linkedin_page_gotcha_1": "A second post on the same day (UTC) for one Page is refused when you schedule it; drafts do not count.",
-  "early_access": "Early access"
+  "early_access": "Early access",
+  "design_waiting_title": "Your design is saved in Media.",
+  "design_waiting_text": "Add a channel and a new post opens with it.",
+  "design_waiting_dismiss": "Not now"
 }
