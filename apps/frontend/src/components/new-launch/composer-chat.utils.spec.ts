@@ -4,6 +4,7 @@ import {
   chatPayload,
   putPost,
   putThread,
+  sameComposer,
 } from './composer-chat.utils';
 
 const post = (id: string, content: string, media: ComposerValue['media'] = []): ComposerValue => ({
@@ -50,6 +51,28 @@ describe('putting a draft from the chat into the composer', () => {
     expect(after).toHaveLength(2);
     expect(after[0].id).toBe('a');
     expect(after[1]).toMatchObject({ content: '<p>Two</p>', delay: 0, media: [] });
+  });
+});
+
+// Undo put the saved posts back whatever had happened since: a sentence typed
+// after "Use in post", or a picture added, went with it.
+describe('Undo is offered only while the post is still what the chat wrote', () => {
+  const written = putPost([post('a', '<p>old</p>', picture)], 'Hello\nthere', makeId);
+
+  it('the editor handing the same words back in its own markup changes nothing', () => {
+    expect(sameComposer(written, [{ ...written[0], content: '<p>Hello</p><p>there</p>' }])).toBe(true);
+    expect(sameComposer(written, [{ ...written[0], content: '<p dir="auto">Hello</p><p dir="auto">there</p>' }])).toBe(true);
+  });
+
+  it.each([
+    ['a typed word', [{ ...written[0], content: '<p>Hello</p><p>there you</p>' }]],
+    ['a picture added', [{ ...written[0], media: [...picture, { id: 'm2', path: '/b.png' }] }]],
+    ['a picture removed', [{ ...written[0], media: [] }]],
+    ['a delay set', [{ ...written[0], delay: 60 }]],
+    ['a post added', [...written, post('n', '<p>more</p>')]],
+    ['everything deleted', []],
+  ])('%s ends it', (_name, now) => {
+    expect(sameComposer(written, now as ComposerValue[])).toBe(false);
   });
 });
 

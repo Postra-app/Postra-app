@@ -60,6 +60,25 @@ export const chatPayload = (
   };
 };
 
+/**
+ * Whether the composer still holds exactly what the chat put there. Undo is
+ * only honest while it does: after the user has typed, added a picture or a
+ * post, putting the old posts back would throw that work away with it.
+ * Compared as text, because the editor hands the same words back with its own
+ * markup.
+ */
+export const sameComposer = (a: ComposerValue[], b: ComposerValue[]) =>
+  a.length === b.length &&
+  a.every((post, index) => {
+    const other = b[index];
+    return (
+      aiPlainText(post?.content ?? '') === aiPlainText(other?.content ?? '') &&
+      (post?.delay ?? 0) === (other?.delay ?? 0) &&
+      (post?.media ?? []).map((m) => m.id).join() ===
+        (other?.media ?? []).map((m) => m.id).join()
+    );
+  });
+
 const blank = (id: string): ComposerValue => ({
   id,
   content: '',

@@ -24,6 +24,7 @@ import {
   chatPayload,
   putPost,
   putThread,
+  sameComposer,
 } from '@gitroom/frontend/components/new-launch/composer-chat.utils';
 
 // The assistant in the corner of the composer: ask for a post, read the
@@ -40,6 +41,8 @@ interface Used {
   /** 'global', or the channel whose own version was written. */
   target: string;
   before: ComposerValue[];
+  /** What was written; Undo lasts while the post still says this. */
+  after: ComposerValue[];
 }
 
 export const ComposerChat: FC = () => {
@@ -115,11 +118,24 @@ export const ComposerChat: FC = () => {
 
   const apply = useCallback(
     (key: string, value: ComposerValue[]) => {
-      setUsed({ key, target, before: composer });
+      setUsed({ key, target, before: composer, after: value });
       write(target, value);
     },
     [target, composer, write]
   );
+
+  // Undo puts back every post as it was before "Use in post". Once the user
+  // has typed, added a picture or another post, that would take their work
+  // with it, so the offer ends there and the button is "Use in post" again.
+  useEffect(() => {
+    if (!used) return;
+    const now =
+      used.target === 'global'
+        ? global
+        : internal.find((item) => item.integration.id === used.target)
+            ?.integrationValue;
+    if (!sameComposer(used.after, now ?? [])) setUsed(null);
+  }, [used, global, internal]);
 
   const undo = useCallback(() => {
     if (!used) return;
@@ -281,6 +297,8 @@ export const ComposerChat: FC = () => {
                 onClick={() => {
                   abortRef.current?.abort();
                   setMessages([]);
+                  // its button went with the conversation
+                  setUsed(null);
                 }}
                 className="text-[12px] text-newTextColor/60 hover:text-newTextColor transition-colors"
               >

@@ -70,6 +70,23 @@ test('a written post: the draft replaces it, Undo brings the customer\'s own wor
   expect(problems).toEqual([]);
 });
 
+test('after the customer edits the post, Undo is gone and their words stay', async ({ page }) => {
+  await openComposer(page, 'bluesky', TEXT);
+  const chat = await ask(page, 'Make it shorter');
+  const draft = chat.getByTestId('assistant-draft');
+  await draft.getByRole('button', { name: 'Use in post' }).click();
+  await expect(draft.getByRole('button', { name: 'Undo' })).toBeVisible();
+
+  const editor = page.getByRole('textbox').first();
+  await editor.click();
+  await page.keyboard.press('End');
+  await page.keyboard.type(' And my own ending');
+  // Undo would have thrown the ending away with the draft.
+  await expect(draft.getByRole('button', { name: 'Undo' })).toHaveCount(0);
+  await expect(draft.getByRole('button', { name: 'Use in post' })).toBeVisible();
+  await expect(editor).toContainText(`${ANSWER} And my own ending`);
+});
+
 test('a thread from the chat replaces the thread, and Undo restores every post', async ({ page }) => {
   const problems = watchForErrors(page);
   await openComposer(page, 'bluesky', TEXT);
@@ -109,6 +126,19 @@ test('variants are picked one at a time, and Undo goes back to what was there be
   await expect(editor).toContainText('Variant A text.');
   // still one post: a variant is not a second part
   await expect(page.getByRole('dialog', { name: 'Post editor' }).locator('[contenteditable="true"]')).toHaveCount(1);
+});
+
+test('the preview shows typed tags as the characters that will be posted', async ({ page }) => {
+  // Not the chat's doing, found while testing it: the preview treated the
+  // post's text as HTML, so "<b>sale</b>" lost its tags there and a typed
+  // <img onerror> was handed to the parser (the page's policy blocked it).
+  const problems = watchForErrors(page);
+  await openComposer(page, 'bluesky', 'Our <b>sale</b> is on <img src=x onerror="window.__typedXss=1"> at Tom & Co');
+  const preview = page.locator('.preview').first();
+  await expect(preview).toContainText('Our <b>sale</b> is on <img src=x onerror="window.__typedXss=1"> at Tom & Co');
+  await expect(preview.locator('b, img')).toHaveCount(0);
+  expect(await page.evaluate(() => (window as any).__typedXss)).toBeUndefined();
+  expect(problems).toEqual([]);
 });
 
 test('a question back from the assistant has no draft and no button', async ({ page }) => {
