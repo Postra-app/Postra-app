@@ -436,32 +436,31 @@ export const ComposerChat: FC = () => {
             ? t('assistant_close', 'Close the assistant')
             : t('assistant_open', 'Open the AI assistant')
         }
-        className="pointer-events-auto relative w-[56px] h-[56px] phone:w-[44px] phone:h-[44px] rounded-full bg-newAccent text-[#06222e] shadow-xl flex items-center justify-center hover:bg-forth transition-colors"
-      >
-        {!open && (
-          <span
-            aria-hidden
-            className="absolute inset-0 rounded-full bg-newAccent opacity-60 animate-ping motion-reduce:hidden [animation-duration:2.2s]"
-          />
+        className={clsx(
+          'composer-chat-button pointer-events-auto relative w-[56px] h-[56px] phone:w-[46px] phone:h-[46px] rounded-full flex items-center justify-center text-white',
+          open && 'composer-chat-button-open'
         )}
+      >
         <svg
-          className="relative"
-          width="26"
-          height="26"
+          className="relative w-[26px] h-[26px] phone:w-[22px] phone:h-[22px]"
           viewBox="0 0 24 24"
           fill="none"
           stroke="currentColor"
-          strokeWidth="2"
+          strokeWidth="1.8"
           strokeLinecap="round"
           strokeLinejoin="round"
           aria-hidden
         >
           {open ? (
-            <path d="M6 6l12 12M18 6L6 18" />
+            <path d="M6.5 6.5l11 11M17.5 6.5l-11 11" />
           ) : (
             <>
-              <path d="M21 11.5a8.4 8.4 0 0 1-8.5 8.3 8.9 8.9 0 0 1-3.8-.9L3 20.5l1.7-4.9A8.1 8.1 0 0 1 4 11.5 8.4 8.4 0 0 1 12.5 3 8.4 8.4 0 0 1 21 11.5z" />
-              <path d="M12.5 8.2l.9 2.2 2.2.9-2.2.9-.9 2.2-.9-2.2-2.2-.9 2.2-.9z" />
+              <path d="M20.5 11.6a8 8 0 0 1-8.1 7.9 8.6 8.6 0 0 1-3.5-.8L4 20l1.4-4.3a7.7 7.7 0 0 1-1-4.1 8 8 0 0 1 8-7.9 8 8 0 0 1 8.1 7.9z" />
+              <path
+                d="M12.4 7.6l1 2.6 2.6 1-2.6 1-1 2.6-1-2.6-2.6-1 2.6-1z"
+                fill="currentColor"
+                stroke="none"
+              />
             </>
           )}
         </svg>

@@ -70,6 +70,42 @@ test('a written post: the draft replaces it, Undo brings the customer\'s own wor
   expect(problems).toEqual([]);
 });
 
+test('the button glows without moving the page: nothing around it changes size while it pulses', async ({ page }) => {
+  // Its first pulse was a ring that grew to twice the button, past the edge
+  // of the composer: scrollbars came and went with every beat and the whole
+  // page seemed to breathe.
+  for (const size of [{ width: 1440, height: 900 }, { width: 1280, height: 720 }, { width: 390, height: 844 }]) {
+    await page.setViewportSize(size);
+    await openComposer(page, 'bluesky', TEXT);
+    const bubble = page.getByRole('button', { name: 'Open the AI assistant' });
+    await expect(bubble).toBeVisible();
+    const seen = await bubble.evaluate(async (button) => {
+      const measure = () => {
+        const out: string[] = [];
+        for (let el: Element | null = button; el; el = el.parentElement) {
+          out.push(`${el.scrollWidth}x${el.scrollHeight}/${el.clientWidth}x${el.clientHeight}`);
+        }
+        const box = button.getBoundingClientRect();
+        out.push(`button ${Math.round(box.width)}x${Math.round(box.height)}@${Math.round(box.x)},${Math.round(box.y)}`);
+        return out.join(' ');
+      };
+      const samples = new Set<string>();
+      // longer than one beat of the animation
+      for (let i = 0; i < 45; i++) {
+        samples.add(measure());
+        await new Promise((r) => setTimeout(r, 80));
+      }
+      return [...samples];
+    });
+    expect(seen, `${size.width}x${size.height}`).toHaveLength(1);
+    // and it does pulse: the test above is not passing on a still button
+    const animated = await bubble.evaluate((button) =>
+      [button, ...Array.from(button.querySelectorAll('*'))].some((el) => el.getAnimations().length > 0)
+    );
+    expect(animated).toBe(true);
+  }
+});
+
 test('after the customer edits the post, Undo is gone and their words stay', async ({ page }) => {
   await openComposer(page, 'bluesky', TEXT);
   const chat = await ask(page, 'Make it shorter');
