@@ -82,6 +82,7 @@ import { PostValidationException } from '@gitroom/backend/api/routes/posts.valid
 import { timer } from '@gitroom/helpers/utils/timer';
 import { ioRedis } from '@gitroom/nestjs-libraries/redis/redis.service';
 
+import { LINKEDIN_PAGE } from '@gitroom/nestjs-libraries/integrations/linkedin-pages.limits';
 @ApiTags('Public API')
 @Controller('/public/v1')
 export class PublicIntegrationsController {
@@ -436,6 +437,14 @@ export class PublicIntegrationsController {
         `The ${this._integrationManager.label(integration)} channel isn't available yet.`,
         403
       );
+    }
+
+    // LinkedIn Pages in early access: a cap per workspace and across Postra.
+    if (!refresh && integration === LINKEDIN_PAGE) {
+      const refused = await this._integrationService.linkedinPageRefusal(org.id);
+      if (refused) {
+        throw new HttpException(refused, 403);
+      }
     }
 
     const integrationProvider =

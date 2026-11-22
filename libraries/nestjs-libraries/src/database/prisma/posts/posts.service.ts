@@ -101,6 +101,11 @@ export const MAX_POSTS_PER_REQUEST = 50;
 export const MAX_ITEMS_PER_POST = 100;
 export const MAX_MEDIA_PER_ITEM = 20;
 
+import {
+  LINKEDIN_PAGE_POSTS_PER_DAY,
+  LINKEDIN_PAGES_LIMITS_MESSAGE,
+  linkedinPageDay,
+} from '@gitroom/nestjs-libraries/integrations/linkedin-pages.limits';
 @Injectable()
 export class PostsService {
   private readonly _logger = new Logger(PostsService.name);
@@ -1385,6 +1390,33 @@ export class PostsService {
     }
   }
 
+  // LinkedIn Pages in early access: one post a day on each Page (UTC day),
+  // so every customer stays inside LinkedIn's daily API budget. Drafts do
+  // not count; the posts being edited do not count against themselves.
+  private async refuseSecondLinkedinPagePost(
+    orgId: string,
+    body: CreatePostDto,
+    editedIds: string[]
+  ) {
+    for (const post of body.posts || []) {
+      const kind = saveTypeOfPost(body, post);
+      const integrationId = post.integration?.id;
+      if (kind === 'draft' || !integrationId) continue;
+      const when = kind === 'now' ? new Date() : new Date(post.date || body.date);
+      const [start, end] = linkedinPageDay(when);
+      const taken = await this._postRepository.countLinkedinPagePostsBetween(
+        orgId,
+        integrationId,
+        start,
+        end,
+        editedIds
+      );
+      if (taken >= LINKEDIN_PAGE_POSTS_PER_DAY) {
+        throw new BadRequestException(LINKEDIN_PAGES_LIMITS_MESSAGE);
+      }
+    }
+  }
+
   async createPost(
     orgId: string,
     body: CreatePostDto,
@@ -1437,6 +1469,8 @@ export class PostsService {
         }
       }
     }
+
+    await this.refuseSecondLinkedinPagePost(orgId, body, editedIds);
 
     // Content first: shortening links calls out, and that must not happen
     // while the rows are locked.

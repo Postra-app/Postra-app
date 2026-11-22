@@ -132,13 +132,9 @@ describe('Help names only what the app has', () => {
   ]);
 
   it('has a channel guide for every enabled platform and none for the others', () => {
-    // LinkedIn Page stays: its guide says new connections are coming soon,
-    // and pages connected before keep working.
     const guides = help.CHANNEL_GUIDES.map((c: { identifier: string }) => c.identifier);
     expect(enabled.size).toBeGreaterThan(10);
-    expect(guides.filter((g: string) => g !== 'linkedin-page').sort()).toEqual(
-      [...enabled].sort()
-    );
+    expect([...guides].sort()).toEqual([...enabled].sort());
   });
 
   it('does not name a platform customers cannot connect', () => {

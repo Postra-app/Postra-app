@@ -1,0 +1,47 @@
+// LinkedIn Pages run on LinkedIn's Community Management Development Tier,
+// which allows the whole app 500 API calls a day and each member 100. A post
+// with a picture costs 3-4 calls, so Pages are offered in early access within
+// limits that keep every customer inside that budget: a cap on Pages across
+// Postra, a cap per workspace, and one post a day on each Page.
+
+export const LINKEDIN_PAGE = 'linkedin-page';
+
+/** Pages connected across every workspace. */
+export const LINKEDIN_PAGES_TOTAL = 100;
+
+/** Pages one workspace may connect. */
+export const LINKEDIN_PAGES_PER_WORKSPACE = 5;
+
+/** Posts (not comments) one Page may publish on a calendar day, UTC. */
+export const LINKEDIN_PAGE_POSTS_PER_DAY = 1;
+
+export const LINKEDIN_PAGES_LIMITS_MESSAGE =
+  'LinkedIn Pages are in early access: one post a day per Page, up to 5 Pages per workspace.';
+
+export const LINKEDIN_PAGES_FULL_MESSAGE =
+  'LinkedIn Pages are in early access and all places are taken for now. Please try again later.';
+
+/**
+ * Why a new Page may not be connected, or null when it may. `inWorkspace` and
+ * `total` count the Pages already connected (deleted ones excluded).
+ */
+export const linkedinPageConnectRefusal = (
+  inWorkspace: number,
+  total: number
+): string | null => {
+  if (inWorkspace >= LINKEDIN_PAGES_PER_WORKSPACE) {
+    return LINKEDIN_PAGES_LIMITS_MESSAGE;
+  }
+  if (total >= LINKEDIN_PAGES_TOTAL) {
+    return LINKEDIN_PAGES_FULL_MESSAGE;
+  }
+  return null;
+};
+
+/** The UTC calendar day a post goes out on, as [start, end). */
+export const linkedinPageDay = (date: Date): [Date, Date] => {
+  const start = new Date(
+    Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate())
+  );
+  return [start, new Date(start.getTime() + 24 * 60 * 60 * 1000)];
+};

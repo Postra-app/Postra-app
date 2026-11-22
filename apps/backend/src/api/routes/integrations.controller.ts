@@ -111,6 +111,7 @@ export const isCallableProviderFunction = (provider: object, name: unknown) => {
   );
 };
 
+import { LINKEDIN_PAGE } from '@gitroom/nestjs-libraries/integrations/linkedin-pages.limits';
 @ApiTags('Integrations')
 @Controller('/integrations')
 export class IntegrationsController {
@@ -522,6 +523,14 @@ export class IntegrationsController {
         `The ${this._integrationManager.label(integration)} channel isn't available yet.`,
         403
       );
+    }
+
+    // LinkedIn Pages in early access: a cap per workspace and across Postra.
+    if (!refresh && integration === LINKEDIN_PAGE) {
+      const refused = await this._integrationService.linkedinPageRefusal(org.id);
+      if (refused) {
+        throw new HttpException(refused, 403);
+      }
     }
 
     const integrationProvider =

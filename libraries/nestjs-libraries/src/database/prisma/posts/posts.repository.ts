@@ -46,6 +46,32 @@ export class PostsRepository {
     private _prismaTransaction: PrismaTransaction
   ) {}
 
+  /**
+   * Posts (not comments) waiting or published on a LinkedIn Page channel in
+   * [start, end), other than `exclude` (the ones being edited). Any other
+   * platform counts 0, so it is safe to ask for every channel.
+   */
+  countLinkedinPagePostsBetween(
+    orgId: string,
+    integrationId: string,
+    start: Date,
+    end: Date,
+    exclude: string[]
+  ) {
+    return this._post.model.post.count({
+      where: {
+        organizationId: orgId,
+        integrationId,
+        integration: { providerIdentifier: 'linkedin-page' },
+        deletedAt: null,
+        parentPostId: null,
+        state: { in: ['QUEUE', 'PUBLISHED'] },
+        publishDate: { gte: start, lt: end },
+        ...(exclude.length ? { id: { notIn: exclude } } : {}),
+      },
+    });
+  }
+
   async getRecentPostBodies(orgId: string, take: number): Promise<string[]> {
     const rows = await this._post.model.post.findMany({
       where: {

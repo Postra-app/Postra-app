@@ -51,6 +51,11 @@ dayjs.extend(utc);
 const ALREADY_CONNECTED_ELSEWHERE =
   'This channel is already connected to another Postra account. Disconnect it there first, then try again.';
 
+import {
+  LINKEDIN_PAGE,
+  linkedinPageConnectRefusal,
+} from '@gitroom/nestjs-libraries/integrations/linkedin-pages.limits';
+
 @Injectable()
 export class IntegrationService {
   private storage = UploadFactory.createStorage();
@@ -412,6 +417,18 @@ export class IntegrationService {
         (i.id === ref || String(i.internalId) === String(ref))
     );
     return channel ? String(channel.internalId) : undefined;
+  }
+
+  /**
+   * Why this organisation may not connect another LinkedIn Page, or null.
+   * Early access keeps every Page inside LinkedIn's daily API budget.
+   */
+  async linkedinPageRefusal(org: string): Promise<string | null> {
+    const [inWorkspace, total] = await Promise.all([
+      this._integrationRepository.countChannels(LINKEDIN_PAGE, org),
+      this._integrationRepository.countChannels(LINKEDIN_PAGE),
+    ]);
+    return linkedinPageConnectRefusal(inWorkspace, total);
   }
 
   async hasChannel(org: string, provider: string, internalId: string) {

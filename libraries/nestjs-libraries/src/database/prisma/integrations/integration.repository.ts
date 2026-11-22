@@ -801,6 +801,17 @@ export class IntegrationRepository {
     });
   }
 
+  /** Live channels on one platform, in one organisation or in all of them. */
+  countChannels(provider: string, org?: string) {
+    return this._integration.model.integration.count({
+      where: {
+        providerIdentifier: provider,
+        deletedAt: null,
+        ...(org ? { organizationId: org } : {}),
+      },
+    });
+  }
+
   async getIntegrationsList(org: string) {
     const list = await this._integration.model.integration.findMany({
       where: {

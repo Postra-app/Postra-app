@@ -105,6 +105,7 @@ export const cameFromInvitePage = (req: Request) => {
   );
 };
 
+import { LINKEDIN_PAGE } from '@gitroom/nestjs-libraries/integrations/linkedin-pages.limits';
 @ApiTags('Integrations')
 @Controller('/integrations')
 export class NoAuthIntegrationsController {
@@ -433,6 +434,14 @@ export class NoAuthIntegrationsController {
         `The ${this._integrationManager.label(integration)} channel isn't available yet.`,
         403
       );
+    }
+
+    // LinkedIn Pages in early access: a cap per workspace and across Postra.
+    if (!refresh && integration === LINKEDIN_PAGE) {
+      const refused = await this._integrationService.linkedinPageRefusal(org.id);
+      if (refused) {
+        throw new HttpException(refused, 403);
+      }
     }
 
     const onboarding = await ioRedis.get(`onboarding:${body.state}`);

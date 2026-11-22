@@ -21,6 +21,8 @@ const NAMES: Record<string, string> = {
   tiktok: 'TikTok',
   youtube: 'YouTube',
   linkedin: 'LinkedIn',
+  // A company Page is LinkedIn too; the sentence names platforms.
+  'linkedin-page': 'LinkedIn',
   threads: 'Threads',
   bluesky: 'Bluesky',
   mastodon: 'Mastodon',

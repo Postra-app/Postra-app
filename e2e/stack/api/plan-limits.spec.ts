@@ -130,51 +130,128 @@ test.describe('channel count', () => {
   });
 });
 
-// A platform still "Coming soon" in the app (LinkedIn Page) was
-// refused only by the UI. On Pro the API handed out its auth URL, through the
-// dashboard route and the public API, and the callback connected it. A page
-// connected before stays reconnectable.
-test('a "Coming soon" platform takes no new channels; one already there can be reconnected', async () => {
+// LinkedIn Pages in early access (linkedin-pages.limits.ts): Business only,
+// up to 5 Pages per workspace (100 across Postra), one post a day on each
+// Page. Connections are refused on the dashboard, the invite callback and
+// the public API alike; a Page already connected can always be reconnected.
+test('LinkedIn Pages: Business only, 5 per workspace, a Page already there can be reconnected', async () => {
   const prisma = database();
-  const org = await throwawayOrg(prisma, { tier: 'PRO', totalChannels: 5, channels: 0 });
+  const pro = await throwawayOrg(prisma, { tier: 'PRO', totalChannels: 8, channels: 0 });
+  const org = await throwawayOrg(prisma, { tier: 'ULTIMATE', totalChannels: 15, channels: 0 });
   const { apiKey } = await prisma.organization.findUniqueOrThrow({ where: { id: org.orgId } });
   const publicApi = await request.newContext({
     baseURL: `${BACKEND_URL}/public/v1/`,
     extraHTTPHeaders: { authorization: apiKey! },
   });
   try {
-    const dashboard = await org.api.get(connect('linkedin-page'));
-    expect(dashboard.status(), await dashboard.text()).toBe(403);
-    expect(await dashboard.text()).toContain("isn't available yet");
-    expect((await publicApi.get('social/linkedin-page')).status()).toBe(403);
-    expect((await publicApi.get('social/linkedin-page?refresh=not-my-page')).status()).toBe(404);
+    expect((await pro.api.get(connect('linkedin-page'))).status()).toBe(402);
 
-    // A state minted for an offered platform cannot finish one that is not.
-    const minted = await org.api.get(connect('mastodon'));
-    expect(minted.status()).toBe(200);
-    const state = new URL((await minted.json()).url).searchParams.get('state');
+    const listed = (await (await org.api.get('/integrations')).json()).social.find(
+      (p: any) => p.identifier === 'linkedin-page'
+    );
+    expect(listed).toMatchObject({ enabled: true });
+    expect(listed.preview).toBeFalsy();
+    const first = await org.api.get(connect('linkedin-page'));
+    expect(first.status(), await first.text()).toBe(200);
+    expect((await publicApi.get('social/linkedin-page')).status()).toBe(200);
+
+    for (let i = 0; i < 5; i++) {
+      await prisma.integration.create({
+        data: {
+          id: `stack-li-page-${org.orgId}-${i}`,
+          internalId: `li-page-${org.orgId}-${i}`,
+          organizationId: org.orgId,
+          name: `Page ${i}`,
+          providerIdentifier: 'linkedin-page',
+          type: 'social',
+          token: 'fake-token',
+          profile: 'page',
+        },
+      });
+    }
+    const sixth = await org.api.get(connect('linkedin-page'));
+    expect(sixth.status(), await sixth.text()).toBe(403);
+    expect(await sixth.text()).toContain('up to 5 Pages per workspace');
+    expect((await publicApi.get('social/linkedin-page')).status()).toBe(403);
+
+    // The invite callback checks again, with a state minted before the fifth.
     const callback = await org.api.post('/integrations/social-connect/linkedin-page', {
-      data: { state, code: 'x', timezone: '0' },
+      data: { state: new URL((await first.json()).url).searchParams.get('state'), code: 'x', timezone: '0' },
     });
     expect(callback.status(), await callback.text()).toBe(403);
 
-    await prisma.integration.create({
-      data: {
-        id: `stack-li-page-${org.orgId}`,
-        internalId: `li-page-${org.orgId}`,
-        organizationId: org.orgId,
-        name: 'Page connected earlier',
-        providerIdentifier: 'linkedin-page',
-        type: 'social',
-        token: 'fake-token',
-        profile: 'page',
-      },
-    });
-    const reconnect = await org.api.get(`${connect('linkedin-page')}?refresh=li-page-${org.orgId}`);
+    const reconnect = await org.api.get(`${connect('linkedin-page')}?refresh=li-page-${org.orgId}-0`);
     expect(reconnect.status(), await reconnect.text()).toBe(200);
-    expect((await publicApi.get(`social/linkedin-page?refresh=li-page-${org.orgId}`)).status()).toBe(200);
+    expect((await publicApi.get(`social/linkedin-page?refresh=li-page-${org.orgId}-0`)).status()).toBe(200);
   } finally {
     await publicApi.dispose();
+    await prisma.integration.deleteMany({ where: { organizationId: org.orgId } });
+    await org.remove();
+    await pro.remove();
+    await prisma.$disconnect();
+  }
+});
+
+test('LinkedIn Pages: one post a day on each Page, drafts and other Pages not counted', async () => {
+  const prisma = database();
+  const org = await throwawayOrg(prisma, { tier: 'ULTIMATE', totalChannels: 15, channels: 0 });
+  const day = new Date(Date.now() + 3 * 86_400_000);
+  day.setUTCHours(9, 0, 0, 0);
+  const at = (hours: number) => new Date(day.getTime() + hours * 3_600_000).toISOString().slice(0, 19);
+  const pages = [0, 1].map((i) => `stack-li-post-${org.orgId}-${i}`);
+  const post = (page: string, type: string, date: string) =>
+    org.api.post('/posts', {
+      data: {
+        type,
+        shortLink: false,
+        date,
+        tags: [],
+        posts: [{ integration: { id: page }, value: [{ content: `for ${page}`, image: [] }], settings: { __type: 'linkedin-page' } }],
+      },
+    });
+  try {
+    for (const [i, id] of pages.entries()) {
+      await prisma.integration.create({
+        data: {
+          id,
+          internalId: `li-post-${org.orgId}-${i}`,
+          organizationId: org.orgId,
+          name: `Page ${i}`,
+          providerIdentifier: 'linkedin-page',
+          type: 'social',
+          token: 'fake-token',
+          profile: 'page',
+        },
+      });
+    }
+    const first = await post(pages[0], 'schedule', at(0));
+    expect(first.status(), await first.text()).toBe(201);
+
+    const second = await post(pages[0], 'schedule', at(5));
+    expect(second.status(), await second.text()).toBe(400);
+    expect(await second.text()).toContain('one post a day per Page');
+
+    // A draft on the same day, the other Page, and the next day are fine.
+    expect((await post(pages[0], 'draft', at(6))).status()).toBe(201);
+    expect((await post(pages[1], 'schedule', at(1))).status()).toBe(201);
+    expect((await post(pages[0], 'schedule', at(24))).status()).toBe(201);
+
+    // Editing the day's post does not count it against itself.
+    const [{ postId }] = (await first.json()) as { postId: string }[];
+    const saved = await prisma.post.findUniqueOrThrow({ where: { id: postId } });
+    const edit = await org.api.post('/posts', {
+      data: {
+        type: 'schedule',
+        shortLink: false,
+        date: at(2),
+        tags: [],
+        posts: [{ integration: { id: pages[0] }, value: [{ id: postId, content: 'edited', image: [] }], settings: { __type: 'linkedin-page' } }],
+        group: saved.group,
+      },
+    });
+    expect(edit.status(), await edit.text()).toBe(201);
+  } finally {
+    await prisma.post.deleteMany({ where: { organizationId: org.orgId } });
     await prisma.integration.deleteMany({ where: { organizationId: org.orgId } });
     await org.remove();
     await prisma.$disconnect();
@@ -237,12 +314,12 @@ test('Google Business Profile is offered from Pro, and the other platforms keep 
     ).toMatchObject({ enabled: true, name: 'Instagram\n(with Facebook Page)' });
     expect((await customer.api.get(connect('instagram-standalone'))).status()).toBe(200);
 
-    // LinkedIn Pages are in preview: a super admin connects one whatever the
-    // plan, a customer on Pro (whose plan lists it) is told it is not here yet.
-    expect((await admin.api.get(connect('linkedin-page'))).status()).toBe(200);
+    // LinkedIn Pages are offered on Business only: Pro is sent to upgrade,
+    // and a super admin on Starter follows the plan like anyone.
     const proAnswer = await pro.api.get(connect('linkedin-page'));
-    expect(proAnswer.status(), await proAnswer.text()).toBe(403);
-    expect(await proAnswer.text()).toContain("isn't available yet");
+    expect(proAnswer.status(), await proAnswer.text()).toBe(402);
+    expect(await proAnswer.text()).toContain("isn't included in your plan");
+    expect((await admin.api.get(connect('linkedin-page'))).status()).toBe(402);
   } finally {
     await customer.remove();
     await pro.remove();
@@ -253,10 +330,9 @@ test('Google Business Profile is offered from Pro, and the other platforms keep 
 
 // Instagram App Review: Meta's reviewer signs in as review@, which must not be
 // a super admin. Its organisation, named in PREVIEW_ORGANIZATIONS, gets the
-// preview platforms the way a super admin does; others do not. LinkedIn Pages
-// are the one preview platform today; for the rest the reviewer's organisation
-// follows its plan like anyone.
-test('a preview organisation is marked and connects the preview platform, nothing else above its plan', async () => {
+// preview platforms the way a super admin does; others do not. The list is
+// empty today, so the reviewer's organisation follows its plan like anyone.
+test('a preview organisation is marked, and with no preview platform it follows its plan', async () => {
   const prisma = database();
   const reviewer = await throwawayOrg(prisma, {
     tier: 'STANDARD',
@@ -273,9 +349,8 @@ test('a preview organisation is marked and connects the preview platform, nothin
     expect((await reviewer.api.get(connect('pinterest'))).status()).toBe(200);
     for (const who of [reviewer, customer]) {
       expect((await who.api.get(connect('gmb'))).status()).toBe(402);
+      expect((await who.api.get(connect('linkedin-page'))).status()).toBe(402);
     }
-    expect((await reviewer.api.get(connect('linkedin-page'))).status()).toBe(200);
-    expect((await customer.api.get(connect('linkedin-page'))).status()).toBe(402);
   } finally {
     await reviewer.remove();
     await customer.remove();
