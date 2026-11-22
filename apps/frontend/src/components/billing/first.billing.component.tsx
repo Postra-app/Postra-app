@@ -36,6 +36,7 @@ import { LogoutComponent } from '@gitroom/frontend/components/layout/logout.comp
 import { InvoicesComponent } from '@gitroom/frontend/components/layout/invoices.component';
 import DeleteAccountComponent from '@gitroom/frontend/components/settings/delete-account.component';
 import { TrialLimitsNote } from '@gitroom/frontend/components/billing/trial.limits.note';
+import { WelcomeVideo } from '@gitroom/frontend/components/billing/welcome.video';
 import {
   planFeatures,
   PlanFeature,
@@ -151,6 +152,8 @@ export const FirstBillingComponent = () => {
             {t('billing_headline_end', 'in one afternoon')}
           </span>
         </div>
+
+        <WelcomeVideo />
 
         {trialOffered && (
           <div className="flex mt-[32px] mb-[10px] gap-[15px] tablet:mt-[32px] tablet:mb-[32px] text-[16px] font-[500] mobile:flex-col">
