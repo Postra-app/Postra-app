@@ -275,6 +275,58 @@ test('the chat passes axe, open and with a draft in it', async ({ page }) => {
   expect(found).toEqual([]);
 });
 
+test('a reload keeps the conversation, and the draft can still go in the post', async ({ page }) => {
+  // A reload took the conversation and every draft not yet used with it.
+  await openComposer(page, 'bluesky', TEXT);
+  const first = await ask(page, 'Write me something to keep');
+  await expect(first.getByTestId('assistant-draft')).toHaveCount(1);
+
+  await page.reload();
+  await page.getByRole('button', { name: 'Create Post' }).click();
+  await page.getByRole('img', { name: 'bluesky', exact: true }).first().click();
+  await page.getByRole('button', { name: 'Open the AI assistant' }).click();
+  const chat = page.getByRole('dialog', { name: '✨ AI Assistant' });
+  await expect(chat.getByText('Write me something to keep')).toBeVisible();
+  const draft = chat.getByTestId('assistant-draft');
+  await expect(draft).toHaveCount(1);
+
+  await draft.getByRole('button', { name: 'Use in post' }).click();
+  await expect(page.getByRole('textbox').first()).toContainText(ANSWER);
+});
+
+test('closing the composer ends the conversation: the next post starts a new one', async ({ page }) => {
+  await openComposer(page, 'bluesky', TEXT);
+  const first = await ask(page, 'Write me something to forget');
+  await expect(first.getByTestId('assistant-draft')).toHaveCount(1);
+  await first.getByRole('button', { name: 'Close the assistant' }).click();
+
+  const editor = page.getByRole('dialog', { name: 'Post editor' });
+  await editor.getByRole('button', { name: 'Close', exact: true }).click();
+  await page.getByRole('button', { name: 'Yes, close it!' }).click();
+  await expect(editor).toHaveCount(0);
+  // nothing left behind in the tab either
+  expect(await page.evaluate(() => Object.keys(sessionStorage).filter((k) => k.includes('composer-chat')))).toEqual([]);
+
+  await page.getByRole('button', { name: 'Create Post' }).click();
+  await page.getByRole('button', { name: 'Open the AI assistant' }).click();
+  const chat = page.getByRole('dialog', { name: '✨ AI Assistant' });
+  await expect(chat.getByText("I'll help you write a great social media post")).toBeVisible();
+  await expect(chat.getByText('Write me something to forget')).toHaveCount(0);
+  await expect(chat.getByTestId('assistant-draft')).toHaveCount(0);
+});
+
+test('"New chat" is not undone by a reload', async ({ page }) => {
+  await openComposer(page, 'bluesky', TEXT);
+  const first = await ask(page, 'Write me something');
+  await expect(first.getByTestId('assistant-draft')).toHaveCount(1);
+  await first.getByRole('button', { name: 'New chat' }).click();
+
+  await page.reload();
+  await page.getByRole('button', { name: 'Create Post' }).click();
+  await page.getByRole('button', { name: 'Open the AI assistant' }).click();
+  await expect(page.getByRole('dialog', { name: '✨ AI Assistant' }).getByTestId('assistant-draft')).toHaveCount(0);
+});
+
 test('the chat brings no chat library with it', async ({ page }) => {
   // The one it replaces cost every page ~0.5 MB of CopilotKit. This one is
   // part of the composer: opening and using it downloads no script at all.

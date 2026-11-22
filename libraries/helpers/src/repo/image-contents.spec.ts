@@ -40,6 +40,16 @@ describe('the production image', () => {
     expect(removal!.index).toBeLessThan(cmd!.index);
   });
 
+  // The base image is a snapshot of Debian from the day it was built. Without
+  // an upgrade the image shipped zlib and glibc older than the security
+  // updates Debian had already published.
+  it("takes Debian's published updates before installing anything", () => {
+    const first = dockerfile.indexOf('apt-get');
+    const firstRun = dockerfile.slice(first, dockerfile.indexOf('rm -rf /var/lib/apt/lists', first));
+    expect(firstRun).toMatch(/^apt-get update && apt-get upgrade -y/);
+    expect(firstRun.indexOf('apt-get upgrade')).toBeLessThan(firstRun.indexOf('apt-get install'));
+  });
+
   it('builds on the current Debian stable (trixie), not Debian 12', () => {
     // Every system package (ffmpeg, glibc, libtiff, sqlite) comes from the
     // base image's Debian release. Node images name it in the tag:

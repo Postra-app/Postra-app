@@ -17,11 +17,16 @@ import { isFetchHandledError } from '@gitroom/helpers/utils/fetch.errors';
 import { makeId } from '@gitroom/nestjs-libraries/services/make.is';
 import { useT } from '@gitroom/react/translation/get.transation.service.client';
 import { useLaunchStore } from '@gitroom/frontend/components/new-launch/store';
+import { useUser } from '@gitroom/frontend/components/layout/user.context';
+import { useExistingData } from '@gitroom/frontend/components/launches/helpers/use.existing.data';
 import {
   CHAT_MAX_MESSAGE,
   ChatMessage,
   ComposerValue,
   chatPayload,
+  chatStorageKey,
+  keepChat,
+  keptChat,
   putPost,
   putThread,
   sameComposer,
@@ -67,8 +72,25 @@ export const ComposerChat: FC = () => {
     }))
   );
 
+  // Kept in the tab while the composer is open, so a reload does not take the
+  // drafts with it; dropped when the composer closes (composer-chat.utils).
+  const user = useUser();
+  const existing = useExistingData();
+  const scope = existing?.group || 'new';
+  const storageKey = chatStorageKey(user?.id ?? '', user?.orgId ?? '', scope);
+  const storage = () => {
+    try {
+      return window.sessionStorage;
+    } catch {
+      // storage switched off in the browser: the chat works, a reload forgets
+      return null;
+    }
+  };
+
   const [open, setOpen] = useState(false);
-  const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [messages, setMessages] = useState<ChatMessage[]>(() =>
+    keptChat(storage()?.getItem(storageKey), scope, Date.now())
+  );
   const [draft, setDraft] = useState('');
   const [busy, setBusy] = useState(false);
   const [used, setUsed] = useState<Used | null>(null);
@@ -99,6 +121,27 @@ export const ComposerChat: FC = () => {
   }, [selectedIntegrations, current]);
 
   useEffect(() => () => abortRef.current?.abort(), []);
+
+  useEffect(() => {
+    try {
+      if (messages.length) {
+        storage()?.setItem(storageKey, keepChat(messages, scope, Date.now()));
+      } else {
+        storage()?.removeItem(storageKey);
+      }
+    } catch {
+      // full or refused: nothing to keep, nothing to tell the user
+    }
+    // Closing the composer ends the conversation. A reload runs no cleanup,
+    // which is exactly the case this is for.
+    return () => {
+      try {
+        storage()?.removeItem(storageKey);
+      } catch {
+        // as above
+      }
+    };
+  }, [messages, storageKey, scope]);
 
   useEffect(() => {
     if (!open) return;

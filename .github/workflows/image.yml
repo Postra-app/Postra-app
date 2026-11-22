@@ -57,7 +57,41 @@ jobs:
           echo "digest=${DIGEST}" >> "$GITHUB_OUTPUT"
           echo "${IMAGE}@${DIGEST}"
 
+      # The attestation is written to a public transparency log and read back.
+      # That read sometimes answers 404 for a minute ("error fetching tlog
+      # entry"), and one such answer would fail the whole job, leaving the
+      # image in the registry unsigned and undeployable. So it is tried three
+      # times, a minute and then two apart. Only the last attempt can fail the
+      # job; the deploy still verifies the attestation.
       - name: Attest build provenance
+        id: attest1
+        continue-on-error: true
+        uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
+        with:
+          subject-name: ${{ env.IMAGE }}
+          subject-digest: ${{ steps.push.outputs.digest }}
+          push-to-registry: true
+
+      - name: Wait before the second attempt
+        if: steps.attest1.outcome == 'failure'
+        run: sleep 60
+
+      - name: Attest build provenance (second attempt)
+        id: attest2
+        if: steps.attest1.outcome == 'failure'
+        continue-on-error: true
+        uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
+        with:
+          subject-name: ${{ env.IMAGE }}
+          subject-digest: ${{ steps.push.outputs.digest }}
+          push-to-registry: true
+
+      - name: Wait before the third attempt
+        if: steps.attest2.outcome == 'failure'
+        run: sleep 120
+
+      - name: Attest build provenance (third attempt)
+        if: steps.attest2.outcome == 'failure'
         uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
         with:
           subject-name: ${{ env.IMAGE }}

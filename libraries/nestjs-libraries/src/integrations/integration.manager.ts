@@ -87,7 +87,7 @@ const enabledProviders = new Set([
   // Standard: Development Tier caps the whole app at 500 API calls a day, and
   // the upgrade has sat at stage 1 of 3 since 2026-07-28. Pages connected
   // before this keep working and can be reconnected; new connections are
-  // refused (isOffered).
+  // refused (isOffered), except in preview (previewProviders below).
   'tiktok',
   'youtube',
   'bluesky',
@@ -120,7 +120,12 @@ const enabledProviders = new Set([
 // on production to test them and to record the review video. Move one to
 // enabledProviders once it is approved and proven.
 const previewProviders = new Set<string>([
-  // None today. Google Business Profile left on 2026-11-17 (API approved).
+  // LinkedIn Pages: the app is on LinkedIn's Community Management
+  // Development Tier, whose documentation limits API calls but not who may
+  // authorise. In preview a Page admin who is not a developer of the app can
+  // connect and post through an administrator or reviewer login, while
+  // customers still see "Coming soon".
+  'linkedin-page',
 ]);
 
 // Organisations that get the preview platforms the way a super admin does,
