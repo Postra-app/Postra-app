@@ -79,6 +79,82 @@ export const sameComposer = (a: ComposerValue[], b: ComposerValue[]) =>
     );
   });
 
+// The conversation lives in the composer and ends with it. A reload of the
+// page is the one ending nobody chose: it took every draft that had not been
+// put in the post yet. So the conversation is kept in the tab's own storage
+// while the composer is open, and thrown away when the composer closes; only
+// a reload (or a crash) finds it still there. It never leaves the browser.
+export const CHAT_KEPT_FOR_MS = 2 * 60 * 60 * 1000;
+
+/** One conversation per person, organisation and post ('new' for a new one). */
+export const chatStorageKey = (userId: string, orgId: string) =>
+  `postra:composer-chat:${userId}:${orgId}`;
+
+export const keepChat = (
+  messages: ChatMessage[],
+  scope: string,
+  now: number
+): string =>
+  JSON.stringify({
+    at: now,
+    scope,
+    messages: messages.slice(-CHAT_MAX_MESSAGES * 2),
+  });
+
+/**
+ * What was kept, if it is this post's conversation, recent, and still shaped
+ * like one. Storage is the user's to edit, so nothing in it is trusted.
+ */
+export const keptChat = (
+  raw: string | null | undefined,
+  scope: string,
+  now: number
+): ChatMessage[] => {
+  if (!raw) return [];
+  try {
+    const kept = JSON.parse(raw) as {
+      at?: unknown;
+      scope?: unknown;
+      messages?: unknown;
+    };
+    if (
+      typeof kept?.at !== 'number' ||
+      kept.at > now ||
+      now - kept.at > CHAT_KEPT_FOR_MS ||
+      kept.scope !== scope ||
+      !Array.isArray(kept.messages)
+    ) {
+      return [];
+    }
+    const messages: ChatMessage[] = [];
+    for (const item of kept.messages as Record<string, unknown>[]) {
+      if (
+        !item ||
+        typeof item.id !== 'string' ||
+        (item.role !== 'user' && item.role !== 'assistant') ||
+        typeof item.content !== 'string'
+      ) {
+        return [];
+      }
+      const posts = Array.isArray(item.posts)
+        ? item.posts.filter((p): p is string => typeof p === 'string')
+        : undefined;
+      messages.push({
+        id: item.id,
+        role: item.role,
+        content: item.content.slice(0, CHAT_MAX_MESSAGE),
+        ...(posts?.length
+          ? { posts: posts.slice(0, CHAT_MAX_POSTS), thread: item.thread === true && posts.length > 1 }
+          : {}),
+        ...(item.error === true ? { error: true } : {}),
+      });
+    }
+    return messages;
+  } catch {
+    return [];
+  }
+};
+
 const blank = (id: string): ComposerValue => ({
   id,
   content: '',
