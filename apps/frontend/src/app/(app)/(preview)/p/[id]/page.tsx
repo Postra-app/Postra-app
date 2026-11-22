@@ -16,6 +16,7 @@ import { VideoOrImage } from '@gitroom/react/helpers/video.or.image';
 import { CopyClient } from '@gitroom/frontend/components/preview/copy.client';
 import { ClosePreviewButton } from '@gitroom/frontend/components/preview/close.preview.button';
 import { getT } from '@gitroom/react/translation/get.translation.service.backend';
+import { sourceCodeUrl } from '@gitroom/helpers/utils/source.code.url';
 import { RenderPreviewDateClient } from '@gitroom/frontend/components/preview/render.preview.date.client';
 import { CreationMethodBadge } from '@gitroom/frontend/components/launches/creation.method.badge';
 
@@ -227,6 +228,19 @@ export default async function Auth(props: {
             <CommentsComponents postId={id} />
           </div>
         </div>
+      </div>
+      {/* AGPL-3.0 section 13: a client who opens a shared preview uses the
+          program without an account, so the offer of its source is here. */}
+      <div className="mx-auto w-full max-w-[1346px] px-[16px] pb-[24px] pt-[8px] text-[12px] text-textColor/60 lg:px-0">
+        Postra is open-source software (AGPL-3.0).{' '}
+        <a
+          href={sourceCodeUrl(process.env.NEXT_PUBLIC_VERSION)}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="underline hover:text-textColor"
+        >
+          Source code
+        </a>
       </div>
     </div>
   );

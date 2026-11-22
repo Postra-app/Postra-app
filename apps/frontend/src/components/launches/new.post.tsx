@@ -19,6 +19,11 @@ const AddEditModal = dynamic(
   { ssr: false }
 );
 import { ModalWrapperComponent } from '@gitroom/frontend/components/new-launch/modal.wrapper.component';
+import { useUser } from '@gitroom/frontend/components/layout/user.context';
+import {
+  clearPendingPostMedia,
+  pendingPostMedia,
+} from '@gitroom/frontend/components/launches/pending.post.media';
 
 // NewPost mounts twice on /launches (sidebar + mobile header) and React
 // strict-mode re-runs effects, so each ?newPostMedia deep link from Studio
@@ -33,6 +38,7 @@ export const NewPost = () => {
   const searchParams = useSearchParams();
   const { integrations, reloadCalendarView, composerDefaults } = useCalendar();
   const t = useT();
+  const orgId = useUser()?.orgId;
 
   const createAPost = useCallback(async (
     initialMedia?: { id: string; path: string; credit?: string | null }[]
@@ -122,9 +128,11 @@ export const NewPost = () => {
   // Studio's "Use in post" lands here: /launches?newPostMedia=[{id,path},…]
   // → open the new-post modal with the exported graphic(s) pre-attached.
   useEffect(() => {
-    const raw = searchParams.get('newPostMedia');
+    // Or a design that waited here until the first channel was connected.
+    const raw = searchParams.get('newPostMedia') || pendingPostMedia(orgId);
     if (!raw || lastConsumedNewPostMedia === raw) return;
     lastConsumedNewPostMedia = raw;
+    if (pendingPostMedia(orgId)) clearPendingPostMedia();
     const media = safeJsonParse<{ id: string; path: string; credit?: string | null }[]>(raw, []);
     router.replace('/launches');
     if (media?.length) {

@@ -13,6 +13,7 @@ export const metadata: Metadata = {
 import loadDynamic from 'next/dynamic';
 import { ProblemEffectComponent } from '@gitroom/frontend/components/auth/problem-effect.component';
 import { LogoTextComponent } from '@gitroom/frontend/components/ui/logo-text.component';
+import { sourceCodeUrl } from '@gitroom/helpers/utils/source.code.url';
 const ReturnUrlComponent = loadDynamic(() => import('./return.url.component'));
 export default async function AuthLayout({
   children,
@@ -31,7 +32,7 @@ export default async function AuthLayout({
           <div className="rounded-[24px] border border-white/10 bg-[linear-gradient(180deg,rgba(30,41,59,0.44),rgba(15,23,42,0.78))] p-[24px] shadow-[inset_0_1px_0_rgba(255,255,255,0.04)] backdrop-blur-xl">
             <div className="flex">{children}</div>
           </div>
-          <div className="mt-[16px] flex items-center justify-center gap-[16px] text-[12px] text-slate-400/70">
+          <div className="mt-[16px] flex flex-wrap items-center justify-center gap-x-[16px] gap-y-[6px] text-[12px] text-slate-400/70">
             <a
               href="https://postra.co.uk/privacy"
               target="_blank"
@@ -48,6 +49,18 @@ export default async function AuthLayout({
               className="transition-colors hover:text-white/80"
             >
               Terms of Service
+            </a>
+            <span className="text-slate-600">|</span>
+            {/* AGPL-3.0 section 13: everyone who uses the program over the
+                network is offered its source, and a person on the sign-in
+                screen has no Settings page to find it in. */}
+            <a
+              href={sourceCodeUrl(process.env.NEXT_PUBLIC_VERSION)}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="transition-colors hover:text-white/80"
+            >
+              Source code
             </a>
           </div>
         </div>

@@ -2,6 +2,7 @@
   "name": "postra-extension",
   "version": "2.0.0",
   "description": "Postra browser extension for cookie-based platform authentication",
+  "license": "AGPL-3.0",
   "scripts": {
     "build": "rm -rf dist && vite build && cp manifest.json dist/manifest.json && cd dist && zip -r ../extension.zip .",
     "dev": "rm -rf dist && HOT_RELOAD_EXTENSION_VITE_PORT=8081 NODE_ENV=development dotenv -e ../../.env -- vite build --config vite.config.chrome.ts --mode development --watch"
