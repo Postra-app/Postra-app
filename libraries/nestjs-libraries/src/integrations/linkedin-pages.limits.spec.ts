@@ -6,6 +6,8 @@ import {
   LINKEDIN_PAGES_PER_WORKSPACE,
   LINKEDIN_PAGES_TOTAL,
   LINKEDIN_PAGE_POSTS_PER_DAY,
+  LINKEDIN_PAGES_NO_REPEAT_MESSAGE,
+  isLinkedinPagesNotice,
   linkedinPageConnectRefusal,
   linkedinPageDay,
 } from './linkedin-pages.limits';
@@ -55,6 +57,28 @@ describe('LinkedIn Pages early access', () => {
     expect(service).toContain('LINKEDIN_PAGES_NO_REPEAT_MESSAGE');
     const callback = read('../../../../apps/backend/src/api/routes/no.auth.integrations.controller.ts');
     expect(callback).toMatch(/linkedin-pages-connect[\s\S]{0,2500}linkedinPageRefusal/);
+  });
+
+  it('tells the customer about a limit as information, not as a failed save', () => {
+    for (const notice of [
+      LINKEDIN_PAGES_LIMITS_MESSAGE,
+      LINKEDIN_PAGES_FULL_MESSAGE,
+      LINKEDIN_PAGES_NO_REPEAT_MESSAGE,
+    ]) {
+      expect(isLinkedinPagesNotice(notice)).toBe(true);
+    }
+    expect(isLinkedinPagesNotice('Invalid date')).toBe(false);
+    expect(isLinkedinPagesNotice(undefined)).toBe(false);
+    const read = (file: string) =>
+      readFileSync(join(__dirname, '../../../../apps/frontend/src/components', file), 'utf8');
+    // the editor shows the notice without "Could not save the post", and the
+    // calendar says why a dragged post went back
+    expect(read('new-launch/manage.modal.tsx')).toMatch(
+      /isLinkedinPagesNotice\(reason\)\) \{\s*toaster\.show\(reason, 'warning'\);\s*return;/
+    );
+    expect(read('launches/calendar.tsx')).toMatch(
+      /isLinkedinPagesNotice\(reason\)\) \{\s*toaster\.show\(reason, 'warning'\);/
+    );
   });
 
   it('is offered on Business only', () => {

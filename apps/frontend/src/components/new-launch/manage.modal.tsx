@@ -31,6 +31,7 @@ import { TagsComponent } from '@gitroom/frontend/components/launches/tags.compon
 import { useToaster } from '@gitroom/react/toaster/toaster';
 import { deleteDialog } from '@gitroom/react/helpers/delete.dialog';
 import { useFetch } from '@gitroom/helpers/utils/custom.fetch';
+import { isLinkedinPagesNotice } from '@gitroom/nestjs-libraries/integrations/linkedin-pages.limits';
 import { readResponseError } from '@gitroom/helpers/utils/response.error';
 import { makeId } from '@gitroom/nestjs-libraries/services/make.is';
 import {
@@ -942,12 +943,16 @@ export const ManageModal: FC<AddEditModalProps> = (props) => {
               });
             }
             if (!saveResponse.ok) {
+              const reason = await readResponseError(saveResponse);
+              // A limit of early access is information, not a failure: it is
+              // shown as it is, and the post stays open to change the day.
+              if (isLinkedinPagesNotice(reason)) {
+                toaster.show(reason, 'warning');
+                return;
+              }
               console.error('[Postra:posts] save failed', saveResponse.status);
               toaster.show(
-                `${t(
-                  'post_save_failed',
-                  'Could not save the post'
-                )}: ${await readResponseError(saveResponse)}`,
+                `${t('post_save_failed', 'Could not save the post')}: ${reason}`,
                 'warning'
               );
               return;

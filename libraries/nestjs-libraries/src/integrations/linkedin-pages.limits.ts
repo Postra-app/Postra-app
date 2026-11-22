@@ -48,3 +48,12 @@ export const linkedinPageDay = (date: Date): [Date, Date] => {
   );
   return [start, new Date(start.getTime() + 24 * 60 * 60 * 1000)];
 };
+
+/**
+ * A refusal that only tells the customer about a limit of their plan or of
+ * early access. The app shows it as it is, not as "Could not save: ...".
+ */
+export const isLinkedinPagesNotice = (message: unknown): message is string =>
+  message === LINKEDIN_PAGES_LIMITS_MESSAGE ||
+  message === LINKEDIN_PAGES_FULL_MESSAGE ||
+  message === LINKEDIN_PAGES_NO_REPEAT_MESSAGE;
