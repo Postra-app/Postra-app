@@ -36,9 +36,9 @@ test('a customer sees only the platforms on offer, no "Soon" tile', async ({ pag
     const tile = await openPicker(page);
     await expect(page.getByText('1 of 6 social accounts connected · Pro', { exact: true })).toBeVisible();
     await expect(tile('Soon')).toHaveCount(0);
-    for (const name of ['Lemmy', 'LinkedIn Page']) {
-      await expect(tile(name), name).toHaveCount(0);
-    }
+    await expect(tile('Lemmy')).toHaveCount(0);
+    // LinkedIn Page is offered on Business: on Pro it shows behind the upgrade.
+    await expect(tile('LinkedIn Page')).toContainText('Business');
     // On Pro: connectable, not a preview.
     await expect(tile('Google Business Profile')).toBeVisible();
     await expect(tile('Google Business Profile')).not.toContainText('Preview');
