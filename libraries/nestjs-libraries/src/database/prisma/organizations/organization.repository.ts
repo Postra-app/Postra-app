@@ -721,7 +721,7 @@ export class OrganizationRepository {
   }
 
   // Role changes, the hand-over and removals read the current roles and write
-  // under the organisation's lock, in one transaction (Codex 2 XI). Checked
+  // under the organisation's lock, in one transaction. Checked
   // first and written later, "Make owner" and "make them a user" sent at once
   // both passed and the second demoted the new owner; two co-owners removing
   // each other both passed too: no owner left. The caller's role is read here

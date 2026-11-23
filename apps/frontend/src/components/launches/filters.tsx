@@ -462,7 +462,7 @@ export const Filters = () => {
             className={clsx(
               'pt-[7px] pb-[6px] cursor-pointer w-[74px] text-center rounded-[8px] transition-colors',
               calendar.display === 'day'
-                ? 'text-textItemFocused bg-white/[0.08]'
+                ? 'text-textItemFocused bg-boxFocused'
                 : 'hover:text-textColor hover:bg-white/[0.04]'
             )}
             onClick={setDay}
@@ -475,7 +475,7 @@ export const Filters = () => {
             className={clsx(
               'pt-[7px] pb-[6px] cursor-pointer w-[74px] text-center rounded-[8px] transition-colors',
               calendar.display === 'week'
-                ? 'text-textItemFocused bg-white/[0.08]'
+                ? 'text-textItemFocused bg-boxFocused'
                 : 'hover:text-textColor hover:bg-white/[0.04]'
             )}
             onClick={setWeek}
@@ -488,7 +488,7 @@ export const Filters = () => {
             className={clsx(
               'pt-[7px] pb-[6px] cursor-pointer w-[74px] text-center rounded-[8px] transition-colors',
               calendar.display === 'month'
-                ? 'text-textItemFocused bg-white/[0.08]'
+                ? 'text-textItemFocused bg-boxFocused'
                 : 'hover:text-textColor hover:bg-white/[0.04]'
             )}
             onClick={setMonth}
@@ -506,7 +506,7 @@ export const Filters = () => {
           className={clsx(
             'pt-[6px] pb-[5px] cursor-pointer flex justify-center items-center w-[34px] text-center rounded-[8px] transition-colors',
             !isListView
-              ? 'text-textItemFocused bg-white/[0.08]'
+              ? 'text-textItemFocused bg-boxFocused'
               : 'hover:text-textColor hover:bg-white/[0.04]'
           )}
         >
@@ -535,7 +535,7 @@ export const Filters = () => {
           className={clsx(
             'pt-[6px] pb-[5px] flex justify-center items-center cursor-pointer w-[34px] text-center rounded-[8px] transition-colors',
             isListView
-              ? 'text-textItemFocused bg-white/[0.08]'
+              ? 'text-textItemFocused bg-boxFocused'
               : 'hover:text-textColor hover:bg-white/[0.04]'
           )}
         >

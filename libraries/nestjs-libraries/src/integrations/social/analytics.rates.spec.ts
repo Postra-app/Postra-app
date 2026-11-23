@@ -111,7 +111,7 @@ describe('analytics rates', () => {
     });
     expect(engagement.data.map((d) => d.total)).toEqual([2, 1]);
     expect(result.find((r) => r.label === 'Clicks')!.unit).toBeUndefined();
-    // The card shows a rate's trend in percentage points (Codex): 2 % on the
+    // The card shows a rate's trend in percentage points: 2 % on the
     // first day and 1 % on the second is -1 pp, not a relative -50.
     expect(engagement.percentageChange).toBe(-1);
   });

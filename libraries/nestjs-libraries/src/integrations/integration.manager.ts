@@ -122,7 +122,7 @@ const previewProviders = new Set<string>([
 ]);
 
 // Organisations that get the preview platforms the way a super admin does,
-// by id in PREVIEW_ORGANIZATIONS (comma-separated; SSM /postra/prod/). It is
+// by id in PREVIEW_ORGANIZATIONS (comma-separated). It is
 // for the login a platform's reviewer signs in with: Meta tests Instagram
 // without a Facebook Page on the review@ account, which must not be a super
 // admin.

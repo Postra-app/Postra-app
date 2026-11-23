@@ -6,6 +6,10 @@ on:
   merge_group:
   pull_request:
 
+# Builds only: it reads the code and writes nothing back.
+permissions:
+  contents: read
+
 jobs:
   build:
     # Node from volta.node and pnpm from packageManager (package.json): one

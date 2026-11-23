@@ -1,69 +1,48 @@
 # Security Policy
 
-## Introduction
-
-The Postra app is committed to ensuring the security and integrity of our users' data. This security policy outlines our procedures for handling security vulnerabilities and our disclosure policy.
+Postra takes the security of its users' data seriously. This page says what is in scope, how to report a vulnerability and what to expect from us.
 
 ## Scope
 
-We, at Postra (Postra-app), cover the following scopes for vulnerability disclosures:
+- This repository (`github.com/Postra-app/Postra-app`): the Postra web app, API and scheduler.
+- The hosted service at `app.postra.co.uk` and the Postra websites.
+- The `@postra/node` SDK published from this repository.
+- The other public repositories of the `Postra-app` organisation.
 
-- The core repository for `postra-app` (github.com/Postra-app/Postra-app)
-- All `Postra-app` repositories that are official components, tooling, or integrations of Postra
-- Official Postra container images published under `Postra-app` on GHCR
-- Official Postra CLI tools and NPM packages (NPM org: @postra)
-- Postra-Cloud related infrastructure & services. (API, Frontend, Configurations etc.)
-- Plugins for Postra maintained within the `Postra-app` organization
+Vulnerabilities in third-party dependencies with no impact on Postra, and in infrastructure that someone else hosts, are out of scope. Please do not test against other customers' accounts or data; use an account of your own.
 
-Vulnerabilities in third-party dependencies or user-hosted infrastructure are outside of this scope.
+## Supported versions
 
-## Supported Versions
+Only the latest version on `main` is supported. It is the version that runs at `app.postra.co.uk`.
 
-This project currently only supports the latest release. We recommend that users always use the latest version of the Postra app to ensure they have the latest security patches.
-*CVE IDs will only be assigned to vulnerabilities affecting currently supported versions.*
+## Reporting a vulnerability
 
-## Reporting Security Vulnerabilities
+Report it privately, either way:
 
-If you discover a security vulnerability in the Postra app, please report it through the [GitHub Security Advisory system](https://github.com/Postra-app/Postra-app/security/advisories/new).
+- through GitHub: [Report a vulnerability](https://github.com/Postra-app/Postra-app/security/advisories/new), or
+- by email to **[hello@postra.co.uk](mailto:hello@postra.co.uk)** with "Security" in the subject. The same contact is published at <https://postra.co.uk/.well-known/security.txt>.
 
-When reporting a security vulnerability, please provide as much detail as possible, including:
+Please do not open a public issue for a vulnerability.
 
-- A clear description of the vulnerability
-- Proof of concept (PoC), where possible
-- Steps to reproduce the vulnerability
-- Any relevant code or configuration files
+Include as much as you can:
 
-If the report has immediate urgency, please contact one (or more) of the maintainers via email:
+- a clear description of the problem and its impact,
+- steps to reproduce it, with a proof of concept where possible,
+- any relevant requests, code or configuration.
 
-- @egelhaus ([E-Mail](mailto:egelhaus@ennogelhaus.de))
+### AI-assisted reports
 
-### AI Reports
+Reports that include AI-assisted analysis are welcome when the reporter has validated them and they come with reproduction steps, a proof of concept and an impact assessment. Reports that appear to be generated without meaningful human analysis will be closed without a detailed response.
 
-Reports that appear to be LLM-generated without meaningful human analysis — typically lacking a working proof of concept, reproducible steps, or accurate impact assessment — will be closed without detailed response.
+## Disclosure
 
-Reports that include AI-assisted analysis are welcome provided they have been validated by the reporter and include a proof of concept, reproduction steps, and impact assessment.
+We ask for private disclosure. We will not publish details of a vulnerability until a fix is available, and we ask reporters to do the same. We are glad to credit you once it is fixed, if you want that.
 
-## Disclosure Guidelines
+## What to expect
 
-We follow a private disclosure policy. If you discover a security vulnerability, please report it to us privately via GitHub Security Advisories, and if immediate urgency, via email as listed above. We will respond promptly to reports of vulnerabilities and work to resolve them as quickly as possible.
+- **Acknowledgement:** within 72 hours of your report.
+- **Triage and verification:** within 7 days of the acknowledgement.
+- **Fix for a critical issue:** as fast as we can, and within 90 days of triage at the latest.
+- **Fix for a non-critical issue:** within 180 days of triage.
 
-We will not publicly disclose security vulnerabilities until a patch or fix is available to prevent malicious actors from exploiting the vulnerability before a fix is released.
-
-## Security Vulnerability Response Process
-
-We take security vulnerabilities seriously and will respond promptly to reports of vulnerabilities. Our response process includes:
-
-- Investigating the report and verifying the vulnerability.
-- Developing a patch or fix for the vulnerability.
-- Releasing the patch or fix as soon as possible.
-- Notifying users of the vulnerability and the patch or fix.
-
-## Response Timelines
-
-We aim to follow these timelines:
-
-- **Initial Acknowledgment:** Within 72 hours of initial report.
-- **Completed Triage / Verification:** Within 7 days of initial acknowledgment.
-- **Critical Issue Remediation:** Within 90 days of completed triage.
-- **Non-Critical Issue Remediation:** Within 180 days of completed triage.
-- **CVE Publication:** Within 24 hours of remediation release.
+We will tell you when the fix is live.

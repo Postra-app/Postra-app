@@ -145,7 +145,9 @@ describe('prepareInput (kie.ai limits)', () => {
     expect(out.length).toBeLessThanOrEqual(5 * 1024 * 1024);
     const meta = await sharp(out).metadata();
     expect(Math.min(meta.width!, meta.height!)).toBeGreaterThanOrEqual(256);
-  });
+    // Encoding 48 MB of noise several times takes longer than the default
+    // 5 seconds on a busy runner.
+  }, 30_000);
 
   it('answers 422, not 500, for pixels that do not decode behind a valid header', async () => {
     const good = await sharp({ create: { width: 800, height: 600, channels: 3, background: '#888' } })

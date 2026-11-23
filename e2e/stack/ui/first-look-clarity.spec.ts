@@ -97,3 +97,31 @@ test('the composer on the light theme has a light editor', async ({ page }) => {
     });
   expect(background).toBe('rgb(255, 255, 255)');
 });
+
+test('the selected calendar view stands out and can be read', async ({ page }) => {
+  await page.goto('/launches?display=week');
+  const week = page.getByRole('button', { name: 'Week', exact: true });
+  await expect(week).toHaveAttribute('aria-pressed', 'true', { timeout: 20_000 });
+  // Dark text sat on a nearly transparent pill over a dark toolbar.
+  const [text, pill, solid] = await week.evaluate((el) => {
+    const lum = (colour: string) => {
+      const [r, g, b] = colour
+        .match(/[\d.]+/g)!
+        .slice(0, 3)
+        .map((n) => {
+          const c = Number(n) / 255;
+          return c <= 0.03928 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4);
+        });
+      return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+    };
+    const style = getComputedStyle(el);
+    const parts = style.backgroundColor.match(/[\d.]+/g)!;
+    // A see-through pill takes whatever is behind it, so only a solid one
+    // can be measured against its text.
+    const solid = parts.length < 4 || Number(parts[3]) === 1;
+    return [lum(style.color), lum(style.backgroundColor), solid] as const;
+  });
+  expect(solid, 'the selected view has a solid background').toBe(true);
+  const contrast = (Math.max(text, pill) + 0.05) / (Math.min(text, pill) + 0.05);
+  expect(contrast).toBeGreaterThan(4.5);
+});

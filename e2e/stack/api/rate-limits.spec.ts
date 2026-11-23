@@ -65,7 +65,7 @@ test('there is no ungated chat route beside the assistant', async () => {
 });
 
 // Sign-ups are limited per IP per day; 3 cut off a household trying
-// again after a typo, so the limit is 4 (decision 2026-10-18). An empty body
+// again after a typo, so the limit is 4. An empty body
 // fails validation after the guard: each call counts without creating a user.
 test('sign-ups: the 5th from one address in a day is 429, another address is not', async () => {
   const from = (ip: string) => request.newContext({ baseURL: BACKEND_URL, extraHTTPHeaders: { 'x-forwarded-for': ip } });

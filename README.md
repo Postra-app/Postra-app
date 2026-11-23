@@ -51,7 +51,15 @@ Postra is a social media management platform with AI built in — made for small
 
 ## Platforms
 
-Facebook · Instagram · Threads · X (Twitter) · LinkedIn · YouTube · TikTok · Bluesky · Mastodon · Telegram · Discord.
+Facebook · Instagram · Threads · X (Twitter) · LinkedIn (profiles, and Pages in early access) · YouTube · TikTok · Pinterest · Google Business Profile · Bluesky · Mastodon · Telegram · Discord · Slack · WordPress.
+
+Which platforms an account can connect depends on its plan; see [pricing](https://postra.co.uk/#pricing).
+
+## Docs, API and AI assistants
+
+- 📖 **Docs:** [postra.co.uk/docs](https://postra.co.uk/docs/) — guides, the public API and webhooks
+- 🧩 **SDK:** [`@postra/node`](apps/sdk) for Node.js
+- 🤖 **MCP connector:** use Postra from ChatGPT, Claude and other assistants — [setup](https://postra.co.uk/docs/mcp/), ready-made skills in [postra-skills](https://github.com/Postra-app/postra-skills)
 
 ## Built on Postiz
 
@@ -74,12 +82,16 @@ apps/
   frontend/      # Next.js app (UI, Studio design editor)
   backend/       # NestJS API
   orchestrator/  # Temporal workflows & activities
+  sdk/           # @postra/node, the Node.js SDK for the public API
+  extension/     # browser extension
+  commands/      # one-off maintenance commands
 libraries/       # shared services (DB/Prisma, OpenAI, studio, upload, …)
+e2e/             # the whole app on throwaway stores, driven by Playwright
 ```
 
-Built with **pnpm**.
-
 ## Development
+
+You need **Node.js 26.13.1 or newer (below 27)**, **pnpm 10** and **Docker**.
 
 ```bash
 pnpm install
@@ -88,6 +100,19 @@ cp .env.example .env                               # fill in required vars
 pnpm run prisma-db-migrate
 pnpm run dev                                        # frontend :4200, backend :3000
 ```
+
+Tests:
+
+```bash
+pnpm test                                          # unit tests (Jest)
+pnpm build && pnpm e2e:stack:ui                    # API and browser tests on a local stack
+```
+
+How the stack tests work: [e2e/stack/README.md](e2e/stack/README.md).
+
+## Questions and contributions
+
+Bug reports and pull requests are welcome through GitHub issues and pull requests. For help with your Postra account, write to [hello@postra.co.uk](mailto:hello@postra.co.uk).
 
 ## Security
 

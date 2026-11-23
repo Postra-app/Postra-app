@@ -156,7 +156,7 @@ test('ownership never goes to a turned-off seat or a suspended account', async (
   }
 });
 
-// Codex 2 XI: the checks ran before the writes, outside any lock. "Make
+// The checks ran before the writes, outside any lock. "Make
 // owner" for B and "make B a user" sent at once (two tabs) could both pass,
 // and the second write demoted the new owner: no owner left. Two co-owners
 // removing each other at once did the same. Every attempt here must leave

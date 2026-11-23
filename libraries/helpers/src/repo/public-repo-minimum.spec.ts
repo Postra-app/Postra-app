@@ -28,6 +28,12 @@ const FORBIDDEN: Array<[string, RegExp]> = [
   ['a tracker ID', new RegExp('E2E' + '-\\d{2}-\\d+')],
   ['a path into the plans', new RegExp('\\b' + 'Plan' + '/[A-Za-z]')],
   ['an ARN with an account ID', new RegExp('arn:aws:[a-z0-9-]+:[a-z0-9-]*:\\d{12}:')],
+  // A comment says what the code does and why, not who reviewed it or who
+  // decided it and when. The assistants as products (the MCP docs, the Help
+  // text) are named freely; these are the shapes of a review note.
+  ['a note on who reviewed it', new RegExp('\\(Co' + 'dex[ )]|Co' + 'dex \\d+ [IVX]+|Co' + 'dex on the')],
+  ['a note on who decided it', new RegExp('deci' + 'sion (K\\. )?\\d|\\(K\\. \\d')],
+  ['the name of an infrastructure resource', new RegExp('post' + 'ra-(dev|prod|staging)-[a-z]|terra' + 'form modules/')],
 ];
 
 describe('the public repository', () => {
@@ -38,7 +44,7 @@ describe('the public repository', () => {
     expect(agentFiles).toEqual([]);
   });
 
-  it('points at no plans or tracker IDs and carries no ARNs', () => {
+  it('points at no plans, tracker IDs, reviewers, decisions or infrastructure names', () => {
     const hits: string[] = [];
     for (const file of tracked) {
       if (exempt(file)) continue;
