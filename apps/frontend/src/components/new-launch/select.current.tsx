@@ -114,6 +114,11 @@ export const SelectCurrent: FC = () => {
               type="button"
               aria-label={t('composer_tab_all_channels', 'Text for all channels')}
               aria-pressed={current === 'global'}
+              data-tooltip-id="tooltip"
+              data-tooltip-content={t(
+                'composer_tab_all_channels',
+                'Text for all channels'
+              )}
               onClick={() => {
                 setHide(true);
                 setCurrent('global');

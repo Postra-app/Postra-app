@@ -789,7 +789,7 @@ export const Editor: FC<{
             >
               {t('drop_files_here_to_upload', 'Drop your files here to upload')}
             </div>
-            <div className="px-[10px] pt-[10px] bg-[rgba(10,14,26,0.85)] rounded-t-[6px] relative z-[99]">
+            <div className="px-[10px] pt-[10px] bg-newBgColorInner rounded-t-[6px] relative z-[99]">
               <OnlyEditor
                 value={props.value}
                 editorType={editorType}
@@ -799,7 +799,7 @@ export const Editor: FC<{
               />
             </div>
             <div
-              className="bg-[rgba(10,14,26,0.85)] flex-1"
+              className="bg-newBgColorInner flex-1"
               onClick={() => {
                 if (editorRef?.current?.editor?.isFocused) {
                   return;
@@ -808,7 +808,7 @@ export const Editor: FC<{
               }}
             />
             <div className="w-full pointer-events-none">
-              <div className="w-full h-[46px] overflow-hidden absolute left-0 bg-[rgba(10,14,26,0.85)] uppyChange">
+              <div className="w-full h-[46px] overflow-hidden absolute left-0 bg-newBgColorInner uppyChange">
                 <Dashboard
                   height={46}
                   uppy={uppy}
@@ -824,7 +824,7 @@ export const Editor: FC<{
               </div>
             </div>
             <div
-              className="w-full h-[46px] bg-[rgba(10,14,26,0.85)] cursor-text"
+              className="w-full h-[46px] bg-newBgColorInner cursor-text"
               onClick={() => {
                 if (editorRef?.current?.editor?.isFocused) {
                   return;
@@ -832,7 +832,7 @@ export const Editor: FC<{
                 editorRef?.current?.editor?.commands?.focus('end');
               }}
             />
-            <div className="flex bg-[rgba(10,14,26,0.85)] rounded-b-[6px] cursor-default">
+            <div className="flex bg-newBgColorInner rounded-b-[6px] cursor-default">
               {setImages && (
                 <MultiMediaComponent
                   mediaNotAvailable={num > 0 && comments === 'no-media'}
