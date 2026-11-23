@@ -17,7 +17,10 @@ Only the latest version on `main` is supported. It is the version that runs at `
 
 ## Reporting a vulnerability
 
-Email **[hello@postra.co.uk](mailto:hello@postra.co.uk)** with "Security" in the subject. The same contact is published at <https://postra.co.uk/.well-known/security.txt>.
+Report it privately, either way:
+
+- through GitHub: [Report a vulnerability](https://github.com/Postra-app/Postra-app/security/advisories/new), or
+- by email to **[hello@postra.co.uk](mailto:hello@postra.co.uk)** with "Security" in the subject. The same contact is published at <https://postra.co.uk/.well-known/security.txt>.
 
 Please do not open a public issue for a vulnerability.
 
