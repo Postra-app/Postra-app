@@ -5,7 +5,7 @@ Postra takes the security of its users' data seriously. This page says what is i
 ## Scope
 
 - This repository (`github.com/Postra-app/Postra-app`): the Postra web app, API and scheduler.
-- The hosted service at `app.postra.co.uk` and the sites `postra.co.uk` and `postra.pl`.
+- The hosted service at `app.postra.co.uk` and the Postra websites.
 - The `@postra/node` SDK published from this repository.
 - The other public repositories of the `Postra-app` organisation.
 
