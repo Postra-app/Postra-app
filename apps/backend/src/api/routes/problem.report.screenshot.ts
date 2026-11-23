@@ -38,7 +38,7 @@ export const decodeScreenshot = (dataUrl?: string) => {
 const client = () => new S3Client({ region: process.env.S3_REGION || 'eu-west-2' });
 
 // Stored under an unguessable key that the CDN refuses to serve and S3 drops
-// after 30 days (terraform modules/cdn); the original stays in Sentry.
+// after 30 days (a bucket lifecycle rule); the original stays in Sentry.
 // Returns the file name, not a link.
 export const storeScreenshot = async (shot: NonNullable<ReturnType<typeof decodeScreenshot>>) => {
   const bucket = process.env.S3_BUCKET;

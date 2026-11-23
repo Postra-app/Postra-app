@@ -1,4 +1,4 @@
-# Latest stable of everything (decision 2026-10-06). Minors and patches come
+# Latest stable of everything. Minors and patches come
 # in a handful of groups. Majors are left to
 # .github/workflows/dependency-freshness.yml, which keeps one issue listing
 # them: checking ~100 majors one by one ran past the 55-minute limit every

@@ -1,3 +1,3 @@
-# nestjs-libraries
+# react-shared-libraries
 
-This library was generated with [Nx](https://nx.dev).
+Shared client-side code for the frontend: form and UI helpers, translations, the toaster and error reporting setup.

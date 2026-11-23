@@ -15,7 +15,7 @@ import path from 'path';
 import { makeId } from '@gitroom/nestjs-libraries/services/make.is';
 import { fromBuffer } from '@gitroom/nestjs-libraries/upload/file.type';
 
-// Mirror of r2.uploader.ts but pointed at AWS S3 (postra-dev-media via the
+// Mirror of r2.uploader.ts but pointed at AWS S3 (the media bucket via the
 // instance role) so the `s3` storage provider gets chunked, direct-to-bucket
 // multipart uploads instead of pushing the whole file through nginx + multer
 // memory (which capped uploads at 50 MB and risked OOM on big videos).

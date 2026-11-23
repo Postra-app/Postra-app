@@ -1596,7 +1596,7 @@ export class StripeService {
   }
 
   // Invoices and receipts go to the customer's email. When the owner hands
-  // the organisation over, they follow the new owner (decision K. 2 XI);
+  // the organisation over, they follow the new owner;
   // they kept going to the former owner, who may leave the team. Never fails
   // the hand-over itself: it is done by the time this runs.
   async followNewOwner(organizationId: string) {

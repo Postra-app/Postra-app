@@ -23,7 +23,7 @@ ENV SENTRY_PROJECT=$SENTRY_PROJECT
 # server under it was orphaned with its full heap still resident: ~450 MB for
 # the backend, ~1.4 GB for the orchestrator, on a 3.7 GB box. Two such orphans
 # from one `pm2 restart` pushed the instance from a 78% steady state to 87%
-# and tripped postra-dev-ec2-memory (2026-09-13). pm2 now owns the Node
+# and tripped the memory alarm (2026-09-13). pm2 now owns the Node
 # servers themselves (ecosystem.config.cjs), but the walk still has to reach
 # whatever they start (ffmpeg), and `ps` is what diagnosing it needs.
 # `upgrade` first: the base image carries Debian's packages as they were on

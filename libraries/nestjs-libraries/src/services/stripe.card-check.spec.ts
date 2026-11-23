@@ -87,7 +87,7 @@ describe('card check before a first subscription', () => {
     expect(cancelSubscription).toHaveBeenCalledWith('sub_1');
   });
 
-  // Codex on the port: the cancel failing (a Stripe outage) must still fail
+  // The cancel failing (a Stripe outage) must still fail
   // the webhook, so Stripe sends it again and the subscription gets
   // cancelled; the card is detached either way.
   it('a failed cancel fails the webhook for a retry, and the card is still detached', async () => {
