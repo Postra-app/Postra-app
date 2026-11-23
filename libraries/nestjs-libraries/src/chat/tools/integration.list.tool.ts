@@ -15,7 +15,7 @@ export class IntegrationListTool implements AgentToolInterface {
   run() {
     return createTool({
       id: 'integrationList',
-      description: `This tool list available integrations to schedule posts to`,
+      description: `List the social channels (integrations) connected to this workspace: the id, name and platform of each. Call it first: posts are scheduled to a channel by its id.`,
       inputSchema: z.object({}),
       mcp: {
         annotations: {

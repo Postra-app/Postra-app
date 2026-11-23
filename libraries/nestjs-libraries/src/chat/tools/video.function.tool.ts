@@ -17,7 +17,7 @@ export class VideoFunctionTool implements AgentToolInterface {
   run() {
     return createTool({
       id: 'videoFunctionTool',
-      description: `Sometimes when we want to generate videos we might need to get some additional information like voice_id, etc`,
+      description: `Get a value that a video kind needs before it can be generated, such as a voice id. The kinds and their functions come from generateVideoOptions.`,
       mcp: {
         annotations: {
           title: 'Video Function Helper',

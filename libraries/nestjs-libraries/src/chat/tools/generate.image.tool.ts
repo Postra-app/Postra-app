@@ -13,9 +13,9 @@ export class GenerateImageTool implements AgentToolInterface {
   run() {
     return createTool({
       id: 'generateImageTool',
-      description: `Generate image to use in a post,
-                    in case the user specified a platform that requires attachment and attachment was not provided,
-                    ask if they want to generate a picture of a video.
+      description: `Generate an image with AI to use in a post, saved to the media library.
+                    When a platform requires an attachment and the user gave none,
+                    ask whether they want a picture or a video generated.
       `,
       mcp: {
         annotations: {
