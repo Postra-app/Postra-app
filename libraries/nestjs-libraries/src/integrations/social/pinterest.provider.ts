@@ -139,6 +139,15 @@ export class PinterestProvider
         value: 'The board ID must be a numeric string. Please check the board ID format.',
       }
     }
+    // A board created while an app was in Pinterest's trial mode. The boards
+    // list returns it with the real ones, and it takes no real Pins.
+    if (body.indexOf('sandbox boards') > -1) {
+      return {
+        type: 'bad-body' as const,
+        value:
+          'This board was created in a Pinterest test mode and cannot take real Pins. Choose another board for this post.',
+      };
+    }
     if (body.indexOf('Board not found') > -1) {
       return {
         type: 'bad-body' as const,

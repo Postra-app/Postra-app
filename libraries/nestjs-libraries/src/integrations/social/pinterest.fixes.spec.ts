@@ -37,6 +37,16 @@ describe('Pinterest', () => {
     ).toContain('not permitted to post to this board');
   });
 
+  // A board made while an app was in Pinterest's trial mode is listed with
+  // the real ones but refuses real Pins. The raw answer reached the user.
+  it('a board left over from Pinterest test mode is explained', () => {
+    const answer = provider.handleErrors(
+      '{"code":1,"message":"Cannot add non-sandbox pins on sandbox boards."}'
+    );
+    expect(answer?.type).toBe('bad-body');
+    expect(answer?.value).toContain('Choose another board');
+  });
+
   it('the composer refuses a board name before the post is queued', async () => {
     const errors = (dto: object) => validate(plainToInstance(PinterestSettingsDto, dto));
     expect(await errors({ board: '1234567890' })).toHaveLength(0);
