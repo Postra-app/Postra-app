@@ -34,6 +34,17 @@ export const askAgentTool = (key: string, agent: AskableAgent) =>
   createTool({
     id: `ask_${key}`,
     description: `Ask agent '${agent.name}' a question. Agent description: ${agent.getDescription()}`,
+    mcp: {
+      annotations: {
+        // The assistant behind it can create, schedule and change posts, so
+        // a client must not treat a call as safe to run without asking.
+        title: `Ask the ${agent.name.charAt(0).toUpperCase()}${agent.name.slice(1)} assistant`,
+        readOnlyHint: false,
+        destructiveHint: true,
+        idempotentHint: false,
+        openWorldHint: true,
+      },
+    },
     inputSchema: z.object({
       message: z.string().describe('The question or input for the agent.'),
     }),

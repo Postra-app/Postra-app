@@ -31,3 +31,26 @@ describe('ask_<agent> when the model fails', () => {
     ).rejects.toThrow('Channel not found');
   });
 });
+
+// A directory of MCP connectors reads each tool's title and hints to tell a
+// person what the tool may do before they allow it. This one had none.
+describe('ask_<agent> as an MCP client sees it', () => {
+  const tool: any = askAgentTool('postra', {
+    name: 'postra',
+    getDescription: () => 'Postra',
+    generate: async () => ({ text: 'ok' }),
+  });
+
+  it('has a title', () => {
+    expect(tool.mcp?.annotations?.title).toBe('Ask the Postra assistant');
+  });
+
+  it('says it can change things: the assistant can create and schedule posts', () => {
+    expect(tool.mcp?.annotations).toMatchObject({
+      readOnlyHint: false,
+      destructiveHint: true,
+      idempotentHint: false,
+      openWorldHint: true,
+    });
+  });
+});

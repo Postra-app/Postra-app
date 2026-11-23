@@ -24,8 +24,8 @@ export class IntegrationTriggerTool implements AgentToolInterface {
   run() {
     return createTool({
       id: 'triggerTool',
-      description: `After using the integrationSchema, we sometimes miss details we can\'t ask from the user, like ids.
-      Sometimes this tool requires to user prompt for some settings, like a word to search for. methodName is required [input:callable-tools]`,
+      description: `Call a channel's own helper, listed under 'tools' in integrationSchema, to get what a post's settings need and the user cannot be expected to know, such as the ids of their boards or pages.
+      Some helpers take input from the user, such as a word to search for. methodName is required [input:callable-tools]`,
       mcp: {
         annotations: {
           // Not read-only: this calls provider methods by name, and some of

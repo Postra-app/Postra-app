@@ -16,7 +16,7 @@ export class GenerateVideoOptionsTool implements AgentToolInterface {
   run() {
     return createTool({
       id: 'generateVideoOptions',
-      description: `All the options to generate videos, some tools might require another call to generateVideoFunction`,
+      description: `List the kinds of video this workspace can generate and the inputs each one takes. Some kinds need a value from videoFunctionTool first (a voice id, for example).`,
       inputSchema: z.object({}),
       mcp: {
         annotations: {

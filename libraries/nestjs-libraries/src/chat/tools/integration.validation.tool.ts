@@ -17,10 +17,9 @@ export class IntegrationValidationTool implements AgentToolInterface {
   run() {
     return createTool({
       id: 'integrationSchema',
-      description: `Everytime we want to schedule a social media post, we need to understand the schema of the integration.
-         This tool helps us get the schema of the integration.
-         Sometimes we might get a schema back the requires some id, for that, you can get information from 'tools'
-         And use the triggerTool function.
+      description: `Get the rules and settings of one platform before writing a post for it: the maximum length, what media it needs, and the settings a post requires.
+         Call it once per platform before integrationSchedulePostTool.
+         When a setting needs an id (a board or a page, for example), the schema lists a tool under 'tools': call triggerTool with that methodName to get the ids.
         `,
       mcp: {
         annotations: {
