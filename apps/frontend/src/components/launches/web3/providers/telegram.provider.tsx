@@ -71,6 +71,12 @@ export const TelegramProvider: FC<Web3ProviderInterface> = (props) => {
             'to your\n          telegram group / channel and click here:'
           )}
         </div>
+        <div className="mt-[12px] max-w-[520px] text-center text-[13px] text-textColor/70">
+          {t(
+            'telegram_connect_channel_note',
+            'Connecting a channel? Make the bot an administrator with the "Post messages" permission first, otherwise Telegram does not pass it your command. In a group, posts are sent by the bot. In a channel, they appear under the channel name.'
+          )}
+        </div>
         {!step ? (
           <div className="w-full mt-[16px]" onClick={loadAll}>
             <div

@@ -303,7 +303,7 @@ export const Filters = () => {
               type="button"
               onClick={previous}
               aria-label={periodLabel.previous}
-              className="cursor-pointer text-textColor rtl:rotate-180 px-[11px] bg-transparent h-full flex items-center justify-center hover:text-textItemFocused hover:bg-white/[0.06] transition-colors"
+              className="cursor-pointer text-textColor rtl:rotate-180 px-[11px] bg-transparent h-full flex items-center justify-center hover:text-textColor hover:bg-white/[0.06] transition-colors"
             >
               <svg
                 xmlns="http://www.w3.org/2000/svg"
@@ -330,7 +330,7 @@ export const Filters = () => {
               type="button"
               onClick={next}
               aria-label={periodLabel.next}
-              className="cursor-pointer text-textColor rtl:rotate-180 px-[11px] bg-transparent h-full flex items-center justify-center hover:text-textItemFocused hover:bg-white/[0.06] transition-colors"
+              className="cursor-pointer text-textColor rtl:rotate-180 px-[11px] bg-transparent h-full flex items-center justify-center hover:text-textColor hover:bg-white/[0.06] transition-colors"
             >
               <svg
                 xmlns="http://www.w3.org/2000/svg"
@@ -354,7 +354,7 @@ export const Filters = () => {
               <button
                 type="button"
                 onClick={setToday}
-                className="launches-control-surface hover:text-textItemFocused hover:bg-white/[0.08] py-[3px] px-[14px] flex justify-center items-center rounded-[12px] transition-all cursor-pointer text-[14px] bg-[rgba(15,23,42,0.78)] border border-white/10 h-[42px] font-[600]"
+                className="launches-control-surface hover:text-textColor hover:bg-white/[0.08] py-[3px] px-[14px] flex justify-center items-center rounded-[12px] transition-all cursor-pointer text-[14px] bg-[rgba(15,23,42,0.78)] border border-white/10 h-[42px] font-[600]"
               >
                 {t('today', 'Today')}
               </button>
@@ -373,7 +373,7 @@ export const Filters = () => {
               className={clsx(
                 'text-textColor rtl:rotate-180 px-[11px] bg-transparent h-full flex items-center justify-center',
                 calendar.listPage > 0
-                  ? 'cursor-pointer hover:text-textItemFocused hover:bg-white/[0.06]'
+                  ? 'cursor-pointer hover:text-textColor hover:bg-white/[0.06]'
                   : 'opacity-50 cursor-not-allowed'
               )}
             >
@@ -406,7 +406,7 @@ export const Filters = () => {
               className={clsx(
                 'text-textColor rtl:rotate-180 px-[11px] bg-transparent h-full flex items-center justify-center',
                 calendar.listPage < calendar.listTotalPages - 1
-                  ? 'cursor-pointer hover:text-textItemFocused hover:bg-white/[0.06]'
+                  ? 'cursor-pointer hover:text-textColor hover:bg-white/[0.06]'
                   : 'opacity-50 cursor-not-allowed'
               )}
             >
@@ -463,7 +463,7 @@ export const Filters = () => {
               'pt-[7px] pb-[6px] cursor-pointer w-[74px] text-center rounded-[8px] transition-colors',
               calendar.display === 'day'
                 ? 'text-textItemFocused bg-white/[0.08]'
-                : 'hover:text-textItemFocused hover:bg-white/[0.04]'
+                : 'hover:text-textColor hover:bg-white/[0.04]'
             )}
             onClick={setDay}
           >
@@ -476,7 +476,7 @@ export const Filters = () => {
               'pt-[7px] pb-[6px] cursor-pointer w-[74px] text-center rounded-[8px] transition-colors',
               calendar.display === 'week'
                 ? 'text-textItemFocused bg-white/[0.08]'
-                : 'hover:text-textItemFocused hover:bg-white/[0.04]'
+                : 'hover:text-textColor hover:bg-white/[0.04]'
             )}
             onClick={setWeek}
           >
@@ -489,7 +489,7 @@ export const Filters = () => {
               'pt-[7px] pb-[6px] cursor-pointer w-[74px] text-center rounded-[8px] transition-colors',
               calendar.display === 'month'
                 ? 'text-textItemFocused bg-white/[0.08]'
-                : 'hover:text-textItemFocused hover:bg-white/[0.04]'
+                : 'hover:text-textColor hover:bg-white/[0.04]'
             )}
             onClick={setMonth}
           >
@@ -507,7 +507,7 @@ export const Filters = () => {
             'pt-[6px] pb-[5px] cursor-pointer flex justify-center items-center w-[34px] text-center rounded-[8px] transition-colors',
             !isListView
               ? 'text-textItemFocused bg-white/[0.08]'
-              : 'hover:text-textItemFocused hover:bg-white/[0.04]'
+              : 'hover:text-textColor hover:bg-white/[0.04]'
           )}
         >
           {/*calendar*/}
@@ -536,7 +536,7 @@ export const Filters = () => {
             'pt-[6px] pb-[5px] flex justify-center items-center cursor-pointer w-[34px] text-center rounded-[8px] transition-colors',
             isListView
               ? 'text-textItemFocused bg-white/[0.08]'
-              : 'hover:text-textItemFocused hover:bg-white/[0.04]'
+              : 'hover:text-textColor hover:bg-white/[0.04]'
           )}
         >
           {/*list*/}

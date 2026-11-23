@@ -1014,7 +1014,9 @@ export const ManageModal: FC<AddEditModalProps> = (props) => {
 
   return (
     <div className="w-full h-full flex-1 p-[40px] phone:p-0 flex relative">
-      <div className="flex flex-1 bg-white/[0.03] rounded-[20px] flex-col">
+      {/* A solid, framed panel: on the blurred page a see-through one
+          had no visible edge. */}
+      <div className="flex flex-1 bg-newBgColorInner border border-white/15 shadow-[0_24px_80px_rgba(0,0,0,0.55)] rounded-[20px] flex-col phone:border-0 phone:rounded-none">
         <div
           className={clsx(
             'flex-1 flex',
@@ -1081,8 +1083,19 @@ export const ManageModal: FC<AddEditModalProps> = (props) => {
                   className="gap-[32px] flex flex-col pe-[8px] pt-[20px] ps-[20px] absolute top-0 left-0 w-full h-full overflow-x-hidden overflow-y-scroll scrollbar scrollbar-thumb-newColColor scrollbar-track-newBgColorInner"
                 >
                   <div className="flex w-full">
-                    <div className="flex flex-1">
+                    <div className="flex flex-1 items-center gap-[12px]">
                       <PicksSocialsComponent toolTip={true} />
+                      {/* Nothing is selected on a new post: say what the
+                          greyed-out avatars are for. */}
+                      {selectedIntegrations.length === 0 &&
+                        !existingData.integration && (
+                          <div className="text-[13px] text-textColor/60">
+                            {t(
+                              'composer_pick_channel_hint',
+                              'Click a channel to choose where this post goes'
+                            )}
+                          </div>
+                        )}
                     </div>
                     <div>
                       {/* an existing post keeps its channels */}
@@ -1286,7 +1299,7 @@ export const ManageModal: FC<AddEditModalProps> = (props) => {
                     )}
                   >
                     {selectedIntegrations.length === 0
-                      ? t('check_circles_above', 'Check the circles above')
+                      ? t('composer_select_channel_first', 'Select a channel first')
                       : dummy
                       ? t('create_output', 'Create output')
                       : !existingData?.integration

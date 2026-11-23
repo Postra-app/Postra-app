@@ -1083,6 +1083,7 @@ export const CalendarColumn: FC<{
               <div className="relative w-full flex flex-col items-center p-[2.5px]">
                 <CalendarItem
                   display={display as 'day' | 'week' | 'month'}
+                  showTime={display === 'week'}
                   isBeforeNow={isBeforeNow}
                   date={getDate}
                   state={post.state}

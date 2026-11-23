@@ -18,6 +18,7 @@ import { Button } from '@gitroom/frontend/components/ui/button';
 import { useBrandKit } from '@gitroom/frontend/components/video-studio/use-brand-kit';
 import { loadCanvasFonts } from '../utils/font-loading';
 import { StudioIcon } from '@gitroom/frontend/components/studio/studio-icons';
+import { WaitingStatus } from '@gitroom/frontend/components/ui/waiting-status';
 import { useAiError } from '@gitroom/frontend/components/ai/use-ai-error';
 
 interface Props {
@@ -376,6 +377,19 @@ export const AiGeneratePanel: FC<Props> = ({ canvas }) => {
             ? t('ai_generate_carousel_button', 'Generate carousel ({n})').replace('{n}', String(slidesCount))
             : t('ai_generate_button', 'Generate Design')}
       </Button>
+      {/* An estimate of the wait, not a measurement: the request reports
+          nothing until it ends. */}
+      <WaitingStatus
+        active={isGenerating}
+        bar
+        expectedSeconds={slidesCount > 1 ? 30 + slidesCount * 15 : 30}
+        messages={[
+          t('ai_progress_reading', 'Reading your prompt…'),
+          t('ai_progress_background', 'Creating the background…'),
+          t('ai_progress_text', 'Writing and placing the text…'),
+          t('ai_progress_finishing', 'Putting the design together…'),
+        ]}
+      />
       {confirmPrompt !== null && (
         <div className="rounded-md bg-yellow-500/10 border border-yellow-500/30 px-2 py-1.5 flex flex-col gap-1.5">
           <p className="flex items-start gap-1.5 text-[11px] leading-snug text-textColor/80">

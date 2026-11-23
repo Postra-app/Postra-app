@@ -1316,6 +1316,18 @@ body.light .agent {
     1px 1px 0 black;
 }
 
+/* Studio keeps the dark palette in both themes, and its panels are
+   see-through: on the light theme's page they were pale text on white. Under
+   the light theme it gets a dark base of its own. */
+.light .studio-root.dark {
+  background: #0c1220;
+  color: #fff;
+  border-radius: 12px;
+}
+.light .studio-root.dark:not(.studio-root *) {
+  padding: 8px;
+}
+
 /* Studio strips the focus outline on every input (`focus:outline-none`) and
    never puts one back, and its buttons never had one - so keyboard users have
    no idea where they are in a screen made almost entirely of buttons.

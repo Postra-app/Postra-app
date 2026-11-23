@@ -58,6 +58,7 @@ import { AGENT_FAIR_USE_MESSAGES } from '@gitroom/nestjs-libraries/database/pris
 import { useT } from '@gitroom/react/translation/get.transation.service.client';
 import { hasExtension } from '@gitroom/helpers/utils/has.extension';
 import useSWR from 'swr';
+import { WaitingStatus } from '@gitroom/frontend/components/ui/waiting-status';
 import { useToaster } from '@gitroom/react/toaster/toaster';
 
 // The runtime client reports a refused run as "HTTP 429: {"error": "..."}".
@@ -166,6 +167,22 @@ export const AgentChat: FC = () => {
               initial: t(
                 'agent_welcome_message',
                 `Hi! I'm your Postra agent 🙌🏻 Tell me what you want to publish - I'll schedule posts across multiple channels and generate images and videos.`
+              ),
+            }}
+            // Replaces the three dots: the wait can take a minute, and a line
+            // that changes shows the agent is still working.
+            icons={{
+              activityIcon: (
+                <WaitingStatus
+                  active
+                  expectedSeconds={40}
+                  messages={[
+                    t('agent_status_thinking', 'Thinking…'),
+                    t('agent_status_gathering', 'Gathering information…'),
+                    t('agent_status_working', 'Working on it…'),
+                    t('agent_status_finishing', 'Almost there…'),
+                  ]}
+                />
               ),
             }}
             UserMessage={Message}

@@ -17,7 +17,7 @@ export const MenuItem: FC<{ label: ReactNode; icon: ReactNode; path: string; onC
     'minCustom:w-[calc(100%-8px)] w-full minCustom:h-[46px] custom:h-[34px] py-[5px] px-[6px] gap-[4px] flex flex-col custom:flex-row text-[10px] font-[600] items-center justify-center text-center minCustom:justify-center rounded-[14px] border transition-all duration-200 self-center',
     isActive
       ? 'text-textItemFocused bg-boxFocused border-sky-300/25 shadow-[0_12px_30px_rgba(56,189,248,0.14)]'
-      : 'text-textItemBlur border-transparent hover:text-textItemFocused hover:bg-white/[0.04] hover:border-white/10'
+      : 'text-textItemBlur border-transparent hover:text-textColor hover:bg-white/[0.04] hover:border-white/10'
   );
 
   if (onClick) {
