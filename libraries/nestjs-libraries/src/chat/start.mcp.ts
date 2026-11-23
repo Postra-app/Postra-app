@@ -16,6 +16,7 @@ import { runWithContext } from './async.storage';
 import { ioRedis } from '@gitroom/nestjs-libraries/redis/redis.service';
 import { createOAuthMiddleware } from './oauth-middleware';
 import { askAgentTool } from './ask.agent.tool';
+import { DIRECTORY_INSTRUCTIONS, directoryTools } from './mcp.directory';
 import { publicBackendUrl } from './public-backend-url';
 import { SubscriptionService } from '@gitroom/nestjs-libraries/database/prisma/subscriptions/subscription.service';
 const fixAcceptHeader = (req: Request) => {
@@ -192,6 +193,14 @@ export const startMcp = async (app: INestApplication) => {
 
   const server = new MCPServer(serverConfig);
 
+  // The connector as directories of MCP connectors list it (mcp.directory.ts).
+  const directoryServer = new MCPServer({
+    name: 'Postra',
+    version: '1.0.0',
+    tools: directoryTools(tools),
+    instructions: DIRECTORY_INSTRUCTIONS,
+  });
+
   const oauthMiddleware = createOAuthMiddleware({
     oauth: {
       // The address clients connect to, which they must find again in the
@@ -219,6 +228,28 @@ export const startMcp = async (app: INestApplication) => {
       res.send(process.env.OPENAI_APP_CHALLANGE);
     });
   }
+
+  // The directory connector is a resource of its own (RFC 9728 §3.1: its
+  // metadata lives at the well-known path followed by the resource's path).
+  const DIRECTORY_PATH = '/mcp-directory';
+  const directoryMetadataUrl = (() => {
+    const resource = new URL(publicBackendUrl(DIRECTORY_PATH));
+    return `${resource.origin}/.well-known/oauth-protected-resource${resource.pathname}`;
+  })();
+
+  app.use('/.well-known/oauth-protected-resource', async (req: Request, res: Response, next: () => void) => {
+    if (!req.path.endsWith(DIRECTORY_PATH)) {
+      next();
+      return;
+    }
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.setHeader('Cache-Control', 'max-age=3600');
+    res.json({
+      resource: publicBackendUrl(DIRECTORY_PATH),
+      authorization_servers: [process.env.NEXT_PUBLIC_BACKEND_URL],
+      bearer_methods_supported: ['header'],
+    });
+  });
 
   app.use('/.well-known/oauth-protected-resource', async (req: Request, res: Response) => {
     const url = new URL('/.well-known/oauth-protected-resource', process.env.NEXT_PUBLIC_BACKEND_URL);
@@ -320,7 +351,10 @@ export const startMcp = async (app: INestApplication) => {
     });
   });
 
-  app.use('/mcp', async (req: Request, res: Response, next: () => void) => {
+  // One handler for the servers reached with the token in the Authorization
+  // header: an API key, or the token an OAuth client was given.
+  const bearerRoute = (path: string, mcp: MCPServer, metadataUrl?: string) =>
+  app.use(path, async (req: Request, res: Response, next: () => void) => {
     if (req.path !== '/' && req.path !== '') {
       next();
       return;
@@ -339,6 +373,10 @@ export const startMcp = async (app: INestApplication) => {
 
     const token = req.headers.authorization?.replace('Bearer ', '');
     if (!token) {
+      // Where an OAuth client finds out how to sign in (RFC 9728 §5.1).
+      if (metadataUrl) {
+        res.setHeader('WWW-Authenticate', `Bearer resource_metadata="${metadataUrl}"`);
+      }
       res.status(401).send('Missing Authorization header');
       return;
     }
@@ -380,12 +418,12 @@ export const startMcp = async (app: INestApplication) => {
       return;
     }
 
-    const url = new URL('/mcp', process.env.NEXT_PUBLIC_BACKEND_URL);
+    const url = new URL(path, process.env.NEXT_PUBLIC_BACKEND_URL);
 
     fixAcceptHeader(req);
     // @ts-ignore
     await runWithContext({ requestId: token, auth: req.auth }, async () => {
-      await server.startHTTP({
+      await mcp.startHTTP({
         url,
         httpPath: url.pathname,
         options: {
@@ -403,6 +441,11 @@ export const startMcp = async (app: INestApplication) => {
       });
     });
   });
+
+  // The longer path first, so that it never depends on how Express matches
+  // a prefix.
+  bearerRoute(DIRECTORY_PATH, directoryServer, directoryMetadataUrl);
+  bearerRoute('/mcp', server);
 
   // /mcp/:key, /sse/:key and /message/:key took the API key in the address:
   // it landed in the ALB and WAF logs, the assistant's logs and browser

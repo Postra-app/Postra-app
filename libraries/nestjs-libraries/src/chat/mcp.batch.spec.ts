@@ -47,11 +47,13 @@ describe('a batch of MCP calls', () => {
 });
 
 // start.mcp.ts pulls Mastra and the whole agent; read as source for the wiring.
-it('both MCP endpoints refuse an oversized batch and count its calls', () => {
+// The OAuth route, and the one handler behind /mcp and /mcp-directory.
+it('every MCP endpoint refuses an oversized batch and counts its calls', () => {
   const src = readFileSync(join(__dirname, 'start.mcp.ts'), 'utf8');
-  for (const path of ['/mcp-oauth', '/mcp']) {
-    const from = src.indexOf(`app.use('${path}'`);
-    const body = src.slice(from, src.indexOf('server.startHTTP', from));
+  for (const start of ["app.use('/mcp-oauth'", 'const bearerRoute =']) {
+    const from = src.indexOf(start);
+    expect(from).toBeGreaterThan(-1);
+    const body = src.slice(from, src.indexOf('.startHTTP(', from));
     expect(body.indexOf('refusedBatch(')).toBeGreaterThan(body.indexOf('readBody(req, res)'));
     expect(body.indexOf('refusedBatch(')).toBeLessThan(body.indexOf('agentRunRefusal('));
   }
