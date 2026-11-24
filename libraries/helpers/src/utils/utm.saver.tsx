@@ -1,19 +1,21 @@
 'use client';
 
-import { FC, useCallback, useEffect } from 'react';
+import { FC, useEffect } from 'react';
 import { useSearchParams } from 'next/navigation';
-import { useLocalStorage } from '@mantine/hooks';
 import { TrackEnum } from '@gitroom/nestjs-libraries/user/track.enum';
 import { useFireEvents } from '@gitroom/helpers/utils/use.fire.events';
 import { useTrack } from '@gitroom/react/helpers/use.track';
 
+// Values earlier versions kept in the browser: the first page visited, its
+// referrer and the campaign. Nothing reads them any more.
+const LEGACY_KEYS = ['landingUrl', 'referrer', 'utm'];
+
 const UtmSaver: FC = () => {
-  const query = useSearchParams();
-  const [value, setValue] = useLocalStorage({ key: 'utm', defaultValue: '' });
   const searchParams = useSearchParams();
   const fireEvents = useFireEvents();
   const track = useTrack();
 
+  // Back from a checkout (?check=...): report the purchase once.
   useEffect(() => {
     if (searchParams.get('check')) {
       fireEvents('purchase');
@@ -22,27 +24,14 @@ const UtmSaver: FC = () => {
   }, []);
 
   useEffect(() => {
-    const landingUrl = localStorage.getItem('landingUrl');
-    if (landingUrl) {
-      return;
+    try {
+      LEGACY_KEYS.forEach((key) => localStorage.removeItem(key));
+    } catch {
+      // Storage is blocked in this browser: there is nothing to remove.
     }
-
-    localStorage.setItem('landingUrl', window.location.href);
-    localStorage.setItem('referrer', document.referrer);
   }, []);
-
-  useEffect(() => {
-    const utm = query.get('utm_source') || query.get('utm') || query.get('ref');
-    if (utm && !value) {
-      setValue(utm);
-    }
-  }, [query, value]);
 
   return <></>;
 };
 
-export const useUtmUrl = () => {
-  const [value] = useLocalStorage({ key: 'utm', defaultValue: '' });
-  return value || '';
-};
 export default UtmSaver;

@@ -16,6 +16,10 @@ import { NotificationService } from '@gitroom/nestjs-libraries/database/prisma/n
 import { ForgotReturnPasswordDto } from '@gitroom/nestjs-libraries/dtos/auth/forgot-return.password.dto';
 import { EmailService } from '@gitroom/nestjs-libraries/services/email.service';
 import { normalizeEmail } from '@gitroom/helpers/utils/email.normalize';
+import {
+  cleanSignupSource,
+  signupSourceFromParams,
+} from '@gitroom/helpers/utils/signup.source';
 import disposableDomains from 'disposable-email-domains';
 import { ioRedis } from '@gitroom/nestjs-libraries/redis/redis.service';
 import { bustAuthContextCache } from '@gitroom/nestjs-libraries/redis/auth-context.cache';
@@ -101,6 +105,17 @@ const invitedAddress = (invite: TeamInvite | undefined, email?: string | null) =
     !tagged(address) &&
     normalizeEmail(invited) === normalizeEmail(address)
   );
+};
+
+// What oauthLink stored for a state, cleaned again on the way out; undefined
+// when there is nothing.
+const readSignupSource = (stored: string | null) => {
+  try {
+    const source = cleanSignupSource(stored ? JSON.parse(stored) : null);
+    return Object.keys(source).length ? source : undefined;
+  } catch {
+    return undefined;
+  }
 };
 
 @Injectable()
@@ -387,6 +402,9 @@ export class AuthService {
           termsAccepted: body.termsAccepted,
           datafast_visitor_id: body.datafast_visitor_id,
           region: body.region,
+          signupSource: body.signupSource,
+          signupMedium: body.signupMedium,
+          signupCampaign: body.signupCampaign,
         },
         ip,
         userAgent
@@ -795,6 +813,14 @@ export class AuthService {
     const link = await providerInstance.generateLink(query, state);
     const nonce = randomBytes(16).toString('hex');
     await ioRedis.set(`auth-state:${state}`, nonce, 'EX', 600);
+    // The campaign the visitor came from waits beside the state while they
+    // are at the provider, so nothing has to be stored in their browser.
+    const source = signupSourceFromParams(query);
+    if (Object.keys(source).length) {
+      await ioRedis
+        .set(`auth-source:${state}`, JSON.stringify(source), 'EX', 600)
+        .catch((): null => null);
+    }
     return { link, nonce };
   }
 
@@ -810,6 +836,9 @@ export class AuthService {
     // requests racing with the same state both through (2.2.11).
     const stateKey = state ? `auth-state:${state}` : '';
     const stored = stateKey ? await ioRedis.getdel(stateKey) : null;
+    const source = state
+      ? await ioRedis.getdel(`auth-source:${state}`).catch((): null => null)
+      : null;
     if (!stored || !nonce || stored !== nonce) {
       throw new Error('Invalid or expired state');
     }
@@ -839,6 +868,8 @@ export class AuthService {
         user.verified === true ? user.email : null,
         invite
       ),
+      // Handed back to the sign-up form, which sends it with the form.
+      signup: readSignupSource(source),
     };
   }
 

@@ -167,3 +167,25 @@ describe('getPostsList - the reason a post failed', () => {
     expect(result.posts[0].error).toBe('Media aspect ratio is not supported by Instagram');
   });
 });
+
+// A failed post moved to a new date is scheduled again (QUEUE) and keeps the
+// text of its old failure in the row until it is published. The list said
+// "scheduled" and showed that failure next to it.
+describe('getPostsList - an error belongs to a failed post only', () => {
+  const listOf = async (row: any) => {
+    const { repo, findMany } = buildRepo();
+    findMany.mockResolvedValue([row]);
+    const { posts } = await repo.getPostsList('org-1', { state: 'all', page: 0, limit: 20 } as any);
+    return posts[0];
+  };
+
+  it('a scheduled post shows no error, whatever the row still holds', async () => {
+    const post = await listOf({ id: 'p1', state: State.QUEUE, error: 'Refresh channel needed' });
+    expect(post.error).toBeNull();
+  });
+
+  it('a failed post shows its error', async () => {
+    const post = await listOf({ id: 'p1', state: State.ERROR, error: 'Refresh channel needed' });
+    expect(post.error).toBe('Refresh channel needed');
+  });
+});

@@ -44,6 +44,11 @@ beforeEach(() => {
 });
 
 describe('Telegram caption limit', () => {
+  it('sends a line break inside a paragraph as a new line', async () => {
+    await post('<p>Hello<br>World</p>');
+    expect(bot.sendMessage.mock.calls[0][0].text).toContain('Hello\nWorld');
+  });
+
   it('keeps a short text as the caption, in one message', async () => {
     await post('<p>short</p>', photo);
     expect(bot.sendPhoto.mock.calls[0][0]).toMatchObject({

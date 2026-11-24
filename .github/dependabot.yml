@@ -1,8 +1,7 @@
 # Latest stable of everything. Minors and patches come
-# in a handful of groups. Majors are left to
-# .github/workflows/dependency-freshness.yml, which keeps one issue listing
-# them: checking ~100 majors one by one ran past the 55-minute limit every
-# week, and each needs work of its own anyway. Security fixes
+# in a handful of groups. Majors are left out here: checking ~100 of them one
+# by one ran past the 55-minute limit every week, and each needs work of its
+# own anyway. The maintainers track them separately. Security fixes
 # come separately and are not affected (ignore applies to version updates
 # only).
 #

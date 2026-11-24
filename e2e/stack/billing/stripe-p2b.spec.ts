@@ -73,11 +73,11 @@ const advance = async (clock: string, seconds: number) => {
 };
 
 const subscribe = (api: APIRequestContext, billing: Tier) =>
-  api.post('/billing/subscribe', { data: { billing, period: 'MONTHLY', utm: '' } });
+  api.post('/billing/subscribe', { data: { billing, period: 'MONTHLY' } });
 
 test('#4 upgrade Starter → Pro: the amount /billing/prorate quotes is the invoice', async () => {
   const org = await payingOrg('STANDARD');
-  const quote = await (await org.api.post('/billing/prorate', { data: { billing: 'PRO', period: 'MONTHLY', utm: '' } })).json();
+  const quote = await (await org.api.post('/billing/prorate', { data: { billing: 'PRO', period: 'MONTHLY' } })).json();
   expect(quote.price).toBeGreaterThan(0);
 
   expect((await subscribe(org.api, 'PRO')).status()).toBe(201);
@@ -96,14 +96,14 @@ test('#4 upgrade Starter → Pro: the amount /billing/prorate quotes is the invo
 // plan and waits for the renewal.
 test('the quote says when a change renews and whether it waits', async () => {
   const org = await payingOrg('PRO');
-  const down = await (await org.api.post('/billing/prorate', { data: { billing: 'STANDARD', period: 'YEARLY', utm: '' } })).json();
+  const down = await (await org.api.post('/billing/prorate', { data: { billing: 'STANDARD', period: 'YEARLY' } })).json();
   const periodEnd = (await stripe.subscriptions.retrieve(org.sub)).items.data[0].current_period_end;
   expect(down).toMatchObject({ scheduled: true, price: 0, renewsOn: new Date(periodEnd * 1000).toISOString() });
 
-  const up = await (await org.api.post('/billing/prorate', { data: { billing: 'ULTIMATE', period: 'YEARLY', utm: '' } })).json();
+  const up = await (await org.api.post('/billing/prorate', { data: { billing: 'ULTIMATE', period: 'YEARLY' } })).json();
   expect(up.scheduled).toBe(false);
   expect(up.price).toBeGreaterThan(0);
-  const changed = await org.api.post('/billing/subscribe', { data: { billing: 'ULTIMATE', period: 'YEARLY', utm: '' } });
+  const changed = await org.api.post('/billing/subscribe', { data: { billing: 'ULTIMATE', period: 'YEARLY' } });
   expect(changed.status(), await changed.text()).toBe(201);
   const after = await stripe.subscriptions.retrieve(org.sub);
   expect(after.items.data[0].price.recurring?.interval).toBe('year');

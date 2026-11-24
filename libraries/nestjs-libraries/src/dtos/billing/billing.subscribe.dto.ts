@@ -17,11 +17,6 @@ export class BillingSubscribeDto {
   @IsOptional()
   @IsString()
   @MaxLength(TRACKING_MAX)
-  utm: string;
-
-  @IsOptional()
-  @IsString()
-  @MaxLength(TRACKING_MAX)
   dub: string;
 
   @IsOptional()

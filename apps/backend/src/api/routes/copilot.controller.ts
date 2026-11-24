@@ -237,11 +237,18 @@ export class CopilotController {
       return { done: true, kind: action.kind };
     }
 
+    // With the plan's allowance for the month the post moves to, as a move
+    // in the calendar has.
     await this._postsService.changeDate(
       organization.id,
       action.payload.id,
       action.payload.date,
-      'schedule'
+      'schedule',
+      false,
+      await this._subscriptionService.postCap(
+        organization.id,
+        organization.createdAt
+      )
     );
     return { done: true, kind: action.kind };
   }

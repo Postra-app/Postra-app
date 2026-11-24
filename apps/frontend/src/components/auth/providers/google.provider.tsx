@@ -4,6 +4,7 @@ import { useCallback, useState } from 'react';
 import { useToaster } from '@gitroom/react/toaster/toaster';
 import { isFetchHandledError } from '@gitroom/helpers/utils/fetch.errors';
 import { useFetch } from '@gitroom/helpers/utils/custom.fetch';
+import { campaignQuery } from '@gitroom/frontend/components/auth/providers/campaign.query';
 import { useT } from '@gitroom/react/translation/get.transation.service.client';
 export const GoogleProvider = () => {
   const fetch = useFetch();
@@ -17,7 +18,7 @@ export const GoogleProvider = () => {
     if (busy) return;
     setBusy(true);
     try {
-      const response = await fetch('/auth/oauth/GOOGLE');
+      const response = await fetch(`/auth/oauth/GOOGLE${campaignQuery()}`);
       const link = response.ok ? await response.text() : '';
       if (!/^https:\/\//.test(link)) {
         throw new Error(`google link ${response.status}`);

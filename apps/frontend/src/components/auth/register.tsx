@@ -27,6 +27,11 @@ import { useTrack } from '@gitroom/react/helpers/use.track';
 import { TrackEnum } from '@gitroom/nestjs-libraries/user/track.enum';
 import { useT } from '@gitroom/react/translation/get.transation.service.client';
 import useCookie from 'react-use-cookie';
+import {
+  cleanSignupSource,
+  SignupSource,
+  signupSourceFromParams,
+} from '@gitroom/helpers/utils/signup.source';
 type Inputs = {
   email: string;
   password: string;
@@ -63,6 +68,10 @@ export function Register() {
   const [invited] = useState(!!getQuery?.has('invite'));
   const [allowed, setAllowed] = useState(false);
   const [failed, setFailed] = useState('');
+  // The campaign a new account came from, on the way back from a sign-in
+  // provider: the backend kept it with the sign-in state and returns it here.
+  // Held in memory only.
+  const [signup, setSignup] = useState<SignupSource>({});
   const t = useT();
   useEffect(() => {
     if (provider && code) {
@@ -92,7 +101,12 @@ export function Register() {
       );
       return;
     }
-    const { token, login, canRegister } = await response.json();
+    const {
+      token,
+      login,
+      canRegister,
+      signup: cameFrom,
+    } = await response.json();
     // Existing account — the backend already set the auth cookie.
     if (login) {
       window.location.href = '/';
@@ -100,6 +114,7 @@ export function Register() {
     }
     if (token) {
       setAllowed(!!canRegister);
+      setSignup(cleanSignupSource(cameFrom));
       setCode(token);
       setShow(true);
     }
@@ -141,7 +156,11 @@ export function Register() {
     return <LoadingComponent />;
   }
   return (
-    <RegisterAfter token={code} provider={provider?.toUpperCase() || 'LOCAL'} />
+    <RegisterAfter
+      token={code}
+      provider={provider?.toUpperCase() || 'LOCAL'}
+      signup={signup}
+    />
   );
 }
 function RegistrationClosed() {
@@ -180,9 +199,11 @@ function getHelpfulReasonForRegistrationFailure(httpCode: number) {
 export function RegisterAfter({
   token,
   provider,
+  signup,
 }: {
   token: string;
   provider: string;
+  signup?: SignupSource;
 }) {
   const t = useT();
   const { isGeneral, genericOauth } = useVariables();
@@ -234,12 +255,17 @@ export function RegisterAfter({
     const region =
       searchParams?.get('region')?.toUpperCase() || regionCookie || '';
     const payload = data;
+    // The campaign the visitor came from: read from this page's address when
+    // the form is sent (or handed over after a sign-in provider), never
+    // stored in the browser.
+    const cameFrom = { ...signup, ...signupSourceFromParams(searchParams) };
     await fetchData('/auth/register', {
       method: 'POST',
       body: JSON.stringify({
         ...payload,
         datafast_visitor_id,
         ...(region === 'PL' || region === 'UK' ? { region } : {}),
+        ...cameFrom,
       }),
     })
       .then(async (response) => {

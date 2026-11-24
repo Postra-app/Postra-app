@@ -325,9 +325,12 @@ export class PostsRepository {
     // only "an error occurred": the error column was never selected (upstream
     // 291b07b4, c8bf9d8f). Post.error holds the raw Temporal failure; callers
     // get its sentence, the full trace stays in the Errors table.
+    // Only a post that is in the ERROR state has an error. A failed post that
+    // was moved to a new date is scheduled again, and its old failure is no
+    // longer true of it.
     const readable = list.map((post) => ({
       ...post,
-      error: readablePostError(post.error),
+      error: post.state === 'ERROR' ? readablePostError(post.error) : null,
     }));
 
     return readable.reduce((all, post) => {
@@ -489,7 +492,7 @@ export class PostsRepository {
     return {
       posts: posts.map((post) => ({
         ...post,
-        error: readablePostError(post.error),
+        error: post.state === 'ERROR' ? readablePostError(post.error) : null,
       })),
       total,
       page,

@@ -3,6 +3,7 @@
 import { useCallback } from 'react';
 import SafeImage from '@gitroom/react/helpers/safe.image';
 import { useFetch } from '@gitroom/helpers/utils/custom.fetch';
+import { campaignQuery } from '@gitroom/frontend/components/auth/providers/campaign.query';
 import { useVariables } from '@gitroom/react/helpers/variable.context';
 import { useT } from '@gitroom/react/translation/get.transation.service.client';
 export const OauthProvider = () => {
@@ -11,7 +12,7 @@ export const OauthProvider = () => {
   const t = useT();
   const gotoLogin = useCallback(async () => {
     try {
-      const response = await fetch('/auth/oauth/GENERIC');
+      const response = await fetch(`/auth/oauth/GENERIC${campaignQuery()}`);
       if (!response.ok) {
         throw new Error(
           `Login link request failed with status ${response.status}`

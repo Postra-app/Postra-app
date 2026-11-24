@@ -16,6 +16,9 @@ import { AuthService } from '@gitroom/helpers/auth/auth.service';
 import { LemmySettingsDto } from '@gitroom/nestjs-libraries/dtos/posts/providers-settings/lemmy.dto';
 import { Tool } from '@gitroom/nestjs-libraries/integrations/tool.decorator';
 import { assertSafeInstanceUrl } from '@gitroom/nestjs-libraries/dtos/webhooks/webhook.url.validator';
+// The instance is the customer's own server: every connection to it, and
+// every redirect it answers with, is checked against our own network.
+import { instanceFetch } from '@gitroom/nestjs-libraries/integrations/instance.fetch';
 
 export class LemmyProvider extends SocialAbstract implements SocialProvider {
   private readonly _logger = new Logger(LemmyProvider.name);
@@ -99,7 +102,7 @@ export class LemmyProvider extends SocialAbstract implements SocialProvider {
     const body = JSON.parse(Buffer.from(params.code, 'base64').toString());
     const service = await assertSafeInstanceUrl(body.service, 'lemmy');
 
-    const load = await fetch(service + '/api/v3/user/login', {
+    const load = await instanceFetch(service + '/api/v3/user/login', {
       body: JSON.stringify({
         username_or_email: body.identifier,
         password: body.password,
@@ -118,7 +121,7 @@ export class LemmyProvider extends SocialAbstract implements SocialProvider {
 
     try {
       const user = await (
-        await fetch(service + `/api/v3/user?username=${body.identifier}`, {
+        await instanceFetch(service + `/api/v3/user?username=${body.identifier}`, {
           headers: {
             Authorization: `Bearer ${jwt}`,
           },
@@ -150,7 +153,7 @@ export class LemmyProvider extends SocialAbstract implements SocialProvider {
     const service = await assertSafeInstanceUrl(body.service, 'lemmy');
 
     const { jwt } = await (
-      await fetch(service + '/api/v3/user/login', {
+      await instanceFetch(service + '/api/v3/user/login', {
         body: JSON.stringify({
           username_or_email: body.identifier,
           password: body.password,
@@ -178,7 +181,7 @@ export class LemmyProvider extends SocialAbstract implements SocialProvider {
 
     for (const lemmy of firstPost.settings.subreddit) {
       const { post_view } = await (
-        await fetch(service + '/api/v3/post', {
+        await instanceFetch(service + '/api/v3/post', {
           body: JSON.stringify({
             community_id: +lemmy.value.id,
             name: lemmy.value.title,
@@ -239,7 +242,7 @@ export class LemmyProvider extends SocialAbstract implements SocialProvider {
 
     for (const singlePostId of postIds) {
       const { comment_view } = await (
-        await fetch(service + '/api/v3/comment', {
+        await instanceFetch(service + '/api/v3/comment', {
           body: JSON.stringify({
             post_id: +singlePostId,
             content: commentPost.message,
@@ -289,7 +292,7 @@ export class LemmyProvider extends SocialAbstract implements SocialProvider {
     const { jwt, service } = await this.getJwtAndService(integration);
 
     const { communities } = await (
-      await fetch(
+      await instanceFetch(
         service + `/api/v3/search?type_=Communities&sort=Active&q=${data.word}`,
         {
           headers: {

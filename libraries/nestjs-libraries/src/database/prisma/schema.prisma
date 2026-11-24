@@ -24,6 +24,11 @@ model Organization {
   isTrailing          Boolean              @default(false)
   shortlink           ShortLinkPreference  @default(ASK)
   region              String               @default("PL")
+  // utm_source, utm_medium and utm_campaign of the link that led to the
+  // sign-up page; short labels only, empty without such a link.
+  signupSource        String?
+  signupMedium        String?
+  signupCampaign      String?
   autoPost            AutoPost[]
   Comments            Comments[]
   credits             Credits[]

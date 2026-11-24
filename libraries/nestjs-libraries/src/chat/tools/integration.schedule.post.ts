@@ -13,7 +13,7 @@ import { checkAuth } from '@gitroom/nestjs-libraries/chat/auth.context';
 import { SubscriptionException } from '@gitroom/nestjs-libraries/services/auth/permission.exception.class';
 
 const POSTS_USED_UP =
-  'This plan has used all of its posts for this month. Save the post as a draft, or upgrade the plan to schedule more.';
+  'This plan has used all of its posts for this month. The post can still be saved as a draft.';
 import {
   ValidUrlExtension,
   ValidUrlPath,

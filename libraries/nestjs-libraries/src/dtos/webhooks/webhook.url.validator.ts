@@ -37,7 +37,14 @@ for (const [address, prefix] of blockedIPv4Ranges) {
   const low = ((c << 8) | d).toString(16);
   blockedIps.addSubnet(`64:ff9b::${high}:${low}`, 96 + prefix, 'ipv6');
   blockedIps.addSubnet(`2002:${high}:${low}::`, 16 + prefix, 'ipv6');
+  // and in the IPv4-translated form (::ffff:0:0:0/96, RFC 2765), which is
+  // not the IPv4-mapped form the IPv4 rule already matches
+  blockedIps.addSubnet(`::ffff:0:${high}:${low}`, 96 + prefix, 'ipv6');
 }
+
+// Local-use NAT64 (RFC 8215): a translator on the network may map any
+// address in it to an internal IPv4 host, so the whole prefix is refused.
+blockedIps.addSubnet('64:ff9b:1::', 48, 'ipv6');
 
 blockedIps.addSubnet('::', 96, 'ipv6'); // unspecified, loopback, IPv4-compatible
 blockedIps.addSubnet('fe80::', 10, 'ipv6'); // link-local

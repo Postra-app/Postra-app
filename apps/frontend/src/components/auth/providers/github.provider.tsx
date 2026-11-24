@@ -1,11 +1,12 @@
 import { useCallback } from 'react';
 import { useFetch } from '@gitroom/helpers/utils/custom.fetch';
+import { campaignQuery } from '@gitroom/frontend/components/auth/providers/campaign.query';
 import { useT } from '@gitroom/react/translation/get.transation.service.client';
 export const GithubProvider = () => {
   const fetch = useFetch();
   const t = useT();
   const gotoLogin = useCallback(async () => {
-    const link = await (await fetch('/auth/oauth/GITHUB')).text();
+    const link = await (await fetch(`/auth/oauth/GITHUB${campaignQuery()}`)).text();
     window.location.href = link;
   }, []);
   return (

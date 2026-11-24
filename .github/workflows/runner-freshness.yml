@@ -10,6 +10,9 @@ name: Runner freshness
 # node:<version>-<codename>-slim; image-contents.spec.ts). Dependabot moves
 # the Node version but never the codename, so the second step compares it
 # with Debian stable and opens an issue when Debian has moved on.
+#
+# ffmpeg in that image is built from FFmpeg's own release, pinned by version
+# and checksum; the third step opens an issue when a newer release is out.
 
 on:
   schedule:
@@ -82,4 +85,33 @@ jobs:
           fi
           gh issue create --title "$TITLE" --body "Debian stable is \`${STABLE}\`; \`Dockerfile.dev\` builds on \`${OURS}\`.
 
-          In one PR: \`FROM node:<same version>-${STABLE}-slim\` once Docker Hub has that tag, the codename in \`image-contents.spec.ts\`, and the apt package names the image installs. Before merging, run ffmpeg in the new image on a real video (audio extraction to MP3 and burnt-in subtitles with libx264, as \`captions.service.ts\` does), and check the registry scan of the new image."
+          In one PR: both \`FROM node:<same version>-${STABLE}-slim\` lines once Docker Hub has that tag, the codename in \`image-contents.spec.ts\`, and the apt package names the image installs (the libraries ffmpeg links change name between releases). Before merging, run ffmpeg in the new image on a real video (audio extraction to MP3 and burnt-in subtitles with libx264, as \`captions.service.ts\` does), and check the registry scan of the new image."
+
+      - name: Compare the image's ffmpeg with FFmpeg's newest release
+        # The image builds ffmpeg from FFmpeg's own source (Dockerfile.dev,
+        # FFMPEG_VERSION), so its fixes do not come through apt. Independent
+        # of the checks above.
+        if: ${{ !cancelled() }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          NEWEST=$(curl -fsS https://ffmpeg.org/releases/ | grep -oE 'ffmpeg-[0-9]+(\.[0-9]+)+\.tar\.xz"' | sed -E 's/^ffmpeg-//; s/\.tar\.xz"$//' | sort -V | tail -1)
+          OURS=$(sed -n -E 's/^ARG FFMPEG_VERSION=([0-9.]+)$/\1/p' Dockerfile.dev)
+          echo "FFmpeg newest: ${NEWEST}"
+          echo "Ours: ${OURS}"
+          if [ -z "$NEWEST" ] || [ -z "$OURS" ]; then
+            echo "::error::Could not read FFmpeg's release list or FFMPEG_VERSION in Dockerfile.dev"
+            exit 1
+          fi
+          if [ "$OURS" = "$NEWEST" ]; then
+            exit 0
+          fi
+          TITLE="Production image: ffmpeg ${NEWEST}"
+          if [ -n "$(gh issue list --state open --limit 500 --json number,title \
+            --jq ".[] | select(.title == \"${TITLE}\") | .number")" ]; then
+            echo "Issue already open"
+            exit 0
+          fi
+          gh issue create --title "$TITLE" --body "FFmpeg's newest release is \`${NEWEST}\`; \`Dockerfile.dev\` builds \`${OURS}\`.
+
+          In one PR: \`FFMPEG_VERSION\` and \`FFMPEG_SHA256\` in \`Dockerfile.dev\` (the checksum of \`ffmpeg-${NEWEST}.tar.xz\` from ffmpeg.org; the build also checks the release signature). Before merging, run ffmpeg from the new image on a real video: audio to MP3, subtitles burnt in with libx264, and one frame read over HTTPS, as \`captions.service.ts\` and \`video.poster.ts\` do."

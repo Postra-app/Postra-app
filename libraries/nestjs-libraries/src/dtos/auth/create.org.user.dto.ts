@@ -10,7 +10,9 @@ import {
   ValidateIf,
   Matches,
 } from 'class-validator';
+import { Transform } from 'class-transformer';
 import { NormalizeEmail } from './email.transform';
+import { cleanSignupValue } from '@gitroom/helpers/utils/signup.source';
 import { Provider } from '@prisma/client';
 
 export class CreateOrgUserDto {
@@ -63,4 +65,22 @@ export class CreateOrgUserDto {
   @IsString()
   @IsIn(['PL', 'UK'])
   region?: string;
+
+  // The campaign the sign-up came from (utm_source, utm_medium, utm_campaign
+  // of the link to the sign-up page). A value that is not a short label is
+  // dropped here rather than refused: these never stop a sign-up.
+  @Transform(({ value }) => cleanSignupValue(value))
+  @IsOptional()
+  @IsString()
+  signupSource?: string;
+
+  @Transform(({ value }) => cleanSignupValue(value))
+  @IsOptional()
+  @IsString()
+  signupMedium?: string;
+
+  @Transform(({ value }) => cleanSignupValue(value))
+  @IsOptional()
+  @IsString()
+  signupCampaign?: string;
 }
