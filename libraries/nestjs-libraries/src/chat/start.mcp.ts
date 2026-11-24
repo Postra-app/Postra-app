@@ -210,6 +210,10 @@ export const startMcp = async (app: INestApplication) => {
       directoryActionTools({
         postFacts: app.get(PostFactsReader, { strict: false }),
         posts: app.get(PostsService, { strict: false }),
+        postCap: (organizationId, createdAt) =>
+          app
+            .get(SubscriptionService, { strict: false })
+            .postCap(organizationId, createdAt),
         integrations: app.get(IntegrationService, { strict: false }),
         runLookup: (input, context) =>
           (tools.triggerTool as any).execute(input, context),

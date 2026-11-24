@@ -19,10 +19,27 @@ import { confirmationSummary } from '@gitroom/nestjs-libraries/chat/pending-acti
 
 type Context = { requestContext?: { get: (key: string) => unknown } };
 
-const organizationOf = (context: unknown) =>
+const organizationIn = (context: unknown) =>
   JSON.parse(
     (context as Context)?.requestContext?.get('organization') as string
-  ).id as string;
+  ) as { id: string; createdAt: string };
+
+const organizationOf = (context: unknown) => organizationIn(context).id;
+
+// The sentence of a refusal (the plan's monthly allowance, a day a LinkedIn
+// Page already has a post for), whatever shape the exception carries it in.
+const refusalOf = (error: any): string => {
+  const response = error?.getResponse?.();
+  const message =
+    (typeof response === 'string' ? response : response?.message) ||
+    error?.message;
+  if (response?.section === 'posts_per_month') {
+    return 'The plan has no posts left in the month this date falls in.';
+  }
+  return typeof message === 'string' && message
+    ? message
+    : 'The post could not be moved.';
+};
 
 export type DirectoryActionDeps = {
   postFacts: {
@@ -35,9 +52,13 @@ export type DirectoryActionDeps = {
       organizationId: string,
       id: string,
       date: string,
-      action: 'schedule'
+      action: 'schedule',
+      republish: boolean,
+      cap?: unknown
     ) => Promise<unknown>;
   };
+  // The plan's monthly post allowance; none while billing is off.
+  postCap: (organizationId: string, createdAt: string) => Promise<unknown>;
   integrations: {
     getIntegrationById: (
       organizationId: string,
@@ -90,7 +111,7 @@ export const DIRECTORY_LOOKUPS: Record<
 
 export const DIRECTORY_ACTION_DESCRIPTIONS = {
   reschedulePost:
-    'Moves an existing post to a new date and time and returns what was moved. The post is published at the new time.',
+    'Moves an existing post to a new date and time and returns what was moved. A scheduled post is published at the new time; a draft stays a draft. Refused when the plan has no posts left in that month.',
   deletePost:
     'Deletes an existing post, on every channel it was written for, and returns what was deleted. A post that is already published stays on the platform; it is removed from Postra.',
 };
@@ -116,8 +137,9 @@ export const directoryActionTools = (deps: DirectoryActionDeps) => {
             .describe(`The id of a ${lookup.platform} channel.`),
         }),
         outputSchema: z.object({
-          status: z.enum(['ok', 'not_found']),
+          status: z.enum(['ok', 'not_found', 'unavailable']),
           items: z.array(z.record(z.string(), z.any())),
+          message: z.string().optional(),
         }),
         mcp: { annotations: readOnly(lookup.title) },
         execute: async (inputData, context) => {
@@ -140,12 +162,22 @@ export const directoryActionTools = (deps: DirectoryActionDeps) => {
             { integrationId, methodName: lookup.method, dataSchema: [] },
             context
           );
+          // Anything but a list is the reason there is none (the channel's
+          // sign-in expired, the platform did not answer). An empty list
+          // would say the account has no boards or channels.
+          if (!Array.isArray(output)) {
+            return {
+              status: 'unavailable' as const,
+              items: [] as Record<string, unknown>[],
+              message:
+                typeof output === 'string' && output
+                  ? output
+                  : 'The list could not be read.',
+            };
+          }
           return {
             status: 'ok' as const,
-            items: (Array.isArray(output) ? output : []) as Record<
-              string,
-              unknown
-            >[],
+            items: output as Record<string, unknown>[],
           };
         },
       }),
@@ -160,7 +192,7 @@ export const directoryActionTools = (deps: DirectoryActionDeps) => {
       date: z.string().describe('The new date and time in UTC (ISO 8601).'),
     }),
     outputSchema: z.object({
-      status: z.enum(['moved', 'not_found']),
+      status: z.enum(['moved', 'draft_moved', 'refused', 'not_found']),
       summary: z.string(),
     }),
     mcp: {
@@ -186,7 +218,31 @@ export const directoryActionTools = (deps: DirectoryActionDeps) => {
         };
       }
       const summary = confirmationSummary('reschedulePost', [post], date);
-      await deps.posts.changeDate(organizationId, id, date, 'schedule');
+      // Moved with the plan's allowance for the month it moves to, as the
+      // calendar does.
+      try {
+        await deps.posts.changeDate(
+          organizationId,
+          id,
+          date,
+          'schedule',
+          false,
+          await deps.postCap(organizationId, organizationIn(context).createdAt)
+        );
+      } catch (error: any) {
+        // A refusal answers with a status (a limit, a published post); any
+        // other failure is not the customer's to read.
+        if (typeof error?.getStatus !== 'function' || error.getStatus() >= 500) {
+          throw error;
+        }
+        return { status: 'refused' as const, summary: refusalOf(error) };
+      }
+      if (post.state === 'DRAFT') {
+        return {
+          status: 'draft_moved' as const,
+          summary: `${summary} It is a draft: it stays a draft and is not published until it is scheduled.`,
+        };
+      }
       return { status: 'moved' as const, summary };
     },
   });

@@ -4,6 +4,8 @@ import { PrismaRepository } from '@gitroom/nestjs-libraries/database/prisma/pris
 const select = {
   publishDate: true,
   content: true,
+  // A draft that is moved stays a draft; the tools say so.
+  state: true,
   integration: { select: { name: true, providerIdentifier: true } },
 } as const;
 

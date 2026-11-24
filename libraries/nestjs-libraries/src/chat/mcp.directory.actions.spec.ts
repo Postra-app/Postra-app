@@ -10,7 +10,9 @@ import {
 const context = {
   requestContext: {
     get: (key: string) =>
-      key === 'organization' ? JSON.stringify({ id: 'org-1' }) : undefined,
+      key === 'organization'
+        ? JSON.stringify({ id: 'org-1', createdAt: '2026-01-05T00:00:00.000Z' })
+        : undefined,
   },
 };
 
@@ -31,6 +33,7 @@ const build = (over: Record<string, unknown> = {}) => {
       ]),
     },
     posts: { deletePost: jest.fn(async () => ({})), changeDate: jest.fn(async () => ({})) },
+    postCap: jest.fn(async () => ({ limit: 30, anchor: '2026-01-05T00:00:00.000Z' })),
     integrations: {
       getIntegrationById: jest.fn(async () => ({ providerIdentifier: 'slack' })),
     },
@@ -55,9 +58,69 @@ describe("the directory connector's own tools", () => {
       { id: 'p-1', date: '2026-11-26T10:00:00.000Z' },
       context
     );
-    expect(deps.posts.changeDate).toHaveBeenCalledWith('org-1', 'p-1', '2026-11-26T10:00:00.000Z', 'schedule');
+    // With the plan's allowance: without it the move skipped the monthly
+    // limit the calendar and the API enforce.
+    expect(deps.postCap).toHaveBeenCalledWith('org-1', '2026-01-05T00:00:00.000Z');
+    expect(deps.posts.changeDate).toHaveBeenCalledWith(
+      'org-1',
+      'p-1',
+      '2026-11-26T10:00:00.000Z',
+      'schedule',
+      false,
+      { limit: 30, anchor: '2026-01-05T00:00:00.000Z' }
+    );
     expect(result.status).toBe('moved');
     expect(result.summary).toContain('to 2026-11-26 10:00 UTC');
+  });
+
+  it('says the plan has no posts left instead of failing, and says nothing was moved', async () => {
+    const refusal = Object.assign(new Error('payment required'), {
+      getStatus: () => 402,
+      getResponse: () => ({ section: 'posts_per_month', action: 'create' }),
+    });
+    const { tools } = build({
+      posts: { deletePost: jest.fn(), changeDate: jest.fn(async () => { throw refusal; }) },
+    });
+    const result = await tools.reschedulePost.execute({ id: 'p-1', date: '2026-12-02T10:00:00.000Z' }, context);
+    expect(result.status).toBe('refused');
+    expect(result.summary).toBe('The plan has no posts left in the month this date falls in.');
+  });
+
+  it('does not turn a server failure into a refusal', async () => {
+    const { tools } = build({
+      posts: { deletePost: jest.fn(), changeDate: jest.fn(async () => { throw new Error('connection lost'); }) },
+    });
+    await expect(
+      tools.reschedulePost.execute({ id: 'p-1', date: '2026-12-02T10:00:00.000Z' }, context)
+    ).rejects.toThrow('connection lost');
+  });
+
+  it('says a moved draft is still a draft', async () => {
+    const { tools } = build({
+      postFacts: {
+        byId: jest.fn(async () => ({
+          state: 'DRAFT',
+          publishDate: '2026-11-25T09:00:00.000Z',
+          content: '<p>Hello</p>',
+          integration: { name: 'Postra', providerIdentifier: 'facebook' },
+        })),
+        byGroup: jest.fn(async (): Promise<unknown[]> => []),
+      },
+    });
+    const result = await tools.reschedulePost.execute({ id: 'p-1', date: '2026-11-26T10:00:00.000Z' }, context);
+    expect(result.status).toBe('draft_moved');
+    expect(result.summary).toContain('stays a draft');
+    expect(DIRECTORY_ACTION_DESCRIPTIONS.reschedulePost).toContain('a draft stays a draft');
+  });
+
+  it('a lookup that could not be read says so instead of an empty list', async () => {
+    const { tools } = build({
+      runLookup: jest.fn(async () => ({ output: 'We had to disconnect the channel as the token expired' })),
+    });
+    const result = await tools.listSlackChannels.execute({ integrationId: 'ch-1' }, context);
+    expect(result.status).toBe('unavailable');
+    expect(result.items).toEqual([]);
+    expect(result.message).toContain('token expired');
   });
 
   it("touches nothing when the post is not this workspace's", async () => {
