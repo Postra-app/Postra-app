@@ -344,6 +344,13 @@ export class IntegrationsController {
             this.tiktokCommentsOffered(user, org)
               ? { commentSetup: 'tiktok' }
               : {}),
+            // YouTube: a reconnect asks Google for the comment permission
+            // only where first comment is offered, so only there is the
+            // owner told to reconnect.
+            ...(p.providerIdentifier === 'youtube' &&
+            youtubeCommentsOffered(!!user?.isSuperAdmin, org.id)
+              ? { commentSetup: 'youtube' }
+              : {}),
             isCustomFields: !!findIntegration.customFields,
             ...(findIntegration.customFields
               ? { customFields: await findIntegration.customFields() }

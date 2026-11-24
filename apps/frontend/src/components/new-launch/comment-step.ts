@@ -15,15 +15,15 @@ export const waitsForCommentStep = (integration?: Channel) =>
   ['tiktok', 'youtube'].includes(integration?.identifier || '') &&
   integration?.canComment === false;
 
-// What the composer tells the owner of such a channel: turn first comment on
-// (TikTok, where this workspace is offered it), reconnect so the platform
-// grants the permission (YouTube), or nothing to do (TikTok where it is not
-// offered).
+// What the composer tells the owner of such a channel. Where this workspace
+// is offered first comment (commentSetup): turn it on (TikTok) or reconnect
+// so the platform grants the permission (YouTube). Where it is not, there is
+// nothing they can do, and the channel reads as one without comments.
 export const commentStepReason = (
   integration?: Channel
 ): 'not_enabled' | 'not_granted' | 'no_api' =>
-  integration?.identifier === 'youtube'
+  !integration?.commentSetup
+    ? 'no_api'
+    : integration.identifier === 'youtube'
     ? 'not_granted'
-    : integration?.commentSetup
-    ? 'not_enabled'
-    : 'no_api';
+    : 'not_enabled';

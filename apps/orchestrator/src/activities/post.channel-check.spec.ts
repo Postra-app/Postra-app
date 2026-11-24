@@ -46,6 +46,19 @@ describe('channel check before posting', () => {
     expect(checkIntegrationsHealth).not.toHaveBeenCalled();
   });
 
+  it('an organisation whose platform never answers is left after its share of time, and the next is checked', async () => {
+    const checkIntegrationsHealth = jest.fn((org: string) =>
+      org === 'o1' ? new Promise<void>(() => undefined) : Promise.resolve()
+    );
+    const activity = Object.create(PostActivity.prototype) as any;
+    Object.assign(activity, {
+      _postService: { organizationsWithPostsDueSoon: jest.fn().mockResolvedValue(['o1', 'o2']) },
+      _integrationService: { checkIntegrationsHealth },
+    });
+    await activity.checkChannelsBeforePosting(2_000, 20);
+    expect(checkIntegrationsHealth.mock.calls.map((c) => c[0])).toEqual(['o1', 'o2']);
+  });
+
   it('reaches the worker as an activity', () => {
     const accessor = new (TemporalMetadataAccessor as any)();
     const activity = Object.create(PostActivity.prototype);

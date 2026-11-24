@@ -190,16 +190,31 @@ export class PostActivity {
   // the next 6 hours. checkIntegrationsHealth flags a dead channel and emails
   // "reconnect" once, and caches each channel for 30 minutes. Stops at the
   // deadline so a slow platform cannot hold the sweep; the rest wait an hour.
+  // One organisation gets at most `perOrganisationMs`: a platform that never
+  // answers would otherwise keep every organisation after it unchecked, hour
+  // after hour.
   @ActivityMethod()
-  async checkChannelsBeforePosting(deadlineMs = 4 * 60_000) {
+  async checkChannelsBeforePosting(
+    deadlineMs = 4 * 60_000,
+    perOrganisationMs = 45_000
+  ) {
     const until = Date.now() + deadlineMs;
     const orgs = await this._postService.organizationsWithPostsDueSoon(6);
     for (const org of orgs) {
-      if (Date.now() >= until) break;
+      const left = until - Date.now();
+      if (left <= 0) break;
+      let timer: NodeJS.Timeout | undefined;
       try {
-        await this._integrationService.checkIntegrationsHealth(org);
+        await Promise.race([
+          this._integrationService.checkIntegrationsHealth(org),
+          new Promise<void>((resolve) => {
+            timer = setTimeout(resolve, Math.min(left, perOrganisationMs));
+          }),
+        ]);
       } catch (err) {
         // One organisation (or platform) failing does not skip the rest.
+      } finally {
+        clearTimeout(timer);
       }
     }
   }

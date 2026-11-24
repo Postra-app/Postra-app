@@ -24,8 +24,9 @@ describe('waitsForCommentStep', () => {
 });
 
 describe('commentStepReason', () => {
-  it('asks the owner of a YouTube channel without the comment scope to reconnect', () => {
-    expect(commentStepReason({ identifier: 'youtube', canComment: false })).toBe('not_granted');
+  it('asks the owner of a YouTube channel without the comment scope to reconnect, where a reconnect would get it', () => {
+    expect(commentStepReason({ identifier: 'youtube', canComment: false, commentSetup: 'youtube' })).toBe('not_granted');
+    expect(commentStepReason({ identifier: 'youtube', canComment: false })).toBe('no_api');
   });
 
   it('asks the owner of a TikTok channel to turn first comment on, where it is offered', () => {

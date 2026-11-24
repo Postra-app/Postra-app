@@ -128,9 +128,10 @@ export interface Integrations {
   // Whether first comment works on THIS channel — the platform scope it needs
   // isn't granted to every account. Absent on older payloads: treat as allowed.
   canComment?: boolean;
-  // First comment is a step of the owner's own, offered in the channel menu
-  // (TikTok's second authorization; canComment says whether it was taken).
-  commentSetup?: 'tiktok';
+  // First comment is a step of the owner's own, where this workspace is
+  // offered it: TikTok's second authorization in the channel menu, a
+  // reconnect on YouTube (canComment says whether it was taken).
+  commentSetup?: 'tiktok' | 'youtube';
   // See PostingTime: local minutes with an IANA zone, or UTC minutes.
   time: {
     time: number;
