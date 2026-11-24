@@ -13,8 +13,13 @@ import { ListmonkDto } from '@gitroom/nestjs-libraries/dtos/posts/providers-sett
 import { AuthService } from '@gitroom/helpers/auth/auth.service';
 import slugify from 'slugify';
 import { Tool } from '@gitroom/nestjs-libraries/integrations/tool.decorator';
+import { instanceFetch } from '@gitroom/nestjs-libraries/integrations/instance.fetch';
 
 export class ListmonkProvider extends SocialAbstract implements SocialProvider {
+  // The server is the customer's own: every connection to it, and every
+  // redirect it answers with, is checked against our own network.
+  protected override httpFetch = instanceFetch;
+
   private readonly _logger = new Logger(ListmonkProvider.name);
   override maxConcurrentJob = 100; // Bluesky has moderate rate limits
   identifier = 'listmonk';
