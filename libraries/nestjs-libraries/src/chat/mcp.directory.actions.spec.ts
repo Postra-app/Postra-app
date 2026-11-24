@@ -150,9 +150,11 @@ describe("the directory connector's own tools", () => {
       'listWordpressPostTypes',
     ]);
     const result = await tools.listSlackChannels.execute({ integrationId: 'i-1' }, context);
+    // The lookup must run for the workspace of this request. Mastra adds its
+    // own fields to the context it hands on, so only ours is compared.
     expect(deps.runLookup).toHaveBeenCalledWith(
       { integrationId: 'i-1', methodName: 'channels', dataSchema: [] },
-      context
+      expect.objectContaining({ requestContext: context.requestContext })
     );
     expect(result).toEqual({ status: 'ok', items: [{ id: 'C1', name: 'social' }] });
     for (const id of Object.keys(DIRECTORY_LOOKUPS)) {
