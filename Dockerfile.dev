@@ -1,8 +1,41 @@
-# Debian 13 (trixie), the current Debian stable. The system packages below,
-# ffmpeg above all (it decodes videos users upload, for captions), come from
-# this release: on Debian 12 the image carried ffmpeg 5.1 with 1 critical and
-# 27 high CVEs in the registry scan. image-contents.spec.ts pins the release,
-# and the weekly runner-freshness workflow says when Debian stable moves on.
+# ffmpeg, built here from FFmpeg's own release with only what the app uses:
+# reading the videos users upload (the built-in decoders, dav1d for AV1, HTTPS
+# through GnuTLS), MP3 for transcription, x264 and libass for burning
+# captions in. Debian's ffmpeg package depends on some two hundred libraries
+# for formats and devices the app never touches; one chain of them (librsvg,
+# gdk-pixbuf, libtiff) kept a critical finding in the registry scan with no
+# fix in Debian stable. The libraries linked here are still Debian's own
+# packages, so the scan sees them and every build takes their updates.
+# The source is pinned by version and checksum and checked against the
+# signature of FFmpeg's release key (ffmpeg.org/download.html). FFmpeg's own
+# fixes no longer arrive through apt: the weekly runner-freshness workflow
+# says when a newer release is out, and the bump is these two lines.
+FROM node:26.13.1-trixie-slim AS ffmpeg
+ARG FFMPEG_VERSION=9.1
+ARG FFMPEG_SHA256=1a4d394ae63d190a526cd052eb4415c156b5c5e2df37efab41a7de0b8fde2433
+ARG FFMPEG_SIGNER=FCF986EA15E6E293A5644F10B4322F04D67658D8
+RUN apt-get update && apt-get upgrade -y --no-install-recommends \
+ && apt-get install -y --no-install-recommends \
+    ca-certificates curl gnupg xz-utils gcc make nasm pkg-config libc6-dev \
+    libx264-dev libmp3lame-dev libass-dev libdav1d-dev libgnutls28-dev zlib1g-dev \
+ && rm -rf /var/lib/apt/lists/*
+WORKDIR /src
+RUN curl -fsSLO "https://ffmpeg.org/releases/ffmpeg-${FFMPEG_VERSION}.tar.xz" \
+ && curl -fsSLO "https://ffmpeg.org/releases/ffmpeg-${FFMPEG_VERSION}.tar.xz.asc" \
+ && echo "${FFMPEG_SHA256}  ffmpeg-${FFMPEG_VERSION}.tar.xz" | sha256sum -c - \
+ && curl -fsSL https://ffmpeg.org/ffmpeg-devel.asc | gpg --batch --import \
+ && gpg --batch --status-fd 1 --verify "ffmpeg-${FFMPEG_VERSION}.tar.xz.asc" "ffmpeg-${FFMPEG_VERSION}.tar.xz" | grep -q "VALIDSIG ${FFMPEG_SIGNER}" \
+ && tar -xJf "ffmpeg-${FFMPEG_VERSION}.tar.xz" --strip-components=1
+# --disable-autodetect: nothing is linked that is not named here.
+RUN ./configure --prefix=/opt/ffmpeg --disable-debug --disable-doc --disable-ffplay \
+      --disable-autodetect --enable-gpl --enable-zlib --enable-gnutls \
+      --enable-libx264 --enable-libmp3lame --enable-libass --enable-libdav1d \
+ && make -j"$(nproc)" && make install \
+ && /opt/ffmpeg/bin/ffmpeg -hide_banner -version | head -1
+
+# Debian 13 (trixie), the current Debian stable: the system packages below
+# come from this release. image-contents.spec.ts pins the release, and the
+# weekly runner-freshness workflow says when Debian stable moves on.
 FROM node:26.13.1-trixie-slim
 ARG NEXT_PUBLIC_VERSION
 ENV NEXT_PUBLIC_VERSION=$NEXT_PUBLIC_VERSION
@@ -38,9 +71,23 @@ RUN apt-get update && apt-get upgrade -y --no-install-recommends \
     python3-pip \
     bash \
     nginx \
-    ffmpeg \
     procps \
+    ca-certificates \
+    libass9 \
+    libdav1d7 \
+    libgnutls30t64 \
+    libmp3lame0 \
+    libx264-164 \
 && rm -rf /var/lib/apt/lists/*
+
+# ffmpeg and ffprobe from the stage above; the five libraries just installed
+# are what they link (ca-certificates for videos read over HTTPS).
+COPY --from=ffmpeg /opt/ffmpeg/bin/ffmpeg /opt/ffmpeg/bin/ffprobe /usr/local/bin/
+RUN ffmpeg -hide_banner -version | head -1 \
+ && ffmpeg -hide_banner -filters | grep -q ' subtitles ' \
+ && ffmpeg -hide_banner -encoders | grep -q libx264 \
+ && ffmpeg -hide_banner -encoders | grep -q libmp3lame \
+ && ffmpeg -hide_banner -protocols | grep -q https
 
 # Amazon's RDS root CAs for eu-west-2, added to Node's trust store.
 #

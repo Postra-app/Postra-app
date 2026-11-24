@@ -322,8 +322,8 @@ export class AdminController {
       this._auditService.record({
         action: 'admin.grant-lifetime',
         userId: user.id,
+        // The organisations say who got it; the address typed is not kept.
         metadata: {
-          email,
           granted: report.granted.map((g) => g.id),
           skipped: report.skipped.length,
         },
