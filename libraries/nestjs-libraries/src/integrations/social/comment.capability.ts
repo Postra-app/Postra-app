@@ -19,8 +19,8 @@ export const grantedScopesOf = (
  * Why first comment does or doesn't work on this specific channel.
  *
  * - `yes`: comments go out.
- * - `no_api`: the platform gives apps no way to post a comment at all (TikTok's
- *   Content Posting API, YouTube today). Nothing the user can do about it.
+ * - `no_api`: the platform gives apps no way to post a comment at all
+ *   (Pinterest, WordPress). Nothing the user can do about it.
  * - `not_granted`: the platform has the API, but this token lacks the
  *   permission, or we turned it off while it is under review.
  *
