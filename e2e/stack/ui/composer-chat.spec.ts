@@ -70,11 +70,12 @@ test('a written post: the draft replaces it, Undo brings the customer\'s own wor
   expect(problems).toEqual([]);
 });
 
-test('the button glows without moving the page: nothing around it changes size while it pulses', async ({ page }) => {
-  // Its first pulse was a ring that grew to twice the button, past the edge
-  // of the composer: scrollbars came and went with every beat and the whole
-  // page seemed to breathe.
-  for (const size of [{ width: 1440, height: 900 }, { width: 1280, height: 720 }, { width: 390, height: 844 }]) {
+// Its first pulse was a ring that grew to twice the button, past the edge of
+// the composer: scrollbars came and went with every beat and the whole page
+// seemed to breathe. One test per window size: the three together did not fit
+// the time a test gets in WebKit.
+for (const size of [{ width: 1440, height: 900 }, { width: 1280, height: 720 }, { width: 390, height: 844 }]) {
+  test(`the button glows without moving the page at ${size.width}x${size.height}: nothing around it changes size while it pulses`, async ({ page }) => {
     await page.setViewportSize(size);
     await openComposer(page, 'bluesky', TEXT);
     const bubble = page.getByRole('button', { name: 'Open the AI assistant' });
@@ -103,8 +104,8 @@ test('the button glows without moving the page: nothing around it changes size w
       [button, ...Array.from(button.querySelectorAll('*'))].some((el) => el.getAnimations().length > 0)
     );
     expect(animated).toBe(true);
-  }
-});
+  });
+}
 
 test('after the customer edits the post, Undo is gone and their words stay', async ({ page }) => {
   await openComposer(page, 'bluesky', TEXT);

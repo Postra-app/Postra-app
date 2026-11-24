@@ -2,6 +2,10 @@ import * as Sentry from '@sentry/nextjs';
 import { initializeSentryBasic } from '@gitroom/react/sentry/initialize.sentry.next.basic';
 import { screenshotDataUrl } from '@gitroom/react/sentry/screenshot.data.url';
 
+// The name the build gives our own modules (applicationKey in the frontend's
+// next.config.js).
+export const SENTRY_APPLICATION_KEY = 'postra';
+
 export interface ProblemReport {
   name?: string;
   email?: string;
@@ -24,6 +28,15 @@ export const initializeSentryClient = (
 
   return initializeSentryBasic(environment, dsn, {
     integrations: [
+      // An error whose every stack frame is outside our build is not ours to
+      // fix: a browser extension's script failing on our page was reported
+      // 46 times from one browser. Frames are ours when the build marked
+      // their module (applicationKey in next.config.js). An error with one
+      // frame of ours is still sent.
+      Sentry.thirdPartyErrorFilterIntegration({
+        filterKeys: [SENTRY_APPLICATION_KEY],
+        behaviour: 'drop-error-if-exclusively-contains-third-party-frames',
+      }),
       // Add default integrations back
       Sentry.browserTracingIntegration(),
       Sentry.browserProfilingIntegration(),
