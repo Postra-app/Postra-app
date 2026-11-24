@@ -1,4 +1,4 @@
-import { readFileSync } from 'fs';
+import { existsSync, readFileSync } from 'fs';
 import { dirname, join } from 'path';
 
 // Dependabot gives a package to a group by dependency type before a group by
@@ -83,8 +83,6 @@ describe('Dependabot groups', () => {
     expect(held.length).toBeGreaterThan(0);
     expect(held.filter((name) => !deps.includes(name))).toEqual([]);
     expect(groups.map((g) => g.name)).not.toContain('held');
-    const guard = readFileSync(join(root, 'scripts', 'dependency-freshness.mjs'), 'utf8');
-    expect(guard).toContain('dependabot.yml');
   });
 
   // An ignore without update-types also stops security updates; naming the
@@ -106,18 +104,13 @@ describe('Dependabot groups', () => {
   });
 
   // Majors one by one ran Dependabot past its 55-minute limit. They are ignored
-  // for version updates only, and a weekly workflow lists them in an issue, so
-  // they still have a guard.
-  it('leaves majors to the weekly freshness issue', () => {
+  // for version updates only; the maintainers track them outside this
+  // repository, which keeps no open list of what it is behind on.
+  it('leaves majors out of version updates, and keeps no list of them here', () => {
     expect(npm).toMatch(
       /ignore:\n\s+- dependency-name: "\*"\n\s+update-types: \["version-update:semver-major"\]/
     );
-    const guard = readFileSync(
-      join(root, '.github', 'workflows', 'dependency-freshness.yml'),
-      'utf8'
-    );
-    expect(guard).toMatch(/schedule:/);
-    expect(guard).toContain('node scripts/dependency-freshness.mjs');
+    expect(existsSync(join(root, '.github', 'workflows', 'dependency-freshness.yml'))).toBe(false);
   });
 
   // pgAdmin and RedisInsight ran on :latest in the dev compose, Spotlight in
