@@ -30,11 +30,12 @@ test('a password sign-in is audited with the user who signed in', async () => {
     await expect
       .poll(async () =>
         (await prisma.auditLog.findFirst({
-          where: { action: 'auth.login', createdAt: { gte: since }, metadata: { path: ['email'], equals: user.email } },
-          select: { userId: true },
-        }))?.userId
+          where: { action: 'auth.login', createdAt: { gte: since }, userId: user.id },
+          select: { metadata: true },
+        }))?.metadata
       )
-      .toBe(user.id);
+      // The row names the person by id; their address is not copied into it.
+      .toEqual({ provider: 'LOCAL' });
     await api.dispose();
   } finally {
     await org.remove();

@@ -272,7 +272,7 @@ describe('POST /admin/delete-user', () => {
     expect(order).toEqual(['stripe', 'delete']);
   });
 
-  it('writes the address down before it stops resolving', async () => {
+  it('writes the deletion down before the account goes, by id and without the address', async () => {
     const order: string[] = [];
     const { controller, audit } = build({
       users: {
@@ -292,8 +292,11 @@ describe('POST /admin/delete-user', () => {
     expect(audit.record).toHaveBeenCalledWith(
       expect.objectContaining({
         action: 'admin.delete-user',
-        metadata: expect.objectContaining({ email: 'client@example.com' }),
+        metadata: expect.objectContaining({ targetUserId: 'user-9' }),
       })
+    );
+    expect(JSON.stringify(audit.record.mock.calls)).not.toContain(
+      'client@example.com'
     );
   });
 

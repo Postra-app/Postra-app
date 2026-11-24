@@ -29,7 +29,7 @@ describe('commentStepReason', () => {
   });
 
   it('asks the owner of a TikTok channel to turn first comment on, where it is offered', () => {
-    expect(commentStepReason({ identifier: 'tiktok', canComment: false, commentSetup: true })).toBe('not_enabled');
+    expect(commentStepReason({ identifier: 'tiktok', canComment: false, commentSetup: 'tiktok' })).toBe('not_enabled');
     expect(commentStepReason({ identifier: 'tiktok', canComment: false })).toBe('no_api');
   });
 });

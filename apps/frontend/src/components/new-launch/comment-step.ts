@@ -8,7 +8,7 @@
 type Channel = {
   identifier?: string;
   canComment?: boolean;
-  commentSetup?: boolean;
+  commentSetup?: string;
 };
 
 export const waitsForCommentStep = (integration?: Channel) =>
