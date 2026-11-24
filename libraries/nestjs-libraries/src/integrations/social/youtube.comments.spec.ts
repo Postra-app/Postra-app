@@ -7,10 +7,11 @@ import {
 } from '@gitroom/nestjs-libraries/integrations/social/youtube.provider';
 import { commentSupport } from '@gitroom/nestjs-libraries/integrations/social/comment.capability';
 
-// First comment on YouTube needs youtube.force-ssl. Google has not verified
-// Postra for it yet, so the sign-in asks for it only where comments are
-// offered: a Postra administrator and the preview organisations, until
-// YOUTUBE_COMMENTS_FOR says everyone.
+// First comment on YouTube needs youtube.force-ssl, a scope Google verifies
+// per app. The sign-in asks for it only where comments are offered: everyone
+// when YOUTUBE_COMMENTS_FOR says so (an installation whose Google project is
+// verified for the scope), otherwise a Postra administrator and the preview
+// organisations.
 describe('YouTube first comment', () => {
   const env = process.env;
   afterEach(() => {

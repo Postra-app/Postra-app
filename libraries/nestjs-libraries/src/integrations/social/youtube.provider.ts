@@ -27,14 +27,15 @@ import Schema$Video = youtube_v3.Schema$Video;
 import { Rules } from '@gitroom/nestjs-libraries/chat/rules.description.decorator';
 
 // First comment (commentThreads.insert) needs youtube.force-ssl, a sensitive
-// scope Google verifies on its own. Until it has, the sign-in asks for it
-// only where comments are offered.
+// scope Google verifies per app. The sign-in asks for it only where comments
+// are offered (youtubeCommentsOffered).
 export const YOUTUBE_COMMENT_SCOPE =
   'https://www.googleapis.com/auth/youtube.force-ssl';
 export const YOUTUBE_COMMENT_MAX_LENGTH = 10000;
 
-// Who is offered first comment on YouTube: everyone once
-// YOUTUBE_COMMENTS_FOR says so, until then a Postra administrator and the
+// Who is offered first comment on YouTube: everyone when
+// YOUTUBE_COMMENTS_FOR says so (set where the Google project is verified for
+// the scope), otherwise a Postra administrator and the
 // organisations that preview new platforms (PREVIEW_ORGANIZATIONS; the same
 // list as isPreviewOrganization, read here to keep the provider free of the
 // integration manager).
