@@ -100,9 +100,9 @@ test('MCP keeps answering a client whose session another process started', async
 // with AI, has a tool that both reads and writes on request, or tells the
 // model how to behave in a tool description. /mcp-directory is the same
 // server with the tools and descriptions such a directory accepts.
-test('the directory connector lists ten tools with plain descriptions, and they work', async () => {
+test('the directory connector lists thirteen tools with plain descriptions, and they work', async () => {
   const prisma = database();
-  const org = await throwawayOrg(prisma, { tier: 'PRO', totalChannels: 6, channels: 0 });
+  const org = await throwawayOrg(prisma, { tier: 'PRO', totalChannels: 6, channels: 1 });
   const { apiKey } = (await prisma.organization.findUniqueOrThrow({ where: { id: org.orgId } }))!;
   const api = await pwRequest.newContext({ baseURL: BACKEND_URL });
   const headers = {
@@ -127,17 +127,60 @@ test('the directory connector lists ten tools with plain descriptions, and they 
       'integrationList',
       'integrationSchedulePostTool',
       'integrationSchema',
+      'listDiscordChannels',
+      'listPinterestBoards',
       'listScheduledPosts',
+      'listSlackChannels',
+      'listWordpressPostTypes',
       'mediaListTool',
       'reschedulePost',
-      'triggerTool',
       'uploadFromUrlTool',
     ]);
     for (const tool of tools) {
       expect(tool.annotations?.title, tool.name).toBeTruthy();
-      expect(tool.annotations.readOnlyHint === true || tool.annotations.destructiveHint === true, tool.name).toBe(true);
-      expect(tool.description, tool.name).not.toMatch(/\b(call it|do not|don't|never|always|you must|tell the user|ask the user|just run)\b/i);
+      // Each tool says whether it only reads and whether it can destroy.
+      expect(typeof tool.annotations.readOnlyHint, tool.name).toBe('boolean');
+      expect(typeof tool.annotations.destructiveHint, tool.name).toBe('boolean');
+      expect(tool.description, tool.name).not.toMatch(/\b(call it|do not|don't|never|always|you must|tell the user|ask the user|just run|confirmation card)\b/i);
     }
+    const hint = (name: string) => tools.find((t: { name: string }) => t.name === name).annotations;
+    expect(hint('listScheduledPosts').readOnlyHint).toBe(true);
+    expect(hint('deletePost').destructiveHint).toBe(true);
+    expect(hint('reschedulePost').destructiveHint).toBe(true);
+    expect(hint('integrationSchedulePostTool').destructiveHint).toBe(true);
+
+    // Over MCP there is no Approve card: moving and deleting a post act.
+    const draft = await ask('/mcp-directory', {
+      jsonrpc: '2.0',
+      id: 30,
+      method: 'tools/call',
+      params: { name: 'listScheduledPosts', arguments: { startDate: null, endDate: null } },
+    });
+    expect(draft.isError).toBeFalsy();
+    const made = await prisma.post.create({
+      data: {
+        organizationId: org.orgId,
+        integrationId: org.channelIds[0],
+        group: `dir-${Date.now()}`,
+        content: '<p>Directory move and delete</p>',
+        publishDate: new Date(Date.now() + 86_400_000),
+      },
+    });
+    const target = new Date(Date.now() + 2 * 86400e3).toISOString();
+    const moved = await ask('/mcp-directory', {
+      jsonrpc: '2.0', id: 31, method: 'tools/call',
+      params: { name: 'reschedulePost', arguments: { id: made.id, date: target } },
+    });
+    expect(moved.isError, JSON.stringify(moved)).toBeFalsy();
+    expect(moved.structuredContent?.status ?? JSON.parse(moved.content[0].text).status).toBe('moved');
+    expect((await prisma.post.findUniqueOrThrow({ where: { id: made.id } })).publishDate.toISOString()).toBe(target);
+    const gone = await ask('/mcp-directory', {
+      jsonrpc: '2.0', id: 32, method: 'tools/call',
+      params: { name: 'deletePost', arguments: { group: made.group } },
+    });
+    expect(gone.isError, JSON.stringify(gone)).toBeFalsy();
+    expect(gone.structuredContent?.status ?? JSON.parse(gone.content[0].text).status).toBe('deleted');
+    expect((await prisma.post.findUniqueOrThrow({ where: { id: made.id } })).deletedAt).not.toBeNull();
 
     const called = await ask('/mcp-directory', {
       jsonrpc: '2.0',

@@ -16,7 +16,15 @@ import { runWithContext } from './async.storage';
 import { ioRedis } from '@gitroom/nestjs-libraries/redis/redis.service';
 import { createOAuthMiddleware } from './oauth-middleware';
 import { askAgentTool } from './ask.agent.tool';
-import { DIRECTORY_INSTRUCTIONS, directoryTools } from './mcp.directory';
+import {
+  DIRECTORY_INSTRUCTIONS,
+  directoryTools,
+  NO_PLAN,
+} from './mcp.directory';
+import { directoryActionTools } from './mcp.directory.actions';
+import { PostFactsReader } from './post-facts.reader';
+import { PostsService } from '@gitroom/nestjs-libraries/database/prisma/posts/posts.service';
+import { IntegrationService } from '@gitroom/nestjs-libraries/database/prisma/integrations/integration.service';
 import { publicBackendUrl } from './public-backend-url';
 import { SubscriptionService } from '@gitroom/nestjs-libraries/database/prisma/subscriptions/subscription.service';
 const fixAcceptHeader = (req: Request) => {
@@ -197,7 +205,16 @@ export const startMcp = async (app: INestApplication) => {
   const directoryServer = new MCPServer({
     name: 'Postra',
     version: '1.0.0',
-    tools: directoryTools(tools),
+    tools: directoryTools(
+      tools,
+      directoryActionTools({
+        postFacts: app.get(PostFactsReader, { strict: false }),
+        posts: app.get(PostsService, { strict: false }),
+        integrations: app.get(IntegrationService, { strict: false }),
+        runLookup: (input, context) =>
+          (tools.triggerTool as any).execute(input, context),
+      }) as unknown as typeof tools
+    ),
     instructions: DIRECTORY_INSTRUCTIONS,
   });
 
@@ -214,7 +231,7 @@ export const startMcp = async (app: INestApplication) => {
           return { valid: false, error: 'invalid_token', errorDescription: 'Invalid API Key or OAuth token' };
         }
         if (lacksSubscription(org)) {
-          return { valid: false, error: 'invalid_token', errorDescription: 'No subscription found' };
+          return { valid: false, error: 'invalid_token', errorDescription: NO_PLAN };
         }
         return { valid: true, subject: token };
       },
@@ -222,6 +239,9 @@ export const startMcp = async (app: INestApplication) => {
     mcpPath: '/mcp-oauth',
   });
 
+  // Domain verification for OpenAI's directory: the token their dashboard
+  // gives, as plain text at this path on the connector's host (nginx.conf
+  // passes the path here). The variable keeps the spelling it has upstream.
   if (process.env.OPENAI_APP_CHALLANGE) {
     app.use('/.well-known/openai-apps-challenge', (req: Request, res: Response) => {
       res.setHeader('Content-Type', 'text/plain');
@@ -305,7 +325,7 @@ export const startMcp = async (app: INestApplication) => {
       return;
     }
     if (lacksSubscription(auth)) {
-      res.status(401).json({ error: 'invalid_token', error_description: 'No subscription found' });
+      res.status(401).json({ error: 'invalid_token', error_description: NO_PLAN });
       return;
     }
 
@@ -390,7 +410,7 @@ export const startMcp = async (app: INestApplication) => {
     }
     // @ts-ignore
     if (lacksSubscription(req.auth)) {
-      res.status(401).send('No subscription found');
+      res.status(401).send(NO_PLAN);
       return;
     }
 

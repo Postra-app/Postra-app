@@ -55,21 +55,32 @@ describe('the connector a directory lists', () => {
     expect(listed.ask_postra).toBeUndefined();
   });
 
-  it('lists the ten tools for channels, posts, media and analytics', () => {
+  it('shares seven tools with the full connector: channels, posts, media and analytics', () => {
     expect(Object.keys(listed).sort()).toEqual(
       [
-        'deletePost',
         'getAnalytics',
         'integrationList',
         'integrationSchedulePostTool',
         'integrationSchema',
         'listScheduledPosts',
         'mediaListTool',
-        'reschedulePost',
-        'triggerTool',
         'uploadFromUrlTool',
       ].sort()
     );
+  });
+
+  // A directory reviews every operation a model can call: no tool that runs
+  // whichever method it is given.
+  it('has no tool that runs an operation chosen by name', () => {
+    expect(listed.triggerTool).toBeUndefined();
+    expect(DIRECTORY_INSTRUCTIONS).not.toContain('triggerTool');
+  });
+
+  it("takes the directory's own tools beside the shared ones", () => {
+    const own = { deletePost: new FakeTool('deletePost', 'Deletes an existing post.') };
+    const withOwn = directoryTools(tools, own);
+    expect(withOwn.deletePost).toBe(own.deletePost);
+    expect(Object.keys(withOwn)).toHaveLength(8);
   });
 
   it('describes each tool without telling the model how to behave', () => {
@@ -91,13 +102,15 @@ describe('the connector a directory lists', () => {
     );
   });
 
-  it('marks a tool that adds or moves something as one that changes data', () => {
+  // An upload adds a file and destroys nothing. It was marked destructive
+  // here to fit one directory's form; a wrong annotation is itself a reason
+  // a directory gives for turning a connector down.
+  it("leaves a shared tool's annotations as the tool states them", () => {
     const upload = Object.assign(new FakeTool('uploadFromUrlTool', 'x'), {
       mcp: { annotations: { title: 'Upload', readOnlyHint: false, destructiveHint: false } },
     });
     const copy = directoryTools({ uploadFromUrlTool: upload }).uploadFromUrlTool;
-    expect(copy.mcp.annotations).toEqual({ title: 'Upload', readOnlyHint: false, destructiveHint: true });
-    expect(upload.mcp.annotations.destructiveHint).toBe(false);
+    expect(copy.mcp.annotations).toEqual({ title: 'Upload', readOnlyHint: false, destructiveHint: false });
   });
 
   it('skips a tool the server does not have', () => {
