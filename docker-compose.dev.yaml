@@ -56,7 +56,7 @@ services:
       - postra-network
 
   postra-redisinsight:
-    image: redis/redisinsight:3.8.0
+    image: redis/redisinsight:3.10.1
     container_name: postra-redisinsight
     restart: always
     profiles: [tools]
