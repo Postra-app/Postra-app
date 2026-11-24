@@ -143,7 +143,19 @@ export const stripHtmlValidation = (
     return val;
   }
 
-  const value = serialize(parseFragment(val));
+  const parsed = serialize(parseFragment(val));
+
+  // A line break inside a paragraph. A platform that takes HTML keeps the
+  // <br>; everywhere else it is a new line, except inside a list item, which
+  // is published as one line.
+  const value =
+    type === 'html'
+      ? parsed
+      : parsed
+          .replace(/<li[^>]*>[\s\S]*?<\/li>/gi, (item) =>
+            item.replace(/\s*<br[^>]*>\s*/gi, ' ')
+          )
+          .replace(/<br[^>]*>/gi, '\n');
 
   if (type === 'none') {
     // Unescape &amp; LAST: doing it first turns already-escaped text like
@@ -169,6 +181,7 @@ export const stripHtmlValidation = (
       'strong',
       'u',
       'a',
+      'br',
     ])
       .replace(/&gt;/gi, '>')
       .replace(/&lt;/gi, '<')
@@ -297,7 +310,7 @@ export const convertMention = (
 
 export const convertToAscii = (value: string): string => {
   return value
-    .replace(/<strong>(.+?)<\/strong>/gi, (match, p1) => {
+    .replace(/<strong>([\s\S]+?)<\/strong>/gi, (match, p1) => {
       const replacer = p1.split('').map((char: string) => {
         // @ts-ignore
         return bold?.[char] || char;
@@ -305,7 +318,7 @@ export const convertToAscii = (value: string): string => {
 
       return match.replace(p1, replacer.join(''));
     })
-    .replace(/<u>(.+?)<\/u>/gi, (match, p1) => {
+    .replace(/<u>([\s\S]+?)<\/u>/gi, (match, p1) => {
       const replacer = p1.split('').map((char: string) => {
         // @ts-ignore
         return underlineMap?.[char] || char;

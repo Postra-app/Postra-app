@@ -408,7 +408,11 @@ export class TelegramProvider extends SocialAbstract implements SocialProvider {
   ): Promise<number | null> {
     let messageId: number | null = null;
     const mediaFiles = message.media || [];
-    const text = striptags(message.message || '', ['u', 'strong', 'p'])
+    // A <br> is a new line; Telegram's HTML has no such tag.
+    const text = striptags(
+      (message.message || '').replace(/<br[^>]*>/gi, '\n'),
+      ['u', 'strong', 'p']
+    )
       .replace(/<strong>/g, '<b>')
       .replace(/<\/strong>/g, '</b>')
       // With attributes too: dir="auto" from the editor, class from the API.
