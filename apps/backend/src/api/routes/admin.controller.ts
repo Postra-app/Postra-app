@@ -189,6 +189,9 @@ export class AdminController {
           id: true,
           name: true,
           createdAt: true,
+          signupSource: true,
+          signupMedium: true,
+          signupCampaign: true,
           subscription: {
             select: {
               subscriptionTier: true,

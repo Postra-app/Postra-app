@@ -16,6 +16,7 @@ import { CreateOrgUserDto } from '@gitroom/nestjs-libraries/dtos/auth/create.org
 import { makeId } from '@gitroom/nestjs-libraries/services/make.is';
 import { makeSecureId } from '@gitroom/nestjs-libraries/services/make.secure.id';
 import { normalizeEmail } from '@gitroom/helpers/utils/email.normalize';
+import { cleanSignupSource } from '@gitroom/helpers/utils/signup.source';
 
 // Launch market is the UK: a sign-up without an explicit ?region=pl (straight
 // to /auth/register, the mobile app's link, Google) is a UK customer.
@@ -492,6 +493,8 @@ export class OrganizationRepository {
         allowTrial: true,
         isTrailing: true,
         region: organizationRegion(body.region),
+        // Cleaned here as well: not every caller comes through the DTO.
+        ...cleanSignupSource(body),
         users: {
           create: {
             role: Role.SUPERADMIN,

@@ -14,11 +14,11 @@ describe('BillingSubscribeDto', () => {
 
   it('takes the usual tracking values', async () => {
     expect(
-      await errorsFor({ utm: 'newsletter', dub: 'abc123', datafast_session_id: 's', datafast_visitor_id: 'v' })
+      await errorsFor({ dub: 'abc123', datafast_session_id: 's', datafast_visitor_id: 'v' })
     ).toEqual([]);
   });
 
-  it.each(['utm', 'dub', 'datafast_session_id', 'datafast_visitor_id'])(
+  it.each(['dub', 'datafast_session_id', 'datafast_visitor_id'])(
     'refuses a %s longer than Stripe metadata takes',
     async (field) => {
       expect(await errorsFor({ [field]: 'x'.repeat(501) })).toEqual([field]);

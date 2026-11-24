@@ -82,6 +82,20 @@ export type ChargeSummary = {
   invoice_pdf: string | null;
 };
 
+// The subscribe request with the campaign the organisation signed up from,
+// which goes into the subscription's metadata and the return address as
+// `utm`. It is read from the organisation's row, never from the request.
+type TrackedSubscribe = BillingSubscribeDto & { utm?: string };
+
+const withSignupSource = (
+  body: BillingSubscribeDto,
+  org?: { signupSource?: string | null } | null
+): TrackedSubscribe => {
+  // A client may still send `utm`; it is not part of the request any more.
+  const { utm: _sent, ...rest } = body as TrackedSubscribe;
+  return org?.signupSource ? { ...rest, utm: org.signupSource } : rest;
+};
+
 @Injectable()
 export class StripeService {
   private readonly _logger = new Logger(StripeService.name);
@@ -1699,7 +1713,7 @@ export class StripeService {
     ud: string,
     uniqueId: string,
     customer: string,
-    body: BillingSubscribeDto,
+    body: TrackedSubscribe,
     price: string,
     userId: string,
     allowTrial: boolean
@@ -1780,7 +1794,7 @@ export class StripeService {
     ud: string,
     uniqueId: string,
     customer: string,
-    body: BillingSubscribeDto,
+    body: TrackedSubscribe,
     price: string,
     userId: string,
     allowTrial: boolean
@@ -2004,12 +2018,13 @@ export class StripeService {
     uniqueId: string,
     organizationId: string,
     userId: string,
-    body: BillingSubscribeDto,
+    request: BillingSubscribeDto,
     allowTrial: boolean
   ) {
     const id = makeId(10);
-    const priceData = pricing[body.billing];
     const org = await this._organizationService.getOrgById(organizationId);
+    const body = withSignupSource(request, org);
+    const priceData = pricing[body.billing];
     const customer = await this.createOrGetCustomer(org!);
     // A checkout always starts a new subscription. An organisation that already
     // had one got a second on the same customer, and cancelling stopped only
@@ -2140,12 +2155,13 @@ export class StripeService {
     uniqueId: string,
     organizationId: string,
     userId: string,
-    body: BillingSubscribeDto,
+    request: BillingSubscribeDto,
     allowTrial: boolean
   ) {
     const id = makeId(10);
-    const priceData = pricing[body.billing];
     const org = await this._organizationService.getOrgById(organizationId);
+    const body = withSignupSource(request, org);
+    const priceData = pricing[body.billing];
     const customer = await this.createOrGetCustomer(org!);
     const findProduct = await this.findOrCreateProduct(body.billing);
 

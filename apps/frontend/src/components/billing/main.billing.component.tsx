@@ -32,7 +32,6 @@ import {
 } from '@gitroom/frontend/components/layout/new-modal';
 import { Textarea } from '@gitroom/react/form/textarea';
 import { useFireEvents } from '@gitroom/helpers/utils/use.fire.events';
-import { useUtmUrl } from '@gitroom/helpers/utils/utm.saver';
 import { useTrack } from '@gitroom/react/helpers/use.track';
 import { TrackEnum } from '@gitroom/nestjs-libraries/user/track.enum';
 import { useT } from '@gitroom/react/translation/get.transation.service.client';
@@ -254,7 +253,6 @@ export const MainBillingComponent: FC<{
   const dub = useDubClickId();
   const modal = useModals();
   const router = useRouter();
-  const utm = useUtmUrl();
   const track = useTrack();
   const t = useT();
   const queryParams = useSearchParams();
@@ -634,7 +632,6 @@ export const MainBillingComponent: FC<{
             method: 'POST',
             body: JSON.stringify({
               period: monthlyOrYearly === 'on' ? 'YEARLY' : 'MONTHLY',
-              utm,
               billing,
               ...(dub ? { dub } : {}),
             }),
@@ -740,7 +737,7 @@ export const MainBillingComponent: FC<{
           refreshPending();
         }
       },
-    [monthlyOrYearly, subscription, user, utm]
+    [monthlyOrYearly, subscription, user]
   );
   // Redirect lifetime users away from billing in an effect — calling
   // router.replace() during render triggers a setState-in-render warning.

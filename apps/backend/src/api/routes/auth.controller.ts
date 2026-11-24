@@ -47,6 +47,7 @@ import {
   DELETE_LINK_INVALID,
 } from '@gitroom/backend/services/auth/account.deletion.service';
 import { AuthService as AuthChecker } from '@gitroom/helpers/auth/auth.service';
+import { SignupSource } from '@gitroom/helpers/utils/signup.source';
 
 // The invitation an `/auth?org=…` link left behind (frontend proxy.ts), with
 // the attributes it was set with.
@@ -648,7 +649,12 @@ export class AuthController {
   ) {
     // A spent or forged state, or a code the provider refuses, is the
     // caller's problem: it was a 500 (and a Sentry issue) every time.
-    let result: { jwt?: string; token?: string; canRegister?: boolean };
+    let result: {
+      jwt?: string;
+      token?: string;
+      canRegister?: boolean;
+      signup?: SignupSource;
+    };
     const { maxAge: _maxAge, ...cookieScope } = oauthStateCookieOptions();
     response.clearCookie(OAUTH_STATE_COOKIE, cookieScope);
     try {
@@ -669,10 +675,10 @@ export class AuthController {
           : 'Sign-in with this provider failed. Please try again.';
       return response.status(400).type('text/plain').send(message);
     }
-    const { jwt, token, canRegister } = result;
+    const { jwt, token, canRegister, signup } = result;
 
     if (token) {
-      return response.json({ token, canRegister });
+      return response.json({ token, canRegister, signup });
     }
 
     setSessionCookie(response, jwt);

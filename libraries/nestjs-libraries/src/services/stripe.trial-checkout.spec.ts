@@ -81,19 +81,36 @@ describe.each([
     expect(organizationService.endTrialOffer).toHaveBeenCalledWith('org-1');
   });
 
-  // `utm` came from the request body into the return address as
-  // it was, so `&check=` in it added a parameter of the caller's choosing.
-  it('the utm value is one encoded parameter of the return address', async () => {
+  // `utm` in the return address and the subscription's metadata is the
+  // campaign saved with the organisation at sign-up. It used to come from the
+  // request body (and from the browser's storage before that), so a caller
+  // chose it; whatever a request sends now is ignored.
+  it('the return address carries the campaign the organisation signed up from', async () => {
     searchCustomers.mockResolvedValue({ data: [] });
     process.env.FRONTEND_URL = 'https://app.example';
-    const { service } = build();
+    const { service, organizationService } = build();
+    organizationService.getOrgById.mockResolvedValue({ id: 'org-1', paymentId: 'cus_new', signupSource: 'facebook' });
 
     await checkout(service, { ...body, utm: 'mail&check=forged' });
 
     const params = createSession.mock.calls[0][0];
     const back = new URL(params.return_url ?? params.success_url);
     expect(back.searchParams.getAll('check')).toHaveLength(1);
-    expect(back.searchParams.get('utm_source')).toBe('mail&check=forged');
+    expect(back.searchParams.get('utm_source')).toBe('facebook');
+    expect(params.subscription_data.metadata.utm).toBe('facebook');
+  });
+
+  it('an organisation without a saved campaign checks out without one', async () => {
+    searchCustomers.mockResolvedValue({ data: [] });
+    process.env.FRONTEND_URL = 'https://app.example';
+    const { service } = build();
+
+    await checkout(service, { ...body, utm: 'newsletter' });
+
+    const params = createSession.mock.calls[0][0];
+    const back = new URL(params.return_url ?? params.success_url);
+    expect(back.searchParams.has('utm_source')).toBe(false);
+    expect(params.subscription_data.metadata).not.toHaveProperty('utm');
   });
 });
 

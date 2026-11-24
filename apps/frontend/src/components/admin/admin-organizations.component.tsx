@@ -23,6 +23,9 @@ interface OrgItem {
   id: string;
   name: string;
   createdAt: string;
+  signupSource?: string | null;
+  signupMedium?: string | null;
+  signupCampaign?: string | null;
   subscription: OrgSubscription | null;
   _count: {
     users: number;
@@ -160,7 +163,7 @@ export const AdminOrganizationsComponent = () => {
         {/* overflow-x-auto, not overflow-hidden: the app shell clips its own
             overflow, so anything past the edge was unreachable rather than
             scrollable. */}
-        <table className="w-full min-w-[560px]">
+        <table className="w-full min-w-[640px]">
           <thead>
             <tr className="text-left border-b border-white/10 bg-white/[0.03]">
               <th className="p-[12px] text-[13px] font-[500] text-newTextColor/60">
@@ -187,6 +190,9 @@ export const AdminOrganizationsComponent = () => {
               <th className="p-[12px] text-[13px] font-[500] text-newTextColor/60">
                 {t('admin_created', 'Created')}
               </th>
+              <th className="p-[12px] text-[13px] font-[500] text-newTextColor/60">
+                {t('admin_signup_source', 'Source')}
+              </th>
               <th className="p-[12px]" />
             </tr>
           </thead>
@@ -194,7 +200,7 @@ export const AdminOrganizationsComponent = () => {
             {isLoading && !data && (
               <tr>
                 <td
-                  colSpan={8}
+                  colSpan={9}
                   className="p-[20px] text-center text-[13px] text-newTextColor/70"
                 >
                   {t('admin_loading', 'Loading...')}
@@ -204,7 +210,7 @@ export const AdminOrganizationsComponent = () => {
             {error && (
               <tr>
                 <td
-                  colSpan={8}
+                  colSpan={9}
                   className="p-[20px] text-center text-[13px] text-red-400"
                 >
                   {t(
@@ -217,7 +223,7 @@ export const AdminOrganizationsComponent = () => {
             {!error && data?.items.length === 0 && (
               <tr>
                 <td
-                  colSpan={8}
+                  colSpan={9}
                   className="p-[20px] text-center text-[13px] text-newTextColor/70"
                 >
                   {t('admin_no_organizations_found', 'No organizations found')}
@@ -273,6 +279,13 @@ export const AdminOrganizationsComponent = () => {
                 </td>
                 <td className="p-[12px] text-[13px] text-newTextColor/60">
                   {new Date(org.createdAt).toLocaleDateString()}
+                </td>
+                {/* The campaign the sign-up came from: source / medium /
+                    campaign, whichever were in the link. */}
+                <td className="p-[12px] text-[13px] text-newTextColor/60">
+                  {[org.signupSource, org.signupMedium, org.signupCampaign]
+                    .filter(Boolean)
+                    .join(' / ') || '-'}
                 </td>
                 <td className="p-[12px] text-[13px]">
                   <button
