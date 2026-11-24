@@ -21,7 +21,10 @@ import { DribbbleDto } from '@gitroom/nestjs-libraries/dtos/posts/providers-sett
 import { Integration } from '@prisma/client';
 import { hasExtension } from '@gitroom/helpers/utils/has.extension';
 import { timer } from '@gitroom/helpers/utils/timer';
-import { percentageChangeFromSeries } from '@gitroom/nestjs-libraries/integrations/social/analytics.utils';
+import {
+  dayEndingAt,
+  percentageChangeFromSeries,
+} from '@gitroom/nestjs-libraries/integrations/social/analytics.utils';
 import { Rules } from '@gitroom/nestjs-libraries/chat/rules.description.decorator';
 
 @Rules(
@@ -919,7 +922,7 @@ export class FacebookProvider extends SocialAbstract implements SocialProvider {
         const series =
           d?.values?.map((v: any) => ({
             total: sumValue(v.value),
-            date: dayjs(v.end_time).format('YYYY-MM-DD'),
+            date: dayEndingAt(v.end_time),
           })) || [];
         return {
           label:

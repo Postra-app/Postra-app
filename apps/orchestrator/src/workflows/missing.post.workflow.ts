@@ -1,4 +1,4 @@
-import { continueAsNew, proxyActivities, sleep } from '@temporalio/workflow';
+import { continueAsNew, patched, proxyActivities, sleep } from '@temporalio/workflow';
 import { PostActivity } from '@gitroom/orchestrator/activities/post.activity';
 
 const { searchForMissingThreeHoursPosts } = proxyActivities<PostActivity>({
@@ -8,6 +8,14 @@ const { searchForMissingThreeHoursPosts } = proxyActivities<PostActivity>({
     backoffCoefficient: 1,
     initialInterval: '2 minutes',
   },
+});
+
+// Its own options: one short try. A slow platform must not hold the search
+// for posts left in QUEUE (three 10-minute attempts would); the next hour
+// checks again.
+const { checkChannelsBeforePosting } = proxyActivities<PostActivity>({
+  startToCloseTimeout: '5 minute',
+  retry: { maximumAttempts: 1 },
 });
 
 // Hours per run before handing over to a fresh execution, so the history
@@ -24,6 +32,15 @@ export async function missingPostWorkflow() {
       await searchForMissingThreeHoursPosts();
     } catch (err) {
       // Try again next hour.
+    }
+    // Behind a patch: the run alive at the deploy replays its history, which
+    // has no such activity (scripts/replay-histories.mjs).
+    if (patched('channel-check-before-posting')) {
+      try {
+        await checkChannelsBeforePosting();
+      } catch (err) {
+        // A failed check is not a reason to stop the sweep.
+      }
     }
     await sleep('1 hour');
   }

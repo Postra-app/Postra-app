@@ -77,3 +77,30 @@ describe('InstagramProvider.handleErrors (media not ready)', () => {
     });
   });
 });
+
+// A password change invalidates the Instagram session. The email used to
+// blame "frequent posting" and tell the owner to wait 1-2 days before posting
+// again, when the channel only needed reconnecting.
+describe('InstagramProvider.handleErrors (session invalidated)', () => {
+  const res = new InstagramProvider().handleErrors(
+    JSON.stringify({
+      error: {
+        message:
+          'Error validating access token: The session has been invalidated because the user changed their password or Facebook has changed the session for security reasons.',
+        code: 190,
+        error_subcode: 460,
+      },
+    }),
+    400
+  );
+
+  it('asks for a reconnect', () => {
+    expect(res?.type).toBe('refresh-token');
+    expect(res?.value).toMatch(/reconnect/i);
+  });
+
+  it('names the password change, not frequent posting, and does not ask to wait', () => {
+    expect(res?.value).toMatch(/password/i);
+    expect(res?.value).not.toMatch(/frequent posting|wait 1-2 days/i);
+  });
+});

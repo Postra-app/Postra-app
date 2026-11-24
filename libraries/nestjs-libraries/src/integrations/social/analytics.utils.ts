@@ -55,3 +55,13 @@ export const ratePointChange = (
     weightedAverage(days.slice(0, half), scale);
   return Math.round(change * 10) / 10;
 };
+
+// Facebook Page insights stamp a daily value with the moment its day ends
+// ("end_time", the following midnight in Pacific time), so the value belongs
+// to the day before that moment. Labelled with end_time itself, launch day's
+// numbers sat under the next day and the day still running showed as a row
+// dated tomorrow.
+export const dayEndingAt = (endTime: string): string =>
+  new Date(new Date(endTime).getTime() - 24 * 60 * 60 * 1000)
+    .toISOString()
+    .slice(0, 10);

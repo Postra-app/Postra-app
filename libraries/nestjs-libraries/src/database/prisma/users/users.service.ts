@@ -225,6 +225,14 @@ export class UsersService {
         keyReplacedIn.push(organizationId);
       }
 
+      // The address is erased with the account: no audit row keeps it, whether
+      // the row names them as the target of an admin action or only had the
+      // address (a failed sign-in, rows written before ids were enough).
+      const [leaving] = await tx.$queryRaw<{ email: string }[]>`SELECT "email" FROM "User" WHERE "id" = ${userId}`;
+      if (leaving) {
+        await tx.$executeRaw`UPDATE "AuditLog" SET "metadata" = "metadata" - 'email' WHERE jsonb_exists("metadata", 'email') AND ("metadata"->>'targetUserId' = ${userId} OR lower("metadata"->>'email') = lower(${leaving.email}))`;
+      }
+
       await tx.user.delete({ where: { id: userId } });
     });
     if (keyReplacedIn.length) {

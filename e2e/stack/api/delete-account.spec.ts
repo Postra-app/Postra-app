@@ -44,6 +44,49 @@ test('deleting the account removes the user and the organisation they own alone'
   }
 });
 
+test('after the account is deleted its address is in no audit row', async () => {
+  const prisma = database();
+  const owner = await throwawayOrg(prisma, { tier: 'PRO', totalChannels: 5, channels: 0 });
+  const { id, email } = await ownerOf(prisma, owner.orgId);
+  const rowsWithAddress = async () =>
+    Number(
+      (
+        await prisma.$queryRaw<{ n: bigint }[]>`SELECT count(*) AS n FROM "AuditLog" WHERE "metadata"::text ILIKE ${'%' + email + '%'}`
+      )[0].n
+    );
+  try {
+    // Rows of the kinds that name a person: a sign-in, a failed sign-in (only
+    // the address typed), and one written before addresses were left out.
+    const visitor = await anonymous();
+    const headers = { 'x-forwarded-for': '198.19.7.7' };
+    expect(
+      (await visitor.post('/auth/login', { data: { email, password: PASSWORD, provider: 'LOCAL' }, headers })).status()
+    ).toBe(200);
+    expect(
+      (await visitor.post('/auth/login', { data: { email: email.toUpperCase(), password: 'not-the-password', provider: 'LOCAL' }, headers })).status()
+    ).toBe(400);
+    await prisma.auditLog.create({
+      data: { action: 'auth.register', userId: id, metadata: { email, provider: 'LOCAL' } },
+    });
+    // The failed sign-in is written after the response: wait for it (the
+    // sign-in, the failed one and the old-style row all carry the address).
+    await expect.poll(rowsWithAddress).toBeGreaterThanOrEqual(2);
+    await expect.poll(() => prisma.auditLog.count({ where: { action: 'auth.login', userId: id } })).toBeGreaterThan(0);
+
+    const res = await owner.api.post('/user/delete', { data: { password: PASSWORD } });
+    expect(res.status(), await res.text()).toBe(200);
+
+    await expect.poll(() => prisma.auditLog.count({ where: { action: 'account.delete', userId: id } })).toBe(1);
+    expect(await rowsWithAddress()).toBe(0);
+    // The rows themselves stay: what happened is kept, who it was is not.
+    expect(await prisma.auditLog.count({ where: { action: 'auth.register', userId: id } })).toBe(1);
+  } finally {
+    await prisma.auditLog.deleteMany({ where: { userId: id } });
+    await owner.remove();
+    await prisma.$disconnect();
+  }
+});
+
 test('an organisation shared with another member survives, without the deleted user', async () => {
   const prisma = database();
   const keeper = await throwawayOrg(prisma, { tier: 'PRO', totalChannels: 5, channels: 1 });

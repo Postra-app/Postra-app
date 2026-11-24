@@ -184,6 +184,41 @@ export class PostActivity {
     }
   }
 
+  // A token that died (a password change, access removed) was found only when
+  // someone opened the channel list or a post failed. Hourly, from the
+  // missing-post sweep: the channels of every organisation with a post due in
+  // the next 6 hours. checkIntegrationsHealth flags a dead channel and emails
+  // "reconnect" once, and caches each channel for 30 minutes. Stops at the
+  // deadline so a slow platform cannot hold the sweep; the rest wait an hour.
+  // One organisation gets at most `perOrganisationMs`: a platform that never
+  // answers would otherwise keep every organisation after it unchecked, hour
+  // after hour.
+  @ActivityMethod()
+  async checkChannelsBeforePosting(
+    deadlineMs = 4 * 60_000,
+    perOrganisationMs = 45_000
+  ) {
+    const until = Date.now() + deadlineMs;
+    const orgs = await this._postService.organizationsWithPostsDueSoon(6);
+    for (const org of orgs) {
+      const left = until - Date.now();
+      if (left <= 0) break;
+      let timer: NodeJS.Timeout | undefined;
+      try {
+        await Promise.race([
+          this._integrationService.checkIntegrationsHealth(org),
+          new Promise<void>((resolve) => {
+            timer = setTimeout(resolve, Math.min(left, perOrganisationMs));
+          }),
+        ]);
+      } catch (err) {
+        // One organisation (or platform) failing does not skip the rest.
+      } finally {
+        clearTimeout(timer);
+      }
+    }
+  }
+
   @ActivityMethod()
   async updatePost(
     id: string,

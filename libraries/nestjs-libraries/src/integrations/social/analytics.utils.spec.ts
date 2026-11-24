@@ -1,4 +1,4 @@
-import { percentageChangeFromSeries } from './analytics.utils';
+import { dayEndingAt, percentageChangeFromSeries } from './analytics.utils';
 
 describe('percentageChangeFromSeries', () => {
   it('returns 0 for empty, undefined, or single-point series (no baseline)', () => {
@@ -49,5 +49,15 @@ describe('percentageChangeFromSeries', () => {
     expect(
       percentageChangeFromSeries([{ total: 300 }, { total: 400 }])
     ).toBe(33.3);
+  });
+});
+
+describe('dayEndingAt', () => {
+  it('names the day a Facebook daily value is for, not the moment its window closes', () => {
+    // The value for 23 November arrives stamped with the next morning (UTC).
+    expect(dayEndingAt('2026-11-24T08:00:00+0000')).toBe('2026-11-23');
+    // Pacific daylight time: the window closes an hour earlier in UTC.
+    expect(dayEndingAt('2026-07-01T07:00:00+0000')).toBe('2026-06-30');
+    expect(dayEndingAt('2026-03-01T08:00:00+0000')).toBe('2026-02-28');
   });
 });

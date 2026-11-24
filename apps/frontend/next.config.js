@@ -103,6 +103,12 @@ export default withSentryConfig(nextConfig, {
   project: process.env.SENTRY_PROJECT,
   authToken: process.env.SENTRY_AUTH_TOKEN,
 
+  // Marks every module of this build as ours, so the browser client can tell
+  // an error in our code from one in a script the visitor's browser added
+  // (thirdPartyErrorFilterIntegration in initialize.sentry.client.ts; the
+  // two keys must match).
+  applicationKey: 'postra',
+
   // Sourcemap configuration optimized for monorepo
   sourcemaps: {
     disable: false,

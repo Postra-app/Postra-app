@@ -115,8 +115,9 @@ export class AuthController {
       const registrationProof =
         'registrationProof' in signedUp ? signedUp.registrationProof : undefined;
 
-      // Named by user and organisation: a row with only the address was
-      // invisible in the account's own audit.
+      // Named by user and organisation, not by address: the audit view
+      // resolves the id while the account exists, and nothing personal stays
+      // in the row once the account is deleted.
       this._auditService.record({
         action: 'auth.register',
         userId: signedUp.userId,
@@ -124,7 +125,7 @@ export class AuthController {
           'organizationId' in signedUp ? signedUp.organizationId : undefined,
         ip,
         userAgent,
-        metadata: { email: body.email, provider: body.provider },
+        metadata: { provider: body.provider },
       });
 
       const activationRequired =
@@ -234,7 +235,7 @@ export class AuthController {
         userId,
         ip,
         userAgent,
-        metadata: { email: body.email, provider: body.provider },
+        metadata: { provider: body.provider },
       });
 
       // The app keeps its own short token in the Keychain and never sends
@@ -286,6 +287,9 @@ export class AuthController {
           : {}),
       });
     } catch (e: any) {
+      // No account to name: the address typed is the only way to see one
+      // account being guessed at. It leaves these rows when the account it
+      // belongs to is deleted (UsersService.deleteAccount).
       this._auditService.record({
         action: 'auth.login.failed',
         ip,
@@ -415,7 +419,7 @@ export class AuthController {
       userId: result.user.id,
       ip,
       userAgent,
-      metadata: { email: result.user.email, provider: 'GOOGLE', via: 'mobile' },
+      metadata: { provider: 'GOOGLE', via: 'mobile' },
     });
     return response.status(200).json({
       login: true,

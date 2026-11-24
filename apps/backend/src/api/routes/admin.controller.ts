@@ -543,7 +543,7 @@ export class AdminController {
       this._auditService.record({
         action: next ? 'admin.grant-admin' : 'admin.revoke-admin',
         userId: user.id,
-        metadata: { targetUserId: userId, email: target.email },
+        metadata: { targetUserId: userId },
       });
     }
 
@@ -619,7 +619,6 @@ export class AdminController {
         userId: user.id,
         metadata: {
           targetUserId: userId,
-          email: target.email,
           ...(suspend && reason ? { reason: reason.trim().slice(0, 500) } : {}),
         },
       });
@@ -1341,7 +1340,7 @@ export class AdminController {
     this._auditService.record({
       action: 'admin.export-user',
       userId: user.id,
-      metadata: { targetUserId: userId, email: data.user.email },
+      metadata: { targetUserId: userId },
     });
     response.header(
       'Content-Disposition',
@@ -1394,15 +1393,13 @@ export class AdminController {
       );
     }
 
-    // Written before the delete: afterwards the id resolves to nobody, and an
-    // audit row naming an account that no longer exists is the only record
-    // there will ever be of this.
+    // The only record there will be of this deletion. Ids only: the address
+    // is erased with the account.
     this._auditService.record({
       action: 'admin.delete-user',
       userId: user.id,
       metadata: {
         targetUserId: userId,
-        email: target.email,
         organizationsDeleted: soleOrgIds,
       },
     });
