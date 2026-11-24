@@ -384,6 +384,13 @@ export const EditorToolbar: FC<ToolbarProps> = ({ canvas }) => {
     }
   }, [canvas, removingBg, toaster, t, resolveTargetImage, fetch]);
 
+  // Fetch the default family as Studio opens. Adding a text waits for it, and
+  // a text that arrives after a pause could land on the slide switched to in
+  // the meantime.
+  useEffect(() => {
+    void ensureFontsLoaded([defaultFontFamily]);
+  }, [defaultFontFamily]);
+
   const addText = useCallback(async () => {
     if (!canvas.current) return;
     // Fabric measures the textbox as it is created and keeps those metrics. A

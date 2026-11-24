@@ -20,6 +20,17 @@ test('a carousel draft keeps every slide, and Undo stays on its own slide', asyn
   await page.getByRole('button', { name: /Blank canvas/ }).click();
   await page.getByRole('button', { name: 'Text', exact: true }).click();
   await page.getByRole('button', { name: /Add text/ }).click();
+  // Adding a text waits for its font; both must be on the first slide before
+  // the carousel gets a second one.
+  await expect
+    .poll(() =>
+      page.evaluate(() => {
+        window.dispatchEvent(new Event('pagehide'));
+        const key = Object.keys(localStorage).find((k) => k.startsWith('postra:studio-draft:'));
+        return key ? (JSON.parse(localStorage.getItem(key)!).canvasJson as string) : null;
+      }).then(textsIn)
+    )
+    .toBe(2);
   await page.getByRole('button', { name: 'Carousel mode' }).click();
   await page.getByTitle('Add an empty slide (max 10)').click();
   await expect(page.getByText('Slide 2 of 2')).toBeVisible();
