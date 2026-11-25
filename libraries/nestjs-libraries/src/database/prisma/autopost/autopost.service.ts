@@ -72,7 +72,16 @@ interface WorkflowChannelsState {
   /** Brand Kit rendered once per item — voice for the copy, palette for the picture. */
   brandVoice?: string;
   brandVisual?: string;
+  /**
+   * Set once a LinkedIn Page of the feed refused an earlier article of this
+   * run for its daily limit: later articles still go to the other channels,
+   * but the cursor stays on the article the Page is missing.
+   */
+  holdCursor?: boolean;
 }
+
+/** A LinkedIn Page's refusal for its daily limit, with the channels it names. */
+type LinkedinLimitRefusal = Error & { refusedChannels?: string[] };
 
 const model = new ChatOpenAI({
   apiKey: process.env.OPENAI_API_KEY || 'sk-proj-',
@@ -459,6 +468,7 @@ export class AutopostService {
         id: null,
         brandVoice: null,
         brandVisual: null,
+        holdCursor: null,
       },
     });
 
@@ -807,13 +817,17 @@ export class AutopostService {
       // with it. Each channel is then written on its own: the others post now,
       // the Page's refusal is thrown on so the cursor stays on the article,
       // and the next run (which skips channels that have it) tries the Page.
-      if (
-        err?.message !== LINKEDIN_PAGES_LIMITS_MESSAGE ||
-        integrations.length < 2
-      ) {
+      if (err?.message !== LINKEDIN_PAGES_LIMITS_MESSAGE) {
         throw err;
       }
-      let refused: unknown;
+      if (integrations.length < 2) {
+        (err as LinkedinLimitRefusal).refusedChannels = integrations.map(
+          (i) => i.id
+        );
+        throw err;
+      }
+      let refused: LinkedinLimitRefusal | undefined;
+      const refusedChannels: string[] = [];
       for (const channel of integrations) {
         try {
           await write([channel]);
@@ -822,15 +836,20 @@ export class AutopostService {
             throw e;
           }
           refused = e;
+          refusedChannels.push(channel.id);
         }
       }
       if (refused) {
+        refused.refusedChannels = refusedChannels;
         throw refused;
       }
     }
   }
 
   async updateUrl(state: WorkflowChannelsState) {
+    if (state.holdCursor) {
+      return;
+    }
     await this._autopostsRepository.updateUrl(state.id, state.load.url);
   }
 
@@ -939,6 +958,12 @@ export class AutopostService {
     // failure (and surface it) so lastUrl never skips past an unposted item —
     // the hourly run resumes from there next time.
     let postsWithoutImage = 0;
+    // A LinkedIn Page full for the day leaves the run with its refusal; the
+    // other channels go on with the later articles, and the cursor stays on
+    // the first article the Page is missing (holdCursor), so the Page gets
+    // every article in order on its next free days.
+    let channels = integrationsToSend;
+    let holdCursor = false;
     for (const load of loads) {
       try {
         const result = await app.invoke(
@@ -947,7 +972,8 @@ export class AutopostService {
             id,
             body: getPost,
             load,
-            integrations: integrationsToSend,
+            integrations: channels,
+            holdCursor,
           },
           {
             callbacks: [
@@ -964,7 +990,18 @@ export class AutopostService {
         }
       } catch (err) {
         await this.notifyFailure(getPost, err, load.url);
-        break;
+        const refused = (err as LinkedinLimitRefusal)?.refusedChannels;
+        if (
+          (err as Error)?.message !== LINKEDIN_PAGES_LIMITS_MESSAGE ||
+          !refused?.length
+        ) {
+          break;
+        }
+        holdCursor = true;
+        channels = channels.filter((c) => !refused.includes(c.id));
+        if (!channels.length) {
+          break;
+        }
       }
     }
 

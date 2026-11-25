@@ -14,14 +14,18 @@ import { BadRequestException } from '@nestjs/common';
 import { AutopostService } from './autopost.service';
 import { LINKEDIN_PAGES_LIMITS_MESSAGE } from '@gitroom/nestjs-libraries/integrations/linkedin-pages.limits';
 
-// A LinkedIn Page in early access takes one post a day. The AWS feed of our
-// own workspace met a Page that had already posted and told us "Autopost
-// failed" with the limit's text in the middle: it read as a lost post. And a
-// feed that also posts to X waited for the Page with every other channel.
+// A LinkedIn Page in early access takes one post a day. A feed whose Page
+// had already posted reported "Autopost failed" with the limit's text in the
+// middle, which read as a lost post. And a feed that also posts to X waited
+// for the Page with every other channel.
 const page = { id: 'ch-page', organizationId: 'org-1', providerIdentifier: 'linkedin-page' };
 const x = { id: 'ch-x', organizationId: 'org-1', providerIdentifier: 'x' };
 
-const service = (channels: object[], url = 'https://blog.example/new') => {
+const service = (
+  channels: object[],
+  url = 'https://blog.example/new',
+  urls: string[] = [url]
+) => {
   const s = Object.create(AutopostService.prototype) as any;
   s._autopostsRepository = {
     getAutopost: async () => ({
@@ -39,7 +43,8 @@ const service = (channels: object[], url = 'https://blog.example/new') => {
     }),
     updateUrl: jest.fn(),
   };
-  s.loadNewLoads = async () => [{ url, date: new Date().toISOString(), description: 'New' }];
+  s.loadNewLoads = async () =>
+    urls.map((u) => ({ url: u, date: new Date().toISOString(), description: 'New' }));
   s._integrationService = { getIntegrationsList: async () => channels };
   s._subscriptionService = { postCap: async (): Promise<null> => null };
   s._postsService = {
@@ -118,4 +123,20 @@ it('any other error is still "Autopost failed"', async () => {
   expect(subject).toBe('Autopost failed');
   expect(message).toContain('X said no');
   expect([email, type]).toEqual([false, 'fail']);
+});
+
+it('later articles still reach the other channels while the Page waits, and the cursor stays on the first', async () => {
+  const s = service([page, x], undefined, ['https://blog.example/a', 'https://blog.example/b']);
+  const articleOf = (c: any[]) => c[1].posts[0].value[0].content as string;
+  await s.startAutopost('ap-1');
+  const calls = s._postsService.createPost.mock.calls;
+  // Article a: both, the Page alone (refused), X alone. Article b: X only,
+  // since the Page is full for the day.
+  expect(postedTo(s)).toEqual(['ch-page', 'ch-x', 'ch-page', 'ch-x', 'ch-x']);
+  expect(calls).toHaveLength(4);
+  expect(articleOf(calls[2])).toContain('https://blog.example/a');
+  expect(articleOf(calls[3])).toContain('https://blog.example/b');
+  // The Page has neither article, so the cursor does not move past a.
+  expect(s._autopostsRepository.updateUrl).not.toHaveBeenCalled();
+  expect(s._notificationService.inAppNotification).toHaveBeenCalledTimes(1);
 });
