@@ -70,10 +70,10 @@ const asTime = (value: Date | string | null | undefined): number | null => {
  *
  * A null `tokenExpiration` is `ok`, not unknown: x and telegram report
  * `expiresIn: 0` at connect time and never carry an expiry. Facebook and
- * instagram through facebook do carry one: picking the page stores 59 days
- * (every such channel on production had a date, measured 2026-11-24), but
- * their page tokens neither expire on it nor refresh (`noRefreshBeforeCall`),
- * so for them `expired` here does not mean the channel is dead.
+ * instagram through facebook do carry one: picking the page stores 59 days,
+ * but their page tokens neither expire on it nor refresh
+ * (`noRefreshBeforeCall`), so for them `expired` here does not mean the
+ * channel is dead.
  */
 export const channelState = (
   channel: ChannelStateInput,

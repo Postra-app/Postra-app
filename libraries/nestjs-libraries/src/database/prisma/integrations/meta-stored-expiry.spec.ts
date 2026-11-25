@@ -24,8 +24,8 @@ import { InstagramProvider } from '@gitroom/nestjs-libraries/integrations/social
 // be refreshed: their refreshToken() returns an empty token. The analytics
 // paths refreshed on the stored date, so once it passed, opening analytics
 // flagged a healthy channel, disconnected it and emailed the customer to
-// reconnect (upstream 82121e28c). On production the earliest stored date is
-// 1 January 2027. A token the platform rejects still goes through the refresh
+// reconnect (upstream 82121e28c). A token the platform rejects still goes
+// through the refresh
 // (forceRefresh), and providers with a real refresh are unchanged.
 
 const PAST = new Date(Date.now() - 86_400_000);
