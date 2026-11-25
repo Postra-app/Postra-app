@@ -826,8 +826,11 @@ export class LinkedinProvider extends SocialAbstract implements SocialProvider {
         body: JSON.stringify({
           actor,
           object: parentPostId,
+          // Plain text: the escaping of post commentary ("little text
+          // format") showed in a comment as it was, so a link read
+          // utm\\_source and did not open.
           message: {
-            text: this.fixText(post.message),
+            text: post.message,
           },
         }),
       }

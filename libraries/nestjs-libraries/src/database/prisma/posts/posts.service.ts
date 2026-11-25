@@ -377,14 +377,18 @@ export class PostsService {
         date,
         releaseURL
       );
-      await ioRedis.set(
-        `integration:${orgId}:${post.id}:${date}`,
-        JSON.stringify(loadAnalytics),
-        'EX',
-        !process.env.NODE_ENV || process.env.NODE_ENV === 'development'
-          ? 1
-          : integrationProvider.analyticsCacheSeconds ?? 3600
-      );
+      // An empty answer is not kept: a post minutes old has no numbers yet,
+      // and kept for hours it would go on saying so after they arrive.
+      if (!integrationProvider.analyticsCacheSeconds || loadAnalytics?.length) {
+        await ioRedis.set(
+          `integration:${orgId}:${post.id}:${date}`,
+          JSON.stringify(loadAnalytics),
+          'EX',
+          !process.env.NODE_ENV || process.env.NODE_ENV === 'development'
+            ? 1
+            : integrationProvider.analyticsCacheSeconds ?? 3600
+        );
+      }
       return loadAnalytics;
     } catch (e) {
       this._logger.warn(
