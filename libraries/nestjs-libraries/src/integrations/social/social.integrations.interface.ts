@@ -192,6 +192,18 @@ export interface SocialProvider
   convertToJPEG?: boolean;
   stripLinks?: () => boolean;
   refreshCron?: boolean;
+  // The token cannot be refreshed and does not expire on its stored
+  // expiration date (Facebook and Instagram page tokens), so it is never
+  // refreshed before a call; only a token the platform rejects is.
+  noRefreshBeforeCall?: boolean;
+  // Posts go to a page or location the customer picks after the login
+  // step; until then the channel holds the account id and cannot publish.
+  pageRequiredToPost?: boolean;
+  // Seconds page analytics and post statistics are kept, for a platform
+  // with a small daily API budget shared by every customer (LinkedIn Pages
+  // on Development Tier: 500 calls a day). Unset: page analytics an hour,
+  // post statistics loaded live.
+  analyticsCacheSeconds?: number;
   dto?: any;
   maxLength: (additionalSettings?: any) => number;
   // A comment's limit when it is smaller than the post's.

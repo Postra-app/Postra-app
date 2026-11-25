@@ -27,6 +27,7 @@ import {
   PostResponse,
 } from '@gitroom/nestjs-libraries/integrations/social/social.integrations.interface';
 import { commentAccessForNow } from '@gitroom/nestjs-libraries/integrations/comment.access';
+import { BadBody } from '@gitroom/nestjs-libraries/integrations/social.abstract';
 import {
   canPostComments,
   commentSupport,
@@ -116,6 +117,10 @@ function slimPost(post: any) {
   } = post;
   return rest;
 }
+
+// What the customer reads on a post to a channel whose page was never picked.
+export const PAGE_NOT_SELECTED =
+  "This channel isn't fully connected yet: no page was chosen. Open Channels, finish connecting it and pick the page to post to, then try again.";
 
 @Injectable()
 @Activity()
@@ -469,6 +474,18 @@ export class PostActivity {
   }
 
   private async postSocialBody(integration: Integration, posts: Post[]) {
+    // No page was picked when the channel was connected, so the platform
+    // would reject the post. Thrown as BadBody so every workflow version
+    // already running fails the post with this message (upstream 32a6d0e64).
+    if (this._integrationService.needsPageSelection(integration)) {
+      throw new BadBody(
+        integration.providerIdentifier,
+        JSON.stringify({}),
+        Buffer.from('{}'),
+        PAGE_NOT_SELECTED
+      );
+    }
+
     integration.token = AuthService.decryptIntegrationToken(integration.token);
     if (integration.refreshToken) {
       integration.refreshToken = AuthService.decryptIntegrationToken(

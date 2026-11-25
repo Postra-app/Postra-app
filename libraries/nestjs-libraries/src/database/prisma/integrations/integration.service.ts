@@ -610,6 +610,25 @@ export class IntegrationService {
   // channel-list load. Runs fire-and-forget, is Redis-cached so it checks each
   // channel at most ~twice/hour, and only touches providers that implement
   // checkToken (others are skipped, never false-flagged).
+  // A channel whose id is still the account id of the login step never had
+  // its page picked: the platform rejects every post to it (upstream
+  // 32a6d0e64). Read from the ids, not inBetweenSteps, so a channel that did
+  // pick its page keeps publishing.
+  needsPageSelection(
+    integration: Pick<
+      Integration,
+      'providerIdentifier' | 'internalId' | 'rootInternalId'
+    >
+  ) {
+    return (
+      !!this._integrationManager.getSocialIntegration(
+        integration.providerIdentifier
+      )?.pageRequiredToPost &&
+      !!integration.rootInternalId &&
+      integration.internalId === integration.rootInternalId
+    );
+  }
+
   async checkIntegrationsHealth(org: string) {
     const list = await this._integrationRepository.getIntegrationsList(org);
     for (const integration of list) {
@@ -708,6 +727,13 @@ export class IntegrationService {
       };
 
       const provider = provider0;
+
+      // Facebook and Instagram page tokens cannot be refreshed and do not
+      // expire on their stored date: a refresh here returned no token and
+      // flagged a healthy channel for reconnection.
+      if (provider?.noRefreshBeforeCall) {
+        continue;
+      }
 
       if (!apply) {
         refreshed.push(describe);
@@ -945,7 +971,8 @@ export class IntegrationService {
     );
 
     if (
-      dayjs(getIntegration?.tokenExpiration).isBefore(dayjs()) ||
+      (dayjs(getIntegration?.tokenExpiration).isBefore(dayjs()) &&
+        !integrationProvider.noRefreshBeforeCall) ||
       forceRefresh
     ) {
       const data = await this._refreshIntegrationService.refreshForRead(
@@ -993,7 +1020,7 @@ export class IntegrationService {
           'EX',
           !process.env.NODE_ENV || process.env.NODE_ENV === 'development'
             ? 1
-            : 3600
+            : integrationProvider.analyticsCacheSeconds ?? 3600
         );
         return loadAnalytics;
       } catch (e) {

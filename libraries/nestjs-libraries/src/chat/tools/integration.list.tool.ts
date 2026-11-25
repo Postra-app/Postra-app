@@ -44,11 +44,18 @@ export class IntegrationListTool implements AgentToolInterface {
 
         // Only channels a post can go to: a disabled one publishes nothing,
         // and the output schema drops "disabled", so listed it looked usable.
+        // A channel still being connected (no page picked yet) cannot publish
+        // either; an assistant that scheduled to it got the platform's error.
         return {
           output: (
             await this._integrationService.getIntegrationsList(organizationId)
           )
-            .filter((p) => !p.disabled)
+            .filter(
+              (p) =>
+                !p.disabled &&
+                !p.inBetweenSteps &&
+                !this._integrationService.needsPageSelection(p)
+            )
             .map((p) => ({
               name: p.customName || p.name,
               id: p.id,

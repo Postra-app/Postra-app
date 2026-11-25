@@ -161,6 +161,12 @@ export class PostsService {
     }
 
     const getIntegration = post.integration!;
+
+    // A deleted channel is neither refreshed nor called: a refresh that
+    // succeeded wrote its tokens back to the removed channel.
+    if (getIntegration.deletedAt) {
+      return [];
+    }
     getIntegration.token = AuthService.decryptIntegrationToken(
       getIntegration.token
     );
@@ -171,7 +177,8 @@ export class PostsService {
     }
 
     if (
-      dayjs(getIntegration?.tokenExpiration).isBefore(dayjs()) ||
+      (dayjs(getIntegration?.tokenExpiration).isBefore(dayjs()) &&
+        !integrationProvider.noRefreshBeforeCall) ||
       forceRefresh
     ) {
       const data = await this._refreshIntegrationService.refreshForRead(
@@ -291,6 +298,12 @@ export class PostsService {
     }
 
     const getIntegration = post.integration!;
+
+    // A deleted channel is neither refreshed nor called: a refresh that
+    // succeeded wrote its tokens back to the removed channel.
+    if (getIntegration.deletedAt) {
+      return [];
+    }
     getIntegration.token = AuthService.decryptIntegrationToken(
       getIntegration.token
     );
@@ -301,7 +314,8 @@ export class PostsService {
     }
 
     if (
-      dayjs(getIntegration?.tokenExpiration).isBefore(dayjs()) ||
+      (dayjs(getIntegration?.tokenExpiration).isBefore(dayjs()) &&
+        !integrationProvider.noRefreshBeforeCall) ||
       forceRefresh
     ) {
       const data = await this._refreshIntegrationService.refreshForRead(
@@ -325,12 +339,17 @@ export class PostsService {
       }
     }
 
-    // const getIntegrationData = await ioRedis.get(
-    //   `integration:${orgId}:${post.id}:${date}`
-    // );
-    // if (getIntegrationData) {
-    //   return JSON.parse(getIntegrationData);
-    // }
+    // Statistics are loaded live, except on a platform with a small daily
+    // API budget, where an open of the same post's statistics within the
+    // cache window reads the stored answer instead of spending the budget.
+    if (integrationProvider.analyticsCacheSeconds) {
+      const cached = await ioRedis.get(
+        `integration:${orgId}:${post.id}:${date}`
+      );
+      if (cached) {
+        return JSON.parse(cached);
+      }
+    }
 
     try {
       let releaseId = post.releaseId;
@@ -364,7 +383,7 @@ export class PostsService {
         'EX',
         !process.env.NODE_ENV || process.env.NODE_ENV === 'development'
           ? 1
-          : 3600
+          : integrationProvider.analyticsCacheSeconds ?? 3600
       );
       return loadAnalytics;
     } catch (e) {
