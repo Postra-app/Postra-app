@@ -10,6 +10,7 @@ import {
   isLinkedinPagesNotice,
   linkedinPageConnectRefusal,
   linkedinPageDay,
+  linkedinPageDailyLimitApplies,
 } from './linkedin-pages.limits';
 import { pricing } from '../database/prisma/subscriptions/pricing';
 
@@ -96,5 +97,28 @@ describe('LinkedIn Pages early access', () => {
       manager.slice(manager.indexOf(`const ${name} = new Set`)).split(']);')[0];
     expect(list('enabledProviders')).toMatch(/^\s*'linkedin-page',/m);
     expect(list('previewProviders')).not.toMatch(/^\s*'linkedin-page',/m);
+  });
+
+  // The day's cap keeps every workspace inside the API budget LinkedIn gives
+  // the whole app; a deployment can name workspaces it does not apply to.
+  describe('the daily post limit', () => {
+    const saved = process.env.LINKEDIN_PAGES_UNLIMITED_ORGANIZATIONS;
+    afterEach(() => {
+      if (saved === undefined) delete process.env.LINKEDIN_PAGES_UNLIMITED_ORGANIZATIONS;
+      else process.env.LINKEDIN_PAGES_UNLIMITED_ORGANIZATIONS = saved;
+    });
+
+    it('applies to every workspace when no workspace is named', () => {
+      delete process.env.LINKEDIN_PAGES_UNLIMITED_ORGANIZATIONS;
+      expect(linkedinPageDailyLimitApplies('org-1')).toBe(true);
+    });
+
+    it('does not apply to a workspace named in LINKEDIN_PAGES_UNLIMITED_ORGANIZATIONS', () => {
+      process.env.LINKEDIN_PAGES_UNLIMITED_ORGANIZATIONS = ' org-ours , org-review';
+      expect(linkedinPageDailyLimitApplies('org-ours')).toBe(false);
+      expect(linkedinPageDailyLimitApplies('org-review')).toBe(false);
+      expect(linkedinPageDailyLimitApplies('org-customer')).toBe(true);
+      expect(linkedinPageDailyLimitApplies('')).toBe(true);
+    });
   });
 });

@@ -106,6 +106,7 @@ import {
   LINKEDIN_PAGES_LIMITS_MESSAGE,
   LINKEDIN_PAGES_NO_REPEAT_MESSAGE,
   linkedinPageDay,
+  linkedinPageDailyLimitApplies,
 } from '@gitroom/nestjs-libraries/integrations/linkedin-pages.limits';
 @Injectable()
 export class PostsService {
@@ -1445,6 +1446,7 @@ export class PostsService {
     if (body.inter && +body.inter >= 1) {
       throw new BadRequestException(LINKEDIN_PAGES_NO_REPEAT_MESSAGE);
     }
+    if (!linkedinPageDailyLimitApplies(orgId)) return;
     for (const page of pages) {
       await this._postRepository.lockLinkedinPage(tx, page);
     }
@@ -1754,7 +1756,8 @@ export class PostsService {
       // has a post for is refused like a second save would be.
       if (
         getPostById.integration?.providerIdentifier === 'linkedin-page' &&
-        !getPostById.parentPostId
+        !getPostById.parentPostId &&
+        linkedinPageDailyLimitApplies(orgId)
       ) {
         await this._postRepository.lockLinkedinPage(
           tx,

@@ -15,6 +15,22 @@ export const LINKEDIN_PAGES_PER_WORKSPACE = 5;
 /** Posts (not comments) one Page may publish on a calendar day, UTC. */
 export const LINKEDIN_PAGE_POSTS_PER_DAY = 1;
 
+/**
+ * Whether the day's post limit holds for a workspace. It does for every
+ * workspace except those named in LINKEDIN_PAGES_UNLIMITED_ORGANIZATIONS
+ * (comma-separated ids), which a deployment sets for workspaces of its own
+ * that need more than one post a day on a Page; their posts still count
+ * against the app's API budget. The other limits (Pages per workspace, no
+ * repeating posts) hold for everyone.
+ */
+export const linkedinPageDailyLimitApplies = (orgId: string) =>
+  !orgId ||
+  !(process.env.LINKEDIN_PAGES_UNLIMITED_ORGANIZATIONS || '')
+    .split(',')
+    .map((id) => id.trim())
+    .filter(Boolean)
+    .includes(orgId);
+
 export const LINKEDIN_PAGES_LIMITS_MESSAGE =
   'LinkedIn Pages are in early access: one post a day per Page, up to 5 Pages per workspace.';
 

@@ -298,6 +298,56 @@ test('LinkedIn Pages: one post a day on each Page, drafts and other Pages not co
   }
 });
 
+// The day's cap keeps customers inside LinkedIn's shared budget; a workspace
+// named in LINKEDIN_PAGES_UNLIMITED_ORGANIZATIONS is not held to it.
+test('LinkedIn Pages: a workspace named as unlimited posts more than once a day', async () => {
+  const prisma = database();
+  const org = await throwawayOrg(prisma, { tier: 'ULTIMATE', totalChannels: 15, channels: 0, id: 'stack-li-unlimited-org' });
+  const day = new Date(Date.now() + 3 * 86_400_000);
+  day.setUTCHours(9, 0, 0, 0);
+  const at = (hours: number) => new Date(day.getTime() + hours * 3_600_000).toISOString().slice(0, 19);
+  const page = `stack-li-unlimited-${org.orgId}`;
+  const post = (date: string) =>
+    org.api.post('/posts', {
+      data: {
+        type: 'schedule',
+        shortLink: false,
+        date,
+        tags: [],
+        posts: [{ integration: { id: page }, value: [{ content: `at ${date}`, image: [] }], settings: { __type: 'linkedin-page' } }],
+      },
+    });
+  try {
+    await prisma.integration.create({
+      data: {
+        id: page,
+        internalId: `li-unlimited-${org.orgId}`,
+        organizationId: org.orgId,
+        name: 'Our Page',
+        providerIdentifier: 'linkedin-page',
+        type: 'social',
+        token: 'fake-token',
+        profile: 'page',
+      },
+    });
+    const first = await post(at(0));
+    expect(first.status(), await first.text()).toBe(201);
+    const second = await post(at(5));
+    expect(second.status(), await second.text()).toBe(201);
+
+    // Moving a later post onto that day is allowed too.
+    const third = await post(at(48));
+    expect(third.status(), await third.text()).toBe(201);
+    const [{ postId }] = (await third.json()) as { postId: string }[];
+    expect((await org.api.put(`/posts/${postId}/date`, { data: { date: at(7), action: 'update' } })).status()).toBe(200);
+  } finally {
+    await prisma.post.deleteMany({ where: { organizationId: org.orgId } });
+    await prisma.integration.deleteMany({ where: { organizationId: org.orgId } });
+    await org.remove();
+    await prisma.$disconnect();
+  }
+});
+
 // Google Business Profile left the preview on 2026-11-17 (Google approved
 // the API): an offered platform from Pro, behind the plan like the others.
 // Nothing is in the preview list now, so no one gets past a plan with it.
