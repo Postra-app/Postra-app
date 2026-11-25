@@ -64,13 +64,27 @@ describe('pm2 ecosystem', () => {
 
   it('starts from the root script with the .env every app read before', () => {
     const pkg = JSON.parse(readFileSync(join(root, 'package.json'), 'utf8'));
-    expect(pkg.scripts['pm2-start']).toContain('dotenv -e .env -- pm2 start ecosystem.config.cjs');
+    expect(pkg.scripts['pm2-start']).toContain('dotenv-cli -e .env -- pm2 start ecosystem.config.cjs');
     for (const name of ['backend', 'orchestrator', 'frontend']) {
       const appPkg = JSON.parse(
         readFileSync(join(root, 'apps', name, 'package.json'), 'utf8')
       );
       // One place says how an app is started under pm2.
       expect(appPkg.scripts.pm2).toBeUndefined();
+    }
+  });
+
+  // dotenv 18 ships its own `dotenv` command with a different syntax
+  // (`dotenv run -- cmd`). With both packages installed the `dotenv` name in
+  // node_modules/.bin belongs to whichever was linked last, so scripts call
+  // dotenv-cli by its own name.
+  it('calls dotenv-cli by name, never the bare dotenv command', () => {
+    const files = ['package.json', ...['backend', 'commands', 'extension', 'frontend', 'orchestrator'].map((n) => join('apps', n, 'package.json'))];
+    for (const file of files) {
+      const pkg = JSON.parse(readFileSync(join(root, file), 'utf8'));
+      for (const [name, script] of Object.entries<string>(pkg.scripts || {})) {
+        expect({ file, name, bare: /(^|[\s&;|(])dotenv\s/.test(script) }).toEqual({ file, name, bare: false });
+      }
     }
   });
 });
