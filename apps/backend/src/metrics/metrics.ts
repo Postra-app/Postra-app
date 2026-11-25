@@ -1,8 +1,13 @@
 import * as http from 'node:http';
 import { Logger } from '@nestjs/common';
 import {
+  LINKEDIN_PAGE_CALLS_METRIC,
+  linkedinPageCallsToday,
+} from '@gitroom/nestjs-libraries/integrations/linkedin-pages.usage';
+import {
   AggregatorRegistry,
   collectDefaultMetrics,
+  Gauge,
   Histogram,
   MetricObjectWithValues,
   MetricValue,
@@ -20,6 +25,23 @@ export const httpRequestDuration = new Histogram({
   help: 'HTTP request duration in seconds, labelled by method/route/status',
   labelNames: ['method', 'route', 'status_code'],
   buckets: [0.01, 0.05, 0.1, 0.2, 0.5, 1, 2, 5, 10, 30, 60, 120],
+});
+
+// LinkedIn Pages API calls made today (UTC) by the whole app, read from the
+// shared Redis counter at scrape time. Every worker and instance reads the
+// same number, so merged it is the max, not a sum; the alert at 75 % of the
+// Development Tier's 500 is a Grafana rule outside this repository.
+export const linkedinPageCalls = new Gauge({
+  name: LINKEDIN_PAGE_CALLS_METRIC,
+  help: 'LinkedIn Pages API calls made today (UTC) across the app; Development Tier allows 500',
+  aggregator: 'max',
+  async collect() {
+    try {
+      this.set(await linkedinPageCallsToday());
+    } catch {
+      /* a scrape must not fail because Redis did */
+    }
+  },
 });
 
 type Snapshot = MetricObjectWithValues<MetricValue<string>>[];

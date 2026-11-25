@@ -33,6 +33,7 @@ describe('two runs publishing the same post', () => {
     Object.assign(activity, {
       _logger: { error: jest.fn(), log: jest.fn(), warn: jest.fn() },
       _integrationManager: { getSocialIntegration: () => provider },
+      _integrationService: { needsPageSelection: () => false },
       _postService: {
         getPostById: jest.fn(async () => ({ id: 'p-lock', releaseId: release, releaseURL: release && 'https://x.test/r1' })),
         updateTags: jest.fn().mockResolvedValue([post]),

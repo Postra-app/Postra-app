@@ -128,7 +128,7 @@ export class LinkedinProvider extends SocialAbstract implements SocialProvider {
       refresh_token: refreshToken,
       expires_in,
     } = await linkedinJson(
-      await fetch('https://www.linkedin.com/oauth/v2/accessToken', {
+      await this.httpFetch('https://www.linkedin.com/oauth/v2/accessToken', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/x-www-form-urlencoded',
@@ -144,7 +144,7 @@ export class LinkedinProvider extends SocialAbstract implements SocialProvider {
 
     // Optional: with the OIDC scopes alone /v2/me answers 403, and the
     // vanity name is a nicety — a good refresh must not fail over it.
-    const meResponse = await fetch('https://api.linkedin.com/v2/me', {
+    const meResponse = await this.httpFetch('https://api.linkedin.com/v2/me', {
       headers: {
         Authorization: `Bearer ${accessToken}`,
       },
@@ -158,7 +158,7 @@ export class LinkedinProvider extends SocialAbstract implements SocialProvider {
       sub: id,
       picture,
     } = await linkedinJson(
-      await fetch('https://api.linkedin.com/v2/userinfo', {
+      await this.httpFetch('https://api.linkedin.com/v2/userinfo', {
         headers: {
           Authorization: `Bearer ${accessToken}`,
         },
@@ -214,7 +214,7 @@ export class LinkedinProvider extends SocialAbstract implements SocialProvider {
       refresh_token: refreshToken,
       scope,
     } = await (
-      await fetch('https://www.linkedin.com/oauth/v2/accessToken', {
+      await this.httpFetch('https://www.linkedin.com/oauth/v2/accessToken', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/x-www-form-urlencoded',
@@ -230,7 +230,7 @@ export class LinkedinProvider extends SocialAbstract implements SocialProvider {
       sub: id,
       picture,
     } = await (
-      await fetch('https://api.linkedin.com/v2/userinfo', {
+      await this.httpFetch('https://api.linkedin.com/v2/userinfo', {
         headers: {
           Authorization: `Bearer ${accessToken}`,
         },
@@ -238,7 +238,7 @@ export class LinkedinProvider extends SocialAbstract implements SocialProvider {
     ).json();
 
     const { vanityName } = await (
-      await fetch('https://api.linkedin.com/v2/me', {
+      await this.httpFetch('https://api.linkedin.com/v2/me', {
         headers: {
           Authorization: `Bearer ${accessToken}`,
         },
@@ -266,7 +266,7 @@ export class LinkedinProvider extends SocialAbstract implements SocialProvider {
     }
 
     const { elements } = await (
-      await fetch(
+      await this.httpFetch(
         `https://api.linkedin.com/v2/organizations?q=vanityName&vanityName=${getCompanyVanity[1]}`,
         {
           method: 'GET',

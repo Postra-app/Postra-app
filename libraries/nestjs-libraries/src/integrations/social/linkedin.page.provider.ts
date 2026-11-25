@@ -22,6 +22,10 @@ import {
 } from '@gitroom/nestjs-libraries/integrations/social/analytics.utils';
 import { Rules } from '@gitroom/nestjs-libraries/chat/rules.description.decorator';
 import { markPublishing } from '@gitroom/nestjs-libraries/temporal/temporal.heartbeat';
+import {
+  countLinkedinPageCall,
+  isLinkedinApiCall,
+} from '@gitroom/nestjs-libraries/integrations/linkedin-pages.usage';
 
 @Rules(
   'LinkedIn can have maximum one attachment when selecting video, when choosing a carousel on LinkedIn minimum amount of attachment must be two, and only pictures, if uploading a video, LinkedIn can have only one attachment'
@@ -33,6 +37,19 @@ export class LinkedinPageProvider
   override identifier = 'linkedin-page';
   override name = 'LinkedIn Page';
   override isBetweenSteps = true;
+  pageRequiredToPost = true;
+  // Page analytics cost 3 calls and a post's statistics 2 of the app's 500 a
+  // day; they change daily, so six hours loses nothing a customer would see.
+  analyticsCacheSeconds = 6 * 60 * 60;
+
+  // Every call to api.linkedin.com spends the app's daily budget of 500;
+  // counted here so a day nearing it is seen before LinkedIn refuses calls.
+  protected override httpFetch: typeof globalThis.fetch = (url, init) => {
+    if (isLinkedinApiCall(url)) {
+      void countLinkedinPageCall();
+    }
+    return fetch(url, init);
+  };
   override refreshWait = true;
   override maxConcurrentJob = 2; // LinkedIn Page has professional posting limits
   // Community Management API app (separate LinkedIn app, CM API as the only
@@ -57,7 +74,7 @@ export class LinkedinPageProvider
       expires_in,
       refresh_token: refreshToken,
     } = await linkedinJson(
-      await fetch('https://www.linkedin.com/oauth/v2/accessToken', {
+      await this.httpFetch('https://www.linkedin.com/oauth/v2/accessToken', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/x-www-form-urlencoded',
@@ -96,7 +113,7 @@ export class LinkedinPageProvider
     username: string;
   }> {
     const me = await (
-      await fetch(
+      await this.httpFetch(
         'https://api.linkedin.com/v2/me?projection=(id,localizedFirstName,localizedLastName,vanityName,profilePicture(displayImage~:playableStreams))',
         {
           headers: {
@@ -167,7 +184,7 @@ export class LinkedinPageProvider
 
   async companies(accessToken: string) {
     const { elements, ...all } = await (
-      await fetch(
+      await this.httpFetch(
         'https://api.linkedin.com/v2/organizationalEntityAcls?q=roleAssignee&role=ADMINISTRATOR&projection=(elements*(organizationalTarget~(localizedName,vanityName,logoV2(original~:playableStreams))))',
         {
           headers: {
@@ -211,7 +228,7 @@ export class LinkedinPageProvider
   async fetchPageInformation(accessToken: string, params: { page: string }) {
     const pageId = numericId(params?.page);
     const data = await (
-      await fetch(
+      await this.httpFetch(
         `https://api.linkedin.com/v2/organizations/${pageId}?projection=(id,localizedName,vanityName,logoV2(original~:playableStreams))`,
         {
           headers: {
@@ -252,7 +269,7 @@ export class LinkedinPageProvider
       refresh_token: refreshToken,
       scope,
     } = await (
-      await fetch('https://www.linkedin.com/oauth/v2/accessToken', {
+      await this.httpFetch('https://www.linkedin.com/oauth/v2/accessToken', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/x-www-form-urlencoded',
@@ -315,7 +332,7 @@ export class LinkedinPageProvider
     const startDate = dayjs().subtract(date, 'days').unix() * 1000;
 
     const { elements }: { elements: Root[]; paging: any } = await (
-      await fetch(
+      await this.httpFetch(
         `https://api.linkedin.com/v2/organizationPageStatistics?q=organization&organization=${encodeURIComponent(
           `urn:li:organization:${id}`
         )}&timeIntervals=(timeRange:(start:${startDate},end:${endDate}),timeGranularityType:DAY)`,
@@ -330,7 +347,7 @@ export class LinkedinPageProvider
     ).json();
 
     const { elements: elements2 }: { elements: Root[]; paging: any } = await (
-      await fetch(
+      await this.httpFetch(
         `https://api.linkedin.com/v2/organizationalEntityFollowerStatistics?q=organizationalEntity&organizationalEntity=${encodeURIComponent(
           `urn:li:organization:${id}`
         )}&timeIntervals=(timeRange:(start:${startDate},end:${endDate}),timeGranularityType:DAY)`,
@@ -345,7 +362,7 @@ export class LinkedinPageProvider
     ).json();
 
     const { elements: elements3 }: { elements: Root[]; paging: any } = await (
-      await fetch(
+      await this.httpFetch(
         `https://api.linkedin.com/v2/organizationalEntityShareStatistics?q=organizationalEntity&organizationalEntity=${encodeURIComponent(
           `urn:li:organization:${id}`
         )}&timeIntervals=(timeRange:(start:${startDate},end:${endDate}),timeGranularityType:DAY)`,

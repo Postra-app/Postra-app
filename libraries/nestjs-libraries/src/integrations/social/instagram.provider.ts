@@ -48,6 +48,8 @@ export class InstagramProvider
   identifier = 'instagram';
   name = 'Instagram\n(with Facebook Page)';
   isBetweenSteps = true;
+  noRefreshBeforeCall = true;
+  pageRequiredToPost = true;
   toolTip = 'Instagram must be business and connected to a Facebook page';
   scopes = [
     'instagram_basic',

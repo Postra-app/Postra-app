@@ -737,6 +737,36 @@ export class IntegrationsController {
       throw new NotFoundException('Function not found');
     }
 
+    // A channel still picking its page (YouTube, Google Business Profile)
+    // lists the pages with the token from the connect, which YouTube lets
+    // expire in an hour; its listing swallowed the 401 and the picker said it
+    // found no channels (upstream 33876a3f1, 2f4f4e1e0, 38c432aa5). Only such
+    // a channel is refreshed first: for the others a stored date in the past
+    // does not mean the token stopped working (Facebook, Instagram), and a
+    // refresh that fails flags the channel for reconnection.
+    let refreshedNow = false;
+    if (
+      !refreshed &&
+      getIntegration.inBetweenSteps &&
+      getIntegration.tokenExpiration &&
+      new Date(getIntegration.tokenExpiration).getTime() <= Date.now()
+    ) {
+      const data = await this._refreshIntegrationService.refresh(getIntegration);
+      if (!data || !data.accessToken) {
+        return false;
+      }
+      getIntegration.token = data.accessToken;
+      // A provider that rotates the refresh token (Google does on some
+      // grants) keeps the new one for the rest of this request.
+      if (data.refreshToken) {
+        getIntegration.refreshToken = data.refreshToken;
+      }
+      if (integrationProvider.refreshWait) {
+        await timer(10000);
+      }
+      refreshedNow = true;
+    }
+
     // @ts-ignore
     if (integrationProvider[body.name]) {
       try {
@@ -751,7 +781,7 @@ export class IntegrationsController {
         return withoutProviderTokens(load);
       } catch (err) {
         if (err instanceof RefreshToken) {
-          if (refreshed) {
+          if (refreshed || refreshedNow) {
             return false;
           }
           const data = await this._refreshIntegrationService.refresh(

@@ -17,6 +17,7 @@ describe('postSocial after the post is out', () => {
     Object.assign(activity, {
       _logger: { error: jest.fn(), log: jest.fn(), warn: jest.fn() },
       _integrationManager: { getSocialIntegration: () => provider },
+      _integrationService: { needsPageSelection: () => false },
       _postService: {
         getPostById: jest.fn().mockResolvedValue({ id: 'p1', releaseId: null }),
         updateTags: jest.fn().mockResolvedValue([post]),
