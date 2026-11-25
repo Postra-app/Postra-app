@@ -35,7 +35,13 @@ import useCookie from 'react-use-cookie';
 import { LogoutComponent } from '@gitroom/frontend/components/layout/logout.component';
 import { InvoicesComponent } from '@gitroom/frontend/components/layout/invoices.component';
 import DeleteAccountComponent from '@gitroom/frontend/components/settings/delete-account.component';
-import { TrialLimitsNote } from '@gitroom/frontend/components/billing/trial.limits.note';
+import {
+  NotChargedToday,
+  PAYMENT_FORM_ID,
+  StartTrialButton,
+  TrialLimitsDetails,
+  TrialPriceLine,
+} from '@gitroom/frontend/components/billing/first.billing.trial';
 import { WelcomeVideo } from '@gitroom/frontend/components/billing/welcome.video';
 import {
   planFeatures,
@@ -184,11 +190,7 @@ export const FirstBillingComponent = () => {
             </div>
           </div>
         )}
-        {trialOffered && (
-          <div className="mb-[10px]">
-            <TrialLimitsNote />
-          </div>
-        )}
+        {trialOffered && <TrialLimitsDetails />}
       </>
     );
   };
@@ -225,6 +227,8 @@ export const FirstBillingComponent = () => {
           <div className="block tablet:hidden">
             <JoinOver />
           </div>
+          <div id={PAYMENT_FORM_ID} className="scroll-mt-[16px]" />
+          {trialOffered && <NotChargedToday />}
           {stripeFailed ? (
             <div className="mt-[24px] p-[24px] rounded-[20px] border-[1.5px] border-newColColor text-[16px] font-[500]">
               {t(
@@ -351,6 +355,17 @@ export const FirstBillingComponent = () => {
                 []
               )}
             </div>
+            {trialOffered && (
+              <TrialPriceLine
+                price={
+                  Object.fromEntries(price)[tier]?.[
+                    period === 'MONTHLY' ? 'month_price' : 'year_price'
+                  ] ?? 0
+                }
+                period={period === 'YEARLY' ? 'YEARLY' : 'MONTHLY'}
+              />
+            )}
+            {trialOffered && <StartTrialButton />}
             <div className="flex flex-col mt-[54px] gap-[24px] tablet:mt-[40px]">
               <div className="text-[24px] font-[700]">
                 {t('billing_features', 'Features')}
