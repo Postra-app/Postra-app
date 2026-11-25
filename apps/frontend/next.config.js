@@ -32,7 +32,6 @@ const nextConfig = {
   // No x-powered-by: Next.js adds it by default (docs: poweredByHeader) and
   // the app host announced it on every response.
   poweredByHeader: false,
-  transpilePackages: ['crypto-hash'],
   // Browser source maps are off. Because this is set explicitly, @sentry/nextjs
   // does not turn them on for Turbopack builds (it only does when unset).
   productionBrowserSourceMaps: false,

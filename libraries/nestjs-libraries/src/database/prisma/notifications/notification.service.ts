@@ -55,13 +55,15 @@ export class NotificationService {
     digest = false,
     type: NotificationType = 'success',
     // Where a tap on the phone's push goes; the calendar when not given.
-    screen?: PushScreen
+    screen?: PushScreen,
+    // The post this is about; a tap on the push opens it.
+    postId?: string
   ) {
     await this._notificationRepository.createNotification(orgId, message);
 
     // Mirror to mobile push (best-effort — never block the notification flow).
     this._mobilePush
-      .notifyOrg(orgId, subject, message, type, screen)
+      .notifyOrg(orgId, subject, message, type, screen, postId)
       .catch(() => {});
 
     if (!sendEmail) {

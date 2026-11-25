@@ -36,6 +36,7 @@ import { makeId } from '@gitroom/nestjs-libraries/services/make.is';
 import { toInstagramSafeAspect } from '@gitroom/nestjs-libraries/integrations/social/instagram.aspect';
 import { TemporalService } from 'nestjs-temporal-core';
 import { createHash } from 'crypto';
+import { LINKEDIN_PAGES_LIMITS_MESSAGE } from '@gitroom/nestjs-libraries/integrations/linkedin-pages.limits';
 import { ioRedis } from '@gitroom/nestjs-libraries/redis/redis.service';
 import { TypedSearchAttributes } from '@temporalio/common';
 import {
@@ -71,7 +72,16 @@ interface WorkflowChannelsState {
   /** Brand Kit rendered once per item — voice for the copy, palette for the picture. */
   brandVoice?: string;
   brandVisual?: string;
+  /**
+   * Set once a LinkedIn Page of the feed refused an earlier article of this
+   * run for its daily limit: later articles still go to the other channels,
+   * but the cursor stays on the article the Page is missing.
+   */
+  holdCursor?: boolean;
 }
+
+/** A LinkedIn Page's refusal for its daily limit, with the channels it names. */
+type LinkedinLimitRefusal = Error & { refusedChannels?: string[] };
 
 const model = new ChatOpenAI({
   apiKey: process.env.OPENAI_API_KEY || 'sk-proj-',
@@ -360,9 +370,14 @@ export class AutopostService {
   // notices a day until the billing cycle turned. One a day per article.
   static readonly FAILURE_NOTICE_SECONDS = 24 * 60 * 60;
 
-  private async failureAlreadyNotified(getPost: AutoPost, url: string) {
+  private async failureAlreadyNotified(
+    getPost: AutoPost,
+    url: string,
+    prefix = 'autopost-failed',
+    seconds = AutopostService.FAILURE_NOTICE_SECONDS
+  ) {
     try {
-      const key = `autopost-failed:${getPost.id}:${createHash('sha256')
+      const key = `${prefix}:${getPost.id}:${createHash('sha256')
         .update(url)
         .digest('hex')
         .slice(0, 32)}`;
@@ -371,7 +386,7 @@ export class AutopostService {
           key,
           '1',
           'EX',
-          AutopostService.FAILURE_NOTICE_SECONDS,
+          seconds,
           'NX'
         )) !== 'OK'
       );
@@ -381,8 +396,42 @@ export class AutopostService {
     }
   }
 
+  // A LinkedIn Page in early access takes one post a day. When the Page has
+  // already posted that day the feed is not broken: the article waits and the
+  // hourly run posts it on the first free day. "Autopost failed" read as a lost
+  // post, so the customer gets this instead, by email too, once per article.
+  static readonly LINKEDIN_LIMIT_NOTICE_SECONDS = 7 * 24 * 60 * 60;
+
+  private async notifyLinkedinPageLimit(getPost: AutoPost, url: string) {
+    if (
+      await this.failureAlreadyNotified(
+        getPost,
+        url,
+        'autopost-linkedin-limit',
+        AutopostService.LINKEDIN_LIMIT_NOTICE_SECONDS
+      )
+    ) {
+      return;
+    }
+    await this._notificationService.inAppNotification(
+      getPost.organizationId,
+      'Auto-post waiting: LinkedIn Page daily limit',
+      `Autopost "${getPost.title}" has not posted the latest item from ${getPost.url} yet. ` +
+        'LinkedIn Pages are in early access and each Page can publish one post a day, ' +
+        'and your Page already has a post on that day. Nothing is lost: Postra tries again ' +
+        'every hour and posts the item on the first day the Page has no other post.',
+      true,
+      false,
+      'info'
+    );
+  }
+
   private async notifyFailure(getPost: AutoPost, err: any, url = '') {
     try {
+      if (err?.message === LINKEDIN_PAGES_LIMITS_MESSAGE) {
+        await this.notifyLinkedinPageLimit(getPost, url);
+        return;
+      }
       if (await this.failureAlreadyNotified(getPost, url)) {
         return;
       }
@@ -419,6 +468,7 @@ export class AutopostService {
         id: null,
         brandVoice: null,
         brandVisual: null,
+        holdCursor: null,
       },
     });
 
@@ -705,56 +755,101 @@ export class AutopostService {
     // The monthly allowance is checked again where the post is written, so
     // two runs at once cannot both take the last post of the month.
     const cap = await this._subscriptionService.postCap(orgId, new Date());
-    await this._postsService.createPost(orgId, {
-      date,
-      order: makeId(10),
-      shortLink: false,
-      // useSlot -> 'schedule' queues the post at the next free slot so it
-      // actually auto-publishes (legacy 'draft' created a never-published draft
-      // despite the "post on next available slot" label). !useSlot -> publish now.
-      type: useSlot ? 'schedule' : 'now',
-      tags: [],
-      posts: integrations.map((i) => ({
-        settings: {
-          __type: i.providerIdentifier as any,
-          title: '',
-          tags: [] as never[],
-          subreddit: [] as never[],
-          // Instagram's DTO requires post_type. Publishing tolerates the gap
-          // (provider defaults to a feed post), but a failed post can't be
-          // re-published from the editor — validation blocks Update until the
-          // user picks a type by hand.
-          ...(i.providerIdentifier.startsWith('instagram')
-            ? { post_type: 'post' as const }
-            : {}),
+    const write = (channels: Integration[]) =>
+      this._postsService.createPost(
+        orgId,
+        {
+          date,
+          order: makeId(10),
+          shortLink: false,
+          // useSlot -> 'schedule' queues the post at the next free slot so it
+          // actually auto-publishes (legacy 'draft' created a never-published draft
+          // despite the "post on next available slot" label). !useSlot -> publish now.
+          type: useSlot ? 'schedule' : 'now',
+          tags: [],
+          posts: channels.map((i) => ({
+            settings: {
+              __type: i.providerIdentifier as any,
+              title: '',
+              tags: [] as never[],
+              subreddit: [] as never[],
+              // Instagram's DTO requires post_type. Publishing tolerates the gap
+              // (provider defaults to a feed post), but a failed post can't be
+              // re-published from the editor — validation blocks Update until the
+              // user picks a type by hand.
+              ...(i.providerIdentifier.startsWith('instagram')
+                ? { post_type: 'post' as const }
+                : {}),
+            },
+            group: makeId(10),
+            integration: { id: i.id },
+            value: [
+              {
+                id: makeId(10),
+                delay: 0,
+                content:
+                  this.getContentForProvider(i.providerIdentifier, state) +
+                  '\n\n' +
+                  state.load.url,
+                image: !state.image
+                  ? []
+                  : [
+                      {
+                        id: makeId(10),
+                        name: makeId(10),
+                        path: state.image,
+                        organizationId: orgId,
+                      },
+                    ],
+              },
+            ],
+          })),
         },
-        group: makeId(10),
-        integration: { id: i.id },
-        value: [
-          {
-            id: makeId(10),
-            delay: 0,
-            content:
-              this.getContentForProvider(i.providerIdentifier, state) +
-              '\n\n' +
-              state.load.url,
-            image: !state.image
-              ? []
-              : [
-                  {
-                    id: makeId(10),
-                    name: makeId(10),
-                    path: state.image,
-                    organizationId: orgId,
-                  },
-                ],
-          },
-        ],
-      })),
-    }, 'AUTOPOST', cap);
+        'AUTOPOST',
+        cap
+      );
+
+    try {
+      await write(integrations);
+    } catch (err: any) {
+      // A LinkedIn Page that already has its one post of the day refuses the
+      // whole request, so an X or Facebook channel of the same feed waited
+      // with it. Each channel is then written on its own: the others post now,
+      // the Page's refusal is thrown on so the cursor stays on the article,
+      // and the next run (which skips channels that have it) tries the Page.
+      if (err?.message !== LINKEDIN_PAGES_LIMITS_MESSAGE) {
+        throw err;
+      }
+      if (integrations.length < 2) {
+        (err as LinkedinLimitRefusal).refusedChannels = integrations.map(
+          (i) => i.id
+        );
+        throw err;
+      }
+      let refused: LinkedinLimitRefusal | undefined;
+      const refusedChannels: string[] = [];
+      for (const channel of integrations) {
+        try {
+          await write([channel]);
+        } catch (e: any) {
+          if (e?.message !== LINKEDIN_PAGES_LIMITS_MESSAGE) {
+            throw e;
+          }
+          refused = e;
+          refusedChannels.push(channel.id);
+        }
+      }
+      if (refused) {
+        refused.refusedChannels = refusedChannels;
+        throw refused;
+      }
+    }
   }
 
   async updateUrl(state: WorkflowChannelsState) {
+    if (state.holdCursor) {
+      return;
+    }
     await this._autopostsRepository.updateUrl(state.id, state.load.url);
   }
 
@@ -863,6 +958,12 @@ export class AutopostService {
     // failure (and surface it) so lastUrl never skips past an unposted item —
     // the hourly run resumes from there next time.
     let postsWithoutImage = 0;
+    // A LinkedIn Page full for the day leaves the run with its refusal; the
+    // other channels go on with the later articles, and the cursor stays on
+    // the first article the Page is missing (holdCursor), so the Page gets
+    // every article in order on its next free days.
+    let channels = integrationsToSend;
+    let holdCursor = false;
     for (const load of loads) {
       try {
         const result = await app.invoke(
@@ -871,7 +972,8 @@ export class AutopostService {
             id,
             body: getPost,
             load,
-            integrations: integrationsToSend,
+            integrations: channels,
+            holdCursor,
           },
           {
             callbacks: [
@@ -888,7 +990,18 @@ export class AutopostService {
         }
       } catch (err) {
         await this.notifyFailure(getPost, err, load.url);
-        break;
+        const refused = (err as LinkedinLimitRefusal)?.refusedChannels;
+        if (
+          (err as Error)?.message !== LINKEDIN_PAGES_LIMITS_MESSAGE ||
+          !refused?.length
+        ) {
+          break;
+        }
+        holdCursor = true;
+        channels = channels.filter((c) => !refused.includes(c.id));
+        if (!channels.length) {
+          break;
+        }
       }
     }
 

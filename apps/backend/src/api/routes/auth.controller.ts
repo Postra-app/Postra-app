@@ -654,6 +654,8 @@ export class AuthController {
       token?: string;
       canRegister?: boolean;
       signup?: SignupSource;
+      email?: string;
+      passwordAccount?: true;
     };
     const { maxAge: _maxAge, ...cookieScope } = oauthStateCookieOptions();
     response.clearCookie(OAUTH_STATE_COOKIE, cookieScope);
@@ -675,10 +677,14 @@ export class AuthController {
           : 'Sign-in with this provider failed. Please try again.';
       return response.status(400).type('text/plain').send(message);
     }
-    const { jwt, token, canRegister, signup } = result;
+    const { jwt, token, canRegister, signup, email } = result;
+
+    if (result.passwordAccount) {
+      return response.json({ passwordAccount: true });
+    }
 
     if (token) {
-      return response.json({ token, canRegister, signup });
+      return response.json({ token, canRegister, signup, email });
     }
 
     setSessionCookie(response, jwt);

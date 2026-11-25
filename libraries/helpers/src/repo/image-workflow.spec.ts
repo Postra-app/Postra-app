@@ -63,6 +63,18 @@ describe('image workflow', () => {
     });
   });
 
+  // A branch that is not merged yet can be built on request, so the image
+  // can be started somewhere before the merge. Only someone with write access
+  // to this repository can ask, and the image is attested with its branch.
+  it('builds main on every push, and a branch only when asked', () => {
+    expect(image).toMatch(/^on:\n  push:\n    branches:\n      - main\n  workflow_dispatch:\n/m);
+    expect(image).not.toMatch(/pull_request/);
+  });
+
+  it('prunes old images only after a build of main', () => {
+    expect(image).toMatch(/^  prune:\n    needs: image\n    if: github\.ref == 'refs\/heads\/main'\n/m);
+  });
+
   it('asks only for what publishing needs', () => {
     const permissions = image.match(/^permissions:\n((?: {2}.+\n)+)/m)?.[1].trim().split('\n').map((l) => l.trim());
     expect(permissions).toEqual([

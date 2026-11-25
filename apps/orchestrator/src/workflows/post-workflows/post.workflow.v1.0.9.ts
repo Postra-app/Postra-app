@@ -355,7 +355,11 @@ export async function postWorkflowV109({
                 post.integration.providerIdentifier
               )} at ${postsResults[0].releaseURL}`,
               true,
-              true
+              true,
+              'success',
+              // For the phone's push: a tap opens this post. Only the
+              // activity's input changes, which a replay does not compare.
+              postsList[i].id
             );
           }
         } catch {

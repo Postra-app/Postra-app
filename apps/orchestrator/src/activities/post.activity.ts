@@ -683,7 +683,9 @@ export class PostActivity {
     message: string,
     sendEmail = false,
     digest = false,
-    type: NotificationType = 'success'
+    type: NotificationType = 'success',
+    // The post the notification is about, for the phone's push.
+    postId?: string
   ) {
     await this._notificationService.inAppNotification(
       orgId,
@@ -691,7 +693,9 @@ export class PostActivity {
       message,
       sendEmail,
       digest,
-      type
+      type,
+      undefined,
+      postId
     );
   }
 

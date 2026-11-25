@@ -46,7 +46,7 @@ describe('docker build secrets', () => {
   // attestation, which whoever deploys it checks before using it.
   it('publishes the image from main with a provenance attestation', () => {
     const image = readFileSync(join(root, '.github', 'workflows', 'image.yml'), 'utf8');
-    expect(image).toMatch(/^on:\n  push:\n    branches:\n      - main\n\n/m);
+    expect(image).toMatch(/^on:\n  push:\n    branches:\n      - main\n  workflow_dispatch:\n\n/m);
     expect(image).toContain('--secret id=sentry_auth_token,env=SENTRY_AUTH_TOKEN');
     expect(image).toContain('-t "${IMAGE}:sha-${GITHUB_SHA}"');
     expect(image).toMatch(/uses: actions\/attest-build-provenance@[0-9a-f]{40} # v\d+\.\d+\.\d+\n\s+with:\n\s+subject-name: \$\{\{ env\.IMAGE \}\}\n\s+subject-digest: \$\{\{ steps\.push\.outputs\.digest \}\}\n\s+push-to-registry: true/);

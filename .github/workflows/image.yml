@@ -3,13 +3,18 @@ name: Image
 # The production image of every commit on main, published to this
 # organisation's container registry as ghcr.io/postra-app/postra-app:sha-<commit>
 # together with a build provenance attestation (who built it, from which
-# commit and workflow). Releasing the image is this repository's job;
+# commit, branch and workflow). Releasing the image is this repository's job;
 # deploying it is not.
+#
+# Run by hand on a branch, it builds that branch's head the same way, so an
+# image can be started before its change is merged. The attestation names
+# the branch, and whoever uses the image decides what a branch may reach.
 
 on:
   push:
     branches:
       - main
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -103,6 +108,7 @@ jobs:
   # separate job: a failed prune leaves the image published.
   prune:
     needs: image
+    if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-26.04
     timeout-minutes: 10
     permissions:
