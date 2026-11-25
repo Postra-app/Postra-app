@@ -87,13 +87,19 @@ describe('notifyOrg recipients', () => {
 
 // A tap on "Your AI video is ready" opened the calendar; the clip is in Media.
 describe('notifyOrg tells the app which screen a tap opens', () => {
-  async function sent(screen?: 'media' | 'channels') {
+  async function sent(screen?: 'media' | 'channels', postId?: string) {
     const { service, model } = makeService();
     model.findMany.mockResolvedValue([{ token: 'ExponentPushToken[a]' }]);
     const send = jest.spyOn(service as any, 'send').mockResolvedValue(undefined);
-    await service.notifyOrg('orgA', 'title', 'body', 'success', screen);
+    await service.notifyOrg('orgA', 'title', 'body', 'success', screen, postId);
     return (send.mock.calls[0][0] as any[])[0].data;
   }
+
+  it('adds the post when one is given, so a tap can open it', async () => {
+    // With the organisation: a phone that has another one chosen cannot
+    // read the post and must not try.
+    expect(await sent(undefined, 'post-1')).toEqual({ type: 'success', postId: 'post-1', orgId: 'orgA' });
+  });
 
   it('adds the screen when one is given', async () => {
     expect(await sent('media')).toEqual({ type: 'success', screen: 'media' });

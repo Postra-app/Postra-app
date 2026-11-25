@@ -245,6 +245,14 @@ describe('postWorkflowV109 — the platform by its name', () => {
     expect(subject).toBe('Your post has been published on LinkedIn Page');
     expect(body).toBe('Your post has been published on LinkedIn Page at https://t.me/x/9');
   });
+
+  // The phone's push carries the post, so a tap opens it, not the calendar.
+  it('names the published post in the notification', async () => {
+    activities.postSocial = jest.fn().mockResolvedValue(published);
+    await run();
+    const call = activities.inAppNotification.mock.calls[0];
+    expect(call[6]).toBe(post.id);
+  });
 });
 
 describe('postWorkflowV109 — a channel that cannot post', () => {

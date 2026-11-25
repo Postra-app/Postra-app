@@ -89,7 +89,10 @@ export class MobilePushService {
     title: string,
     body: string,
     type: 'success' | 'fail' | 'info' = 'info',
-    screen?: PushScreen
+    screen?: PushScreen,
+    // The post the push is about: the app opens it on a tap. Older apps
+    // ignore it and open the calendar.
+    postId?: string
   ) {
     // Devices of people still in the organisation: a removed, disabled or
     // suspended member's phone kept getting every publication and failure.
@@ -117,7 +120,13 @@ export class MobilePushService {
       // Apps that predate it have no such channel and Android falls back to
       // Expo's default one, as before.
       channelId: 'postra-alerts',
-      data: screen ? { type, screen } : { type },
+      data: {
+        type,
+        ...(screen ? { screen } : {}),
+        // The organisation with the post: the app opens a post only in the
+        // organisation it belongs to.
+        ...(postId ? { postId, orgId: organizationId } : {}),
+      },
     }));
 
     for (let i = 0; i < messages.length; i += MESSAGES_PER_REQUEST) {

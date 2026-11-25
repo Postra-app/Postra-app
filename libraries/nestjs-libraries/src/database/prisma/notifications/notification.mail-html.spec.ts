@@ -58,7 +58,7 @@ describe('notification mail', () => {
     await s.inAppNotification('org1', 'Posted', 'Tom & Jerry <3', true);
 
     expect(repo.createNotification).toHaveBeenCalledWith('org1', 'Tom & Jerry <3');
-    expect(push.notifyOrg).toHaveBeenCalledWith('org1', 'Posted', 'Tom & Jerry <3', 'success', undefined);
+    expect(push.notifyOrg).toHaveBeenCalledWith('org1', 'Posted', 'Tom & Jerry <3', 'success', undefined, undefined);
   });
 });
 
