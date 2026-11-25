@@ -1,5 +1,6 @@
 'use client';
 
+import { FC, useState } from 'react';
 import { withContinueProvider } from '../with-continue-provider';
 
 interface LinkedinItem {
@@ -7,8 +8,40 @@ interface LinkedinItem {
   pageId: string;
   username: string;
   name: string;
-  picture: string;
+  picture?: string;
 }
+
+// LinkedIn returns no logo for a Page that has none, and a logo address can
+// stop working; either way the picker shows the Page's initial instead of a
+// broken image.
+export const LinkedinPageItem: FC<{ name: string; picture?: string }> = ({
+  name,
+  picture,
+}) => {
+  const [failed, setFailed] = useState(false);
+  return (
+    <>
+      <div>
+        {picture && !failed ? (
+          <img
+            className="w-full"
+            src={picture}
+            alt=""
+            onError={() => setFailed(true)}
+          />
+        ) : (
+          <div
+            aria-hidden="true"
+            className="w-full aspect-square flex items-center justify-center rounded-[8px] bg-btnSimple text-[32px] font-[600]"
+          >
+            {name.trim().charAt(0).toLocaleUpperCase() || '?'}
+          </div>
+        )}
+      </div>
+      <div>{name}</div>
+    </>
+  );
+};
 
 interface LinkedinSelection {
   id: string;
@@ -38,11 +71,6 @@ export const LinkedinContinue = withContinueProvider<
   transformSaveData: (selection) => ({ page: selection.id }),
   isSelected: (item, selection) => selection?.id === item.id,
   renderItem: (item) => (
-    <>
-      <div>
-        <img className="w-full" src={item.picture} alt="profile" />
-      </div>
-      <div>{item.name}</div>
-    </>
+    <LinkedinPageItem name={item.name} picture={item.picture} />
   ),
 });
