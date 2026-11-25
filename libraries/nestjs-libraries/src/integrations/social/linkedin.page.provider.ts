@@ -476,13 +476,16 @@ export class LinkedinPageProvider
     postId: string,
     date: number
   ): Promise<AnalyticsData[]> {
-    const endDate = dayjs().unix() * 1000;
-    const startDate = dayjs().subtract(date, 'days').unix() * 1000;
-
-    // Fetch share statistics for the specific post
-    const shareStatsUrl = `https://api.linkedin.com/v2/organizationalEntityShareStatistics?q=organizationalEntity&organizationalEntity=${encodeURIComponent(
+    // Statistics of one post are lifetime totals: LinkedIn takes a share URN
+    // in `shares` and a UGC post URN in `ugcPosts`, and refuses a time range
+    // together with either (Organization Share Statistics, "Time-bound
+    // statistics is not supported for specific share queries").
+    const postsParam = postId.startsWith('urn:li:ugcPost:')
+      ? 'ugcPosts'
+      : 'shares';
+    const shareStatsUrl = `https://api.linkedin.com/rest/organizationalEntityShareStatistics?q=organizationalEntity&organizationalEntity=${encodeURIComponent(
       `urn:li:organization:${integrationId}`
-    )}&shares=List(${encodeURIComponent(postId)})&timeIntervals=(timeRange:(start:${startDate},end:${endDate}),timeGranularityType:DAY)`;
+    )}&${postsParam}=List(${encodeURIComponent(postId)})`;
 
     const { elements: shareElements }: { elements: PostShareStatElement[] } =
       await (
@@ -519,7 +522,8 @@ export class LinkedinPageProvider
     const analytics = (shareElements || []).reduce(
       (all, current) => {
         if (typeof current?.totalShareStatistics !== 'undefined') {
-          const dateStr = dayjs(current.timeRange.start).format('YYYY-MM-DD');
+          // Lifetime totals carry no time range: they are today's numbers.
+          const dateStr = dayjs(current.timeRange?.start).format('YYYY-MM-DD');
 
           all['Impressions'].push({
             total: current.totalShareStatistics.impressionCount || 0,

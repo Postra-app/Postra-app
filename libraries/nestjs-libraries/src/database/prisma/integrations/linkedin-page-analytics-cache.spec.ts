@@ -114,6 +114,14 @@ describe('post statistics', () => {
     expect(store.get('integration:org-1:post-1:7')?.ttl).toBe(SIX_HOURS);
   });
 
+  it('an empty answer is asked again, not kept for six hours', async () => {
+    const { service, postAnalytics } = post({ analyticsCacheSeconds: SIX_HOURS });
+    postAnalytics.mockResolvedValueOnce([]);
+    expect(await service.checkPostAnalytics('org-1', 'post-1', 7)).toEqual([]);
+    await service.checkPostAnalytics('org-1', 'post-1', 7);
+    expect(postAnalytics).toHaveBeenCalledTimes(2);
+  });
+
   it('other platforms still load live statistics every time', async () => {
     const { service, postAnalytics } = post({});
     await service.checkPostAnalytics('org-1', 'post-1', 7);
