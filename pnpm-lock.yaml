@@ -435,9 +435,6 @@ importers:
       copy-to-clipboard:
         specifier: ^3.3.3
         version: 3.3.3
-      crypto-hash:
-        specifier: ^3.1.0
-        version: 3.1.0
       dayjs:
         specifier: 1.11.23
         version: 1.11.23
@@ -687,9 +684,6 @@ importers:
       use-debounce:
         specifier: ^10.1.1
         version: 10.1.1(react@19.3.1)
-      utf-8-validate:
-        specifier: ^5.0.10
-        version: 5.0.10
       webextension-polyfill:
         specifier: ^0.12.0
         version: 0.12.0
@@ -9882,10 +9876,6 @@ packages:
 
   crypt@0.0.2:
     resolution: {integrity: sha512-mCxBlsHFYh9C+HVpiEacem8FEBnMXgU9gy4zmNC+SXAZNB/1idgp/aulFJ4FgCi7GPEVbfyng092GqL2k2rmow==}
-
-  crypto-hash@3.1.0:
-    resolution: {integrity: sha512-HR8JlZ+Dn54Lc5gGWZJxJitWbOCUzWb9/AlyONGecBnYZ+n/ONvt0gQnEzDNpJMYeRrYO7KogQ4qwyTPKnWKEw==}
-    engines: {node: '>=18'}
 
   crypto-js@4.2.0:
     resolution: {integrity: sha512-KALDyEYgpY+Rlob/iriUtjV6d5Eq+Y191A5g4UqLAi8CyGP9N1+FdVbkc1SxKc2r4YAYqG8JzO2KGL+AizD70Q==}
@@ -26487,8 +26477,6 @@ snapshots:
 
   crypt@0.0.2: {}
 
-  crypto-hash@3.1.0: {}
-
   crypto-js@4.2.0: {}
 
   css-select@5.2.2:
@@ -33891,6 +33879,7 @@ snapshots:
   utf-8-validate@5.0.10:
     dependencies:
       node-gyp-build: 4.8.4
+    optional: true
 
   util-deprecate@1.0.2: {}
 
