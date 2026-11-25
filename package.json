@@ -162,7 +162,7 @@
     "compression": "^1.8.2",
     "concat-stream": "^2.0.0",
     "cookie-parser": "^1.4.7",
-    "copy-to-clipboard": "^3.3.3",
+    "copy-to-clipboard": "^4.0.2",
     "dayjs": "1.11.23",
     "dotenv": "^16.6.1",
     "dotenv-cli": "^8.0.0",
