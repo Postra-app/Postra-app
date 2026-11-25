@@ -72,6 +72,8 @@ export function Register() {
   // provider: the backend kept it with the sign-in state and returns it here.
   // Held in memory only.
   const [signup, setSignup] = useState<SignupSource>({});
+  // The address the provider signed the visitor in with, shown on the form.
+  const [providerEmail, setProviderEmail] = useState('');
   const t = useT();
   useEffect(() => {
     if (provider && code) {
@@ -106,7 +108,20 @@ export function Register() {
       login,
       canRegister,
       signup: cameFrom,
+      email,
+      passwordAccount,
     } = await response.json();
+    // The address has an account made with a password: signing up again
+    // would only end in "This email is already taken".
+    if (passwordAccount) {
+      setFailed(
+        t(
+          'provider_password_account',
+          'This email already has a Postra account with a password. Sign in with your email and password instead.'
+        )
+      );
+      return;
+    }
     // Existing account — the backend already set the auth cookie.
     if (login) {
       window.location.href = '/';
@@ -115,6 +130,7 @@ export function Register() {
     if (token) {
       setAllowed(!!canRegister);
       setSignup(cleanSignupSource(cameFrom));
+      setProviderEmail(typeof email === 'string' ? email : '');
       setCode(token);
       setShow(true);
     }
@@ -160,6 +176,7 @@ export function Register() {
       token={code}
       provider={provider?.toUpperCase() || 'LOCAL'}
       signup={signup}
+      email={providerEmail}
     />
   );
 }
@@ -200,10 +217,12 @@ export function RegisterAfter({
   token,
   provider,
   signup,
+  email,
 }: {
   token: string;
   provider: string;
   signup?: SignupSource;
+  email?: string;
 }) {
   const t = useT();
   const { isGeneral, genericOauth } = useVariables();
@@ -225,6 +244,8 @@ export function RegisterAfter({
   const isAfterProvider = useMemo(() => {
     return !!token && !!provider;
   }, [token, provider]);
+  const providerLabel =
+    provider === 'GOOGLE' ? 'Google' : provider === 'GITHUB' ? 'GitHub' : 'your provider';
   const resolver = useMemo(() => {
     // The DTO class validates the same fields; since @hookform/resolvers 5 the
     // resolver is typed by that class, which is wider than the form's own type.
@@ -320,18 +341,63 @@ export function RegisterAfter({
         <div className="flex flex-col flex-1">
           <div>
             <h1 className="cursor-pointer text-start text-[40px] font-[700] tracking-[-0.04em] text-white">
-              {t('sign_up', 'Sign Up')}
+              {isAfterProvider
+                ? t('sign_up_one_more_step', 'One more step')
+                : t('sign_up', 'Sign Up')}
             </h1>
-            <p className="mt-[8px] text-[15px] text-textColor/58">
-              {t(
-                'auth_register_subtitle',
-                'Create your Postra workspace and plan content faster.'
-              )}
-            </p>
+            {isAfterProvider ? (
+              // Back from the sign-in provider without a Postra account: say
+              // that the sign-in worked and what is left, so a person who
+              // meant to sign in understands why a form is here.
+              <>
+                <p
+                  className="mt-[8px] text-[15px] text-textColor/78"
+                  data-testid="after-provider-note"
+                >
+                  {email
+                    ? t(
+                        'sign_up_after_provider_as',
+                        'You are signed in with {{provider}} as {{email}}.',
+                        { provider: providerLabel, email }
+                      )
+                    : t(
+                        'sign_up_after_provider',
+                        'You are signed in with {{provider}}.',
+                        { provider: providerLabel }
+                      )}{' '}
+                  {t(
+                    'sign_up_after_provider_todo',
+                    'You do not have a Postra account yet: add your company name and accept the terms to create one.'
+                  )}
+                </p>
+                <p className="mt-[8px] mb-[20px] text-sm text-textColor/66">
+                  {t(
+                    'sign_up_have_password_account',
+                    'Already have an account with a password?'
+                  )}
+                  &nbsp;
+                  <Link
+                    href="/auth/login"
+                    className="underline underline-offset-4 cursor-pointer text-textColor hover:text-[#38bdf8]"
+                  >
+                    {t('sign_in', 'Sign In')}
+                  </Link>
+                </p>
+              </>
+            ) : (
+              <p className="mt-[8px] text-[15px] text-textColor/58">
+                {t(
+                  'auth_register_subtitle',
+                  'Create your Postra workspace and plan content faster.'
+                )}
+              </p>
+            )}
           </div>
-          <div className="mb-[12px] mt-[28px] text-[12px] font-[600] uppercase tracking-[0.08em] text-textColor/55">
-            {t('continue_with', 'Continue With')}
-          </div>
+          {!isAfterProvider && (
+            <div className="mb-[12px] mt-[28px] text-[12px] font-[600] uppercase tracking-[0.08em] text-textColor/55">
+              {t('continue_with', 'Continue With')}
+            </div>
+          )}
           <div className="flex flex-col">
             {!isAfterProvider &&
               (!isGeneral ? (

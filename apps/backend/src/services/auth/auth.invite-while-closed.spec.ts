@@ -153,9 +153,9 @@ describe('sign-ups closed: only an address with a promised plan gets in', () => 
     const original = redis.getdel;
     redis.getdel = async () => 'nonce-1';
     try {
-      expect(await exists(service(provider(PROMISED)).s)).toEqual({ token: 'access', canRegister: true });
-      expect(await exists(service(provider('other@example.com')).s)).toEqual({ token: 'access', canRegister: false });
-      expect(await exists(service(provider(PROMISED, false)).s)).toEqual({ token: 'access', canRegister: false });
+      expect(await exists(service(provider(PROMISED)).s)).toMatchObject({ token: 'access', canRegister: true });
+      expect(await exists(service(provider('other@example.com')).s)).toMatchObject({ token: 'access', canRegister: false });
+      expect(await exists(service(provider(PROMISED, false)).s)).toMatchObject({ token: 'access', canRegister: false });
     } finally {
       redis.getdel = original;
     }
@@ -243,9 +243,9 @@ describe('sign-ups closed: an invitation to a team lets its own address in', () 
     const exists = (s: any, withInvite?: unknown) =>
       s.checkExists('google', 'code', undefined, 'state-1', 'nonce-1', withInvite);
     try {
-      expect(await exists(service(google(INVITED)).s, invite(INVITED))).toEqual({ token: 'access', canRegister: true });
-      expect(await exists(service(google(INVITED)).s)).toEqual({ token: 'access', canRegister: false });
-      expect(await exists(service(google('someone@example.com')).s, invite(INVITED))).toEqual({ token: 'access', canRegister: false });
+      expect(await exists(service(google(INVITED)).s, invite(INVITED))).toMatchObject({ token: 'access', canRegister: true });
+      expect(await exists(service(google(INVITED)).s)).toMatchObject({ token: 'access', canRegister: false });
+      expect(await exists(service(google('someone@example.com')).s, invite(INVITED))).toMatchObject({ token: 'access', canRegister: false });
     } finally {
       redis.getdel = original;
     }

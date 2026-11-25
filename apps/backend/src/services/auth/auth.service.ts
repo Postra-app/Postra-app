@@ -859,6 +859,15 @@ export class AuthService {
       return { jwt: await this.jwt(checkExists) };
     }
 
+    // An account made with a password and the same address is not this
+    // provider's account, so nobody is signed in; the page says so instead of
+    // offering to sign up again. Only an address the provider has verified
+    // counts, so only its owner learns that the account exists.
+    const email = user.verified === true ? user.email?.toLowerCase() : undefined;
+    if (email && (await this._userService.getUserByEmail(email))) {
+      return { passwordAccount: true as const };
+    }
+
     // Whether this new account may be made, so the sign-up page shows the
     // form or "Sign-ups are closed" before anyone fills it in.
     return {
@@ -870,6 +879,8 @@ export class AuthService {
       ),
       // Handed back to the sign-up form, which sends it with the form.
       signup: readSignupSource(source),
+      // Shown on the form: which account the person is finishing sign-up with.
+      email,
     };
   }
 

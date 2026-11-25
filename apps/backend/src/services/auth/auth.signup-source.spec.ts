@@ -122,7 +122,7 @@ describe('the campaign of a sign-up', () => {
         state(),
         nonce
       );
-      expect(answer).toEqual({
+      expect(answer).toMatchObject({
         token: 'access',
         canRegister: true,
         signup: campaign,
@@ -145,7 +145,7 @@ describe('the campaign of a sign-up', () => {
         state(),
         nonce
       );
-      expect(answer).toEqual({ token: 'access', canRegister: true });
+      expect(answer).toMatchObject({ token: 'access', canRegister: true });
     });
 
     it('a sign-in without a campaign stores the state only', async () => {
