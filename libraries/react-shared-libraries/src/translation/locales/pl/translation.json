@@ -2468,6 +2468,6 @@
   "add_a_card": "Dodaj kartę",
   "end_trial_now_button": "Zakończ okres próbny teraz",
   "free_trial_limit": "Limit okresu próbnego",
-  "channels_used_full_trial": "Podłączone konta: {{used}} z {{limit}}, tyle obejmuje okres próbny. Zakończ okres próbny w zakładce Rozliczenia, żeby podłączyć do {{planLimit}} w planie {{plan}}.",
+  "channels_used_full_trial": "Podłączone konta: {{used}} z {{limit}}; okres próbny obejmuje {{limit}}. Zakończ okres próbny w zakładce Rozliczenia, żeby podłączyć do {{planLimit}} w planie {{plan}}.",
   "billing_trial_box_ai_actions": "{{n}} akcji AI dziennie do pisania i edycji"
 }
