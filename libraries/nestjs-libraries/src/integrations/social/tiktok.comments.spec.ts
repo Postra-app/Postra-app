@@ -161,6 +161,28 @@ describe('TikTok first comment: the second authorization', () => {
     expect(renewed.refreshToken).toBe('rft.1');
   });
 
+  // From 2026-12-01 every renewal answers with a new refresh token and the
+  // old one stops working: the new one, with its own expiry, is what is kept.
+  it('a renewal keeps the rotated refresh token and its expiry', async () => {
+    const before = Date.now();
+    answers(() => ({
+      code: 0,
+      data: {
+        access_token: 'act.2',
+        expires_in: 86400,
+        refresh_token: 'rft.2',
+        refresh_token_expires_in: 1000,
+      },
+    }));
+    const renewed = await tiktokBusinessRefresh(access);
+    expect(renewed.refreshToken).toBe('rft.2');
+    expect(renewed.refreshExpiresAt).toBeGreaterThanOrEqual(before + 1000 * 1000);
+    expect(renewed.refreshExpiresAt).toBeLessThan(before + 1000 * 1000 + 60_000);
+    expect(
+      openTiktokBusinessAccess(sealTiktokBusinessAccess(renewed))?.refreshToken
+    ).toBe('rft.2');
+  });
+
   it('is stored encrypted and read back; anything else reads as no access', () => {
     const sealed = sealTiktokBusinessAccess(access);
     expect(sealed).not.toContain('act.1');

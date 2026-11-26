@@ -19,7 +19,8 @@ interface Store {
 // started, and renew it when it is about to run out. Two posts of one channel
 // can get here together, or the owner can authorize again meanwhile, so the
 // renewed access is written only over the value that was read; when someone
-// else wrote first, theirs is the one to use.
+// else wrote first, theirs is the one to use, also when their renewal is the
+// reason ours was refused.
 export const commentAccessForNow = async (
   store: Store,
   provider: Pick<SocialProvider, 'refreshCommentAccess'>,
@@ -35,7 +36,22 @@ export const commentAccessForNow = async (
   const stored = await read();
   integration.customInstanceDetails = stored;
 
-  const renewed = await provider.refreshCommentAccess(integration);
+  let renewed: string | undefined;
+  try {
+    renewed = await provider.refreshCommentAccess(integration);
+  } catch (err) {
+    // A platform that rotates refresh tokens (TikTok, from 2026-12-01) makes
+    // the old one invalid the moment it is used. When two comments of one
+    // channel renew together, the slower one is refused with the token the
+    // faster one has just replaced: the access stored by now is the good one.
+    // Refused with nothing new stored, the failure is real.
+    const now = await read();
+    if (now === stored) {
+      throw err;
+    }
+    integration.customInstanceDetails = now;
+    return;
+  }
   if (!renewed) {
     return;
   }
