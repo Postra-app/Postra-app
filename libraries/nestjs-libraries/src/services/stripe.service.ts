@@ -36,6 +36,9 @@ export const POSTRA_INVOICE_SETTINGS = {
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || 'sk_nothing');
 
+// Shown at the top of Stripe's customer portal (60 characters at most).
+export const PORTAL_HEADLINE = 'Postra is a trading name of B K Company';
+
 // Pence → "£29.00" for messages to the customer.
 const formatAmount = (pence: number) => `£${(pence / 100).toFixed(2)}`;
 // "£19" for a whole amount, "£19.50" otherwise: how prices read on the site.
@@ -1777,6 +1780,59 @@ export class StripeService {
     return org.paymentId;
   }
 
+  // The portal is Stripe's page and carries the name of the Stripe account,
+  // which is the company's, not the product's. Postra's sessions use a portal
+  // configuration of their own whose headline says how the two relate; it has
+  // what the account's default has (cards, invoices, billing details; plans
+  // are changed and cancelled in the app). Found by its metadata, made once
+  // if missing. If Stripe refuses, the portal opens with the default.
+  private portalConfigurationId?: string;
+  private async portalConfiguration(): Promise<string | undefined> {
+    if (this.portalConfigurationId) {
+      return this.portalConfigurationId;
+    }
+    try {
+      const { data } = await stripe.billingPortal.configurations.list({
+        active: true,
+        limit: 100,
+      });
+      const found = data.find(
+        (c) =>
+          c.metadata?.service === 'gitroom' &&
+          c.business_profile?.headline === PORTAL_HEADLINE
+      );
+      const configuration =
+        found ||
+        (await stripe.billingPortal.configurations.create(
+          {
+            business_profile: { headline: PORTAL_HEADLINE },
+            features: {
+              customer_update: {
+                enabled: true,
+                allowed_updates: ['name', 'email', 'address', 'phone'],
+              },
+              invoice_history: { enabled: true },
+              payment_method_update: { enabled: true },
+              subscription_cancel: { enabled: false },
+              subscription_update: { enabled: false },
+            },
+            metadata: { service: 'gitroom' },
+          },
+          // Two servers asking at once make one configuration.
+          { idempotencyKey: `portal-configuration:${PORTAL_HEADLINE}` }
+        ));
+      this.portalConfigurationId = configuration.id;
+      return configuration.id;
+    } catch (err) {
+      this._logger.warn(
+        `Portal configuration not available, using the default: ${
+          (err as Error)?.message
+        }`
+      );
+      return undefined;
+    }
+  }
+
   // `card` opens the portal on its "add a payment method" page: how a trial
   // without a card gets one (docs "Customer portal deep links"; the card
   // becomes the customer's default for invoices). `card-now` comes back to
@@ -1785,8 +1841,10 @@ export class StripeService {
     customer: string,
     flow?: 'card' | 'card-now'
   ): Promise<Stripe.Response<Stripe.BillingPortal.Session>> {
+    const configuration = await this.portalConfiguration();
     return stripe.billingPortal.sessions.create({
       customer,
+      ...(configuration ? { configuration } : {}),
       return_url: process.env['FRONTEND_URL'] + '/billing',
       ...(flow
         ? {
@@ -2027,7 +2085,7 @@ export class StripeService {
   // Null without a trial.
   async trialStatus(
     paymentId: string
-  ): Promise<{ endsAt: number; hasCard: boolean } | null> {
+  ): Promise<{ endsAt: number; hasCard: boolean; cancelled: boolean } | null> {
     const trialing = (
       await stripe.subscriptions.list({ customer: paymentId, limit: 100 })
     ).data.find((f) => f.status === 'trialing');
@@ -2037,6 +2095,8 @@ export class StripeService {
     return {
       endsAt: trialing.trial_end * 1000,
       hasCard: await this.hasPaymentMethod(trialing),
+      // Cancelled from Billing: the plan ends with the trial, card or not.
+      cancelled: !!(trialing.cancel_at_period_end || trialing.cancel_at),
     };
   }
 

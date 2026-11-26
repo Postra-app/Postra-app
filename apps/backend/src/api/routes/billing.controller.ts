@@ -73,6 +73,13 @@ const refuseAppleBilled = (org: Organization) => {
   }
 };
 
+// The written confirmation of a cancel. A trial keeps the trial, with its
+// limits, not "full access".
+export const cancelledMailText = (until: string, onTrial: boolean) =>
+  `Your subscription has been cancelled and you will not be charged again. You keep ${
+    onTrial ? 'your trial' : 'full access'
+  } until ${until} (UTC). Changed your mind? You can re-activate any time from Billing.`;
+
 @ApiTags('Billing')
 @Controller('/billing')
 export class BillingController {
@@ -194,6 +201,7 @@ export class BillingController {
       trial: true,
       endsAt: status.endsAt,
       hasCard: status.hasCard,
+      cancelled: status.cancelled,
       channels: {
         used: channelsInUse(channels),
         // @ts-ignore the request's organisation is loaded with its subscription
@@ -437,11 +445,10 @@ export class BillingController {
           'Your Postra subscription is cancelled',
           (result as { immediate?: boolean }).immediate
             ? 'Your subscription has been cancelled and you will not be charged again. As the last payment did not go through, your plan ended today. You can choose a plan again any time from Billing.'
-            : `Your subscription has been cancelled and you will not be charged again. You keep full access until ${dayjs
-                .utc(result.cancel_at)
-                .format(
-                  'D MMMM YYYY'
-                )} (UTC). Changed your mind? You can re-activate any time from Billing.`
+            : cancelledMailText(
+                dayjs.utc(result.cancel_at).format('D MMMM YYYY'),
+                !!org.isTrailing
+              )
         );
       } catch (e) {
         /* the subscription is cancelled either way */

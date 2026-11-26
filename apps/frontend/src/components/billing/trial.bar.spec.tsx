@@ -46,6 +46,25 @@ describe('the trial bar', () => {
     expect(screen.getByTestId('trial-bar').textContent).toContain('Card added: your plan starts when the trial ends.');
   });
 
+  // Cancelled from Billing, the plan ends with the trial even with a card:
+  // the bar says so and points at Billing instead of asking for a card.
+  it('a cancelled trial: says the plan ends with it and links to Billing', () => {
+    for (const hasCard of [false, true]) {
+      render(<TrialBarView status={{ ...status, hasCard, cancelled: true }} now={now} canAddCard={true} onAddCard={jest.fn()} />);
+      const bar = screen.getByTestId('trial-bar');
+      expect(bar.textContent).toContain('Your plan is cancelled and ends with the trial.');
+      expect(bar.textContent).not.toContain('Add a card to keep your plan');
+      expect(bar.textContent).not.toContain('Card added');
+      expect(screen.getByRole('link', { name: 'Reactivate in Billing' }).getAttribute('href')).toBe('/billing');
+      cleanup();
+    }
+  });
+
+  it('a cancelled trial: a member who cannot open Billing gets no link', () => {
+    render(<TrialBarView status={{ ...status, cancelled: true }} now={now} canAddCard={false} onAddCard={jest.fn()} />);
+    expect(screen.queryByRole('link')).toBeNull();
+  });
+
   it('a member who cannot open Billing is not offered the card', () => {
     render(<TrialBarView status={status} now={now} canAddCard={false} onAddCard={jest.fn()} />);
     expect(screen.queryByRole('button')).toBeNull();
@@ -64,8 +83,24 @@ describe('the composer date during the trial', () => {
     expect(afterCardlessTrial(status, status.endsAt + 1)).toBe(true);
     expect(afterCardlessTrial(status, status.endsAt - 1)).toBe(false);
     expect(afterCardlessTrial({ ...status, hasCard: true }, status.endsAt + 1)).toBe(false);
+    expect(afterCardlessTrial({ ...status, hasCard: true, cancelled: true }, status.endsAt + 1)).toBe(true);
     expect(afterCardlessTrial({ trial: false }, status.endsAt + 1)).toBe(false);
     expect(afterCardlessTrial(undefined, status.endsAt + 1)).toBe(false);
+  });
+
+  it('a cancelled trial with a card is told to reactivate', () => {
+    render(<TrialDateWarningView show={true} cancelled={true} hasCard={true} />);
+    expect(screen.getByTestId('trial-date-warning').textContent).toBe(
+      'This date is after your free trial ends, and your plan is cancelled. Reactivate it in Billing, or the post will not be sent.'
+    );
+  });
+
+  // Reactivating alone does not keep the plan of a trial that has no card.
+  it('a cancelled trial without a card is told both steps', () => {
+    render(<TrialDateWarningView show={true} cancelled={true} hasCard={false} />);
+    expect(screen.getByTestId('trial-date-warning').textContent).toBe(
+      'This date is after your free trial ends, and your plan is cancelled. Reactivate it in Billing and add a card, or the post will not be sent.'
+    );
   });
 
   it('says the post will not be sent without a card', () => {

@@ -1,12 +1,12 @@
 jest.mock('isomorphic-dompurify', () => ({ __esModule: true, default: { sanitize: (v: string) => v } }));
 jest.mock('nostr-tools', () => ({ getPublicKey: jest.fn(), Relay: class {}, finalizeEvent: jest.fn(), SimplePool: class {} }));
 
-import { BillingController } from './billing.controller';
+import { BillingController, cancelledMailText } from './billing.controller';
 
 // During the trial the customer sees how much of it is left, in
 // numbers ("Channels 1 / 2 · Posts 4 / 15 · AI images 3 / 10 · 3 days left").
 describe('GET /billing/trial', () => {
-  const build = (status: unknown = { endsAt: 5_000, hasCard: false }) => {
+  const build = (status: unknown = { endsAt: 5_000, hasCard: false, cancelled: false }) => {
     const subscriptionService = {
       postCap: jest.fn().mockResolvedValue({ anchor: new Date(0), limit: 15 }),
       checkCredits: jest.fn().mockResolvedValue({ credits: 7 }),
@@ -34,10 +34,17 @@ describe('GET /billing/trial', () => {
       trial: true,
       endsAt: 5_000,
       hasCard: false,
+      cancelled: false,
       channels: { used: 1, limit: 2 },
       posts: { used: 4, limit: 15 },
       images: { used: 3, limit: 10 },
     });
+  });
+
+  it('passes on that the trial was cancelled from Billing', async () => {
+    const { controller } = build({ endsAt: 5_000, hasCard: true, cancelled: true });
+
+    expect(await controller.trial(org)).toMatchObject({ trial: true, hasCard: true, cancelled: true });
   });
 
   it('no trial, no bar, and Stripe is not asked', async () => {
@@ -51,5 +58,19 @@ describe('GET /billing/trial', () => {
     const { controller } = build(null);
 
     expect(await controller.trial(org)).toEqual({ trial: false });
+  });
+});
+
+// The mail that confirms a cancel said "You keep full access until…" to a
+// trial too, which has the trial's limits.
+describe('the cancel confirmation mail', () => {
+  it('a trial keeps the trial until its end', () => {
+    expect(cancelledMailText('1 December 2026', true)).toBe(
+      'Your subscription has been cancelled and you will not be charged again. You keep your trial until 1 December 2026 (UTC). Changed your mind? You can re-activate any time from Billing.'
+    );
+  });
+
+  it('a paid plan keeps full access until the period ends', () => {
+    expect(cancelledMailText('1 December 2026', false)).toContain('You keep full access until 1 December 2026 (UTC).');
   });
 });

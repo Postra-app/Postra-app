@@ -21,6 +21,11 @@ import {
   pricing,
   planLabel,
 } from '@gitroom/nestjs-libraries/database/prisma/subscriptions/pricing';
+import { losesTeamMembers } from '@gitroom/frontend/components/billing/team.loss';
+import {
+  cancelTrialQuestion,
+  planButtonLabel,
+} from '@gitroom/frontend/components/billing/trial.plan.texts';
 import { FAQComponent } from '@gitroom/frontend/components/billing/faq.component';
 import useSWR, { useSWRConfig } from 'swr';
 import { useUser } from '@gitroom/frontend/components/layout/user.context';
@@ -218,7 +223,7 @@ const Info: FC<{
       <div>
         {t(
           'would_you_mind_shortly_tell_us_what_we_could_have_done_better',
-          'Would you mind shortly tell us what we could have done better?'
+          'Would you mind telling us what we could have done better?'
         )}
       </div>
       <div>
@@ -441,6 +446,15 @@ export const MainBillingComponent: FC<{
   }, [subscription, initialChannels, monthlyOrYearly, period]);
   const reactivating = useRef(false);
   const checkingOut = useRef(false);
+  // When the trial ends, for the cancel question; asked at the click.
+  const trialEndsAt = useCallback(async (): Promise<number | undefined> => {
+    try {
+      const status = await (await fetch('/billing/trial')).json();
+      return status?.trial ? status.endsAt : undefined;
+    } catch {
+      return undefined;
+    }
+  }, []);
   const moveToCheckout = useCallback(
     (billing: 'STANDARD' | 'PRO' | 'FREE', reactivate = false) =>
       async () => {
@@ -491,6 +505,8 @@ export const MainBillingComponent: FC<{
               ...subs!,
               cancelAt: cancel_at,
             }));
+            // The trial bar and the composer's date warning read the same state.
+            mutate('/billing/trial');
 
             toast.show(
               t(
@@ -505,8 +521,11 @@ export const MainBillingComponent: FC<{
 
           const messages = [];
           if (
-            pricing[billing].team_members <
-            (pricing[subscription?.subscriptionTier!]?.team_members ?? 0)
+            losesTeamMembers(
+              !!user?.isTrailing,
+              subscription?.subscriptionTier,
+              billing
+            )
           ) {
             messages.push(
               `Some team members will be disabled until you upgrade again`
@@ -516,7 +535,9 @@ export const MainBillingComponent: FC<{
             if (
               subscription?.cancelAt ||
               (await deleteDialog(
-                `Are you sure you want to cancel your subscription?
+                user?.isTrailing
+                  ? cancelTrialQuestion(await trialEndsAt())
+                  : `Are you sure you want to cancel your subscription?
               ${messages.join(', ')}`,
                 'Yes, cancel',
                 'Cancel Subscription',
@@ -615,6 +636,8 @@ export const MainBillingComponent: FC<{
                 ...subs!,
                 cancelAt: cancel_at,
               }));
+              // The trial bar and the composer's date warning read the same state.
+              mutate('/billing/trial');
               if (cancel_at)
                 toast.show(
                   t(
@@ -878,7 +901,7 @@ export const MainBillingComponent: FC<{
                         : t('cancel_subscription', 'Cancel Subscription')
                       : // The trial starts on the plan screen, without a card;
                         // this button pays.
-                        t('purchase', 'Purchase plan')}
+                        planButtonLabel(!!user?.isTrailing && !!subscription, t)}
                   </Button>
                 )}
                 {currentPackage === name.toUpperCase() &&
@@ -896,7 +919,10 @@ export const MainBillingComponent: FC<{
                       )}
                     </div>
                   )}
+                {/* On a trial the switch takes no payment; the window that
+                    follows says what the plan costs after it. */}
                 {subscription &&
+                  !user?.isTrailing &&
                   currentPackage !== name.toUpperCase() &&
                   !isPendingPlan(name) &&
                   name !== 'FREE' &&

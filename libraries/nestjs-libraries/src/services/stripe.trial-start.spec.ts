@@ -12,6 +12,8 @@ const createIntent = jest.fn();
 const retrieveCustomer = jest.fn();
 const createPreview = jest.fn();
 const createPortal = jest.fn().mockResolvedValue({ url: 'https://billing.stripe.com/p/x' });
+const listPortalConfigurations = jest.fn();
+const createPortalConfiguration = jest.fn();
 
 jest.mock('stripe', () => {
   const actual = jest.requireActual('stripe');
@@ -28,7 +30,10 @@ jest.mock('stripe', () => {
     },
     paymentMethods: { list: listMethods },
     paymentIntents: { create: createIntent, cancel: jest.fn() },
-    billingPortal: { sessions: { create: createPortal } },
+    billingPortal: {
+      sessions: { create: createPortal },
+      configurations: { list: listPortalConfigurations, create: createPortalConfiguration },
+    },
     invoices: { createPreview },
   }));
   mock.errors = actual.errors ?? actual.default?.errors;
@@ -80,6 +85,8 @@ beforeEach(() => {
   mail = `trial.start.${Date.now()}.${++n}@example.com`;
   listPrices.mockResolvedValue({ data: [{ id: 'price_1', currency: 'gbp', unit_amount: 1900, recurring: { interval: 'month' } }] });
   searchCustomers.mockResolvedValue({ data: [] });
+  // No portal configuration unless a test gives one: the default portal.
+  listPortalConfigurations.mockRejectedValue(new Error('no configurations in this test'));
   createSubscription.mockResolvedValue({ id: 'sub_new', status: 'trialing' });
 });
 
@@ -324,6 +331,58 @@ describe('adding a card during the trial', () => {
   });
 });
 
+// Stripe's portal carries the name of the Stripe account, the company's. The
+// page a trial adds its card on said "BK Company" and nothing about Postra;
+// Postra's sessions use a configuration whose headline says how they relate.
+describe("the portal says whose it is", () => {
+  const headline = 'Postra is a trading name of B K Company';
+
+  it('uses the configuration that is there', async () => {
+    listPortalConfigurations.mockResolvedValue({
+      data: [
+        { id: 'bpc_default', metadata: {}, business_profile: { headline: null } },
+        { id: 'bpc_postra', metadata: { service: 'gitroom' }, business_profile: { headline } },
+      ],
+    });
+    const { service } = build();
+
+    await service.createBillingPortalLink('cus_new', 'card');
+
+    expect(createPortal.mock.calls[0][0].configuration).toBe('bpc_postra');
+    expect(createPortalConfiguration).not.toHaveBeenCalled();
+  });
+
+  it('makes it once when it is missing: cards, invoices and details, no plan changes', async () => {
+    listPortalConfigurations.mockResolvedValue({ data: [{ id: 'bpc_default', metadata: {}, business_profile: { headline: null } }] });
+    createPortalConfiguration.mockResolvedValue({ id: 'bpc_made' });
+    const { service } = build();
+
+    await service.createBillingPortalLink('cus_new');
+    await service.createBillingPortalLink('cus_new');
+
+    expect(createPortalConfiguration).toHaveBeenCalledTimes(1);
+    const [made, options] = createPortalConfiguration.mock.calls[0];
+    expect(made.business_profile.headline).toBe(headline);
+    expect(headline.length).toBeLessThanOrEqual(60);
+    expect(made.metadata).toEqual({ service: 'gitroom' });
+    expect(made.features.payment_method_update.enabled).toBe(true);
+    expect(made.features.invoice_history.enabled).toBe(true);
+    expect(made.features.subscription_cancel.enabled).toBe(false);
+    expect(made.features.subscription_update.enabled).toBe(false);
+    expect(options.idempotencyKey).toContain('portal-configuration');
+    expect(createPortal.mock.calls.map((c) => c[0].configuration)).toEqual(['bpc_made', 'bpc_made']);
+  });
+
+  it('opens the default portal when Stripe refuses the configuration', async () => {
+    listPortalConfigurations.mockRejectedValue(new Error('Stripe is down'));
+    const { service } = build();
+
+    await service.createBillingPortalLink('cus_new');
+
+    expect(createPortal).toHaveBeenCalledWith({ customer: 'cus_new', return_url: 'https://app.example/billing' });
+  });
+});
+
 // After a trial without a card ends, every page leads to the plan screen,
 // which says the trial has ended instead of offering one.
 describe('the plan screen after the trial', () => {
@@ -356,7 +415,17 @@ describe('the trial bar', () => {
     retrieveCustomer.mockResolvedValue({ id: 'cus_new', invoice_settings: { default_payment_method: null } });
     const { service } = build();
 
-    expect(await service.trialStatus('cus_new')).toEqual({ endsAt: 2000 * 1000, hasCard: false });
+    expect(await service.trialStatus('cus_new')).toEqual({ endsAt: 2000 * 1000, hasCard: false, cancelled: false });
+  });
+
+  // Cancelled from Billing, the trial runs to its end and the plan ends with
+  // it, with a card or without: the bar must not say a card keeps the plan.
+  it('says when the trial was cancelled from Billing', async () => {
+    listSubscriptions.mockResolvedValue({ data: [{ id: 'sub_new', customer: 'cus_new', status: 'trialing', trial_end: 2000, cancel_at_period_end: true, default_payment_method: null }] });
+    retrieveCustomer.mockResolvedValue({ id: 'cus_new', invoice_settings: { default_payment_method: null } });
+    const { service } = build();
+
+    expect(await service.trialStatus('cus_new')).toEqual({ endsAt: 2000 * 1000, hasCard: false, cancelled: true });
   });
 
   it('no trial, no bar', async () => {
