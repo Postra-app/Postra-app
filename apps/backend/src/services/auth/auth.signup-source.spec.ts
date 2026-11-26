@@ -110,10 +110,11 @@ describe('the campaign of a sign-up', () => {
         utm_source: 'Facebook',
         utm_medium: 'cpc',
         utm_campaign: 'launch-week',
-        fbclid: 'abc',
+        // Not hex: the stored state's random id is, and once held "abc".
+        fbclid: 'IwY2xpY2sKZmJjbGlk-marker',
       });
       const stored = [...store.values()].join(' ');
-      expect(stored).not.toContain('abc');
+      expect(stored).not.toContain('IwY2xpY2sKZmJjbGlk-marker');
 
       const answer = await s.checkExists(
         'GOOGLE',
