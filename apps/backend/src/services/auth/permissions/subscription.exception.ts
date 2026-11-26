@@ -3,6 +3,7 @@ import {
   planLimits,
   pricing,
   TRIAL_CHANNEL_CAP,
+  TRIAL_VIDEO_CLIPS,
 } from '@gitroom/nestjs-libraries/database/prisma/subscriptions/pricing';
 import {
   ArgumentsHost,
@@ -75,6 +76,8 @@ export const trialLimitMessage = (
       return `Your free trial includes ${count(TRIAL_CHANNEL_CAP, 'channel', 'channels')}. ${yours} ${count(plan.channel || 0, 'channel', 'channels')}. ${end}`;
     case Sections.POSTS_PER_MONTH:
       return `Your free trial includes ${count(trial.posts_per_month, 'post', 'posts')}. ${yours} ${count(plan.posts_per_month, 'post', 'posts', ' a month')}. ${end}`;
+    case Sections.VIDEOS_PER_MONTH:
+      return `Your free trial includes ${count(TRIAL_VIDEO_CLIPS, 'AI video', 'AI videos')}. ${yours} ${count(plan.generate_videos, 'AI video', 'AI videos', ' a month')}. ${end}`;
     case Sections.WEBHOOKS:
       return `Your free trial includes ${count(trial.webhooks, 'webhook', 'webhooks')}. ${yours} ${count(plan.webhooks, 'webhook', 'webhooks')}. ${end}`;
     case Sections.AUTOPOST:

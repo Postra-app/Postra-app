@@ -154,3 +154,16 @@ test.describe('Auto Post feeds', () => {
     expect(await prisma.autoPost.count({ where: { organizationId: pro.orgId, deletedAt: null } })).toBe(3);
   });
 });
+
+// The 11th image of a trial: the trial's wording and "End the trial now",
+// not the paid plan's "no credits remaining".
+test('a trial at its 10 AI images is told so, with the trial wording', async () => {
+  const trial = await org({ tier: 'PRO', totalChannels: 8, channels: 0, isTrailing: true });
+  await useImages(trial.orgId, 10);
+  const res = await trial.api.post('/media/generate-image', { data: { prompt: 'A loaf of bread' } });
+  expect(res.status(), await res.text()).toBe(402);
+  expect(await res.json()).toMatchObject({
+    trial: true,
+    message: 'Your free trial includes 10 AI images. Your Pro plan includes 200 AI images a month. End the trial to start your plan now.',
+  });
+});

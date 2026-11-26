@@ -1,3 +1,4 @@
+import { noImageCredits } from '@gitroom/nestjs-libraries/services/trial-limit-refusal';
 import { readResponseCapped } from '@gitroom/nestjs-libraries/media/fetch.media.buffer';
 import { HttpException, Injectable, Logger } from '@nestjs/common';
 import { posterFor } from '@gitroom/nestjs-libraries/videos/poster/video.poster';
@@ -249,10 +250,7 @@ export class MediaService {
     await this.assertStorage(org.id, 0);
     const total = await this._subscriptionService.checkCredits(org);
     if (process.env.STRIPE_PUBLISHABLE_KEY && total.credits <= 0) {
-      throw new HttpException(
-        'No image generation credits remaining for this billing cycle',
-        402
-      );
+      throw noImageCredits(org);
     }
 
     const brandKit =
@@ -493,10 +491,7 @@ export class MediaService {
     await this.assertStorage(org.id, 0);
     const total = await this._subscriptionService.checkCredits(org);
     if (process.env.STRIPE_PUBLISHABLE_KEY && total.credits <= 0) {
-      throw new HttpException(
-        'No image generation credits remaining for this billing cycle',
-        402
-      );
+      throw noImageCredits(org);
     }
 
     const brandKit =
