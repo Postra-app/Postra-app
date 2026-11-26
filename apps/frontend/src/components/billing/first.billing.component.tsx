@@ -36,12 +36,12 @@ import { LogoutComponent } from '@gitroom/frontend/components/layout/logout.comp
 import { InvoicesComponent } from '@gitroom/frontend/components/layout/invoices.component';
 import DeleteAccountComponent from '@gitroom/frontend/components/settings/delete-account.component';
 import {
-  NotChargedToday,
-  PAYMENT_FORM_ID,
   StartTrialButton,
-  TrialLimitsDetails,
+  TrialEndedHeadline,
+  TrialLimitsBox,
   TrialPriceLine,
 } from '@gitroom/frontend/components/billing/first.billing.trial';
+import { useToaster } from '@gitroom/react/toaster/toaster';
 import { WelcomeVideo } from '@gitroom/frontend/components/billing/welcome.video';
 import {
   planFeatures,
@@ -78,6 +78,13 @@ export const FirstBillingComponent = () => {
   const t = useT();
   const [datafast_visitor_id] = useCookie('datafast_visitor_id', '');
   const [datafast_session_id] = useCookie('datafast_session_id', '');
+  const toaster = useToaster();
+  // The trial starts without a card: the card form is loaded only for a
+  // customer with no trial on offer, or one who chooses to pay now.
+  const trialOffered = !!user?.allowTrial;
+  const [payNow, setPayNow] = useState(false);
+  const showCheckout = !trialOffered || payNow;
+  const [starting, setStarting] = useState(false);
 
   useEffect(() => {
     // An ad blocker or privacy extension stops Stripe.js from loading; that
@@ -88,21 +95,57 @@ export const FirstBillingComponent = () => {
     setStripe(stripePromise);
   }, []);
 
+  const planBody = useCallback(
+    () =>
+      JSON.stringify({
+        billing: tier,
+        period: period,
+        ...(datafast_visitor_id && datafast_session_id
+          ? { datafast_visitor_id, datafast_session_id }
+          : {}),
+        ...(dub ? { dub } : {}),
+      }),
+    [tier, period, datafast_visitor_id, datafast_session_id, dub]
+  );
+
   const loadCheckout = useCallback(async () => {
     return (
       await fetch('/billing/embedded', {
         method: 'POST',
-        body: JSON.stringify({
-          billing: tier,
-          period: period,
-          ...(datafast_visitor_id && datafast_session_id
-            ? { datafast_visitor_id, datafast_session_id }
-            : {}),
-          ...(dub ? { dub } : {}),
-        }),
+        body: planBody(),
       })
     ).json();
-  }, [tier, period]);
+  }, [planBody]);
+
+  // One click, no card: the page then waits for the plan the way it does
+  // after a checkout (/launches?check=<id>).
+  const startTrial = useCallback(async () => {
+    setStarting(true);
+    try {
+      const response = await fetch('/billing/start-trial', {
+        method: 'POST',
+        body: planBody(),
+      });
+      const body = await response.json().catch(() => ({}));
+      if (response.ok && body?.id) {
+        window.location.href = `/launches?onboarding=true&check=${encodeURIComponent(
+          body.id
+        )}`;
+        return;
+      }
+      toaster.show(
+        body?.message ||
+          t(
+            'billing_trial_start_failed',
+            'The trial could not be started. Reload the page, or email hello@postra.co.uk if it keeps happening.'
+          ),
+        'warning'
+      );
+      setStarting(false);
+    } catch {
+      setStarting(false);
+    }
+  }, [planBody]);
 
   // GDPR: users without an active plan only ever see this page, so account
   // deletion must be reachable from here too — not just from app settings.
@@ -114,7 +157,7 @@ export const FirstBillingComponent = () => {
   }, [modals, t]);
 
   const { data, isLoading, error } = useSWR(
-    `/billing-${tier}-${period}`,
+    showCheckout ? `/billing-${tier}-${period}` : null,
     loadCheckout,
     {
       revalidateOnFocus: false,
@@ -125,9 +168,8 @@ export const FirstBillingComponent = () => {
     }
   );
 
-  // Free days are promised only when this checkout has them: an email that
-  // already had a trial is charged straight away.
-  const trialOffered = !!user?.allowTrial && data?.trial === true;
+  // A trial without a card that ran to its end: the screen says so.
+  const trialEnded = !trialOffered && data?.trialEnded === true;
 
   // Without a client secret there is no checkout to show: Stripe threw on the
   // error body (409 for an organisation already subscribed, seen in Sentry)
@@ -150,6 +192,9 @@ export const FirstBillingComponent = () => {
   );
 
   const JoinOver = () => {
+    if (trialEnded) {
+      return <TrialEndedHeadline />;
+    }
     return (
       <>
         <div className="text-[46px] font-[600] leading-[110%] tablet:text-[36px] mobile:!text-[30px] whitespace-pre-line text-balance">
@@ -174,10 +219,7 @@ export const FirstBillingComponent = () => {
                 <CheckIconComponent />
               </div>
               <div>
-                {t(
-                  'billing_pay_nothing_7_days',
-                  'Pay nothing for the first 7 days'
-                )}
+                {t('billing_no_card_needed', 'No card needed to start')}
               </div>
             </div>
             <div className="flex gap-[8px]">
@@ -185,12 +227,15 @@ export const FirstBillingComponent = () => {
                 <CheckIconComponent />
               </div>
               <div>
-                {t('billing_cancel_anytime', 'Cancel any time in Settings')}
+                {t(
+                  'billing_nothing_charged_after_trial',
+                  'Nothing is charged when the trial ends'
+                )}
               </div>
             </div>
           </div>
         )}
-        {trialOffered && <TrialLimitsDetails />}
+        {trialOffered && <TrialLimitsBox />}
       </>
     );
   };
@@ -227,9 +272,26 @@ export const FirstBillingComponent = () => {
           <div className="block tablet:hidden">
             <JoinOver />
           </div>
-          <div id={PAYMENT_FORM_ID} className="scroll-mt-[16px]" />
-          {trialOffered && <NotChargedToday />}
-          {stripeFailed ? (
+          {!showCheckout ? (
+            <div className="mt-[24px] p-[24px] rounded-[20px] border-[1.5px] border-newColColor text-[16px]">
+              <div className="font-[600]">
+                {t(
+                  'billing_trial_no_card_here',
+                  'Pick a plan on the right and start your free trial. No card is needed, and nothing is charged when the trial ends.'
+                )}
+              </div>
+              <button
+                type="button"
+                className="mt-[12px] underline underline-offset-4 text-[14px] hover:text-newTextColor"
+                onClick={() => setPayNow(true)}
+              >
+                {t(
+                  'billing_pay_now_instead',
+                  "Pay now instead and get your plan's full limits straight away"
+                )}
+              </button>
+            </div>
+          ) : stripeFailed ? (
             <div className="mt-[24px] p-[24px] rounded-[20px] border-[1.5px] border-newColColor text-[16px] font-[500]">
               {t(
                 'billing_stripe_load_failed',
@@ -363,9 +425,12 @@ export const FirstBillingComponent = () => {
                   ] ?? 0
                 }
                 period={period === 'YEARLY' ? 'YEARLY' : 'MONTHLY'}
+                plan={planLabel(tier)}
               />
             )}
-            {trialOffered && <StartTrialButton />}
+            {trialOffered && (
+              <StartTrialButton onStart={startTrial} loading={starting} />
+            )}
             <div className="flex flex-col mt-[54px] gap-[24px] tablet:mt-[40px]">
               <div className="text-[24px] font-[700]">
                 {t('billing_features', 'Features')}

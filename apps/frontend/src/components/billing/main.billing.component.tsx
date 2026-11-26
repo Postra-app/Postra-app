@@ -861,12 +861,9 @@ export const MainBillingComponent: FC<{
                             'D MMM, YYYY'
                           )}`
                         : t('cancel_subscription', 'Cancel Subscription')
-                      : // @ts-expect-error user.tier is typed as PricingInnerInterface, compared to a string literal
-                      (user?.tier === 'FREE' ||
-                          user?.tier?.current === 'FREE') &&
-                        user.allowTrial
-                      ? t('start_7_days_free_trial', 'Start 7 days free trial')
-                      : t('purchase', 'Purchase plan')}
+                      : // The trial starts on the plan screen, without a card;
+                        // this button pays.
+                        t('purchase', 'Purchase plan')}
                   </Button>
                 )}
                 {currentPackage === name.toUpperCase() &&

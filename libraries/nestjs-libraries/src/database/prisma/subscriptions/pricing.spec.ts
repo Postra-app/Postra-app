@@ -13,6 +13,7 @@ import {
   AGENT_FAIR_USE_MESSAGES,
   TRIAL_VIDEO_CLIPS,
   TRIAL_LIMITS,
+  TRIAL_DAYS,
   planLimits,
 } from './pricing';
 import { platformOf } from '@gitroom/nestjs-libraries/integrations/same.account';
@@ -288,12 +289,18 @@ describe('channelLimitFor', () => {
 
   it('does not raise a trialing org above its own tier', () => {
     expect(
-      channelLimitFor({ isTrailing: true, subscription: { totalChannels: 3 } })
-    ).toBe(3);
-    // trialing before checkout: no subscription yet, FREE limit applies
+      channelLimitFor({ isTrailing: true, subscription: { totalChannels: 1 } })
+    ).toBe(1);
+    // trialing before the plan row is written: no subscription yet, the
+    // FREE limit applies, still held to the trial's cap
     expect(channelLimitFor({ isTrailing: true, subscription: null })).toBe(
-      pricing.FREE.channel
+      Math.min(pricing.FREE.channel!, TRIAL_CHANNEL_CAP)
     );
+  });
+
+  // The trial without a card has 2 channels.
+  it('caps a trial at 2 channels', () => {
+    expect(TRIAL_CHANNEL_CAP).toBe(2);
   });
 
   it('gives converted (non-trialing) orgs their full quota', () => {
@@ -312,19 +319,19 @@ describe('channelLimitFor', () => {
 
 describe('trialAiAllowance', () => {
   // A trial has its own allowance, smaller than any plan's monthly pool.
-  it('gives a trial 20 images and 200 questions to the assistant, whatever the tier', () => {
-    expect(TRIAL_AI_IMAGES).toBe(20);
-    expect(TRIAL_AGENT_MESSAGES).toBe(200);
+  it('gives a trial 10 images and 50 questions to the assistant, whatever the tier', () => {
+    expect(TRIAL_AI_IMAGES).toBe(10);
+    expect(TRIAL_AGENT_MESSAGES).toBe(50);
     for (const tier of ['STANDARD', 'PRO', 'ULTIMATE'] as const) {
       expect(
         trialAiAllowance(pricing[tier].image_generation_count, true, 'image_generation_count')
-      ).toBe(20);
-      expect(trialAiAllowance(pricing[tier].agent_messages, true, 'agent_messages')).toBe(200);
+      ).toBe(10);
+      expect(trialAiAllowance(pricing[tier].agent_messages, true, 'agent_messages')).toBe(50);
     }
   });
 
   it('says which limit was reached: the trial allowance or the monthly fair use', () => {
-    expect(agentLimitMessage(true)).toContain('200 questions');
+    expect(agentLimitMessage(true)).toContain('50 questions');
     expect(agentLimitMessage(true)).toContain('trial');
     expect(agentLimitMessage(false)).toContain('2,200 questions');
     expect(agentLimitMessage(undefined)).not.toContain('trial');
@@ -370,12 +377,16 @@ it('postsCycleWindow takes a date out of range as now, and returns', () => {
   }
 });
 
-// A 7-day trial on any plan posts at most 30 a month, is one
+// A 5-day trial on any plan posts at most 15, is one
 // person, one webhook and one Auto Post feed, whatever the plan pays for.
 describe('planLimits', () => {
-  it('keeps the trial at 30 posts, 1 person, 1 webhook and 1 feed', () => {
+  it('runs the trial for 5 days', () => {
+    expect(TRIAL_DAYS).toBe(5);
+  });
+
+  it('keeps the trial at 15 posts, 1 person, 1 webhook and 1 feed', () => {
     expect(TRIAL_LIMITS).toEqual({
-      posts_per_month: 30,
+      posts_per_month: 15,
       team_members: 1,
       webhooks: 1,
       autoPostLimit: 1,
@@ -386,7 +397,7 @@ describe('planLimits', () => {
   it('cuts every paid plan to the trial limits while trialing', () => {
     for (const tier of ['STANDARD', 'PRO', 'ULTIMATE']) {
       const trial = planLimits(tier, true);
-      expect(trial.posts_per_month).toBe(30);
+      expect(trial.posts_per_month).toBe(15);
       expect(trial.team_members).toBe(1);
       expect(trial.webhooks).toBe(1);
       expect(trial.autoPostLimit).toBe(1);

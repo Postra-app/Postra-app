@@ -40,6 +40,7 @@ import { ContinueProvider } from '@gitroom/frontend/components/layout/continue.p
 import { ContextWrapper } from '@gitroom/frontend/components/layout/user.context';
 import { MantineWrapper } from '@gitroom/react/helpers/mantine.wrapper';
 import { AnnouncementBanner } from '@gitroom/frontend/components/layout/announcement.banner';
+import { TrialBar } from '@gitroom/frontend/components/billing/trial.bar';
 import { Title } from '@gitroom/frontend/components/layout/title';
 import { TopMenu } from '@gitroom/frontend/components/layout/top.menu';
 import { LanguageComponent } from '@gitroom/frontend/components/layout/language.component';
@@ -178,6 +179,7 @@ export const LayoutComponent = ({ children }: { children: ReactNode }) => {
             ) : (
               <>
                 <AnnouncementBanner />
+                <TrialBar />
                 <div className="flex-1 flex gap-[8px]">
                   <Support />
                   <div className="hidden md:flex flex-col w-[84px] rounded-[18px] border border-white/10 bg-white/[0.03] shadow-[0_24px_80px_rgba(2,6,23,0.45)] backdrop-blur-xl">

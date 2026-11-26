@@ -34,13 +34,13 @@ const NAMES: Record<string, string> = {
   wordpress: 'WordPress',
 };
 
-it('names the card hold Stripe actually places', () => {
-  const hold = stripe.match(/amount: (\d+),\s*currency: '(\w+)'/);
-  expect(hold).toBeTruthy();
-  const [, pence, currency] = hold!;
-  expect(currency).toBe('gbp');
-  expect(en.faq_to_confirm_credit_card_information_postra_will_hold).toContain(`£${+pence / 100}`);
-  expect(en.faq_to_confirm_credit_card_information_postra_will_hold).not.toMatch(/\$/);
+// The trial starts without a card: the FAQ said a card is held
+// for £1 and charged when the trial ends.
+it('says the free trial needs no card and charges nothing when it ends', () => {
+  expect(en.faq_free_trial_no_card).toContain('needs no card');
+  expect(en.faq_free_trial_no_card).toContain('nothing is charged when it ends');
+  expect(en.faq_free_trial_no_card).not.toMatch(/£1|hold/);
+  expect(stripe).toContain("missing_payment_method: 'cancel'");
 });
 
 it('lists exactly the platforms a channel can be connected to', () => {
@@ -66,8 +66,8 @@ it('names every trial limit in the trial note, in English and Polish', () => {
     read('libraries/react-shared-libraries/src/translation/locales/pl/translation.json')
   );
   const note = read('apps/frontend/src/components/billing/trial.limits.note.tsx');
-  for (const text of [en.billing_trial_limits, pl.billing_trial_limits]) {
-    for (const value of ['channels', 'posts', 'webhooks', 'feeds', 'images', 'videos']) {
+  for (const text of [en.billing_free_trial_limits, pl.billing_free_trial_limits]) {
+    for (const value of ['days', 'channels', 'posts', 'webhooks', 'feeds', 'images', 'videos']) {
       expect(text).toContain(`{{${value}}}`);
       expect(note).toMatch(new RegExp(`\\b${value}: `));
     }
@@ -83,6 +83,6 @@ it('sends people to Billing to cancel, where the button is', () => {
   );
   const page = read('apps/frontend/src/components/billing/main.billing.component.tsx');
   expect(page).toContain("'cancel_my_subscription'");
-  expect(en.faq_to_confirm_credit_card_information_postra_will_hold).toContain(`cancel any time in ${en.billing}`);
-  expect(pl.faq_to_confirm_credit_card_information_postra_will_hold).toContain(`w zakładce ${pl.billing}`);
+  expect(en.faq_free_trial_no_card).toContain(`cancel any time in ${en.billing}`);
+  expect(pl.faq_free_trial_no_card).toContain(`w zakładce ${pl.billing}`);
 });

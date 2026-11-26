@@ -1,4 +1,9 @@
-import { pricing } from '@gitroom/nestjs-libraries/database/prisma/subscriptions/pricing';
+import {
+  planLabel,
+  planLimits,
+  pricing,
+  TRIAL_CHANNEL_CAP,
+} from '@gitroom/nestjs-libraries/database/prisma/subscriptions/pricing';
 import {
   ArgumentsHost,
   Catch,
@@ -21,16 +26,22 @@ export class SubscriptionExceptionFilter implements ExceptionFilter {
     const error: { section: Sections; action: AuthorizationActions } =
       exception.getResponse() as any;
 
-    const message = getErrorMessage(error);
+    const org = ctx.getRequest()?.org;
+    const trial = org?.isTrailing
+      ? trialLimitMessage(error, org?.subscription?.subscriptionTier)
+      : null;
+    const message = trial || getErrorMessage(error);
     // Billing is for admins (BILLING_ADMIN): a plain member sent to it lands
     // on a page they cannot use. A web session says whether the member can
     // act on the 402; API key and OAuth requests carry no member and get
     // nothing new (upstream 4c557f114).
-    const role = ctx.getRequest()?.org?.users?.[0]?.role;
+    const role = org?.users?.[0]?.role;
 
     response.status(status).json({
       statusCode: status,
       message,
+      // The page offers "End the trial now" instead of "Go to billing".
+      ...(trial ? { trial: true } : {}),
       url: process.env.FRONTEND_URL + '/billing',
       ...(role
         ? { canManageBillingUi: role === 'SUPERADMIN' || role === 'ADMIN' }
@@ -38,6 +49,47 @@ export class SubscriptionExceptionFilter implements ExceptionFilter {
     });
   }
 }
+
+// Business has 10 000 webhooks and Pro/Business a million posts: both are
+// "unlimited" on the plan pages.
+const UNLIMITED = 10000;
+const count = (n: number, one: string, many: string, suffix = '') =>
+  n >= UNLIMITED ? `unlimited ${many}` : `${n} ${n === 1 ? one : many}${suffix}`;
+
+// A limit reached during the free trial is the trial's, not the plan's: the
+// customer already chose the plan, so "upgrade" told them nothing. Says what
+// the trial includes, what their plan includes, and that ending the trial
+// starts the plan (Billing; the page offers it). Null for a section the
+// trial does not limit on its own: the plan's wording then applies.
+export const trialLimitMessage = (
+  error: { section: Sections; action: AuthorizationActions },
+  tier?: string | null
+): string | null => {
+  const paid = tier && tier !== 'FREE' && pricing[tier] ? tier : 'STANDARD';
+  const plan = planLimits(paid, false);
+  const trial = planLimits(paid, true);
+  const yours = `Your ${planLabel(paid)} plan includes`;
+  const end = 'End the trial to start your plan now.';
+  switch (error.section) {
+    case Sections.CHANNEL:
+      return `Your free trial includes ${count(TRIAL_CHANNEL_CAP, 'channel', 'channels')}. ${yours} ${count(plan.channel || 0, 'channel', 'channels')}. ${end}`;
+    case Sections.POSTS_PER_MONTH:
+      return `Your free trial includes ${count(trial.posts_per_month, 'post', 'posts')}. ${yours} ${count(plan.posts_per_month, 'post', 'posts', ' a month')}. ${end}`;
+    case Sections.WEBHOOKS:
+      return `Your free trial includes ${count(trial.webhooks, 'webhook', 'webhooks')}. ${yours} ${count(plan.webhooks, 'webhook', 'webhooks')}. ${end}`;
+    case Sections.AUTOPOST:
+      return `Your free trial includes ${count(trial.autoPostLimit, 'Auto Post feed', 'Auto Post feeds')}. ${yours} ${count(plan.autoPostLimit, 'Auto Post feed', 'Auto Post feeds')}. ${end}`;
+    case Sections.TEAM_MEMBERS: {
+      const seats = (t: string) =>
+        pricing[t].team_members >= UNLIMITED
+          ? `${planLabel(t)} is unlimited`
+          : `${planLabel(t)} has ${pricing[t].team_members}`;
+      return `The free trial is for one person. Team invites open with a plan that has team seats: ${seats('PRO')}, ${seats('ULTIMATE')}.`;
+    }
+    default:
+      return null;
+  }
+};
 
 // Exported for the spec that pins "no section may map to undefined".
 export const getErrorMessage = (error: {

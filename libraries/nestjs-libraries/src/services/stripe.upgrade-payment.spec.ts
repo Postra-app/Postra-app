@@ -117,7 +117,7 @@ describe('a plan change that is not paid at once', () => {
     });
     const { service } = build();
     expect(
-      await service.subscribe('track', 'org-1', 'user-1', body, false)
+      await service.subscribe('track', 'org-1', 'user-1', body)
     ).toEqual({ id: expect.any(String) });
     expect(retrieveInvoice).not.toHaveBeenCalled();
   });
@@ -132,7 +132,7 @@ describe('a plan change that is not paid at once', () => {
     });
     const { service } = build();
     expect(
-      await service.subscribe('track', 'org-1', 'user-1', body, false)
+      await service.subscribe('track', 'org-1', 'user-1', body)
     ).toEqual({ id: expect.any(String) });
     expect(retrieveInvoice).not.toHaveBeenCalled();
   });
@@ -149,7 +149,7 @@ describe('a plan change that is not paid at once', () => {
     retrieveInvoice.mockResolvedValue(intent('requires_payment_method'));
     const { service } = build();
     expect(
-      await service.subscribe('track', 'org-1', 'user-1', body, false)
+      await service.subscribe('track', 'org-1', 'user-1', body)
     ).toEqual({ portal: 'https://portal.example' });
     expect(retrieveInvoice).toHaveBeenCalledWith('in_1', {
       expand: ['payments.data.payment.payment_intent'],
@@ -168,7 +168,7 @@ describe('a plan change that is not paid at once', () => {
     retrieveInvoice.mockResolvedValue(intent('requires_action'));
     const { service } = build();
     expect(
-      await service.subscribe('track', 'org-1', 'user-1', body, false)
+      await service.subscribe('track', 'org-1', 'user-1', body)
     ).toEqual({
       id: expect.any(String),
       paymentIncomplete: true,

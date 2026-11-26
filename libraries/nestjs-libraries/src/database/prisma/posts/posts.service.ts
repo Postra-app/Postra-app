@@ -1101,6 +1101,13 @@ export class PostsService {
     }
   }
 
+  // Posts counted against the allowance in the billing month running now,
+  // as postCapReached counts them: the trial bar's "Posts 4 / 15".
+  async countedPostsNow(orgId: string, anchor: Date | string) {
+    const { start, end } = postsCycleWindow(anchor);
+    return this._postRepository.countCountedPosts(orgId, start, end);
+  }
+
   async countPostsFromDay(orgId: string, date: Date) {
     return this._postRepository.countPostsFromDay(orgId, date);
   }

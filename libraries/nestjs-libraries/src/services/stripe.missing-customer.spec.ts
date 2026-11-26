@@ -281,7 +281,7 @@ describe('a checkout for an organisation that already pays', () => {
     const { service } = build('cus_live');
 
     await expect(
-      service.embedded('u1', 'org-1', 'user-1', { billing: 'PRO', period: 'MONTHLY' } as any, false)
+      service.embedded('u1', 'org-1', 'user-1', { billing: 'PRO', period: 'MONTHLY' } as any)
     ).rejects.toMatchObject({ status: 409 });
   });
 });

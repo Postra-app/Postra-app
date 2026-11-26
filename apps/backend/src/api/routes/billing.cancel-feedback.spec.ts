@@ -14,7 +14,7 @@ describe('POST /billing/cancel', () => {
       { setToCancel: jest.fn().mockResolvedValue({ cancel_at: 1_800_000_000 }) } as any,
       { sendEmail } as any,
       { record: jest.fn() } as any,
-      {} as any
+      {} as any, {} as any, {} as any
     );
     await controller.cancel(
       { id: 'org-1', name } as any,
@@ -49,7 +49,7 @@ describe('POST /billing/cancel: the customer confirmation', () => {
       { setToCancel: jest.fn().mockResolvedValue(result) } as any,
       { sendEmail } as any,
       { record: jest.fn() } as any,
-      {} as any
+      {} as any, {} as any, {} as any
     );
     await controller.cancel(
       { id: 'org-1', name: 'Acme' } as any,
@@ -81,7 +81,7 @@ describe('POST /billing/cancel: the intent', () => {
   const run = async (result: object, body: object) => {
     const sendEmail = jest.fn().mockResolvedValue(undefined);
     const setToCancel = jest.fn().mockResolvedValue(result);
-    const controller = new BillingController({} as any, { setToCancel } as any, { sendEmail } as any, { record: jest.fn() } as any, {} as any);
+    const controller = new BillingController({} as any, { setToCancel } as any, { sendEmail } as any, { record: jest.fn() } as any, {} as any, {} as any, {} as any);
     await controller.cancel({ id: 'org-1', name: 'Acme' } as any, { id: 'user-1', email: 'owner@example.com' } as any, body as any);
     return { sendEmail, setToCancel };
   };

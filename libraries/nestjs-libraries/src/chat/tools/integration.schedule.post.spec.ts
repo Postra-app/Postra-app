@@ -64,11 +64,11 @@ describe('agent post cap', () => {
     expect(postsService.postCapReached.mock.calls[0][2]).toBe(400);
   });
 
-  // A trial posts at most 30 a month, whatever the plan.
-  it('stops a Business trial at 30 posts, like the app', async () => {
-    const { tool, postsService } = build('ULTIMATE', 30, true);
+  // A trial posts at most 15, whatever the plan.
+  it('stops a Business trial at 15 posts, like the app', async () => {
+    const { tool, postsService } = build('ULTIMATE', 15, true);
     await expect(tool.postLimitReached('org-1', new Date().toISOString(), posts(1))).resolves.toBe(true);
-    expect(postsService.postCapReached.mock.calls[0][2]).toBe(30);
+    expect(postsService.postCapReached.mock.calls[0][2]).toBe(15);
   });
 
   // One batch of ten at 399 of 400 went through in full.

@@ -14,7 +14,7 @@ describe('POST /billing/finish-trial', () => {
       { finishTrial: jest.fn().mockResolvedValue({ finish: true }) } as any,
       {} as any,
       { record } as any,
-      {} as any
+      {} as any, {} as any, {} as any
     );
 
     await expect(

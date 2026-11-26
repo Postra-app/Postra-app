@@ -204,11 +204,16 @@ export const planLabels: Record<string, string> = {
 export const planLabel = (tier?: string | null): string =>
   (tier && planLabels[tier]) || tier || '';
 
-// A 7-day Stripe trial runs on the paid tier the user picked, but with only
+// How long the free trial runs. It starts without a card (sign-ups stopped at
+// the card form) and
+// Stripe cancels it at the end unless a card was added.
+export const TRIAL_DAYS = 5;
+
+// A Stripe trial runs on the paid tier the user picked, but with only
 // this many channel slots — the tier's full quota unlocks on conversion. The
 // platform allowlist is intentionally NOT reduced, so e.g. a Pro trial can
 // still evaluate LinkedIn/YouTube on one of its capped slots.
-export const TRIAL_CHANNEL_CAP = 3;
+export const TRIAL_CHANNEL_CAP = 2;
 
 // The monthly post allowance resets on the subscription's anniversary day
 // (or the org's, without one). Shared by the API policy and the agent tool.
@@ -251,11 +256,13 @@ export const postsCycleWindow = (
 // A trial shows AI video with one clip (~$0.18 at kie.ai), whatever the plan.
 export const TRIAL_VIDEO_CLIPS = 1;
 
-// What AI a 7-day trial may use, whatever the plan: enough to try every AI
-// feature on the trial's 30 posts, not a paid month's pool before the first
+// What AI a trial may use, whatever the plan: enough to try every AI
+// feature on the trial's posts, not a paid month's pool before the first
 // payment. The full pool opens with the first payment or "End the trial now".
-export const TRIAL_AI_IMAGES = 20;
-export const TRIAL_AGENT_MESSAGES = 200;
+// Totals for the whole trial: a trial without a card costs at most about
+// $0.85 of AI (10 images ~$0.53, 1 clip ~$0.18, 50 questions ~$0.13).
+export const TRIAL_AI_IMAGES = 10;
+export const TRIAL_AGENT_MESSAGES = 50;
 
 export const trialAiAllowance = (
   allowance: number,
@@ -281,12 +288,12 @@ export const agentLimitMessage = (isTrailing: boolean | undefined): string =>
     ? `You have used the ${TRIAL_AGENT_MESSAGES} questions to the AI assistant included in the trial. Your plan's full allowance opens with the first payment, or straight away if you end the trial early in Billing.`
     : `You have reached this month's fair-use limit for the AI assistant (${AGENT_FAIR_USE_MESSAGES.toLocaleString('en-GB')} questions, the same on every plan). It resets with your next billing month.`;
 
-// What a 7-day trial may use whatever plan it runs on: the
+// What a trial may use whatever plan it runs on: the
 // plan's own limits apply only from the first payment, so a Business trial is
 // not 10 000 webhooks, 10 feeds and unlimited posts for free. Channels and AI
 // have their own trial caps above.
 export const TRIAL_LIMITS = {
-  posts_per_month: 30,
+  posts_per_month: 15,
   team_members: 1,
   webhooks: 1,
   autoPostLimit: 1,
