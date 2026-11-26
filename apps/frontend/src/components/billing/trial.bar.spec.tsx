@@ -88,10 +88,18 @@ describe('the composer date during the trial', () => {
     expect(afterCardlessTrial(undefined, status.endsAt + 1)).toBe(false);
   });
 
-  it('a cancelled trial is told to reactivate, not to add a card', () => {
-    render(<TrialDateWarningView show={true} cancelled={true} />);
+  it('a cancelled trial with a card is told to reactivate', () => {
+    render(<TrialDateWarningView show={true} cancelled={true} hasCard={true} />);
     expect(screen.getByTestId('trial-date-warning').textContent).toBe(
       'This date is after your free trial ends, and your plan is cancelled. Reactivate it in Billing, or the post will not be sent.'
+    );
+  });
+
+  // Reactivating alone does not keep the plan of a trial that has no card.
+  it('a cancelled trial without a card is told both steps', () => {
+    render(<TrialDateWarningView show={true} cancelled={true} hasCard={false} />);
+    expect(screen.getByTestId('trial-date-warning').textContent).toBe(
+      'This date is after your free trial ends, and your plan is cancelled. Reactivate it in Billing and add a card, or the post will not be sent.'
     );
   });
 

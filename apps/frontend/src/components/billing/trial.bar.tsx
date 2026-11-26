@@ -132,10 +132,11 @@ export const afterCardlessTrial = (
   (!status.hasCard || !!status.cancelled) &&
   date > status.endsAt;
 
-export const TrialDateWarningView: FC<{ show: boolean; cancelled?: boolean }> = ({
-  show,
-  cancelled,
-}) => {
+export const TrialDateWarningView: FC<{
+  show: boolean;
+  cancelled?: boolean;
+  hasCard?: boolean;
+}> = ({ show, cancelled, hasCard }) => {
   const t = useT();
   if (!show) {
     return null;
@@ -147,10 +148,15 @@ export const TrialDateWarningView: FC<{ show: boolean; cancelled?: boolean }> = 
         role="note"
         className="text-[13px] text-amber-400 max-w-[260px] leading-[1.3]"
       >
-        {t(
-          'trial_date_after_end_cancelled',
-          'This date is after your free trial ends, and your plan is cancelled. Reactivate it in Billing, or the post will not be sent.'
-        )}
+        {hasCard
+          ? t(
+              'trial_date_after_end_cancelled',
+              'This date is after your free trial ends, and your plan is cancelled. Reactivate it in Billing, or the post will not be sent.'
+            )
+          : t(
+              'trial_date_after_end_cancelled_no_card',
+              'This date is after your free trial ends, and your plan is cancelled. Reactivate it in Billing and add a card, or the post will not be sent.'
+            )}
       </div>
     );
   }
@@ -181,6 +187,7 @@ export const TrialDateWarning: FC<{ date: Dayjs }> = ({ date }) => {
     <TrialDateWarningView
       show={afterCardlessTrial(data, date.valueOf())}
       cancelled={!!data && data.trial && !!data.cancelled}
+      hasCard={!!data && data.trial && data.hasCard}
     />
   );
 };

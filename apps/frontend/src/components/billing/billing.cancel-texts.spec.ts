@@ -13,6 +13,12 @@ describe('billing cancel texts', () => {
     expect(source).toMatch(/'Yes, cancel',\s*'Cancel Subscription',\s*'No, keep it'/);
   });
 
+  // The trial bar and the composer's date warning read /billing/trial: after
+  // a cancel or a reactivation they showed the old state for up to a minute.
+  it('refreshes the trial state after a cancel and after a reactivation', () => {
+    expect(source.match(/mutate\('\/billing\/trial'\)/g)).toHaveLength(2);
+  });
+
   it('says members are disabled until an upgrade, not removed', () => {
     expect(source).toContain('Some team members will be disabled until you upgrade again');
     expect(source).not.toContain('may be removed');

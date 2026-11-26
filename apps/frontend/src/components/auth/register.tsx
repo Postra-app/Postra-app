@@ -16,6 +16,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { classValidatorResolver } from '@hookform/resolvers/class-validator';
 import { CreateOrgUserDto } from '@gitroom/nestjs-libraries/dtos/auth/create.org.user.dto';
 import { GithubProvider } from '@gitroom/frontend/components/auth/providers/github.provider';
+import { TRIAL_DAYS } from '@gitroom/nestjs-libraries/database/prisma/subscriptions/pricing';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { LoadingComponent } from '@gitroom/frontend/components/layout/loading';
 import clsx from 'clsx';
@@ -225,13 +226,20 @@ export function RegisterAfter({
   email?: string;
 }) {
   const t = useT();
-  const { isGeneral, genericOauth } = useVariables();
+  const { isGeneral, genericOauth, billingEnabled } = useVariables();
   const [loading, setLoading] = useState(false);
   const router = useRouter();
   const fireEvents = useFireEvents();
   const track = useTrack();
   const [datafast_visitor_id] = useCookie('datafast_visitor_id');
   const searchParams = useSearchParams();
+  // A new account is offered the free trial on its plan screen. An invitation
+  // (?invite) comes with a plan already and a team invitation (?org) joins
+  // someone else's, so neither is promised a trial.
+  const offersTrial =
+    !!billingEnabled &&
+    !searchParams?.has('invite') &&
+    !searchParams?.has('org');
   // Market signal from the landing CTA (postra.co.uk → ?region=uk). Persisted to a
   // cookie so it survives the OAuth round-trip, then sent at submit to tag the org.
   const [regionCookie, setRegionCookie] = useCookie('postra_region', '');
@@ -385,12 +393,26 @@ export function RegisterAfter({
                 </p>
               </>
             ) : (
-              <p className="mt-[8px] text-[15px] text-textColor/58">
-                {t(
-                  'auth_register_subtitle',
-                  'Create your Postra workspace and plan content faster.'
+              <>
+                <p className="mt-[8px] text-[15px] text-textColor/58">
+                  {t(
+                    'auth_register_subtitle',
+                    'Create your Postra workspace and plan content faster.'
+                  )}
+                </p>
+                {offersTrial && (
+                  <p
+                    data-testid="register-trial-note"
+                    className="mt-[6px] text-[15px] font-[600] text-textColor"
+                  >
+                    {t(
+                      'auth_register_trial_note',
+                      'Start your {{days}}-day free trial. No card needed.',
+                      { days: TRIAL_DAYS }
+                    )}
+                  </p>
                 )}
-              </p>
+              </>
             )}
           </div>
           {!isAfterProvider && (
