@@ -94,6 +94,11 @@ test('a trial makes its one clip, and the second is refused with 402', async () 
     expect(first.status(), await first.text()).toBe(201);
     const second = await generate(trial.api, `Trial clip two ${Date.now()}`);
     expect(second.status()).toBe(402);
+    // The trial's limit, said as such, with "End the trial now" in the app.
+    expect(await second.json()).toMatchObject({
+      trial: true,
+      message: 'Your free trial includes 1 AI video. Your Pro plan includes 30 AI videos a month. End the trial to start your plan now.',
+    });
     expect(await videosLeft(trial.api)).toBe(0);
   } finally {
     await trial.remove();

@@ -107,6 +107,7 @@ describe('a limit reached during the free trial', () => {
     [Sections.POSTS_PER_MONTH, 'Your free trial includes 15 posts. Your Starter plan includes 400 posts a month. End the trial to start your plan now.'],
     [Sections.WEBHOOKS, 'Your free trial includes 1 webhook. Your Starter plan includes 2 webhooks. End the trial to start your plan now.'],
     [Sections.AUTOPOST, 'Your free trial includes 1 Auto Post feed. Your Starter plan includes 2 Auto Post feeds. End the trial to start your plan now.'],
+    [Sections.VIDEOS_PER_MONTH, 'Your free trial includes 1 AI video. Your Starter plan includes 15 AI videos a month. End the trial to start your plan now.'],
     [Sections.TEAM_MEMBERS, 'The free trial is for one person. Team invites open with a plan that has team seats: Pro has 2, Business has 5.'],
   ])('%s', (section, message) => {
     const body = run(section);

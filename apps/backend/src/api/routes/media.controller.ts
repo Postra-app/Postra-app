@@ -1,3 +1,4 @@
+import { noImageCredits } from '@gitroom/nestjs-libraries/services/trial-limit-refusal';
 import { Throttle } from '@nestjs/throttler';
 import {
   Body,
@@ -181,10 +182,7 @@ export class MediaController {
     requireBoundedPrompt(prompt);
     const total = await this._subscriptionService.checkCredits(org);
     if (process.env.STRIPE_PUBLISHABLE_KEY && total.credits <= 0) {
-      throw new HttpException(
-        'No image generation credits remaining for this billing cycle',
-        402
-      );
+      throw noImageCredits(org);
     }
 
     // generateImage generates AND uploads, returning the stored CDN URL.
@@ -218,10 +216,7 @@ export class MediaController {
       // fell through to "Could not generate the image, please try again" -
       // telling someone who is out of credits the wrong thing. Same 402 the
       // design generator already throws.
-      throw new HttpException(
-        'No image generation credits remaining for this billing cycle',
-        402
-      );
+      throw noImageCredits(org);
     }
 
     // mediaService.generateImage already generates AND uploads the image,
