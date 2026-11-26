@@ -1094,15 +1094,26 @@ export class StripeService {
     ) {
       return;
     }
-    const org = await this._organizationService.getOrgByCustomerId(
-      subscription.customer as string
-    );
-    if (!org) {
-      return;
+    const mark = `trial-ended:${subscription.id}`;
+    try {
+      const org = await this._organizationService.getOrgByCustomerId(
+        subscription.customer as string
+      );
+      if (!org) {
+        return;
+      }
+      await this.sendTrialEnded(org.id, subscription);
+    } catch (err) {
+      // Not sent: the mark goes, so Stripe's retry of the event sends it.
+      await ioRedis.del(mark);
+      throw err;
     }
+  }
+
+  private async sendTrialEnded(orgId: string, subscription: Stripe.Subscription) {
     const { billing } = this.planOfSubscription(subscription);
     await this._notificationService.inAppNotification(
-      org.id,
+      orgId,
       'Your free trial has ended',
       `Your free trial of Postra ${planLabel(
         billing
@@ -2377,9 +2388,20 @@ export class StripeService {
       await this.releaseTrialMarks({ customer, card: null, email });
       throw err;
     }
-    await stripe.customers.update(customer, {
-      metadata: { trial_email: email },
-    });
+    // The trial has started once Stripe made it. The webhook writes the same
+    // mark and Stripe retries it, so a failed write here is not the
+    // customer's error.
+    try {
+      await stripe.customers.update(customer, {
+        metadata: { trial_email: email },
+      });
+    } catch (err) {
+      this._logger.warn(
+        `Trial email mark on ${customer} not written yet: ${
+          (err as Error)?.message
+        }`
+      );
+    }
     await this.trialStarted(organizationId, body.billing, created.trial_end);
     return { id };
   }

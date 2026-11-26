@@ -138,6 +138,19 @@ describe('starting the trial', () => {
     );
   });
 
+  // The subscription exists once Stripe made it: a failed write of the mark
+  // on the customer is not an error for the customer (the webhook writes the
+  // same mark, and Stripe retries it).
+  it('a trial that started is answered as started, even when the email mark could not be written', async () => {
+    updateCustomer.mockRejectedValueOnce(new Error('Stripe is slow'));
+    const { service } = build();
+
+    const result = await service.startTrial('track', 'org-1', 'user-1', body, true);
+
+    expect(result.id).toBeTruthy();
+    expect(createSubscription).toHaveBeenCalledTimes(1);
+  });
+
   it('an email that already had a trial gets none, and the offer ends', async () => {
     searchCustomers.mockResolvedValue({ data: [{ id: 'cus_old' }] });
     const { service, organizationService } = build();

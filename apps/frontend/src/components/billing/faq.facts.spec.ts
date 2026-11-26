@@ -38,7 +38,7 @@ const NAMES: Record<string, string> = {
 // for £1 and charged when the trial ends.
 it('says the free trial needs no card and charges nothing when it ends', () => {
   expect(en.faq_free_trial_no_card).toContain('needs no card');
-  expect(en.faq_free_trial_no_card).toContain('nothing is charged when it ends');
+  expect(en.faq_free_trial_no_card).toContain('so nothing is charged when it ends');
   expect(en.faq_free_trial_no_card).not.toMatch(/£1|hold/);
   expect(stripe).toContain("missing_payment_method: 'cancel'");
 });

@@ -21,7 +21,7 @@ const useFaqList = () => {
             ),
             description: t(
               'faq_free_trial_no_card',
-              'Not for the free trial: it needs no card, and nothing is charged when it ends. You pay only once you choose a plan and add a card, and you can cancel any time in Billing, without talking to anyone.'
+              'Not for the free trial: it needs no card, so nothing is charged when it ends. You pay only once you choose a plan and add a card, and you can cancel any time in Billing, without talking to anyone.'
             ),
           },
         ]

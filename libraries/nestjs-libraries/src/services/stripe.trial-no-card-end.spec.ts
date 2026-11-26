@@ -138,3 +138,19 @@ describe('when a trial without a card ends', () => {
     expect(notificationService.inAppNotification).not.toHaveBeenCalled();
   });
 });
+
+// A notice that failed is sent again with Stripe's retry of the event: the
+// once-only mark was taken before the notice and kept it from the retry.
+describe('a trial-ended notice that failed', () => {
+  it('is sent on the retried event', async () => {
+    const sub = noCardTrial({ status: 'canceled', canceled_at: TRIAL_END, customer: 'cus_1' });
+    const { service, notificationService } = build();
+    notificationService.inAppNotification.mockRejectedValueOnce(new Error('mail down'));
+    const event = { id: 'evt_3', type: 'customer.subscription.deleted', data: { object: sub } } as any;
+
+    await expect(service.deleteSubscription(event)).rejects.toThrow('mail down');
+    await service.deleteSubscription(event);
+
+    expect(notificationService.inAppNotification).toHaveBeenCalledTimes(2);
+  });
+});

@@ -229,7 +229,7 @@ export const FirstBillingComponent = () => {
               <div>
                 {t(
                   'billing_nothing_charged_after_trial',
-                  'Nothing is charged when the trial ends'
+                  'No card, so no charge when the trial ends'
                 )}
               </div>
             </div>
@@ -277,7 +277,7 @@ export const FirstBillingComponent = () => {
               <div className="font-[600]">
                 {t(
                   'billing_trial_no_card_here',
-                  'Pick a plan on the right and start your free trial. No card is needed, and nothing is charged when the trial ends.'
+                  'Pick a plan on the right and start your free trial. No card is needed, so nothing is charged when the trial ends.'
                 )}
               </div>
               <button
