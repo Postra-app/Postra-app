@@ -19,6 +19,7 @@ import {
   UsePipes,
 } from '@nestjs/common';
 import { AccountAgeGuard } from '@gitroom/backend/services/auth/account-age.guard';
+import { TrialAiDailyGuard } from '@gitroom/backend/services/auth/trial-ai-daily.guard';
 import { UploadSlotsGuard } from '@gitroom/backend/services/auth/upload-slots.guard';
 import { CheckPolicies } from '@gitroom/backend/services/auth/permissions/permissions.ability';
 import {
@@ -495,7 +496,7 @@ export class MediaController {
   @Post('/:id/auto-caption')
   @CheckPolicies([AuthorizationActions.Create, Sections.AI])
   @Throttle({ default: { ttl: 300000, limit: 5 } })
-  @UseGuards(AccountAgeGuard)
+  @UseGuards(AccountAgeGuard, TrialAiDailyGuard)
   async autoCaption(
     @GetOrgFromRequest() org: Organization,
     @Param('id') id: string,
@@ -652,7 +653,7 @@ export class MediaController {
   @Post('/refine-design')
   @CheckPolicies([AuthorizationActions.Create, Sections.AI])
   @Throttle({ default: { ttl: 300000, limit: 30 } })
-  @UseGuards(AccountAgeGuard)
+  @UseGuards(AccountAgeGuard, TrialAiDailyGuard)
   refineDesign(
     @GetOrgFromRequest() org: Organization,
     @Body() body: RefineDesignDto
@@ -666,7 +667,7 @@ export class MediaController {
   @Post('/:id/retouch')
   @CheckPolicies([AuthorizationActions.Create, Sections.AI])
   @Throttle({ default: { ttl: 300000, limit: 60 } })
-  @UseGuards(AccountAgeGuard)
+  @UseGuards(AccountAgeGuard, TrialAiDailyGuard)
   retouch(
     @GetOrgFromRequest() org: Organization,
     @Param('id') id: string,
@@ -678,7 +679,7 @@ export class MediaController {
   @Post('/brand-voice-check')
   @CheckPolicies([AuthorizationActions.Create, Sections.AI])
   @Throttle({ default: { ttl: 300000, limit: 30 } })
-  @UseGuards(AccountAgeGuard)
+  @UseGuards(AccountAgeGuard, TrialAiDailyGuard)
   brandVoiceCheck(
     @GetOrgFromRequest() org: Organization,
     @Body() body: BrandVoiceCheckDto
@@ -689,7 +690,7 @@ export class MediaController {
   @Post('/:id/alt-text')
   @CheckPolicies([AuthorizationActions.Create, Sections.AI])
   @Throttle({ default: { ttl: 300000, limit: 30 } })
-  @UseGuards(AccountAgeGuard)
+  @UseGuards(AccountAgeGuard, TrialAiDailyGuard)
   generateAltText(
     @GetOrgFromRequest() org: Organization,
     @Param('id') id: string
@@ -700,7 +701,7 @@ export class MediaController {
   @Post('/suggest-hashtags')
   @CheckPolicies([AuthorizationActions.Create, Sections.AI])
   @Throttle({ default: { ttl: 300000, limit: 30 } })
-  @UseGuards(AccountAgeGuard)
+  @UseGuards(AccountAgeGuard, TrialAiDailyGuard)
   suggestHashtags(
     @GetOrgFromRequest() org: Organization,
     @Body() body: SuggestHashtagsDto
@@ -711,7 +712,7 @@ export class MediaController {
   @Post('/ai-edit')
   @CheckPolicies([AuthorizationActions.Create, Sections.AI])
   @Throttle({ default: { ttl: 300000, limit: 30 } })
-  @UseGuards(AccountAgeGuard)
+  @UseGuards(AccountAgeGuard, TrialAiDailyGuard)
   aiEdit(@GetOrgFromRequest() org: Organization, @Body() body: AiEditTextDto) {
     return this._mediaService.aiEditText(org, body);
   }
@@ -721,7 +722,7 @@ export class MediaController {
   @Post('/ai-chat')
   @CheckPolicies([AuthorizationActions.Create, Sections.AI])
   @Throttle({ default: { ttl: 300000, limit: 40 } })
-  @UseGuards(AccountAgeGuard)
+  @UseGuards(AccountAgeGuard, TrialAiDailyGuard)
   aiChat(@GetOrgFromRequest() org: Organization, @Body() body: AiChatDto) {
     return this._mediaService.aiChat(org, body);
   }
@@ -865,7 +866,7 @@ export class MediaController {
   @Post('/remove-background')
   @CheckPolicies([AuthorizationActions.Create, Sections.AI])
   @Throttle({ default: { ttl: 300000, limit: 60 } })
-  @UseGuards(AccountAgeGuard)
+  @UseGuards(AccountAgeGuard, TrialAiDailyGuard)
   @UseInterceptors(FileInterceptor('file'))
   removeBackground(
     @GetOrgFromRequest() org: Organization,

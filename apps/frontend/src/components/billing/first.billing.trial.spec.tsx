@@ -50,7 +50,7 @@ describe('the plan screen of a new account', () => {
     const { container } = render(<TrialLimitsBox />);
     expect(container.querySelector('details')).toBeNull();
     expect(container.textContent).toContain('Your 5-day free trial includes');
-    for (const limit of ['2 channels', '15 posts', '10 AI images', '1 AI video', '50 questions to the AI assistant']) {
+    for (const limit of ['2 channels', '15 posts', '10 AI images', '1 AI video', '50 questions to the AI assistant', '100 AI actions a day for writing and editing']) {
       expect(container.textContent).toContain(limit);
     }
     expect(container.textContent).toContain("Your plan's full limits start with your first payment.");

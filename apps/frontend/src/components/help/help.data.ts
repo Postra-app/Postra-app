@@ -8,6 +8,7 @@ import {
   TRIAL_CHANNEL_CAP,
   TRIAL_LIMITS,
   TRIAL_DAYS,
+  TRIAL_AI_ACTIONS_PER_DAY,
   TRIAL_AGENT_MESSAGES,
   TRIAL_AI_IMAGES,
   TRIAL_VIDEO_CLIPS,
@@ -735,7 +736,7 @@ const FAQ_SOURCE: FaqItem[] = [
   {
     question: 'How does the trial work?',
     answer:
-      'Every plan starts with a {{trialDays}}-day free trial, and no card is needed. During the trial you can connect up to {{trialChannels}} channels, schedule up to {{trialPosts}} posts, add {{trialWebhooks}} webhook and {{trialFeeds}} Auto Post feed, try AI with {{trialImages}} AI images, one AI video and {{trialQuestions}} questions to the AI assistant, and keep up to {{trialGb}} GB of photos and videos. The trial is for one person; team invites open with your plan. To keep your plan after the trial, add a card in Billing. Without one, nothing is charged: publishing stops when the trial ends, and your channels, posts and media stay saved until you choose a plan.',
+      'Every plan starts with a {{trialDays}}-day free trial, and no card is needed. During the trial you can connect up to {{trialChannels}} channels, schedule up to {{trialPosts}} posts, add {{trialWebhooks}} webhook and {{trialFeeds}} Auto Post feed, try AI with {{trialImages}} AI images, one AI video, {{trialQuestions}} questions to the AI assistant and {{trialAiActions}} AI actions a day for writing and editing, and keep up to {{trialGb}} GB of photos and videos. The trial is for one person; team invites open with your plan. To keep your plan after the trial, add a card in Billing. Without one, nothing is charged: publishing stops when the trial ends, and your channels, posts and media stay saved until you choose a plan.',
   },
   {
     question: 'How do AI videos work?',
@@ -808,6 +809,7 @@ export const HELP_VALUES: Record<string, number> = {
   businessGb: pricing.ULTIMATE.media_storage_gb,
   trialGb: TRIAL_LIMITS.media_storage_gb,
   trialDays: TRIAL_DAYS,
+  trialAiActions: TRIAL_AI_ACTIONS_PER_DAY,
   starterChannels: pricing.STANDARD.channel,
   proChannels: pricing.PRO.channel,
   businessChannels: pricing.ULTIMATE.channel,

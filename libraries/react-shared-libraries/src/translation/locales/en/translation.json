@@ -2293,7 +2293,7 @@
   "help_faq_2_q": "A post failed to publish - what should I do?",
   "help_faq_2_a": "Hover the red ! on the post in the Calendar to see the error returned by the platform. The usual causes: the channel needs reconnecting (red badge on its avatar), the media doesn't meet the platform's requirements, or the platform flagged a duplicate. Fix the cause and reschedule - still stuck? Email us.",
   "help_faq_3_q": "How does the trial work?",
-  "help_faq_3_a": "Every plan starts with a {{trialDays}}-day free trial, and no card is needed. During the trial you can connect up to {{trialChannels}} channels, schedule up to {{trialPosts}} posts, add {{trialWebhooks}} webhook and {{trialFeeds}} Auto Post feed, try AI with {{trialImages}} AI images, one AI video and {{trialQuestions}} questions to the AI assistant, and keep up to {{trialGb}} GB of photos and videos. The trial is for one person; team invites open with your plan. To keep your plan after the trial, add a card in Billing. Without one, nothing is charged: publishing stops when the trial ends, and your channels, posts and media stay saved until you choose a plan.",
+  "help_faq_3_a": "Every plan starts with a {{trialDays}}-day free trial, and no card is needed. During the trial you can connect up to {{trialChannels}} channels, schedule up to {{trialPosts}} posts, add {{trialWebhooks}} webhook and {{trialFeeds}} Auto Post feed, try AI with {{trialImages}} AI images, one AI video, {{trialQuestions}} questions to the AI assistant and {{trialAiActions}} AI actions a day for writing and editing, and keep up to {{trialGb}} GB of photos and videos. The trial is for one person; team invites open with your plan. To keep your plan after the trial, add a card in Billing. Without one, nothing is charged: publishing stops when the trial ends, and your channels, posts and media stay saved until you choose a plan.",
   "help_faq_4_q": "How do AI videos work?",
   "help_faq_4_a": "In the post editor, click AI Video (on a computer or tablet), describe the scene, pick vertical (Stories, Reels) or horizontal, and optionally add up to 3 of your images for the video to feature. Google's Veo 3.1 model makes an 8-second clip with sound in one to three minutes; it is attached to your post and saved in your media library. Each clip uses one video credit: {{starterVideos}} a month on Starter, {{proVideos}} on Pro and {{businessVideos}} on Business, and {{trialVideos}} during the trial. A clip that fails costs nothing, and asking for exactly the same clip again within 10 minutes returns the one already made instead of using another credit.",
   "help_faq_5_q": "Can I post to multiple channels at once?",
@@ -2468,5 +2468,6 @@
   "add_a_card": "Add a card",
   "end_trial_now_button": "End the trial now",
   "free_trial_limit": "Free trial limit",
-  "channels_used_full_trial": "{{used}} of {{limit}} social accounts connected: the free trial includes {{limit}}. End the trial in Billing to connect up to {{planLimit}} on {{plan}}."
+  "channels_used_full_trial": "{{used}} of {{limit}} social accounts connected: the free trial includes {{limit}}. End the trial in Billing to connect up to {{planLimit}} on {{plan}}.",
+  "billing_trial_box_ai_actions": "{{n}} AI actions a day for writing and editing"
 }

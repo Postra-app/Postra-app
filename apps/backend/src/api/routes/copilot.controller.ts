@@ -32,7 +32,11 @@ import { PostsService } from '@gitroom/nestjs-libraries/database/prisma/posts/po
 import { Request, Response } from 'express';
 import { RequestContext } from '@mastra/core/di';
 import { recordAgentMessage } from '@gitroom/nestjs-libraries/services/ai-usage.record';
-import { agentLimitMessage } from '@gitroom/nestjs-libraries/database/prisma/subscriptions/pricing';
+import {
+  agentLimitMessage,
+  TRIAL_AUTOCOMPLETE_PER_DAY,
+} from '@gitroom/nestjs-libraries/database/prisma/subscriptions/pricing';
+import { withinTrialDay } from '@gitroom/backend/services/auth/trial-ai-daily.guard';
 import { CheckPolicies } from '@gitroom/backend/services/auth/permissions/permissions.ability';
 import { AuthorizationActions, Sections } from '@gitroom/nestjs-libraries/services/auth/permission.exception.class';
 import { OpenaiService } from '@gitroom/nestjs-libraries/openai/openai.service';
@@ -82,6 +86,17 @@ export class CopilotController {
     @GetOrgFromRequest() organization: Organization,
     @Body() body: AutocompleteDto
   ) {
+    // A trial's suggestions for the day are used: no suggestion, as when
+    // OpenAI fails. A 402 here would open a dialog while the customer types.
+    if (
+      !(await withinTrialDay(
+        organization,
+        'autocomplete',
+        TRIAL_AUTOCOMPLETE_PER_DAY
+      ))
+    ) {
+      return { suggestion: '' };
+    }
     try {
       return {
         suggestion: await this._openaiService.autocomplete(

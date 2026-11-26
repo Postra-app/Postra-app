@@ -264,6 +264,21 @@ export const TRIAL_VIDEO_CLIPS = 1;
 export const TRIAL_AI_IMAGES = 10;
 export const TRIAL_AGENT_MESSAGES = 50;
 
+// The AI that writes and edits (rewrite, chat, hashtags, alt text, captions,
+// retouch, background removal) draws on no allowance: a trial has this many
+// such actions a day (TrialAiDailyGuard), a paid plan only rate limits. About
+// $0.002 an action, so a script on a trial costs ~$1 over the trial instead
+// of ~$17 a day at the rate limits.
+export const TRIAL_AI_ACTIONS_PER_DAY = 100;
+
+// Suggestions while typing (copilot autocomplete, ~$0.002 each) come many to
+// a post, so they have their own daily number on a trial; past it the editor
+// simply stops suggesting.
+export const TRIAL_AUTOCOMPLETE_PER_DAY = 300;
+
+export const trialAiActionsMessage = (): string =>
+  `Your free trial includes ${TRIAL_AI_ACTIONS_PER_DAY} AI actions a day (writing, hashtags, captions, retouch), and today's are used. They start again tomorrow; your plan has no daily limit. End the trial to start your plan now.`;
+
 export const trialAiAllowance = (
   allowance: number,
   isTrailing: boolean | undefined,

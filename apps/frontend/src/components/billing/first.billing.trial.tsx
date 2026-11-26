@@ -4,6 +4,7 @@ import { FC } from 'react';
 import { useT } from '@gitroom/react/translation/get.transation.service.client';
 import {
   TRIAL_AGENT_MESSAGES,
+  TRIAL_AI_ACTIONS_PER_DAY,
   TRIAL_AI_IMAGES,
   TRIAL_CHANNEL_CAP,
   TRIAL_DAYS,
@@ -77,6 +78,9 @@ export const TrialLimitsBox: FC = () => {
     t('billing_trial_box_videos', '{{n}} AI video', { n: TRIAL_VIDEO_CLIPS }),
     t('billing_trial_box_questions', '{{n}} questions to the AI assistant', {
       n: TRIAL_AGENT_MESSAGES,
+    }),
+    t('billing_trial_box_ai_actions', '{{n}} AI actions a day for writing and editing', {
+      n: TRIAL_AI_ACTIONS_PER_DAY,
     }),
   ];
   return (
