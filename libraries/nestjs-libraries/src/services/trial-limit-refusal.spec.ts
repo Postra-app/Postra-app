@@ -15,6 +15,13 @@ describe('no AI image credits left', () => {
     });
   });
 
+  it('tells the page whether this member can open Billing', () => {
+    const member = noImageCredits({ isTrailing: true, subscription: { subscriptionTier: 'PRO' }, users: [{ role: 'USER' }] } as any);
+    expect((member.getResponse() as any).canManageBillingUi).toBe(false);
+    const owner = noImageCredits({ isTrailing: true, subscription: { subscriptionTier: 'PRO' }, users: [{ role: 'SUPERADMIN' }] } as any);
+    expect((owner.getResponse() as any).canManageBillingUi).toBe(true);
+  });
+
   it('on a paid plan: the plan wording, as before', () => {
     const refusal = noImageCredits({ isTrailing: false, subscription: { subscriptionTier: 'PRO' } } as any);
     expect(refusal.getStatus()).toBe(402);
