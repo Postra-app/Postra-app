@@ -14,6 +14,7 @@ import {
   planLabel,
   pricing,
   TRIAL_AGENT_MESSAGES,
+  TRIAL_AI_ACTIONS_PER_DAY,
   TRIAL_AI_IMAGES,
   TRIAL_CHANNEL_CAP,
   TRIAL_DAYS,
@@ -1413,6 +1414,22 @@ export class StripeService {
       ).data.filter((f) => f.status === 'active' || f.status === 'trialing'),
     };
 
+    // A trial without a card has no invoice to preview: Stripe refuses one
+    // ("will cancel at the end of the trial instead of generating an
+    // invoice"). A change during it costs nothing today and renews when the
+    // trial ends.
+    const trial = currentUserSubscription.data.find(
+      (f) => f.status === 'trialing'
+    );
+    if (trial?.trial_end && !(await this.hasPaymentMethod(trial))) {
+      return {
+        price: 0,
+        renewsOn: new Date(trial.trial_end * 1000).toISOString(),
+        renewalPrice: (findPrice?.unit_amount ?? 0) / 100,
+        scheduled: false,
+      };
+    }
+
     // Preview exactly what subscribe() does — same price, always_invoice, the
     // billing cycle left where it is — so "Pay today" is the amount charged.
     // This used to ask for billing_cycle_anchor 'now' together with a
@@ -1977,6 +1994,18 @@ export class StripeService {
     if (!trialing) {
       return null;
     }
+    // Without a card Stripe has no invoice to preview (it would cancel the
+    // trial): the dialog asks for a card first, and shows the plan's price.
+    if (!(await this.hasPaymentMethod(trialing))) {
+      const price = trialing.items?.data?.[0]?.price;
+      return {
+        amount: price?.unit_amount ?? null,
+        currency: price?.currency ?? 'gbp',
+        tier: trialing.metadata?.billing || null,
+        period: trialing.metadata?.period || null,
+        hasCard: false,
+      };
+    }
     const preview = await stripe.invoices.createPreview({
       customer: paymentId,
       subscription: trialing.id,
@@ -2430,7 +2459,7 @@ export class StripeService {
           ends ? ` and ends on ${ends}` : ''
         }. It includes ${TRIAL_CHANNEL_CAP} channels, ${
           TRIAL_LIMITS.posts_per_month
-        } posts, ${TRIAL_AI_IMAGES} AI images, ${TRIAL_VIDEO_CLIPS} AI video and ${TRIAL_AGENT_MESSAGES} questions to the AI assistant; your plan's full limits start with your first payment. To keep your plan after the trial, add a card in Billing: ${
+        } posts, ${TRIAL_AI_IMAGES} AI images, ${TRIAL_VIDEO_CLIPS} AI video, ${TRIAL_AGENT_MESSAGES} questions to the AI assistant and ${TRIAL_AI_ACTIONS_PER_DAY} AI actions a day for writing and editing; your plan's full limits start with your first payment. To keep your plan after the trial, add a card in Billing: ${
           process.env.FRONTEND_URL
         }/billing. Without a card, nothing is charged when the trial ends.`,
         true,
