@@ -10,6 +10,7 @@ const cancelSubscription = jest.fn().mockResolvedValue({});
 const listMethods = jest.fn();
 const createIntent = jest.fn();
 const retrieveCustomer = jest.fn();
+const createPreview = jest.fn();
 const createPortal = jest.fn().mockResolvedValue({ url: 'https://billing.stripe.com/p/x' });
 
 jest.mock('stripe', () => {
@@ -28,6 +29,7 @@ jest.mock('stripe', () => {
     paymentMethods: { list: listMethods },
     paymentIntents: { create: createIntent, cancel: jest.fn() },
     billingPortal: { sessions: { create: createPortal } },
+    invoices: { createPreview },
   }));
   mock.errors = actual.errors ?? actual.default?.errors;
   return mock;
@@ -131,7 +133,7 @@ describe('starting the trial', () => {
     expect(notificationService.inAppNotification).toHaveBeenCalledWith(
       'org-1',
       'Your Postra free trial has started',
-      'Your 5-day free trial of Postra Pro has started and ends on 1 December. It includes 2 channels, 15 posts, 10 AI images, 1 AI video and 50 questions to the AI assistant; your plan\'s full limits start with your first payment. To keep your plan after the trial, add a card in Billing: https://app.example/billing. Without a card, nothing is charged when the trial ends.',
+      'Your 5-day free trial of Postra Pro has started and ends on 1 December. It includes 2 channels, 15 posts, 10 AI images, 1 AI video, 50 questions to the AI assistant and 100 AI actions a day for writing and editing; your plan\'s full limits start with your first payment. To keep your plan after the trial, add a card in Billing: https://app.example/billing. Without a card, nothing is charged when the trial ends.',
       true,
       false,
       'info'
@@ -362,5 +364,47 @@ describe('the trial bar', () => {
     const { service } = build();
 
     expect(await service.trialStatus('cus_new')).toBeNull();
+  });
+});
+
+// Stripe refuses an invoice preview for a trial that has no card and is set to
+// cancel ("The subscription will cancel at the end of the trial instead of
+// generating an invoice"). The "End the trial now" dialog then fell back to
+// "Your card is charged straight away".
+describe('a trial without a card is not previewed as an invoice', () => {
+  const trialing = {
+    id: 'sub_new',
+    customer: 'cus_new',
+    status: 'trialing',
+    trial_end: 2000,
+    default_payment_method: null,
+    metadata: { billing: 'PRO', period: 'MONTHLY', trial_no_card: '1' },
+    items: { data: [{ id: 'si_1', price: { id: 'price_pro', unit_amount: 2900, currency: 'gbp' } }] },
+  };
+  beforeEach(() => {
+    listSubscriptions.mockResolvedValue({ data: [trialing] });
+    retrieveCustomer.mockResolvedValue({ id: 'cus_new', invoice_settings: { default_payment_method: null } });
+    createPreview.mockRejectedValue(new Error('The subscription will cancel at the end of the trial instead of generating an invoice'));
+  });
+
+  it('"End the trial now" learns there is no card, with the plan\'s price', async () => {
+    const { service } = build();
+
+    expect(await service.finishTrialPreview('cus_new')).toEqual({ amount: 2900, currency: 'gbp', tier: 'PRO', period: 'MONTHLY', hasCard: false });
+    expect(createPreview).not.toHaveBeenCalled();
+  });
+
+  it('a plan change during it costs nothing today and renews when the trial ends', async () => {
+    const { service, organizationService } = build();
+    (organizationService as any).getOrgById.mockResolvedValue({ id: 'org-1', paymentId: 'cus_new' });
+
+    expect(await service.prorate('org-1', { billing: 'ULTIMATE', period: 'MONTHLY' } as any)).toEqual({
+      price: 0,
+      renewsOn: new Date(2000 * 1000).toISOString(),
+      renewalPrice: expect.any(Number),
+      scheduled: false,
+      trialNoCard: true,
+    });
+    expect(createPreview).not.toHaveBeenCalled();
   });
 });

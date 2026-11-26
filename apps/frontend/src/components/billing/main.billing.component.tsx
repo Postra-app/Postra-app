@@ -297,6 +297,7 @@ export const MainBillingComponent: FC<{
         renewsOn?: string | null;
         renewalPrice?: number;
         scheduled?: boolean;
+        trialNoCard?: boolean;
       } = {};
       try {
         const response = await fetch('/billing/prorate', {
@@ -318,8 +319,22 @@ export const MainBillingComponent: FC<{
       }
       const today = `£${Math.max(quote.price || 0, 0).toFixed(2)}`;
       const plan = planLabel(billing);
+      // A trial without a card renews only once a card is added.
       const renewal =
-        quote.renewsOn && quote.renewalPrice
+        quote.trialNoCard && quote.renewsOn && quote.renewalPrice
+          ? t(
+              period === 'YEARLY'
+                ? 'plan_change_renewal_trial_year'
+                : 'plan_change_renewal_trial_month',
+              period === 'YEARLY'
+                ? 'From {{date}}: £{{price}} a year if you add a card before then; without one the trial ends with no charge.'
+                : 'From {{date}}: £{{price}} a month if you add a card before then; without one the trial ends with no charge.',
+              {
+                date: newDayjs(quote.renewsOn).format('D MMMM'),
+                price: quote.renewalPrice,
+              }
+            )
+          : quote.renewsOn && quote.renewalPrice
           ? t(
               period === 'YEARLY'
                 ? 'plan_change_renewal_year'

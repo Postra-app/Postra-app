@@ -4,6 +4,7 @@ import { ReactNode, useCallback, useRef } from 'react';
 import { sameOriginUrl } from '@gitroom/frontend/components/layout/safe.url';
 import { FetchWrapperComponent } from '@gitroom/helpers/utils/custom.fetch';
 import { deleteDialog } from '@gitroom/react/helpers/delete.dialog';
+import { areYouSure } from '@gitroom/frontend/components/layout/new-modal';
 import { useReturnUrl } from '@gitroom/frontend/app/(app)/auth/return.url.component';
 import { useVariables } from '@gitroom/react/helpers/variable.context';
 import { useToaster } from '@gitroom/react/toaster/toaster';
@@ -163,14 +164,16 @@ function LayoutContextInner(params: { children: ReactNode }) {
         // A limit of the free trial: the plan is chosen already, ending the
         // trial starts it (the next screen shows the price, and asks for a
         // card first when the trial has none).
+        // Not a delete: the approve button is not the red one.
         if (trial) {
           if (
-            await deleteDialog(
-              message,
-              t('end_trial_now_button', 'End the trial now'),
-              t('free_trial_limit', 'Free trial limit'),
-              t('keep_my_trial', 'Keep my trial')
-            )
+            await areYouSure({
+              destructive: false,
+              title: t('free_trial_limit', 'Free trial limit'),
+              description: message || '',
+              approveLabel: t('end_trial_now_button', 'End the trial now'),
+              cancelLabel: t('keep_my_trial', 'Keep my trial'),
+            })
           ) {
             window.open('/billing?finishTrial=true', '_blank');
             return false;

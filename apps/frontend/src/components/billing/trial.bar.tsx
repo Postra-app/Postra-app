@@ -72,10 +72,12 @@ export const TrialBarView: FC<{
 export const TrialBar: FC = () => {
   const user = useUser();
   const fetch = useFetch();
+  // Counted again when the customer comes back to the tab and once a minute,
+  // so an image made or a post scheduled shows without a reload.
   const { data } = useSWR<TrialStatus | { trial: false }>(
     user?.isTrailing ? '/billing/trial' : null,
     async () => (await fetch('/billing/trial')).json(),
-    { revalidateOnFocus: false }
+    { revalidateOnFocus: true, refreshInterval: 60_000 }
   );
   // Stripe's own page for adding a card: the card becomes the one the first
   // payment after the trial is taken from.

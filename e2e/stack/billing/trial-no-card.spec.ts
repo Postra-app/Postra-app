@@ -27,8 +27,8 @@ test.describe.configure({ mode: 'serial', timeout: 6 * 60_000 });
 
 // A new account: no plan yet, the trial on offer, a Stripe customer on a test
 // clock (the trial starts on it, so the clock can move it).
-const newAccount = async () => {
-  const org = await throwawayOrg(prisma, { tier: 'PRO', totalChannels: 8, channels: 0 });
+const newAccount = async (channels = 0) => {
+  const org = await throwawayOrg(prisma, { tier: 'PRO', totalChannels: 8, channels });
   await prisma.subscription.deleteMany({ where: { organizationId: org.orgId } });
   const clock = await stripe.testHelpers.testClocks.create({ frozen_time: Math.floor(Date.now() / 1000) });
   const customer = await stripe.customers.create({ test_clock: clock.id, email: `${org.orgId}@example.com` });
@@ -138,4 +138,51 @@ test('a card added during the trial keeps the plan: charged at the end, full lim
   const [invoice] = (await stripe.invoices.list({ customer: account.customer, status: 'paid', limit: 1 })).data;
   expect(invoice.amount_paid).toBe(2900);
   expect((await notes(account.orgId)).some((n) => n.includes('has ended'))).toBe(false);
+});
+
+// The trial bar counts what the trial has used, from the same rules the
+// limits use: channels that take a slot, posts counted this billing month,
+// AI images from the credits ledger.
+test('the trial bar counts the channels, posts and AI images used', async ({ browser }) => {
+  const account = await newAccount(2);
+  await start(account);
+  await prisma.post.createMany({
+    data: Array.from({ length: 4 }, (_, i) => ({
+      organizationId: account.orgId,
+      integrationId: account.channelIds[0],
+      content: `[stack] trial bar ${i}`,
+      group: `stack-trial-bar-${account.orgId}-${i}`,
+      state: 'QUEUE' as const,
+      publishDate: new Date(Date.now() + 86_400_000),
+    })),
+  });
+  await prisma.credits.create({ data: { organizationId: account.orgId, credits: 3, type: 'ai_images' } });
+
+  const bar = await (await account.api.get('/billing/trial')).json();
+  expect(bar).toMatchObject({
+    trial: true,
+    hasCard: false,
+    channels: { used: 2, limit: 2 },
+    posts: { used: 4, limit: 15 },
+    images: { used: 3, limit: 10 },
+  });
+  expect(Math.round((bar.endsAt - Date.now()) / 86_400_000)).toBe(TRIAL_DAYS);
+
+  // What the customer sees, when the UI layer runs.
+  if (process.env.STACK_UI) {
+    const context = await browser.newContext({ baseURL: 'http://localhost:54000', storageState: await account.api.storageState() });
+    const page = await context.newPage();
+    await page.goto('/launches');
+    const shown = page.getByTestId('trial-bar');
+    await expect(shown).toContainText('Free trial: 5 days left', { timeout: 30_000 });
+    await expect(shown).toContainText('Channels 2 / 2');
+    await expect(shown).toContainText('Posts 4 / 15');
+    await expect(shown).toContainText('AI images 3 / 10');
+
+    // A new image counts without a reload: the bar asks again every minute
+    // (and when the tab comes back into view).
+    await prisma.credits.create({ data: { organizationId: account.orgId, credits: 1, type: 'ai_images' } });
+    await expect(shown).toContainText('AI images 4 / 10', { timeout: 75_000 });
+    await context.close();
+  }
 });
