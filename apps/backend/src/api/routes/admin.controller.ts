@@ -1467,6 +1467,21 @@ export class AdminController {
    * a new provider is enough — today it is instagram-standalone, threads and
    * whop, and a list in a comment would be wrong the first time that changes.
    */
+  /**
+   * Providers whose stored expiry date is not when the token dies
+   * (`noRefreshBeforeCall`: Facebook, Instagram through Facebook). Read off
+   * the providers, like the scheduled ones.
+   */
+  private noExpiryProviders(): string[] {
+    return this._integrationManager
+      .getAllowedSocialsIntegrations()
+      .filter(
+        (identifier) =>
+          !!this._integrationManager.getSocialIntegration(identifier)
+            ?.noRefreshBeforeCall
+      );
+  }
+
   private scheduledProviders(): string[] {
     return this._integrationManager
       .getAllowedSocialsIntegrations()
@@ -1591,7 +1606,18 @@ export class AdminController {
     // object would overwrite each other — so the pieces are ANDed rather than
     // spread together.
     const where = {
-      AND: [base, ...(state ? [channelStateWhere(state as ChannelState, now)] : [])],
+      AND: [
+        base,
+        ...(state
+          ? [
+              channelStateWhere(
+                state as ChannelState,
+                now,
+                this.noExpiryProviders()
+              ),
+            ]
+          : []),
+      ],
     };
 
     const [rows, total, summary] = await Promise.all([
@@ -1627,6 +1653,7 @@ export class AdminController {
     ]);
 
     const scheduled = new Set(this.scheduledProviders());
+    const noExpiry = new Set(this.noExpiryProviders());
     const errors = await this.channelErrors(
       rows.map((row) => row.id),
       now
@@ -1634,7 +1661,13 @@ export class AdminController {
 
     return {
       items: rows.map((row) => {
-        const rowState = channelState(row, now.getTime());
+        const rowState = channelState(
+          {
+            ...row,
+            expiryNotMeaningful: noExpiry.has(row.providerIdentifier),
+          },
+          now.getTime()
+        );
         const isScheduled = scheduled.has(row.providerIdentifier);
         const socialProvider = (() => {
           try {
@@ -1667,7 +1700,11 @@ export class AdminController {
           scheduled: isScheduled,
           actionable: isActionable(rowState, isScheduled),
           tokenExpiration: row.tokenExpiration,
-          expiresInSeconds: expiresInSeconds(row.tokenExpiration, now.getTime()),
+          // null reads "does not expire" on the panel, which is the truth
+          // for a provider whose stored date means nothing.
+          expiresInSeconds: noExpiry.has(row.providerIdentifier)
+            ? null
+            : expiresInSeconds(row.tokenExpiration, now.getTime()),
           // null means the column predates this channel, which is not the same
           // as a platform that granted nothing — the difference decides
           // whether a reconnect would actually help.
@@ -1712,6 +1749,7 @@ export class AdminController {
     now: Date
   ): Promise<Record<string, number>> {
     const notScheduled = notScheduledWhere(this.scheduledProviders());
+    const noExpiryProviders = this.noExpiryProviders();
 
     // The counts sit beside the filter options, so the one for deleted has to
     // be the real number rather than the zero that `deletedAt: null` in the
@@ -1727,7 +1765,7 @@ export class AdminController {
           where: {
             AND: [
               state === 'deleted' ? baseIgnoringDeleted : base,
-              channelStateWhere(state, now),
+              channelStateWhere(state, now, noExpiryProviders),
             ],
           },
         })
@@ -1744,7 +1782,11 @@ export class AdminController {
     // no workflow is watching.
     const expiredUnwatched = await this._prisma.integration.count({
       where: {
-        AND: [base, channelStateWhere('expired', now), notScheduled],
+        AND: [
+          base,
+          channelStateWhere('expired', now, noExpiryProviders),
+          notScheduled,
+        ],
       },
     });
 

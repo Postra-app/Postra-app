@@ -29,9 +29,14 @@ interface Row {
   inBetweenSteps?: boolean;
   refreshNeeded?: boolean;
   tokenExpiration?: Date | null;
+  providerIdentifier?: string;
 }
 
+// Facebook's stored date is not when its page token dies.
+const NO_EXPIRY = ['facebook'];
+
 const base = {
+  providerIdentifier: 'x',
   deletedAt: null,
   disabled: false,
   inBetweenSteps: false,
@@ -58,6 +63,22 @@ const rows: Row[] = [
     why: 'switched off and flagged for reconnect',
     disabled: true,
     refreshNeeded: true,
+  },
+  {
+    why: 'a facebook page past its stored date',
+    providerIdentifier: 'facebook',
+    tokenExpiration: hours(-1),
+  },
+  {
+    why: 'a facebook page a few hours before its stored date',
+    providerIdentifier: 'facebook',
+    tokenExpiration: hours(5),
+  },
+  {
+    why: 'a facebook page whose refresh failed',
+    providerIdentifier: 'facebook',
+    refreshNeeded: true,
+    tokenExpiration: hours(-1),
   },
   { why: 'removed by the customer', deletedAt: hours(-500) },
   {
@@ -95,6 +116,9 @@ const matchesCondition = (value: unknown, condition: unknown): boolean => {
     if ('notIn' in c) {
       return !(c.notIn as unknown[]).includes(value);
     }
+    if ('in' in c) {
+      return (c.in as unknown[]).includes(value);
+    }
     return true;
   }
   return value === condition;
@@ -113,11 +137,17 @@ const matches = (where: Record<string, unknown>, row: Row): boolean =>
 describe('channelStateWhere agrees with channelState', () => {
   for (const row of rows) {
     const full = { ...base, ...row };
-    const state = channelState(full, NOW.getTime());
+    const state = channelState(
+      {
+        ...full,
+        expiryNotMeaningful: NO_EXPIRY.includes(full.providerIdentifier),
+      },
+      NOW.getTime()
+    );
 
     it(`${row.why} → ${state}`, () => {
       const matched = CHANNEL_STATES.filter((candidate) =>
-        matches(channelStateWhere(candidate, NOW), full)
+        matches(channelStateWhere(candidate, NOW, NO_EXPIRY), full)
       );
 
       // Exactly one, and the one the badge will show. Two means a row would be
@@ -126,12 +156,28 @@ describe('channelStateWhere agrees with channelState', () => {
     });
   }
 
+  it('a facebook page past its stored date is ok, not expired', () => {
+    expect(
+      channelState(
+        { ...base, tokenExpiration: hours(-1), expiryNotMeaningful: true },
+        NOW.getTime()
+      )
+    ).toBe('ok');
+    expect(
+      matches(channelStateWhere('expired', NOW, NO_EXPIRY), {
+        ...base,
+        providerIdentifier: 'facebook',
+        tokenExpiration: hours(-1),
+      })
+    ).toBe(false);
+  });
+
   it('covers every row with exactly one state, so the counts add up', () => {
     const counted = CHANNEL_STATES.reduce(
       (sum, state) =>
         sum +
         rows.filter((row) =>
-          matches(channelStateWhere(state, NOW), { ...base, ...row })
+          matches(channelStateWhere(state, NOW, NO_EXPIRY), { ...base, ...row })
         ).length,
       0
     );

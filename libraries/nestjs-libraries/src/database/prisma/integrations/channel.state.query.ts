@@ -25,11 +25,20 @@ const HEALTHY: Record<string, unknown> = {
   refreshNeeded: false,
 };
 
+/**
+ * `noExpiryProviders`: the providers whose stored date is not when the token
+ * dies (`expiryNotMeaningful` in channel.state.ts). Passed in from the
+ * integration manager, like the scheduled ones below.
+ */
 export const channelStateWhere = (
   state: ChannelState,
-  now: Date = new Date()
+  now: Date = new Date(),
+  noExpiryProviders: string[] = []
 ): Record<string, unknown> => {
   const windowEnd = new Date(now.getTime() + REFRESH_WINDOW_MS);
+  const expiryCounts = noExpiryProviders.length
+    ? { providerIdentifier: { notIn: noExpiryProviders } }
+    : {};
 
   switch (state) {
     case 'deleted':
@@ -46,16 +55,26 @@ export const channelStateWhere = (
         refreshNeeded: true,
       };
     case 'expired':
-      return { ...HEALTHY, tokenExpiration: { lte: now } };
+      return { ...HEALTHY, ...expiryCounts, tokenExpiration: { lte: now } };
     case 'expiring':
-      return { ...HEALTHY, tokenExpiration: { gt: now, lte: windowEnd } };
+      return {
+        ...HEALTHY,
+        ...expiryCounts,
+        tokenExpiration: { gt: now, lte: windowEnd },
+      };
     case 'ok':
     default:
       // A null expiry belongs here, and Prisma's `gt` would drop it: the four
       // providers that never report one are healthy, not unknown.
       return {
         ...HEALTHY,
-        OR: [{ tokenExpiration: null }, { tokenExpiration: { gt: windowEnd } }],
+        OR: [
+          { tokenExpiration: null },
+          { tokenExpiration: { gt: windowEnd } },
+          ...(noExpiryProviders.length
+            ? [{ providerIdentifier: { in: noExpiryProviders } }]
+            : []),
+        ],
       };
   }
 };
