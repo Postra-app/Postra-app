@@ -844,7 +844,20 @@ export const AddProviderComponent: FC<{
     <div className="w-full flex flex-col gap-[20px] rounded-[4px] relative">
       {showCounter && (
         <div className="text-[14px] text-newTextColor/80 -mt-[8px]">
-          {channelsFull
+          {channelsFull && user?.isTrailing
+            ? t(
+                'channels_used_full_trial',
+                '{{used}} of {{limit}} social accounts connected: the free trial includes {{limit}}. End the trial in Billing to connect up to {{planLimit}} on {{plan}}.',
+                {
+                  used: props.channelsUsed,
+                  limit: channelLimit,
+                  // The plan's own number: totalChannels is held to the
+                  // trial's cap while trialing.
+                  planLimit: user?.tier?.channel || 0,
+                  plan: planLabel(user?.tier?.current),
+                }
+              )
+            : channelsFull
             ? t(
                 'channels_used_full',
                 '{{used}} of {{limit}} social accounts connected. Upgrade your plan to add more.',

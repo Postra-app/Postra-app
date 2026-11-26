@@ -2,6 +2,7 @@ import { expect, test } from '@playwright/test';
 import { Client, Connection } from '@temporalio/client';
 import { PrismaClient } from '@prisma/client';
 import { anonymous, database, throwawayOrg } from '../helpers';
+import { TRIAL_CHANNEL_CAP } from '../../../libraries/nestjs-libraries/src/database/prisma/subscriptions/pricing';
 
 // A plan bought in the iOS app is billed by Apple: the app hands over the
 // transaction, Apple's notifications keep it in step, and Stripe stays out of
@@ -110,7 +111,7 @@ test('a purchase from the app becomes the plan, a trial under the trial limits',
     const self = await org.self();
     expect(self).toMatchObject({ tier: 'PRO', isTrailing: true, appleBilled: true });
     // The trial cap on channels, as for a trial started on the web.
-    expect(self.totalChannels).toBe(3);
+    expect(self.totalChannels).toBe(TRIAL_CHANNEL_CAP);
 
     const row = await prisma.subscription.findUniqueOrThrow({ where: { organizationId: org.orgId } });
     expect(row).toMatchObject({

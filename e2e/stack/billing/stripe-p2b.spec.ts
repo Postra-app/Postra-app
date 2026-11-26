@@ -163,12 +163,13 @@ test('#5 #11 downgrade Business → Starter: what switches off, and a member kee
   const channels = await prisma.integration.findMany({ where: { organizationId: org.orgId, deletedAt: null }, select: { providerIdentifier: true, disabled: true } });
   const active = channels.filter((c) => !c.disabled).map((c) => c.providerIdentifier);
   test.info().annotations.push({ type: 'still active on Starter', description: active.join(', ') });
-  expect(active.length).toBeLessThanOrEqual(3);
+  // Starter's own number (4 since the plans changed; this said 3).
+  expect(active.length).toBeLessThanOrEqual(pricing.STANDARD.channel!);
   for (const p of ['x', 'discord', 'youtube', 'threads', 'linkedin-page']) {
     expect(active, `${p} is not a Starter platform`).not.toContain(p);
   }
-  // Of the Starter platforms, the three connected first stay.
-  expect(active.sort()).toEqual(['facebook', 'instagram', 'linkedin']);
+  // Of the Starter platforms, the four connected first stay (Starter's 4).
+  expect(active.sort()).toEqual(['facebook', 'instagram', 'linkedin', 'tiktok']);
   const owner = await prisma.userOrganization.findFirst({ where: { organizationId: org.orgId, role: 'SUPERADMIN' } });
   expect(owner?.disabled, 'the owner keeps their seat').toBe(false);
   const elsewhere = await prisma.userOrganization.findFirst({ where: { userId: members[1], organizationId: other.orgId } });

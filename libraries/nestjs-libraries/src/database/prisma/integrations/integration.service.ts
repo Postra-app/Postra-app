@@ -155,7 +155,8 @@ export class IntegrationService {
     refresh?: string,
     timezone?: number | string,
     customInstanceDetails?: string,
-    grantedScopes?: string[]
+    grantedScopes?: string[],
+    rootInternalId?: string
   ) {
     const existingChannel = await this._integrationRepository.findActiveByProviderIdentifier(
       provider,
@@ -223,7 +224,8 @@ export class IntegrationService {
       refresh,
       timezone,
       customInstanceDetails,
-      grantedScopes
+      grantedScopes,
+      rootInternalId
     );
   }
 

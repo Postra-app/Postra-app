@@ -2,6 +2,7 @@
 
 import { FC } from 'react';
 import {
+  TRIAL_DAYS,
   TRIAL_CHANNEL_CAP,
   TRIAL_LIMITS,
   TRIAL_AGENT_MESSAGES,
@@ -21,10 +22,10 @@ export const TrialLimitsNote: FC<{ endTrialLink?: boolean }> = ({
   return (
     <div className="text-[14px] text-newTextColor/70 max-w-[760px]">
       {t(
-        'billing_trial_limits',
-        "During the 7-day trial you can connect up to {{channels}} channels, schedule up to {{posts}} posts, add {{webhooks}} webhook and {{feeds}} Auto Post feed, try AI with {{images}} AI images, {{videos}} AI video and {{questions}} questions to the AI assistant, and keep up to {{storage}} GB of photos and videos. The trial is for one person, so team invites open with your plan. Your full plan unlocks with the first payment, or straight away if you end the trial early.",
-
+        'billing_free_trial_limits',
+        "During the {{days}}-day trial you can connect up to {{channels}} channels, schedule up to {{posts}} posts, add {{webhooks}} webhook and {{feeds}} Auto Post feed, try AI with {{images}} AI images, {{videos}} AI video and {{questions}} questions to the AI assistant, and keep up to {{storage}} GB of photos and videos. The trial is for one person, so team invites open with your plan. Your plan's full limits start with your first payment: add a card to keep your plan after the trial, or end the trial early to start it now.",
         {
+          days: TRIAL_DAYS,
           channels: TRIAL_CHANNEL_CAP,
           posts: TRIAL_LIMITS.posts_per_month,
           webhooks: TRIAL_LIMITS.webhooks,

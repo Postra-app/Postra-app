@@ -382,10 +382,31 @@ export class IntegrationRepository {
     refresh?: string,
     timezone?: number | string,
     customInstanceDetails?: string,
-    grantedScopes?: string[]
+    grantedScopes?: string[],
+    // The login that did a reconnect, when it is known: the channel moves
+    // under it (see the oneTimeToken block below).
+    rootInternalId?: string
   ) {
     token = AuthService.encryptIntegrationToken(token);
     refreshToken = AuthService.encryptIntegrationToken(refreshToken);
+
+    // A reconnect through another login moves the channel to that login. The
+    // previous login's refresh token must not stay on it: the next refresh
+    // would renew the previous login's tokens under the new login's name.
+    const loginChanges =
+      !!rootInternalId &&
+      (
+        await this._integration.model.integration.findUnique({
+          where: {
+            organizationId_providerIdentifier_internalId: {
+              internalId,
+              providerIdentifier: provider,
+              organizationId: org,
+            },
+          },
+          select: { rootInternalId: true },
+        })
+      )?.rootInternalId !== rootInternalId;
 
     const defaultTimes = defaultPostingTimes(timezone);
     const postTimes = defaultTimes
@@ -445,8 +466,10 @@ export class IntegrationRepository {
         providerIdentifier: provider,
         token,
         // A reconnect without a new refresh token (Google sends one only on
-        // first consent) must not wipe the stored one (upstream 49aa92ac).
-        ...(refreshToken ? { refreshToken } : {}),
+        // first consent) must not wipe the stored one (upstream 49aa92ac),
+        // unless the channel moves to another login.
+        ...(refreshToken || loginChanges ? { refreshToken } : {}),
+        ...(rootInternalId ? { rootInternalId } : {}),
         ...(expiresIn
           ? { tokenExpiration: new Date(Date.now() + expiresIn * 1000) }
           : {}),
@@ -458,7 +481,13 @@ export class IntegrationRepository {
     });
 
     if (oneTimeToken) {
+      // Channels of one login share its tokens (LinkedIn gives one token per
+      // member, and a new one replaces the old). "Of one login" is the root.
+      // A page reconnected through another login belongs to that login from
+      // now on: the other pages of the previous login keep their tokens,
+      // which the new login may have no rights to (upstream 356045009).
       const rootId =
+        rootInternalId ||
         (
           await this._integration.model.integration.findFirst({
             where: {
@@ -467,7 +496,8 @@ export class IntegrationRepository {
               internalId: internalId,
             },
           })
-        )?.rootInternalId || internalId;
+        )?.rootInternalId ||
+        internalId;
 
       // This organisation only: the same account connected in another org
       // had its tokens and state overwritten too.

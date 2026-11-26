@@ -1,6 +1,7 @@
 import { Throttle } from '@nestjs/throttler';
 import { withIdempotencyKey } from '@gitroom/backend/services/posts/idempotency';
 import { AccountAgeGuard } from '@gitroom/backend/services/auth/account-age.guard';
+import { TrialAiDailyGuard } from '@gitroom/backend/services/auth/trial-ai-daily.guard';
 import {
   Body,
   Headers,
@@ -288,7 +289,7 @@ export class PostsController {
 
   @Post('/generator')
   @Throttle({ default: { ttl: 300000, limit: 10 } })
-  @UseGuards(AccountAgeGuard)
+  @UseGuards(AccountAgeGuard, TrialAiDailyGuard)
   @CheckPolicies(
     [AuthorizationActions.Create, Sections.POSTS_PER_MONTH],
     [AuthorizationActions.Create, Sections.AI]
@@ -365,7 +366,7 @@ export class PostsController {
   // our key).
   @Post('/separate-posts')
   @Throttle({ default: { ttl: 300000, limit: 20 } })
-  @UseGuards(AccountAgeGuard)
+  @UseGuards(AccountAgeGuard, TrialAiDailyGuard)
   @CheckPolicies([AuthorizationActions.Create, Sections.AI])
   async separatePosts(
     @GetOrgFromRequest() org: Organization,

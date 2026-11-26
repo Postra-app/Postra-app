@@ -9,10 +9,19 @@ import {
   Logger,
   Param,
   Post,
+  Query,
   Req,
 } from '@nestjs/common';
 import { SubscriptionService } from '@gitroom/nestjs-libraries/database/prisma/subscriptions/subscription.service';
 import { StripeService } from '@gitroom/nestjs-libraries/services/stripe.service';
+import { PostsService } from '@gitroom/nestjs-libraries/database/prisma/posts/posts.service';
+import { IntegrationService } from '@gitroom/nestjs-libraries/database/prisma/integrations/integration.service';
+import {
+  channelLimitFor,
+  channelsInUse,
+  pricing,
+  trialAiAllowance,
+} from '@gitroom/nestjs-libraries/database/prisma/subscriptions/pricing';
 import { AppleIapService } from '@gitroom/nestjs-libraries/services/apple/apple.iap.service';
 import {
   appleIapEnabled,
@@ -72,7 +81,9 @@ export class BillingController {
     private _stripeService: StripeService,
     private _notificationService: NotificationService,
     private _auditService: AuditService,
-    private _appleIapService: AppleIapService
+    private _appleIapService: AppleIapService,
+    private _postsService: PostsService,
+    private _integrationService: IntegrationService
   ) {}
 
   @Get('/check/:id')
@@ -158,6 +169,55 @@ export class BillingController {
     }
   }
 
+  // The trial bar: days left, whether a card keeps the plan, and how much of
+  // the trial is used. Numbers from the same rules the limits use.
+  @Get('/trial')
+  @Throttle({ default: { ttl: 300_000, limit: 60 } })
+  async trial(@GetOrgFromRequest() org: Organization) {
+    if (!org.isTrailing || !org.paymentId) {
+      return { trial: false };
+    }
+    const status = await this._stripeService.trialStatus(org.paymentId);
+    if (!status) {
+      return { trial: false };
+    }
+    const cap = await this._subscriptionService.postCap(org.id, org.createdAt);
+    const [posts, channels, images] = await Promise.all([
+      cap ? this._postsService.countedPostsNow(org.id, cap.anchor) : 0,
+      this._integrationService.getIntegrationsList(org.id),
+      this._subscriptionService.checkCredits(org, 'ai_images'),
+    ]);
+    const tier =
+      // @ts-ignore the request's organisation is loaded with its subscription
+      org.subscription?.subscriptionTier || 'STANDARD';
+    return {
+      trial: true,
+      endsAt: status.endsAt,
+      hasCard: status.hasCard,
+      channels: {
+        used: channelsInUse(channels),
+        // @ts-ignore the request's organisation is loaded with its subscription
+        limit: channelLimitFor(org),
+      },
+      posts: { used: posts, limit: cap?.limit ?? 0 },
+      images: {
+        used: Math.max(
+          0,
+          trialAiAllowance(
+            pricing[tier]?.image_generation_count || 0,
+            true,
+            'image_generation_count'
+          ) - (images?.credits ?? 0)
+        ),
+        limit: trialAiAllowance(
+          pricing[tier]?.image_generation_count || 0,
+          true,
+          'image_generation_count'
+        ),
+      },
+    };
+  }
+
   @Get('/is-trial-finished')
   async isTrialFinished(@GetOrgFromRequest() org: Organization) {
     return {
@@ -176,7 +236,23 @@ export class BillingController {
   ) {
     refuseAppleBilled(org);
     const uniqueId = req?.cookies?.track;
-    return this._stripeService.embedded(
+    return this._stripeService.embedded(uniqueId, org.id, user.id, body);
+  }
+
+  // The free trial starts without a card: one click on the plan screen. The
+  // page then waits on /billing/check/<id>, as after a checkout.
+  @Post('/start-trial')
+  @CheckPolicies(BILLING_ADMIN)
+  @Throttle({ default: { ttl: 300_000, limit: 10 } })
+  startTrial(
+    @GetOrgFromRequest() org: Organization,
+    @GetUserFromRequest() user: User,
+    @Body() body: BillingSubscribeDto,
+    @Req() req: Request
+  ) {
+    refuseAppleBilled(org);
+    const uniqueId = req?.cookies?.track;
+    return this._stripeService.startTrial(
       uniqueId,
       org.id,
       user.id,
@@ -196,13 +272,7 @@ export class BillingController {
   ) {
     refuseAppleBilled(org);
     const uniqueId = req?.cookies?.track;
-    return this._stripeService.subscribe(
-      uniqueId,
-      org.id,
-      user.id,
-      body,
-      org.allowTrial
-    );
+    return this._stripeService.subscribe(uniqueId, org.id, user.id, body);
   }
 
   // Billing history on the Billing page (upstream 3bd88cee9).
@@ -216,14 +286,22 @@ export class BillingController {
   @Get('/portal')
   @CheckPolicies(BILLING_ADMIN)
   @Throttle({ default: { ttl: 300_000, limit: 10 } })
-  async modifyPayment(@GetOrgFromRequest() org: Organization) {
+  async modifyPayment(
+    @GetOrgFromRequest() org: Organization,
+    @Query('flow') flow?: string
+  ) {
     const customer = await this._stripeService.getCustomerByOrganizationId(
       org.id
     );
     if (!customer) {
       throw new BadRequestException('This organization has no billing account yet.');
     }
-    const { url } = await this._stripeService.createBillingPortalLink(customer);
+    // `?flow=card`: straight to adding a card (a trial without one);
+    // `card-now` then back to ending the trial.
+    const { url } = await this._stripeService.createBillingPortalLink(
+      customer,
+      flow === 'card' || flow === 'card-now' ? flow : undefined
+    );
     return {
       portal: url,
     };

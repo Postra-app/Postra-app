@@ -11,6 +11,11 @@ const bootStep = (step: string) =>
     )}MB\n`
   );
 bootStep('start');
+// Before everything else, Sentry included: tracing instruments the libraries
+// as they are loaded. Does nothing without OTEL_TRACES_ENDPOINT.
+import { initializeTracing } from '@gitroom/nestjs-libraries/tracing/initialize.tracing';
+initializeTracing('backend');
+bootStep('tracing initialised');
 import { initializeSentry } from '@gitroom/nestjs-libraries/sentry/initialize.sentry';
 bootStep('sentry imported');
 initializeSentry('backend', true);

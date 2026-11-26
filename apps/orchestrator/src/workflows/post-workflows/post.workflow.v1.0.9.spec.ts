@@ -65,6 +65,7 @@ beforeEach(() => {
   a('internalPlugs').mockResolvedValue([]);
   a('globalPlugs').mockResolvedValue([]);
   a('sendWebhooks').mockResolvedValue(undefined);
+  a('notSentWithoutPlan').mockResolvedValue(false);
 });
 
 const failure = (cause: Error, activity = 'postSocial') =>
@@ -490,5 +491,40 @@ describe('postWorkflowV109 — comments the channel cannot take', () => {
       'Comment not published: TikTok has not granted this channel the permission needed to post comments.'
     );
     expect(notificationBody()).not.toMatch(/[—–]/);
+  });
+});
+
+describe('postWorkflowV109 — a post due after the plan ended', () => {
+  // A post scheduled during a trial for a time after it: the trial ended
+  // (no card), the plan with it, and the post turned red as "No Post" with
+  // nothing said. It is not sent, it says why, and the customer is told.
+  it('is not sent, and says the plan has ended', async () => {
+    activities.getPostsList.mockResolvedValue([]);
+    activities.notSentWithoutPlan.mockResolvedValue(true);
+
+    await run();
+
+    expect(activities.notSentWithoutPlan).toHaveBeenCalledWith('org-1', 'p1');
+    expect(activities.changeState).not.toHaveBeenCalledWith('p1', 'ERROR', 'No Post');
+    expect(activities.postSocial).not.toHaveBeenCalled();
+  });
+
+  it('a post that is gone is still "No Post"', async () => {
+    activities.getPostsList.mockResolvedValue([]);
+    activities.notSentWithoutPlan.mockResolvedValue(false);
+
+    await run();
+
+    expect(activities.changeState).toHaveBeenCalledWith('p1', 'ERROR', 'No Post');
+  });
+
+  it('a run from before the change keeps "No Post"', async () => {
+    unpatched.add('post-not-sent-without-plan');
+    activities.getPostsList.mockResolvedValue([]);
+
+    await run();
+
+    expect(activities.notSentWithoutPlan).not.toHaveBeenCalled();
+    expect(activities.changeState).toHaveBeenCalledWith('p1', 'ERROR', 'No Post');
   });
 });

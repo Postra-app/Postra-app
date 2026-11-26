@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { signedIn, stateFile } from '../helpers';
+import { database, signedIn, stateFile, throwawayOrg } from '../helpers';
 
 // Nine platform tiles in Add Channel read as nine channels on Pro. The window
 // says how many social accounts are connected of the plan's limit, and Teams says how many
@@ -37,5 +37,38 @@ test.describe('Business', () => {
     await page.getByRole('tab', { name: 'Webhooks' }).click();
     await expect(page.getByText(/^Webhooks \(\d+ · unlimited\)$/)).toBeVisible();
     await expect(page.getByText(/\/10000/)).toHaveCount(0);
+  });
+});
+
+// A trial at its 2 channels: the window says it is the trial's limit and what
+// the plan has; clicking a platform anyway answers the same, with "End the
+// trial now" instead of "Go to billing".
+test.describe(() => {
+  test.use({ storageState: { cookies: [], origins: [] } });
+  test('a trial at its channel limit says so, and offers to end the trial', async ({ page, context }) => {
+    const prisma = database();
+    const org = await throwawayOrg(prisma, { tier: 'PRO', totalChannels: 8, channels: 2, isTrailing: true });
+    try {
+      await context.addCookies((await org.api.storageState()).cookies);
+      await page.goto('/launches');
+      await page.getByRole('button', { name: 'Add Channel' }).first().click({ timeout: 20_000 });
+      await expect(
+        page.getByText(
+          '2 of 2 social accounts connected: the free trial includes 2. End the trial in Billing to connect up to 8 on Pro.',
+          { exact: true }
+        )
+      ).toBeVisible();
+
+      await page.getByText('Mastodon', { exact: true }).first().click();
+      const dialog = page.getByRole('dialog').filter({ hasText: 'Free trial limit' });
+      await expect(
+        dialog.getByText('Your free trial includes 2 channels. Your Pro plan includes 8 channels. End the trial to start your plan now.')
+      ).toBeVisible({ timeout: 20_000 });
+      await expect(dialog.getByRole('button', { name: 'End the trial now' })).toBeVisible();
+      await expect(page.getByText('Go to billing')).toHaveCount(0);
+    } finally {
+      await org.remove();
+      await prisma.$disconnect();
+    }
   });
 });

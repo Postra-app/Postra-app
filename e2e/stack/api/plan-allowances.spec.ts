@@ -39,18 +39,18 @@ test.describe('AI images a month', () => {
     expect((await res.json()).message).toContain('No image generation credits');
   });
 
-  test('Pro has 200 once paid, but a Pro trial has the trial\'s 20', async () => {
+  test('Pro has 200 once paid, but a Pro trial has the trial\'s 10', async () => {
     const paid = await org({ tier: 'PRO', totalChannels: 6, channels: 0 });
     await useImages(paid.orgId, 30);
     expect(await imagesLeft(paid.api)).toBe(170);
 
     const trial = await org({ tier: 'PRO', totalChannels: 6, channels: 0, isTrailing: true });
-    expect(await imagesLeft(trial.api)).toBe(20);
+    expect(await imagesLeft(trial.api)).toBe(10);
 
-    // The assistant too: 200 questions on a trial, the plan's 2,200 once paid.
+    // The assistant too: 50 questions on a trial, the plan's 2,200 once paid.
     const agentLeft = async (api: typeof trial.api) =>
       (await (await api.get('/copilot/credits?type=ai_agent')).json()) as { credits: number; limit: number };
-    expect(await agentLeft(trial.api)).toEqual({ credits: 200, limit: 200 });
+    expect(await agentLeft(trial.api)).toEqual({ credits: 50, limit: 50 });
     expect(await agentLeft(paid.api)).toEqual({ credits: 2200, limit: 2200 });
   });
 

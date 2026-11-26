@@ -20,8 +20,8 @@ const useFaqList = () => {
               'Am I going to be charged by Postra?'
             ),
             description: t(
-              'faq_to_confirm_credit_card_information_postra_will_hold',
-              'You pay when your trial ends, unless you cancel before then. To check your card we hold £1 and release it straight away. You can cancel any time in Billing, without talking to anyone.'
+              'faq_free_trial_no_card',
+              'Not for the free trial: it needs no card, so nothing is charged when it ends. You pay only once you choose a plan and add a card, and you can cancel any time in Billing, without talking to anyone.'
             ),
           },
         ]

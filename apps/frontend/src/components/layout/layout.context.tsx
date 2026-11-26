@@ -137,10 +137,17 @@ function LayoutContextInner(params: { children: ReactNode }) {
         // clone(): on Cancel the caller still reads this response, and a
         // consumed body threw "body already used"; a non-JSON 402 must not
         // throw either (upstream d727ac0b, 971aa369).
-        const { message, canManageBillingUi } = await response
+        const { message, canManageBillingUi, trial } = await response
           .clone()
           .json()
-          .catch(() => ({} as { message?: string; canManageBillingUi?: boolean }));
+          .catch(
+            () =>
+              ({} as {
+                message?: string;
+                canManageBillingUi?: boolean;
+                trial?: boolean;
+              })
+          );
         // Billing is for admins: a plain member is told who can act instead
         // of being sent to a page they cannot open (upstream 4c557f114).
         if (canManageBillingUi === false) {
@@ -152,6 +159,23 @@ function LayoutContextInner(params: { children: ReactNode }) {
             'warning'
           );
           return false;
+        }
+        // A limit of the free trial: the plan is chosen already, ending the
+        // trial starts it (the next screen shows the price, and asks for a
+        // card first when the trial has none).
+        if (trial) {
+          if (
+            await deleteDialog(
+              message,
+              t('end_trial_now_button', 'End the trial now'),
+              t('free_trial_limit', 'Free trial limit'),
+              t('keep_my_trial', 'Keep my trial')
+            )
+          ) {
+            window.open('/billing?finishTrial=true', '_blank');
+            return false;
+          }
+          return true;
         }
         if (await deleteDialog(message, 'Go to billing', 'Payment required')) {
           window.open('/billing', '_blank');

@@ -105,17 +105,22 @@ test.describe('channel count', () => {
     expect((await api.get(connect('linkedin'))).status()).toBe(200);
   });
 
-  test('a Pro trial is capped at 3 channels, the same Pro paid is not', async () => {
-    const trial = await org({ tier: 'PRO', totalChannels: 6, channels: 3, isTrailing: true });
-    expect((await trial.api.get(connect('mastodon'))).status()).toBe(402);
+  // The refusal says it is the trial's limit and what the plan has.
+  test('a Pro trial is capped at 2 channels, the same Pro paid is not', async () => {
+    const trial = await org({ tier: 'PRO', totalChannels: 6, channels: 2, isTrailing: true });
+    const refused = await trial.api.get(connect('mastodon'));
+    expect(refused.status()).toBe(402);
+    const body = await refused.json();
+    expect(body.message).toBe('Your free trial includes 2 channels. Your Pro plan includes 8 channels. End the trial to start your plan now.');
+    expect(body.trial).toBe(true);
     expect((await trial.api.get(connect('youtube'))).status()).toBe(402);
 
-    const paid = await org({ tier: 'PRO', totalChannels: 6, channels: 3 });
+    const paid = await org({ tier: 'PRO', totalChannels: 6, channels: 2 });
     expect((await paid.api.get(connect('mastodon'))).status()).toBe(200);
   });
 
-  test('a Business trial with 2 channels can still add a 3rd', async () => {
-    const { api } = await org({ tier: 'ULTIMATE', totalChannels: 12, channels: 2, isTrailing: true });
+  test('a Business trial with 1 channel can still add a 2nd', async () => {
+    const { api } = await org({ tier: 'ULTIMATE', totalChannels: 12, channels: 1, isTrailing: true });
     expect((await api.get(connect('mastodon'))).status()).toBe(200);
   });
 

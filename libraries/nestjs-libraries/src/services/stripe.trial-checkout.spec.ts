@@ -23,9 +23,9 @@ jest.mock('@gitroom/nestjs-libraries/track/track.service', () => ({ TrackService
 import { StripeService } from '@gitroom/nestjs-libraries/services/stripe.service';
 import { trialEmailKey } from '@gitroom/nestjs-libraries/services/trial-identity';
 
-// A test account got a second trial. Its checkout offered
-// Link, which pays without a card fingerprint, so the one-trial-per-card check
-// never ran, and nothing remembered the email of the first trial.
+// The checkout pays at once (the trial starts without one, see
+// stripe.trial-start.spec.ts); what it still carries is the campaign, and the
+// billing pages still ask whether the trial stands for this email.
 const body = { billing: 'STANDARD', period: 'MONTHLY' } as any;
 const mail = 'trial.tester@example.com';
 
@@ -50,37 +50,9 @@ beforeEach(() => {
 });
 
 describe.each([
-  ['embedded', (s: StripeService, b = body) => s.embedded('track', 'org-1', 'user-1', b, true)],
-  ['hosted', (s: StripeService, b = body) => s.subscribe('track', 'org-1', 'user-1', b, true)],
+  ['embedded', (s: StripeService, b = body) => s.embedded('track', 'org-1', 'user-1', b)],
+  ['hosted', (s: StripeService, b = body) => s.subscribe('track', 'org-1', 'user-1', b)],
 ])('%s checkout', (_name, checkout) => {
-  it('a trial checkout takes cards only', async () => {
-    searchCustomers.mockResolvedValue({ data: [] });
-    const { service, organizationService } = build();
-
-    await checkout(service);
-
-    const params = createSession.mock.calls[0][0];
-    // API 2026-10-28.endive rejects payment_method_types on a Checkout Session.
-    expect(params.allowed_payment_method_types).toEqual(['card']);
-    expect(params).not.toHaveProperty('payment_method_types');
-    expect(params.subscription_data.trial_period_days).toBe(7);
-    expect(organizationService.endTrialOffer).not.toHaveBeenCalled();
-  });
-
-  it('an email that already had a trial checks out without one, with every payment method', async () => {
-    searchCustomers.mockResolvedValue({ data: [{ id: 'cus_old' }] });
-    const { service, organizationService } = build();
-
-    await checkout(service);
-
-    expect(searchCustomers).toHaveBeenCalledWith(expect.objectContaining({ query: `metadata['trial_email']:'${trialEmailKey(mail)}'` }));
-    const params = createSession.mock.calls[0][0];
-    expect(params.subscription_data.trial_period_days).toBeUndefined();
-    expect(params.allowed_payment_method_types).toBeUndefined();
-    expect(params).not.toHaveProperty('payment_method_types');
-    expect(organizationService.endTrialOffer).toHaveBeenCalledWith('org-1');
-  });
-
   // `utm` in the return address and the subscription's metadata is the
   // campaign saved with the organisation at sign-up. It used to come from the
   // request body (and from the browser's storage before that), so a caller
@@ -114,16 +86,9 @@ describe.each([
   });
 });
 
-// In a second test the page still promised "Pay NOTHING for the first
-// 7 days" from the organisation's offer, and the checkout charged £19 at once.
+// In a second test the page promised free days to an email that already
+// had a trial.
 describe('what the billing pages promise', () => {
-  it('the embedded checkout says whether it has free days', async () => {
-    searchCustomers.mockResolvedValue({ data: [{ id: 'cus_old' }] });
-    expect((await build().service.embedded('track', 'org-1', 'user-1', body, true)).trial).toBe(false);
-    searchCustomers.mockResolvedValue({ data: [] });
-    expect((await build().service.embedded('track', 'org-1', 'user-1', body, true)).trial).toBe(true);
-  });
-
   it('an email that already had a trial is not offered one, and the offer ends', async () => {
     searchCustomers.mockResolvedValue({ data: [{ id: 'cus_old' }] });
     const { service, organizationService } = build();
@@ -155,7 +120,7 @@ it('the embedded checkout opens in elements mode', async () => {
   createSession.mockClear();
   const { service } = build();
 
-  await service.embedded('track', 'org-1', 'user-1', body, true);
+  await service.embedded('track', 'org-1', 'user-1', body);
 
   expect(createSession.mock.calls[0][0].ui_mode).toBe('elements');
 });

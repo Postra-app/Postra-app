@@ -4,7 +4,7 @@ jest.mock('nostr-tools', () => ({ getPublicKey: jest.fn(), Relay: class {}, fina
 import { PermissionsService } from './permissions.service';
 import { AuthorizationActions, Sections } from '@gitroom/nestjs-libraries/services/auth/permission.exception.class';
 
-// A 7-day trial is held to 30 posts a month, 1 person,
+// A 5-day trial is held to 15 posts, 1 person,
 // 1 webhook and 1 Auto Post feed, whatever plan it runs on. Before, a
 // Business trial had 10 000 webhooks, 10 feeds, 5 seats and unlimited posts.
 describe('a trial on Business', () => {
@@ -55,15 +55,15 @@ describe('a trial on Business', () => {
     }
   });
 
-  it('counts posts against 30 a month', async () => {
+  it('counts posts against the 15 of the trial', async () => {
     const { service, postCapReached } = build({ trialing: true });
     await service.check('org-1', new Date(), 'SUPERADMIN', [[AuthorizationActions.Create, Sections.POSTS_PER_MONTH]], undefined, true);
-    expect(postCapReached.mock.calls[0][2]).toBe(30);
+    expect(postCapReached.mock.calls[0][2]).toBe(15);
   });
 
   it('and where a post is written, looking the trial up when not told', async () => {
     const { service } = build({ trialing: true });
-    expect((await service.postCap('org-1', new Date()))?.limit).toBe(30);
+    expect((await service.postCap('org-1', new Date()))?.limit).toBe(15);
     expect((await service.postCap('org-1', new Date(), false))?.limit).toBe(1000000);
   });
 });

@@ -1,5 +1,9 @@
 import { TemporalModule, WorkerDefinition } from 'nestjs-temporal-core';
 import { socialIntegrationList } from '@gitroom/nestjs-libraries/integrations/integration.manager';
+import {
+  temporalClientTracing,
+  temporalWorkerTracing,
+} from '@gitroom/nestjs-libraries/tracing/temporal.tracing';
 
 // One worker per task queue: 'main' plus one per provider.
 export const temporalWorkers = (
@@ -22,6 +26,9 @@ export const temporalWorkers = (
       activityClasses,
       autoStart: true,
       workerOptions: {
+        // Nothing unless tracing runs; the workflow interceptors only on
+        // the worker that runs workflows.
+        ...temporalWorkerTracing(integration.identifier === 'main'),
         // markPublishing (temporal.heartbeat.ts) must reach the server
         // within a second; the 60 s default could hold it back long
         // enough for a dying worker to take it along.
@@ -47,6 +54,7 @@ export const getTemporalModule = (
   path?: string,
   activityClasses?: any[]
 ) => {
+  const clientTracing = temporalClientTracing();
   return TemporalModule.register({
     isGlobal: true,
     connection: {
@@ -54,6 +62,7 @@ export const getTemporalModule = (
       ...process.env.TEMPORAL_TLS === 'true' ? {tls: true} : {},
       ...process.env.TEMPORAL_API_KEY ? {apiKey: process.env.TEMPORAL_API_KEY} : {},
       namespace: process.env.TEMPORAL_NAMESPACE || 'default',
+      ...(clientTracing ? { interceptors: clientTracing } : {}),
     },
     taskQueue: 'main',
     logLevel: 'error',

@@ -1,7 +1,7 @@
 import { expect, request, test } from '@playwright/test';
 import { BACKEND_URL, database, throwawayOrg } from '../helpers';
 
-// A 7-day trial on any plan posts at most 30 a month, is one person, one
+// A 5-day trial on any plan posts at most 15, is one person, one
 // webhook and one Auto Post feed (pricing.ts TRIAL_LIMITS). Before, a Business
 // trial had unlimited posts, 5 seats, 10 000 webhooks and 10 feeds before the
 // first charge.
@@ -38,28 +38,30 @@ const queue = (organizationId: string, integrationId: string, count: number) =>
     })),
   });
 
-test('a Business trial at 30 posts cannot schedule a 31st, in the app or the public API; a draft still saves', async () => {
+test('a Business trial at 15 posts cannot schedule a 16th, in the app or the public API; a draft still saves', async () => {
   const trial = await org({ tier: 'ULTIMATE', totalChannels: 12, channels: 1, isTrailing: true });
   const [channel] = trial.channelIds;
-  await queue(trial.orgId, channel, 30);
+  await queue(trial.orgId, channel, 15);
 
-  const res = await trial.api.post('/posts', { data: post(channel, 'schedule', '[stack] 31st') });
+  const res = await trial.api.post('/posts', { data: post(channel, 'schedule', '[stack] 16th') });
   expect(res.status(), await res.text()).toBe(402);
-  expect((await res.json()).message).toContain('maximum number of posts');
+  expect((await res.json()).message).toBe(
+    'Your free trial includes 15 posts. Your Business plan includes unlimited posts. End the trial to start your plan now.'
+  );
 
   const { apiKey } = await prisma.organization.findUniqueOrThrow({ where: { id: trial.orgId } });
   const publicApi = await request.newContext({ baseURL: `${BACKEND_URL}/public/v1/`, extraHTTPHeaders: { authorization: apiKey! } });
-  expect((await publicApi.post('posts', { data: post(channel, 'schedule', '[stack] 31st') })).status()).toBe(402);
+  expect((await publicApi.post('posts', { data: post(channel, 'schedule', '[stack] 16th') })).status()).toBe(402);
   await publicApi.dispose();
 
   const draft = await trial.api.post('/posts', { data: post(channel, 'draft', '[stack] trial draft') });
   expect(draft.status(), await draft.text()).toBe(201);
 });
 
-test('the same Business plan, paid, is not held to 30 posts', async () => {
+test('the same Business plan, paid, is not held to 15 posts', async () => {
   const paid = await org({ tier: 'ULTIMATE', totalChannels: 12, channels: 1 });
   const [channel] = paid.channelIds;
-  await queue(paid.orgId, channel, 30);
+  await queue(paid.orgId, channel, 15);
   // Past the allowance check, stopped by validation (empty content).
   const res = await paid.api.post('/posts', { data: post(channel, 'schedule', '') });
   expect(res.status(), await res.text()).toBe(400);
@@ -73,7 +75,9 @@ test('a Business trial holds one webhook', async () => {
   expect((await trial.api.post('/webhooks', webhook(1))).status()).toBe(201);
   const second = await trial.api.post('/webhooks', webhook(2));
   expect(second.status()).toBe(402);
-  expect((await second.json()).message).toContain('maximum number of webhooks');
+  expect((await second.json()).message).toBe(
+    'Your free trial includes 1 webhook. Your Business plan includes unlimited webhooks. End the trial to start your plan now.'
+  );
 });
 
 test('a Business trial holds one Auto Post feed', async () => {

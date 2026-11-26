@@ -449,6 +449,9 @@ export class NoAuthIntegrationsController {
       await ioRedis.del(`onboarding:${body.state}`);
     }
 
+    // The login a reconnect was made through. The channel moves under it.
+    let reconnectedBy: string | undefined;
+
     const {
       error,
       accessToken,
@@ -500,6 +503,7 @@ export class NoAuthIntegrationsController {
             // stored the channel id as the refresh token and dropped the
             // expiry, so a reconnected YouTube channel failed its next
             // refresh.
+            reconnectedBy = auth.id ? String(auth.id) : undefined;
             return res({ ...auth, ...newAuth });
           } catch (err: any) {
             return res({
@@ -744,7 +748,8 @@ export class NoAuthIntegrationsController {
                 Buffer.from(body.code, 'base64').toString()
               )
             : undefined,
-          grantedScopes
+          grantedScopes,
+          reconnectedBy
         );
     } finally {
       if (pagesLock && pagesHeld) {

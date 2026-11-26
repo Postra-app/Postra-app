@@ -7,6 +7,7 @@ import { EmailActivity } from '@gitroom/orchestrator/activities/email.activity';
 import { IntegrationsActivity } from '@gitroom/orchestrator/activities/integrations.activity';
 import { HousekeepingActivity } from '@gitroom/orchestrator/activities/housekeeping.activity';
 import { HealthController } from '@gitroom/orchestrator/health.controller';
+import { TracingModule } from '@gitroom/nestjs-libraries/tracing/tracing.module';
 
 const activities = [
   PostActivity,
@@ -17,6 +18,7 @@ const activities = [
 ];
 @Module({
   imports: [
+    TracingModule,
     DatabaseModule,
     getTemporalModule(true, require.resolve('./workflows'), activities),
   ],

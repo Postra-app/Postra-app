@@ -86,6 +86,7 @@ export const publishRetry = (err: unknown): 'now' | 'later' | 'no' => {
 const {
   getPostsList,
   getPost,
+  notSentWithoutPlan,
   inAppNotification,
   changeState,
   updatePost,
@@ -199,6 +200,16 @@ export async function postWorkflowV109({
   const [post] = postsListBefore;
 
   if (!post) {
+    // The plan ended while the post waited (a trial without a card ran out):
+    // the post is not sent, says why, and the customer is told. It used to
+    // turn red as "No Post" with nothing said. Behind a patch: a run already
+    // past this point replays without the new activity.
+    if (
+      patched('post-not-sent-without-plan') &&
+      (await notSentWithoutPlan(organizationId, postId))
+    ) {
+      return;
+    }
     await changeState(postId, 'ERROR', 'No Post');
     return;
   }

@@ -18,12 +18,14 @@ import { InfiniteWorkflowRegisterModule } from '@gitroom/nestjs-libraries/tempor
 import { ThrottlerStorageRedisService } from '@nest-lab/throttler-storage-redis';
 import { ioRedis } from '@gitroom/nestjs-libraries/redis/redis.service';
 import { MetricsModule } from './metrics/metrics.module';
+import { TracingModule } from '@gitroom/nestjs-libraries/tracing/tracing.module';
 
 @Global()
 @Module({
   imports: [
     SentryModule.forRoot(),
     MetricsModule,
+    TracingModule,
     DatabaseModule,
     ApiModule,
     PublicApiModule,

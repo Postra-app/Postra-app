@@ -85,3 +85,48 @@ describe('who can act on a 402', () => {
     expect(run(undefined)).not.toHaveProperty('canManageBillingUi');
   });
 });
+
+// A trial limit says it is the trial's, how much the plan has, and
+// how to get it, instead of "upgrade your subscription" to someone who
+// already picked the plan.
+describe('a limit reached during the free trial', () => {
+  const run = (section: Sections, org: any = { isTrailing: true, subscription: { subscriptionTier: 'STANDARD' }, users: [{ role: 'SUPERADMIN' }] }) => {
+    const json = jest.fn();
+    const host: any = {
+      switchToHttp: () => ({
+        getResponse: () => ({ status: () => ({ json }) }),
+        getRequest: () => ({ org }),
+      }),
+    };
+    new SubscriptionExceptionFilter().catch(new SubscriptionException({ section, action: AuthorizationActions.Create }), host);
+    return json.mock.calls[0][0];
+  };
+
+  it.each([
+    [Sections.CHANNEL, 'Your free trial includes 2 channels. Your Starter plan includes 4 channels. End the trial to start your plan now.'],
+    [Sections.POSTS_PER_MONTH, 'Your free trial includes 15 posts. Your Starter plan includes 400 posts a month. End the trial to start your plan now.'],
+    [Sections.WEBHOOKS, 'Your free trial includes 1 webhook. Your Starter plan includes 2 webhooks. End the trial to start your plan now.'],
+    [Sections.AUTOPOST, 'Your free trial includes 1 Auto Post feed. Your Starter plan includes 2 Auto Post feeds. End the trial to start your plan now.'],
+    [Sections.TEAM_MEMBERS, 'The free trial is for one person. Team invites open with a plan that has team seats: Pro has 2, Business has 5.'],
+  ])('%s', (section, message) => {
+    const body = run(section);
+    expect(body.message).toBe(message);
+    expect(body.trial).toBe(true);
+  });
+
+  it('a Business trial calls its 10 000 webhooks unlimited, as the plan pages do', () => {
+    const body = run(Sections.WEBHOOKS, { isTrailing: true, subscription: { subscriptionTier: 'ULTIMATE' }, users: [{ role: 'ADMIN' }] });
+    expect(body.message).toBe('Your free trial includes 1 webhook. Your Business plan includes unlimited webhooks. End the trial to start your plan now.');
+  });
+
+  it('a Pro trial names Pro, and an unlimited allowance as unlimited', () => {
+    const body = run(Sections.POSTS_PER_MONTH, { isTrailing: true, subscription: { subscriptionTier: 'PRO' }, users: [{ role: 'ADMIN' }] });
+    expect(body.message).toBe('Your free trial includes 15 posts. Your Pro plan includes unlimited posts. End the trial to start your plan now.');
+  });
+
+  it('a paid plan keeps the upgrade wording', () => {
+    const body = run(Sections.CHANNEL, { isTrailing: false, subscription: { subscriptionTier: 'STANDARD' }, users: [{ role: 'ADMIN' }] });
+    expect(body.message).toContain('Please upgrade your subscription');
+    expect(body).not.toHaveProperty('trial');
+  });
+});

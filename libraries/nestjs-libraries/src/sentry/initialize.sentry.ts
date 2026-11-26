@@ -4,6 +4,7 @@ import { capitalize } from 'lodash';
 import { isClientAbort } from './client.abort';
 import { isClientRequestError } from './client.request.error';
 import { SENTRY_DATA_COLLECTION } from '@gitroom/helpers/utils/sentry.data.collection';
+import { tracingStarted } from '@gitroom/nestjs-libraries/tracing/initialize.tracing';
 
 // Sentry 11 names spans differently: a database span by its SQL summary
 // (first keyword: `DEALLOCATE`, not `DEALLOCATE ALL`) and Express middleware
@@ -26,6 +27,19 @@ export const initializeSentry = (appName: string, allowLogs = false) => {
   const tracesSampleRate = process.env.SENTRY_TRACES_SAMPLE_RATE
     ? parseFloat(process.env.SENTRY_TRACES_SAMPLE_RATE)
     : prodTracesDefault;
+
+  // With our own OpenTelemetry pipeline running (OTEL_TRACES_ENDPOINT), traces
+  // belong to it and Sentry is set up as its documentation says for that
+  // case: no Sentry tracer provider, no Sentry sample rate, and the
+  // integration that links an error to the active OpenTelemetry trace.
+  // Sentry then records no spans, so the span filter and the profiler, which
+  // samples per Sentry trace, have nothing to work on and are left out.
+  const ownTracing = tracingStarted();
+  if (ownTracing) {
+    // "Unset" has to hold for the environment too: the SDK falls back to
+    // this variable when the option is missing, and would trace again.
+    delete process.env.SENTRY_TRACES_SAMPLE_RATE;
+  }
 
   try {
     Sentry.init({
@@ -51,8 +65,10 @@ export const initializeSentry = (appName: string, allowLogs = false) => {
       dsn: process.env.NEXT_PUBLIC_SENTRY_DSN,
       spotlight: process.env.SENTRY_SPOTLIGHT === '1',
       integrations: [
-        // Add our Profiling integration
-        nodeProfilingIntegration(),
+        ownTracing
+          ? Sentry.openTelemetryIntegration()
+          : // Add our Profiling integration
+            nodeProfilingIntegration(),
         Sentry.consoleLoggingIntegration({ levels: ['warn', 'error'] }),
         Sentry.openAIIntegration({
           // GDPR: prompts/completions contain user content (post drafts, brand
@@ -66,17 +82,22 @@ export const initializeSentry = (appName: string, allowLogs = false) => {
       // isClientRequestError).
       beforeSend: (event, hint) =>
         isClientAbort(event) || isClientRequestError(hint?.originalException) ? null : event,
-      tracesSampleRate,
-      // Noise that fills traces and the free quota without telling anything
-      // (upstream 2ffd05fc4): Prisma's internal steps, transaction
-      // bookkeeping and one span per Express middleware.
-      ignoreSpans: SENTRY_IGNORED_SPANS,
       // Logs: consoleLoggingIntegration above sends warn and error (Sentry
       // 11 dropped `enableLogs`).
+      ...(ownTracing
+        ? { enableOpenTelemetrySetup: false }
+        : {
+            tracesSampleRate,
+            // Noise that fills traces and the free quota without telling
+            // anything (upstream 2ffd05fc4): Prisma's internal steps,
+            // transaction bookkeeping and one span per Express middleware.
+            ignoreSpans: SENTRY_IGNORED_SPANS,
 
-      // Profiling
-      profileSessionSampleRate: process.env.NODE_ENV === 'development' ? 1.0 : 0.1,
-      profileLifecycle: 'trace',
+            // Profiling
+            profileSessionSampleRate:
+              process.env.NODE_ENV === 'development' ? 1.0 : 0.1,
+            profileLifecycle: 'trace' as const,
+          }),
     });
   } catch (err) {
     // Runs before Nest is loaded; importing @nestjs/common here would defeat

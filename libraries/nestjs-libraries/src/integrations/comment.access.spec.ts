@@ -57,4 +57,39 @@ describe('commentAccessForNow', () => {
     );
     expect(integration.customInstanceDetails).toBe('written-by-another');
   });
+
+  // TikTok rotates refresh tokens from 2026-12-01: the old one stops working
+  // as soon as another comment of the channel has renewed with it.
+  it('refused because another comment renewed first: uses the access stored by now', async () => {
+    const s = store(['stored', 'renewed-by-another']);
+    const integration = channel();
+    await commentAccessForNow(
+      s,
+      {
+        refreshCommentAccess: async () => {
+          throw new Error('refresh token is invalid');
+        },
+      },
+      integration
+    );
+    expect(integration.customInstanceDetails).toBe('renewed-by-another');
+    expect(s.replaceCommentAccess).not.toHaveBeenCalled();
+  });
+
+  it('refused with nothing new stored: the failure is passed on', async () => {
+    const s = store(['stored']);
+    const integration = channel();
+    await expect(
+      commentAccessForNow(
+        s,
+        {
+          refreshCommentAccess: async () => {
+            throw new Error('refresh token is invalid');
+          },
+        },
+        integration
+      )
+    ).rejects.toThrow('refresh token is invalid');
+    expect(integration.customInstanceDetails).toBe('stored');
+  });
 });

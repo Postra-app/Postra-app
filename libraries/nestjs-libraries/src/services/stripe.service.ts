@@ -10,7 +10,16 @@ import { SubscriptionService } from '@gitroom/nestjs-libraries/database/prisma/s
 import { OrganizationService } from '@gitroom/nestjs-libraries/database/prisma/organizations/organization.service';
 import { makeId } from '@gitroom/nestjs-libraries/services/make.is';
 import { BillingSubscribeDto } from '@gitroom/nestjs-libraries/dtos/billing/billing.subscribe.dto';
-import { planLabel, pricing } from '@gitroom/nestjs-libraries/database/prisma/subscriptions/pricing';
+import {
+  planLabel,
+  pricing,
+  TRIAL_AGENT_MESSAGES,
+  TRIAL_AI_IMAGES,
+  TRIAL_CHANNEL_CAP,
+  TRIAL_DAYS,
+  TRIAL_LIMITS,
+  TRIAL_VIDEO_CLIPS,
+} from '@gitroom/nestjs-libraries/database/prisma/subscriptions/pricing';
 import { TrackService } from '@gitroom/nestjs-libraries/track/track.service';
 import { NotificationService } from '@gitroom/nestjs-libraries/database/prisma/notifications/notification.service';
 import { UsersService } from '@gitroom/nestjs-libraries/database/prisma/users/users.service';
@@ -62,10 +71,10 @@ const waitsForRenewal = (
   currentTier: string | undefined,
   billing: string
 ) =>
+
   live?.status === 'active' &&
   !!currentTier &&
   TIER_ORDER.indexOf(billing) < TIER_ORDER.indexOf(currentTier);
-
 
 /** A succeeded charge as Billing and the admin panel list it. */
 export type ChargeSummary = {
@@ -382,6 +391,7 @@ export class StripeService {
       // Both are interpolated into a Stripe search query below.
       card: card && /^[A-Za-z0-9]+$/.test(card) ? card : null,
       email: trialEmailKey(user?.email),
+      noCard: subscription.metadata?.trial_no_card === '1',
     };
   }
 
@@ -681,16 +691,20 @@ export class StripeService {
         }
       }
       // Without a fingerprint the card cannot be marked, and a new email would
-      // start another trial on it: no fingerprint, no trial.
-      if (!trial.card) {
+      // start another trial on it: no fingerprint, no trial. A trial started
+      // without a card (startTrial) is kept to one per email instead, and has
+      // no card to fingerprint.
+      if (!trial.card && !trial.noCard) {
         await this.releaseTrialMarks(trial);
         await this.rejectRepeatTrial(current, 'no_card');
         return { ok: true, skipped: 'trial without a card fingerprint' };
       }
     }
 
-    // A thrown error answers 500, and Stripe retries the event.
-    if (!(await this.checkValidCard(fresh))) {
+    // A thrown error answers 500, and Stripe retries the event. A trial
+    // without a card has no card to check: Stripe cancels it at the end
+    // unless one is added.
+    if (!trial?.noCard && !(await this.checkValidCard(fresh))) {
       // A declined card does not keep the trial reserved.
       if (trial) {
         await this.releaseTrialMarks(trial);
@@ -835,8 +849,27 @@ export class StripeService {
       month: 'long',
       timeZone: 'Europe/London',
     }).format(new Date(current.trial_end * 1000));
-    const amount = await this.firstChargeAfterTrial(current, customerId);
     const last4 = this.cardOfSubscription(current);
+
+    // A trial started without a card that still has none is not charged:
+    // Stripe cancels it at the end. It is told how to keep the plan.
+    if (!last4 && !this.hasExpandedPaymentMethod(current)) {
+      await this._notificationService.inAppNotification(
+        org.id,
+        `Your Postra trial ends on ${ends}`,
+        `Your free trial of Postra ${planLabel(
+          billing
+        )} ends on ${ends}. To keep your plan, add a card in Billing: ${
+          process.env.FRONTEND_URL
+        }/billing. Without a card, nothing is charged: publishing stops when the trial ends, and your channels, posts and media stay saved for when you choose a plan.`,
+        true,
+        false,
+        'info'
+      );
+      return { ok: true };
+    }
+
+    const amount = await this.firstChargeAfterTrial(current, customerId);
     const charged =
       amount === null
         ? last4
@@ -896,6 +929,21 @@ export class StripeService {
     return typeof unit === 'number'
       ? formatWholeAmount(unit * (item?.quantity || 1))
       : null;
+  }
+
+  // Whether the subscription read with its payment methods expanded has one
+  // Stripe would charge: its own, the customer's default for invoices, or an
+  // old default source. What missing_payment_method looks at.
+  private hasExpandedPaymentMethod(current: Stripe.Subscription): boolean {
+    if (current.default_payment_method || current.default_source) {
+      return true;
+    }
+    const customer = current.customer;
+    if (customer && typeof customer === 'object' && !('deleted' in customer && customer.deleted)) {
+      const full = customer as Stripe.Customer;
+      return !!(full.invoice_settings?.default_payment_method || full.default_source);
+    }
+    return false;
   }
 
   // The card the trial will be charged to: the subscription's own payment
@@ -1008,11 +1056,74 @@ export class StripeService {
       return { ok: true, skipped: 'customer has another live subscription' };
     }
 
-    await this._subscriptionService.deleteSubscription(
+    const ended = await this._subscriptionService.deleteSubscription(
       customer,
       event.data.object.metadata?.uniqueId
     );
+    if (ended) {
+      await this.trialEnded(event.data.object);
+    }
     return { ok: true };
+  }
+
+  // A trial without a card that reached its end is cancelled by Stripe
+  // (missing_payment_method), with the same cancellation reason as any
+  // cancel: it is told by ending at trial_end. One notice and mail per
+  // trial, a redelivered event included. A trial cancelled earlier or
+  // refused as a repeat says nothing here.
+  private async trialEnded(subscription: Stripe.Subscription) {
+    const meta = subscription.metadata || {};
+    if (
+      meta.trial_no_card !== '1' ||
+      meta.trial_rejected ||
+      !subscription.trial_end ||
+      !subscription.canceled_at ||
+      subscription.canceled_at < subscription.trial_end ||
+      subscription.canceled_at > subscription.trial_end + 86400
+    ) {
+      return;
+    }
+    if (
+      (await ioRedis.set(
+        `trial-ended:${subscription.id}`,
+        '1',
+        'EX',
+        30 * 86400,
+        'NX'
+      )) !== 'OK'
+    ) {
+      return;
+    }
+    const mark = `trial-ended:${subscription.id}`;
+    try {
+      const org = await this._organizationService.getOrgByCustomerId(
+        subscription.customer as string
+      );
+      if (!org) {
+        return;
+      }
+      await this.sendTrialEnded(org.id, subscription);
+    } catch (err) {
+      // Not sent: the mark goes, so Stripe's retry of the event sends it.
+      await ioRedis.del(mark);
+      throw err;
+    }
+  }
+
+  private async sendTrialEnded(orgId: string, subscription: Stripe.Subscription) {
+    const { billing } = this.planOfSubscription(subscription);
+    await this._notificationService.inAppNotification(
+      orgId,
+      'Your free trial has ended',
+      `Your free trial of Postra ${planLabel(
+        billing
+      )} has ended. Your channels, posts and media are saved. Choose a plan and add a card to carry on: ${
+        process.env.FRONTEND_URL
+      }/billing`,
+      true,
+      false,
+      'info'
+    );
   }
 
   // A chargeback, or a refund of the whole payment, takes back the money a
@@ -1059,7 +1170,10 @@ export class StripeService {
     if (reason === 'refund') {
       // refundDuplicate gives back the payment of a second subscription it
       // cancels; the customer's plan is the other one and stays.
-      const refunds = await stripe.refunds.list({ charge: charge.id, limit: 10 });
+      const refunds = await stripe.refunds.list({
+        charge: charge.id,
+        limit: 10,
+      });
       if (
         refunds.data.length &&
         refunds.data.every((r) => r.reason === 'duplicate')
@@ -1644,12 +1758,34 @@ export class StripeService {
     return org.paymentId;
   }
 
+  // `card` opens the portal on its "add a payment method" page: how a trial
+  // without a card gets one (docs "Customer portal deep links"; the card
+  // becomes the customer's default for invoices). `card-now` comes back to
+  // "End the trial now" to confirm the payment.
   async createBillingPortalLink(
-    customer: string
+    customer: string,
+    flow?: 'card' | 'card-now'
   ): Promise<Stripe.Response<Stripe.BillingPortal.Session>> {
     return stripe.billingPortal.sessions.create({
       customer,
       return_url: process.env['FRONTEND_URL'] + '/billing',
+      ...(flow
+        ? {
+            flow_data: {
+              type: 'payment_method_update' as const,
+              after_completion: {
+                type: 'redirect' as const,
+                redirect: {
+                  return_url:
+                    process.env['FRONTEND_URL'] +
+                    (flow === 'card-now'
+                      ? '/billing?finishTrial=true'
+                      : '/billing?card=added'),
+                },
+              },
+            },
+          }
+        : {}),
     });
   }
 
@@ -1715,8 +1851,7 @@ export class StripeService {
     customer: string,
     body: TrackedSubscribe,
     price: string,
-    userId: string,
-    allowTrial: boolean
+    userId: string
   ) {
     const user = await this._userService.getUserById(userId);
 
@@ -1751,11 +1886,7 @@ export class StripeService {
         process.env['FRONTEND_URL'] +
         `/launches?onboarding=true&check=${uniqueId}${isUtm}`,
       mode: 'subscription',
-      // A trial is kept to one per card by the card's fingerprint, which a
-      // wallet such as Link or Revolut Pay does not have.
-      ...(allowTrial ? { allowed_payment_method_types: ['card' as const] } : {}),
       subscription_data: {
-        ...(allowTrial ? { trial_period_days: 7 } : {}),
         metadata: {
           service: 'gitroom',
           ...body,
@@ -1781,11 +1912,11 @@ export class StripeService {
       ],
     });
 
-    // Return auto-apply promo code for frontend to apply. `trial` tells the
-    // page whether to promise free days: this checkout is what charges.
+    // Return auto-apply promo code for frontend to apply. A checkout pays at
+    // once: the trial starts without one (startTrial), so `trial` is false.
     return {
       client_secret,
-      trial: allowTrial,
+      trial: false,
       ...(autoApplyPromoCode ? { auto_apply_coupon: autoApplyPromoCode } : {}),
     };
   }
@@ -1796,8 +1927,7 @@ export class StripeService {
     customer: string,
     body: TrackedSubscribe,
     price: string,
-    userId: string,
-    allowTrial: boolean
+    userId: string
   ) {
     const isUtm = body.utm ? `&utm_source=${encodeURIComponent(body.utm)}` : '';
 
@@ -1817,11 +1947,7 @@ export class StripeService {
         process.env['FRONTEND_URL'] +
         `/launches?onboarding=true&check=${uniqueId}${isUtm}`,
       mode: 'subscription',
-      // A trial is kept to one per card by the card's fingerprint, which a
-      // wallet such as Link or Revolut Pay does not have.
-      ...(allowTrial ? { allowed_payment_method_types: ['card' as const] } : {}),
       subscription_data: {
-        ...(allowTrial ? { trial_period_days: 7 } : {}),
         metadata: {
           service: 'gitroom',
           ...body,
@@ -1861,6 +1987,25 @@ export class StripeService {
       currency: preview.currency,
       tier: trialing.metadata?.billing || null,
       period: trialing.metadata?.period || null,
+      // A trial without a card is asked for one before anything else.
+      hasCard: await this.hasPaymentMethod(trialing),
+    };
+  }
+
+  // The trial bar: when the trial ends, and whether a card will keep the plan.
+  // Null without a trial.
+  async trialStatus(
+    paymentId: string
+  ): Promise<{ endsAt: number; hasCard: boolean } | null> {
+    const trialing = (
+      await stripe.subscriptions.list({ customer: paymentId, limit: 100 })
+    ).data.find((f) => f.status === 'trialing');
+    if (!trialing?.trial_end) {
+      return null;
+    }
+    return {
+      endsAt: trialing.trial_end * 1000,
+      hasCard: await this.hasPaymentMethod(trialing),
     };
   }
 
@@ -1872,6 +2017,12 @@ export class StripeService {
     ).data.find((f) => f.status === 'trialing');
     if (!trialing) {
       return { finish: false, reason: 'no-trial' };
+    }
+    // A trial without a card ends cancelled, not charged: Stripe applies
+    // missing_payment_method at once (measured on the sandbox, 26 Nov 2026).
+    // The customer adds a card first.
+    if (!(await this.hasPaymentMethod(trialing))) {
+      return { finish: false, reason: 'no-card' };
     }
 
     const updated = await stripe.subscriptions.update(trialing.id, {
@@ -2018,18 +2169,17 @@ export class StripeService {
     uniqueId: string,
     organizationId: string,
     userId: string,
-    request: BillingSubscribeDto,
-    allowTrial: boolean
+    request: BillingSubscribeDto
   ) {
     const id = makeId(10);
     const org = await this._organizationService.getOrgById(organizationId);
     const body = withSignupSource(request, org);
-    const priceData = pricing[body.billing];
     const customer = await this.createOrGetCustomer(org!);
     // A checkout always starts a new subscription. An organisation that already
     // had one got a second on the same customer, and cancelling stopped only
     // the first. Plan changes go through subscribe(), which updates it.
-    const live = (await this.listSubscriptions(customer, organizationId)).some(
+    const subscriptions = await this.listSubscriptions(customer, organizationId);
+    const live = subscriptions.some(
       (subscription) =>
         // `incomplete` is a first payment that failed: trying again is fine.
         ['active', 'trialing', 'past_due', 'unpaid'].includes(
@@ -2042,50 +2192,258 @@ export class StripeService {
         409
       );
     }
-    const findProduct = await this.findOrCreateProduct(body.billing);
+    const findPrice = await this.planPrice(body);
 
+    const checkout = await this.createEmbeddedCheckout(
+      uniqueId,
+      id,
+      customer,
+      body,
+      findPrice!.id,
+      userId
+    );
+    // The plan screen opens with "Your free trial has ended" for a trial
+    // without a card that ran to its end (not one cancelled earlier).
+    const trialEnded = subscriptions.some(
+      (s) =>
+        s.metadata?.trial_no_card === '1' &&
+        s.status === 'canceled' &&
+        !s.metadata?.trial_rejected &&
+        !!s.trial_end &&
+        !!s.canceled_at &&
+        s.canceled_at >= s.trial_end
+    );
+    return { ...checkout, trialEnded };
+  }
+
+  // The GBP price of a plan and period: the live one, else a new one. Stale
+  // USD prices exist in the account: a $29 price must not match PRO £29 and
+  // check out in the wrong currency.
+  private async planPrice(body: BillingSubscribeDto) {
+    const priceData = pricing[body.billing];
+    const findProduct = await this.findOrCreateProduct(body.billing);
+    const amount =
+      (body.period === 'MONTHLY'
+        ? priceData.month_price
+        : priceData.year_price) * 100;
+    const interval = body.period === 'MONTHLY' ? 'month' : 'year';
     const pricesList = await stripe.prices.list({
       active: true,
       product: findProduct!.id,
     });
-
-    const findPrice =
+    return (
       pricesList.data.find(
         (p) =>
-          // stale USD prices exist in the account — a $29 price must not
-          // match PRO £29 and check out in the wrong currency
           p?.currency === 'gbp' &&
-          p?.recurring?.interval?.toLowerCase() ===
-            (body.period === 'MONTHLY' ? 'month' : 'year') &&
-          p?.unit_amount ===
-            (body.period === 'MONTHLY'
-              ? priceData.month_price
-              : priceData.year_price) *
-              100
+          p?.recurring?.interval?.toLowerCase() === interval &&
+          p?.unit_amount === amount
       ) ||
       (await stripe.prices.create({
         active: true,
         product: findProduct!.id,
         currency: 'gbp',
         nickname: body.billing + ' ' + body.period,
-        unit_amount:
-          (body.period === 'MONTHLY'
-            ? priceData.month_price
-            : priceData.year_price) * 100,
-        recurring: {
-          interval: body.period === 'MONTHLY' ? 'month' : 'year',
-        },
-      }));
-
-    return this.createEmbeddedCheckout(
-      uniqueId,
-      id,
-      customer,
-      body,
-      findPrice!.id,
-      userId,
-      await this.offerTrial(organizationId, customer, userId, allowTrial)
+        unit_amount: amount,
+        recurring: { interval },
+      }))
     );
+  }
+
+  // Whether Stripe has a card to charge when the trial ends: the
+  // subscription's own payment method or the customer's default for
+  // invoices (what the portal's "add a card" sets). Stripe checks the same
+  // two, and the old default_source, before applying missing_payment_method.
+  private async hasPaymentMethod(subscription: Stripe.Subscription) {
+    if (subscription.default_payment_method || subscription.default_source) {
+      return true;
+    }
+    const customer = await stripe.customers.retrieve(
+      subscription.customer as string
+    );
+    if (!customer || customer.deleted) {
+      return false;
+    }
+    const full = customer as Stripe.Customer;
+    return !!(
+      full.invoice_settings?.default_payment_method || full.default_source
+    );
+  }
+
+  // The free trial starts here, without a card (sign-ups stopped at the card
+  // form). The subscription
+  // trials for TRIAL_DAYS with no payment method; Stripe cancels it at the
+  // end unless a card was added (Billing → "Add a card", the portal), and
+  // customer.subscription.deleted ends the plan as any cancel does. One trial
+  // per email: the mark is reserved before the subscription exists and
+  // written on the customer at once; two clicks or two tabs start one.
+  //
+  // Stripe calls trial_period_days with missing_payment_method its "legacy"
+  // path and recommends trial offers for new integrations (docs "Free
+  // trials", read 26 Nov 2026), with no removal date. Trial offers count the
+  // trial in periods of a trial price (five days = a daily £0 price on every
+  // plan, which the docs do not show), put the trial end on each item instead
+  // of trial_end, which all of billing reads, and work with Checkout only in
+  // a private preview. To be looked at again when they take days.
+  async startTrial(
+    uniqueId: string,
+    organizationId: string,
+    userId: string,
+    request: BillingSubscribeDto,
+    allowTrial: boolean
+  ): Promise<{ id: string }> {
+    const org = await this._organizationService.getOrgById(organizationId);
+    const body = withSignupSource(request, org);
+    // FREE is not a plan to try (the DTO takes the paid tiers only).
+    if (!pricing[body.billing] || (body.billing as string) === 'FREE') {
+      throw new HttpException('Choose a plan for your trial.', 400);
+    }
+    if (!allowTrial) {
+      throw new HttpException(
+        'This account has already had its free trial. Choose a plan to subscribe.',
+        409
+      );
+    }
+    // One start at a time: a double click or a second tab waits for the
+    // first, which the live-subscription check below then sees.
+    const lock = `start-trial:${organizationId}`;
+    if ((await ioRedis.set(lock, '1', 'EX', 60, 'NX')) !== 'OK') {
+      throw new HttpException(
+        'Your trial is already starting. Reload the page in a few seconds.',
+        409
+      );
+    }
+    try {
+      return await this.createTrial(
+        uniqueId,
+        organizationId,
+        userId,
+        body,
+        org!
+      );
+    } finally {
+      await ioRedis.del(lock);
+    }
+  }
+
+  private async createTrial(
+    uniqueId: string,
+    organizationId: string,
+    userId: string,
+    body: TrackedSubscribe,
+    org: Organization
+  ): Promise<{ id: string }> {
+    const customer = await this.createOrGetCustomer(org);
+    const live = (await this.listSubscriptions(customer, organizationId)).some(
+      (subscription) =>
+        ['active', 'trialing', 'past_due', 'unpaid'].includes(
+          subscription.status
+        )
+    );
+    if (live) {
+      throw new HttpException(
+        'This organization already has a subscription. Change the plan from the billing page instead.',
+        409
+      );
+    }
+    const user = await this._userService.getUserById(userId);
+    const email = trialEmailKey(user?.email);
+    if (!email) {
+      throw new HttpException(
+        'A free trial needs an email address on your account. Choose a plan to subscribe.',
+        409
+      );
+    }
+    if (await this.trialMarkUsedBefore('email', email, customer)) {
+      await this._organizationService.endTrialOffer(organizationId);
+      throw new HttpException(
+        'This email address has already been used for a Postra trial. Choose a plan to subscribe.',
+        409
+      );
+    }
+
+    const id = makeId(10);
+    const price = await this.planPrice(body);
+    let created: Stripe.Subscription;
+    try {
+      created = await stripe.subscriptions.create({
+        customer,
+        items: [{ price: price.id, quantity: 1 }],
+        trial_period_days: TRIAL_DAYS,
+        trial_settings: {
+          end_behavior: { missing_payment_method: 'cancel' },
+        },
+        // A card added during the trial (the portal) is the one the first
+        // invoice is charged to.
+        payment_settings: { save_default_payment_method: 'on_subscription' },
+        metadata: {
+          service: 'gitroom',
+          ...body,
+          userId,
+          uniqueId: id,
+          ud: uniqueId,
+          trial_no_card: '1',
+        },
+      });
+    } catch (err) {
+      await this.releaseTrialMarks({ customer, card: null, email });
+      throw err;
+    }
+    // The trial has started once Stripe made it. The webhook writes the same
+    // mark and Stripe retries it, so a failed write here is not the
+    // customer's error.
+    try {
+      await stripe.customers.update(customer, {
+        metadata: { trial_email: email },
+      });
+    } catch (err) {
+      this._logger.warn(
+        `Trial email mark on ${customer} not written yet: ${
+          (err as Error)?.message
+        }`
+      );
+    }
+    await this.trialStarted(organizationId, body.billing, created.trial_end);
+    return { id };
+  }
+
+  // The trial's welcome: when it ends, what it includes, how to keep the
+  // plan. A failed notice does not undo a trial that has started.
+  private async trialStarted(
+    organizationId: string,
+    billing: string,
+    trialEnd?: number | null
+  ) {
+    try {
+      const ends = trialEnd
+        ? new Intl.DateTimeFormat('en-GB', {
+            day: 'numeric',
+            month: 'long',
+            timeZone: 'Europe/London',
+          }).format(new Date(trialEnd * 1000))
+        : null;
+      await this._notificationService.inAppNotification(
+        organizationId,
+        'Your Postra free trial has started',
+        `Your ${TRIAL_DAYS}-day free trial of Postra ${planLabel(
+          billing
+        )} has started${
+          ends ? ` and ends on ${ends}` : ''
+        }. It includes ${TRIAL_CHANNEL_CAP} channels, ${
+          TRIAL_LIMITS.posts_per_month
+        } posts, ${TRIAL_AI_IMAGES} AI images, ${TRIAL_VIDEO_CLIPS} AI video and ${TRIAL_AGENT_MESSAGES} questions to the AI assistant; your plan's full limits start with your first payment. To keep your plan after the trial, add a card in Billing: ${
+          process.env.FRONTEND_URL
+        }/billing. Without a card, nothing is charged when the trial ends.`,
+        true,
+        false,
+        'info'
+      );
+    } catch (err) {
+      this._logger.warn(
+        `Trial welcome for ${organizationId} not sent: ${
+          (err as Error)?.message
+        }`
+      );
+    }
   }
 
   // Whether the trial the billing pages promise still stands for this person.
@@ -2129,74 +2487,17 @@ export class StripeService {
     }
   }
 
-  // One trial per email: an email whose trial ran on another
-  // Stripe customer checks out without one, and the organisation's offer ends,
-  // so the billing page stops promising it. Stripe keeps the mark after the
-  // account is deleted from Postra.
-  private async offerTrial(
-    organizationId: string,
-    customer: string,
-    userId: string,
-    allowTrial: boolean
-  ) {
-    if (!allowTrial) {
-      return false;
-    }
-    const user = await this._userService.getUserById(userId);
-    const email = trialEmailKey(user?.email);
-    if (email && (await this.trialMarkedElsewhere('email', email, customer))) {
-      await this._organizationService.endTrialOffer(organizationId);
-      return false;
-    }
-    return true;
-  }
-
   async subscribe(
     uniqueId: string,
     organizationId: string,
     userId: string,
-    request: BillingSubscribeDto,
-    allowTrial: boolean
+    request: BillingSubscribeDto
   ) {
     const id = makeId(10);
     const org = await this._organizationService.getOrgById(organizationId);
     const body = withSignupSource(request, org);
-    const priceData = pricing[body.billing];
     const customer = await this.createOrGetCustomer(org!);
-    const findProduct = await this.findOrCreateProduct(body.billing);
-
-    const pricesList = await stripe.prices.list({
-      active: true,
-      product: findProduct!.id,
-    });
-
-    const findPrice =
-      pricesList.data.find(
-        (p) =>
-          // stale USD prices exist in the account — a $29 price must not
-          // match PRO £29 and check out in the wrong currency
-          p?.currency === 'gbp' &&
-          p?.recurring?.interval?.toLowerCase() ===
-            (body.period === 'MONTHLY' ? 'month' : 'year') &&
-          p?.unit_amount ===
-            (body.period === 'MONTHLY'
-              ? priceData.month_price
-              : priceData.year_price) *
-              100
-      ) ||
-      (await stripe.prices.create({
-        active: true,
-        product: findProduct!.id,
-        currency: 'gbp',
-        nickname: body.billing + ' ' + body.period,
-        unit_amount:
-          (body.period === 'MONTHLY'
-            ? priceData.month_price
-            : priceData.year_price) * 100,
-        recurring: {
-          interval: body.period === 'MONTHLY' ? 'month' : 'year',
-        },
-      }));
+    const findPrice = await this.planPrice(body);
 
     const getCurrentSubscriptions =
       await this._subscriptionService.getSubscription(organizationId);
@@ -2208,8 +2509,7 @@ export class StripeService {
         customer,
         body,
         findPrice!.id,
-        userId,
-        await this.offerTrial(organizationId, customer, userId, allowTrial)
+        userId
       );
     }
 

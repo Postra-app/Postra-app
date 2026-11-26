@@ -42,6 +42,14 @@ export interface ChannelStateInput {
   disabled?: boolean | null;
   deletedAt?: Date | string | null;
   tokenExpiration?: Date | string | null;
+  /**
+   * The provider's stored date is not when its token dies
+   * (`noRefreshBeforeCall`: Facebook and Instagram through Facebook store 59
+   * days when the page is picked, and the page token neither expires on that
+   * day nor can be refreshed). Such a channel is never `expired` or
+   * `expiring`.
+   */
+  expiryNotMeaningful?: boolean | null;
 }
 
 /** Tokens due for a refresh are selected by `tokenExpiration <= now + 24h`. */
@@ -70,10 +78,9 @@ const asTime = (value: Date | string | null | undefined): number | null => {
  *
  * A null `tokenExpiration` is `ok`, not unknown: x and telegram report
  * `expiresIn: 0` at connect time and never carry an expiry. Facebook and
- * instagram through facebook do carry one: picking the page stores 59 days,
- * but their page tokens neither expire on it nor refresh
- * (`noRefreshBeforeCall`), so for them `expired` here does not mean the
- * channel is dead.
+ * instagram through facebook do carry one that means nothing
+ * (`expiryNotMeaningful`), and are `ok` whatever it says: a healthy page must
+ * not turn into "Token expired" on the day the stored date passes.
  */
 export const channelState = (
   channel: ChannelStateInput,
@@ -92,7 +99,9 @@ export const channelState = (
     return 'needs-reconnect';
   }
 
-  const expiration = asTime(channel.tokenExpiration);
+  const expiration = channel.expiryNotMeaningful
+    ? null
+    : asTime(channel.tokenExpiration);
   if (expiration === null) {
     return 'ok';
   }

@@ -171,9 +171,12 @@ describe('Stripe trial_will_end: Postra sends its own trial reminder', () => {
     );
   });
 
-  it('no card found: the card is left out', async () => {
+  // A payment method without card details (Link): Stripe still charges it.
+  // No payment method at all is a trial without a card, which is not charged
+  // (stripe.trial-no-card-end.spec.ts).
+  it('no card details found: the card is left out', async () => {
     retrieveSubscription.mockResolvedValue(
-      subscription({ default_payment_method: null })
+      subscription({ default_payment_method: { id: 'pm_link', type: 'link' } })
     );
     const { service, notificationService } = build();
     await service.trialWillEnd(event);

@@ -8,7 +8,7 @@ import { Button } from '@gitroom/frontend/components/ui/button';
 import { useT } from '@gitroom/react/translation/get.transation.service.client';
 import { planLabel } from '@gitroom/nestjs-libraries/database/prisma/subscriptions/pricing';
 
-type Step = 'confirm' | 'working' | 'done' | 'already' | 'problem';
+type Step = 'confirm' | 'working' | 'done' | 'already' | 'problem' | 'no-card';
 
 // Ending the trial charges the card. It used to happen the moment this page
 // opened with ?finishTrial=true — no price, no question, and again on every
@@ -42,6 +42,11 @@ export const FinishTrial: FC<{ close: () => void }> = (props) => {
         ).json();
         if (preview && Number.isFinite(preview.amount)) {
           setPlan(preview);
+        }
+        // A trial started without a card: ending it now needs one first,
+        // or Stripe would cancel it instead of charging.
+        if (preview && preview.hasCard === false) {
+          setStep('no-card');
         }
       } catch {
         // The question still works without the price line.
@@ -95,6 +100,10 @@ export const FinishTrial: FC<{ close: () => void }> = (props) => {
       setStep('problem');
       return;
     }
+    if (result?.reason === 'no-card') {
+      setStep('no-card');
+      return;
+    }
     // Paid already: a second visit used to read as a failed payment.
     if (result?.reason === 'no-trial') {
       setStep('already');
@@ -109,6 +118,22 @@ export const FinishTrial: FC<{ close: () => void }> = (props) => {
       return;
     }
     checkFinished();
+  }, []);
+
+  // Stripe's page for adding a card, then back here to confirm the payment.
+  const addCard = useCallback(async () => {
+    try {
+      const { portal } = await (
+        await fetch('/billing/portal?flow=card-now')
+      ).json();
+      if (portal) {
+        window.location.href = portal;
+        return;
+      }
+    } catch {
+      // Falls through to the problem step.
+    }
+    setStep('problem');
   }, []);
 
   // Escape closes it like every other window, except while the payment runs.
@@ -200,6 +225,24 @@ export const FinishTrial: FC<{ close: () => void }> = (props) => {
                               'finish_trial_pay_plain',
                               'End trial and pay now'
                             )}
+                      </Button>
+                      <Button className="flex-1" onClick={() => props.close()}>
+                        {t('keep_my_trial', 'Keep my trial')}
+                      </Button>
+                    </div>
+                  </div>
+                )}
+                {step === 'no-card' && (
+                  <div className="flex flex-col">
+                    <div>
+                      {t(
+                        'finish_trial_add_card',
+                        'To end the trial now and start your plan, add a card first. You come back here to confirm the payment.'
+                      )}
+                    </div>
+                    <div className="flex gap-[10px] mt-[20px] phone:flex-col">
+                      <Button className="flex-1" onClick={addCard}>
+                        {t('add_a_card', 'Add a card')}
                       </Button>
                       <Button className="flex-1" onClick={() => props.close()}>
                         {t('keep_my_trial', 'Keep my trial')}

@@ -198,7 +198,9 @@ describe('finishing a trial early', () => {
   });
 
   it('hands back the invoice link when the bank asks for 3-D Secure', async () => {
-    listSubscriptions.mockResolvedValue({ data: [sub('trialing')] });
+    // A trial with its card: one without asks for a card first
+    // (stripe.trial-start.spec.ts).
+    listSubscriptions.mockResolvedValue({ data: [sub('trialing', 'PRO', { default_payment_method: 'pm_1' })] });
     updateSubscription.mockResolvedValue({
       ...sub('past_due'),
       latest_invoice: { hosted_invoice_url: 'https://invoice.stripe.com/i/x' },
@@ -213,7 +215,9 @@ describe('finishing a trial early', () => {
   });
 
   it('finishes when the charge goes through', async () => {
-    listSubscriptions.mockResolvedValue({ data: [sub('trialing')] });
+    // A trial with its card: one without asks for a card first
+    // (stripe.trial-start.spec.ts).
+    listSubscriptions.mockResolvedValue({ data: [sub('trialing', 'PRO', { default_payment_method: 'pm_1' })] });
     updateSubscription.mockResolvedValue(sub('active'));
     const { service } = build();
 
@@ -360,7 +364,7 @@ describe('a second live subscription for the same customer', () => {
 
 describe('the price shown before ending a trial', () => {
   it('is Stripe’s preview of the invoice for this subscription', async () => {
-    listSubscriptions.mockResolvedValue({ data: [sub('trialing', 'STANDARD')] });
+    listSubscriptions.mockResolvedValue({ data: [sub('trialing', 'STANDARD', { default_payment_method: 'pm_1' })] });
     createPreview.mockResolvedValue({ amount_due: 1200, currency: 'gbp' });
     const { service } = build();
 
@@ -369,6 +373,7 @@ describe('the price shown before ending a trial', () => {
       currency: 'gbp',
       tier: 'STANDARD',
       period: 'MONTHLY',
+      hasCard: true,
     });
     expect(createPreview).toHaveBeenCalledWith({
       customer: 'cus_1',

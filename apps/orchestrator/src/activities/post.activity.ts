@@ -266,6 +266,41 @@ export class PostActivity {
     return post;
   }
 
+  // A post that came due after its organisation's plan ended (a trial
+  // without a card that ran out, a cancelled plan): marked not sent with the
+  // reason, and the customer told, by mail too, grouped with the day's other
+  // mails. True when that is what happened; false when the plan is there and
+  // the post is simply gone.
+  @ActivityMethod()
+  async notSentWithoutPlan(orgId: string, postId: string) {
+    if (!process.env.STRIPE_SECRET_KEY) {
+      return false;
+    }
+    if (await this._subscriptionService.getSubscription(orgId)) {
+      return false;
+    }
+    const post = await this._postService.getPostById(postId, orgId);
+    if (!post) {
+      return false;
+    }
+    await this._postService.changeState(
+      postId,
+      'ERROR',
+      'Not sent: your Postra plan is not active. Choose a plan in Billing, then publish this post again.'
+    );
+    await this._notificationService.inAppNotification(
+      orgId,
+      'A scheduled post was not sent',
+      `A post you scheduled was not sent because your Postra plan is not active: your free trial has ended or your plan was cancelled. The post is saved. Choose a plan in Billing (${process.env.FRONTEND_URL}/billing), then open the post and publish it again.`,
+      true,
+      true,
+      'info',
+      undefined,
+      postId
+    );
+    return true;
+  }
+
   @ActivityMethod()
   async getPostsList(orgId: string, postId: string) {
     if (process.env.STRIPE_SECRET_KEY) {

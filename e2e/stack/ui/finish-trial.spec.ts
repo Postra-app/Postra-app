@@ -96,3 +96,25 @@ test('on a phone the whole window fits, and Escape closes it', async ({ page }) 
   await expect(dialog).toHaveCount(0);
   expect(calls).toEqual([]);
 });
+
+// A trial started without a card: ending it now would cancel it in Stripe
+// instead of charging. The dialog asks for a card first, on Stripe's own page,
+// and comes back to confirm the payment.
+test('a trial without a card is asked for one before anything is charged', async ({ page }) => {
+  const calls = await routes(page, { finish: true }, { amount: 2900, currency: 'gbp', tier: 'PRO', period: 'MONTHLY', hasCard: false });
+  const portals: string[] = [];
+  await page.route('**/api/billing/portal**', (route) => {
+    portals.push(route.request().url());
+    return route.fulfill({ json: { portal: 'http://localhost:54000/billing?portal=stub' } });
+  });
+  await page.goto('/billing?finishTrial=true');
+  await expect(
+    page.getByText('To end the trial now and start your plan, add a card first. You come back here to confirm the payment.')
+  ).toBeVisible({ timeout: 20_000 });
+  await expect(page.getByRole('button', { name: /End trial and pay/ })).toHaveCount(0);
+
+  await page.getByRole('button', { name: 'Add a card' }).click();
+  await page.waitForURL(/portal=stub/);
+  expect(portals.map((u) => new URL(u).searchParams.get('flow'))).toEqual(['card-now']);
+  expect(calls).toEqual([]);
+});

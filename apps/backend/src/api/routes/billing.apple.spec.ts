@@ -22,7 +22,7 @@ describe('billing: plans bought in the iOS app', () => {
       stripe as any,
       {} as any,
       { record: jest.fn() } as any,
-      apple as any
+      apple as any, {} as any, {} as any
     );
     return { controller, stripe, apple };
   };
@@ -51,7 +51,7 @@ describe('billing: plans bought in the iOS app', () => {
     async (route) => {
       const { controller, stripe } = build();
       await controller[route](webOrg, { id: 'u' } as any, body, req);
-      expect(stripe[route]).toHaveBeenCalledWith(undefined, 'org-2', 'u', body, true);
+      expect(stripe[route]).toHaveBeenCalledWith(undefined, 'org-2', 'u', body);
     }
   );
 
