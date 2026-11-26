@@ -1427,6 +1427,8 @@ export class StripeService {
         renewsOn: new Date(trial.trial_end * 1000).toISOString(),
         renewalPrice: (findPrice?.unit_amount ?? 0) / 100,
         scheduled: false,
+        // The renewal happens only with a card: the confirmation says so.
+        trialNoCard: true,
       };
     }
 

@@ -369,8 +369,8 @@ describe('the trial bar', () => {
 
 // Stripe refuses an invoice preview for a trial that has no card and is set to
 // cancel ("The subscription will cancel at the end of the trial instead of
-// generating an invoice", production, 26 Nov 2026). The "End the trial now"
-// dialog then fell back to "Your card is charged straight away".
+// generating an invoice"). The "End the trial now" dialog then fell back to
+// "Your card is charged straight away".
 describe('a trial without a card is not previewed as an invoice', () => {
   const trialing = {
     id: 'sub_new',
@@ -403,6 +403,7 @@ describe('a trial without a card is not previewed as an invoice', () => {
       renewsOn: new Date(2000 * 1000).toISOString(),
       renewalPrice: expect.any(Number),
       scheduled: false,
+      trialNoCard: true,
     });
     expect(createPreview).not.toHaveBeenCalled();
   });

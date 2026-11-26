@@ -2469,5 +2469,7 @@
   "end_trial_now_button": "End the trial now",
   "free_trial_limit": "Free trial limit",
   "channels_used_full_trial": "{{used}} of {{limit}} social accounts connected: the free trial includes {{limit}}. End the trial in Billing to connect up to {{planLimit}} on {{plan}}.",
-  "billing_trial_box_ai_actions": "{{n}} AI actions a day for writing and editing"
+  "billing_trial_box_ai_actions": "{{n}} AI actions a day for writing and editing",
+  "plan_change_renewal_trial_month": "From {{date}}: £{{price}} a month if you add a card before then; without one the trial ends with no charge.",
+  "plan_change_renewal_trial_year": "From {{date}}: £{{price}} a year if you add a card before then; without one the trial ends with no charge."
 }
