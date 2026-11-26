@@ -356,7 +356,17 @@ describe('the trial bar', () => {
     retrieveCustomer.mockResolvedValue({ id: 'cus_new', invoice_settings: { default_payment_method: null } });
     const { service } = build();
 
-    expect(await service.trialStatus('cus_new')).toEqual({ endsAt: 2000 * 1000, hasCard: false });
+    expect(await service.trialStatus('cus_new')).toEqual({ endsAt: 2000 * 1000, hasCard: false, cancelled: false });
+  });
+
+  // Cancelled from Billing, the trial runs to its end and the plan ends with
+  // it, with a card or without: the bar must not say a card keeps the plan.
+  it('says when the trial was cancelled from Billing', async () => {
+    listSubscriptions.mockResolvedValue({ data: [{ id: 'sub_new', customer: 'cus_new', status: 'trialing', trial_end: 2000, cancel_at_period_end: true, default_payment_method: null }] });
+    retrieveCustomer.mockResolvedValue({ id: 'cus_new', invoice_settings: { default_payment_method: null } });
+    const { service } = build();
+
+    expect(await service.trialStatus('cus_new')).toEqual({ endsAt: 2000 * 1000, hasCard: false, cancelled: true });
   });
 
   it('no trial, no bar', async () => {

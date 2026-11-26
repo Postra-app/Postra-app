@@ -194,6 +194,7 @@ export class BillingController {
       trial: true,
       endsAt: status.endsAt,
       hasCard: status.hasCard,
+      cancelled: status.cancelled,
       channels: {
         used: channelsInUse(channels),
         // @ts-ignore the request's organisation is loaded with its subscription

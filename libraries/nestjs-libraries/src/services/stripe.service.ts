@@ -2027,7 +2027,7 @@ export class StripeService {
   // Null without a trial.
   async trialStatus(
     paymentId: string
-  ): Promise<{ endsAt: number; hasCard: boolean } | null> {
+  ): Promise<{ endsAt: number; hasCard: boolean; cancelled: boolean } | null> {
     const trialing = (
       await stripe.subscriptions.list({ customer: paymentId, limit: 100 })
     ).data.find((f) => f.status === 'trialing');
@@ -2037,6 +2037,8 @@ export class StripeService {
     return {
       endsAt: trialing.trial_end * 1000,
       hasCard: await this.hasPaymentMethod(trialing),
+      // Cancelled from Billing: the plan ends with the trial, card or not.
+      cancelled: !!(trialing.cancel_at_period_end || trialing.cancel_at),
     };
   }
 

@@ -21,6 +21,7 @@ import {
   pricing,
   planLabel,
 } from '@gitroom/nestjs-libraries/database/prisma/subscriptions/pricing';
+import { losesTeamMembers } from '@gitroom/frontend/components/billing/team.loss';
 import { FAQComponent } from '@gitroom/frontend/components/billing/faq.component';
 import useSWR, { useSWRConfig } from 'swr';
 import { useUser } from '@gitroom/frontend/components/layout/user.context';
@@ -505,8 +506,11 @@ export const MainBillingComponent: FC<{
 
           const messages = [];
           if (
-            pricing[billing].team_members <
-            (pricing[subscription?.subscriptionTier!]?.team_members ?? 0)
+            losesTeamMembers(
+              !!user?.isTrailing,
+              subscription?.subscriptionTier,
+              billing
+            )
           ) {
             messages.push(
               `Some team members will be disabled until you upgrade again`

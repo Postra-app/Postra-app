@@ -6,7 +6,7 @@ import { BillingController } from './billing.controller';
 // During the trial the customer sees how much of it is left, in
 // numbers ("Channels 1 / 2 · Posts 4 / 15 · AI images 3 / 10 · 3 days left").
 describe('GET /billing/trial', () => {
-  const build = (status: unknown = { endsAt: 5_000, hasCard: false }) => {
+  const build = (status: unknown = { endsAt: 5_000, hasCard: false, cancelled: false }) => {
     const subscriptionService = {
       postCap: jest.fn().mockResolvedValue({ anchor: new Date(0), limit: 15 }),
       checkCredits: jest.fn().mockResolvedValue({ credits: 7 }),
@@ -34,10 +34,17 @@ describe('GET /billing/trial', () => {
       trial: true,
       endsAt: 5_000,
       hasCard: false,
+      cancelled: false,
       channels: { used: 1, limit: 2 },
       posts: { used: 4, limit: 15 },
       images: { used: 3, limit: 10 },
     });
+  });
+
+  it('passes on that the trial was cancelled from Billing', async () => {
+    const { controller } = build({ endsAt: 5_000, hasCard: true, cancelled: true });
+
+    expect(await controller.trial(org)).toMatchObject({ trial: true, hasCard: true, cancelled: true });
   });
 
   it('no trial, no bar, and Stripe is not asked', async () => {
