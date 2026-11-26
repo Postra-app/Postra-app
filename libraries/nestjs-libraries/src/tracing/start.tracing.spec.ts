@@ -1,4 +1,9 @@
-import { isUntracedOutgoing, isUntracedPath, sampleRatio } from './start.tracing';
+import {
+  deploymentEnvironment,
+  isUntracedOutgoing,
+  isUntracedPath,
+  sampleRatio,
+} from './start.tracing';
 
 describe('isUntracedPath', () => {
   it('matches the health checks and the metrics scrape, whatever comes in front or after', () => {
@@ -60,5 +65,26 @@ describe('sampleRatio', () => {
       process.env.OTEL_TRACES_SAMPLE_RATIO = value;
       expect(sampleRatio()).toBe(1);
     }
+  });
+});
+
+describe('deploymentEnvironment', () => {
+  const nodeEnv = process.env.NODE_ENV;
+  afterEach(() => {
+    delete process.env.OTEL_TRACES_ENVIRONMENT;
+    process.env.NODE_ENV = nodeEnv;
+  });
+
+  it('is the name the stack gives itself, so staging is told apart from production', () => {
+    process.env.NODE_ENV = 'production';
+    process.env.OTEL_TRACES_ENVIRONMENT = 'staging';
+    expect(deploymentEnvironment()).toBe('staging');
+  });
+
+  it('falls back to NODE_ENV', () => {
+    process.env.NODE_ENV = 'production';
+    expect(deploymentEnvironment()).toBe('production');
+    process.env.OTEL_TRACES_ENVIRONMENT = ' ';
+    expect(deploymentEnvironment()).toBe('production');
   });
 });

@@ -75,6 +75,16 @@ export const isUntracedOutgoing = (
 };
 
 /**
+ * The environment the traces are labelled with. NODE_ENV says "production"
+ * on every deployed stack, a staging one included, so a stack names itself
+ * in OTEL_TRACES_ENVIRONMENT; without it the label is NODE_ENV.
+ */
+export const deploymentEnvironment = () =>
+  process.env.OTEL_TRACES_ENVIRONMENT?.trim() ||
+  process.env.NODE_ENV ||
+  'development';
+
+/**
  * Share of new traces to keep, from OTEL_TRACES_SAMPLE_RATIO: 1 keeps all
  * (the default, and the fallback for a value that is not a number from 0 to 1).
  */
@@ -187,8 +197,7 @@ export const startTracing = (options: TracingOptions): TracingHandle => {
     .merge(
       resourceFromAttributes({
         [ATTR_SERVICE_NAME]: options.serviceName,
-        [ATTR_DEPLOYMENT_ENVIRONMENT_NAME]:
-          process.env.NODE_ENV || 'development',
+        [ATTR_DEPLOYMENT_ENVIRONMENT_NAME]: deploymentEnvironment(),
         ...(version ? { [ATTR_SERVICE_VERSION]: version } : {}),
       })
     )
