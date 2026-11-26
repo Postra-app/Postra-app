@@ -52,17 +52,57 @@ async function* histories() {
   }
 }
 
+// The workers put tracing interceptors into the workflow sandbox when
+// OTEL_TRACES_ENDPOINT is set, and that setting can change without a new
+// build. So every history has to replay both ways: on the workflows alone
+// and with the interceptors around them.
+const {
+  makeWorkflowExporter,
+} = require('@temporalio/interceptors-opentelemetry-v2');
+const { NoopSpanProcessor } = require('@opentelemetry/sdk-trace');
+const { resourceFromAttributes } = require('@opentelemetry/resources');
+const passes = [
+  { name: 'workflows alone', options: {} },
+  {
+    name: 'with tracing interceptors',
+    options: {
+      interceptors: {
+        workflowModules: [
+          require.resolve(
+            '@temporalio/interceptors-opentelemetry-v2/lib/workflow-interceptors'
+          ),
+        ],
+      },
+      // A replay exports nothing; the sink only has to exist.
+      sinks: {
+        exporter: makeWorkflowExporter(
+          new NoopSpanProcessor(),
+          resourceFromAttributes({})
+        ),
+      },
+    },
+  },
+];
+
 let failed = 0;
-for await (const result of Worker.runReplayHistories(
-  { workflowsPath, replayName: 'deploy-replay' },
-  histories()
-)) {
-  if (result.error) {
-    failed++;
-    console.error(`✗ ${result.workflowId}: ${result.error.message}`);
-  } else {
-    console.log(`✓ ${result.workflowId}`);
+for (const pass of passes) {
+  let failedHere = 0;
+  for await (const result of Worker.runReplayHistories(
+    { workflowsPath, replayName: 'deploy-replay', ...pass.options },
+    histories()
+  )) {
+    if (result.error) {
+      failedHere++;
+      console.error(
+        `✗ ${result.workflowId} (${pass.name}): ${result.error.message}`
+      );
+    } else if (pass === passes[0]) {
+      console.log(`✓ ${result.workflowId}`);
+    }
   }
+  console.log(
+    `${files.length - failedHere}/${files.length} histories replay on this build, ${pass.name}`
+  );
+  failed += failedHere;
 }
-console.log(`${files.length - failed}/${files.length} histories replay on this build`);
 process.exit(failed ? 1 : 0);

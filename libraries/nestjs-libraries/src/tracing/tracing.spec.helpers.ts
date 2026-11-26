@@ -25,6 +25,7 @@ export const SECRETS = {
   databasePassword: 'database-password-value',
   sqlValue: 'sql-parameter-value',
   clientIp: '203.0.113.77',
+  baggage: 'baggage-value-from-the-caller',
 };
 
 export interface ReceivedRequest {

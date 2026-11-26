@@ -1,4 +1,5 @@
 import { diag, DiagLogLevel, type DiagLogger } from '@opentelemetry/api';
+import { W3CTraceContextPropagator } from '@opentelemetry/core';
 import { OTLPTraceExporter } from '@opentelemetry/exporter-trace-otlp-proto';
 import {
   ExpressInstrumentation,
@@ -10,10 +11,12 @@ import { NestInstrumentation } from '@opentelemetry/instrumentation-nestjs-core'
 import { UndiciInstrumentation } from '@opentelemetry/instrumentation-undici';
 import {
   defaultResource,
+  detectResources,
   envDetector,
   hostDetector,
   resourceFromAttributes,
   serviceInstanceIdDetector,
+  type Resource,
 } from '@opentelemetry/resources';
 import { NodeSDK } from '@opentelemetry/sdk-node';
 import {
@@ -157,6 +160,13 @@ export interface TracingOptions {
 }
 
 export interface TracingHandle {
+  /**
+   * Where a span made outside the tracer provider goes (the ones Temporal
+   * workflows hand out of their sandbox): scrubbed, then batched and exported.
+   */
+  readonly processor: SpanProcessor;
+  /** What every span of this process is labelled with. */
+  readonly resource: Resource;
   /** Exports the finished spans still in the buffer. */
   forceFlush(): Promise<void>;
   /** Flushes and stops the SDK, and takes the instrumentation hooks off again. */
@@ -173,22 +183,35 @@ export const startTracing = (options: TracingOptions): TracingHandle => {
     new BatchSpanProcessor({ exporter })
   );
   const active = instrumentations();
-  const sdk = new NodeSDK({
-    resource: defaultResource().merge(
+  const resource = defaultResource()
+    .merge(
       resourceFromAttributes({
         [ATTR_SERVICE_NAME]: options.serviceName,
         [ATTR_DEPLOYMENT_ENVIRONMENT_NAME]:
           process.env.NODE_ENV || 'development',
         ...(version ? { [ATTR_SERVICE_VERSION]: version } : {}),
       })
-    ),
+    )
     // Which host and which process, plus what OTEL_RESOURCE_ATTRIBUTES adds.
     // The SDK's default set also reports the command line and the user the
     // process runs as, which a trace has no use for.
-    resourceDetectors: [serviceInstanceIdDetector, hostDetector, envDetector],
+    .merge(
+      detectResources({
+        detectors: [serviceInstanceIdDetector, hostDetector, envDetector],
+      })
+    );
+  const sdk = new NodeSDK({
+    // Complete as it is: the workflow spans need the same resource, and the
+    // SDK keeps the one it would detect to itself.
+    resource,
+    autoDetectResources: false,
     sampler: new ParentBasedSampler({
       root: new TraceIdRatioBasedSampler(sampleRatio()),
     }),
+    // The trace id and the parent span, nothing else. The SDK's default also
+    // forwards `baggage`: whatever a caller put in that header would go out
+    // again with every request to a platform and into workflow histories.
+    textMapPropagator: new W3CTraceContextPropagator(),
     spanProcessors: [processor],
     instrumentations: active,
     // Traces only. Left out, the SDK would also start OTLP exporters for
@@ -202,6 +225,8 @@ export const startTracing = (options: TracingOptions): TracingHandle => {
   });
   sdk.start();
   return {
+    processor,
+    resource,
     forceFlush: () => processor.forceFlush(),
     shutdown: async () => {
       for (const instrumentation of active) {

@@ -3,10 +3,12 @@ import {
   InMemorySpanExporter,
   SimpleSpanProcessor,
   TracerProvider,
+  type ReadableSpan,
 } from '@opentelemetry/sdk-trace';
 import {
   ScrubbingSpanProcessor,
   scrubAttributes,
+  scrubSpan,
   scrubText,
   scrubUrl,
 } from './scrub.span';
@@ -90,6 +92,82 @@ describe('scrubAttributes', () => {
       'db.query.text': `SELECT "id" FROM "User" WHERE "email" = '?' AND "name" = '?' AND "org" = $1`,
       'http.route': '/posts/:id',
     });
+  });
+});
+
+describe('spans from the Temporal interceptors', () => {
+  const temporalSpan = (scope: string, name: string, attributes: Record<string, unknown>) =>
+    scrubSpan({
+      name,
+      kind: SpanKind.INTERNAL,
+      attributes,
+      status: { code: SpanStatusCode.ERROR, message: 'refused "a post" with token abc' },
+      events: [
+        {
+          name: 'exception',
+          time: [0, 0],
+          attributes: {
+            'exception.type': 'ApplicationFailure',
+            'exception.message': 'refused "a post"',
+            'exception.stacktrace': 'ApplicationFailure: refused "a post"',
+          },
+        },
+      ],
+      links: [],
+      instrumentationScope: { name: scope },
+    } as unknown as ReadableSpan);
+
+  it('keep the ids of the run and the step, and drop the workflow info copied onto them', () => {
+    const workflow = temporalSpan('@temporalio/interceptor-workflow', 'RunWorkflow:postWorkflowV109', {
+      workflowId: 'post_42',
+      runId: 'run-1',
+      workflowType: 'postWorkflowV109',
+      taskQueue: 'main',
+      namespace: 'default',
+      attempt: 2,
+      memo: { text: 'a post' },
+      searchAttributes: { organizationId: ['org-1'] },
+      lastResult: 'a post',
+      cronSchedule: '* * * * *',
+      historyLength: 12,
+    });
+    expect(workflow.name).toBe('RunWorkflow:postWorkflowV109');
+    expect(workflow.attributes).toEqual({
+      workflowId: 'post_42',
+      runId: 'run-1',
+      workflowType: 'postWorkflowV109',
+      taskQueue: 'main',
+      namespace: 'default',
+      attempt: 2,
+    });
+
+    const activity = temporalSpan('@temporalio/interceptor-activity', 'RunActivity:postSocial', {
+      temporalActivityId: '7',
+      temporalWorkflowId: 'post_42',
+      run_id: 'run-1',
+      args: 'a post',
+    });
+    expect(activity.attributes).toEqual({ temporalActivityId: '7', temporalWorkflowId: 'post_42', run_id: 'run-1' });
+
+    const client = temporalSpan('@temporalio/interceptor-client', 'TerminateWorkflow', {
+      temporalWorkflowId: 'post_42',
+      temporalTerminateReason: 'replaced by a post',
+    });
+    expect(client.attributes).toEqual({ temporalWorkflowId: 'post_42' });
+  });
+
+  it('keep the kind of a failure without its message or stack', () => {
+    const failed = temporalSpan('@temporalio/interceptor-activity', 'RunActivity:postSocial', {});
+    expect(failed.status).toEqual({ code: SpanStatusCode.ERROR });
+    expect(failed.events.map((event) => event.attributes)).toEqual([{ 'exception.type': 'ApplicationFailure' }]);
+  });
+});
+
+describe('scrubAttributes and values the protocol does not have', () => {
+  it('drops an object a library attached as an attribute', () => {
+    expect(
+      scrubAttributes({ ok: 'yes', list: ['a', 'b'], nested: { text: 'a post' } as never, when: new Date(0) as never })
+    ).toEqual({ ok: 'yes', list: ['a', 'b'] });
   });
 });
 

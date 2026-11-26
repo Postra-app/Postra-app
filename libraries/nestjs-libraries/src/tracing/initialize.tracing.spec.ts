@@ -18,6 +18,7 @@ const request = (fixture: Fixture, path: string, headers: Record<string, string>
       authorization: `Bearer ${SECRETS.bearer}`,
       cookie: `auth=${SECRETS.cookie}`,
       'x-forwarded-for': SECRETS.clientIp,
+      baggage: `user=${SECRETS.baggage}`,
       'content-type': 'application/json',
       ...headers,
     },
@@ -138,6 +139,9 @@ describe('with OTEL_TRACES_ENDPOINT', () => {
     expect(platform.received.at(-1)!.headers.authorization).toContain(SECRETS.outgoingBearer);
     expect(platform.received.at(-1)!.url).toContain(SECRETS.outgoingToken);
     expect(platform.received.at(-1)!.body.toString()).toContain(SECRETS.outgoingBody);
+    // The call carries the trace on, and not the baggage our caller sent.
+    expect(platform.received.at(-1)!.headers.traceparent).toMatch(/^00-[0-9a-f]{32}-[0-9a-f]{16}-01$/);
+    expect(platform.received.at(-1)!.headers).not.toHaveProperty('baggage');
 
     const spans = await fixture.spans();
     expect(spans.filter((span) => span.kind === SpanKind.SERVER)).toHaveLength(2);

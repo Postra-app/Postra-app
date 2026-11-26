@@ -38,6 +38,13 @@ export const initializeTracing = (
   return tracingStarted();
 };
 
+/**
+ * The span processor and the resource of the running pipeline, for the
+ * integrations that export spans of their own; nothing when tracing is off.
+ */
+export const tracingPipeline = () =>
+  handle ? { processor: handle.processor, resource: handle.resource } : null;
+
 /** Sends the finished spans still in the buffer; tracing goes on. */
 export const flushTracing = async () => {
   await handle?.forceFlush().catch((): undefined => undefined);

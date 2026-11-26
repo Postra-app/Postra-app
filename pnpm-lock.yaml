@@ -228,6 +228,9 @@ importers:
       '@opentelemetry/api':
         specifier: 1.10.0
         version: 1.10.0
+      '@opentelemetry/core':
+        specifier: 3.1.1
+        version: 3.1.1(@opentelemetry/api@1.10.0)
       '@opentelemetry/exporter-trace-otlp-proto':
         specifier: 0.301.2
         version: 0.301.2(@opentelemetry/api@1.10.0)
@@ -300,6 +303,9 @@ importers:
       '@temporalio/common':
         specifier: ^1.26.0
         version: 1.26.0(long@5.3.2)(protobufjs@8.8.0)
+      '@temporalio/interceptors-opentelemetry-v2':
+        specifier: 1.26.0
+        version: 1.26.0(@temporalio/common@1.26.0(long@5.3.2)(protobufjs@8.8.0))(@temporalio/workflow@1.26.0(long@5.3.2)(protobufjs@8.8.0))
       '@temporalio/worker':
         specifier: ^1.26.0
         version: 1.26.0(@swc/helpers@0.5.24)(esbuild@0.28.2)(long@5.3.2)(postcss@8.5.30)(protobufjs@8.8.0)(sharp@0.35.5(@types/node@26.6.6))(tslib@2.8.1)
@@ -7875,12 +7881,26 @@ packages:
       long: ^5.3.2
       protobufjs: ^8.7.1
 
+  '@temporalio/interceptors-opentelemetry-v2@1.26.0':
+    resolution: {integrity: sha512-t0nSrK+4ufrMPcsx+9nR9Fvin/IN9wAOTvAHtHiIkSSobvC7yR4FKZOs31qKzfZVD8C4wHYTNHQXaGAL3UHk0g==}
+    engines: {node: '>= 20.0.0'}
+    peerDependencies:
+      '@temporalio/common': 1.26.0
+      '@temporalio/workflow': 1.26.0
+    peerDependenciesMeta:
+      '@temporalio/workflow':
+        optional: true
+
   '@temporalio/nexus@1.26.0':
     resolution: {integrity: sha512-Tj44f+H+hNQl3lgrLAduv17Nv3bcPXj4i1hN6wv3C+ZPjFbklD5sroN6gMHK6bzlEqGSR9s5UInjbfE4if8J9w==}
     engines: {node: '>= 20.3.0'}
     peerDependencies:
       long: ^5.3.2
       protobufjs: ^8.7.1
+
+  '@temporalio/plugin@1.26.0':
+    resolution: {integrity: sha512-0ZCvTu8WjWsKOrc5N91u55rCNdlpRxaQuAWHrFmYYTjS9rTfRSHRTNIezBlh+iu0/TUB9AQAdqOrXGG1PukzpQ==}
+    engines: {node: '>= 20.3.0'}
 
   '@temporalio/proto@1.26.0':
     resolution: {integrity: sha512-hrYoXs/b3W7u+PvuK6qB2Cvb/TZv1AxKJn9Rj4YCeQsemWknZ3a4+2FICRuGxwB6bR0qsoVFf5uKQOPtouyDCw==}
@@ -21428,7 +21448,6 @@ snapshots:
     dependencies:
       '@opentelemetry/api': 1.10.0
       '@opentelemetry/semantic-conventions': 1.45.0
-    optional: true
 
   '@opentelemetry/core@3.1.1(@opentelemetry/api@1.10.0)':
     dependencies:
@@ -21604,7 +21623,6 @@ snapshots:
       '@opentelemetry/api': 1.10.0
       '@opentelemetry/core': 2.11.0(@opentelemetry/api@1.10.0)
       '@opentelemetry/semantic-conventions': 1.45.0
-    optional: true
 
   '@opentelemetry/resources@3.1.1(@opentelemetry/api@1.10.0)':
     dependencies:
@@ -21661,7 +21679,6 @@ snapshots:
       '@opentelemetry/resources': 2.11.0(@opentelemetry/api@1.10.0)
       '@opentelemetry/sdk-trace': 2.11.0(@opentelemetry/api@1.10.0)
       '@opentelemetry/semantic-conventions': 1.45.0
-    optional: true
 
   '@opentelemetry/sdk-trace@2.11.0(@opentelemetry/api@1.10.0)':
     dependencies:
@@ -21669,7 +21686,6 @@ snapshots:
       '@opentelemetry/core': 2.11.0(@opentelemetry/api@1.10.0)
       '@opentelemetry/resources': 2.11.0(@opentelemetry/api@1.10.0)
       '@opentelemetry/semantic-conventions': 1.45.0
-    optional: true
 
   '@opentelemetry/sdk-trace@3.1.1(@opentelemetry/api@1.10.0)':
     dependencies:
@@ -24209,6 +24225,17 @@ snapshots:
       long: 5.3.2
       protobufjs: 8.8.0
 
+  '@temporalio/interceptors-opentelemetry-v2@1.26.0(@temporalio/common@1.26.0(long@5.3.2)(protobufjs@8.8.0))(@temporalio/workflow@1.26.0(long@5.3.2)(protobufjs@8.8.0))':
+    dependencies:
+      '@opentelemetry/api': 1.10.0
+      '@opentelemetry/core': 2.11.0(@opentelemetry/api@1.10.0)
+      '@opentelemetry/resources': 2.11.0(@opentelemetry/api@1.10.0)
+      '@opentelemetry/sdk-trace-base': 2.11.0(@opentelemetry/api@1.10.0)
+      '@temporalio/common': 1.26.0(long@5.3.2)(protobufjs@8.8.0)
+      '@temporalio/plugin': 1.26.0
+    optionalDependencies:
+      '@temporalio/workflow': 1.26.0(long@5.3.2)(protobufjs@8.8.0)
+
   '@temporalio/nexus@1.26.0(long@5.3.2)(protobufjs@8.8.0)':
     dependencies:
       '@temporalio/client': 1.26.0(long@5.3.2)(protobufjs@8.8.0)
@@ -24217,6 +24244,8 @@ snapshots:
       long: 5.3.2
       nexus-rpc: 0.0.3
       protobufjs: 8.8.0
+
+  '@temporalio/plugin@1.26.0': {}
 
   '@temporalio/proto@1.26.0':
     dependencies:

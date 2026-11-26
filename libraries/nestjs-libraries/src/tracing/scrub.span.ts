@@ -40,6 +40,38 @@ const DROPPED_KEYS: RegExp[] = [
 // no proxy stands in between.
 const DROPPED_SERVER_KEYS = /^(network\.peer|net\.peer|net\.sock\.peer)\./;
 
+// Spans from the Temporal interceptors (client, workflow, activity). The
+// workflow ones arrive with the whole workflow info copied onto them: memo,
+// search attributes, the last result and failure of a scheduled run. Kept:
+// what names the run and the step, nothing a workflow was given or returned.
+const TEMPORAL_SCOPE = /^@temporalio\//;
+const TEMPORAL_KEYS = new Set([
+  'temporalWorkflowId',
+  'temporalActivityId',
+  'temporalUpdateId',
+  'run_id',
+  'workflowId',
+  'runId',
+  'workflowType',
+  'taskQueue',
+  'namespace',
+  'attempt',
+]);
+// A failure's message and stack can repeat what the activity sent or got
+// back. Its type says what kind of failure it was; the error itself is in
+// the error tracker, linked by the trace id.
+const TEMPORAL_EVENT_KEYS = new Set(['exception.type']);
+
+const isPrimitive = (value: unknown) =>
+  ['string', 'number', 'boolean'].includes(typeof value);
+
+const keep = (attributes: Attributes, allowed: Set<string>): Attributes =>
+  Object.fromEntries(
+    Object.entries(attributes).filter(
+      ([key, value]) => allowed.has(key) && isPrimitive(value)
+    )
+  );
+
 const EMAIL = /[A-Z0-9._%+-]+(@|%40)[A-Z0-9-]+(\.[A-Z0-9-]+)*\.[A-Z]{2,}/gi;
 
 // A URL inside any text, up to its query string or fragment.
@@ -110,6 +142,8 @@ export const scrubAttributes = (
   for (const [key, value] of Object.entries(attributes)) {
     if (
       value === undefined ||
+      // Not a value the protocol has: an object some library attached.
+      (!isPrimitive(value) && !Array.isArray(value)) ||
       DROPPED_KEYS.some((dropped) => dropped.test(key)) ||
       (kind === SpanKind.SERVER && DROPPED_SERVER_KEYS.test(key))
     ) {
@@ -122,16 +156,29 @@ export const scrubAttributes = (
 
 /** A copy of the finished span that is safe to export; the span itself is left alone. */
 export const scrubSpan = (span: ReadableSpan): ReadableSpan => {
+  const temporal = TEMPORAL_SCOPE.test(span.instrumentationScope?.name ?? '');
   const overrides: Partial<ReadableSpan> = {
     name: scrubText(span.name),
-    attributes: scrubAttributes(span.attributes, span.kind),
-    status: span.status.message
-      ? { ...span.status, message: scrubText(span.status.message) }
-      : span.status,
+    attributes: scrubAttributes(
+      temporal ? keep(span.attributes, TEMPORAL_KEYS) : span.attributes,
+      span.kind
+    ),
+    status:
+      span.status.message && temporal
+        ? { code: span.status.code }
+        : span.status.message
+        ? { ...span.status, message: scrubText(span.status.message) }
+        : span.status,
     events: span.events.map((event) => ({
       ...event,
       name: scrubText(event.name),
-      attributes: event.attributes && scrubAttributes(event.attributes),
+      attributes:
+        event.attributes &&
+        scrubAttributes(
+          temporal
+            ? keep(event.attributes, TEMPORAL_EVENT_KEYS)
+            : event.attributes
+        ),
     })),
     links: span.links.map((link) => ({
       ...link,
