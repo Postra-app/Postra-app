@@ -51,6 +51,11 @@ import Document from '@tiptap/extension-document';
 import Bold from '@tiptap/extension-bold';
 import Text from '@tiptap/extension-text';
 import Paragraph from '@tiptap/extension-paragraph';
+import HardBreak from '@tiptap/extension-hard-break';
+import {
+  keepBlankLinesOfPastedHtml,
+  pasteAsPlainText,
+} from '@gitroom/frontend/components/new-launch/editor.paste';
 import Underline from '@tiptap/extension-underline';
 import { stripHtmlValidation } from '@gitroom/helpers/utils/strip.html.validation';
 import { History } from '@tiptap/extension-history';
@@ -1007,6 +1012,9 @@ export const OnlyEditor = forwardRef<
         },
       }),
       Text,
+      // Shift+Enter: a new line inside the paragraph. Without the node the
+      // key did nothing and a pasted <br> was dropped (upstream bd6d6e1f9).
+      HardBreak,
       Underline,
       Bold,
       InterceptBoldShortcut,
@@ -1136,6 +1144,31 @@ export const OnlyEditor = forwardRef<
     // @ts-expect-error paste handler signature doesn't match the editor prop overload
     onPaste: paste,
     editorProps: {
+      transformPastedHTML: keepBlankLinesOfPastedHtml,
+      handlePaste: (view, event, slice) => {
+        let blocks = 0;
+        let rich = false;
+        slice.content.descendants((node) => {
+          if (node.isTextblock) {
+            blocks++;
+          } else if (!node.isText || node.marks.length) {
+            rich = true;
+          }
+        });
+        const text = event.clipboardData?.getData('text/plain') || '';
+        if (
+          pasteAsPlainText({
+            files: event.clipboardData?.files.length || 0,
+            html: event.clipboardData?.getData('text/html') || '',
+            text,
+            blocks,
+            rich,
+          })
+        ) {
+          return view.pasteText(text, event);
+        }
+        return false;
+      },
       // The default parser merges consecutive newlines, which drops the
       // blank lines of pasted plain text; keep each one as an empty
       // paragraph (upstream 774323e1c).

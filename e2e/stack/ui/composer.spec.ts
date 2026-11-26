@@ -90,6 +90,34 @@ test('a long link wraps in the editor instead of pushing it sideways', async ({ 
   expect(scroll).toBeLessThanOrEqual(client + 1);
 });
 
+// Shift+Enter did nothing: the editor had no line-break node.
+test('Shift+Enter starts a new line inside the paragraph', async ({ page }) => {
+  await openComposer(page, 'bluesky', '');
+  await page.keyboard.insertText('First line');
+  await page.keyboard.press('Shift+Enter');
+  await page.keyboard.insertText('Second line');
+  const editor = page.locator('.ProseMirror').first();
+  await expect(editor.locator('p')).toHaveCount(1);
+  await expect(editor.locator('p br')).toHaveCount(1);
+  await expect(editor).toContainText('First line');
+  await expect(editor).toContainText('Second line');
+});
+
+// Notion's copy button puts the lines into the clipboard html as bare
+// newlines; the paste came out as one line.
+test('a paste whose html has no tags keeps its lines', async ({ page }) => {
+  await openComposer(page, 'bluesky', '');
+  const editor = page.locator('.ProseMirror').first();
+  await editor.evaluate((el) => {
+    const data = new DataTransfer();
+    data.setData('text/plain', 'First line\nSecond line\nThird line');
+    data.setData('text/html', '<meta charset="utf-8">First line\nSecond line\nThird line');
+    el.dispatchEvent(new ClipboardEvent('paste', { clipboardData: data, bubbles: true, cancelable: true }));
+  });
+  await expect(editor.locator('p')).toHaveCount(3);
+  await expect(editor.locator('p').nth(1)).toHaveText('Second line');
+});
+
 test('a tag created in the composer is saved with the draft', async ({ page }) => {
   const name = `Stack tag ${Date.now()}`;
   const text = `[stack ui] tagged ${Date.now()}`;
