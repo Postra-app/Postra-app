@@ -1,6 +1,12 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { PrismaRepository } from '@gitroom/nestjs-libraries/database/prisma/prisma.service';
 import { ioRedis } from '@gitroom/nestjs-libraries/redis/redis.service';
+import { createHash, timingSafeEqual } from 'crypto';
+
+const sha256 = (value: string) =>
+  createHash('sha256').update(value, 'utf8').digest('hex');
+const sameHash = (a: string, b: string) =>
+  a.length === b.length && timingSafeEqual(Buffer.from(a), Buffer.from(b));
 
 const EXPO_PUSH_URL = 'https://exp.host/--/api/v2/push/send';
 const EXPO_RECEIPTS_URL = 'https://exp.host/--/api/v2/push/getReceipts';
@@ -37,33 +43,59 @@ export class MobilePushService {
     userId: string,
     organizationId: string,
     token: string,
-    platform: string
+    platform: string,
+    deviceSecret?: string
   ) {
     if (!token) {
       return undefined;
     }
+    const secretHash = deviceSecret ? sha256(deviceSecret) : null;
 
-    // The token string is the only proof of device we have, and it leaks —
-    // into logs, device backups and support tickets. Do not let a caller claim
-    // a token already registered to a different account: that let any signed-in
-    // user push their organization's notifications onto someone else's device
-    // and silence its real owner. Legitimate device hand-off still works,
-    // because the previous user's logout unregisters the token first, freeing
-    // it for whoever signs in next on that device.
+    // The token string alone is no proof of device: it leaks into logs,
+    // device backups and support tickets, and letting a caller claim a token
+    // registered to another account let any signed-in user push their
+    // organisation's notifications onto someone else's phone. A token moves
+    // to another account only with the secret its app keeps in the device's
+    // keychain (E2E-11-365): the next person on a phone whose session ended
+    // without signing out (expired, 401, offline) gets the notifications,
+    // and the previous account's stop going there. Without the secret, as
+    // from older builds, a token owned by someone else is refused.
     const existing = await this._pushToken.model.mobilePushToken.findUnique({
       where: { token },
-      select: { userId: true },
+      select: { userId: true, deviceSecretHash: true },
     });
     if (existing && existing.userId !== userId) {
-      return undefined;
+      const sameDevice =
+        !!secretHash &&
+        !!existing.deviceSecretHash &&
+        sameHash(secretHash, existing.deviceSecretHash);
+      if (!sameDevice) {
+        return undefined;
+      }
+      return this._pushToken.model.mobilePushToken.update({
+        where: { token },
+        data: { userId, organizationId, platform: platform || 'unknown' },
+      });
     }
 
     return this._pushToken.model.mobilePushToken.upsert({
       where: { token },
-      create: { userId, organizationId, token, platform: platform || 'unknown' },
-      // userId is never changed here: a different owner is rejected above, so
-      // this only ever refreshes the same user's org and platform.
-      update: { organizationId, platform: platform || 'unknown' },
+      create: {
+        userId,
+        organizationId,
+        token,
+        platform: platform || 'unknown',
+        deviceSecretHash: secretHash,
+      },
+      // The same user: refresh the org and platform; a token from an older
+      // build gets the device secret the first time the new build sends it.
+      update: {
+        organizationId,
+        platform: platform || 'unknown',
+        ...(secretHash && !existing?.deviceSecretHash
+          ? { deviceSecretHash: secretHash }
+          : {}),
+      },
     });
   }
 

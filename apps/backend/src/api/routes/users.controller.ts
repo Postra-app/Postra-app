@@ -1,5 +1,9 @@
 import { Throttle } from '@nestjs/throttler';
 import {
+  RegisterPushTokenDto,
+  RemovePushTokenDto,
+} from '@gitroom/nestjs-libraries/dtos/users/push-token.dto';
+import {
   Body,
   Controller,
   Delete,
@@ -76,13 +80,14 @@ export class UsersController {
   async registerPushToken(
     @GetUserFromRequest() user: User,
     @GetOrgFromRequest() organization: Organization,
-    @Body() body: { token: string; platform?: string }
+    @Body() body: RegisterPushTokenDto
   ) {
     await this._mobilePush.registerToken(
       user.id,
       organization.id,
       body.token,
-      body.platform || 'unknown'
+      body.platform || 'unknown',
+      body.deviceSecret
     );
     return { success: true };
   }
@@ -90,7 +95,7 @@ export class UsersController {
   @Delete('/push-token')
   async removePushToken(
     @GetUserFromRequest() user: User,
-    @Body() body: { token: string }
+    @Body() body: RemovePushTokenDto
   ) {
     await this._mobilePush.removeToken(body.token, user.id);
     return { success: true };

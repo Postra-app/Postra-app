@@ -1189,6 +1189,12 @@ model MobilePushToken {
   organizationId String
   token          String       @unique
   platform       String
+  // SHA-256 of the random secret the app keeps in the device's keychain
+  // (E2E-11-365). It proves the device, which the token string cannot: the
+  // token leaks into logs and backups. A token moves to another account only
+  // with the same secret, so the next person on a phone whose session ended
+  // without signing out gets its notifications, and a leaked token does not.
+  deviceSecretHash String?
   createdAt      DateTime     @default(now())
   updatedAt      DateTime     @updatedAt
   user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
