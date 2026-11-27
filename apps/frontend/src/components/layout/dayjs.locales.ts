@@ -18,7 +18,7 @@ import localeTr from 'dayjs/locale/tr';
 import localeVi from 'dayjs/locale/vi';
 
 // Postra is UK-first: English dates read the British way. dayjs's "en" is
-// American ("L" = 11/09/2026 for 9 November, E2E-11-342); its date formats
+// American ("L" = 11/09/2026 for 9 November); its date formats
 // come from "en-gb" here. Only the formats: the first day of the week stays
 // what the calendar is built on.
 export const localeEnUk = { ...localeEn, formats: localeEnGb.formats };

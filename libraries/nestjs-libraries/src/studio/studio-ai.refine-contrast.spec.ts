@@ -5,7 +5,7 @@ import { StudioAiService } from './studio-ai.service';
 import { contrastRatio, keepTextReadable, parseHex } from './studio-contrast';
 import { applyPatch, StudioSpec } from './studio-spec';
 
-// E2E-11-477: AI Refine "Stronger CTA" coloured the CTA text the red of the
+// AI Refine "Stronger CTA" coloured the CTA text the red of the
 // CTA bar (#d2143a on #d2143a), nearly unreadable.
 const spec: StudioSpec = {
   version: 1,

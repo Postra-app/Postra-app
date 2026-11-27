@@ -79,16 +79,20 @@ describe('Sign in with Apple from the iOS app', () => {
     expect(decryptSecret(stored)).toBe('apple-refresh-token');
   });
 
-  it('signs in an existing Apple account without asking Apple again when it has the token', async () => {
+  // The newest refresh token is kept: revoking one Apple has replaced would
+  // leave the sign-in standing.
+  it('signs in an existing Apple account and keeps its newest refresh token', async () => {
     verifyAppleIdentityToken.mockResolvedValue(APPLE);
+    exchangeAppleCode.mockResolvedValue('newer-refresh');
     const existing = { id: 'user-a', email: APPLE.email, tokenVersion: 0, suspendedAt: null as Date | null, appleRefreshToken: 'enc' };
-    const { service, orgs } = setup(existing);
+    const { service, orgs, users } = setup(existing);
 
     const result = await service.appleNativeLogin(BODY);
 
     expect(result).toEqual(expect.objectContaining({ created: false }));
     expect(orgs.createOrgAndUser).not.toHaveBeenCalled();
-    expect(exchangeAppleCode).not.toHaveBeenCalled();
+    expect(exchangeAppleCode).toHaveBeenCalledWith('code-1');
+    expect(decryptSecret((users.setAppleRefreshToken.mock.calls[0] as unknown as [string, string])[1])).toBe('newer-refresh');
   });
 
   it('keeps the sign-in when Apple refuses the code', async () => {

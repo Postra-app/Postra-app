@@ -1,12 +1,10 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { PrismaRepository } from '@gitroom/nestjs-libraries/database/prisma/prisma.service';
 import { ioRedis } from '@gitroom/nestjs-libraries/redis/redis.service';
-import { createHash, timingSafeEqual } from 'crypto';
+import { createHash } from 'crypto';
 
 const sha256 = (value: string) =>
   createHash('sha256').update(value, 'utf8').digest('hex');
-const sameHash = (a: string, b: string) =>
-  a.length === b.length && timingSafeEqual(Buffer.from(a), Buffer.from(b));
 
 const EXPO_PUSH_URL = 'https://exp.host/--/api/v2/push/send';
 const EXPO_RECEIPTS_URL = 'https://exp.host/--/api/v2/push/getReceipts';
@@ -50,53 +48,54 @@ export class MobilePushService {
       return undefined;
     }
     const secretHash = deviceSecret ? sha256(deviceSecret) : null;
+    const model = this._pushToken.model.mobilePushToken;
+    const fields = { organizationId, platform: platform || 'unknown' };
 
     // The token string alone is no proof of device: it leaks into logs,
     // device backups and support tickets, and letting a caller claim a token
     // registered to another account let any signed-in user push their
     // organisation's notifications onto someone else's phone. A token moves
     // to another account only with the secret its app keeps in the device's
-    // keychain (E2E-11-365): the next person on a phone whose session ended
-    // without signing out (expired, 401, offline) gets the notifications,
-    // and the previous account's stop going there. Without the secret, as
-    // from older builds, a token owned by someone else is refused.
-    const existing = await this._pushToken.model.mobilePushToken.findUnique({
-      where: { token },
-      select: { userId: true, deviceSecretHash: true },
-    });
-    if (existing && existing.userId !== userId) {
-      const sameDevice =
-        !!secretHash &&
-        !!existing.deviceSecretHash &&
-        sameHash(secretHash, existing.deviceSecretHash);
-      if (!sameDevice) {
-        return undefined;
+    // keychain: the next person on a phone whose session ended without
+    // signing out (expired, a 401, offline) gets the notifications, and the
+    // previous account's stop going there. Without the secret, as from older
+    // builds, a token owned by someone else is refused.
+    //
+    // Each step checks the owner in the same statement that writes, so a
+    // refresh by the previous owner racing a hand-over cannot write its
+    // organisation onto a token that has just moved.
+
+    // 1. The caller's own token: refresh it.
+    const own = await model.updateMany({ where: { token, userId }, data: fields });
+    if (own.count) {
+      if (secretHash) {
+        // A token from an older build gets the secret the first time.
+        await model.updateMany({
+          where: { token, userId, deviceSecretHash: null },
+          data: { deviceSecretHash: secretHash },
+        });
       }
-      return this._pushToken.model.mobilePushToken.update({
-        where: { token },
-        data: { userId, organizationId, platform: platform || 'unknown' },
-      });
+      return own;
     }
 
-    return this._pushToken.model.mobilePushToken.upsert({
-      where: { token },
-      create: {
-        userId,
-        organizationId,
-        token,
-        platform: platform || 'unknown',
-        deviceSecretHash: secretHash,
-      },
-      // The same user: refresh the org and platform; a token from an older
-      // build gets the device secret the first time the new build sends it.
-      update: {
-        organizationId,
-        platform: platform || 'unknown',
-        ...(secretHash && !existing?.deviceSecretHash
-          ? { deviceSecretHash: secretHash }
-          : {}),
-      },
-    });
+    // 2. Another account's token, from the same device: move it.
+    if (secretHash) {
+      const moved = await model.updateMany({
+        where: { token, deviceSecretHash: secretHash, NOT: { userId } },
+        data: { userId, ...fields },
+      });
+      if (moved.count) return moved;
+    }
+
+    // 3. Nobody's yet: register it. A token someone else holds is refused.
+    try {
+      return await model.create({
+        data: { userId, token, ...fields, deviceSecretHash: secretHash },
+      });
+    } catch (e: any) {
+      if (e?.code === 'P2002') return undefined;
+      throw e;
+    }
   }
 
   async removeToken(token: string, userId: string) {

@@ -4,8 +4,8 @@ import { MobilePushService } from './mobile.push.service';
 function makeService() {
   const model = {
     findUnique: jest.fn(),
-    upsert: jest.fn(),
-    update: jest.fn(),
+    create: jest.fn(),
+    updateMany: jest.fn(),
     deleteMany: jest.fn(),
     findMany: jest.fn(),
   };
@@ -19,32 +19,38 @@ describe('MobilePushService authorization', () => {
   describe('registerToken', () => {
     it('registers a fresh, unclaimed token for the caller', async () => {
       const { service, model } = makeService();
-      model.findUnique.mockResolvedValue(null);
+      model.updateMany.mockResolvedValue({ count: 0 });
       await service.registerToken('userA', 'orgA', TOKEN, 'ios');
-      expect(model.upsert).toHaveBeenCalledTimes(1);
+      expect(model.create).toHaveBeenCalledWith({
+        data: { userId: 'userA', token: TOKEN, organizationId: 'orgA', platform: 'ios', deviceSecretHash: null },
+      });
     });
 
-    it('refreshes a token the SAME user already owns', async () => {
+    it('refreshes a token the SAME user already owns, never moving it', async () => {
       const { service, model } = makeService();
-      model.findUnique.mockResolvedValue({ userId: 'userA' });
+      model.updateMany.mockResolvedValueOnce({ count: 1 });
       await service.registerToken('userA', 'orgA2', TOKEN, 'android');
-      expect(model.upsert).toHaveBeenCalledTimes(1);
-      // The update branch must never rewrite userId.
-      const arg = model.upsert.mock.calls[0][0];
-      expect(arg.update).not.toHaveProperty('userId');
+      expect(model.updateMany).toHaveBeenCalledWith({
+        where: { token: TOKEN, userId: 'userA' },
+        data: { organizationId: 'orgA2', platform: 'android' },
+      });
+      expect(model.create).not.toHaveBeenCalled();
     });
 
     it('REFUSES to claim a token registered to a different user', async () => {
       const { service, model } = makeService();
-      model.findUnique.mockResolvedValue({ userId: 'victim' });
-      await service.registerToken('attacker', 'orgAttacker', TOKEN, 'ios');
-      expect(model.upsert).not.toHaveBeenCalled();
+      model.updateMany.mockResolvedValue({ count: 0 });
+      model.create.mockRejectedValue({ code: 'P2002' });
+      await expect(service.registerToken('attacker', 'orgAttacker', TOKEN, 'ios')).resolves.toBeUndefined();
+      // No write that could move it: only the caller-scoped refresh was tried.
+      expect(model.updateMany).toHaveBeenCalledTimes(1);
+      expect(model.updateMany.mock.calls[0][0].where).toEqual({ token: TOKEN, userId: 'attacker' });
     });
   });
 
-  // E2E-11-365: a session that ended without signing out left the token with
-  // the previous account; the next person on the phone got no notifications
-  // and the previous account's kept arriving there.
+  // A session that ended without signing out left the token with the
+  // previous account; the next person on the phone got no notifications and
+  // the previous account's kept arriving there.
   describe('the device secret', () => {
     const SECRET = 'a'.repeat(64);
     const { createHash } = jest.requireActual('crypto');
@@ -52,45 +58,64 @@ describe('MobilePushService authorization', () => {
 
     it('stores only the hash of the secret with a new token', async () => {
       const { service, model } = makeService();
-      model.findUnique.mockResolvedValue(null);
+      model.updateMany.mockResolvedValue({ count: 0 });
       await service.registerToken('userA', 'orgA', TOKEN, 'ios', SECRET);
-      const arg = model.upsert.mock.calls[0][0];
-      expect(arg.create.deviceSecretHash).toBe(HASH);
+      const arg = model.create.mock.calls[0][0];
+      expect(arg.data.deviceSecretHash).toBe(HASH);
       expect(JSON.stringify(arg)).not.toContain(SECRET);
     });
 
-    it('moves the token to the next account signed in on the same device', async () => {
+    it('moves the token to the next account only where the hash matches, in one statement', async () => {
       const { service, model } = makeService();
-      model.findUnique.mockResolvedValue({ userId: 'previous', deviceSecretHash: HASH });
+      model.updateMany.mockResolvedValueOnce({ count: 0 }).mockResolvedValueOnce({ count: 1 });
       await service.registerToken('next', 'orgN', TOKEN, 'ios', SECRET);
-      expect(model.update).toHaveBeenCalledWith({
-        where: { token: TOKEN },
+      expect(model.updateMany).toHaveBeenLastCalledWith({
+        where: { token: TOKEN, deviceSecretHash: HASH, NOT: { userId: 'next' } },
         data: { userId: 'next', organizationId: 'orgN', platform: 'ios' },
       });
+      expect(model.create).not.toHaveBeenCalled();
     });
 
-    it('a leaked token without the secret, or with another, still moves nowhere', async () => {
+    it('a leaked token without the secret, or with another, moves nowhere', async () => {
       const { service, model } = makeService();
-      model.findUnique.mockResolvedValue({ userId: 'victim', deviceSecretHash: HASH });
-      await service.registerToken('attacker', 'orgX', TOKEN, 'ios');
-      await service.registerToken('attacker', 'orgX', TOKEN, 'ios', 'b'.repeat(64));
-      expect(model.update).not.toHaveBeenCalled();
-      expect(model.upsert).not.toHaveBeenCalled();
+      model.updateMany.mockResolvedValue({ count: 0 });
+      model.create.mockRejectedValue({ code: 'P2002' });
+      await expect(service.registerToken('attacker', 'orgX', TOKEN, 'ios')).resolves.toBeUndefined();
+      await expect(service.registerToken('attacker', 'orgX', TOKEN, 'ios', 'b'.repeat(64))).resolves.toBeUndefined();
+      for (const [arg] of model.updateMany.mock.calls) {
+        expect(arg.where.userId === 'attacker' || arg.where.deviceSecretHash !== HASH).toBe(true);
+      }
     });
 
-    it('a token from an older build (no hash) is never moved, even with a secret', async () => {
+    // The previous owner's refresh, racing the hand-over, wrote
+    // its organisation onto the token after it had moved.
+    it('a refresh by the previous owner after the token moved writes nothing onto it', async () => {
       const { service, model } = makeService();
-      model.findUnique.mockResolvedValue({ userId: 'victim', deviceSecretHash: null });
-      await service.registerToken('attacker', 'orgX', TOKEN, 'ios', SECRET);
-      expect(model.update).not.toHaveBeenCalled();
-      expect(model.upsert).not.toHaveBeenCalled();
+      // The token is the next account's now: the previous owner's refresh is
+      // scoped to its own rows and matches none, and without the device
+      // secret nothing moves; the insert meets the existing token and stops.
+      model.updateMany.mockResolvedValue({ count: 0 });
+      model.create.mockRejectedValue({ code: 'P2002' });
+      await service.registerToken('previous', 'orgPrev', TOKEN, 'ios');
+      expect(model.updateMany.mock.calls[0][0].where).toEqual({ token: TOKEN, userId: 'previous' });
+      expect(model.create).toHaveBeenCalledTimes(1);
     });
 
     it('its owner gives an older token its secret the first time', async () => {
       const { service, model } = makeService();
-      model.findUnique.mockResolvedValue({ userId: 'userA', deviceSecretHash: null });
+      model.updateMany.mockResolvedValue({ count: 1 });
       await service.registerToken('userA', 'orgA', TOKEN, 'ios', SECRET);
-      expect(model.upsert.mock.calls[0][0].update.deviceSecretHash).toBe(HASH);
+      expect(model.updateMany).toHaveBeenLastCalledWith({
+        where: { token: TOKEN, userId: 'userA', deviceSecretHash: null },
+        data: { deviceSecretHash: HASH },
+      });
+    });
+
+    it('other database errors are not swallowed', async () => {
+      const { service, model } = makeService();
+      model.updateMany.mockResolvedValue({ count: 0 });
+      model.create.mockRejectedValue(new Error('connection lost'));
+      await expect(service.registerToken('userA', 'orgA', TOKEN, 'ios')).rejects.toThrow('connection lost');
     });
   });
 

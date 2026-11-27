@@ -21,7 +21,7 @@ describe('dates in the interface language', () => {
 
 dayjs.extend(localizedFormat);
 
-// E2E-11-342: the calendar header read "11/09/2026 - 11/15/2026" for 9 to 15
+// The calendar header read "11/09/2026 - 11/15/2026" for 9 to 15
 // November; a UK customer reads 11/09 as 11 September.
 describe('English dates in Postra', () => {
   beforeAll(() => registerDayjsLocales());

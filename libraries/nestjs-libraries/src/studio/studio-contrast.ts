@@ -5,7 +5,7 @@ import {
   StudioTextLayer,
 } from '@gitroom/nestjs-libraries/studio/studio-spec';
 
-// E2E-11-477: AI Refine "Stronger CTA" made the button text the same red as
+// AI Refine "Stronger CTA" made the button text the same red as
 // the button. The model is asked for readable text (the Refine prompt), and
 // this makes sure of it: a text colour the patch sets that reads at less than
 // 3:1 against what is under the text (WCAG 2.2 1.4.3 for large text, the

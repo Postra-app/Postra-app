@@ -2806,7 +2806,7 @@ export class StripeService {
 
     // A charge no longer names its invoice (removed from the API with
     // 2025-03-31.basil; Postra is on 2026-10-28): the PDF stayed empty in the
-    // admin (U7). An invoice lists its payments, each with its PaymentIntent,
+    // admin. An invoice lists its payments, each with its PaymentIntent,
     // which the charge has. One request for the customer's invoices.
     const invoiceByIntent: Record<string, { id: string; pdf: string | null }> =
       {};

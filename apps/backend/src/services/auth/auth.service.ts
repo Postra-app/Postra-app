@@ -961,7 +961,9 @@ export class AuthService {
       return { error: 'invalid' };
     }
     const result = await this.nativeSignIn(Provider.APPLE, apple, create);
-    if ('jwt' in result && body.authorizationCode && !result.user.appleRefreshToken) {
+    // Every sign-in stores the newest refresh token, so the one revoked at
+    // deletion is never one Apple has already replaced.
+    if ('jwt' in result && body.authorizationCode) {
       try {
         const refresh = await exchangeAppleCode(body.authorizationCode);
         if (refresh) {

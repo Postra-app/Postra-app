@@ -156,7 +156,7 @@ describe('AccountDeletionService.confirm', () => {
 
   // Apple asks apps that delete accounts to revoke the Sign in with Apple
   // tokens (App Review 5.1.1(v)).
-  it('an Apple account has its Apple sign-in revoked, after the rows are gone', async () => {
+  it('an Apple account has its Apple sign-in revoked first, while the token is still stored', async () => {
     const apple = {
       ...local,
       providerName: Provider.APPLE,
@@ -171,17 +171,35 @@ describe('AccountDeletionService.confirm', () => {
 
     await expect(service.confirm(token)).resolves.toBe('user-1');
     expect(revokeAppleToken).toHaveBeenCalledWith('apple-refresh');
-    expect(calls).toEqual(['stripe', 'deleteAccount', 'revoke']);
+    expect(calls).toEqual(['revoke', 'stripe', 'deleteAccount']);
   });
 
-  it('a failed Apple revocation does not undo or block the deletion', async () => {
+  // A revocation that failed after the rows were gone could
+  // never be tried again.
+  it('when Apple does not answer, nothing is deleted and the link works again', async () => {
+    const apple = { ...local, providerName: Provider.APPLE, appleRefreshToken: encryptSecret('r') };
+    const token = await mintedLink();
+    const { service, users, stripe } = setup(apple);
+    revokeAppleToken.mockReset().mockRejectedValueOnce(new Error('Apple down'));
+
+    await expect(service.confirm(token)).rejects.toMatchObject({ status: 503 });
+    expect(stripe.cancelAllSubscriptionsForDeletedAccount).not.toHaveBeenCalled();
+    expect(users.deleteAccount).not.toHaveBeenCalled();
+    expect(redisDel).toHaveBeenCalled();
+
+    revokeAppleToken.mockResolvedValueOnce(true);
+    await expect(service.confirm(token)).resolves.toBe('user-1');
+    expect(users.deleteAccount).toHaveBeenCalled();
+  });
+
+  it('a refusal from Apple is the same: nothing deleted', async () => {
     const apple = { ...local, providerName: Provider.APPLE, appleRefreshToken: encryptSecret('r') };
     const token = await mintedLink();
     const { service, users } = setup(apple);
-    revokeAppleToken.mockReset().mockRejectedValue(new Error('Apple down'));
+    revokeAppleToken.mockReset().mockResolvedValueOnce(false);
 
-    await expect(service.confirm(token)).resolves.toBe('user-1');
-    expect(users.deleteAccount).toHaveBeenCalled();
+    await expect(service.confirm(token)).rejects.toMatchObject({ status: 503 });
+    expect(users.deleteAccount).not.toHaveBeenCalled();
   });
 
   it('other accounts ask Apple for nothing', async () => {

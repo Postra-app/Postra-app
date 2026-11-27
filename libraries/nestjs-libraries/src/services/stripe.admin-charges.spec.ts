@@ -19,7 +19,7 @@ jest.mock('@gitroom/nestjs-libraries/track/track.service', () => ({ TrackService
 
 import { StripeService } from '@gitroom/nestjs-libraries/services/stripe.service';
 
-// U7: a charge no longer names its invoice on Stripe's API (removed with
+// A charge no longer names its invoice on Stripe's API (removed with
 // 2025-03-31.basil; checked on the Stripe sandbox 27 Nov 2026), so the invoice
 // PDF in the admin's billing history was always empty. The invoice lists its
 // payments, each with the PaymentIntent the charge carries.

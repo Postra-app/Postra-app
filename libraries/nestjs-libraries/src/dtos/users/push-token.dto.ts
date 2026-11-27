@@ -11,7 +11,7 @@ export class RegisterPushTokenDto {
   @IsIn(['ios', 'android', 'web', 'unknown'])
   platform?: string;
 
-  // The app's per-install secret from the device keychain (E2E-11-365).
+  // The app's per-install secret from the device keychain.
   // Older builds send none.
   @IsOptional()
   @IsString()

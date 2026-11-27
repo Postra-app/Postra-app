@@ -255,7 +255,7 @@ Rules:
       throw new Error(`Patch rejected: ${validation.reason}`);
     }
 
-    // The prompt asks for readable text; this makes sure (E2E-11-477).
+    // The prompt asks for readable text; this makes sure.
     const { patch } = keepTextReadable(spec, proposed, applyPatch);
     return { patch, nextSpec: applyPatch(spec, patch), explanation: parsed.explanation };
   }
