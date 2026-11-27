@@ -84,6 +84,34 @@ describe('metered @ai-sdk/openai model', () => {
     });
   });
 
+  // The assistant hands this model to a Mastra Agent, which must accept the
+  // provider's spec version: run a whole generate and stream through it.
+  it('runs inside a Mastra Agent, generated and streamed', async () => {
+    const { Agent } = await import('@mastra/core/agent');
+    const agent = new Agent({
+      id: 'test',
+      name: 'test',
+      instructions: 'Answer briefly.',
+      model: meterLanguageModel(stubbedProvider(false)('gpt-5.5'), 'agent') as any,
+    });
+    const generated = await agent.generate('Hi');
+    expect(generated.text).toBe('Hello');
+
+    const streaming = new Agent({
+      id: 'test-stream',
+      name: 'test-stream',
+      instructions: 'Answer briefly.',
+      model: meterLanguageModel(stubbedProvider(true)('gpt-5.5'), 'agent') as any,
+    });
+    const streamed = await streaming.stream('Hi');
+    expect(await streamed.text).toBe('Hello');
+
+    expect(events.map((e) => [e.inputAmount, e.outputAmount, e.cachedAmount])).toEqual([
+      [14000, 300, 12800],
+      [14000, 300, 12800],
+    ]);
+  });
+
   it('records the same numbers from a streamed answer', async () => {
     const model = meterLanguageModel(stubbedProvider(true)('gpt-5.5'), 'agent');
     const result: any = await model.doStream({ prompt } as any);
