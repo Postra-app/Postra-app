@@ -20,12 +20,19 @@ import {
   ACTIVATION_WRONG_PASSWORD,
   AuthService,
   LOGIN_LOCKED_OUT,
+  NativeSignInResult,
+  NativeSignUp,
   REGISTRATION_PROOF_TTL_SECONDS,
 } from '@gitroom/backend/services/auth/auth.service';
 import { ForgotReturnPasswordDto } from '@gitroom/nestjs-libraries/dtos/auth/forgot-return.password.dto';
 import { ForgotPasswordDto } from '@gitroom/nestjs-libraries/dtos/auth/forgot.password.dto';
 import { ResendActivationDto } from '@gitroom/nestjs-libraries/dtos/auth/resend-activation.dto';
-import { GoogleNativeLoginDto } from '@gitroom/nestjs-libraries/dtos/auth/google-native.dto';
+import {
+  AppleNativeLoginDto,
+  GoogleNativeLoginDto,
+  NativeSignUpFields,
+} from '@gitroom/nestjs-libraries/dtos/auth/google-native.dto';
+import { appleSignInEnabled } from '@gitroom/backend/services/auth/providers/apple.provider';
 import { ApiTags } from '@nestjs/swagger';
 import {
   authCookieOptions,
@@ -366,9 +373,11 @@ export class AuthController {
   // Sign-in with Google in the mobile app: the native sign-in on the phone
   // returns an ID token, this checks it with Google and answers like /login
   // does for `x-client: mobile` — the app's short, revocable token in the
-  // body. Existing accounts only (AuthService.googleNativeLogin). The app
-  // tells 404 (no account: sign up on the web) and 409 (the address has an
-  // account with a password: sign in with it) from 400 (try again).
+  // body. With `create` (the iOS app's sign-up) a new account is made when
+  // there is none; without it, existing accounts only. The app tells 404 (no
+  // account), 409 (the address has an account with a password or another
+  // provider: sign in with that), 403 (sign-ups are closed) from 400 (try
+  // again).
   @Post('/google/native')
   @Throttle({ default: { ttl: 900000, limit: 10 } })
   async googleNative(
@@ -377,53 +386,141 @@ export class AuthController {
     @RealIP() ip: string,
     @UserAgent() userAgent: string
   ) {
-    let result: Awaited<ReturnType<AuthService['googleNativeLogin']>>;
+    return this.nativeAnswer(
+      Provider.GOOGLE,
+      () =>
+        this._authService.googleNativeLogin(
+          body.idToken,
+          this.nativeSignUp(body, ip, userAgent)
+        ),
+      response,
+      ip,
+      userAgent
+    );
+  }
+
+  // Sign in with Apple in the iOS app (App Review 4.8), the same answers as
+  // Google's. Off (400) until APPLE_SIGN_IN_ENABLED is set.
+  @Post('/apple/native')
+  @Throttle({ default: { ttl: 900000, limit: 10 } })
+  async appleNative(
+    @Body() body: AppleNativeLoginDto,
+    @Res({ passthrough: false }) response: Response,
+    @RealIP() ip: string,
+    @UserAgent() userAgent: string
+  ) {
+    return this.nativeAnswer(
+      Provider.APPLE,
+      () =>
+        this._authService.appleNativeLogin(
+          {
+            identityToken: body.identityToken,
+            nonce: body.nonce,
+            authorizationCode: body.authorizationCode,
+          },
+          this.nativeSignUp(body, ip, userAgent)
+        ),
+      response,
+      ip,
+      userAgent
+    );
+  }
+
+  // Whether the app may sign in with Apple here; the iOS app shows the
+  // button only when this says so.
+  @Get('/apple/native')
+  appleNativeOffered() {
+    return { enabled: appleSignInEnabled() };
+  }
+
+  private nativeSignUp(
+    body: NativeSignUpFields,
+    ip: string,
+    userAgent: string
+  ): NativeSignUp | undefined {
+    if (body.create !== true) {
+      return undefined;
+    }
+    return {
+      company: body.company!.trim(),
+      platform: body.platform === 'android' ? 'android' : 'ios',
+      ip,
+      userAgent,
+    };
+  }
+
+  private async nativeAnswer(
+    provider: Provider,
+    signIn: () => Promise<NativeSignInResult>,
+    response: Response,
+    ip: string,
+    userAgent: string
+  ) {
+    let result: NativeSignInResult;
     try {
-      result = await this._authService.googleNativeLogin(body.idToken);
+      result = await signIn();
     } catch (e: any) {
       // A suspended account: the same message /login gives.
       this._auditService.record({
         action: 'auth.login.failed',
         ip,
         userAgent,
-        metadata: { provider: 'GOOGLE', via: 'mobile', reason: e?.message?.slice(0, 200) },
+        metadata: { provider, via: 'mobile', reason: e?.message?.slice(0, 200) },
       });
       return response.status(400).type('text/plain').send(e?.message);
     }
 
+    const name = provider === Provider.APPLE ? 'Apple' : 'Google';
     if ('error' in result) {
       this._auditService.record({
         action: 'auth.login.failed',
         ip,
         userAgent,
-        metadata: { provider: 'GOOGLE', via: 'mobile', reason: result.error },
+        metadata: { provider, via: 'mobile', reason: result.error },
       });
-      if (result.error === 'password_account') {
-        return response
-          .status(409)
-          .type('text/plain')
-          .send('This email has a Postra account with a password.');
-      }
-      return result.error === 'no_account'
-        ? response
+      switch (result.error) {
+        case 'password_account':
+          return response
+            .status(409)
+            .type('text/plain')
+            .send('This email has a Postra account with a password.');
+        case 'other_account':
+          return response
+            .status(409)
+            .type('text/plain')
+            .send(
+              `This email has a Postra account that signs in with ${
+                result.provider === Provider.APPLE ? 'Apple' : 'Google'
+              }.`
+            );
+        case 'no_account':
+          return response
             .status(404)
             .type('text/plain')
-            .send('No Postra account uses this Google account.')
-        : response
+            .send(`No Postra account uses this ${name} account.`);
+        case 'closed':
+          return response
+            .status(403)
+            .type('text/plain')
+            .send('Sign-ups are closed at the moment.');
+        default:
+          return response
             .status(400)
             .type('text/plain')
-            .send('Google sign-in failed. Please try again.');
+            .send(`${name} sign-in failed. Please try again.`);
+      }
     }
 
     this._auditService.record({
-      action: 'auth.login',
+      action: result.created ? 'auth.register' : 'auth.login',
       userId: result.user.id,
       ip,
       userAgent,
-      metadata: { provider: 'GOOGLE', via: 'mobile' },
+      metadata: { provider, via: 'mobile' },
     });
     return response.status(200).json({
       login: true,
+      created: result.created,
       token: this._authService.mobileJwt(result.jwt),
     });
   }

@@ -20,6 +20,10 @@ function controller(result: any) {
       if (result instanceof Error) throw result;
       return result;
     }),
+    appleNativeLogin: jest.fn(async () => {
+      if (result instanceof Error) throw result;
+      return result;
+    }),
     mobileJwt: jest.fn((jwt: string) => `mobile:${jwt}`),
   };
   const audit = { record: jest.fn() };
@@ -82,5 +86,69 @@ describe('POST /auth/google/native', () => {
 
     expect(res.statusCode).toBe(400);
     expect(res.body).toBe('This account is suspended.');
+  });
+});
+
+describe('POST /auth/google/native and /auth/apple/native with a sign-up', () => {
+  it('passes the sign-up on only when the app asks for an account', async () => {
+    const { ctrl, auth } = controller({ jwt: 'web', user: { id: 'u' }, created: false });
+    await ctrl.googleNative({ idToken: 't' } as any, fakeResponse(), 'ip', 'ua');
+    expect(auth.googleNativeLogin).toHaveBeenLastCalledWith('t', undefined);
+
+    await ctrl.googleNative(
+      { idToken: 't', create: true, company: '  Studio  ', termsAccepted: true, platform: 'ios' } as any,
+      fakeResponse(),
+      'ip',
+      'ua'
+    );
+    expect(auth.googleNativeLogin).toHaveBeenLastCalledWith('t', {
+      company: 'Studio',
+      platform: 'ios',
+      ip: 'ip',
+      userAgent: 'ua',
+    });
+  });
+
+  it('records a new account as a registration and says so to the app', async () => {
+    const { ctrl, audit } = controller({ jwt: 'web', user: { id: 'user-new' }, created: true });
+    const res = fakeResponse();
+    await ctrl.appleNative(
+      { identityToken: 't', nonce: 'n', create: true, company: 'K', termsAccepted: true } as any,
+      res,
+      'ip',
+      'ua'
+    );
+
+    expect(res.statusCode).toBe(200);
+    expect(res.body).toEqual({ login: true, created: true, token: 'mobile:web' });
+    expect(audit.record).toHaveBeenCalledWith(
+      expect.objectContaining({ action: 'auth.register', userId: 'user-new', metadata: { provider: 'APPLE', via: 'mobile' } })
+    );
+  });
+
+  it('answers 409 naming the provider the address already signs in with', async () => {
+    const { ctrl } = controller({ error: 'other_account', provider: 'GOOGLE' });
+    const res = fakeResponse();
+    await ctrl.appleNative({ identityToken: 't', nonce: 'n' } as any, res, 'ip', 'ua');
+
+    expect(res.statusCode).toBe(409);
+    expect(res.body).toBe('This email has a Postra account that signs in with Google.');
+  });
+
+  it('answers 403 while sign-ups are closed', async () => {
+    const { ctrl } = controller({ error: 'closed' });
+    const res = fakeResponse();
+    await ctrl.appleNative({ identityToken: 't', nonce: 'n' } as any, res, 'ip', 'ua');
+
+    expect(res.statusCode).toBe(403);
+  });
+
+  it('names Apple when its sign-in fails', async () => {
+    const { ctrl } = controller({ error: 'invalid' });
+    const res = fakeResponse();
+    await ctrl.appleNative({ identityToken: 't', nonce: 'n' } as any, res, 'ip', 'ua');
+
+    expect(res.statusCode).toBe(400);
+    expect(res.body).toBe('Apple sign-in failed. Please try again.');
   });
 });

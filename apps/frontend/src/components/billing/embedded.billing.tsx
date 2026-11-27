@@ -703,28 +703,6 @@ const SubmitBar: FC<{ loading: boolean; consent: boolean }> = ({
   return (
     <div className="animate-fadeIn min-h-[92px] mobile:h-auto fixed bottom-0 w-full px-[12px] pb-[12px] left-0 bg-newBgColor z-[100]">
       <div className="w-full min-h-full border-t border-white/10 bg-white/[0.03] backdrop-blur-xl px-[24px] mobile:!px-[16px] py-[12px] flex flex-wrap mobile:flex-col gap-[16px] justify-between items-center font-[400] text-[14px] text-[#A3A3A3] mobile:py-[16px]">
-        {checkout.checkout.recurring?.trial?.trialEnd ? (
-          <div>
-            {t('billing_your_7_day_trial_is', 'Your 7-day trial is')}{' '}
-            <span className="text-textColor font-[600]">
-              {t('billing_100_percent_free', '100% free')}
-            </span>{' '}
-            {t('billing_ending', 'ending')}{' '}
-            <br className="hidden mobile:block" />
-            <span className="text-textColor font-[600]">
-              {newDayjs(
-                checkout.checkout.recurring?.trial?.trialEnd * 1000
-              ).format('D MMMM YYYY')}{' '}
-              -{' '}
-            </span>
-            <span className="text-textColor font-[600]">
-              {t(
-                'billing_cancel_anytime_short',
-                'Cancel anytime from settings'
-              )}
-            </span>
-          </div>
-        ) : null}
         <div>
           <Button
             className="h-[42px] rounded-[10px] mobile:w-full"
@@ -732,12 +710,9 @@ const SubmitBar: FC<{ loading: boolean; consent: boolean }> = ({
             loading={loading}
             disabled={!consent}
           >
-            {checkout.checkout.recurring?.trial?.trialEnd
-              ? t(
-                  'billing_pay_0_start_trial',
-                  'Pay £0 Today - Start your free trial!'
-                )
-              : t('billing_pay_now', 'Pay Now')}
+            {/* The checkout pays at once: the free trial starts without a
+                card from the plan screen (POST /billing/start-trial). */}
+            {t('billing_pay_now', 'Pay Now')}
           </Button>
         </div>
       </div>

@@ -11,7 +11,10 @@ describe('GET /billing/trial', () => {
       postCap: jest.fn().mockResolvedValue({ anchor: new Date(0), limit: 15 }),
       checkCredits: jest.fn().mockResolvedValue({ credits: 7 }),
     };
-    const stripeService = { trialStatus: jest.fn().mockResolvedValue(status) };
+    const stripeService = {
+      trialStatus: jest.fn().mockResolvedValue(status),
+      trialRanOut: jest.fn().mockResolvedValue(true),
+    };
     const postsService = { countedPostsNow: jest.fn().mockResolvedValue(4) };
     const integrationService = { getIntegrationsList: jest.fn().mockResolvedValue([{ disabled: false }, { disabled: true }]) };
     const controller = new BillingController(
@@ -47,11 +50,32 @@ describe('GET /billing/trial', () => {
     expect(await controller.trial(org)).toMatchObject({ trial: true, hasCard: true, cancelled: true });
   });
 
-  it('no trial, no bar, and Stripe is not asked', async () => {
+  it('no trial on a paid plan: no bar, and Stripe is not asked', async () => {
     const { controller, stripeService } = build();
 
-    expect(await controller.trial({ ...org, isTrailing: false })).toEqual({ trial: false });
+    expect(await controller.trial({ ...org, isTrailing: false })).toEqual({ trial: false, ended: false });
     expect(stripeService.trialStatus).not.toHaveBeenCalled();
+    expect(stripeService.trialRanOut).not.toHaveBeenCalled();
+  });
+
+  // The Android app sells no plans: it says the trial has ended instead of
+  // showing an empty workspace.
+  it('no plan after a trial that ran out says so', async () => {
+    const { controller, stripeService } = build();
+
+    expect(
+      await controller.trial({ ...org, isTrailing: false, subscription: null })
+    ).toEqual({ trial: false, ended: true });
+    expect(stripeService.trialRanOut).toHaveBeenCalledWith('cus_1');
+  });
+
+  it('no plan and no Stripe customer: never had a trial', async () => {
+    const { controller, stripeService } = build();
+
+    expect(
+      await controller.trial({ ...org, isTrailing: false, subscription: null, paymentId: null })
+    ).toEqual({ trial: false, ended: false });
+    expect(stripeService.trialRanOut).not.toHaveBeenCalled();
   });
 
   it('a trial Stripe no longer has shows no bar', async () => {

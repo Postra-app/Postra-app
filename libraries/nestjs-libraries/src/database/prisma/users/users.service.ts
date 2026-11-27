@@ -63,6 +63,14 @@ export class UsersService {
     return this._usersRepository.getUserByProvider(providerId, provider);
   }
 
+  getOtherAccountProvider(email: string, except: Provider) {
+    return this._usersRepository.getOtherAccountProvider(email, except);
+  }
+
+  setAppleRefreshToken(id: string, encrypted: string | null) {
+    return this._usersRepository.setAppleRefreshToken(id, encrypted);
+  }
+
   activateUser(id: string) {
     return this._usersRepository.activateUser(id);
   }

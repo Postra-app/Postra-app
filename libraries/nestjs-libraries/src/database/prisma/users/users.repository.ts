@@ -120,6 +120,27 @@ export class UsersRepository {
     });
   }
 
+  // The way in of another account at this address (a password, Google or
+  // Apple), so a sign-in from the app does not make a second account for a
+  // person who already has one. Same address in any case only.
+  async getOtherAccountProvider(email: string, except: Provider) {
+    const found = await this._user.model.user.findFirst({
+      where: {
+        email: { equals: email, mode: 'insensitive' },
+        NOT: { providerName: except },
+      },
+      select: { email: true, providerName: true },
+    });
+    return found && sameAddress(found.email, email) ? found.providerName : null;
+  }
+
+  setAppleRefreshToken(id: string, encrypted: string | null) {
+    return this._user.model.user.update({
+      where: { id },
+      data: { appleRefreshToken: encrypted },
+    });
+  }
+
   getUserByProvider(providerId: string, provider: Provider) {
     return this._user.model.user.findFirst({
       where: {

@@ -1,4 +1,5 @@
 import { HttpException, Injectable } from '@nestjs/common';
+import { keepTextReadable } from '@gitroom/nestjs-libraries/studio/studio-contrast';
 import OpenAI from 'openai';
 import { zodResponseFormat } from 'openai/helpers/zod';
 import { z } from 'zod';
@@ -200,6 +201,7 @@ Rules:
 - Preserve user intent. If they ask "shorter headline", only update the text layer's text.
 - Keep all coordinates inside canvas bounds (0..width / 0..height).
 - Use the brand colors in the spec when changing fills or text colors.
+- Text must stay readable on what is under it: never give text a colour close to the fill of the shape or background behind it (for emphasis on a coloured button, use white or a dark colour, or change the button fill instead).
 - Image layers are photos: you CANNOT recolor, retouch or edit their pixels. Setting fill/color on an image layer does nothing - never do it, and never claim you changed a photo.
 - To make the picture warmer/cooler/tinted/darker: ADD a full-canvas rect (x:0, y:0, originX:left, originY:top, width/height = canvas size) with the tint color as fill and opacity 0.15-0.35 - added layers render on top, so it tints the photo. Say in the explanation that you added a colour tint overlay.
 - If the request truly needs photo editing (add/remove objects or people, change the scene), emit no ops and point at the in-app paths instead of external tools: (1) the Images tool's stock search - name the exact term to search (e.g. "scarecrow") so they can drop it onto the design as its own layer; (2) regenerating in AI Generate with the change added to the prompt. Never send the user to outside photo editors.
@@ -247,12 +249,14 @@ Rules:
 
     if (!parsed) throw new Error('AI returned no patch');
 
-    const patch: StudioPatch = { base: spec.layers.length, ops: parsed.ops as StudioPatchOp[] };
-    const validation = validatePatchAgainstSpec(spec, patch);
+    const proposed: StudioPatch = { base: spec.layers.length, ops: parsed.ops as StudioPatchOp[] };
+    const validation = validatePatchAgainstSpec(spec, proposed);
     if (validation.ok === false) {
       throw new Error(`Patch rejected: ${validation.reason}`);
     }
 
+    // The prompt asks for readable text; this makes sure.
+    const { patch } = keepTextReadable(spec, proposed, applyPatch);
     return { patch, nextSpec: applyPatch(spec, patch), explanation: parsed.explanation };
   }
 

@@ -109,6 +109,24 @@ const withSignupSource = (
   return org?.signupSource ? { ...rest, utm: org.signupSource } : rest;
 };
 
+// The id of a Stripe reference that may be expanded or not.
+const idOf = (v?: string | { id: string } | null) =>
+  typeof v === 'string' ? v : v?.id ?? null;
+
+// A trial without a card that ran to its end: Stripe cancelled it at or
+// after trial_end (missing_payment_method: cancel), not the customer earlier,
+// and it was not a repeat trial refused at the start. These are the signs on
+// the subscription; a trial that was paid for and later refunded shows them
+// too (paying ends the trial early and the refund cancels after it), so
+// callers also ask Stripe whether it was ever paid (StripeService.neverPaid).
+export const trialRanOutWithoutCard = (s: Stripe.Subscription) =>
+  s.metadata?.trial_no_card === '1' &&
+  s.status === 'canceled' &&
+  !s.metadata?.trial_rejected &&
+  !!s.trial_end &&
+  !!s.canceled_at &&
+  s.canceled_at >= s.trial_end;
+
 @Injectable()
 export class StripeService {
   private readonly _logger = new Logger(StripeService.name);
@@ -1085,6 +1103,12 @@ export class StripeService {
       subscription.canceled_at < subscription.trial_end ||
       subscription.canceled_at > subscription.trial_end + 86400
     ) {
+      return;
+    }
+    // A trial paid for and then refunded ended with a payment, not without a
+    // card: its customer was told the subscription ended, and "Your free
+    // trial has ended, add a card" was wrong (found on production 27 Nov).
+    if (!(await this.neverPaid(subscription.id))) {
       return;
     }
     if (
@@ -2083,11 +2107,48 @@ export class StripeService {
 
   // The trial bar: when the trial ends, and whether a card will keep the plan.
   // Null without a trial.
+  // Whether this customer's trial without a card ran to its end (not one
+  // cancelled earlier): the Android app, which sells no plans, says so
+  // instead of showing an empty workspace.
+  async trialRanOut(paymentId: string): Promise<boolean> {
+    const canceled = await stripe.subscriptions.list({
+      customer: paymentId,
+      status: 'canceled',
+      limit: 100,
+    });
+    return this.anyRanOut(canceled.data);
+  }
+
+  // Whether no invoice of this subscription was ever paid with money: a
+  // trial that ran out without a card has none; one paid for has.
+  private async neverPaid(subscriptionId: string): Promise<boolean> {
+    const paid = await stripe.invoices.list({
+      subscription: subscriptionId,
+      status: 'paid',
+      limit: 10,
+    });
+    return !paid.data.some((invoice) => (invoice.amount_paid ?? 0) > 0);
+  }
+
+  private async anyRanOut(subscriptions: Stripe.Subscription[]) {
+    for (const s of subscriptions.filter(trialRanOutWithoutCard)) {
+      if (await this.neverPaid(s.id)) return true;
+    }
+    return false;
+  }
+
   async trialStatus(
     paymentId: string
   ): Promise<{ endsAt: number; hasCard: boolean; cancelled: boolean } | null> {
     const trialing = (
-      await stripe.subscriptions.list({ customer: paymentId, limit: 100 })
+      await stripe.subscriptions.list({
+        customer: paymentId,
+        limit: 100,
+        // The trial bar asks on every page; with the customer in the same
+        // answer, whether a card is on file needs no second request (the
+        // two in a row took ~320 of ~440 ms, traces 27 Nov 2026).
+        expand: ['data.customer'],
+      })
     ).data.find((f) => f.status === 'trialing');
     if (!trialing?.trial_end) {
       return null;
@@ -2295,15 +2356,7 @@ export class StripeService {
     );
     // The plan screen opens with "Your free trial has ended" for a trial
     // without a card that ran to its end (not one cancelled earlier).
-    const trialEnded = subscriptions.some(
-      (s) =>
-        s.metadata?.trial_no_card === '1' &&
-        s.status === 'canceled' &&
-        !s.metadata?.trial_rejected &&
-        !!s.trial_end &&
-        !!s.canceled_at &&
-        s.canceled_at >= s.trial_end
-    );
+    const trialEnded = await this.anyRanOut(subscriptions);
     return { ...checkout, trialEnded };
   }
 
@@ -2348,9 +2401,11 @@ export class StripeService {
     if (subscription.default_payment_method || subscription.default_source) {
       return true;
     }
-    const customer = await stripe.customers.retrieve(
-      subscription.customer as string
-    );
+    // Already expanded by the caller (trialStatus): no second request.
+    const customer =
+      typeof subscription.customer === 'object' && subscription.customer
+        ? subscription.customer
+        : await stripe.customers.retrieve(subscription.customer as string);
     if (!customer || customer.deleted) {
       return false;
     }
@@ -2780,32 +2835,48 @@ export class StripeService {
         amount_refunded: charge.amount_refunded,
         description: charge.description,
         receipt_url: charge.receipt_url || null,
-        invoice: (charge as any).invoice || null,
+        payment_intent: idOf(
+          charge.payment_intent as string | { id: string } | null
+        ),
       }));
 
-    const invoiceIds = chargeList
-      .map((c) => c.invoice)
-      .filter((id): id is string => !!id && typeof id === 'string');
-
-    const invoicePdfMap: Record<string, string> = {};
-    for (const invoiceId of invoiceIds) {
-      try {
-        const inv = await stripe.invoices.retrieve(invoiceId);
-        if (inv.invoice_pdf) {
-          invoicePdfMap[invoiceId] = inv.invoice_pdf;
+    // A charge no longer names its invoice (removed from the API with
+    // 2025-03-31.basil; Postra is on 2026-10-28): the PDF stayed empty in the
+    // admin. An invoice lists its payments, each with its PaymentIntent,
+    // which the charge has. One request for the customer's invoices.
+    const invoiceByIntent: Record<string, { id: string; pdf: string | null }> =
+      {};
+    try {
+      const invoices = await stripe.invoices.list({
+        customer: org.paymentId,
+        limit: 100,
+        expand: ['data.payments'],
+      });
+      for (const invoice of invoices.data) {
+        for (const payment of invoice.payments?.data ?? []) {
+          const intent = idOf(
+            payment.payment?.payment_intent as string | { id: string } | null
+          );
+          if (intent && invoice.id) {
+            invoiceByIntent[intent] = {
+              id: invoice.id,
+              pdf: invoice.invoice_pdf ?? null,
+            };
+          }
         }
-      } catch {
-        // ignore if invoice can't be fetched
       }
+    } catch {
+      // The history still shows the charges and their receipts.
     }
 
-    return chargeList.map((charge) => ({
-      ...charge,
-      invoice_pdf:
-        charge.invoice && invoicePdfMap[charge.invoice as string]
-          ? invoicePdfMap[charge.invoice as string]
-          : null,
-    }));
+    return chargeList.map(({ payment_intent, ...charge }) => {
+      const invoice = payment_intent ? invoiceByIntent[payment_intent] : undefined;
+      return {
+        ...charge,
+        invoice: invoice?.id ?? null,
+        invoice_pdf: invoice?.pdf ?? null,
+      };
+    });
   }
 
   async refundCharges(organizationId: string, chargeIds: string[]) {

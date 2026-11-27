@@ -11,6 +11,12 @@ import { OrganizationService } from '@gitroom/nestjs-libraries/database/prisma/o
 import { SubscriptionService } from '@gitroom/nestjs-libraries/database/prisma/subscriptions/subscription.service';
 import { AuthService as AuthChecker } from '@gitroom/helpers/auth/auth.service';
 import { AuthProviderManager } from '@gitroom/backend/services/auth/providers/providers.manager';
+import {
+  appleSignInEnabled,
+  exchangeAppleCode,
+  verifyAppleIdentityToken,
+} from '@gitroom/backend/services/auth/providers/apple.provider';
+import { encryptSecret } from '@gitroom/helpers/auth/secrets-at-rest';
 import dayjs from 'dayjs';
 import { NotificationService } from '@gitroom/nestjs-libraries/database/prisma/notifications/notification.service';
 import { ForgotReturnPasswordDto } from '@gitroom/nestjs-libraries/dtos/auth/forgot-return.password.dto';
@@ -118,8 +124,32 @@ const readSignupSource = (stored: string | null) => {
   }
 };
 
+// What the app sends to make an account: the workspace name and the
+// person's ticked consent (the controller refuses the request without it),
+// plus what the web sign-up records about where it came from.
+export type NativeSignUp = {
+  company: string;
+  platform: 'ios' | 'android';
+  ip: string;
+  userAgent: string;
+};
+
+export type NativeSignInResult =
+  | { jwt: string; user: User; created: boolean }
+  | {
+      error:
+        | 'invalid'
+        | 'no_account'
+        | 'password_account'
+        | 'other_account'
+        | 'closed';
+      provider?: Provider;
+    };
+
 @Injectable()
 export class AuthService {
+  private readonly _logger = new Logger(AuthService.name);
+
   constructor(
     private _userService: UsersService,
     private _organizationService: OrganizationService,
@@ -886,38 +916,129 @@ export class AuthService {
 
   /**
    * Sign-in from the mobile app with the ID token its native Google sign-in
-   * returned. Only an account that already exists: the app creates no
-   * accounts (sign-ups and plans are on the web, Apple 3.1.1), and while
-   * sign-ups are frozen this must not open a way around the freeze. An
-   * account made with a password and the same address is not the Google
-   * account, as on the web, so the address alone never signs anyone in; the
-   * app is told so (`password_account`), because "no account" sent people who
-   * have one to sign up again. Only the owner of the address learns it:
-   * Google has verified that the person holding the token controls it.
+   * returned. An account made with a password and the same address is not
+   * the Google account, as on the web, so the address alone never signs
+   * anyone in; the app is told so (`password_account`), because "no account"
+   * sent people who have one to sign up again. Only the owner of the address
+   * learns it: Google has verified that the person holding the token
+   * controls it. Without `create` only an existing account signs in (the
+   * Android app and older iOS builds: no sign-ups there, Google Play
+   * Payments policy); with it a new account is made, as on the web.
    */
   async googleNativeLogin(
-    idToken: string
-  ): Promise<
-    | { jwt: string; user: User }
-    | { error: 'invalid' | 'no_account' | 'password_account' }
-  > {
+    idToken: string,
+    create?: NativeSignUp
+  ): Promise<NativeSignInResult> {
     const google = await this._providerManager
       .getProvider(Provider.GOOGLE)
       .verifyIdToken?.(idToken);
     if (!google) {
       return { error: 'invalid' };
     }
-    const user = await this._userService.getUserByProvider(
-      google.id,
-      Provider.GOOGLE
+    // verifyIdToken refuses an address Google has not verified.
+    return this.nativeSignIn(
+      Provider.GOOGLE,
+      { ...google, verified: true },
+      create
     );
-    if (!user) {
-      const withPassword = await this._userService.getUserByEmail(
-        google.email.toLowerCase()
-      );
-      return { error: withPassword ? 'password_account' : 'no_account' };
+  }
+
+  /**
+   * Sign in with Apple from the iOS app: the identity token checked against
+   * Apple's keys and the nonce the app made (apple.provider.ts). The
+   * one-time authorization code is traded for Apple's refresh token, kept
+   * encrypted only so that deleting the account can revoke the sign-in.
+   */
+  async appleNativeLogin(
+    body: { identityToken: string; nonce: string; authorizationCode?: string },
+    create?: NativeSignUp
+  ): Promise<NativeSignInResult> {
+    if (!appleSignInEnabled()) {
+      return { error: 'invalid' };
     }
-    return { jwt: await this.jwt(user), user };
+    const apple = await verifyAppleIdentityToken(body.identityToken, body.nonce);
+    if (!apple) {
+      return { error: 'invalid' };
+    }
+    const result = await this.nativeSignIn(Provider.APPLE, apple, create);
+    // Every sign-in stores the newest refresh token, so the one revoked at
+    // deletion is never one Apple has already replaced.
+    if ('jwt' in result && body.authorizationCode) {
+      try {
+        const refresh = await exchangeAppleCode(body.authorizationCode);
+        if (refresh) {
+          await this._userService.setAppleRefreshToken(
+            result.user.id,
+            encryptSecret(refresh)
+          );
+        }
+      } catch (e: any) {
+        // The sign-in stands; only revocation at deletion would miss it.
+        this._logger.warn(`Apple code exchange failed: ${e?.message}`);
+      }
+    }
+    return result;
+  }
+
+  // The account a verified identity from the app belongs to, or a new one
+  // when the app asked for it (the person ticked the terms and named the
+  // workspace, as on the web sign-up form). The gate is the web's: while
+  // sign-ups are closed only a promised address gets in.
+  private async nativeSignIn(
+    provider: Provider,
+    identity: { id: string; email: string; verified: boolean },
+    create?: NativeSignUp
+  ): Promise<NativeSignInResult> {
+    const user = await this._userService.getUserByProvider(
+      identity.id,
+      provider
+    );
+    if (user) {
+      return { jwt: await this.jwt(user), user, created: false };
+    }
+    const email = identity.email.toLowerCase();
+    const other = await this._userService.getOtherAccountProvider(
+      email,
+      provider
+    );
+    if (other) {
+      return other === Provider.LOCAL
+        ? { error: 'password_account' }
+        : { error: 'other_account', provider: other };
+    }
+    if (!create) {
+      return { error: 'no_account' };
+    }
+    const owned = identity.verified ? email : null;
+    let made: Awaited<ReturnType<OrganizationService['createOrgAndUser']>>;
+    try {
+      made = await this.admit(provider, owned, async () => {
+        const org = await this._organizationService.createOrgAndUser(
+          {
+            company: create.company,
+            email,
+            password: '',
+            provider,
+            providerId: identity.id,
+            termsAccepted: true,
+            region: 'UK',
+            signupSource: 'app',
+            signupMedium: create.platform,
+          } as any,
+          create.ip,
+          create.userAgent
+        );
+        await this._subscriptionService?.applyPendingGrant(org.id, owned);
+        return org;
+      });
+    } catch (e: any) {
+      if (e?.message === 'Registration is disabled') {
+        return { error: 'closed' };
+      }
+      throw e;
+    }
+    const createdUser = made.users[0].user as User;
+    return { jwt: await this.jwt(createdUser), user: createdUser, created: true };
   }
 
   /**

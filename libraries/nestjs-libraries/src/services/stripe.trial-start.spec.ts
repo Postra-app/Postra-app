@@ -11,6 +11,7 @@ const listMethods = jest.fn();
 const createIntent = jest.fn();
 const retrieveCustomer = jest.fn();
 const createPreview = jest.fn();
+const listInvoices = jest.fn().mockResolvedValue({ data: [] });
 const createPortal = jest.fn().mockResolvedValue({ url: 'https://billing.stripe.com/p/x' });
 const listPortalConfigurations = jest.fn();
 const createPortalConfiguration = jest.fn();
@@ -34,7 +35,7 @@ jest.mock('stripe', () => {
       sessions: { create: createPortal },
       configurations: { list: listPortalConfigurations, create: createPortalConfiguration },
     },
-    invoices: { createPreview },
+    invoices: { createPreview, list: (...a: unknown[]) => listInvoices(...a) },
   }));
   mock.errors = actual.errors ?? actual.default?.errors;
   return mock;
@@ -428,11 +429,59 @@ describe('the trial bar', () => {
     expect(await service.trialStatus('cus_new')).toEqual({ endsAt: 2000 * 1000, hasCard: false, cancelled: true });
   });
 
+  // The trial bar asks on every page: one request to Stripe, not two.
+  it('reads the card from the customer in the same answer', async () => {
+    listSubscriptions.mockResolvedValue({
+      data: [{ id: 'sub_new', customer: { id: 'cus_new', invoice_settings: { default_payment_method: 'pm_1' } }, status: 'trialing', trial_end: 2000, default_payment_method: null }],
+    });
+    retrieveCustomer.mockClear();
+    const { service } = build();
+
+    expect(await service.trialStatus('cus_new')).toEqual({ endsAt: 2000 * 1000, hasCard: true, cancelled: false });
+    expect(listSubscriptions).toHaveBeenLastCalledWith({ customer: 'cus_new', limit: 100, expand: ['data.customer'] });
+    expect(retrieveCustomer).not.toHaveBeenCalled();
+  });
+
   it('no trial, no bar', async () => {
     listSubscriptions.mockResolvedValue({ data: [{ id: 'sub_new', status: 'active' }] });
     const { service } = build();
 
     expect(await service.trialStatus('cus_new')).toBeNull();
+  });
+});
+
+// The Android app sells no plans; without a plan it says the trial ended.
+describe('whether a trial without a card ran out', () => {
+  const ranOut = { id: 's1', status: 'canceled', trial_end: 2000, canceled_at: 2000, metadata: { trial_no_card: '1' } };
+
+  it('asks Stripe for the cancelled subscriptions of the customer only', async () => {
+    listSubscriptions.mockResolvedValue({ data: [ranOut] });
+    const { service } = build();
+
+    expect(await service.trialRanOut('cus_new')).toBe(true);
+    expect(listSubscriptions).toHaveBeenLastCalledWith({ customer: 'cus_new', status: 'canceled', limit: 100 });
+  });
+
+  it('a trial paid for and then refunded is not one', async () => {
+    listSubscriptions.mockResolvedValue({ data: [{ ...ranOut, id: 's2', canceled_at: 2780 }] });
+    listInvoices.mockResolvedValueOnce({ data: [{ status: 'paid', amount_paid: 1900 }] });
+    const { service } = build();
+
+    expect(await service.trialRanOut('cus_new')).toBe(false);
+    expect(listInvoices).toHaveBeenLastCalledWith({ subscription: 's2', status: 'paid', limit: 10 });
+  });
+
+  it('a trial cancelled before its end, a refused repeat trial or a paid plan is not one', async () => {
+    listSubscriptions.mockResolvedValue({
+      data: [
+        { ...ranOut, canceled_at: 1000 },
+        { ...ranOut, metadata: { trial_no_card: '1', trial_rejected: '1' } },
+        { ...ranOut, metadata: {} },
+      ],
+    });
+    const { service } = build();
+
+    expect(await service.trialRanOut('cus_new')).toBe(false);
   });
 });
 

@@ -10,6 +10,8 @@ import { AuthService as AuthChecker } from '@gitroom/helpers/auth/auth.service';
 import { bustAuthContextCache } from '@gitroom/nestjs-libraries/redis/auth-context.cache';
 import { ioRedis } from '@gitroom/nestjs-libraries/redis/redis.service';
 import { AuditService } from '@gitroom/nestjs-libraries/database/prisma/audit/audit.service';
+import { revokeAppleToken } from '@gitroom/backend/services/auth/providers/apple.provider';
+import { decryptSecret } from '@gitroom/helpers/auth/secrets-at-rest';
 import {
   authEmailFooter,
   authEmails,
@@ -24,6 +26,10 @@ export const ACCOUNT_CHANGED =
   'Your account changed while we were deleting it, so nothing was deleted. Please try again.';
 export const DELETE_IN_PROGRESS =
   'Your account is already being deleted. Try again in a minute if it is still there.';
+// Sign in with Apple could not be revoked (Apple did not answer): nothing is
+// deleted, and the same link works again.
+export const APPLE_NOT_REVOKED =
+  'We could not reach Apple to end Sign in with Apple for this account. Nothing was deleted - please try the link again in a few minutes.';
 export const DELETE_MAIL_NOT_SENT =
   'We could not send the confirmation email. Please try again.';
 
@@ -165,6 +171,25 @@ export class AccountDeletionService {
 
   // GDPR / RODO right to erasure + Meta data-deletion. Permanently deletes the
   // user and the organizations they solely own (UsersService.deleteAccount).
+  private async revokeApple(user: {
+    id: string;
+    providerName: Provider;
+    appleRefreshToken?: string | null;
+  }) {
+    if (user.providerName !== Provider.APPLE || !user.appleRefreshToken) {
+      return;
+    }
+    let revoked = false;
+    try {
+      revoked = await revokeAppleToken(decryptSecret(user.appleRefreshToken));
+    } catch (err: any) {
+      this._logger.error(`Apple token not revoked for user ${user.id}: ${err?.message}`);
+    }
+    if (!revoked) {
+      throw new HttpException(APPLE_NOT_REVOKED, 503);
+    }
+  }
+
   private async deleteNow(
     userId: string,
     email: string,
@@ -180,6 +205,11 @@ export class AccountDeletionService {
     if (!current || current.tokenVersion !== expectedTokenVersion) {
       throw new AccountChangedError();
     }
+    // Sign in with Apple: end the app's access to the person's Apple sign-in,
+    // as Apple asks of apps that delete accounts (App Review 5.1.1(v)).
+    // First, while the token is still stored: if Apple does not answer,
+    // nothing is deleted and the same link can be tried again.
+    await this.revokeApple(current);
     const soleOrgIds = await this._userService.getSoleOwnedOrganizations(
       userId
     );
@@ -193,6 +223,7 @@ export class AccountDeletionService {
       userId,
       expectedTokenVersion
     );
+
     // The account and its organisations are gone; this row says when and
     // how. Ids only: the address went with the account.
     await this._audit.record({

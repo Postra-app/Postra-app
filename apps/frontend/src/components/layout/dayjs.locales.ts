@@ -1,6 +1,7 @@
 import dayjs from 'dayjs';
 import i18next from '@gitroom/react/translation/i18next';
 import localeEn from 'dayjs/locale/en';
+import localeEnGb from 'dayjs/locale/en-gb';
 import localePl from 'dayjs/locale/pl';
 import localeHe from 'dayjs/locale/he';
 import localeRu from 'dayjs/locale/ru';
@@ -15,6 +16,12 @@ import localeKo from 'dayjs/locale/ko';
 import localeAr from 'dayjs/locale/ar';
 import localeTr from 'dayjs/locale/tr';
 import localeVi from 'dayjs/locale/vi';
+
+// Postra is UK-first: English dates read the British way. dayjs's "en" is
+// American ("L" = 11/09/2026 for 9 November); its date formats
+// come from "en-gb" here. Only the formats: the first day of the week stays
+// what the calendar is built on.
+export const localeEnUk = { ...localeEn, formats: localeEnGb.formats };
 
 let registered = false;
 
@@ -31,7 +38,7 @@ export const registerDayjsLocales = () => {
   if (registered) return;
   registered = true;
   [
-    localeEn, localePl, localeHe, localeRu, localeZh, localeFr, localeEs,
+    localeEnUk, localePl, localeHe, localeRu, localeZh, localeFr, localeEs,
     localePt, localeDe, localeIt, localeJa, localeKo, localeAr, localeTr,
     localeVi,
   ].forEach((locale) => dayjs.locale(locale.name, locale, true));

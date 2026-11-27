@@ -143,6 +143,10 @@ model User {
   // the same time so every existing session ends.
   suspendedAt           DateTime?
   suspendedReason       String?
+  // Sign in with Apple: the refresh token Apple issued for this account,
+  // encrypted (secrets-at-rest). Kept only to revoke the sign-in when the
+  // account is deleted, as Apple asks (App Review 5.1.1(v)).
+  appleRefreshToken     String?
   comments              Comments[]
   items                 ItemUser[]
   groupBuyer            MessagesGroup[]      @relation("groupBuyer")
@@ -1102,6 +1106,8 @@ enum Provider {
   FARCASTER
   WALLET
   GENERIC
+  // Sign in with Apple, from the iOS app only (Apple 4.8).
+  APPLE
 }
 
 enum Role {
@@ -1183,6 +1189,12 @@ model MobilePushToken {
   organizationId String
   token          String       @unique
   platform       String
+  // SHA-256 of the random secret the app keeps in the device's keychain
+  // It proves the device, which the token string cannot: the
+  // token leaks into logs and backups. A token moves to another account only
+  // with the same secret, so the next person on a phone whose session ended
+  // without signing out gets its notifications, and a leaked token does not.
+  deviceSecretHash String?
   createdAt      DateTime     @default(now())
   updatedAt      DateTime     @updatedAt
   user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)

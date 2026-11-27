@@ -1,6 +1,10 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { PrismaRepository } from '@gitroom/nestjs-libraries/database/prisma/prisma.service';
 import { ioRedis } from '@gitroom/nestjs-libraries/redis/redis.service';
+import { createHash } from 'crypto';
+
+const sha256 = (value: string) =>
+  createHash('sha256').update(value, 'utf8').digest('hex');
 
 const EXPO_PUSH_URL = 'https://exp.host/--/api/v2/push/send';
 const EXPO_RECEIPTS_URL = 'https://exp.host/--/api/v2/push/getReceipts';
@@ -37,34 +41,61 @@ export class MobilePushService {
     userId: string,
     organizationId: string,
     token: string,
-    platform: string
+    platform: string,
+    deviceSecret?: string
   ) {
     if (!token) {
       return undefined;
     }
+    const secretHash = deviceSecret ? sha256(deviceSecret) : null;
+    const model = this._pushToken.model.mobilePushToken;
+    const fields = { organizationId, platform: platform || 'unknown' };
 
-    // The token string is the only proof of device we have, and it leaks —
-    // into logs, device backups and support tickets. Do not let a caller claim
-    // a token already registered to a different account: that let any signed-in
-    // user push their organization's notifications onto someone else's device
-    // and silence its real owner. Legitimate device hand-off still works,
-    // because the previous user's logout unregisters the token first, freeing
-    // it for whoever signs in next on that device.
-    const existing = await this._pushToken.model.mobilePushToken.findUnique({
-      where: { token },
-      select: { userId: true },
-    });
-    if (existing && existing.userId !== userId) {
-      return undefined;
+    // The token string alone is no proof of device: it leaks into logs,
+    // device backups and support tickets, and letting a caller claim a token
+    // registered to another account let any signed-in user push their
+    // organisation's notifications onto someone else's phone. A token moves
+    // to another account only with the secret its app keeps in the device's
+    // keychain: the next person on a phone whose session ended without
+    // signing out (expired, a 401, offline) gets the notifications, and the
+    // previous account's stop going there. Without the secret, as from older
+    // builds, a token owned by someone else is refused.
+    //
+    // Each step checks the owner in the same statement that writes, so a
+    // refresh by the previous owner racing a hand-over cannot write its
+    // organisation onto a token that has just moved.
+
+    // 1. The caller's own token: refresh it.
+    const own = await model.updateMany({ where: { token, userId }, data: fields });
+    if (own.count) {
+      if (secretHash) {
+        // A token from an older build gets the secret the first time.
+        await model.updateMany({
+          where: { token, userId, deviceSecretHash: null },
+          data: { deviceSecretHash: secretHash },
+        });
+      }
+      return own;
     }
 
-    return this._pushToken.model.mobilePushToken.upsert({
-      where: { token },
-      create: { userId, organizationId, token, platform: platform || 'unknown' },
-      // userId is never changed here: a different owner is rejected above, so
-      // this only ever refreshes the same user's org and platform.
-      update: { organizationId, platform: platform || 'unknown' },
-    });
+    // 2. Another account's token, from the same device: move it.
+    if (secretHash) {
+      const moved = await model.updateMany({
+        where: { token, deviceSecretHash: secretHash, NOT: { userId } },
+        data: { userId, ...fields },
+      });
+      if (moved.count) return moved;
+    }
+
+    // 3. Nobody's yet: register it. A token someone else holds is refused.
+    try {
+      return await model.create({
+        data: { userId, token, ...fields, deviceSecretHash: secretHash },
+      });
+    } catch (e: any) {
+      if (e?.code === 'P2002') return undefined;
+      throw e;
+    }
   }
 
   async removeToken(token: string, userId: string) {
