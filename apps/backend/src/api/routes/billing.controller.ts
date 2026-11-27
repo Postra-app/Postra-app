@@ -182,7 +182,17 @@ export class BillingController {
   @Throttle({ default: { ttl: 300_000, limit: 60 } })
   async trial(@GetOrgFromRequest() org: Organization) {
     if (!org.isTrailing || !org.paymentId) {
-      return { trial: false };
+      // No plan and a trial that ran out: "Your free trial has ended" (the
+      // Android app, which sells no plans, has no other way to know).
+      // @ts-ignore the request's organisation is loaded with its subscription
+      const noPlan = !org.subscription;
+      return {
+        trial: false,
+        ended:
+          noPlan && !!org.paymentId
+            ? await this._stripeService.trialRanOut(org.paymentId)
+            : false,
+      };
     }
     const status = await this._stripeService.trialStatus(org.paymentId);
     if (!status) {

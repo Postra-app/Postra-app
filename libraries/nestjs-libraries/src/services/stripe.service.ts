@@ -109,6 +109,17 @@ const withSignupSource = (
   return org?.signupSource ? { ...rest, utm: org.signupSource } : rest;
 };
 
+// A trial without a card that ran to its end: Stripe cancelled it at or
+// after trial_end (missing_payment_method: cancel), not the customer earlier,
+// and it was not a repeat trial refused at the start.
+export const trialRanOutWithoutCard = (s: Stripe.Subscription) =>
+  s.metadata?.trial_no_card === '1' &&
+  s.status === 'canceled' &&
+  !s.metadata?.trial_rejected &&
+  !!s.trial_end &&
+  !!s.canceled_at &&
+  s.canceled_at >= s.trial_end;
+
 @Injectable()
 export class StripeService {
   private readonly _logger = new Logger(StripeService.name);
@@ -2083,6 +2094,18 @@ export class StripeService {
 
   // The trial bar: when the trial ends, and whether a card will keep the plan.
   // Null without a trial.
+  // Whether this customer's trial without a card ran to its end (not one
+  // cancelled earlier): the Android app, which sells no plans, says so
+  // instead of showing an empty workspace.
+  async trialRanOut(paymentId: string): Promise<boolean> {
+    const canceled = await stripe.subscriptions.list({
+      customer: paymentId,
+      status: 'canceled',
+      limit: 100,
+    });
+    return canceled.data.some(trialRanOutWithoutCard);
+  }
+
   async trialStatus(
     paymentId: string
   ): Promise<{ endsAt: number; hasCard: boolean; cancelled: boolean } | null> {
@@ -2295,15 +2318,7 @@ export class StripeService {
     );
     // The plan screen opens with "Your free trial has ended" for a trial
     // without a card that ran to its end (not one cancelled earlier).
-    const trialEnded = subscriptions.some(
-      (s) =>
-        s.metadata?.trial_no_card === '1' &&
-        s.status === 'canceled' &&
-        !s.metadata?.trial_rejected &&
-        !!s.trial_end &&
-        !!s.canceled_at &&
-        s.canceled_at >= s.trial_end
-    );
+    const trialEnded = subscriptions.some(trialRanOutWithoutCard);
     return { ...checkout, trialEnded };
   }
 

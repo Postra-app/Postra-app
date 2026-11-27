@@ -436,6 +436,32 @@ describe('the trial bar', () => {
   });
 });
 
+// The Android app sells no plans; without a plan it says the trial ended.
+describe('whether a trial without a card ran out', () => {
+  const ranOut = { id: 's1', status: 'canceled', trial_end: 2000, canceled_at: 2000, metadata: { trial_no_card: '1' } };
+
+  it('asks Stripe for the cancelled subscriptions of the customer only', async () => {
+    listSubscriptions.mockResolvedValue({ data: [ranOut] });
+    const { service } = build();
+
+    expect(await service.trialRanOut('cus_new')).toBe(true);
+    expect(listSubscriptions).toHaveBeenLastCalledWith({ customer: 'cus_new', status: 'canceled', limit: 100 });
+  });
+
+  it('a trial cancelled before its end, a refused repeat trial or a paid plan is not one', async () => {
+    listSubscriptions.mockResolvedValue({
+      data: [
+        { ...ranOut, canceled_at: 1000 },
+        { ...ranOut, metadata: { trial_no_card: '1', trial_rejected: '1' } },
+        { ...ranOut, metadata: {} },
+      ],
+    });
+    const { service } = build();
+
+    expect(await service.trialRanOut('cus_new')).toBe(false);
+  });
+});
+
 // Stripe refuses an invoice preview for a trial that has no card and is set to
 // cancel ("The subscription will cancel at the end of the trial instead of
 // generating an invoice"). The "End the trial now" dialog then fell back to
