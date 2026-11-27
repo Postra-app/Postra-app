@@ -109,6 +109,10 @@ const withSignupSource = (
   return org?.signupSource ? { ...rest, utm: org.signupSource } : rest;
 };
 
+// The id of a Stripe reference that may be expanded or not.
+const idOf = (v?: string | { id: string } | null) =>
+  typeof v === 'string' ? v : v?.id ?? null;
+
 // A trial without a card that ran to its end: Stripe cancelled it at or
 // after trial_end (missing_payment_method: cancel), not the customer earlier,
 // and it was not a repeat trial refused at the start.
@@ -2795,32 +2799,48 @@ export class StripeService {
         amount_refunded: charge.amount_refunded,
         description: charge.description,
         receipt_url: charge.receipt_url || null,
-        invoice: (charge as any).invoice || null,
+        payment_intent: idOf(
+          charge.payment_intent as string | { id: string } | null
+        ),
       }));
 
-    const invoiceIds = chargeList
-      .map((c) => c.invoice)
-      .filter((id): id is string => !!id && typeof id === 'string');
-
-    const invoicePdfMap: Record<string, string> = {};
-    for (const invoiceId of invoiceIds) {
-      try {
-        const inv = await stripe.invoices.retrieve(invoiceId);
-        if (inv.invoice_pdf) {
-          invoicePdfMap[invoiceId] = inv.invoice_pdf;
+    // A charge no longer names its invoice (removed from the API with
+    // 2025-03-31.basil; Postra is on 2026-10-28): the PDF stayed empty in the
+    // admin (U7). An invoice lists its payments, each with its PaymentIntent,
+    // which the charge has. One request for the customer's invoices.
+    const invoiceByIntent: Record<string, { id: string; pdf: string | null }> =
+      {};
+    try {
+      const invoices = await stripe.invoices.list({
+        customer: org.paymentId,
+        limit: 100,
+        expand: ['data.payments'],
+      });
+      for (const invoice of invoices.data) {
+        for (const payment of invoice.payments?.data ?? []) {
+          const intent = idOf(
+            payment.payment?.payment_intent as string | { id: string } | null
+          );
+          if (intent && invoice.id) {
+            invoiceByIntent[intent] = {
+              id: invoice.id,
+              pdf: invoice.invoice_pdf ?? null,
+            };
+          }
         }
-      } catch {
-        // ignore if invoice can't be fetched
       }
+    } catch {
+      // The history still shows the charges and their receipts.
     }
 
-    return chargeList.map((charge) => ({
-      ...charge,
-      invoice_pdf:
-        charge.invoice && invoicePdfMap[charge.invoice as string]
-          ? invoicePdfMap[charge.invoice as string]
-          : null,
-    }));
+    return chargeList.map(({ payment_intent, ...charge }) => {
+      const invoice = payment_intent ? invoiceByIntent[payment_intent] : undefined;
+      return {
+        ...charge,
+        invoice: invoice?.id ?? null,
+        invoice_pdf: invoice?.pdf ?? null,
+      };
+    });
   }
 
   async refundCharges(organizationId: string, chargeIds: string[]) {
