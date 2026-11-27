@@ -6,6 +6,10 @@ jest.mock('@gitroom/nestjs-libraries/redis/redis.service', () => ({
     del: (...a: unknown[]) => redisDel(...a),
   },
 }));
+const revokeAppleToken = jest.fn();
+jest.mock('@gitroom/backend/services/auth/providers/apple.provider', () => ({
+  revokeAppleToken: (...a: unknown[]) => revokeAppleToken(...a),
+}));
 const bust = jest.fn();
 jest.mock('@gitroom/nestjs-libraries/redis/auth-context.cache', () => ({
   bustAuthContextCache: (...a: unknown[]) => bust(...a),
@@ -22,6 +26,7 @@ import {
   WRONG_PASSWORD,
 } from './account.deletion.service';
 import { authEmailFooter } from './auth.emails';
+import { encryptSecret } from '@gitroom/helpers/auth/secrets-at-rest';
 
 process.env.JWT_SECRET = 'test-secret-for-account-deletion';
 process.env.FRONTEND_URL = 'https://app.example.test';
@@ -148,6 +153,44 @@ describe('AccountDeletionService.confirm', () => {
     await s.service.request('user-1', undefined);
     return linkToken(s.email.sendEmailSync);
   }
+
+  // Apple asks apps that delete accounts to revoke the Sign in with Apple
+  // tokens (App Review 5.1.1(v)).
+  it('an Apple account has its Apple sign-in revoked, after the rows are gone', async () => {
+    const apple = {
+      ...local,
+      providerName: Provider.APPLE,
+      appleRefreshToken: encryptSecret('apple-refresh'),
+    };
+    const token = await mintedLink();
+    const { service, calls } = setup(apple);
+    revokeAppleToken.mockReset().mockImplementation(async () => {
+      calls.push('revoke');
+      return true;
+    });
+
+    await expect(service.confirm(token)).resolves.toBe('user-1');
+    expect(revokeAppleToken).toHaveBeenCalledWith('apple-refresh');
+    expect(calls).toEqual(['stripe', 'deleteAccount', 'revoke']);
+  });
+
+  it('a failed Apple revocation does not undo or block the deletion', async () => {
+    const apple = { ...local, providerName: Provider.APPLE, appleRefreshToken: encryptSecret('r') };
+    const token = await mintedLink();
+    const { service, users } = setup(apple);
+    revokeAppleToken.mockReset().mockRejectedValue(new Error('Apple down'));
+
+    await expect(service.confirm(token)).resolves.toBe('user-1');
+    expect(users.deleteAccount).toHaveBeenCalled();
+  });
+
+  it('other accounts ask Apple for nothing', async () => {
+    const token = await mintedLink();
+    const { service } = setup(google);
+    revokeAppleToken.mockReset();
+    await expect(service.confirm(token)).resolves.toBe('user-1');
+    expect(revokeAppleToken).not.toHaveBeenCalled();
+  });
 
   it('the emailed link deletes the account', async () => {
     const token = await mintedLink();

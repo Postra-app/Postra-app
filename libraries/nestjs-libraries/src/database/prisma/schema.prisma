@@ -143,6 +143,10 @@ model User {
   // the same time so every existing session ends.
   suspendedAt           DateTime?
   suspendedReason       String?
+  // Sign in with Apple: the refresh token Apple issued for this account,
+  // encrypted (secrets-at-rest). Kept only to revoke the sign-in when the
+  // account is deleted, as Apple asks (App Review 5.1.1(v)).
+  appleRefreshToken     String?
   comments              Comments[]
   items                 ItemUser[]
   groupBuyer            MessagesGroup[]      @relation("groupBuyer")
@@ -1102,6 +1106,8 @@ enum Provider {
   FARCASTER
   WALLET
   GENERIC
+  // Sign in with Apple, from the iOS app only (Apple 4.8).
+  APPLE
 }
 
 enum Role {

@@ -10,6 +10,8 @@ import { AuthService as AuthChecker } from '@gitroom/helpers/auth/auth.service';
 import { bustAuthContextCache } from '@gitroom/nestjs-libraries/redis/auth-context.cache';
 import { ioRedis } from '@gitroom/nestjs-libraries/redis/redis.service';
 import { AuditService } from '@gitroom/nestjs-libraries/database/prisma/audit/audit.service';
+import { revokeAppleToken } from '@gitroom/backend/services/auth/providers/apple.provider';
+import { decryptSecret } from '@gitroom/helpers/auth/secrets-at-rest';
 import {
   authEmailFooter,
   authEmails,
@@ -165,6 +167,28 @@ export class AccountDeletionService {
 
   // GDPR / RODO right to erasure + Meta data-deletion. Permanently deletes the
   // user and the organizations they solely own (UsersService.deleteAccount).
+  private async revokeApple(user: {
+    id: string;
+    providerName: Provider;
+    appleRefreshToken?: string | null;
+  }) {
+    if (user.providerName !== Provider.APPLE || !user.appleRefreshToken) {
+      return;
+    }
+    try {
+      const revoked = await revokeAppleToken(
+        decryptSecret(user.appleRefreshToken)
+      );
+      if (!revoked) {
+        this._logger.error(`Apple token not revoked for deleted user ${user.id}`);
+      }
+    } catch (err: any) {
+      this._logger.error(
+        `Apple token not revoked for deleted user ${user.id}: ${err?.message}`
+      );
+    }
+  }
+
   private async deleteNow(
     userId: string,
     email: string,
@@ -193,6 +217,11 @@ export class AccountDeletionService {
       userId,
       expectedTokenVersion
     );
+    // Sign in with Apple: end the app's access to the person's Apple sign-in,
+    // as Apple asks of apps that delete accounts (App Review 5.1.1(v)).
+    // After the rows are gone, so a failed revocation never leaves the
+    // account half-deleted; the failure is logged for a retry by hand.
+    await this.revokeApple(current);
     // The account and its organisations are gone; this row says when and
     // how. Ids only: the address went with the account.
     await this._audit.record({
