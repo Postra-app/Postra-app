@@ -429,6 +429,19 @@ describe('the trial bar', () => {
     expect(await service.trialStatus('cus_new')).toEqual({ endsAt: 2000 * 1000, hasCard: false, cancelled: true });
   });
 
+  // The trial bar asks on every page: one request to Stripe, not two.
+  it('reads the card from the customer in the same answer', async () => {
+    listSubscriptions.mockResolvedValue({
+      data: [{ id: 'sub_new', customer: { id: 'cus_new', invoice_settings: { default_payment_method: 'pm_1' } }, status: 'trialing', trial_end: 2000, default_payment_method: null }],
+    });
+    retrieveCustomer.mockClear();
+    const { service } = build();
+
+    expect(await service.trialStatus('cus_new')).toEqual({ endsAt: 2000 * 1000, hasCard: true, cancelled: false });
+    expect(listSubscriptions).toHaveBeenLastCalledWith({ customer: 'cus_new', limit: 100, expand: ['data.customer'] });
+    expect(retrieveCustomer).not.toHaveBeenCalled();
+  });
+
   it('no trial, no bar', async () => {
     listSubscriptions.mockResolvedValue({ data: [{ id: 'sub_new', status: 'active' }] });
     const { service } = build();

@@ -2141,7 +2141,14 @@ export class StripeService {
     paymentId: string
   ): Promise<{ endsAt: number; hasCard: boolean; cancelled: boolean } | null> {
     const trialing = (
-      await stripe.subscriptions.list({ customer: paymentId, limit: 100 })
+      await stripe.subscriptions.list({
+        customer: paymentId,
+        limit: 100,
+        // The trial bar asks on every page; with the customer in the same
+        // answer, whether a card is on file needs no second request (the
+        // two in a row took ~320 of ~440 ms, traces 27 Nov 2026).
+        expand: ['data.customer'],
+      })
     ).data.find((f) => f.status === 'trialing');
     if (!trialing?.trial_end) {
       return null;
@@ -2394,9 +2401,11 @@ export class StripeService {
     if (subscription.default_payment_method || subscription.default_source) {
       return true;
     }
-    const customer = await stripe.customers.retrieve(
-      subscription.customer as string
-    );
+    // Already expanded by the caller (trialStatus): no second request.
+    const customer =
+      typeof subscription.customer === 'object' && subscription.customer
+        ? subscription.customer
+        : await stripe.customers.retrieve(subscription.customer as string);
     if (!customer || customer.deleted) {
       return false;
     }
