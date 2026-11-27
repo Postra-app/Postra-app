@@ -1,12 +1,13 @@
 const retrieveSubscription = jest.fn();
 const listSubscriptions = jest.fn();
 const createPreview = jest.fn();
+const listInvoices = jest.fn();
 
 jest.mock('stripe', () => {
   const actual = jest.requireActual('stripe');
   const mock: any = jest.fn().mockImplementation(() => ({
     subscriptions: { retrieve: retrieveSubscription, list: listSubscriptions },
-    invoices: { createPreview, list: jest.fn().mockResolvedValue({ data: [] }) },
+    invoices: { createPreview, list: (...a: unknown[]) => listInvoices(...a) },
   }));
   mock.errors = actual.errors ?? actual.default?.errors;
   return mock;
@@ -41,6 +42,10 @@ const noCardTrial = (over: Record<string, unknown> = {}) => ({
   metadata: { service: 'gitroom', billing: 'PRO', period: 'MONTHLY', uniqueId: 'u1', trial_no_card: '1' },
   items: { data: [{ quantity: 1, price: { id: 'price_1', unit_amount: 2900, recurring: { interval: 'month' }, product: { id: 'prod_1', metadata: { tier: 'PRO' } } } }] },
   ...over,
+});
+
+beforeEach(() => {
+  listInvoices.mockReset().mockResolvedValue({ data: [] });
 });
 
 const build = () => {
@@ -125,6 +130,21 @@ describe('when a trial without a card ends', () => {
       deleted(noCardTrial({ status: 'canceled', canceled_at: TRIAL_END, customer: 'cus_1', metadata: { ...noCardTrial().metadata, trial_rejected: 'email' } }))
     );
 
+    expect(notificationService.inAppNotification).not.toHaveBeenCalled();
+  });
+
+  // On production (27 Nov 2026) a trial paid for early ("End the trial now",
+  // which moves trial_end to the payment) and then refunded in full got
+  // "Your free trial has ended… add a card" next to "Subscription ended".
+  it('says nothing when the trial was paid for and the payment refunded', async () => {
+    listInvoices.mockResolvedValueOnce({ data: [{ id: 'in_1', status: 'paid', amount_paid: 1900 }] });
+    const { service, notificationService } = build();
+
+    await service.deleteSubscription(
+      deleted(noCardTrial({ status: 'canceled', trial_end: TRIAL_END, canceled_at: TRIAL_END + 780, customer: 'cus_1' }))
+    );
+
+    expect(listInvoices).toHaveBeenCalledWith(expect.objectContaining({ status: 'paid', limit: 10 }));
     expect(notificationService.inAppNotification).not.toHaveBeenCalled();
   });
 

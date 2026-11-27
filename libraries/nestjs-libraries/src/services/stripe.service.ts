@@ -115,7 +115,10 @@ const idOf = (v?: string | { id: string } | null) =>
 
 // A trial without a card that ran to its end: Stripe cancelled it at or
 // after trial_end (missing_payment_method: cancel), not the customer earlier,
-// and it was not a repeat trial refused at the start.
+// and it was not a repeat trial refused at the start. These are the signs on
+// the subscription; a trial that was paid for and later refunded shows them
+// too (paying ends the trial early and the refund cancels after it), so
+// callers also ask Stripe whether it was ever paid (StripeService.neverPaid).
 export const trialRanOutWithoutCard = (s: Stripe.Subscription) =>
   s.metadata?.trial_no_card === '1' &&
   s.status === 'canceled' &&
@@ -1100,6 +1103,12 @@ export class StripeService {
       subscription.canceled_at < subscription.trial_end ||
       subscription.canceled_at > subscription.trial_end + 86400
     ) {
+      return;
+    }
+    // A trial paid for and then refunded ended with a payment, not without a
+    // card: its customer was told the subscription ended, and "Your free
+    // trial has ended, add a card" was wrong (found on production 27 Nov).
+    if (!(await this.neverPaid(subscription.id))) {
       return;
     }
     if (
@@ -2107,7 +2116,25 @@ export class StripeService {
       status: 'canceled',
       limit: 100,
     });
-    return canceled.data.some(trialRanOutWithoutCard);
+    return this.anyRanOut(canceled.data);
+  }
+
+  // Whether no invoice of this subscription was ever paid with money: a
+  // trial that ran out without a card has none; one paid for has.
+  private async neverPaid(subscriptionId: string): Promise<boolean> {
+    const paid = await stripe.invoices.list({
+      subscription: subscriptionId,
+      status: 'paid',
+      limit: 10,
+    });
+    return !paid.data.some((invoice) => (invoice.amount_paid ?? 0) > 0);
+  }
+
+  private async anyRanOut(subscriptions: Stripe.Subscription[]) {
+    for (const s of subscriptions.filter(trialRanOutWithoutCard)) {
+      if (await this.neverPaid(s.id)) return true;
+    }
+    return false;
   }
 
   async trialStatus(
@@ -2322,7 +2349,7 @@ export class StripeService {
     );
     // The plan screen opens with "Your free trial has ended" for a trial
     // without a card that ran to its end (not one cancelled earlier).
-    const trialEnded = subscriptions.some(trialRanOutWithoutCard);
+    const trialEnded = await this.anyRanOut(subscriptions);
     return { ...checkout, trialEnded };
   }
 

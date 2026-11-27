@@ -11,6 +11,7 @@ const listMethods = jest.fn();
 const createIntent = jest.fn();
 const retrieveCustomer = jest.fn();
 const createPreview = jest.fn();
+const listInvoices = jest.fn().mockResolvedValue({ data: [] });
 const createPortal = jest.fn().mockResolvedValue({ url: 'https://billing.stripe.com/p/x' });
 const listPortalConfigurations = jest.fn();
 const createPortalConfiguration = jest.fn();
@@ -34,7 +35,7 @@ jest.mock('stripe', () => {
       sessions: { create: createPortal },
       configurations: { list: listPortalConfigurations, create: createPortalConfiguration },
     },
-    invoices: { createPreview },
+    invoices: { createPreview, list: (...a: unknown[]) => listInvoices(...a) },
   }));
   mock.errors = actual.errors ?? actual.default?.errors;
   return mock;
@@ -446,6 +447,15 @@ describe('whether a trial without a card ran out', () => {
 
     expect(await service.trialRanOut('cus_new')).toBe(true);
     expect(listSubscriptions).toHaveBeenLastCalledWith({ customer: 'cus_new', status: 'canceled', limit: 100 });
+  });
+
+  it('a trial paid for and then refunded is not one', async () => {
+    listSubscriptions.mockResolvedValue({ data: [{ ...ranOut, id: 's2', canceled_at: 2780 }] });
+    listInvoices.mockResolvedValueOnce({ data: [{ status: 'paid', amount_paid: 1900 }] });
+    const { service } = build();
+
+    expect(await service.trialRanOut('cus_new')).toBe(false);
+    expect(listInvoices).toHaveBeenLastCalledWith({ subscription: 's2', status: 'paid', limit: 10 });
   });
 
   it('a trial cancelled before its end, a refused repeat trial or a paid plan is not one', async () => {
