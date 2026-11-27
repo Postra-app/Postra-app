@@ -40,7 +40,12 @@ const drop = async (page: Page, names: string[]) => {
 const paste = async (page: Page, names: string[]) => {
   const dataTransfer = await files(page, names);
   await page.locator('.ProseMirror').first().evaluate((el, clipboardData) => {
-    el.dispatchEvent(new ClipboardEvent('paste', { clipboardData, bubbles: true, cancelable: true }));
+    // Attached after construction, as in composer.spec.ts: Firefox drops
+    // the clipboard handed to the ClipboardEvent constructor (no files, no
+    // text), which a real paste carries.
+    const event = new ClipboardEvent('paste', { bubbles: true, cancelable: true });
+    Object.defineProperty(event, 'clipboardData', { value: clipboardData });
+    el.dispatchEvent(event);
   }, dataTransfer);
 };
 
@@ -151,10 +156,7 @@ test('a file dropped on the Media page while another is uploading is saved too',
   expect(problems.filter((p) => !expectedNoise(p))).toEqual([]);
 });
 
-test('a file finishing first does not drop another still uploading', async ({ page, browserName }) => {
-  // Firefox drops the files of a ClipboardEvent made in script (measured: 0
-  // files, 1 in Chromium and WebKit); the drop test above covers it there.
-  test.fixme(browserName === 'firefox', 'a scripted paste carries no files in Firefox');
+test('a file finishing first does not drop another still uploading', async ({ page }) => {
   test.setTimeout(60_000);
   const problems = watchForErrors(page);
   await page.route('**/media/upload-server', async (route) => {

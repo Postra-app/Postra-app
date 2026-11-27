@@ -112,7 +112,12 @@ test('a paste whose html has no tags keeps its lines', async ({ page }) => {
     const data = new DataTransfer();
     data.setData('text/plain', 'First line\nSecond line\nThird line');
     data.setData('text/html', '<meta charset="utf-8">First line\nSecond line\nThird line');
-    el.dispatchEvent(new ClipboardEvent('paste', { clipboardData: data, bubbles: true, cancelable: true }));
+    // Firefox drops text handed to the ClipboardEvent constructor (the
+    // event arrives with an empty clipboardData); a real paste carries it,
+    // so attach the data to the event the way the browser would.
+    const event = new ClipboardEvent('paste', { bubbles: true, cancelable: true });
+    Object.defineProperty(event, 'clipboardData', { value: data });
+    el.dispatchEvent(event);
   });
   await expect(editor.locator('p')).toHaveCount(3);
   await expect(editor.locator('p').nth(1)).toHaveText('Second line');
