@@ -9,6 +9,12 @@ import {
 } from '@gitroom/nestjs-libraries/database/prisma/subscriptions/pricing';
 import { useT } from '@gitroom/react/translation/get.transation.service.client';
 
+// The keys of the two counts, so a change of plan can refresh them.
+export const BILLING_CREDITS_KEYS = [
+  'billing-credits-images',
+  'billing-credits-videos',
+] as const;
+
 // What is left of this billing month's AI images and videos, next to the plan
 // cards — the composer shows a count only once its modal is open.
 export const AiUsageThisMonth: FC<{ tier: string; isTrailing?: boolean }> = ({
@@ -24,10 +30,10 @@ export const AiUsageThisMonth: FC<{ tier: string; isTrailing?: boolean }> = ({
         ?.credits as number,
     []
   );
-  const { data: images } = useSWR('billing-credits-images', () =>
+  const { data: images } = useSWR(BILLING_CREDITS_KEYS[0], () =>
     credits('ai_images')
   );
-  const { data: videos } = useSWR('billing-credits-videos', () =>
+  const { data: videos } = useSWR(BILLING_CREDITS_KEYS[1], () =>
     credits('ai_videos')
   );
 

@@ -7,6 +7,7 @@ import { useSWRConfig } from 'swr';
 import { Button } from '@gitroom/frontend/components/ui/button';
 import { useT } from '@gitroom/react/translation/get.transation.service.client';
 import { planLabel } from '@gitroom/nestjs-libraries/database/prisma/subscriptions/pricing';
+import { BILLING_CREDITS_KEYS } from '@gitroom/frontend/components/billing/ai.usage.this.month';
 
 type Step = 'confirm' | 'working' | 'done' | 'already' | 'problem' | 'no-card';
 
@@ -73,9 +74,11 @@ export const FinishTrial: FC<{ close: () => void }> = (props) => {
     }
     if (finished) {
       setStep('done');
-      // The open app still held the trial's limits.
+      // The open app still held the trial's limits: the AI counts on this
+      // page read "10 of 75 images left" after paying, until a reload.
       mutate('/user/self');
       mutate('/billing/invoices');
+      BILLING_CREDITS_KEYS.forEach((key) => mutate(key));
       return;
     }
     if (attempt >= 30) {
@@ -302,9 +305,9 @@ export const FinishTrial: FC<{ close: () => void }> = (props) => {
                       )}
                     </div>
                     <div className="flex gap-[10px] mt-[20px] phone:flex-col">
-                      <Button className="flex-1" onClick={() => window.close()}>
-                        {t('close_window', 'Close window')}
-                      </Button>
+                      {/* One way out: "Close window" called window.close(),
+                          which a browser ignores for a tab it did not open
+                          from a script. */}
                       <Button className="flex-1" onClick={() => props.close()}>
                         {t('close_dialog', 'Close')}
                       </Button>
