@@ -46,9 +46,17 @@ export const planFeatures = (tier: string): PlanFeature[] => {
   const list: PlanFeature[] = [];
   const channels = plan.channel || 0;
 
+  // The channel quota belongs to the workspace, not to each person: a plan
+  // with a team says so, or "15 channels, 5 people" reads as per person.
   list.push(
     channels === 1
       ? { key: 'billing_plan_channel', text: '1 channel' }
+      : plan.team_members > 1
+      ? {
+          key: 'billing_plan_channels_team',
+          text: '{{count}} channels for the whole team',
+          vars: { count: channels },
+        }
       : {
           key: 'billing_plan_channels',
           text: '{{count}} channels',

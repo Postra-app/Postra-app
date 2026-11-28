@@ -35,15 +35,16 @@ describe('pricing matrix', () => {
   });
 
   // K. 14 XI: Starter 4 (a small business wants Facebook, Instagram, TikTok
-  // and LinkedIn, 4 of its 5 platforms), Pro 8 (were 3 and 6).
-  it('keeps channel slots at FREE=3, Starter=4, Pro=8, Business=15', () => {
+  // and LinkedIn, 4 of its 5 platforms), Pro 8 (were 3 and 6). K. 27 XI:
+  // Business 50 (was 15): an agency with 20 clients needs 40 to 60.
+  it('keeps channel slots at FREE=3, Starter=4, Pro=8, Business=50', () => {
     expect(pricing.FREE.channel).toBe(3);
     expect(pricing.STANDARD.channel).toBe(4);
     expect(pricing.PRO.channel).toBe(8);
-    expect(pricing.ULTIMATE.channel).toBe(15);
+    expect(pricing.ULTIMATE.channel).toBe(50);
   });
 
-  it('gives Business a slot for every platform a customer can connect today', () => {
+  it('gives Business at least a slot for every platform a customer can connect today', () => {
     // Instagram counts once: through a Page and without one is the same
     // account, which cannot be connected twice (same.account.ts). LinkedIn
     // Pages are in early access with a cap of their own
@@ -52,7 +53,7 @@ describe('pricing matrix', () => {
     const platforms = new Set(
       pricing.ULTIMATE.allowedProviders.filter((p) => !comingSoon.has(p)).map(platformOf)
     );
-    expect(pricing.ULTIMATE.channel).toBe(platforms.size);
+    expect(pricing.ULTIMATE.channel).toBeGreaterThanOrEqual(platforms.size);
   });
 
   it('keeps the per-tier platform allowlists', () => {
@@ -119,8 +120,11 @@ describe('pricing matrix', () => {
     }
   });
 
-  it('gives each tier at least as many platforms as channel slots', () => {
-    for (const tier of Object.keys(pricing)) {
+  it('gives each tier but Business at least as many platforms as channel slots', () => {
+    // Business is for agencies: several clients' accounts on one platform,
+    // which a workspace can connect (a channel is unique per organisation,
+    // provider and account, schema.prisma), so its slots outnumber platforms.
+    for (const tier of Object.keys(pricing).filter((t) => t !== 'ULTIMATE')) {
       // Every provider is its own picker tile and consumes its own slot —
       // including linkedin-page, which connects separately from linkedin.
       expect(pricing[tier].allowedProviders.length).toBeGreaterThanOrEqual(

@@ -1527,6 +1527,7 @@
   "change_bot_picture_and_nickname_title": "Zmień zdjęcie i nazwę bota",
   "billing_plan_channel": "1 kanał",
   "billing_plan_channels": "Kanały: {{count}}",
+  "billing_plan_channels_team": "Kanały: {{count}} dla całego zespołu",
   "billing_plan_platforms": "Platformy: {{platforms}}",
   "billing_plan_posts_unlimited": "Posty bez limitu",
   "billing_plan_posts": "{{count}} postów miesięcznie",
