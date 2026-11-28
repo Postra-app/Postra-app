@@ -156,6 +156,28 @@ test('a file dropped on the Media page while another is uploading is saved too',
   expect(problems.filter((p) => !expectedNoise(p))).toEqual([]);
 });
 
+// react-dropzone 19.2 added paste-to-upload on its root, which wraps the
+// editor: a pasted image went to the uploader twice, once from the editor's
+// own paste handler and once from the drop zone.
+test('a pasted image is uploaded and attached once', async ({ page }) => {
+  const problems = watchForErrors(page);
+  let uploads = 0;
+  await page.route('**/media/upload-server', (route) => {
+    uploads++;
+    return route.continue();
+  });
+
+  await openComposer(page, 'bluesky', `[stack ui] paste once ${Date.now()}`);
+  await paste(page, [`pasted-${Date.now()}.png`]);
+
+  await expect(attached(page)).toHaveCount(1, { timeout: 15_000 });
+  // Long enough for a second upload to have started if there was one.
+  await page.waitForTimeout(1500);
+  await expect(attached(page)).toHaveCount(1);
+  expect(uploads).toBe(1);
+  expect(problems).toEqual([]);
+});
+
 test('a file finishing first does not drop another still uploading', async ({ page }) => {
   test.setTimeout(60_000);
   const problems = watchForErrors(page);

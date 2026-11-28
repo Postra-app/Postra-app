@@ -738,6 +738,9 @@ export const Editor: FC<{
     // again.
     onDrop,
     noDrag: num > 0 && comments === 'no-media',
+    // react-dropzone 19.2+ also takes pasted files on its root; the editor
+    // inside already uploads a paste itself, so the same image went in twice.
+    noPaste: true,
   });
 
   const valueWithoutHtml = useMemo(() => {
