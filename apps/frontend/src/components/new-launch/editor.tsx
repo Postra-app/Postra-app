@@ -16,7 +16,7 @@ import { Fragment, Slice } from '@tiptap/pm/model';
 import clsx from 'clsx';
 import { makeId } from '@gitroom/nestjs-libraries/services/make.is';
 import EmojiPicker from 'emoji-picker-react';
-import { Theme } from 'emoji-picker-react';
+import { EmojiStyle, Theme } from 'emoji-picker-react';
 import { BoldText } from '@gitroom/frontend/components/new-launch/bold.text';
 import { UText } from '@gitroom/frontend/components/new-launch/u.text';
 import { SignatureBox } from '@gitroom/frontend/components/signature';
@@ -912,6 +912,11 @@ export const Editor: FC<{
                         >
                           <EmojiPicker
                             height={400}
+                            // The device's own emoji, as the platforms show
+                            // them; the Apple set came from cdn.jsdelivr.net,
+                            // a third-party request like the flags had
+                            // (flag.code.ts).
+                            emojiStyle={EmojiStyle.NATIVE}
                             theme={
                               (localStorage.getItem('mode') as Theme) ||
                               Theme.DARK

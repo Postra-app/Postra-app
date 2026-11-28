@@ -179,7 +179,7 @@
     "dayjs": "1.11.23",
     "dotenv": "^18.0.10",
     "dotenv-cli": "^11.1.0",
-    "emoji-picker-react": "^4.22.3",
+    "emoji-picker-react": "5.1.4",
     "evp_bytestokey": "^1.0.3",
     "fabric": "^7.4.0",
     "facebook-nodejs-business-sdk": "^21.0.5",
