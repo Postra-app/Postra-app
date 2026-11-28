@@ -67,7 +67,7 @@
     "@copilotkit/runtime": "1.90.0",
     "@copilotkit/runtime-client-gql": "1.90.0",
     "@dub/analytics": "^0.0.33",
-    "@hookform/resolvers": "^6.0.2",
+    "@hookform/resolvers": "7.0.9",
     "@langchain/community": "^1.1.29",
     "@langchain/core": "^1.5.0",
     "@langchain/langgraph": "^1.7.5",
