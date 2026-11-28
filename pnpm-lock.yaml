@@ -364,8 +364,8 @@ importers:
         specifier: ^6.0.0
         version: 6.0.0
       '@types/facebook-nodejs-business-sdk':
-        specifier: ^20.0.3
-        version: 20.0.3
+        specifier: 24.0.0
+        version: 24.0.0
       '@types/jsonwebtoken':
         specifier: ^9.0.10
         version: 9.0.10
@@ -493,8 +493,8 @@ importers:
         specifier: ^7.4.0
         version: 7.4.0(bufferutil@4.1.0)(utf-8-validate@5.0.10)
       facebook-nodejs-business-sdk:
-        specifier: ^21.0.5
-        version: 21.0.5
+        specifier: 27.0.0
+        version: 27.0.0
       file-type:
         specifier: 22.2.0
         version: 22.2.0
@@ -8186,8 +8186,8 @@ packages:
   '@types/express@5.0.6':
     resolution: {integrity: sha512-sKYVuV7Sv9fbPIt/442koC7+IIwK5olP1KWeD88e/idgoJqDm3JV/YUiPwkoKK92ylff2MGxSz1CSjsXelx0YA==}
 
-  '@types/facebook-nodejs-business-sdk@20.0.3':
-    resolution: {integrity: sha512-x/iilSCliq/YqJWTiVoqnTsILF+hluSJdghhZF/cgWXHBNY+rHBGR5oGa3AfVyG5FVEXw/R/0fZAVui87pq7OA==}
+  '@types/facebook-nodejs-business-sdk@24.0.0':
+    resolution: {integrity: sha512-hfr0EPxBvw3c7tuaxpozm+GysF5nU2wmgAlASkmWErIkACh4Jqa4kH6cZDdrYTOOLXzg3HXAXhSfukpL91d7eA==}
 
   '@types/filesystem@0.0.36':
     resolution: {integrity: sha512-vPDXOZuannb9FZdxgHnqSwAG/jvdGM8Wq+6N4D/d80z+D4HWH+bItqsZaVRQykAn6WEVeEkLm2oQigyHtgb0RA==}
@@ -9593,6 +9593,9 @@ packages:
     resolution: {integrity: sha512-PzE5nJZPz72YUAfo8oTp0u3fqqY7IzlTubneAihqDYAUcBk7ryeCmBbdJBEdaH0bptSOe2VT2Zwcb3UaFyaSWw==}
     engines: {node: ^18.12.0 || >= 20.9.0}
 
+  capi-param-builder-nodejs@1.3.2:
+    resolution: {integrity: sha512-P+VYIcO1JKPcoR1L5rK2mhwANh2JqF2rRNJD6Sj7u88ykDmHmQH/2SW9iqw/EIf2iqEDles1hV2IqauTppfFUw==}
+
   ccount@2.0.1:
     resolution: {integrity: sha512-eyrF0jiFpY+3drT6383f1qhkbGsLSifNAjA61IUjZjmLCWjItY6LB9ft9YhoDgwfmclB2zhu51Lc7+95b8NRAg==}
 
@@ -10484,6 +10487,10 @@ packages:
   electron-to-chromium@1.5.444:
     resolution: {integrity: sha512-5ss/uJfoDYDHT0lfJzT6FbcskIzROIOPf0BbbFkGcvDzoJU7i//9GDrwwIHQVmIsrAGiF3ihpADBRIsrEFt1rQ==}
 
+  email-validator@2.0.4:
+    resolution: {integrity: sha512-gYCwo7kh5S3IDyZPLZf6hSS0MnZT8QmJFqYvbqlDZSbwdZlY6QZWxJ4i/6UhITOJ4XzyI647Bm2MXKCLqnJ4nQ==}
+    engines: {node: '>4.0'}
+
   emittery@0.13.1:
     resolution: {integrity: sha512-DeWwawk6r5yR9jFgnDKYt4sLS0LmHJJi3ZOnb5/JdbYwj3nW+FxQnHIjhBKz8YLC7oRNPVM9NQ47I3CVx34eqQ==}
     engines: {node: '>=12'}
@@ -10874,8 +10881,8 @@ packages:
     resolution: {integrity: sha512-NalYDc3eifTl1C33zryQwpH6+XA/2ClxQrH9vkASkZw3tbkRmorpikhYMmxhUTmi7O3e9ODz0vOT8qfaCh9IVA==}
     engines: {node: '>=20.0.0'}
 
-  facebook-nodejs-business-sdk@21.0.5:
-    resolution: {integrity: sha512-WRmYZQtQYZWFHCrzlIqgj0tSRCDslSWd9IT2ccs8ah+Mr4QxC3uZrP7tVAkqYJshINKL1v30swlGDCGK5VmMTg==}
+  facebook-nodejs-business-sdk@27.0.0:
+    resolution: {integrity: sha512-WKcUlqCHYXsxgIsi8N2DZiPyxsvUodZK4zVHeRGSiyFI+Cpfa3IdSWDeHVGHIeYfuNOJ1sIi0ERE7cI9gm8Cjw==}
 
   fast-check@3.23.2:
     resolution: {integrity: sha512-h5+1OzzfCC3Ef7VbtKdcv7zsstUQwUDlYpUTvjeUsJAssPgLn7QzbboPtL5ro04Mq0rPOsMzl7q5hIbRs2wD1A==}
@@ -24576,7 +24583,7 @@ snapshots:
       '@types/express-serve-static-core': 5.1.1
       '@types/serve-static': 2.2.0
 
-  '@types/facebook-nodejs-business-sdk@20.0.3': {}
+  '@types/facebook-nodejs-business-sdk@24.0.0': {}
 
   '@types/filesystem@0.0.36':
     dependencies:
@@ -26342,6 +26349,8 @@ snapshots:
       node-addon-api: 7.1.1
       prebuild-install: 7.1.3
 
+  capi-param-builder-nodejs@1.3.2: {}
+
   ccount@2.0.1: {}
 
   chalk@4.1.2:
@@ -27228,6 +27237,8 @@ snapshots:
 
   electron-to-chromium@1.5.444: {}
 
+  email-validator@2.0.4: {}
+
   emittery@0.13.1: {}
 
   emoji-picker-react@5.1.4(react@19.3.1):
@@ -27824,10 +27835,12 @@ snapshots:
       - supports-color
       - utf-8-validate
 
-  facebook-nodejs-business-sdk@21.0.5:
+  facebook-nodejs-business-sdk@27.0.0:
     dependencies:
       axios: 1.20.0(debug@4.4.3)
+      capi-param-builder-nodejs: 1.3.2
       currency-codes: 1.5.1
+      email-validator: 2.0.4
       iso-3166-1: 2.1.1
       js-sha256: 0.9.0
       mixwith: 0.1.1
