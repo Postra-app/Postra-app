@@ -969,8 +969,8 @@ importers:
         specifier: ^1.61.4
         version: 1.61.6
       wavesurfer.js:
-        specifier: ^7
-        version: 7.12.12
+        specifier: 8.1.1
+        version: 8.1.1
     devDependencies:
       typescript:
         specifier: 'catalog:'
@@ -16203,8 +16203,8 @@ packages:
     resolution: {integrity: sha512-6i/00NBjP4yGPs+caKSyRfpTF/8Torsu0MOW3mMzIbhgISFder8i7xbqgHlLMwJrdiN8ndBV3UA1/AfzPSr+jg==}
     engines: {node: '>=10.13.0'}
 
-  wavesurfer.js@7.12.12:
-    resolution: {integrity: sha512-fyKNuREQTliCl4b9w7pUzpFXQIkX5tcdYu1o6vBdH+NlUXvTxshvfbG2hj8OxDevzQNZlDTHzZGyAT3FhuutWw==}
+  wavesurfer.js@8.1.1:
+    resolution: {integrity: sha512-Bcs4PqL9FKO6UfKBYW2VdDA0uK14TIYMZ2qEouyGKJNRQq4f0Xk9gMHZVyvCTRFtm0lDa16s54C21sAHmZTk+g==}
 
   wcwidth@1.0.1:
     resolution: {integrity: sha512-XHPEwS0q6TaxcvG85+8EYkbiCux2XtWG2mkc47Ng2A77BQu9+DqIOJldST4HgPkuea7dvKSj5VgX3P1d4rW8Tg==}
@@ -34316,7 +34316,7 @@ snapshots:
     dependencies:
       graceful-fs: 4.2.11
 
-  wavesurfer.js@7.12.12: {}
+  wavesurfer.js@8.1.1: {}
 
   wcwidth@1.0.1:
     dependencies:
