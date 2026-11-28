@@ -33,7 +33,7 @@
     "geist": "^1.8.1",
     "jszip": "^3.10.2",
     "mediabunny": "^1.61.4",
-    "wavesurfer.js": "^7"
+    "wavesurfer.js": "8.1.1"
   },
   "devDependencies": {
     "typescript": "catalog:"

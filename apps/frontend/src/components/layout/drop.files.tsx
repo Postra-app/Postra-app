@@ -13,6 +13,9 @@ export const DropFiles: FC<{
   // files in parallel. Refusing it only sent people back to try again.
   const { getRootProps, isDragActive } = useDropzone({
     onDrop: props.onDrop,
+    // react-dropzone 19.2+ uploads files pasted anywhere inside its root; the
+    // media library takes drops and its Upload button, as before.
+    noPaste: true,
   });
   return (
     <div {...getRootProps()} className={clsx("relative", props.className)}>

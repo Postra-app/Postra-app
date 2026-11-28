@@ -7,8 +7,7 @@ import {
 } from '@gitroom/nestjs-libraries/integrations/social/social.integrations.interface';
 import { makeSecureId } from '@gitroom/nestjs-libraries/services/make.secure.id';
 import { numericId } from '@gitroom/nestjs-libraries/integrations/social/numeric.id';
-import { google } from 'googleapis';
-import { OAuth2Client } from 'google-auth-library/build/src/auth/oauth2client';
+import { Auth, google } from 'googleapis';
 import {
   BadBody,
   SocialAbstract,
@@ -27,7 +26,7 @@ const clientAndGmb = () => {
     redirectUri: `${process.env.FRONTEND_URL}/integrations/social/gmb`,
   });
 
-  const oauth2 = (newClient: OAuth2Client) =>
+  const oauth2 = (newClient: Auth.OAuth2Client) =>
     google.oauth2({
       version: 'v2',
       auth: newClient,

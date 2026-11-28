@@ -172,9 +172,11 @@ export const pricing: PricingInterface = {
     current: 'ULTIMATE',
     month_price: 79,
     year_price: 790,
-    // A slot for every platform in BUSINESS_PROVIDERS (both Instagram logins
-    // count as one): keep in sync when enabling a new channel globally.
-    channel: 15,
+    // For agencies: one with 20 clients needs 40 to 60 channels (was 15, one
+    // per platform). The quota is the workspace's,
+    // shared by its team_members. Existing non-lifetime subscriptions are
+    // raised with the sync-channel-slots command; lifetime ones carry 100.
+    channel: 50,
     allowedProviders: BUSINESS_PROVIDERS,
     posts_per_month: 1000000,
     image_generation_count: 600,

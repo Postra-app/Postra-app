@@ -32,9 +32,12 @@ describe('planFeatures', () => {
       // "6 channels on 10 platforms" (no "(soon)").
       'On Facebook, Instagram, TikTok, LinkedIn, Pinterest, YouTube, Threads, Bluesky, Mastodon, Telegram, Google Business Profile'
     );
-    // K. 14 XI: Starter 4, Pro 8, Business 15 (were 3, 6, 15).
-    expect(pro).toContain('8 channels');
-    expect(texts('ULTIMATE')).toContain('15 channels');
+    // Starter 4, Pro 8, Business 50: an agency with 20 clients needs 40 to 60
+    // channels. The quota belongs to the workspace, so a plan with a team
+    // says it is shared, not per person.
+    expect(pro).toContain('8 channels for the whole team');
+    expect(texts('ULTIMATE')).toContain('50 channels for the whole team');
+    expect(texts('ULTIMATE')).toContain('5 people');
     expect(pro).toContain('Blog to posts from 3 RSS feeds');
     expect(pro).toContain('Unlimited posts');
     expect(pro).toContain('2 people');

@@ -9,8 +9,7 @@ import {
   SocialProvider,
 } from '@gitroom/nestjs-libraries/integrations/social/social.integrations.interface';
 import { makeSecureId } from '@gitroom/nestjs-libraries/services/make.secure.id';
-import { google, youtube_v3 } from 'googleapis';
-import { OAuth2Client } from 'google-auth-library/build/src/auth/oauth2client';
+import { Auth, Common, google, youtube_v3 } from 'googleapis';
 import axios from 'axios';
 import { YoutubeSettingsDto } from '@gitroom/nestjs-libraries/dtos/posts/providers-settings/youtube.settings.dto';
 import {
@@ -22,7 +21,6 @@ import {
 import * as process from 'node:process';
 import { weightedAverage } from '@gitroom/nestjs-libraries/integrations/social/analytics.utils';
 import dayjs from 'dayjs';
-import { GaxiosResponse } from 'gaxios/build/src/common';
 import Schema$Video = youtube_v3.Schema$Video;
 import { Rules } from '@gitroom/nestjs-libraries/chat/rules.description.decorator';
 
@@ -58,19 +56,19 @@ const clientAndYoutube = () => {
     redirectUri: `${process.env.FRONTEND_URL}/integrations/social/youtube`,
   });
 
-  const youtube = (newClient: OAuth2Client) =>
+  const youtube = (newClient: Auth.OAuth2Client) =>
     google.youtube({
       version: 'v3',
       auth: newClient,
     });
 
-  const youtubeAnalytics = (newClient: OAuth2Client) =>
+  const youtubeAnalytics = (newClient: Auth.OAuth2Client) =>
     google.youtubeAnalytics({
       version: 'v2',
       auth: newClient,
     });
 
-  const oauth2 = (newClient: OAuth2Client) =>
+  const oauth2 = (newClient: Auth.OAuth2Client) =>
     google.oauth2({
       version: 'v2',
       auth: newClient,
@@ -284,7 +282,9 @@ export class YoutubeProvider extends SocialAbstract implements SocialProvider {
       };
     }
 
-    if (body.includes('Unauthorized')) {
+    // An HTTP 401: "Unauthorized" came from the serialised statusText, which
+    // gaxios 7+ no longer includes; the status itself is still serialised.
+    if (body.includes('Unauthorized') || body.includes('"status":401')) {
       return {
         type: 'refresh-token',
         value:
@@ -566,7 +566,9 @@ export class YoutubeProvider extends SocialAbstract implements SocialProvider {
     // (H1) — hence the 60 s limit on the response headers.
     const videoStream = await fetchMediaStream(firstPost?.media?.[0]?.path);
 
-    const all: GaxiosResponse<Schema$Video> = await this.runInConcurrent(
+    // googleapis' own response type (gaxios is not our dependency, and a
+    // deep import picked whichever copy pnpm hoisted).
+    const all: Common.GaxiosResponseWithHTTP2<Schema$Video> = await this.runInConcurrent(
       async () =>
         youtubeClient.videos.insert({
           part: ['id', 'snippet', 'status'],
@@ -700,7 +702,7 @@ export class YoutubeProvider extends SocialAbstract implements SocialProvider {
         '[analytics:youtube] reports.query failed for',
         id,
         '-',
-        err?.errors?.[0]?.message || err?.message || err
+        err?.cause?.errors?.[0]?.message || err?.message || err
       );
       // Show the panels with no data instead of blanking the whole tab.
       return build([]);

@@ -87,7 +87,7 @@ test('the plans the app may sell are listed, signed in only', async () => {
     expect(listed.plans).toEqual([
       { productId: 'uk.co.postra.app.starter.monthly', tier: 'STANDARD', channels: 4 },
       { productId: 'uk.co.postra.app.pro.monthly', tier: 'PRO', channels: 8 },
-      { productId: 'uk.co.postra.app.business.monthly', tier: 'ULTIMATE', channels: 15 },
+      { productId: 'uk.co.postra.app.business.monthly', tier: 'ULTIMATE', channels: 50 },
     ]);
     expect((await anon.get('/billing/apple/plans')).status()).toBe(401);
   } finally {
@@ -228,7 +228,7 @@ test('Apple’s notifications keep the plan in step: paid, cancelled, upgraded, 
       })
     );
     row = await prisma.subscription.findUniqueOrThrow({ where: { organizationId: org.orgId } });
-    expect(row).toMatchObject({ subscriptionTier: 'ULTIMATE', totalChannels: 15, cancelAt: null });
+    expect(row).toMatchObject({ subscriptionTier: 'ULTIMATE', totalChannels: 50, cancelAt: null });
 
     // A delivery signed before all that arrives late: ignored.
     expect(

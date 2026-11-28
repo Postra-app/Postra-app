@@ -1513,6 +1513,7 @@
   "change_bot_picture_and_nickname_title": "Cambiar la foto y el apodo del bot",
   "billing_plan_channel": "1 canal",
   "billing_plan_channels": "{{count}} canales",
+  "billing_plan_channels_team": "{{count}} canales para todo el equipo",
   "billing_plan_platforms": "En {{platforms}}",
   "billing_plan_posts_unlimited": "Publicaciones ilimitadas",
   "billing_plan_posts": "{{count}} publicaciones al mes",

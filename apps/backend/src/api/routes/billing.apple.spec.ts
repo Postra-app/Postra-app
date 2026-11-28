@@ -70,7 +70,7 @@ describe('billing: plans bought in the iOS app', () => {
       plans: [
         { productId: 'uk.co.postra.app.starter.monthly', tier: 'STANDARD', channels: 4 },
         { productId: 'uk.co.postra.app.pro.monthly', tier: 'PRO', channels: 8 },
-        { productId: 'uk.co.postra.app.business.monthly', tier: 'ULTIMATE', channels: 15 },
+        { productId: 'uk.co.postra.app.business.monthly', tier: 'ULTIMATE', channels: 50 },
       ],
     });
     expect(stripe.trialOffered).toHaveBeenCalledWith('org-2', undefined, 'owner@example.com', true);

@@ -421,7 +421,7 @@ describe('AppleIapService', () => {
           transaction: tx({ productId: 'uk.co.postra.app.business.monthly' }),
         })
       );
-      expect(written(subscriptions)).toMatchObject({ tier: 'ULTIMATE', channels: 15 });
+      expect(written(subscriptions)).toMatchObject({ tier: 'ULTIMATE', channels: 50 });
     });
 
     it('DID_CHANGE_RENEWAL_PREF:DOWNGRADE keeps the paid plan until the period ends', async () => {
