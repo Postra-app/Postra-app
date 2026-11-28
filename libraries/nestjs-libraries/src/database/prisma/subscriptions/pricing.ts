@@ -172,8 +172,8 @@ export const pricing: PricingInterface = {
     current: 'ULTIMATE',
     month_price: 79,
     year_price: 790,
-    // For agencies: K. 27 XI 2026, an agency with 20 clients needs 40 to 60
-    // channels (was 15, one per platform). The quota is the workspace's,
+    // For agencies: one with 20 clients needs 40 to 60 channels (was 15, one
+    // per platform). The quota is the workspace's,
     // shared by its team_members. Existing non-lifetime subscriptions are
     // raised with the sync-channel-slots command; lifetime ones carry 100.
     channel: 50,

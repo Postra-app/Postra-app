@@ -34,9 +34,9 @@ describe('pricing matrix', () => {
     }
   });
 
-  // K. 14 XI: Starter 4 (a small business wants Facebook, Instagram, TikTok
-  // and LinkedIn, 4 of its 5 platforms), Pro 8 (were 3 and 6). K. 27 XI:
-  // Business 50 (was 15): an agency with 20 clients needs 40 to 60.
+  // Starter 4 (a small business wants Facebook, Instagram, TikTok and
+  // LinkedIn, 4 of its 5 platforms), Pro 8, Business 50 (an agency with 20
+  // clients needs 40 to 60).
   it('keeps channel slots at FREE=3, Starter=4, Pro=8, Business=50', () => {
     expect(pricing.FREE.channel).toBe(3);
     expect(pricing.STANDARD.channel).toBe(4);
